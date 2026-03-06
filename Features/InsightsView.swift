@@ -165,6 +165,8 @@ struct InsightsView: View {
                 weeklyChartCard
                     .opacity(didAnimate ? 1 : 0)
                     .offset(y: didAnimate ? 0 : 30)
+                
+                HeatmapView()
 
                 studyCard
                     .opacity(didAnimate ? 1 : 0)
