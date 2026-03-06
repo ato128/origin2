@@ -20,6 +20,10 @@ struct InsightsView: View {
     @State private var animateScoreRing = false
     @State private var displayedCompletionRate = 0
     @State private var didAnimate = false
+    @State private var highlightStreak = false
+    @State private var bumpChart = false
+    @State private var pulseCompletion = false
+    @State private var shineCompletion = false
 
     private var allTasks: [DTTaskItem] { store.items }
 
@@ -74,7 +78,30 @@ struct InsightsView: View {
     private var isEmptyState: Bool {
         allTasks.isEmpty
     }
-
+    private var productivityLevel: String {
+        switch completionRate {
+        case 0..<30:
+            return "Low focus"
+        case 30..<60:
+            return "Getting momentum"
+        case 60..<85:
+            return "Productive"
+        default:
+            return "Deep Work"
+        }
+    }
+    private var productivityColor: Color {
+        switch completionRate {
+        case 0..<30:
+            return .gray
+        case 30..<60:
+            return .orange
+        case 60..<85:
+            return .blue
+        default:
+            return .green
+        }
+    }
     private var todayIndex: Int {
         let weekday = Calendar.current.component(.weekday, from: Date())
 
@@ -157,6 +184,36 @@ struct InsightsView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Insights")
         .navigationBarTitleDisplayMode(.large)
+        .onReceive(NotificationCenter.default.publisher(for: .taskCompleted)) { _ in
+            highlightStreak = true
+            bumpChart = true
+            pulseCompletion = true
+            shineCompletion = true
+            animateNumber(to: completionRate)
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) {
+                bumpChart = false
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                pulseCompletion = false
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
+                shineCompletion = false
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.85) {
+                highlightStreak = false
+            }
+            
+            
+            
+        }
+        .onChange(of: completionRate) { newValue in
+            displayedCompletionRate = newValue
+        }
+        
         .onAppear {
             runEntranceAnimations()
         }
@@ -200,22 +257,93 @@ struct InsightsView: View {
 
     private var heroCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Overview")
-                .font(.headline)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                Text("Overview")
+
+                Label(productivityLevel, systemImage: "bolt.fill")
+                    .font(.caption2.weight(.semibold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(productivityColor.opacity(0.18))
+                    )
+                    .foregroundStyle(productivityColor)
+                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: completionRate)
+            }
+            .font(.headline)
+            .foregroundStyle(.secondary)
 
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("%\(displayedCompletionRate)")
-                    .font(.system(size: 38, weight: .bold, design: .rounded))
-                    .contentTransition(.numericText())
+                ZStack {
+                    Text("%\(displayedCompletionRate)")
+                        .font(.system(size: 38, weight: .bold, design: .rounded))
+                        .scaleEffect(pulseCompletion ? 1.18 : 1.0)
+                        .shadow(
+                            color: pulseCompletion ? Color.accentColor.opacity(0.45) : .clear,
+                            radius: pulseCompletion ? 16 : 0
+                        )
+                        .contentTransition(.numericText())
+                        .animation(.spring(response: 0.35, dampingFraction: 0.6), value: pulseCompletion)
 
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    .clear,
+                                    Color.white.opacity(0.0),
+                                    Color.white.opacity(0.75),
+                                    Color.white.opacity(0.0),
+                                    .clear
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .frame(width: 26, height: 52)
+                        .rotationEffect(.degrees(18))
+                        .offset(x: shineCompletion ? 70 : -70)
+                        .animation(.easeInOut(duration: 0.55), value: shineCompletion)
+                        .mask(
+                            Text("%\(displayedCompletionRate)")
+                                .font(.system(size: 38, weight: .bold, design: .rounded))
+                        )
+                        .allowsHitTesting(false)
+                }
+                .frame(width: 160, height: 46, alignment: .leading)
                 Text("tamamlanma")
                     .foregroundStyle(.secondary)
             }
 
             ProgressView(value: Double(displayedCompletionRate), total: 100)
-                .tint(.accentColor)
-                .animation(.easeInOut(duration: 1.0), value: displayedCompletionRate)
+                .tint(.clear)
+                .overlay {
+                    GeometryReader { geo in
+                        let width = max(0, min(geo.size.width, geo.size.width * CGFloat(displayedCompletionRate) / 100))
+
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.accentColor.opacity(0.9),
+                                        Color.accentColor,
+                                        Color.white.opacity(shineCompletion ? 0.9 : 0.2),
+                                        Color.accentColor
+                                    ],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .frame(width: width, height: 4)
+                            .animation(.easeInOut(duration: 0.6), value: displayedCompletionRate)
+                            .animation(.easeInOut(duration: 0.4), value: shineCompletion)
+                    }
+                }
+                .frame(height: 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color.white.opacity(0.08))
+                )
 
             HStack(spacing: 12) {
                 smallBadge(
@@ -262,28 +390,71 @@ struct InsightsView: View {
 
                 ZStack {
                     Circle()
-                        .fill(Color.orange.opacity(animateFlame ? 0.22 : 0.12))
-                        .frame(width: animateFlame ? 66 : 58, height: animateFlame ? 66 : 58)
-                        .blur(radius: animateFlame ? 2 : 0)
+                        .fill(Color.orange.opacity(animateFlame ? 0.24 : 0.10))
+                        .frame(
+                            width: highlightStreak
+                            ? (animateFlame ? 78 : 68)
+                            : (animateFlame ? 68 : 58),
+                            height: highlightStreak
+                            ? (animateFlame ? 78 : 68)
+                            : (animateFlame ? 68 : 58)
+                        )
+                        .blur(radius: animateFlame ? 4 : 1)
 
                     Circle()
-                        .fill(Color.orange.opacity(0.10))
-                        .frame(width: 78, height: 78)
+                        .fill(Color.orange.opacity(highlightStreak ? 0.18 : 0.10))
+                        .frame(width: highlightStreak ? 92 : 78, height: highlightStreak ? 92 : 78)
+                        .scaleEffect(animateFlame ? 1.12 : 0.90)
+                        .opacity(animateFlame ? 0.95 : 0.35)
+
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    Color.yellow.opacity(highlightStreak ? 0.35 : 0.18),
+                                    Color.orange.opacity(highlightStreak ? 0.20 : 0.08),
+                                    .clear
+                                ],
+                                center: .center,
+                                startRadius: 4,
+                                endRadius: highlightStreak ? 42 : 30
+                            )
+                        )
+                        .frame(width: highlightStreak ? 100 : 82, height: highlightStreak ? 100 : 82)
                         .scaleEffect(animateFlame ? 1.08 : 0.92)
-                        .opacity(animateFlame ? 0.9 : 0.4)
 
                     Image(systemName: "flame.fill")
-                        .font(.title2)
-                        .foregroundStyle(.orange)
-                        .scaleEffect(animateFlame ? 1.12 : 0.94)
-                        .shadow(color: .orange.opacity(animateFlame ? 0.65 : 0.2), radius: animateFlame ? 14 : 4)
+                        .font(highlightStreak ? .title : .title2)
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.yellow, .orange],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .scaleEffect(
+                            highlightStreak
+                            ? (animateFlame ? 1.22 : 1.00)
+                            : (animateFlame ? 1.14 : 0.94)
+                        )
+                        .shadow(
+                            color: .orange.opacity(highlightStreak ? 0.85 : 0.45),
+                            radius: highlightStreak ? 18 : 10
+                        )
                 }
-                .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: animateFlame)
+                .animation(.easeInOut(duration: 0.85).repeatForever(autoreverses: true), value: animateFlame)
+                .animation(.spring(response: 0.35, dampingFraction: 0.68), value: highlightStreak)
             }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
+        .scaleEffect(highlightStreak ? 1.04 : 1.0)
+        .shadow(
+            color: highlightStreak ? Color.orange.opacity(0.35) : .clear,
+            radius: highlightStreak ? 18 : 0
+        )
+        .animation(.spring(response: 0.36, dampingFraction: 0.72), value: highlightStreak)
     }
 
     private var weeklyChartCard: some View {
@@ -325,6 +496,7 @@ struct InsightsView: View {
                                        : Color.accentColor.opacity(0.9))
                                 )
                                 .frame(height: animateBars ? barHeight(for: entry.count) : 12)
+                                .scaleEffect(y: bumpChart ? 1.06 : 1.0, anchor: .bottom)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 10)
                                         .stroke(

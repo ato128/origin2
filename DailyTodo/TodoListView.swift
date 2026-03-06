@@ -36,6 +36,9 @@ struct TodoListView: View {
     @State private var showingAdd: Bool = false
     @State private var editingItem: DTTaskItem? = nil
 
+    @State private var animatingTaskID: PersistentIdentifier? = nil
+    @State private var sparkleTaskID:PersistentIdentifier?  = nil
+
     private let chipTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
     @State private var now = Date()
 
@@ -164,10 +167,7 @@ struct TodoListView: View {
                         .listRowBackground(Color.clear)
                         .swipeActions(edge: .leading, allowsFullSwipe: true) {
                             Button {
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                    store.toggleDone(item)
-                                }
-                                haptic(.light)
+                                handleToggle(item)
                             } label: {
                                 Label(
                                     item.isDone ? "Geri al" : "Tamamla",
@@ -193,19 +193,34 @@ struct TodoListView: View {
     }
 
     private func row(_ item: DTTaskItem) -> some View {
-        Button {
+        let isAnimating = animatingTaskID == item.id
+        let showSparkle = sparkleTaskID == item.id
+
+        return Button {
             editingItem = item
         } label: {
             HStack(spacing: 10) {
                 Button {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                        store.toggleDone(item)
-                    }
-                    haptic(.light)
+                    handleToggle(item)
                 } label: {
-                    Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
-                        .font(.title2)
-                        .foregroundStyle(item.isDone ? .green : .secondary)
+                    ZStack {
+                        if showSparkle {
+                            SparkleBurstView()
+                                .frame(width: 34, height: 34)
+                                .transition(.scale.combined(with: .opacity))
+                        }
+
+                        Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
+                            .font(.title2)
+                            .foregroundStyle(item.isDone ? .green : .secondary)
+                            .scaleEffect(isAnimating ? 1.22 : 1.0)
+                            .shadow(
+                                color: item.isDone
+                                ? .green.opacity(isAnimating ? 0.45 : 0.0)
+                                : .clear,
+                                radius: isAnimating ? 8 : 0
+                            )
+                    }
                 }
                 .buttonStyle(.plain)
 
@@ -227,6 +242,8 @@ struct TodoListView: View {
                                 .padding(.vertical, 4)
                                 .background(Capsule().fill(badge.background))
                                 .foregroundStyle(badge.foreground)
+                                .scaleEffect(item.isDone && animatingTaskID == item.id ? 1.18 : 1.0)
+                                .animation(.spring(response: 0.28, dampingFraction: 0.55), value: animatingTaskID == item.id)
                         }
                     }
 
@@ -253,13 +270,61 @@ struct TodoListView: View {
                     .fill(.ultraThinMaterial)
                     .overlay(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            .fill(item.isDone && isAnimating ? Color.green.opacity(0.08) : .clear)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(
+                                item.isDone
+                                ? Color.green.opacity(isAnimating ? 0.35 : 0.12)
+                                : Color.white.opacity(0.08),
+                                lineWidth: 1
+                            )
                     )
             )
+            .scaleEffect(isAnimating ? 1.02 : 1.0)
             .opacity(item.isDone ? 0.88 : 1.0)
+            .shadow(
+                color: item.isDone
+                ? .green.opacity(isAnimating ? 0.18 : 0.0)
+                : .clear,
+                radius: isAnimating ? 12 : 0,
+                y: 4
+            )
+            .animation(.spring(response: 0.34, dampingFraction: 0.68), value: isAnimating)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    private func handleToggle(_ item: DTTaskItem) {
+        let wasDone = item.isDone
+
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+            store.toggleDone(item)
+            animatingTaskID = item.id
+        }
+
+        if !wasDone {
+            sparkleTaskID = item.id
+            haptic(.rigid)
+            notifySuccess()
+            NotificationCenter.default.post(name: .taskCompleted, object: nil)
+        } else {
+            haptic(.light)
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+                animatingTaskID = nil
+            }
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+            withAnimation(.easeOut(duration: 0.2)) {
+                sparkleTaskID = nil
+            }
+        }
     }
 
     private func badgeText(for item: DTTaskItem) -> (text: String, background: Color, foreground: Color)? {
@@ -394,5 +459,40 @@ struct TodoListView: View {
         let gen = UIImpactFeedbackGenerator(style: style)
         gen.prepare()
         gen.impactOccurred()
+    }
+
+    private func notifySuccess() {
+        let gen = UINotificationFeedbackGenerator()
+        gen.prepare()
+        gen.notificationOccurred(.success)
+    }
+}
+
+private struct SparkleBurstView: View {
+    @State private var animate = false
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<8, id: \.self) { index in
+                Circle()
+                    .fill(
+                        index.isMultiple(of: 2)
+                        ? Color.yellow
+                        : Color.green.opacity(0.9)
+                    )
+                    .frame(width: 5, height: 5)
+                    .offset(y: animate ? -18 : 0)
+                    .rotationEffect(.degrees(Double(index) * 45))
+                    .scaleEffect(animate ? 1 : 0.2)
+                    .opacity(animate ? 0 : 1)
+                    .animation(
+                        .easeOut(duration: 0.45).delay(Double(index) * 0.01),
+                        value: animate
+                    )
+            }
+        }
+        .onAppear {
+            animate = true
+        }
     }
 }
