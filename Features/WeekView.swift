@@ -21,33 +21,79 @@ struct WeekView: View {
     @State private var showingAdd: Bool = false
     @State private var editingEvent: EventItem? = nil
 
-    // Toast
     @State private var showCopied: Bool = false
 
-    // Auto-scroll
     @State private var didInitialAutoScroll: Bool = false
     @State private var lastAutoScrollTargetID: UUID? = nil
-
-    // İlk girişte bugünü seç
     @State private var didSetInitialDay: Bool = false
+
+    @State private var animateSummary = false
+    @State private var pulseTodayDot = false
 
     private let liveTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     private let dayTitles = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
 
-    // ✅ onChange’i hafifletmek için
     private var allEventIDs: [UUID] { allEvents.map(\.id) }
+
     private var eventsForDay: [EventItem] {
         allEvents
             .filter { $0.weekday == selectedDay }
             .sorted { $0.startMinute < $1.startMinute }
     }
+
     private var eventsForDayIDs: [UUID] { eventsForDay.map(\.id) }
+
+    private var totalMinutesForDay: Int {
+        eventsForDay.reduce(0) { $0 + $1.durationMinute }
+    }
+
+    private var firstEventOfDay: EventItem? {
+        eventsForDay.first
+    }
+
+    private var lastEventOfDay: EventItem? {
+        eventsForDay.last
+    }
+
+    private var isTodaySelected: Bool {
+        selectedDay == weekdayIndexToday()
+    }
+
+    private var liveEventForDay: EventItem? {
+        guard isTodaySelected else { return nil }
+        let now = currentMinuteOfDay()
+        return eventsForDay.first(where: {
+            now >= $0.startMinute && now < ($0.startMinute + $0.durationMinute)
+        })
+    }
+
+    private var currentTimeIndicatorText: String? {
+        guard isTodaySelected else { return nil }
+
+        let now = currentMinuteOfDay()
+
+        if let live = eventsForDay.first(where: { now >= $0.startMinute && now < ($0.startMinute + $0.durationMinute) }) {
+            let left = max(0, (live.startMinute + live.durationMinute) - now)
+            return "Şu an \(hm(now)) • \(live.title) devam ediyor • \(left) dk kaldı"
+        }
+
+        if let next = eventsForDay.first(where: { $0.startMinute > now }) {
+            return "Şu an \(hm(now)) • Sıradaki ders \(hm(next.startMinute))"
+        }
+
+        if !eventsForDay.isEmpty {
+            return "Şu an \(hm(now)) • Bugünkü dersler bitti"
+        }
+
+        return nil
+    }
 
     var body: some View {
         ScrollViewReader { proxy in
             mainList(proxy: proxy)
                 .navigationTitle("Week")
+                .navigationBarTitleDisplayMode(.large)
                 .toolbar { toolbarContent }
                 .sheet(isPresented: $showingAdd) {
                     NavigationStack { AddEventView(defaultWeekday: selectedDay) }
@@ -60,7 +106,10 @@ struct WeekView: View {
                 .overlay(toastView, alignment: .bottom)
                 .onAppear { onAppear(proxy: proxy) }
                 .onChange(of: selectedDay) { _, _ in onDayChanged(proxy: proxy) }
-                .onChange(of: eventsForDayIDs) { _, _ in autoScrollIfNeeded(proxy: proxy) }
+                .onChange(of: eventsForDayIDs) { _, _ in
+                    animateSummaryCard()
+                    autoScrollIfNeeded(proxy: proxy)
+                }
                 .onChange(of: allEventIDs) { _, _ in
                     Task { await NotificationManager.shared.rescheduleAll(events: allEvents) }
                 }
@@ -77,9 +126,8 @@ private extension WeekView {
     @ViewBuilder
     func mainList(proxy: ScrollViewProxy) -> some View {
         List {
-            
-
             pickerSection
+            summarySection
 
             if eventsForDay.isEmpty {
                 emptySection
@@ -87,52 +135,94 @@ private extension WeekView {
                 eventsSection
             }
         }
-        .listStyle(.insetGrouped)
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemGroupedBackground))
     }
 
     var pickerSection: some View {
         Section {
-            Picker("Gün", selection: $selectedDay) {
-                ForEach(0..<7, id: \.self) { i in
-                    Text(dayTitles[i]).tag(i)
+            VStack(spacing: 12) {
+                Picker("Gün", selection: $selectedDay) {
+                    ForEach(0..<7, id: \.self) { i in
+                        Text(dayTitles[i]).tag(i)
+                    }
                 }
+                .pickerStyle(.segmented)
+                .padding(.vertical, 4)
+
+                HStack {
+                    ForEach(0..<7, id: \.self) { i in
+                        VStack(spacing: 4) {
+                            Circle()
+                                .fill(i == weekdayIndexToday() ? Color.accentColor : .clear)
+                                .frame(width: 6, height: 6)
+                                .scaleEffect(i == weekdayIndexToday() && pulseTodayDot ? 1.18 : 1.0)
+                                .opacity(i == weekdayIndexToday() ? 1 : 0)
+
+                            Color.clear.frame(height: 1)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: pulseTodayDot)
             }
-            .pickerStyle(.segmented)
-            .padding(.vertical, 6)
+            .padding(10)
+            .background(sectionCardBackground)
         }
+        .listRowInsets(EdgeInsets(top: 14, leading: 16, bottom: 6, trailing: 16))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+    }
+
+    var summarySection: some View {
+        Section {
+            daySummaryCard
+        }
+        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
     }
 
     var emptySection: some View {
-        ContentUnavailableView(
-            "Bu güne ders yok",
-            systemImage: "calendar.badge.plus",
-            description: Text("Sağ üstteki + ile ders ekleyebilirsin.")
-        )
-        .listRowSeparator(.hidden)
-    }
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Image(systemName: "calendar.badge.plus")
+                    .font(.title3)
+                    .foregroundStyle(Color.accentColor)
 
-    var statsHeader: some View {
-        let totalMinutes = eventsForDay.reduce(0) { $0 + $1.durationMinute }
-        let hours = totalMinutes / 60
-        let minutes = totalMinutes % 60
+                Text("\(dayTitles[selectedDay]) günü boş")
+                    .font(.headline)
 
-        return HStack {
-            Text("\(eventsForDay.count) ders")
-            Spacer()
-            Text("\(hours)s \(minutes)dk toplam")
+                Spacer()
+            }
+
+            Text("Bu güne henüz ders eklenmemiş. Sağ üstteki + ile hızlıca yeni ders oluşturabilirsin.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Button {
+                Haptics.impact(.medium)
+                showingAdd = true
+            } label: {
+                Label("Ders ekle", systemImage: "plus")
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(Capsule().fill(Color.accentColor.opacity(0.16)))
+            }
         }
-        .font(.caption.weight(.semibold))
-        .foregroundStyle(.secondary)
-        .padding(.vertical, 4)
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(sectionCardBackground)
+        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 12, trailing: 16))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
     }
 
-    // ✅ EventRow’ları AnyView yapıyoruz (type-check fix)
     var eventsSection: some View {
         Section {
-            statsHeader
-
             let now = currentMinuteOfDay()
-            let isTodaySelected = (selectedDay == weekdayIndexToday())
 
             ForEach(eventsForDay) { ev in
                 AnyView(
@@ -150,6 +240,143 @@ private extension WeekView {
                 )
             }
         }
+    }
+
+    var daySummaryCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Text(dayTitles[selectedDay])
+                            .font(.headline)
+
+                        if isTodaySelected {
+                            Text("Bugün")
+                                .font(.caption2.weight(.bold))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.accentColor.opacity(0.18))
+                                )
+                                .foregroundStyle(Color.accentColor)
+                        }
+
+                        if liveEventForDay != nil {
+                            Text("LIVE")
+                                .font(.caption2.weight(.bold))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Capsule().fill(Color.green.opacity(0.18)))
+                                .foregroundStyle(.green)
+                                .scaleEffect(animateSummary ? 1.03 : 1.0)
+                                .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: animateSummary)
+                        }
+                    }
+
+                    Text(summarySubtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                if totalMinutesForDay > 0 {
+                    Text(durationText(totalMinutesForDay))
+                        .font(.title3.bold())
+                        .foregroundStyle(.primary)
+                        .monospacedDigit()
+                }
+            }
+
+            HStack(spacing: 10) {
+                summaryChip(
+                    title: "Ders",
+                    value: "\(eventsForDay.count)",
+                    icon: "book.closed.fill"
+                )
+
+                summaryChip(
+                    title: "İlk",
+                    value: firstEventOfDay.map { hm($0.startMinute) } ?? "--:--",
+                    icon: "sunrise.fill"
+                )
+
+                summaryChip(
+                    title: "Son",
+                    value: lastEventOfDay.map { hm($0.startMinute + $0.durationMinute) } ?? "--:--",
+                    icon: "moon.stars.fill"
+                )
+            }
+
+            if let live = liveEventForDay {
+                HStack(spacing: 8) {
+                    Image(systemName: "dot.radiowaves.left.and.right")
+                        .foregroundStyle(.green)
+
+                    Text("\(live.title) şu an devam ediyor")
+                        .font(.caption.weight(.semibold))
+
+                    Spacer()
+
+                    Text(timeText(for: live))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(
+                    Capsule()
+                        .fill(Color.green.opacity(0.12))
+                )
+            }
+
+            if let indicator = currentTimeIndicatorText {
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 8, height: 8)
+                        .scaleEffect(animateSummary ? 1.15 : 0.9)
+                        .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: animateSummary)
+
+                    Text(indicator)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(
+                    Capsule()
+                        .fill(Color.red.opacity(0.10))
+                )
+            }
+        }
+        .padding(18)
+        .background(sectionCardBackground)
+        .scaleEffect(animateSummary ? 1.01 : 1.0)
+        .animation(.spring(response: 0.35, dampingFraction: 0.78), value: animateSummary)
+    }
+
+    func summaryChip(title: String, value: String, icon: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(title, systemImage: icon)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Text(value)
+                .font(.subheadline.bold())
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white.opacity(0.05))
+        )
     }
 
     var toolbarContent: some ToolbarContent {
@@ -204,6 +431,34 @@ private extension WeekView {
             }
         }
     }
+
+    var sectionCardBackground: some View {
+        RoundedRectangle(cornerRadius: 24, style: .continuous)
+            .fill(.ultraThinMaterial)
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+            )
+    }
+
+    var summarySubtitle: String {
+        if eventsForDay.isEmpty {
+            return "Bu gün için kayıtlı ders yok"
+        }
+
+        if liveEventForDay != nil {
+            return "Ders şu an aktif"
+        }
+
+        return "\(eventsForDay.count) ders • \(durationText(totalMinutesForDay)) toplam"
+    }
+
+    func animateSummaryCard() {
+        animateSummary = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+            animateSummary = false
+        }
+    }
 }
 
 // MARK: - Lifecycle
@@ -220,6 +475,9 @@ private extension WeekView {
             autoScrollIfNeeded(proxy: proxy)
         }
 
+        animateSummary = true
+        pulseTodayDot = true
+
         Task {
             await NotificationManager.shared.rescheduleAll(events: allEvents)
         }
@@ -227,6 +485,7 @@ private extension WeekView {
 
     func onDayChanged(proxy: ScrollViewProxy) {
         lastAutoScrollTargetID = nil
+        animateSummaryCard()
         autoScrollIfNeeded(proxy: proxy)
     }
 }
@@ -257,14 +516,23 @@ private extension WeekView {
         return String(format: "%02d:%02d", h, mm)
     }
 
+    func durationText(_ minutes: Int) -> String {
+        let h = minutes / 60
+        let m = minutes % 60
+
+        if h == 0 { return "\(m)dk" }
+        if m == 0 { return "\(h)s" }
+        return "\(h)s \(m)dk"
+    }
+
     func currentMinuteOfDay() -> Int {
         let c = Calendar.current.dateComponents([.hour, .minute], from: Date())
         return (c.hour ?? 0) * 60 + (c.minute ?? 0)
     }
 
     func weekdayIndexToday() -> Int {
-        let w = Calendar.current.component(.weekday, from: Date()) // 1=Paz ... 7=Cmt
-        return (w + 5) % 7 // 0=Pzt ... 6=Paz
+        let w = Calendar.current.component(.weekday, from: Date())
+        return (w + 5) % 7
     }
 
     func hasConflict(_ ev: EventItem) -> Bool {
@@ -283,7 +551,6 @@ private extension WeekView {
         return max(aStart, bStart) < min(aEnd, bEnd)
     }
 
-    // Auto Scroll
     func autoScrollTarget(now: Int) -> EventItem? {
         guard !eventsForDay.isEmpty else { return nil }
 
@@ -292,12 +559,15 @@ private extension WeekView {
                 let s = ev.startMinute
                 let e = ev.startMinute + ev.durationMinute
                 return now >= s && now < e
-            }) { return live }
+            }) {
+                return live
+            }
 
             if let next = eventsForDay.first(where: { $0.startMinute > now }) {
                 return next
             }
         }
+
         return eventsForDay.first
     }
 
@@ -371,12 +641,11 @@ private extension WeekView {
     }
 }
 
-// MARK: - Next Class Section
-
-// MARK: - Row (senin mevcut EventRow aynen kalsın)
+// MARK: - Row
 private struct EventRow: View {
 
     @State private var pulse: Bool = false
+    @State private var glowPhase: Bool = false
 
     let event: EventItem
     let timeText: String
@@ -446,7 +715,7 @@ private struct EventRow: View {
         let strokeColor: Color = {
             if hasConflict { return .red.opacity(0.40) }
             if isDone { return .secondary.opacity(0.14) }
-            if isLive { return accent.opacity(0.55) }
+            if isLive { return accent.opacity(glowPhase ? 0.75 : 0.45) }
             if isSoon { return .orange.opacity(0.70) }
             if isUpNext { return accent.opacity(0.35) }
             return .secondary.opacity(0.10)
@@ -454,7 +723,7 @@ private struct EventRow: View {
 
         let strokeWidth: CGFloat =
             hasConflict ? 1.6 :
-            (isLive ? 2.0 :
+            (isLive ? 2.2 :
              (isSoon ? 2.0 :
               (isUpNext ? 1.4 : 1.0)))
 
@@ -472,7 +741,7 @@ private struct EventRow: View {
                     )
                 )
                 .frame(width: isLive ? 10 : 8)
-                .shadow(radius: isLive ? 10 : 6)
+                .shadow(color: isLive ? accent.opacity(0.55) : .clear, radius: isLive ? 14 : 6)
                 .padding(.vertical, 10)
                 .opacity(isDone ? 0.75 : 1.0)
 
@@ -606,7 +875,7 @@ private struct EventRow: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(isLive ? 0.14 : 0.10),
+                                    Color.white.opacity(isLive ? 0.16 : 0.10),
                                     Color.white.opacity(0.00)
                                 ],
                                 startPoint: .topLeading,
@@ -619,20 +888,34 @@ private struct EventRow: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(strokeColor, lineWidth: strokeWidth)
         )
-        .shadow(color: isLive ? baseColor.opacity(0.40) : .clear, radius: isLive ? 14 : 0)
+        .shadow(color: isLive ? baseColor.opacity(glowPhase ? 0.42 : 0.22) : .clear, radius: isLive ? 18 : 0)
         .shadow(color: isSoon ? Color.orange.opacity(0.30) : .clear, radius: isSoon ? 10 : 0)
         .shadow(radius: isLive ? 8 : 0)
-        .scaleEffect(isLive && pulse ? 1.01 : 1.0)
+        .scaleEffect(isLive && pulse ? 1.012 : 1.0)
         .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: pulse)
-        .onAppear { pulse = isLive }
-        .onChange(of: isLive) { _, newValue in pulse = newValue }
+        .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: glowPhase)
+        .onAppear {
+            pulse = isLive
+            glowPhase = isLive
+        }
+        .onChange(of: isLive) { _, newValue in
+            pulse = newValue
+            glowPhase = newValue
+        }
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
         .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
         .contentShape(Rectangle())
-        .onTapGesture { Haptics.impact(.light); onTap() }
+        .onTapGesture {
+            Haptics.impact(.light)
+            onTap()
+        }
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
-            Button { Haptics.impact(.light); onEdit() } label: {
+            Button {
+                Haptics.impact(.light)
+                onEdit()
+            } label: {
                 Label("Düzenle", systemImage: "pencil")
             }
             .tint(.blue)
