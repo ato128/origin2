@@ -1,0 +1,17 @@
+//
+//  WidgetExtensionBundle.swift
+//  WidgetExtension
+//
+//  Created by Atakan Ortaç on 3.03.2026.
+//
+
+import WidgetKit
+import SwiftUI
+
+@main
+struct WidgetExtensionBundle: WidgetBundle {
+    var body: some Widget {
+        ScheduleWidget()
+        ScheduleLiveActivityWidget()   // ✅ Live Activity widget
+    }
+}
