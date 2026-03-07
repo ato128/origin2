@@ -19,7 +19,7 @@ enum WidgetAppSync {
             writeTodayPayload(from: all)
 
             // ✅ Widget kind EXACT aynı olmalı:
-            WidgetCenter.shared.reloadTimelines(ofKind: "ScheduleWidget")
+            WidgetCenter.shared.reloadAllTimelines()
         } catch {
             // sessiz geç
         }

@@ -64,10 +64,20 @@ struct ScheduleProvider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<ScheduleEntry>) -> Void) {
         let payload = WidgetShared.readPayload()
-        let entry = ScheduleEntry(date: Date(), payload: payload)
+        let now = Date()
 
-        let next = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date().addingTimeInterval(900)
-        completion(Timeline(entries: [entry], policy: .after(next)))
+        let entry = ScheduleEntry(date: now, payload: payload)
+
+        let cal = Calendar.current
+        let nextMinute = cal.date(bySetting: .second, value: 0, of: now)?
+            .addingTimeInterval(60) ?? now.addingTimeInterval(60)
+
+        completion(
+            Timeline(
+                entries: [entry],
+                policy: .after(nextMinute)
+            )
+        )
     }
 }
 
@@ -79,27 +89,195 @@ struct ScheduleWidgetView: View {
     @Environment(\.widgetFamily) private var family
 
     private let dayTitles = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
+    
+    private var isSmall: Bool { family == .systemSmall }
+    private var isMedium: Bool { family == .systemMedium }
+
+    private var widgetCornerRadius: CGFloat {
+        isSmall ? 20 : 24
+    }
+
+    private var headerFont: Font {
+        isSmall ? .headline.bold() : .headline
+    }
+
+    private var titleFont: Font {
+        isSmall ? .subheadline.weight(.semibold) : .subheadline.weight(.semibold)
+    }
+
+    private var timeFont: Font {
+        isSmall ? .caption.weight(.semibold) : .caption.weight(.semibold)
+    }
+
+    private var rowSpacing: CGFloat {
+        isSmall ? 6 : 8
+    }
+
+    private var verticalRowPadding: CGFloat {
+        isSmall ? 2 : 3
+    }
 
     var body: some View {
         let payload = entry.payload
         let now = currentMinuteOfDay()
+        let todayWeekday = widgetWeekdayToday()
 
-        let live = payload?.events.first(where: { ev in
+        let todayEvents = (payload?.events ?? [])
+            .filter { $0.weekday == todayWeekday }
+            .sorted { $0.startMinute < $1.startMinute }
+
+        let live = todayEvents.first(where: { ev in
             let s = ev.startMinute
             let e = ev.startMinute + ev.durationMinute
             return now >= s && now < e
         })
 
-        let next = payload?.events
-            .filter { $0.startMinute > now }
-            .sorted { $0.startMinute < $1.startMinute }
-            .first
+        let next = todayEvents.first(where: { $0.startMinute > now })
 
-        let maxItems: Int = (family == .systemSmall) ? 2 : 3
-        let list = Array((payload?.events ?? []).prefix(maxItems))
+        let accentEvent = live ?? next
+        let accentColor = accentEvent.map { Color(hex: $0.colorHex) } ?? .secondary
+        let backgroundTintOpacity: Double = {
+            if accentEvent == nil { return 0 }
+            return isSmall ? 0.05 : 0.08
+        }()
 
+        Group {
+            if isSmall {
+                smallWidgetLayout(
+                    payload: payload,
+                    todayWeekday: todayWeekday,
+                    todayEvents: todayEvents,
+                    live: live,
+                    next: next,
+                    now: now
+                )
+            } else {
+                mediumWidgetLayout(
+                    payload: payload,
+                    todayWeekday: todayWeekday,
+                    todayEvents: todayEvents,
+                    live: live,
+                    next: next,
+                    now: now
+                )
+            }
+        }
+        .padding(isSmall ? 12 : 16)
+        .applyWidgetBackground(
+            accentColor: accentColor,
+            tintOpacity: backgroundTintOpacity
+        )
+    }
+    // MARK: - Pieces
+    private func smallWidgetLayout(
+        payload: WidgetPayload?,
+        todayWeekday: Int,
+        todayEvents: [WidgetEvent],
+        live: WidgetEvent?,
+        next: WidgetEvent?,
+        now: Int
+    ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Bugün")
+                    .font(.headline.bold())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
 
+                Spacer()
+
+                Text(dayTitles[safeIndex(todayWeekday)])
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            if let ev = live {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 6) {
+                        Text(ev.title)
+                            .font(.subheadline.weight(.bold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+
+                        Text("LIVE")
+                            .font(.caption2.bold())
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(
+                                Capsule()
+                                    .fill(.green.opacity(0.18))
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(.green.opacity(0.35), lineWidth: 0.5)
+                                    )
+                            )
+                            .foregroundStyle(.green)
+                            .shadow(color: .green.opacity(0.4), radius: 4)
+
+                        Spacer(minLength: 0)
+                    }
+
+                    liveProgressBar(ev: ev, now: now)
+
+                    eventRow(
+                        ev: ev,
+                        showLocation: false,
+                        showTimeRange: false
+                    )
+                }
+            } else if let ev = next {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color(hex: ev.colorHex))
+                            .frame(width: 8, height: 8)
+
+                        Text(ev.title)
+                            .font(.subheadline.weight(.bold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+
+                        Spacer(minLength: 0)
+                    }
+
+                    nextStrip(ev: ev, now: now)
+
+                    eventRow(
+                        ev: ev,
+                        showLocation: false,
+                        showTimeRange: false
+                    )
+                }
+            } else {
+                Spacer()
+
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkles")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Text("Bugün ders yok")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+            }
+        }
+    }
+
+    private func mediumWidgetLayout(
+        payload: WidgetPayload?,
+        todayWeekday: Int,
+        todayEvents: [WidgetEvent],
+        live: WidgetEvent?,
+        next: WidgetEvent?,
+        now: Int
+    ) -> some View {
+        let list = Array(todayEvents.prefix(3))
+
+        return VStack(alignment: .leading, spacing: 10) {
             header(payload: payload)
 
             if let ev = live {
@@ -108,46 +286,100 @@ struct ScheduleWidgetView: View {
                 nextStrip(ev: ev, now: now)
             }
 
-            if let p = payload, !p.events.isEmpty {
+            if !todayEvents.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(list, id: \.id) { ev in
                         eventRow(
                             ev: ev,
-                            // ✅ Small: konum yok, sadece title
-                            showLocation: (family == .systemMedium),
-                            // ✅ Medium: 09:00–10:00, Small: sadece 09:00
-                            showTimeRange: (family == .systemMedium)
+                            showLocation: true,
+                            showTimeRange: true
                         )
                     }
                 }
             } else {
                 Spacer(minLength: 6)
-                Text("Bugün ders yok")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkles")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Text("Bugün ders yok")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
                 Spacer(minLength: 6)
             }
 
             Spacer(minLength: 0)
         }
-        .padding()
-        .applyWidgetBackground()
     }
 
-    // MARK: - Pieces
+    private func liveProgressBar(ev: WidgetEvent, now: Int) -> some View {
+        let prog = progressForLive(ev, now: now)
+        let left = minutesLeft(ev, now: now)
 
+        let progressColor: Color = {
+            if left <= 1 { return .red }
+            if left <= 5 { return .orange }
+            return Color(hex: ev.colorHex)
+        }()
+
+        return GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.secondary.opacity(0.18))
+                    .frame(height: 6)
+
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                progressColor,
+                                progressColor.opacity(0.35)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: geo.size.width * prog, height: 6)
+                    .animation(.easeInOut(duration: 0.6), value: prog)
+            }
+        }
+        .frame(height: 6)
+    }
+    
+    
+    
+    
     private func header(payload: WidgetPayload?) -> some View {
-        HStack {
+        let todayWeekday = widgetWeekdayToday()
+        let todayCount = (payload?.events ?? []).filter { $0.weekday == todayWeekday }.count
+
+        return HStack(spacing: 8) {
             Text("Bugün")
-                .font(.headline)
+                .font(headerFont)
+
+            if todayCount > 0  && !isSmall {
+                Text("\(todayCount)")
+                    .font(.caption2.bold())
+                    .padding(.horizontal, isSmall ? 5 : 7)
+                    .padding(.vertical, isSmall ? 1 : 3)
+                    .background(
+                        Capsule()
+                            .fill(Color.secondary.opacity(isSmall ? 0.14 : 0.16))
+                    )
+                    .foregroundStyle(.secondary)
+            }
 
             Spacer()
 
-            if let p = payload {
-                Text(dayTitles[safeIndex(p.weekday)])
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
+            Text(dayTitles[safeIndex(todayWeekday)])
+                .font(isSmall ? .caption2.weight(.semibold) : .caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
         }
     }
 
@@ -155,58 +387,112 @@ struct ScheduleWidgetView: View {
         let prog = progressForLive(ev, now: now)
         let left = minutesLeft(ev, now: now)
 
-        return VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text("Şu an: \(ev.title)")
-                    .font(.caption.weight(.semibold))
+        return VStack(alignment: .leading, spacing: isSmall ? 6 : 8) {
+            HStack(spacing: 6) {
+                Text(isSmall ? ev.title : "Şu an: \(ev.title)")
+                    .font(isSmall ? .caption.weight(.semibold) : .caption.weight(.semibold))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.75)
 
+                Text("LIVE")
+                    .font(.caption2.bold())
+                    .padding(.horizontal, isSmall ? 4 : 5)
+                    .padding(.vertical, 1)
+                    .background(
+                        Capsule()
+                            .fill(.green.opacity(0.15))
+                    )
+                    .overlay(
+                        Capsule()
+                            .stroke(.green.opacity(0.35), lineWidth: 0.5)
+                    )
+                    .foregroundStyle(.green)
+                    .shadow(color: .green.opacity(0.35), radius: 4)
                 Spacer()
 
-                Text("\(left) dk kaldı")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                if !isSmall {
+                    Text("\(left) dk")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(left <= 1 ? .red : (left <= 5 ? .orange : .secondary))
+                        .lineLimit(1)
+                }
             }
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
                         .fill(Color.secondary.opacity(0.18))
-                        .frame(height: 6)
+                        .frame(height: isSmall ? 5 : 6)
 
                     Capsule()
-                        .fill(Color(hex: ev.colorHex))
-                        .frame(width: geo.size.width * prog, height: 6)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(hex: ev.colorHex),
+                                    Color(hex: ev.colorHex).opacity(0.55)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: geo.size.width * prog, height: isSmall ? 5 : 6)
                 }
             }
-            .frame(height: 6)
+            .frame(height: isSmall ? 5 : 6)
         }
     }
-
     private func nextStrip(ev: WidgetEvent, now: Int) -> some View {
         let mins = max(0, ev.startMinute - now)
-        return Text("Sıradaki: \(ev.title) • \(mins) dk sonra")
-            .font(.caption2.weight(.semibold))
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-    }
-
-    private func eventRow(ev: WidgetEvent, showLocation: Bool, showTimeRange: Bool) -> some View {
-        let startText = hm(ev.startMinute)
-        let endText = hm(ev.startMinute + ev.durationMinute)
-        let timeText = showTimeRange ? "\(startText)–\(endText)" : startText
+        let urgent = mins <= 10
 
         return HStack(spacing: 8) {
             Circle()
-                .fill(Color(hex: ev.colorHex))
+                .fill(urgent ? .orange : Color(hex: ev.colorHex))
                 .frame(width: 8, height: 8)
+
+            Text(
+                isSmall
+                ? ev.title
+                : (urgent ? "Başlıyor: \(ev.title)" : "Sıradaki: \(ev.title)")
+            )
+            .font(.caption2.weight(.semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+
+            Spacer()
+
+            Text(urgent ? "\(mins) dk" : (isSmall ? "\(mins) dk" : "\(mins) dk sonra"))
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(urgent ? .orange : .secondary)
+                .lineLimit(1)
+        }
+    }
+    private func eventRow(ev: WidgetEvent, showLocation: Bool, showTimeRange: Bool) -> some View {
+        let isLive = {
+            let now = currentMinuteOfDay()
+            let start = ev.startMinute
+            let end = ev.startMinute + ev.durationMinute
+            return now >= start && now < end
+        }()
+
+        let startText = hm(ev.startMinute)
+        let endText = hm(ev.startMinute + ev.durationMinute)
+        let timeText = showTimeRange ?
+            "\(startText)-\(endText)" :
+            "→ \(endText)"
+        return HStack(spacing: rowSpacing) {
+            Circle()
+                .fill(Color(hex: ev.colorHex))
+                .frame(width: isSmall ? 7 : 8, height: isSmall ? 7 : 8)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(ev.title)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.subheadline.weight(isLive ? .bold : .semibold))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.8)
 
-                if showLocation,
+                if !isSmall,
+                   showLocation,
                    let loc = ev.location,
                    !loc.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Text(loc)
@@ -216,15 +502,17 @@ struct ScheduleWidgetView: View {
                 }
             }
 
-            Spacer()
+            Spacer(minLength: 6)
 
             Text(timeText)
-                .font(.caption.weight(.semibold))
+                .font(timeFont)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
         }
+        .padding(.vertical, verticalRowPadding)
     }
-
     // MARK: - Helpers
 
     private func safeIndex(_ i: Int) -> Int { max(0, min(6, i)) }
@@ -239,6 +527,11 @@ struct ScheduleWidgetView: View {
     private func currentMinuteOfDay() -> Int {
         let c = Calendar.current.dateComponents([.hour, .minute], from: Date())
         return (c.hour ?? 0) * 60 + (c.minute ?? 0)
+    }
+    
+    private func widgetWeekdayToday() -> Int {
+        let w = Calendar.current.component(.weekday, from: Date())
+        return (w + 5) % 7
     }
 
     private func progressForLive(_ ev: WidgetEvent, now: Int) -> Double {
@@ -259,11 +552,22 @@ struct ScheduleWidgetView: View {
 
 private extension View {
     @ViewBuilder
-    func applyWidgetBackground() -> some View {
+    func applyWidgetBackground(accentColor: Color, tintOpacity: Double) -> some View {
         if #available(iOSApplicationExtension 17.0, *) {
-            self.containerBackground(.fill.tertiary, for: .widget)
+            self
+                .containerBackground(for: .widget) {
+                    ZStack {
+                        Color(.secondarySystemBackground)
+                        accentColor.opacity(tintOpacity)
+                    }
+                }
         } else {
-            self.background(Color(.systemBackground))
+            self.background(
+                ZStack {
+                    Color(.secondarySystemBackground)
+                    accentColor.opacity(tintOpacity)
+                }
+            )
         }
     }
 }
@@ -300,6 +604,7 @@ struct ScheduleWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: ScheduleProvider()) { entry in
             ScheduleWidgetView(entry: entry)
+                .widgetURL(URL(string: "dailytodo://week"))
         }
         .configurationDisplayName("Bugünün Dersleri")
         .description("Bugün için sıradaki dersleri gösterir.")

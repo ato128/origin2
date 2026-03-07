@@ -5,6 +5,7 @@
 //  Created by Atakan Ortaç on 2.03.2026.
 //
 
+
 import SwiftUI
 import SwiftData
 import Foundation
@@ -37,7 +38,7 @@ struct MainTabView: View {
 
             NavigationStack {
                 InsightsView()
-                .environmentObject(store)
+                    .environmentObject(store)
             }
             .tabItem { Label("Insights", systemImage: "chart.bar") }
             .tag(AppTab.insights)
@@ -47,6 +48,9 @@ struct MainTabView: View {
             }
             .tabItem { Label("Settings", systemImage: "gearshape") }
             .tag(AppTab.settings)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openWeekFromWidget)) { _ in
+            tab = .week
         }
     }
 }
