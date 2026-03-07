@@ -52,7 +52,9 @@ struct TodoListView: View {
     private var items: [DTTaskItem] { store.items }
 
     private var filteredItems: [DTTaskItem] {
-        let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let q = searchText
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
 
         var base = items
 
@@ -61,19 +63,35 @@ struct TodoListView: View {
         }
 
         if !q.isEmpty {
-            base = base.filter { $0.title.lowercased().contains(q) }
+            base = base.filter {
+                $0.title.lowercased().contains(q)
+            }
         }
 
         switch filter {
         case .all:
-            return base
+            break
+
         case .today:
-            return base.filter { item in
+            base = base.filter { item in
                 guard let d = item.dueDate else { return false }
                 return Calendar.current.isDate(d, inSameDayAs: Date())
             }
+
         case .overdue:
-            return base.filter { store.isOverdue($0) }
+            base = base.filter { store.isOverdue($0) }
+        }
+
+        let now = Date()
+
+        return base.sorted { a, b in
+            let aDate = a.dueDate ?? .distantFuture
+            let bDate = b.dueDate ?? .distantFuture
+
+            let aDiff = abs(aDate.timeIntervalSince(now))
+            let bDiff = abs(bDate.timeIntervalSince(now))
+
+            return aDiff < bDiff
         }
     }
 
