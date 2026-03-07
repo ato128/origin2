@@ -932,7 +932,7 @@ private struct EventRow: View {
 }
 
 // MARK: - Hex Color
-private extension Color {
+ extension Color {
     init(hex: String) {
         let cleaned = hex
             .trimmingCharacters(in: .whitespacesAndNewlines)

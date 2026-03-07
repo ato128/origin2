@@ -29,6 +29,12 @@ struct TodoListView: View {
         case next
     }
 
+    enum TopSection: String, CaseIterable, Identifiable {
+        case home = "Home"
+        case tasks = "Tasks"
+        var id: String { rawValue }
+    }
+
     @State private var searchText: String = ""
     @State private var filter: Filter = .all
     @State private var showDone: Bool = true
@@ -37,7 +43,8 @@ struct TodoListView: View {
     @State private var editingItem: DTTaskItem? = nil
 
     @State private var animatingTaskID: PersistentIdentifier? = nil
-    @State private var sparkleTaskID:PersistentIdentifier?  = nil
+    @State private var sparkleTaskID: PersistentIdentifier? = nil
+    @State private var topSection: TopSection = .tasks
 
     private let chipTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
     @State private var now = Date()
@@ -96,11 +103,31 @@ struct TodoListView: View {
     }
 
     var body: some View {
-        Group {
-            if filteredItems.isEmpty {
-                emptyState
-            } else {
-                list
+        VStack(spacing: 0) {
+            topSegment
+
+            Group {
+                if topSection == .home {
+                    HomeDashboardView(
+                        onAddTask: {
+                            showingAdd = true
+                            haptic(.medium)
+                        },
+                        onOpenWeek: {
+                            selectedTab = .week
+                        },
+                        onOpenInsights: {
+                            selectedTab = .insights
+                        }
+                    )
+                    .environmentObject(store)
+                } else {
+                    if filteredItems.isEmpty {
+                        emptyState
+                    } else {
+                        list
+                    }
+                }
             }
         }
         .navigationTitle("Tasks")
@@ -120,13 +147,29 @@ struct TodoListView: View {
             .presentationDetents([.medium, .large])
         }
         .overlay(alignment: .bottomTrailing) {
-            floatingAddButton
+            if topSection == .tasks {
+                floatingAddButton
+            }
         }
         .onReceive(chipTimer) { value in
             now = value
         }
     }
 
+    private var topSegment: some View {
+        VStack(spacing: 8) {
+            Picker("", selection: $topSection) {
+                ForEach(TopSection.allCases) { section in
+                    Text(section.rawValue).tag(section)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 16)
+            .padding(.top, 10)
+            .padding(.bottom, 10)
+        }
+        .background(Color(.systemGroupedBackground))
+    }
     private var emptyState: some View {
         VStack(spacing: 14) {
             Image(systemName: "checklist")
