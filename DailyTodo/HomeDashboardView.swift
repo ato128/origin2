@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import Combine
 
 struct HomeDashboardView: View {
     @EnvironmentObject private var store: TodoStore
@@ -25,6 +26,8 @@ struct HomeDashboardView: View {
     @State private var activeFocusTotalSeconds: Int = 25 * 60
     @State private var pulseActiveFocus: Bool = false
     @State private var liveDotPulse: Bool = false
+
+    private let focusRefreshTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private var allTasks: [DTTaskItem] { store.items }
 
@@ -158,8 +161,16 @@ struct HomeDashboardView: View {
 
                 if isFocusActive {
                     activeFocusCard
+                        .transition(.asymmetric(
+                            insertion: .scale(scale: 0.98).combined(with: .opacity),
+                            removal: .scale(scale: 0.96).combined(with: .opacity)
+                        ))
                 } else {
                     focusCard
+                        .transition(.asymmetric(
+                            insertion: .scale(scale: 0.98).combined(with: .opacity),
+                            removal: .opacity
+                        ))
                 }
 
                 nextClassCard
@@ -168,6 +179,7 @@ struct HomeDashboardView: View {
             }
             .padding(16)
             .padding(.bottom, 20)
+            .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocusActive)
         }
         .background(Color(.systemGroupedBackground))
         .sheet(isPresented: $showingFocusSession) {
@@ -194,6 +206,9 @@ struct HomeDashboardView: View {
         }
         .onChange(of: isFocusActive) { _, newValue in
             pulseActiveFocus = newValue
+        }
+        .onReceive(focusRefreshTimer) { _ in
+            syncActiveFocusCountdown()
         }
     }
 }
@@ -313,102 +328,114 @@ private extension HomeDashboardView {
     }
 
     var activeFocusCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                HStack(spacing: 8) {
+        TimelineView(.animation) { timeline in
+            let now = timeline.date
+            let liveRemaining = liveFocusRemaining(at: now)
+            let urgencyColor = activeFocusUrgencyColor(for: liveRemaining)
+            let warmState = liveRemaining > 0 && liveRemaining <= 30
 
-                    Circle()
-                        .fill(Color.blue)
-                        .frame(width: 8, height: 8)
-                        .scaleEffect(liveDotPulse ? 1.4 : 0.8)
-                        .opacity(liveDotPulse ? 0.6 : 1)
-                        .animation(
-                            .easeInOut(duration: 1)
-                            .repeatForever(autoreverses: true),
-                            value: liveDotPulse
-                        )
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(urgencyColor)
+                            .frame(width: 8, height: 8)
+                            .scaleEffect(liveDotPulse ? 1.4 : 0.8)
+                            .opacity(liveDotPulse ? 0.6 : 1)
+                            .animation(
+                                .easeInOut(duration: 1)
+                                    .repeatForever(autoreverses: true),
+                                value: liveDotPulse
+                            )
 
-                    Text("Focus Running")
-                        .font(.headline)
+                        Text("Focus Running")
+                            .font(.headline)
+                    }
+
+                    Spacer()
+
+                    Text(liveFocusTimeText(at: now))
+                        .font(.title3.bold())
+                        .monospacedDigit()
                 }
 
-                Spacer()
+                Text(activeFocusTaskTitle.isEmpty ? "Deep Work Session" : activeFocusTaskTitle)
+                    .font(.title3.weight(.semibold))
+                    .lineLimit(2)
 
-                Text(activeFocusTimeText)
-                    .font(.title3.bold())
-                    .monospacedDigit()
-            }
+                smoothActiveFocusProgressBar(at: now)
 
-            Text(activeFocusTaskTitle.isEmpty ? "Deep Work Session" : activeFocusTaskTitle)
-                .font(.title3.weight(.semibold))
-                .lineLimit(2)
+                HStack(spacing: 10) {
+                    miniBadge(
+                        icon: "timer",
+                        text: liveRemaining <= 30 ? "Son 30 saniye" : "Odak aktif",
+                        tint: urgencyColor
+                    )
 
-            ProgressView(value: activeFocusProgress)
-                .tint(.accentColor)
-                .scaleEffect(y: 1.8)
-
-            HStack(spacing: 10) {
-                miniBadge(icon: "timer", text: "Odak aktif", tint: .blue)
-                miniBadge(icon: "scope", text: "Devam ediyor", tint: .green)
-            }
-
-            HStack(spacing: 12) {
-                Button {
-                    showingFocusSession = true
-                } label: {
-                    Text("Open Focus")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 11)
-                        .background(Color.accentColor)
-                        .foregroundStyle(.white)
-                        .clipShape(Capsule())
+                    miniBadge(
+                        icon: "scope",
+                        text: "Devam ediyor",
+                        tint: warmState ? urgencyColor : .green
+                    )
                 }
-                .buttonStyle(.plain)
 
-                Button {
-                    isFocusActive = false
-                    activeFocusTaskTitle = ""
-                    activeFocusRemainingSeconds = 25 * 60
-                    activeFocusTotalSeconds = 25 * 60
-                    pulseActiveFocus = false
-                } label: {
-                    Text("Stop")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 11)
-                        .background(Color.red.opacity(0.14))
-                        .foregroundStyle(.red)
-                        .clipShape(Capsule())
+                HStack(spacing: 12) {
+                    Button {
+                        showingFocusSession = true
+                    } label: {
+                        Text("Open Focus")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 11)
+                            .background(Color.accentColor)
+                            .foregroundStyle(.white)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        stopActiveFocus()
+                    } label: {
+                        Text("Stop")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 11)
+                            .background(Color.red.opacity(0.14))
+                            .foregroundStyle(.red)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .fill(urgencyColor.opacity(warmState ? 0.08 : 0.06))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .stroke(
+                                urgencyColor.opacity(pulseActiveFocus ? 0.38 : 0.18),
+                                lineWidth: 1.2
+                            )
+                    )
+            )
+            .shadow(
+                color: urgencyColor.opacity(pulseActiveFocus ? 0.28 : 0.12),
+                radius: pulseActiveFocus ? 18 : 8,
+                x: 0,
+                y: 6
+            )
+            .scaleEffect(pulseActiveFocus ? 1.01 : 1.0)
+            .animation(
+                .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
+                value: pulseActiveFocus
+            )
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(Color.blue.opacity(0.06))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color.blue.opacity(pulseActiveFocus ? 0.38 : 0.18), lineWidth: 1.2)
-                )
-        )
-        .shadow(
-            color: Color.blue.opacity(pulseActiveFocus ? 0.28 : 0.12),
-            radius: pulseActiveFocus ? 18 : 8,
-            x: 0,
-            y: 6
-        )
-        .scaleEffect(pulseActiveFocus ? 1.01 : 1.0)
-        .animation(
-            .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
-            value: pulseActiveFocus
-        )
         .onAppear {
             liveDotPulse = true
         }
@@ -419,10 +446,72 @@ private extension HomeDashboardView {
         return Double(activeFocusTotalSeconds - activeFocusRemainingSeconds) / Double(activeFocusTotalSeconds)
     }
 
-    var activeFocusTimeText: String {
-        let m = activeFocusRemainingSeconds / 60
-        let s = activeFocusRemainingSeconds % 60
+    func smoothActiveFocusProgressBar(at date: Date) -> some View {
+        let remaining = liveFocusRemaining(at: date)
+        let progress = liveFocusProgress(at: date)
+        let urgencyColor = activeFocusUrgencyColor(for: remaining)
+
+        return GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.white.opacity(0.10))
+
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                urgencyColor,
+                                urgencyColor.opacity(0.85)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .shadow(color: urgencyColor.opacity(0.5), radius: 6)
+                    .frame(width: max(8, geo.size.width * progress))
+            }
+        }
+        .frame(height: 12)
+    }
+
+    func liveFocusProgress(at date: Date) -> Double {
+        guard activeFocusTotalSeconds > 0 else { return 0 }
+
+        guard let timestamp = UserDefaults.standard.object(forKey: "focus_end_date") as? Double else {
+            return activeFocusProgress
+        }
+
+        let endDate = Date(timeIntervalSince1970: timestamp)
+        let remaining = max(0, endDate.timeIntervalSince(date))
+        let elapsed = Double(activeFocusTotalSeconds) - remaining
+
+        return min(1, max(0, elapsed / Double(activeFocusTotalSeconds)))
+    }
+
+    func liveFocusRemaining(at date: Date) -> Int {
+        guard let timestamp = UserDefaults.standard.object(forKey: "focus_end_date") as? Double else {
+            return activeFocusRemainingSeconds
+        }
+
+        let endDate = Date(timeIntervalSince1970: timestamp)
+        return max(0, Int(endDate.timeIntervalSince(date).rounded(.down)))
+    }
+
+    func liveFocusTimeText(at date: Date) -> String {
+        let remaining = liveFocusRemaining(at: date)
+        let m = remaining / 60
+        let s = remaining % 60
         return String(format: "%02d:%02d", m, s)
+    }
+
+    func activeFocusUrgencyColor(for remaining: Int) -> Color {
+        if remaining <= 10 && remaining > 0 {
+            return .red
+        } else if remaining <= 30 && remaining > 0 {
+            return .orange
+        } else {
+            return .blue
+        }
     }
 
     var nextClassCard: some View {
@@ -608,6 +697,59 @@ private extension HomeDashboardView {
     func weekdayIndexToday() -> Int {
         let w = Calendar.current.component(.weekday, from: Date())
         return (w + 5) % 7
+    }
+
+    func syncActiveFocusCountdown() {
+        guard let timestamp =
+            UserDefaults.standard.object(forKey: "focus_end_date") as? Double else {
+            return
+        }
+
+        let savedEnd = Date(timeIntervalSince1970: timestamp)
+        let remaining = max(0, Int(savedEnd.timeIntervalSinceNow.rounded(.down)))
+
+        if remaining > 0 {
+            activeFocusRemainingSeconds = remaining
+            isFocusActive = true
+
+            if let savedTotal =
+                UserDefaults.standard.object(forKey: "focus_total_seconds") as? Int,
+               savedTotal > 0 {
+                activeFocusTotalSeconds = savedTotal
+            }
+
+            if let savedTitle =
+                UserDefaults.standard.string(forKey: "focus_task_title"),
+               !savedTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                activeFocusTaskTitle = savedTitle
+            }
+
+        } else {
+            UserDefaults.standard.removeObject(forKey: "focus_end_date")
+
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.88)) {
+                isFocusActive = false
+                pulseActiveFocus = false
+            }
+        }
+    }
+
+    func stopActiveFocus() {
+        UserDefaults.standard.removeObject(forKey: "focus_end_date")
+        UserDefaults.standard.removeObject(forKey: "focus_total_seconds")
+        UserDefaults.standard.removeObject(forKey: "focus_selected_minutes")
+        UserDefaults.standard.removeObject(forKey: "focus_task_title")
+
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.88)) {
+            pulseActiveFocus = false
+            isFocusActive = false
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            activeFocusTaskTitle = ""
+            activeFocusRemainingSeconds = 25 * 60
+            activeFocusTotalSeconds = 25 * 60
+        }
     }
 
     func hm(_ minute: Int) -> String {
