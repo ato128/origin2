@@ -144,4 +144,25 @@ enum InsightsEngine {
         if m == 0 { return "\(h)s" }
         return "\(h)s \(m)dk"
     }
+    static func consistencyScore(tasks: [DTTaskItem], calendar: Calendar = .current) -> Int {
+        let today = calendar.startOfDay(for: Date())
+
+        let completedDays = Set(
+            tasks
+                .filter { $0.isDone }
+                .compactMap { $0.completedAt }
+                .map { calendar.startOfDay(for: $0) }
+        )
+
+        var activeDays = 0
+
+        for offset in 0..<7 {
+            guard let day = calendar.date(byAdding: .day, value: -offset, to: today) else { continue }
+            if completedDays.contains(day) {
+                activeDays += 1
+            }
+        }
+
+        return Int((Double(activeDays) / 7.0) * 100.0)
+    }
 }

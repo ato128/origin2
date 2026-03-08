@@ -19,7 +19,9 @@ struct InsightsView: View {
     @State private var animateBars = false
     @State private var animateScoreRing = false
     @State private var displayedCompletionRate = 0
+    @State private var displayedProductivityScore = 0
     @State private var didAnimate = false
+    @State private var didAnimateScoreCard = false
     @State private var highlightStreak = false
     @State private var bumpChart = false
     @State private var pulseCompletion = false
@@ -116,6 +118,9 @@ struct InsightsView: View {
         default: return 0
         }
     }
+    private var consistencyScore: Int {
+        InsightsEngine.consistencyScore(tasks: allTasks)
+    }
 
     var body: some View {
         ScrollView {
@@ -166,7 +171,7 @@ struct InsightsView: View {
                     .opacity(didAnimate ? 1 : 0)
                     .offset(y: didAnimate ? 0 : 30)
                 
-                HeatmapView()
+                HeatmapView(tasks: allTasks)
 
                 studyCard
                     .opacity(didAnimate ? 1 : 0)
@@ -179,6 +184,10 @@ struct InsightsView: View {
                 productivityCard
                     .opacity(didAnimate ? 1 : 0)
                     .offset(y: didAnimate ? 0 : 42)
+                
+                consistencyCard
+                    .opacity(didAnimate ? 1 : 0)
+                    .offset(y: didAnimate ? 0 : 46)
             }
             .padding(16)
             .animation(.spring(response: 0.6, dampingFraction: 0.85), value: didAnimate)
@@ -565,32 +574,32 @@ struct InsightsView: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Productivity Score")
                 .font(.headline)
-
+            
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(productivityScore)/100")
                         .font(.title2.bold())
-
+                    
                     Text(scoreDescription)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-
+                
                 Spacer()
-
+                
                 ZStack {
                     Circle()
                         .stroke(Color.secondary.opacity(0.18), lineWidth: 10)
                         .frame(width: 72, height: 72)
-
+                    
                     Circle()
                         .trim(from: 0, to: animateScoreRing ? Double(productivityScore) / 100 : 0)
                         .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 10, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                         .frame(width: 72, height: 72)
                         .animation(.easeInOut(duration: 1.1), value: animateScoreRing)
-
-                    Text("\(productivityScore)")
+                    
+                    Text("\(displayedProductivityScore)")
                         .font(.headline.bold())
                         .contentTransition(.numericText())
                 }
@@ -599,7 +608,15 @@ struct InsightsView: View {
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
+        .onAppear {
+            guard !didAnimateScoreCard else { return }
+            
+            didAnimateScoreCard = true
+            animateScoreRing = true
+            animateProductivityScore(to: productivityScore)
+        }
     }
+    
 
     private var productivityCard: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -621,6 +638,49 @@ struct InsightsView: View {
                 Image(systemName: "chart.bar.fill")
                     .font(.system(size: 28))
                     .foregroundStyle(Color.accentColor)
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBackground)
+    }
+    private var consistencyCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+
+            Text("Consistency Score")
+                .font(.headline)
+
+            HStack(alignment: .center) {
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(consistencyScore)%")
+                        .font(.title2.bold())
+
+                    Text(consistencyDescription)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                ZStack {
+
+                    Circle()
+                        .stroke(Color.secondary.opacity(0.18), lineWidth: 10)
+                        .frame(width: 72, height: 72)
+
+                    Circle()
+                        .trim(from: 0, to: Double(consistencyScore) / 100)
+                        .stroke(
+                            Color.green,
+                            style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: 72, height: 72)
+
+                    Text("\(consistencyScore)")
+                        .font(.headline.bold())
+                }
             }
         }
         .padding(18)
@@ -693,6 +753,18 @@ struct InsightsView: View {
             return "Harika gidiyorsun"
         }
     }
+    private var consistencyDescription: String {
+        switch consistencyScore {
+        case 85...100:
+            return "Çok istikrarlısın"
+        case 60..<85:
+            return "İyi gidiyorsun"
+        case 35..<60:
+            return "Ritim oluşuyor"
+        default:
+            return "Biraz daha düzen lazım"
+        }
+    }
 
     private func runEntranceAnimations() {
         guard !didAnimate else { return }
@@ -702,6 +774,7 @@ struct InsightsView: View {
         animateBars = false
         animateScoreRing = false
         displayedCompletionRate = 0
+        displayedProductivityScore = 0
 
         withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
             animateFlame = true
@@ -711,16 +784,30 @@ struct InsightsView: View {
             animateBars = true
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
-            animateScoreRing = true
+        animateNumber(to: completionRate)
+        
+    }
+    private func animateProductivityScore(to target: Int) {
+        guard target > 0 else {
+            displayedProductivityScore = 0
+            return
         }
 
-        animateNumber(to: completionRate)
+        let duration = 0.9
+        let steps = max(target, 1)
+        let stepDuration = duration / Double(steps)
+
+        for value in 0...target {
+            DispatchQueue.main.asyncAfter(deadline: .now() + stepDuration * Double(value)) {
+                displayedProductivityScore = value
+            }
+        }
     }
 
     private func animateNumber(to target: Int) {
         guard target > 0 else {
             displayedCompletionRate = 0
+            displayedProductivityScore = 0
             return
         }
 

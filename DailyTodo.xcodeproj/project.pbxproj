@@ -101,7 +101,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
-				InsightsView.swift,
 			);
 			target = 6DF0C9182F557AA50043B887 /* DailyTodo */;
 		};
