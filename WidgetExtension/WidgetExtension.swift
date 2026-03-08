@@ -611,3 +611,7 @@ struct ScheduleWidget: Widget {
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
+func weekdayIndexToday() -> Int {
+    let w = Calendar.current.component(.weekday, from: Date())
+    return (w + 5) % 7
+}

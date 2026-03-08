@@ -45,6 +45,11 @@ struct DailyTodoApp: App {
                             name: .openWeekFromWidget,
                             object: nil
                         )
+                    } else if url.absoluteString == "dailytodo://week" {
+                        NotificationCenter.default.post(
+                            name: .openWeekFromWidget,
+                            object: nil
+                        )
                     }
                 }
         }
@@ -53,4 +58,5 @@ struct DailyTodoApp: App {
 
 extension Notification.Name {
     static let openWeekFromWidget = Notification.Name("openWeekFromWidget")
+  
 }
