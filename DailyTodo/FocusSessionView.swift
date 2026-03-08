@@ -7,15 +7,17 @@
 
 import SwiftUI
 import Combine
+import SwiftData
 
 struct FocusSessionView: View {
     let taskTitle: String?
     let onStartFocus: (_ title: String, _ totalSeconds: Int) -> Void
     let onTick: (_ remainingSeconds: Int) -> Void
-    let onFinishFocus: () -> Void
+    let onFinishFocus: (_ title: String, _ startedAt: Date, _ endedAt: Date, _ totalSeconds: Int, _ completedSeconds: Int, _ isCompleted: Bool) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.modelContext) private var modelContext
 
     @State private var selectedMinutes: Int = 25
     @State private var totalSeconds: Int = 25 * 60
@@ -32,6 +34,7 @@ struct FocusSessionView: View {
     @State private var showCompletionBounce: Bool = false
     @State private var showDoneState: Bool = false
     @State private var breathing = false
+    @State private var sessionStartedAt: Date? = nil
 
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     private let presets = [15, 25, 45, 60]
@@ -269,7 +272,25 @@ struct FocusSessionView: View {
                     }
 
                     onTick(0)
-                    onFinishFocus()
+
+                    let endedAt = Date()
+                    let completedSeconds = totalSeconds
+
+                    saveFocusRecord(
+                        endedAt: endedAt,
+                        completedSeconds: completedSeconds,
+                        isCompleted: true
+                    )
+
+                    onFinishFocus(
+                        resolvedTaskTitle,
+                        sessionStartedAt ?? endedAt,
+                        endedAt,
+                        totalSeconds,
+                        completedSeconds,
+                        true
+                    )
+
                     clearSavedTimer()
                     return
                 }
@@ -378,6 +399,7 @@ struct FocusSessionView: View {
     private func handleStartPause() {
         if !hasStartedSession {
             hasStartedSession = true
+            sessionStartedAt = Date()
             onStartFocus(resolvedTaskTitle, totalSeconds)
         }
 
@@ -426,12 +448,33 @@ struct FocusSessionView: View {
 
     private func finishAndDismiss() {
         isRunning = false
+
+        let endedAt = Date()
+        let startedAt = sessionStartedAt ?? endedAt
+        let completedSeconds = max(0, totalSeconds - remainingSeconds)
+        let isCompleted = remainingSeconds == 0
+
+        saveFocusRecord(
+            endedAt: endedAt,
+            completedSeconds: completedSeconds,
+            isCompleted: isCompleted
+        )
+
         endDate = nil
         showDoneState = false
         showCompletionBounce = false
         clearSavedTimer()
         clearSavedDurationState()
-        onFinishFocus()
+
+        onFinishFocus(
+            resolvedTaskTitle,
+            startedAt,
+            endedAt,
+            totalSeconds,
+            completedSeconds,
+            isCompleted
+        )
+
         dismiss()
     }
 
@@ -488,6 +531,7 @@ struct FocusSessionView: View {
 
             if !hasStartedSession {
                 hasStartedSession = true
+                sessionStartedAt = Date()
                 onStartFocus(resolvedTaskTitle, totalSeconds)
             }
 
@@ -495,5 +539,35 @@ struct FocusSessionView: View {
         } else {
             clearSavedTimer()
         }
+    }
+    private func saveFocusRecord(
+        endedAt: Date,
+        completedSeconds: Int,
+        isCompleted: Bool
+    ) {
+        let startedAt = sessionStartedAt ?? endedAt
+
+        let record = FocusSessionRecord(
+            title: resolvedTaskTitle,
+            startedAt: startedAt,
+            endedAt: endedAt,
+            totalSeconds: totalSeconds,
+            completedSeconds: completedSeconds,
+            isCompleted: isCompleted
+        )
+
+        modelContext.insert(record)
+
+        do {
+            try modelContext.save()
+            print("✅ Focus saved directly from FocusSessionView:", record.completedSeconds)
+        } catch {
+            print("❌ Focus save error:", error)
+        }
+
+        NotificationCenter.default.post(
+            name: .focusSessionCompleted,
+            object: nil
+        )
     }
 }

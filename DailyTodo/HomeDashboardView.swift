@@ -10,7 +10,9 @@ import SwiftData
 import Combine
 
 struct HomeDashboardView: View {
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var store: TodoStore
+   
 
     @Query(sort: \EventItem.startMinute, order: .forward)
     private var allEvents: [EventItem]
@@ -23,6 +25,7 @@ struct HomeDashboardView: View {
     @State private var isFocusActive: Bool = false
     @State private var activeFocusTaskTitle: String = ""
     @State private var activeFocusRemainingSeconds: Int = 25 * 60
+    @State private var activeFocusStartedAt: Date? = nil
     @State private var activeFocusTotalSeconds: Int = 25 * 60
     @State private var pulseActiveFocus: Bool = false
     @State private var liveDotPulse: Bool = false
@@ -198,17 +201,19 @@ struct HomeDashboardView: View {
                     activeFocusTaskTitle = title
                     activeFocusTotalSeconds = totalSeconds
                     activeFocusRemainingSeconds = totalSeconds
+                    activeFocusStartedAt = Date()
                     isFocusActive = true
                     pulseActiveFocus = true
                 },
                 onTick: { remaining in
                     activeFocusRemainingSeconds = remaining
                 },
-                onFinishFocus: {
+                onFinishFocus: { _, _, _, _, _, _ in
                     isFocusActive = false
                     activeFocusTaskTitle = ""
                     activeFocusRemainingSeconds = 25 * 60
                     activeFocusTotalSeconds = 25 * 60
+                    activeFocusStartedAt = nil
                     pulseActiveFocus = false
                 }
             )
@@ -882,6 +887,8 @@ private extension HomeDashboardView {
         let c = Calendar.current.dateComponents([.hour, .minute], from: Date())
         return (c.hour ?? 0) * 60 + (c.minute ?? 0)
     }
+    
+    
 
     func weekdayIndexToday() -> Int {
         let w = Calendar.current.component(.weekday, from: Date())
@@ -914,11 +921,23 @@ private extension HomeDashboardView {
             }
 
         } else {
+            saveFocusRecordFromHomeIfNeeded()
+
             UserDefaults.standard.removeObject(forKey: "focus_end_date")
+            UserDefaults.standard.removeObject(forKey: "focus_total_seconds")
+            UserDefaults.standard.removeObject(forKey: "focus_selected_minutes")
+            UserDefaults.standard.removeObject(forKey: "focus_task_title")
 
             withAnimation(.spring(response: 0.35, dampingFraction: 0.88)) {
                 isFocusActive = false
                 pulseActiveFocus = false
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                activeFocusTaskTitle = ""
+                activeFocusRemainingSeconds = 25 * 60
+                activeFocusTotalSeconds = 25 * 60
+                activeFocusStartedAt = nil
             }
         }
     }
@@ -940,6 +959,37 @@ private extension HomeDashboardView {
             activeFocusTotalSeconds = 25 * 60
         }
     }
+    
+    func saveFocusRecordFromHomeIfNeeded() {
+        guard activeFocusTotalSeconds > 0 else { return }
+
+        let endedAt = Date()
+        let startedAt = activeFocusStartedAt ?? endedAt
+        let completedSeconds = activeFocusTotalSeconds
+
+        let record = FocusSessionRecord(
+            title: activeFocusTaskTitle.isEmpty ? "Deep Work Session" : activeFocusTaskTitle,
+            startedAt: startedAt,
+            endedAt: endedAt,
+            totalSeconds: activeFocusTotalSeconds,
+            completedSeconds: completedSeconds,
+            isCompleted: true
+        )
+
+        modelContext.insert(record)
+
+        do {
+            try modelContext.save()
+            print("✅ Focus saved from HomeDashboardView")
+        } catch {
+            print("❌ Focus save error from HomeDashboardView:", error)
+        }
+
+        NotificationCenter.default.post(
+            name: .focusSessionCompleted,
+            object: nil
+        )
+    }
 
     func hm(_ minute: Int) -> String {
         let m = max(0, min(1439, minute))
@@ -947,4 +997,8 @@ private extension HomeDashboardView {
         let mm = m % 60
         return String(format: "%02d:%02d", h, mm)
     }
+}
+extension Notification.Name {
+    static let focusSessionCompleted =
+        Notification.Name("focusSessionCompleted")
 }

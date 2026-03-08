@@ -17,7 +17,8 @@ struct DailyTodoApp: App {
         do {
             container = try ModelContainer(
                 for: DTTaskItem.self,
-                EventItem.self
+                EventItem.self,
+                FocusSessionRecord.self
             )
         } catch {
             fatalError("SwiftData container oluşturulamadı: \(error)")
