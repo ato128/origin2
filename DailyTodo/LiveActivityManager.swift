@@ -35,7 +35,8 @@ final class LiveActivityManager {
         let state = ScheduleAttributes.ContentState(
             title: event.title,
             startDate: startDate,
-            endDate: endDate
+            endDate: endDate,
+            colorHex: event.colorHex
         )
         
         let content = ActivityContent(state: state, staleDate: endDate)
@@ -65,7 +66,8 @@ final class LiveActivityManager {
         let newState = ScheduleAttributes.ContentState(
             title: event.title,
             startDate: startDate,
-            endDate: endDate
+            endDate: endDate,
+            colorHex: event.colorHex
         )
         
         let updatedContent = ActivityContent(state: newState, staleDate: endDate)

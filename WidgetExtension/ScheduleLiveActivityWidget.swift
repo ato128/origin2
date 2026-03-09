@@ -27,7 +27,8 @@ struct ScheduleLiveActivityWidget: Widget {
                         ZStack {
                             Circle()
                                 .fill(accent.opacity(0.18))
-                                .frame(width: 30, height: 30)
+                                .frame(width: 22, height: 22)
+                                .shadow(color: accent.opacity(0.20), radius: 4)
 
                             Image(systemName: "books.vertical.fill")
                                 .font(.system(size: 14, weight: .semibold))
@@ -72,19 +73,19 @@ struct ScheduleLiveActivityWidget: Widget {
                             Text(remainingText(from: now, start: start, end: end))
                                 .font(.system(size: 28, weight: .bold, design: .rounded))
                                 .monospacedDigit()
-
+                            
                             Spacer()
-
+                            
                             Text(statusLabel(now: now, start: start, end: end))
                                 .font(.caption.weight(.medium))
                                 .foregroundStyle(.secondary)
                         }
-
+                        
                         ZStack(alignment: .leading) {
                             Capsule()
                                 .fill(Color.white.opacity(0.10))
                                 .frame(height: 6)
-
+                            
                             GeometryReader { proxy in
                                 Capsule()
                                     .fill(
@@ -107,7 +108,12 @@ struct ScheduleLiveActivityWidget: Widget {
                         .frame(height: 6)
                     }
                     .padding(.top, 4)
-                }
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(accent.opacity(0.04))
+                )
+                
+                 }
             } compactLeading: {
                 ZStack {
                     Circle()
@@ -142,6 +148,8 @@ private struct PremiumLiveActivityLockScreenView: View {
     let context: ActivityViewContext<ScheduleAttributes>
 
     var body: some View {
+        let accent = liveAccentColor(for: context)
+
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
                 ZStack {
@@ -149,8 +157,8 @@ private struct PremiumLiveActivityLockScreenView: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.blue.opacity(0.26),
-                                    Color.blue.opacity(0.10)
+                                    accent.opacity(0.26),
+                                    accent.opacity(0.10)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -160,7 +168,7 @@ private struct PremiumLiveActivityLockScreenView: View {
 
                     Image(systemName: "books.vertical.fill")
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.blue)
+                        .foregroundStyle(accent)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -197,6 +205,28 @@ private struct PremiumLiveActivityLockScreenView: View {
             }
         }
         .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white.opacity(0.02))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    accent.opacity(0.08),
+                                    Color.clear
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(accent.opacity(0.10), lineWidth: 1)
+                )
+                .shadow(color: accent.opacity(0.10), radius: 10, y: 4)
+        )
     }
 }
 
@@ -251,6 +281,8 @@ private struct PremiumProgressBar: View {
             end: context.state.endDate
         )
 
+        let accent = liveAccentColor(for: context)
+
         ZStack(alignment: .leading) {
             Capsule()
                 .fill(Color.white.opacity(0.12))
@@ -261,12 +293,19 @@ private struct PremiumProgressBar: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.blue,
-                                Color.blue.opacity(0.72)
+                                accent.opacity(0.95),
+                                accent.opacity(0.72),
+                                accent.opacity(0.50)
                             ],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
+                    )
+                    .shadow(color: accent.opacity(0.24), radius: 4)
+                    .overlay(
+                        Capsule()
+                            .fill(Color.white.opacity(0.10))
+                            .blur(radius: 0.5)
                     )
                     .frame(
                         width: max(10, proxy.size.width * progress),
@@ -280,7 +319,7 @@ private struct PremiumProgressBar: View {
 }
 
 private func liveAccentColor(for context: ActivityViewContext<ScheduleAttributes>) -> Color {
-    .blue
+    Color(hex: context.state.colorHex)
 }
 
 private func remainingText(from now: Date, start: Date, end: Date) -> String {
@@ -335,4 +374,40 @@ private func progressValue(now: Date, start: Date, end: Date) -> CGFloat {
     let elapsed = now.timeIntervalSince(start)
 
     return CGFloat(elapsed / total)
+}
+
+private extension Color {
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 8:
+            (a, r, g, b) = (
+                (int >> 24) & 0xff,
+                (int >> 16) & 0xff,
+                (int >> 8) & 0xff,
+                int & 0xff
+            )
+        case 6:
+            (a, r, g, b) = (
+                255,
+                (int >> 16) & 0xff,
+                (int >> 8) & 0xff,
+                int & 0xff
+            )
+        default:
+            (a, r, g, b) = (255, 0, 122, 255)
+        }
+
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
+    }
 }
