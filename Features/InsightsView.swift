@@ -35,6 +35,8 @@ struct InsightsView: View {
     @State private var scrollOffset: CGFloat = 0
     @State private var animateFocusGradient = false
     @State private var animateFocusGlow = false
+    @State private var animateFocusStreak = false
+    @State private var animateHotStreak = false
     
     private var allTasks: [DTTaskItem] { store.items }
     
@@ -153,6 +155,87 @@ struct InsightsView: View {
     
     private var focusSessionCount: Int {
         focusSessions.filter { $0.isCompleted }.count
+    }
+    
+    private var focusStreak: Int {
+        let calendar = Calendar.current
+
+        let uniqueDays = Array(
+            Set(completedFocusSessions.map { calendar.startOfDay(for: $0.startedAt) })
+        ).sorted(by: >)
+
+        guard !uniqueDays.isEmpty else { return 0 }
+
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+
+        guard uniqueDays.first == today || uniqueDays.first == yesterday else {
+            return 0
+        }
+
+        var streak = 1
+        var previousDay = uniqueDays.first!
+
+        for day in uniqueDays.dropFirst() {
+            let diff = calendar.dateComponents([.day], from: day, to: previousDay).day ?? 0
+
+            if diff == 1 {
+                streak += 1
+                previousDay = day
+            } else {
+                break
+            }
+        }
+
+        return streak
+    }
+
+    private var bestFocusStreak: Int {
+        let calendar = Calendar.current
+
+        let sortedDays = Array(
+            Set(completedFocusSessions.map { calendar.startOfDay(for: $0.startedAt) })
+        ).sorted()
+
+        guard !sortedDays.isEmpty else { return 0 }
+
+        var best = 1
+        var current = 1
+
+        for index in 1..<sortedDays.count {
+            let previous = sortedDays[index - 1]
+            let currentDay = sortedDays[index]
+
+            let diff = calendar.dateComponents([.day], from: previous, to: currentDay).day ?? 0
+
+            if diff == 1 {
+                current += 1
+                best = max(best, current)
+            } else {
+                current = 1
+            }
+        }
+
+        return best
+    }
+
+    private var focusStreakMessage: String {
+        switch focusStreak {
+        case 0:
+            return "Bugün seri başlat"
+        case 1:
+            return "Başlangıç iyi"
+        case 2...4:
+            return "İvme kazanıyorsun"
+        case 5...9:
+            return "Çok iyi gidiyorsun"
+        default:
+            return "Seri alev aldı"
+        }
+    }
+    
+    private var hasHotStreak: Bool {
+        focusStreak >= 5
     }
     
     private var completedFocusSessions: [FocusSessionRecord] {
@@ -749,11 +832,14 @@ struct InsightsView: View {
 
                 Spacer()
 
-                Text("\(completedFocusSessions.count) session")
+                Text("\(completedFocusSessions.count) session\(completedFocusSessions.count == 1 ? "" : "s")")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 4)
+            if focusStreak > 0 {
+                focusStreakBar
+                    .padding(.horizontal, 4)
+            }
 
             GeometryReader { outerProxy in
 
@@ -842,7 +928,98 @@ struct InsightsView: View {
             animateFocusIcon = true
             animateFocusGradient = true
             animateFocusGlow = true
+            animateFocusStreak = true
+            animateHotStreak = true
         }
+    }
+    private var focusStreakBar: some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(Color.orange.opacity(hasHotStreak ? 0.22 : 0.16))
+                    .frame(width: 32, height: 32)
+                    .scaleEffect(hasHotStreak && animateHotStreak ? 1.08 : 1.0)
+                    .shadow(
+                        color: Color.orange.opacity(hasHotStreak ? 0.28 : 0.0),
+                        radius: hasHotStreak ? 10 : 0
+                    )
+                    .animation(
+                        hasHotStreak
+                        ? .easeInOut(duration: 1.1).repeatForever(autoreverses: true)
+                        : .easeInOut(duration: 0.2),
+                        value: animateHotStreak
+                    )
+
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(hasHotStreak ? .orange : .orange)
+                    .scaleEffect(animateFocusStreak ? 1.12 : 1.0)
+                    .shadow(
+                        color: Color.orange.opacity(hasHotStreak ? 0.30 : 0.10),
+                        radius: hasHotStreak ? 8 : 2
+                    )
+                    .animation(
+                        .easeInOut(duration: 1.1).repeatForever(autoreverses: true),
+                        value: animateFocusStreak
+                    )
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(focusStreak) Günlük Focus Serisi")
+                    .font(.subheadline.weight(.semibold))
+
+                Text(focusStreakMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Text("En iyi: \(bestFocusStreak)")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            ZStack {
+                Capsule()
+                    .fill(.ultraThinMaterial)
+
+                if hasHotStreak {
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.orange.opacity(animateHotStreak ? 0.14 : 0.08),
+                                    Color.clear
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .animation(
+                            .easeInOut(duration: 1.4).repeatForever(autoreverses: true),
+                            value: animateHotStreak
+                        )
+                }
+
+                Capsule()
+                    .stroke(
+                        hasHotStreak
+                        ? Color.orange.opacity(0.18)
+                        : Color.orange.opacity(0.10),
+                        lineWidth: 1
+                    )
+            }
+        )
+        .shadow(
+            color: hasHotStreak
+            ? Color.orange.opacity(animateHotStreak ? 0.18 : 0.08)
+            : Color.clear,
+            radius: hasHotStreak ? 12 : 0,
+            y: 4
+        )
     }
     private var focusPageIndicator: some View {
 
