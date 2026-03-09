@@ -38,11 +38,16 @@ struct ScheduleLiveActivityWidget: Widget {
                             Text(context.state.title)
                                 .font(.subheadline.weight(.semibold))
                                 .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                                .layoutPriority(1)
 
-                            Text(statusLabel(now: now, start: start, end: end))
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
+                            HStack(alignment: .firstTextBaseline) {
+                                Text(remainingText(from: now, start: start, end: end))
+                                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                                    .monospacedDigit()
+
+                                Spacer()
+                            }
                         }
                     }
                 }
@@ -317,12 +322,17 @@ private func statusLabel(now: Date, start: Date, end: Date) -> String {
 }
 
 private func progressValue(now: Date, start: Date, end: Date) -> CGFloat {
-    if now <= start { return 0.02 }
-    if now >= end { return 1.0 }
+
+    if now < start {
+        let total = start.timeIntervalSince(now)
+        let maxWindow: TimeInterval = 600
+        return CGFloat(max(0.05, 1 - (total / maxWindow)))
+    }
+
+    if now >= end { return 1 }
 
     let total = end.timeIntervalSince(start)
-    guard total > 0 else { return 0.02 }
-
     let elapsed = now.timeIntervalSince(start)
-    return min(max(CGFloat(elapsed / total), 0.02), 1.0)
+
+    return CGFloat(elapsed / total)
 }
