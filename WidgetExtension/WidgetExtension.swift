@@ -135,7 +135,7 @@ struct ScheduleWidgetView: View {
         let next = todayEvents.first(where: { $0.startMinute > now })
 
         let accentEvent = live ?? next
-        let accentColor = accentEvent.map { Color(hex: $0.colorHex) } ?? .secondary
+        let accentColor = accentEvent.map { hexColor($0.colorHex) } ?? .secondary
         let backgroundTintOpacity: Double = {
             if accentEvent == nil { return 0 }
             return isSmall ? 0.05 : 0.08
@@ -168,7 +168,9 @@ struct ScheduleWidgetView: View {
             tintOpacity: backgroundTintOpacity
         )
     }
+
     // MARK: - Pieces
+
     private func smallWidgetLayout(
         payload: WidgetPayload?,
         todayWeekday: Int,
@@ -229,7 +231,7 @@ struct ScheduleWidgetView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 6) {
                         Circle()
-                            .fill(Color(hex: ev.colorHex))
+                            .fill(hexColor(ev.colorHex))
                             .frame(width: 8, height: 8)
 
                         Text(ev.title)
@@ -323,7 +325,7 @@ struct ScheduleWidgetView: View {
         let progressColor: Color = {
             if left <= 1 { return .red }
             if left <= 5 { return .orange }
-            return Color(hex: ev.colorHex)
+            return hexColor(ev.colorHex)
         }()
 
         return GeometryReader { geo in
@@ -349,10 +351,7 @@ struct ScheduleWidgetView: View {
         }
         .frame(height: 6)
     }
-    
-    
-    
-    
+
     private func header(payload: WidgetPayload?) -> some View {
         let todayWeekday = widgetWeekdayToday()
         let todayCount = (payload?.events ?? []).filter { $0.weekday == todayWeekday }.count
@@ -361,7 +360,7 @@ struct ScheduleWidgetView: View {
             Text("Bugün")
                 .font(headerFont)
 
-            if todayCount > 0  && !isSmall {
+            if todayCount > 0 && !isSmall {
                 Text("\(todayCount)")
                     .font(.caption2.bold())
                     .padding(.horizontal, isSmall ? 5 : 7)
@@ -408,6 +407,7 @@ struct ScheduleWidgetView: View {
                     )
                     .foregroundStyle(.green)
                     .shadow(color: .green.opacity(0.35), radius: 4)
+
                 Spacer()
 
                 if !isSmall {
@@ -428,8 +428,8 @@ struct ScheduleWidgetView: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color(hex: ev.colorHex),
-                                    Color(hex: ev.colorHex).opacity(0.55)
+                                    hexColor(ev.colorHex),
+                                    hexColor(ev.colorHex).opacity(0.55)
                                 ],
                                 startPoint: .leading,
                                 endPoint: .trailing
@@ -441,13 +441,14 @@ struct ScheduleWidgetView: View {
             .frame(height: isSmall ? 5 : 6)
         }
     }
+
     private func nextStrip(ev: WidgetEvent, now: Int) -> some View {
         let mins = max(0, ev.startMinute - now)
         let urgent = mins <= 10
 
         return HStack(spacing: 8) {
             Circle()
-                .fill(urgent ? .orange : Color(hex: ev.colorHex))
+                .fill(urgent ? .orange : hexColor(ev.colorHex))
                 .frame(width: 8, height: 8)
 
             Text(
@@ -467,6 +468,7 @@ struct ScheduleWidgetView: View {
                 .lineLimit(1)
         }
     }
+
     private func eventRow(ev: WidgetEvent, showLocation: Bool, showTimeRange: Bool) -> some View {
         let isLive = {
             let now = currentMinuteOfDay()
@@ -477,12 +479,11 @@ struct ScheduleWidgetView: View {
 
         let startText = hm(ev.startMinute)
         let endText = hm(ev.startMinute + ev.durationMinute)
-        let timeText = showTimeRange ?
-            "\(startText)-\(endText)" :
-            "→ \(endText)"
+        let timeText = showTimeRange ? "\(startText)-\(endText)" : "→ \(endText)"
+
         return HStack(spacing: rowSpacing) {
             Circle()
-                .fill(Color(hex: ev.colorHex))
+                .fill(hexColor(ev.colorHex))
                 .frame(width: isSmall ? 7 : 8, height: isSmall ? 7 : 8)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -513,6 +514,7 @@ struct ScheduleWidgetView: View {
         }
         .padding(.vertical, verticalRowPadding)
     }
+
     // MARK: - Helpers
 
     private func safeIndex(_ i: Int) -> Int { max(0, min(6, i)) }
@@ -574,27 +576,6 @@ private extension View {
 
 // MARK: - Hex to Color
 
-private extension Color {
-    init(hex: String) {
-        let cleaned = hex
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "#", with: "")
-
-        guard cleaned.count == 6 else {
-            self = .accentColor
-            return
-        }
-
-        var rgb: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&rgb)
-
-        let r = Double((rgb >> 16) & 0xFF) / 255.0
-        let g = Double((rgb >> 8) & 0xFF) / 255.0
-        let b = Double(rgb & 0xFF) / 255.0
-
-        self.init(red: r, green: g, blue: b)
-    }
-}
 
 // MARK: - Widget
 

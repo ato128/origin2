@@ -120,7 +120,7 @@ struct HomeView: View {
     // MARK: - UI Helpers
 
     private func bigCard(title: String, main: String, sub: String, right: String, colorHex: String) -> some View {
-        let c = hexColor(colorHex)
+        let c = Color(hex: colorHex)
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(title)

@@ -13,6 +13,7 @@ import Foundation
 enum AppTab: Hashable {
     case tasks
     case week
+    case crew
     case insights
     case settings
 }
@@ -35,6 +36,12 @@ struct MainTabView: View {
             }
             .tabItem { Label("Week", systemImage: "calendar") }
             .tag(AppTab.week)
+
+            NavigationStack {
+                CrewView()
+            }
+            .tabItem { Label("Crew", systemImage: "person.3.fill") }
+            .tag(AppTab.crew)
 
             NavigationStack {
                 InsightsView()
