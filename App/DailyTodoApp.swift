@@ -11,6 +11,7 @@ import WidgetKit
 
 @main
 struct DailyTodoApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     private let container: ModelContainer
 
     init() {
@@ -35,17 +36,28 @@ struct DailyTodoApp: App {
                 .onAppear {
                     let context = ModelContext(container)
                     WidgetAppSync.refreshFromSwiftData(context: context)
+
+                    LiveActivityScheduler.shared.registerBGTask()
+                    LiveActivityScheduler.shared.startForegroundLoop(container: container)
+                }
+                .onChange(of: scenePhase) { _, newPhase in
+                    if newPhase == .active {
+                        LiveActivityScheduler.shared
+                            .startForegroundLoop(container: container)
+
+                    } else if newPhase == .background {
+                        LiveActivityScheduler.shared
+                            .stopForegroundLoop()
+
+                        LiveActivityScheduler.shared
+                            .rescheduleBackgroundTask(container: container)
+                    }
                 }
                 .onOpenURL { url in
                     if url.absoluteString == "dailytodo://live/stop" {
                         Task {
                             await LiveActivityManager.shared.end()
                         }
-                    } else if url.absoluteString == "dailytodo://week" {
-                        NotificationCenter.default.post(
-                            name: .openWeekFromWidget,
-                            object: nil
-                        )
                     } else if url.absoluteString == "dailytodo://week" {
                         NotificationCenter.default.post(
                             name: .openWeekFromWidget,
@@ -59,5 +71,4 @@ struct DailyTodoApp: App {
 
 extension Notification.Name {
     static let openWeekFromWidget = Notification.Name("openWeekFromWidget")
-  
 }

@@ -8,7 +8,6 @@
 import Foundation
 import ActivityKit
 
-
 @MainActor
 final class LiveActivityManager {
 
@@ -19,9 +18,10 @@ final class LiveActivityManager {
 
     // MARK: - START
 
-    func start(for event: EventItem) {
+    func start(for event: EventItem) async {
         print("🧩 bundle:", Bundle.main.bundleIdentifier ?? "nil")
         print("🟣 LiveActivity START called:", event.title)
+
         let enabled = ActivityAuthorizationInfo().areActivitiesEnabled
         print("🟣 activitiesEnabled:", enabled)
         guard enabled else { return }
@@ -29,22 +29,24 @@ final class LiveActivityManager {
         let startDate = dateForNextOccurrence(of: event, at: event.startMinute)
         let endDate = startDate.addingTimeInterval(TimeInterval(max(1, event.durationMinute) * 60))
 
-        Task { await end() } // tek activity
+        await end() // tek activity tut
 
-        let attr = ScheduleAttributes(name: event.title)
+        let attributes = ScheduleAttributes(name: event.title)
         let state = ScheduleAttributes.ContentState(
             title: event.title,
             startDate: startDate,
-            endDate: endDate,
-            
+            endDate: endDate
         )
 
+        let content = ActivityContent(state: state, staleDate: endDate)
+
         do {
-            let activity = try Activity.request(
-                attributes: attr,
-                contentState: state,
+            let activity = try Activity<ScheduleAttributes>.request(
+                attributes: attributes,
+                content: content,
                 pushType: nil
             )
+
             UserDefaults.standard.set(activity.id, forKey: currentIDKey)
             print("🟢 LiveActivity requested id:", activity.id)
         } catch {
@@ -55,7 +57,7 @@ final class LiveActivityManager {
     // MARK: - UPDATE
 
     func update(for event: EventItem) async {
-        guard let activity = await currentActivity() else { return }
+        guard let activity = currentActivity() else { return }
 
         let startDate = dateForNextOccurrence(of: event, at: event.startMinute)
         let endDate = startDate.addingTimeInterval(TimeInterval(max(1, event.durationMinute) * 60))
@@ -63,43 +65,44 @@ final class LiveActivityManager {
         let newState = ScheduleAttributes.ContentState(
             title: event.title,
             startDate: startDate,
-            endDate: endDate,
-            
+            endDate: endDate
         )
 
-        await activity.update(using: newState)
+        let updatedContent = ActivityContent(state: newState, staleDate: endDate)
+        await activity.update(updatedContent)
+
         print("🟦 LiveActivity updated:", activity.id)
     }
 
     // MARK: - END
 
     func end() async {
-        guard let activity = await currentActivity() else {
+        guard let activity = currentActivity() else {
             UserDefaults.standard.removeObject(forKey: currentIDKey)
             return
         }
 
-        // iOS 16.2+ doğru kullanım
-        let finalState = activity.content.state
-        await activity.end(using: finalState, dismissalPolicy: .immediate)
+        let finalContent = ActivityContent(
+            state: activity.content.state,
+            staleDate: activity.content.staleDate
+        )
+
+        await activity.end(finalContent, dismissalPolicy: .immediate)
 
         UserDefaults.standard.removeObject(forKey: currentIDKey)
         print("🟡 LiveActivity ended:", activity.id)
     }
 
-    // MARK: - AUTO SYSTEM (app açıkken çalışır)
+    // MARK: - AUTO SYSTEM
 
-    /// WeekView timer veya App scenePhase bunu çağıracak
-    /// WeekView timer bunu çağıracak (her 60 saniye)
     func autoSyncIfNeeded(events: [EventItem]) async {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
         let now = Date()
         let calendar = Calendar.current
 
-        // 0=Pzt ... 6=Paz formatına çevir (WeekView ile aynı)
-        let w = calendar.component(.weekday, from: now) // 1=Paz ... 7=Cmt
-        let todayIndex = (w + 5) % 7                    // 0=Pzt ... 6=Paz
+        let weekday = calendar.component(.weekday, from: now) // 1=Paz ... 7=Cmt
+        let todayIndex = (weekday + 5) % 7                    // 0=Pzt ... 6=Paz
 
         let todaysEvents = events
             .filter { $0.weekday == todayIndex }
@@ -114,58 +117,66 @@ final class LiveActivityManager {
             calendar.component(.hour, from: now) * 60 +
             calendar.component(.minute, from: now)
 
-        // ✅ SADE: sadece "şu an ders var mı?"
         if let live = todaysEvents.first(where: {
             nowMinute >= $0.startMinute &&
             nowMinute < ($0.startMinute + $0.durationMinute)
         }) {
-            if await currentActivity() == nil {
-                start(for: live)
+            if currentActivity() == nil {
+                await start(for: live)
             } else {
                 await update(for: live)
             }
             return
         }
 
-        // ✅ ders yoksa: varsa activity bitmiş mi kontrol et, bittiyse kapat
-        if let activity = await currentActivity() {
+        if let activity = currentActivity() {
             let endDate = activity.content.state.endDate
             if endDate <= now {
-                await self.end()
+                await end()
             }
         }
     }
 
     // MARK: - CURRENT
 
-    private func currentActivity() async -> Activity<ScheduleAttributes>? {
+    private func currentActivity() -> Activity<ScheduleAttributes>? {
         guard let id = UserDefaults.standard.string(forKey: currentIDKey) else { return nil }
         return Activity<ScheduleAttributes>.activities.first(where: { $0.id == id })
     }
 
     // MARK: - DATE CALC
 
-    /// EventItem.weekday: 0=Pzt ... 6=Paz
-    /// ISO weekday: 1=Mon ... 7=Sun
+    /// event.weekday: 0=Pzt ... 6=Paz
     private func dateForNextOccurrence(of event: EventItem, at startMinute: Int) -> Date {
-        let cal = Calendar(identifier: .iso8601)
+        let cal = Calendar.current
         let now = Date()
 
-        let targetISOWeekday = event.weekday + 1 // 0->1 (Mon) ... 6->7 (Sun)
+        // Calendar weekday: 1=Paz ... 7=Cmt
+        // Bizim format:      0=Pzt ... 6=Paz
+        let systemWeekday = cal.component(.weekday, from: now)
+        let todayIndex = (systemWeekday + 5) % 7
+
+        let daysUntil = (event.weekday - todayIndex + 7) % 7
+
         let hour = max(0, min(23, startMinute / 60))
         let minute = max(0, min(59, startMinute % 60))
 
-        var comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)
-        comps.weekday = targetISOWeekday
-        comps.hour = hour
-        comps.minute = minute
-        comps.second = 0
-
-        let base = cal.date(from: comps) ?? now
-        if base <= now {
-            return cal.date(byAdding: .day, value: 7, to: base) ?? base
-        } else {
-            return base
+        let startOfToday = cal.startOfDay(for: now)
+        guard let targetDay = cal.date(byAdding: .day, value: daysUntil, to: startOfToday),
+              let candidate = cal.date(
+                  bySettingHour: hour,
+                  minute: minute,
+                  second: 0,
+                  of: targetDay
+              ) else {
+            return now
         }
+
+        // Eğer bugün seçiliyse ve saat geçmişse, bir sonraki haftaya at
+        if daysUntil == 0 && candidate <= now {
+            return cal.date(byAdding: .day, value: 7, to: candidate) ?? candidate
+        }
+
+        return candidate
     }
 }

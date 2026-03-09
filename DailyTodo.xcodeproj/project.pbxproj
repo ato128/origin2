@@ -27,6 +27,8 @@
 		6D215DDA2F56477500F7B9D7 /* WidgetShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DD82F5645F200F7B9D7 /* WidgetShared.swift */; };
 		6D215DDC2F564C4100F7B9D7 /* WidgetSync+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DDB2F564C4100F7B9D7 /* WidgetSync+App.swift */; };
 		6D81C1082F59E87500B65AF8 /* DailyTodo.entitlements.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6D81C1072F59E87500B65AF8 /* DailyTodo.entitlements.plist */; };
+		6DC0CA092F5F1AFA00A875ED /* ScheduleAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA082F5F1AFA00A875ED /* ScheduleAttributes.swift */; };
+		6DC0CA0A2F5F1B0300A875ED /* ScheduleAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA082F5F1AFA00A875ED /* ScheduleAttributes.swift */; };
 		6DF0C91D2F557AA50043B887 /* DailyTodoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF0C91C2F557AA50043B887 /* DailyTodoApp.swift */; };
 		6DF0C93D2F557DBF0043B887 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF0C93C2F557DBF0043B887 /* RootView.swift */; };
 		6DF0C9412F557F730043B887 /* AddTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF0C9402F557F730043B887 /* AddTaskView.swift */; };
@@ -80,6 +82,7 @@
 		6D215DD82F5645F200F7B9D7 /* WidgetShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetShared.swift; sourceTree = "<group>"; };
 		6D215DDB2F564C4100F7B9D7 /* WidgetSync+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WidgetSync+App.swift"; sourceTree = "<group>"; };
 		6D81C1072F59E87500B65AF8 /* DailyTodo.entitlements.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = DailyTodo.entitlements.plist; sourceTree = "<group>"; };
+		6DC0CA082F5F1AFA00A875ED /* ScheduleAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleAttributes.swift; sourceTree = "<group>"; };
 		6DF0C9192F557AA50043B887 /* DailyTodo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DailyTodo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6DF0C91C2F557AA50043B887 /* DailyTodoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyTodoApp.swift; sourceTree = "<group>"; };
 		6DF0C93C2F557DBF0043B887 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
@@ -109,7 +112,6 @@
 			membershipExceptions = (
 				DTTaskItem.swift,
 				ScheduleShare.swift,
-				ScheduleShared/ScheduleAttributes.swift,
 			);
 			target = 6D215DBB2F56458C00F7B9D7 /* WidgetExtensionExtension */;
 		};
@@ -226,6 +228,7 @@
 				6D215DB62F5642AE00F7B9D7 /* ScheduleExport.swift */,
 				6D215DD82F5645F200F7B9D7 /* WidgetShared.swift */,
 				6D215DDB2F564C4100F7B9D7 /* WidgetSync+App.swift */,
+				6DC0CA082F5F1AFA00A875ED /* ScheduleAttributes.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -388,6 +391,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6DC0CA0A2F5F1B0300A875ED /* ScheduleAttributes.swift in Sources */,
 				6D215DDA2F56477500F7B9D7 /* WidgetShared.swift in Sources */,
 				6DF8FB932F5B6B3E00D548E4 /* EventItem.swift in Sources */,
 			);
@@ -405,6 +409,7 @@
 				6D215DA52F5602D100F7B9D7 /* MainTabView.swift in Sources */,
 				6D215DD92F5645F200F7B9D7 /* WidgetShared.swift in Sources */,
 				6D215DA32F55FD7100F7B9D7 /* EditTaskView.swift in Sources */,
+				6DC0CA092F5F1AFA00A875ED /* ScheduleAttributes.swift in Sources */,
 				6DF0C9412F557F730043B887 /* AddTaskView.swift in Sources */,
 				6D215DAB2F5603D600F7B9D7 /* AddEventView.swift in Sources */,
 				6D215DA92F5603B100F7B9D7 /* WeekView.swift in Sources */,

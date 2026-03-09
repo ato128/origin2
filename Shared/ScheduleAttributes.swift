@@ -2,14 +2,13 @@
 //  ScheduleAttributes.swift
 //  DailyTodo
 //
-//  Created by Atakan Ortaç on 6.03.2026.
+//  Created by Atakan Ortaç on 9.03.2026.
 //
 
-import Foundation
 import ActivityKit
+import Foundation
 
 struct ScheduleAttributes: ActivityAttributes {
-
     public struct ContentState: Codable, Hashable {
         var title: String
         var startDate: Date

@@ -8,6 +8,7 @@
 import Foundation
 import SwiftData
 import BackgroundTasks
+import ActivityKit
 
 @MainActor
 final class LiveActivityScheduler {
@@ -19,14 +20,18 @@ final class LiveActivityScheduler {
     private var timer: Timer?
 
     // App açılınca çağır
-    func startForegroundLoop(context: ModelContext) {
+    func startForegroundLoop(container: ModelContainer) {
         timer?.invalidate()
+
+        let context = ModelContext(container)
         tick(context: context)
 
-        // 30 sn’de bir kontrol (pil dostu)
+        // 30 sn’de bir kontrol
         timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             guard let self else { return }
+
             Task { @MainActor in
+                let context = ModelContext(container)
                 self.tick(context: context)
             }
         }
@@ -38,14 +43,18 @@ final class LiveActivityScheduler {
     }
 
     /// Event ekle/edit/sil sonrası çağır
-    func rescheduleBackgroundTask(context: ModelContext) {
+    func rescheduleBackgroundTask(container: ModelContainer) {
+        let context = ModelContext(container)
         scheduleBGTaskForNextEvent(context: context)
     }
 
     // MARK: - Foreground tick
 
     private func tick(context: ModelContext) {
-        guard let next = nextEventFromSwiftData(context: context) else { return }
+        guard let next = nextEventFromSwiftData(context: context) else {
+            print("❌ LiveActivityScheduler: next event yok")
+            return
+        }
 
         let startDate = dateForNextOccurrence(of: next, at: next.startMinute)
         let endDate = startDate.addingTimeInterval(TimeInterval(max(1, next.durationMinute) * 60))
@@ -53,14 +62,33 @@ final class LiveActivityScheduler {
         let now = Date()
         let tenMinBefore = startDate.addingTimeInterval(-10 * 60)
 
+        print("🕒 now:", now)
+        print("📚 next event:", next.title)
+        print("▶️ startDate:", startDate)
+        print("⏹ endDate:", endDate)
+        print("⏰ tenMinBefore:", tenMinBefore)
+
         // 10 dk kala başlat
         if now >= tenMinBefore && now < endDate {
-            LiveActivityManager.shared.start(for: next)
+            print("✅ start koşulu sağlandı")
+
+            if Activity<ScheduleAttributes>.activities.isEmpty {
+                Task {
+                    await LiveActivityManager.shared.start(for: next)
+                }
+            } else {
+                print("🟡 zaten aktif bir Live Activity var")
+            }
+        } else {
+            print("❌ start koşulu sağlanmadı")
         }
 
         // ders bittiyse kapat
         if now >= endDate {
-            Task { await LiveActivityManager.shared.end() }
+            print("🟠 end koşulu sağlandı")
+            Task {
+                await LiveActivityManager.shared.end()
+            }
         }
     }
 
@@ -79,19 +107,21 @@ final class LiveActivityScheduler {
         }
 
         Task { @MainActor in
-            // Background’ta SwiftData okumak için container kuruyoruz
             let container = try? ModelContainer(
                 for: DTTaskItem.self,
-                EventItem.self
+                EventItem.self,
+                FocusSessionRecord.self
             )
+
             guard let container else {
                 task.setTaskCompleted(success: false)
                 return
             }
-            let ctx = ModelContext(container)
 
-            self.tick(context: ctx)
-            self.scheduleBGTaskForNextEvent(context: ctx)
+            let context = ModelContext(container)
+
+            self.tick(context: context)
+            self.scheduleBGTaskForNextEvent(context: context)
 
             task.setTaskCompleted(success: true)
         }
@@ -100,18 +130,22 @@ final class LiveActivityScheduler {
     private func scheduleBGTaskForNextEvent(context: ModelContext) {
         BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: taskID)
 
-        guard let next = nextEventFromSwiftData(context: context) else { return }
+        guard let next = nextEventFromSwiftData(context: context) else {
+            print("❌ BG schedule: next event yok")
+            return
+        }
+
         let startDate = dateForNextOccurrence(of: next, at: next.startMinute)
         let fire = startDate.addingTimeInterval(-10 * 60)
 
         let req = BGAppRefreshTaskRequest(identifier: taskID)
-        // Apple kesin zaman vermez; “en erken bu” deriz
         req.earliestBeginDate = fire
 
         do {
             try BGTaskScheduler.shared.submit(req)
+            print("🟢 BG task scheduled for:", fire)
         } catch {
-            // sessiz geç
+            print("🔴 BG task schedule error:", error)
         }
     }
 
@@ -119,46 +153,63 @@ final class LiveActivityScheduler {
 
     private func nextEventFromSwiftData(context: ModelContext) -> EventItem? {
         let descriptor = FetchDescriptor<EventItem>(
-            sortBy: [SortDescriptor(\.weekday, order: .forward),
-                     SortDescriptor(\.startMinute, order: .forward)]
+            sortBy: [
+                SortDescriptor(\.weekday, order: .forward),
+                SortDescriptor(\.startMinute, order: .forward)
+            ]
         )
+
         let all = (try? context.fetch(descriptor)) ?? []
         guard !all.isEmpty else { return nil }
 
-        // “şu andan itibaren” en yakın gerçekleşecek event’i bul
         let now = Date()
         var best: (EventItem, Date)?
+
         for ev in all {
-            let d = dateForNextOccurrence(of: ev, at: ev.startMinute)
-            if d <= now.addingTimeInterval(7 * 24 * 3600) { // 1 hafta içinde
-                if best == nil || d < best!.1 {
-                    best = (ev, d)
+            let date = dateForNextOccurrence(of: ev, at: ev.startMinute)
+
+            if date <= now.addingTimeInterval(7 * 24 * 3600) {
+                if best == nil || date < best!.1 {
+                    best = (ev, date)
                 }
             }
         }
+
         return best?.0
     }
 
+ 
     /// event.weekday: 0=Pzt ... 6=Paz
     private func dateForNextOccurrence(of event: EventItem, at startMinute: Int) -> Date {
-        let cal = Calendar(identifier: .iso8601)
+        let cal = Calendar.current
         let now = Date()
 
-        let targetISOWeekday = event.weekday + 1 // 1=Mon ... 7=Sun
+        // Calendar weekday: 1=Paz ... 7=Cmt
+        // Bizim format:      0=Pzt ... 6=Paz
+        let systemWeekday = cal.component(.weekday, from: now)
+        let todayIndex = (systemWeekday + 5) % 7
+
+        let daysUntil = (event.weekday - todayIndex + 7) % 7
+
         let hour = max(0, min(23, startMinute / 60))
         let minute = max(0, min(59, startMinute % 60))
 
-        var comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)
-        comps.weekday = targetISOWeekday
-        comps.hour = hour
-        comps.minute = minute
-        comps.second = 0
-
-        let base = cal.date(from: comps) ?? now
-        if base <= now {
-            return cal.date(byAdding: .day, value: 7, to: base) ?? base
-        } else {
-            return base
+        let startOfToday = cal.startOfDay(for: now)
+        guard let targetDay = cal.date(byAdding: .day, value: daysUntil, to: startOfToday),
+              let candidate = cal.date(
+                  bySettingHour: hour,
+                  minute: minute,
+                  second: 0,
+                  of: targetDay
+              ) else {
+            return now
         }
+
+        // Eğer bugün seçiliyse ve saat geçmişse, bir sonraki haftaya at
+        if daysUntil == 0 && candidate <= now {
+            return cal.date(byAdding: .day, value: 7, to: candidate) ?? candidate
+        }
+
+        return candidate
     }
 }
