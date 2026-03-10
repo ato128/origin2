@@ -458,6 +458,60 @@ private extension CrewDetailView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
     }
+    
+    
+    
+    func activityIcon(for text: String) -> String {
+        let lower = text.lowercased()
+
+        if lower.contains("comment") {
+            return "text.bubble.fill"
+        } else if lower.contains("vote") {
+            return "hand.thumbsup.fill"
+        } else if lower.contains("complete") || lower.contains("done") {
+            return "checkmark.circle.fill"
+        } else if lower.contains("status") {
+            return "arrow.triangle.2.circlepath.circle.fill"
+        } else if lower.contains("create") {
+            return "plus.circle.fill"
+        } else if lower.contains("reaction") {
+            return "face.smiling.fill"
+        } else {
+            return "bolt.fill"
+        }
+    }
+    
+    func activityRow(_ item: CrewActivity) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(hexColor(crew.colorHex).opacity(0.14))
+                    .frame(width: 34, height: 34)
+
+                Image(systemName: activityIcon(for: item.actionText))
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(hexColor(crew.colorHex))
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.memberName)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text(item.actionText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+
+                Text(item.createdAt.formatted(date: .omitted, time: .shortened))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
+            Spacer()
+        }
+        .padding(.vertical, 4)
+    }
 
     
     
@@ -470,31 +524,22 @@ private extension CrewDetailView {
 
                 Spacer()
 
-                Image(systemName: "bolt.horizontal.circle.fill")
-                    .foregroundStyle(hexColor(crew.colorHex))
+                Text("\(crewActivities.count)")
+                    .font(.caption.weight(.bold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(Color.secondary.opacity(0.12))
+                    )
+                    .foregroundStyle(.secondary)
             }
 
             if crewActivities.isEmpty {
                 emptyMiniState(text: "No activity yet")
             } else {
                 ForEach(crewActivities.prefix(8)) { item in
-                    HStack(alignment: .top, spacing: 10) {
-                        Circle()
-                            .fill(hexColor(crew.colorHex).opacity(0.18))
-                            .frame(width: 10, height: 10)
-                            .padding(.top, 5)
-
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("\(item.memberName) \(item.actionText)")
-                                .font(.subheadline)
-
-                            Text(item.createdAt, style: .time)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Spacer()
-                    }
+                    activityRow(item)
                 }
             }
         }
@@ -502,7 +547,6 @@ private extension CrewDetailView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
     }
-
     func infoPill(text: String, tint: Color) -> some View {
         Text(text)
             .font(.caption.weight(.semibold))

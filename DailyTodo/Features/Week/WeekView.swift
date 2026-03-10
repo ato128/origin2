@@ -23,14 +23,16 @@ struct WeekView: View {
     private var allEvents: [EventItem]
     @Query private var allCrewTasks: [CrewTask]
     @Query private var allCrews: [Crew]
+    @Query(sort: \CrewActivity.createdAt, order: .reverse)
+    private var allCrewActivities: [CrewActivity]
    
 
     @State private var selectedDay: Int = 0
     @State private var showingAdd: Bool = false
     @State private var editingEvent: EventItem? = nil
     
-    @State private var mode: WeekMode = .personal
     @State private var weekMode: WeekMode = .personal
+    
 
     @State private var showCopied: Bool = false
 
@@ -131,39 +133,177 @@ struct WeekView: View {
     }
 }
 
+
+// MARK: - Main List
 // MARK: - Main List
 private extension WeekView {
 
-    @ViewBuilder
-    func mainList(proxy: ScrollViewProxy) -> some View {
-        List {
-            pickerSection
-            summarySection
-            
-            if weekMode == .personal {
+@ViewBuilder
+func mainList(proxy: ScrollViewProxy) -> some View {
+    if weekMode == .personal {
+        personalWeekList(proxy: proxy)
+    } else {
+        crewWeekList
+    }
+}
 
-                if eventsForDay.isEmpty {
-                    emptySection
-                } else {
-                    eventsSection
+
+
+@ViewBuilder
+func personalWeekList(proxy: ScrollViewProxy) -> some View {
+    List {
+        pickerSection
+        summarySection
+
+        if eventsForDay.isEmpty {
+            emptySection
+        } else {
+            eventsSection
+        }
+    }
+    .listStyle(.plain)
+    .scrollContentBackground(.hidden)
+    .background(Color(.systemGroupedBackground))
+}
+
+@ViewBuilder
+var crewWeekList: some View {
+    List {
+        crewPickerSection
+        crewDateSection
+        crewWeekSection
+        crewActivityPreviewSection
+    }
+    .listStyle(.plain)
+    .scrollContentBackground(.hidden)
+    .background(Color(.systemGroupedBackground))
+}
+
+    var crewPickerSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 14) {
+                Picker("Week Mode", selection: $weekMode) {
+                    Text("Personal").tag(WeekMode.personal)
+                    Text("Crew").tag(WeekMode.crew)
                 }
+                .pickerStyle(.segmented)
 
-            } else {
+                HStack(spacing: 8) {
+                    ForEach(0..<7, id: \.self) { day in
+                        Button {
+                            selectedDay = day
+                        } label: {
+                            VStack(spacing: 8) {
+                                Text(dayTitles[day])
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(day == selectedDay ? .white : .primary)
 
-                crewWeekSection
+                                ZStack {
+                                    Circle()
+                                        .fill(dayIndicatorColor(for: day).opacity(day == selectedDay ? 1 : 0.22))
+                                        .frame(width: dayIndicatorSize(for: day), height: dayIndicatorSize(for: day))
+                                        .scaleEffect(dayPulseScale(for: day))
 
+                                    if hasCrewTasks(on: day) {
+                                        Circle()
+                                            .fill(day == selectedDay ? Color.white.opacity(0.95) : dayIndicatorColor(for: day))
+                                            .frame(width: 6, height: 6)
+                                    }
+                                }
+                                .frame(height: 14)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .fill(day == selectedDay ? dayIndicatorColor(for: day) : Color.white.opacity(0.04))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .stroke(
+                                        day == selectedDay
+                                        ? dayIndicatorColor(for: day).opacity(0.9)
+                                        : Color.white.opacity(0.05),
+                                        lineWidth: 1
+                                    )
+                            )
+                            .shadow(
+                                color: shouldGlowDay(day)
+                                ? dayIndicatorColor(for: day).opacity(0.35)
+                                : .clear,
+                                radius: shouldGlowDay(day) ? 10 : 0
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+var crewDateSection: some View {
+    Section {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Crew Week")
+                    .font(.headline)
+
+                Text(fullDateTextForSelectedDay())
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Image(systemName: "person.3.fill")
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+var crewActivityPreviewSection: some View {
+    let recent = Array(allCrewActivities.prefix(4))
+
+    return Section("Recent Activity") {
+        if recent.isEmpty {
+            Text("No crew activity yet")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else {
+            ForEach(recent) { item in
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "bolt.fill")
+                        .foregroundStyle(.secondary)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.memberName)
+                            .font(.caption.weight(.semibold))
+
+                        Text(item.actionText)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+
+                    Spacer()
+
+                    Text(item.createdAt, style: .time)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.vertical, 2)
             }
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .background(Color(.systemGroupedBackground))
     }
+}
 
     var pickerSection: some View {
         Section {
             VStack(spacing: 12) {
                 
-                Picker("Week Mode", selection: $mode) {
+                Picker("Week Mode", selection: $weekMode) {
                     Text("Personal").tag(WeekMode.personal)
                     Text("Crew").tag(WeekMode.crew)
                 }
@@ -203,38 +343,219 @@ private extension WeekView {
         .listRowBackground(Color.clear)
     }
     
-    var crewWeekSection: some View {
-        Section("Crew Week") {
-            let crewTasksForDay = allCrewTasksForSelectedDay
-
-            if crewTasksForDay.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Bu gün için crew görevi yok")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    Text("Shared task oluşturup week'e eklediğinde burada görünecek.")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
-                .padding(.vertical, 8)
-            } else {
-                ForEach(crewTasksForDay) { task in
-                    NavigationLink {
-                        if let crew = crewForTask(task) {
-                            CrewTaskDetailView(task: task, crew: crew)
-                        } else {
-                            Text("Crew bulunamadı")
-                        }
-                    } label: {
-                        crewWeekTaskRow(task)
-                    }
-                    .buttonStyle(.plain)
-                }
+    func crewTasks(for day: Int) -> [CrewTask] {
+        allCrewTasks
+            .filter { $0.showOnWeek && $0.scheduledWeekday == day }
+            .sorted {
+                ($0.scheduledStartMinute ?? 0) < ($1.scheduledStartMinute ?? 0)
             }
-        }
     }
     
+    func currentMinuteOfDay() -> Int {
+        let c = Calendar.current.dateComponents([.hour, .minute], from: Date())
+        return (c.hour ?? 0) * 60 + (c.minute ?? 0)
+    }
+
+    func hasCrewTasks(on day: Int) -> Bool {
+        !crewTasks(for: day).isEmpty
+    }
+
+    func hasActiveCrewTask(on day: Int) -> Bool {
+        guard day == weekdayIndexToday() else { return false }
+
+        let now = currentMinuteOfDay()
+
+        return crewTasks(for: day).contains { task in
+            guard let start = task.scheduledStartMinute,
+                  let duration = task.scheduledDurationMinute else { return false }
+            let end = start + duration
+            return now >= start && now < end
+        }
+    }
+
+    func hasUpcomingCrewTaskSoon(on day: Int) -> Bool {
+        guard day == weekdayIndexToday() else { return false }
+
+        let now = currentMinuteOfDay()
+
+        return crewTasks(for: day).contains { task in
+            guard let start = task.scheduledStartMinute else { return false }
+            let diff = start - now
+            return diff >= 0 && diff <= 30
+        }
+    }
+
+    func shouldGlowDay(_ day: Int) -> Bool {
+        hasActiveCrewTask(on: day) || hasUpcomingCrewTaskSoon(on: day)
+    }
+
+    func dayIndicatorColor(for day: Int) -> Color {
+        if hasActiveCrewTask(on: day) {
+            return .green
+        }
+
+        if hasUpcomingCrewTaskSoon(on: day) {
+            return .orange
+        }
+
+        if hasCrewTasks(on: day) {
+            return .blue
+        }
+
+        return .secondary
+    }
+
+    func dayIndicatorSize(for day: Int) -> CGFloat {
+        if hasActiveCrewTask(on: day) {
+            return 12
+        }
+
+        if hasUpcomingCrewTaskSoon(on: day) {
+            return 10
+        }
+
+        return hasCrewTasks(on: day) ? 8 : 6
+    }
+
+    func dayPulseScale(for day: Int) -> CGFloat {
+        if hasActiveCrewTask(on: day) {
+            return 1.18
+        }
+
+        if hasUpcomingCrewTaskSoon(on: day) {
+            return 1.08
+        }
+
+        return 1.0
+    }
+
+func fullDateTextForSelectedDay() -> String {
+    let calendar = Calendar.current
+    let today = Date()
+
+    guard let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: today)?.start,
+          let targetDate = calendar.date(byAdding: .day, value: selectedDay, to: startOfWeek) else {
+        return "Date unavailable"
+    }
+
+    return targetDate.formatted(date: .complete, time: .omitted)
+}
+    
+    func crewTimelineTaskCard(_ task: CrewTask, isLast: Bool) -> some View {
+        let crew = allCrews.first { $0.id == task.crewID }
+        let active = isTaskActive(task)
+        let soon = isTaskStartingSoon(task)
+
+        return HStack(alignment: .top, spacing: 12) {
+            VStack(spacing: 0) {
+                Circle()
+                    .fill(active ? Color.green : (soon ? Color.orange : priorityColor(task.priority)))
+                    .frame(width: active ? 14 : 10, height: active ? 14 : 10)
+                    .shadow(
+                        color: active
+                        ? Color.green.opacity(0.45)
+                        : (soon ? Color.orange.opacity(0.35) : .clear),
+                        radius: active || soon ? 8 : 0
+                    )
+                    .scaleEffect(active ? 1.18 : (soon ? 1.08 : 1.0))
+
+                if !isLast {
+                    Rectangle()
+                        .fill(
+                            active
+                            ? Color.green.opacity(0.45)
+                            : Color.white.opacity(0.12)
+                        )
+                        .frame(width: 2)
+                        .frame(maxHeight: .infinity)
+                        .padding(.top, 4)
+                }
+            }
+            .frame(width: 18)
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    if let start = task.scheduledStartMinute {
+                        Text(hm(start))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(active ? .green : (soon ? .orange : .secondary))
+                    }
+
+                    Spacer()
+
+                    Text(priorityTitle(task.priority))
+                        .font(.caption2.weight(.bold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill(priorityColor(task.priority).opacity(0.14))
+                        )
+                        .foregroundStyle(priorityColor(task.priority))
+                }
+
+                Text(task.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+
+                if let crew {
+                    Text(crew.name)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                HStack(spacing: 10) {
+                    if !task.assignedTo.isEmpty {
+                        Label(task.assignedTo, systemImage: "person.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Label(statusTitle(task.status), systemImage: "flag.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white.opacity(active ? 0.08 : 0.04))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(
+                        active
+                        ? Color.green.opacity(0.35)
+                        : (soon ? Color.orange.opacity(0.22) : Color.white.opacity(0.05)),
+                        lineWidth: 1
+                    )
+            )
+            .scaleEffect(active ? 1.02 : 1.0)
+            .shadow(
+                color: active
+                ? Color.green.opacity(0.12)
+                : .clear,
+                radius: active ? 12 : 0
+            )
+        }
+        .animation(.spring(duration: 0.28), value: active)
+        .animation(.easeInOut(duration: 0.25), value: soon)
+    }
+    
+    var crewWeekSection: some View {
+        Section("Crew Tasks") {
+            TabView(selection: $selectedDay) {
+                ForEach(0..<7, id: \.self) { day in
+                    crewDayPage(for: day)
+                        .tag(day)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .frame(minHeight: 260)
+        }
+    }
     var allCrewTasksForSelectedDay: [CrewTask] {
         allCrewTasks
             .filter { task in
@@ -243,6 +564,90 @@ private extension WeekView {
             .sorted {
                 ($0.scheduledStartMinute ?? 0) < ($1.scheduledStartMinute ?? 0)
             }
+    }
+    
+    func shortDateTextForDay(_ day: Int) -> String {
+        let calendar = Calendar.current
+        let today = Date()
+
+        guard let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: today)?.start,
+              let targetDate = calendar.date(byAdding: .day, value: day, to: startOfWeek) else {
+            return ""
+        }
+
+        return targetDate.formatted(date: .abbreviated, time: .omitted)
+    }
+    
+    func isTaskActive(_ task: CrewTask) -> Bool {
+        guard task.scheduledWeekday == weekdayIndexToday() else { return false }
+
+        let now = currentMinuteOfDay()
+        guard let start = task.scheduledStartMinute,
+              let duration = task.scheduledDurationMinute else { return false }
+
+        let end = start + duration
+        return now >= start && now < end
+    }
+
+    func isTaskStartingSoon(_ task: CrewTask) -> Bool {
+        guard task.scheduledWeekday == weekdayIndexToday() else { return false }
+
+        let now = currentMinuteOfDay()
+        guard let start = task.scheduledStartMinute else { return false }
+
+        let diff = start - now
+        return diff >= 0 && diff <= 30
+    }
+    
+    func crewDayPage(for day: Int) -> some View {
+        let tasks = allCrewTasks
+            .filter { $0.showOnWeek && $0.scheduledWeekday == day }
+            .sorted {
+                ($0.scheduledStartMinute ?? 0) < ($1.scheduledStartMinute ?? 0)
+            }
+
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text(dayTitles[day])
+                    .font(.headline)
+
+                Spacer()
+
+                Text(shortDateTextForDay(day))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if tasks.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("No Crew Tasks")
+                        .font(.subheadline.weight(.semibold))
+
+                    Text("Shared tasks scheduled for this day will appear here.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 8)
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(tasks) { task in
+                        NavigationLink {
+                            if let crew = allCrews.first(where: { $0.id == task.crewID }) {
+                                CrewTaskDetailView(task: task, crew: crew)
+                            } else {
+                                EmptyView()
+                            }
+                        } label: {
+                            crewTimelineTaskCard(task, isLast: task.id == tasks.last?.id)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 6)
+        .animation(.easeInOut(duration: 0.25), value: selectedDay)
     }
 
     func crewForTask(_ task: CrewTask) -> Crew? {
@@ -627,6 +1032,7 @@ private extension WeekView {
     }
 }
 
+
 // MARK: - Logic
 private extension WeekView {
 
@@ -662,11 +1068,7 @@ private extension WeekView {
         return "\(h)s \(m)dk"
     }
 
-    func currentMinuteOfDay() -> Int {
-        let c = Calendar.current.dateComponents([.hour, .minute], from: Date())
-        return (c.hour ?? 0) * 60 + (c.minute ?? 0)
-    }
-
+  
     func weekdayIndexToday() -> Int {
         let w = Calendar.current.component(.weekday, from: Date())
         return (w + 5) % 7
