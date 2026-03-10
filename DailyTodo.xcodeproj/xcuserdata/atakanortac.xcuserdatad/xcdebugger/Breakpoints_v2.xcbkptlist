@@ -30,27 +30,27 @@
             filePath = "DailyTodo/Features/Week/WeekView.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1068"
-            endingLineNumber = "1068"
-            landmarkName = "overlaps(_:_:)"
+            startingLineNumber = "1268"
+            endingLineNumber = "1268"
+            landmarkName = "weekdayIndexToday()"
             landmarkType = "7">
             <Locations>
                <Location
-                  uuid = "08BF83D2-BC50-4C16-9C50-60896275BAD0 - 90b01c7a2e98f7c2"
+                  uuid = "08BF83D2-BC50-4C16-9C50-60896275BAD0 - c5f2e4907933f7a3"
                   shouldBeEnabled = "Yes"
                   ignoreCount = "0"
                   continueAfterRunningActions = "No"
-                  symbolName = "DailyTodo.WeekView.durationText(Swift.Int) -&gt; Swift.String"
+                  symbolName = "closure #1 (DailyTodo.EventItem) -&gt; Swift.Bool in DailyTodo.WeekView.autoScrollTarget(now: Swift.Int) -&gt; Swift.Optional&lt;DailyTodo.EventItem&gt;"
                   moduleName = "DailyTodo.debug.dylib"
                   usesParentBreakpointCondition = "Yes"
                   urlString = "file:///Users/atakanortac/Desktop/origin2/DailyTodo/Features/Week/WeekView.swift"
                   startingColumnNumber = "9223372036854775807"
                   endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "973"
-                  endingLineNumber = "973">
+                  startingLineNumber = "1268"
+                  endingLineNumber = "1268">
                </Location>
                <Location
-                  uuid = "08BF83D2-BC50-4C16-9C50-60896275BAD0 - 90b01c7a2e98e381"
+                  uuid = "08BF83D2-BC50-4C16-9C50-60896275BAD0 - 90b01c7a2e980dc9"
                   shouldBeEnabled = "Yes"
                   ignoreCount = "0"
                   continueAfterRunningActions = "No"
@@ -60,8 +60,8 @@
                   urlString = "file:///Users/atakanortac/Desktop/origin2/DailyTodo/Features/Week/WeekView.swift"
                   startingColumnNumber = "9223372036854775807"
                   endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "1068"
-                  endingLineNumber = "1068">
+                  startingLineNumber = "1268"
+                  endingLineNumber = "1268">
                </Location>
             </Locations>
          </BreakpointContent>

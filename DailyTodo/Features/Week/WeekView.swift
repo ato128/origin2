@@ -129,6 +129,13 @@ struct WeekView: View {
                 .onReceive(liveTimer) { _ in
                     Task { await LiveActivityManager.shared.autoSyncIfNeeded(events: allEvents) }
                 }
+                .onChange(of: weekMode) { _, newValue in
+                    if newValue == .crew {
+                        withAnimation(.spring(duration: 0.3)) {
+                            selectedDay = weekdayIndexToday()
+                        }
+                    }
+                }
         }
     }
 }
@@ -188,53 +195,76 @@ var crewWeekList: some View {
                 }
                 .pickerStyle(.segmented)
 
-                HStack(spacing: 8) {
-                    ForEach(0..<7, id: \.self) { day in
-                        Button {
-                            selectedDay = day
-                        } label: {
-                            VStack(spacing: 8) {
-                                Text(dayTitles[day])
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(day == selectedDay ? .white : .primary)
-
-                                ZStack {
-                                    Circle()
-                                        .fill(dayIndicatorColor(for: day).opacity(day == selectedDay ? 1 : 0.22))
-                                        .frame(width: dayIndicatorSize(for: day), height: dayIndicatorSize(for: day))
-                                        .scaleEffect(dayPulseScale(for: day))
-
-                                    if hasCrewTasks(on: day) {
-                                        Circle()
-                                            .fill(day == selectedDay ? Color.white.opacity(0.95) : dayIndicatorColor(for: day))
-                                            .frame(width: 6, height: 6)
+                ScrollViewReader { proxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(0..<7, id: \.self) { day in
+                                Button {
+                                    withAnimation(.spring(duration: 0.28)) {
+                                        selectedDay = day
                                     }
-                                }
-                                .frame(height: 14)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .fill(day == selectedDay ? dayIndicatorColor(for: day) : Color.white.opacity(0.04))
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .stroke(
-                                        day == selectedDay
-                                        ? dayIndicatorColor(for: day).opacity(0.9)
-                                        : Color.white.opacity(0.05),
-                                        lineWidth: 1
+                                } label: {
+                                    VStack(spacing: 8) {
+                                        Text(dayTitles[day])
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(day == selectedDay ? .white : .primary)
+
+                                        ZStack {
+                                            Circle()
+                                                .fill(dayIndicatorColor(for: day).opacity(day == selectedDay ? 1 : 0.22))
+                                                .frame(
+                                                    width: dayIndicatorSize(for: day),
+                                                    height: dayIndicatorSize(for: day)
+                                                )
+                                                .scaleEffect(dayPulseScale(for: day))
+
+                                            if hasCrewTasks(on: day) {
+                                                Circle()
+                                                    .fill(day == selectedDay ? Color.white.opacity(0.95) : dayIndicatorColor(for: day))
+                                                    .frame(width: 6, height: 6)
+                                            }
+                                        }
+                                        .frame(height: 14)
+                                    }
+                                    .frame(width: 74)
+                                    .padding(.vertical, 12)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                            .fill(day == selectedDay ? dayIndicatorColor(for: day) : Color.white.opacity(0.04))
                                     )
-                            )
-                            .shadow(
-                                color: shouldGlowDay(day)
-                                ? dayIndicatorColor(for: day).opacity(0.35)
-                                : .clear,
-                                radius: shouldGlowDay(day) ? 10 : 0
-                            )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                            .stroke(
+                                                day == selectedDay
+                                                ? dayIndicatorColor(for: day).opacity(0.9)
+                                                : Color.white.opacity(0.05),
+                                                lineWidth: 1
+                                            )
+                                    )
+                                    .shadow(
+                                        color: shouldGlowDay(day)
+                                        ? dayIndicatorColor(for: day).opacity(0.35)
+                                        : .clear,
+                                        radius: shouldGlowDay(day) ? 10 : 0
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                                .id(day)
+                            }
                         }
-                        .buttonStyle(.plain)
+                        .padding(.horizontal, 2)
+                    }
+                    .onAppear {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            withAnimation(.spring(duration: 0.35)) {
+                                proxy.scrollTo(selectedDay, anchor: .center)
+                            }
+                        }
+                    }
+                    .onChange(of: selectedDay) { _, newValue in
+                        withAnimation(.spring(duration: 0.35)) {
+                            proxy.scrollTo(newValue, anchor: .center)
+                        }
                     }
                 }
             }
@@ -242,27 +272,32 @@ var crewWeekList: some View {
         }
     }
 
-var crewDateSection: some View {
-    Section {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Crew Week")
-                    .font(.headline)
+    var crewDateSection: some View {
+        Section {
+            HStack {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Crew Week")
+                        .font(.system(size: 20, weight: .bold))
 
-                Text(fullDateTextForSelectedDay())
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    Text(fullDateTextForSelectedDay())
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.06))
+                        .frame(width: 42, height: 42)
+
+                    Image(systemName: "person.3.fill")
+                        .foregroundStyle(.secondary)
+                }
             }
-
-            Spacer()
-
-            Image(systemName: "person.3.fill")
-                .foregroundStyle(.secondary)
+            .padding(.vertical, 6)
         }
-        .padding(.vertical, 4)
     }
-}
-
 var crewActivityPreviewSection: some View {
     let recent = Array(allCrewActivities.prefix(4))
 
@@ -398,6 +433,10 @@ var crewActivityPreviewSection: some View {
             return .orange
         }
 
+        if hasUrgentCrewTask(on: day) {
+            return .red
+        }
+
         if hasCrewTasks(on: day) {
             return .blue
         }
@@ -440,105 +479,233 @@ func fullDateTextForSelectedDay() -> String {
 
     return targetDate.formatted(date: .complete, time: .omitted)
 }
+    func premiumPriorityColor(_ priority: String) -> Color {
+        switch priority {
+        case "urgent":
+            return Color(red: 1.00, green: 0.24, blue: 0.36)
+        case "high":
+            return Color(red: 1.00, green: 0.58, blue: 0.18)
+        case "medium":
+            return Color(red: 0.18, green: 0.56, blue: 1.00)
+        case "low":
+            return Color(red: 0.42, green: 0.78, blue: 0.67)
+        default:
+            return .secondary
+        }
+    }
+    
+    func hasUrgentCrewTask(on day: Int) -> Bool {
+        crewTasks(for: day).contains { $0.priority == "urgent" }
+    }
+
+    func premiumCardFill(_ priority: String, active: Bool, soon: Bool) -> LinearGradient {
+        let tint = premiumPriorityColor(priority)
+
+        return LinearGradient(
+            colors: [
+                tint.opacity(priority == "urgent" ? 0.16 : (active ? 0.12 : 0.08)),
+                Color.white.opacity(active ? 0.07 : 0.03)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    func premiumBorderColor(_ priority: String, active: Bool, soon: Bool) -> Color {
+        let tint = premiumPriorityColor(priority)
+
+        if priority == "urgent" {
+            return tint.opacity(active ? 0.65 : 0.42)
+        }
+
+        if active {
+            return tint.opacity(0.50)
+        }
+
+        if soon {
+            return tint.opacity(0.30)
+        }
+
+        return tint.opacity(0.18)
+    }
+
+    func premiumGlowColor(_ priority: String, active: Bool, soon: Bool) -> Color {
+        let tint = premiumPriorityColor(priority)
+
+        if priority == "urgent" {
+            return tint.opacity(active ? 0.35 : 0.22)
+        }
+
+        if active {
+            return tint.opacity(0.20)
+        }
+
+        if soon {
+            return tint.opacity(0.10)
+        }
+
+        return .clear
+    }
+
+    func premiumPriorityBadge(_ priority: String, tint: Color) -> some View {
+        HStack(spacing: 6) {
+            if priority == "urgent" {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.caption2.weight(.bold))
+            }
+
+            Text(priorityTitle(priority))
+                .font(.caption2.weight(.bold))
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(
+            Capsule()
+                .fill(tint.opacity(0.16))
+        )
+        .overlay(
+            Capsule()
+                .stroke(tint.opacity(0.28), lineWidth: 1)
+        )
+        .foregroundStyle(tint)
+    }
+
+    func premiumMetaPill(icon: String, text: String, tint: Color) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+            Text(text)
+        }
+        .font(.caption2.weight(.semibold))
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background(
+            Capsule()
+                .fill(Color.white.opacity(0.05))
+        )
+        .foregroundStyle(tint)
+    }
     
     func crewTimelineTaskCard(_ task: CrewTask, isLast: Bool) -> some View {
         let crew = allCrews.first { $0.id == task.crewID }
         let active = isTaskActive(task)
         let soon = isTaskStartingSoon(task)
 
-        return HStack(alignment: .top, spacing: 12) {
+        let tint = premiumPriorityColor(task.priority)
+        let cardFill = premiumCardFill(task.priority, active: active, soon: soon)
+        let border = premiumBorderColor(task.priority, active: active, soon: soon)
+        let glow = premiumGlowColor(task.priority, active: active, soon: soon)
+
+        return HStack(alignment: .top, spacing: 14) {
             VStack(spacing: 0) {
                 Circle()
-                    .fill(active ? Color.green : (soon ? Color.orange : priorityColor(task.priority)))
-                    .frame(width: active ? 14 : 10, height: active ? 14 : 10)
-                    .shadow(
-                        color: active
-                        ? Color.green.opacity(0.45)
-                        : (soon ? Color.orange.opacity(0.35) : .clear),
-                        radius: active || soon ? 8 : 0
+                    .fill(tint)
+                    .frame(
+                        width: active ? 16 : (soon ? 13 : 11),
+                        height: active ? 16 : (soon ? 13 : 11)
                     )
-                    .scaleEffect(active ? 1.18 : (soon ? 1.08 : 1.0))
+                    .shadow(color: glow, radius: active ? 14 : (soon ? 8 : 0))
+                    .overlay(
+                        Circle()
+                            .stroke(.white.opacity(active ? 0.30 : 0.10), lineWidth: 1)
+                    )
+                    .scaleEffect(active ? 1.15 : (soon ? 1.06 : 1.0))
 
                 if !isLast {
-                    Rectangle()
-                        .fill(
-                            active
-                            ? Color.green.opacity(0.45)
-                            : Color.white.opacity(0.12)
-                        )
-                        .frame(width: 2)
-                        .frame(maxHeight: .infinity)
-                        .padding(.top, 4)
+                    LinearGradient(
+                        colors: [
+                            tint.opacity(active ? 0.55 : 0.22),
+                            Color.white.opacity(0.06)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(width: 2)
+                    .frame(maxHeight: .infinity)
+                    .padding(.top, 6)
                 }
             }
             .frame(width: 18)
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
                     if let start = task.scheduledStartMinute {
-                        Text(hm(start))
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(active ? .green : (soon ? .orange : .secondary))
+                        HStack(spacing: 5) {
+                            Image(systemName: "clock")
+                            Text(hm(start))
+                        }
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(active ? tint : .secondary)
                     }
 
                     Spacer()
 
-                    Text(priorityTitle(task.priority))
-                        .font(.caption2.weight(.bold))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(
-                            Capsule()
-                                .fill(priorityColor(task.priority).opacity(0.14))
-                        )
-                        .foregroundStyle(priorityColor(task.priority))
+                    premiumPriorityBadge(task.priority, tint: tint)
                 }
 
                 Text(task.title)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.title3.weight(.bold))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
 
                 if let crew {
-                    Text(crew.name)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 6) {
+                        Image(systemName: "person.3.fill")
+                        Text(crew.name)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
 
                 HStack(spacing: 10) {
-                    if !task.assignedTo.isEmpty {
-                        Label(task.assignedTo, systemImage: "person.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
+                    premiumMetaPill(
+                        icon: "flag.fill",
+                        text: statusTitle(task.status),
+                        tint: .secondary
+                    )
 
-                    Label(statusTitle(task.status), systemImage: "flag.fill")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                    if !task.assignedTo.isEmpty {
+                        premiumMetaPill(
+                            icon: "person.fill",
+                            text: task.assignedTo,
+                            tint: tint.opacity(0.95)
+                        )
+                    }
+                }
+
+                if active {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(.green)
+                            .frame(width: 6, height: 6)
+
+                        Text("Active now")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.green)
+                    }
+                } else if soon {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(.orange)
+                            .frame(width: 6, height: 6)
+
+                        Text("Starting soon")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.orange)
+                    }
                 }
             }
-            .padding(14)
+            .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.white.opacity(active ? 0.08 : 0.04))
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(cardFill)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(
-                        active
-                        ? Color.green.opacity(0.35)
-                        : (soon ? Color.orange.opacity(0.22) : Color.white.opacity(0.05)),
-                        lineWidth: 1
-                    )
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(border, lineWidth: active ? 1.2 : 1)
             )
-            .scaleEffect(active ? 1.02 : 1.0)
-            .shadow(
-                color: active
-                ? Color.green.opacity(0.12)
-                : .clear,
-                radius: active ? 12 : 0
-            )
+            .shadow(color: glow, radius: active ? 18 : (soon ? 10 : 0))
+            .scaleEffect(active ? 1.015 : 1.0)
         }
         .animation(.spring(duration: 0.28), value: active)
         .animation(.easeInOut(duration: 0.25), value: soon)
@@ -550,10 +717,11 @@ func fullDateTextForSelectedDay() -> String {
                 ForEach(0..<7, id: \.self) { day in
                     crewDayPage(for: day)
                         .tag(day)
+                        .padding(.top, 6)
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
-            .frame(minHeight: 260)
+            .frame(minHeight: 340)
         }
     }
     var allCrewTasksForSelectedDay: [CrewTask] {
@@ -566,6 +734,72 @@ func fullDateTextForSelectedDay() -> String {
             }
     }
     
+    func crewDayPage(for day: Int) -> some View {
+        let tasks = allCrewTasks
+            .filter { $0.showOnWeek && $0.scheduledWeekday == day }
+            .sorted {
+                ($0.scheduledStartMinute ?? 0) < ($1.scheduledStartMinute ?? 0)
+            }
+
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(dayTitles[day])
+                        .font(.headline)
+
+                    Text(shortDateTextForDay(day))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                if hasCrewTasks(on: day) {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(dayIndicatorColor(for: day))
+                            .frame(width: 7, height: 7)
+
+                        Text("\(tasks.count) task")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            if tasks.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("No Crew Tasks")
+                        .font(.subheadline.weight(.semibold))
+
+                    Text("Shared tasks scheduled for this day will appear here.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 8)
+            } else {
+                VStack(spacing: 14) {
+                    ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
+                        NavigationLink {
+                            if let crew = allCrews.first(where: { $0.id == task.crewID }) {
+                                CrewTaskDetailView(task: task, crew: crew)
+                            } else {
+                                EmptyView()
+                            }
+                        } label: {
+                            crewTimelineTaskCard(task, isLast: index == tasks.count - 1)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .contentShape(Rectangle())
+    }
+    
     func shortDateTextForDay(_ day: Int) -> String {
         let calendar = Calendar.current
         let today = Date()
@@ -576,6 +810,21 @@ func fullDateTextForSelectedDay() -> String {
         }
 
         return targetDate.formatted(date: .abbreviated, time: .omitted)
+    }
+    
+    func priorityColor(_ value: String) -> Color {
+        switch value {
+        case "urgent":
+            return .red
+        case "high":
+            return .orange
+        case "medium":
+            return .blue
+        case "low":
+            return .gray
+        default:
+            return .secondary
+        }
     }
     
     func isTaskActive(_ task: CrewTask) -> Bool {
@@ -599,56 +848,7 @@ func fullDateTextForSelectedDay() -> String {
         return diff >= 0 && diff <= 30
     }
     
-    func crewDayPage(for day: Int) -> some View {
-        let tasks = allCrewTasks
-            .filter { $0.showOnWeek && $0.scheduledWeekday == day }
-            .sorted {
-                ($0.scheduledStartMinute ?? 0) < ($1.scheduledStartMinute ?? 0)
-            }
-
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text(dayTitles[day])
-                    .font(.headline)
-
-                Spacer()
-
-                Text(shortDateTextForDay(day))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            if tasks.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("No Crew Tasks")
-                        .font(.subheadline.weight(.semibold))
-
-                    Text("Shared tasks scheduled for this day will appear here.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 8)
-            } else {
-                VStack(spacing: 12) {
-                    ForEach(tasks) { task in
-                        NavigationLink {
-                            if let crew = allCrews.first(where: { $0.id == task.crewID }) {
-                                CrewTaskDetailView(task: task, crew: crew)
-                            } else {
-                                EmptyView()
-                            }
-                        } label: {
-                            crewTimelineTaskCard(task, isLast: task.id == tasks.last?.id)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 6)
-        .animation(.easeInOut(duration: 0.25), value: selectedDay)
-    }
+   
 
     func crewForTask(_ task: CrewTask) -> Crew? {
         allCrews.first { $0.id == task.crewID }
@@ -1148,15 +1348,7 @@ private extension WeekView {
 
     func shareTextForSelectedDay() -> String { shareTextForDay(selectedDay) }
     
-    func priorityColor(_ value: String) -> Color {
-        switch value {
-        case "low": return .gray
-        case "medium": return .blue
-        case "high": return .orange
-        case "urgent": return .red
-        default: return .secondary
-        }
-    }
+    
 
     func priorityTitle(_ value: String) -> String {
         switch value {
