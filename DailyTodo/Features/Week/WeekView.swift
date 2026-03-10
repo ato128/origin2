@@ -10,16 +10,27 @@ import SwiftData
 import UIKit
 import Combine
 
+enum WeekMode {
+    case personal
+    case crew
+}
+
 struct WeekView: View {
 
     @Environment(\.modelContext) private var context
 
     @Query(sort: \EventItem.startMinute, order: .forward)
     private var allEvents: [EventItem]
+    @Query private var allCrewTasks: [CrewTask]
+    @Query private var allCrews: [Crew]
+   
 
     @State private var selectedDay: Int = 0
     @State private var showingAdd: Bool = false
     @State private var editingEvent: EventItem? = nil
+    
+    @State private var mode: WeekMode = .personal
+    @State private var weekMode: WeekMode = .personal
 
     @State private var showCopied: Bool = false
 
@@ -128,11 +139,19 @@ private extension WeekView {
         List {
             pickerSection
             summarySection
+            
+            if weekMode == .personal {
 
-            if eventsForDay.isEmpty {
-                emptySection
+                if eventsForDay.isEmpty {
+                    emptySection
+                } else {
+                    eventsSection
+                }
+
             } else {
-                eventsSection
+
+                crewWeekSection
+
             }
         }
         .listStyle(.plain)
@@ -143,6 +162,15 @@ private extension WeekView {
     var pickerSection: some View {
         Section {
             VStack(spacing: 12) {
+                
+                Picker("Week Mode", selection: $mode) {
+                    Text("Personal").tag(WeekMode.personal)
+                    Text("Crew").tag(WeekMode.crew)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                .padding(.top, 8)
+                
                 Picker("Gün", selection: $selectedDay) {
                     ForEach(0..<7, id: \.self) { i in
                         Text(dayTitles[i]).tag(i)
@@ -173,6 +201,115 @@ private extension WeekView {
         .listRowInsets(EdgeInsets(top: 14, leading: 16, bottom: 6, trailing: 16))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
+    }
+    
+    var crewWeekSection: some View {
+        Section("Crew Week") {
+            let crewTasksForDay = allCrewTasksForSelectedDay
+
+            if crewTasksForDay.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Bu gün için crew görevi yok")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Text("Shared task oluşturup week'e eklediğinde burada görünecek.")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.vertical, 8)
+            } else {
+                ForEach(crewTasksForDay) { task in
+                    NavigationLink {
+                        if let crew = crewForTask(task) {
+                            CrewTaskDetailView(task: task, crew: crew)
+                        } else {
+                            Text("Crew bulunamadı")
+                        }
+                    } label: {
+                        crewWeekTaskRow(task)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+    
+    var allCrewTasksForSelectedDay: [CrewTask] {
+        allCrewTasks
+            .filter { task in
+                task.showOnWeek && task.scheduledWeekday == selectedDay
+            }
+            .sorted {
+                ($0.scheduledStartMinute ?? 0) < ($1.scheduledStartMinute ?? 0)
+            }
+    }
+
+    func crewForTask(_ task: CrewTask) -> Crew? {
+        allCrews.first { $0.id == task.crewID }
+    }
+
+    func crewWeekTaskRow(_ task: CrewTask) -> some View {
+        let crew = crewForTask(task)
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                Circle()
+                    .fill(priorityColor(task.priority).opacity(0.18))
+                    .frame(width: 34, height: 34)
+                    .overlay(
+                        Image(systemName: task.isDone ? "checkmark.circle.fill" : "person.3.fill")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(task.isDone ? .green : priorityColor(task.priority))
+                    )
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(task.title)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .lineLimit(2)
+
+                        Text(priorityTitle(task.priority))
+                            .font(.caption2.weight(.bold))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule()
+                                    .fill(priorityColor(task.priority).opacity(0.12))
+                            )
+                            .foregroundStyle(priorityColor(task.priority))
+                    }
+
+                    if let crew {
+                        Text(crew.name)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    HStack(spacing: 10) {
+                        if let start = task.scheduledStartMinute {
+                            Label(hm(start), systemImage: "clock")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        if !task.assignedTo.isEmpty {
+                            Label(task.assignedTo, systemImage: "person.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Label(statusTitle(task.status), systemImage: "flag.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+            }
+            .padding(.vertical, 4)
+        }
     }
 
     var summarySection: some View {
@@ -588,6 +725,9 @@ private extension WeekView {
 
 // MARK: - Share
 private extension WeekView {
+    
+    
+    
 
     func shareDay() { presentShare(text: shareTextForSelectedDay()) }
 
@@ -605,6 +745,37 @@ private extension WeekView {
     }
 
     func shareTextForSelectedDay() -> String { shareTextForDay(selectedDay) }
+    
+    func priorityColor(_ value: String) -> Color {
+        switch value {
+        case "low": return .gray
+        case "medium": return .blue
+        case "high": return .orange
+        case "urgent": return .red
+        default: return .secondary
+        }
+    }
+
+    func priorityTitle(_ value: String) -> String {
+        switch value {
+        case "low": return "Low"
+        case "medium": return "Medium"
+        case "high": return "High"
+        case "urgent": return "Urgent"
+        default: return value.capitalized
+        }
+    }
+
+    func statusTitle(_ value: String) -> String {
+        switch value {
+        case "todo": return "Todo"
+        case "inProgress": return "In Progress"
+        case "review": return "Review"
+        case "done": return "Done"
+        default: return value.capitalized
+        }
+    }
+
 
     func shareTextForDay(_ day: Int) -> String {
         let d = max(0, min(6, day))
