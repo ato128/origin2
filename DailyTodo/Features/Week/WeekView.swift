@@ -109,10 +109,12 @@ struct WeekView: View {
     @State private var didSetInitialDay: Bool = false
     @State  var animateSummary = false
     @State  var pulseTodayDot = false
+    @State  var showCompletedCrewTasks = false
     
     var body: some View {
         ScrollViewReader { proxy in
             mainList(proxy: proxy)
+                .animation(.easeInOut(duration: 0.25), value: weekMode)
                 .navigationTitle("Week")
                 .navigationBarTitleDisplayMode(.large)
                 .toolbar { toolbarContent }
@@ -197,8 +199,12 @@ extension WeekView {
     func mainList(proxy: ScrollViewProxy) -> some View {
         if weekMode == .personal {
             personalWeekList(proxy: proxy)
+                .id("personal")
+                .transition(.opacity)
         } else {
             crewWeekList
+                .id("crew")
+                .transition(.opacity)
                 .offset(y: showCrewEntrance ? 0 : 26)
                 .opacity(showCrewEntrance ? 1 : 0)
                 .scaleEffect(showCrewEntrance ? 1.0 : 0.985)

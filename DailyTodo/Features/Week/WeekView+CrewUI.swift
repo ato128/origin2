@@ -9,6 +9,8 @@ import SwiftUI
 import SwiftData
 
 extension WeekView {
+    
+    
     var allCrewTasksForSelectedDay: [CrewTask] {
         allCrewTasks
             .filter { $0.showOnWeek && $0.scheduledWeekday == selectedDay }
@@ -249,6 +251,7 @@ extension WeekView {
                     .frame(maxWidth: .infinity)
                     .padding(.top, 40)
                     .padding(.bottom, 20)
+
                 } else {
                     let nowTasks = activeCrewTasksToday()
                     let nextTasks = upcomingCrewTasksToday()
@@ -276,7 +279,7 @@ extension WeekView {
                                 }
                             }
                         }
-                        
+
                         if !lateTasks.isEmpty {
                             crewTimelineSectionHeader("Late", systemImage: "exclamationmark.circle")
 
@@ -298,11 +301,39 @@ extension WeekView {
                         }
 
                         if !doneTasks.isEmpty {
-                            crewTimelineSectionHeader("Completed", systemImage: "checkmark.circle")
+                            VStack(spacing: 10) {
+                                crewCollapsibleSectionHeader(
+                                    "Completed",
+                                    systemImage: "checkmark.circle",
+                                    isExpanded: showCompletedCrewTasks,
+                                    count: doneTasks.count
+                                ) {
+                                    withAnimation(.spring(response: 0.38, dampingFraction: 0.84)) {
+                                        showCompletedCrewTasks.toggle()
+                                    }
+                                }
 
-                            LazyVStack(spacing: 0) {
-                                ForEach(Array(doneTasks.enumerated()), id: \.element.id) { index, task in
-                                    crewTaskButton(task: task, index: index, totalCount: doneTasks.count)
+                                if showCompletedCrewTasks {
+                                    LazyVStack(spacing: 0) {
+                                        ForEach(Array(doneTasks.enumerated()), id: \.element.id) { index, task in
+                                            crewTaskButton(task: task, index: index, totalCount: doneTasks.count)
+                                                .transition(
+                                                    .asymmetric(
+                                                        insertion: .move(edge: .top).combined(with: .opacity),
+                                                        removal: .opacity.combined(with: .scale(scale: 0.98))
+                                                    )
+                                                )
+                                        }
+                                    }
+                                } else {
+                                    completedTasksCollapsedSummary(doneTasks)
+                                        .contentShape(Rectangle())
+                                        .onTapGesture {
+                                            withAnimation(.spring(response: 0.38, dampingFraction: 0.84)) {
+                                                showCompletedCrewTasks.toggle()
+                                            }
+                                        }
+                                        .transition(.opacity.combined(with: .scale(scale: 0.98)))
                                 }
                             }
                         }
@@ -415,4 +446,108 @@ extension WeekView {
             }
         }
     }
+    func crewCollapsibleSectionHeader(
+        _ title: String,
+        systemImage: String,
+        isExpanded: Bool,
+        count: Int,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.secondary)
+
+                Text(title)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text("\(count)")
+                    .font(.caption.weight(.bold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.white.opacity(0.06))
+                    .clipShape(Capsule())
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Image(systemName: "chevron.down")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                    .animation(.spring(response: 0.28, dampingFraction: 0.82), value: isExpanded)
+            }
+            .padding(.vertical, 6)
+        }
+        .buttonStyle(.plain)
+    }
+    func completedTasksCollapsedSummary(_ tasks: [CrewTask]) -> some View {
+        let count = tasks.count
+        let firstTitle = tasks.first?.title ?? "Completed tasks"
+
+        return ZStack(alignment: .top) {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.018))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.white.opacity(0.04), lineWidth: 1)
+                )
+                .offset(y: 10)
+                .padding(.horizontal, 10)
+
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.028))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                )
+                .offset(y: 5)
+                .padding(.horizontal, 5)
+
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(Color.green.opacity(0.14))
+                        .frame(width: 34, height: 34)
+
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                        .font(.system(size: 16, weight: .bold))
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("\(count) completed")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Text(firstTitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Text("Show completed")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary.opacity(0.8))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color(UIColor.secondarySystemGroupedBackground))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
+            )
+        }
+        .frame(height: 68)
+    }
+   
 }
+
+

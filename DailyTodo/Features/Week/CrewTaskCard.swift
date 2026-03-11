@@ -31,11 +31,15 @@ struct CrewTaskCard: View {
     let commentPreview: [CrewTaskCommentPreviewItem]
     let minutesLeft: Int
     let progress: Double
+    
+    @State private var latePulse = false
+    
     private var effectiveTint: Color {
         isLate ? .red : tint
     }
+    
     var body: some View {
-       
+        
         HStack(alignment: .top, spacing: 16) {
             VStack(spacing: 0) {
                 ZStack {
@@ -47,7 +51,7 @@ struct CrewTaskCard: View {
                             color: active ? effectiveTint.opacity(0.40) : (soon ? effectiveTint.opacity(0.18) : .clear),
                             radius: active ? 14 : (soon ? 8 : 0)
                         )
-
+                    
                     if active {
                         Circle()
                             .stroke(effectiveTint.opacity(0.24), lineWidth: 6)
@@ -57,7 +61,7 @@ struct CrewTaskCard: View {
                     }
                 }
                 .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: crewPulse)
-
+                
                 Rectangle()
                     .fill(
                         LinearGradient(
@@ -76,7 +80,7 @@ struct CrewTaskCard: View {
                     .opacity(0.9)
             }
             .frame(width: 20)
-
+            
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .center, spacing: 10) {
                     Text(title)
@@ -84,15 +88,15 @@ struct CrewTaskCard: View {
                         .foregroundStyle(done ? .secondary : .primary)
                         .strikethrough(done, color: .secondary)
                         .lineLimit(2)
-
+                    
                     Spacer()
-
+                    
                     if active {
                         ZStack {
                             Circle()
                                 .stroke(effectiveTint.opacity(0.18), lineWidth: 4)
                                 .frame(width: 30, height: 30)
-
+                            
                             Circle()
                                 .trim(from: 0, to: progress)
                                 .stroke(
@@ -102,7 +106,7 @@ struct CrewTaskCard: View {
                                 .rotationEffect(.degrees(-90))
                                 .frame(width: 30, height: 30)
                                 .animation(.easeInOut(duration: 0.35), value: progress)
-
+                            
                             Text("\(minutesLeft)")
                                 .font(.system(size: 9, weight: .black, design: .rounded))
                                 .foregroundStyle(effectiveTint)
@@ -114,14 +118,14 @@ struct CrewTaskCard: View {
                             .monospacedDigit()
                     }
                 }
-
+                
                 if let crewName {
                     HStack(spacing: 6) {
                         Circle()
                             .fill(effectiveTint)
                             .frame(width: 8, height: 8)
                             .shadow(color: effectiveTint.opacity(0.35), radius: 4)
-
+                        
                         Text(crewName)
                             .font(.caption2.weight(.bold))
                             .lineLimit(1)
@@ -137,7 +141,7 @@ struct CrewTaskCard: View {
                     )
                     .shadow(color: effectiveTint.opacity(0.25), radius: 6)
                 }
-
+                
                 HStack(spacing: 8) {
                     Text(priorityTitle)
                         .font(.caption2.weight(.bold))
@@ -185,7 +189,7 @@ struct CrewTaskCard: View {
                         HStack(spacing: 6) {
                             Text("LATE")
                                 .font(.caption2.weight(.black))
-
+                            
                             if let lateText {
                                 Text(lateText)
                                     .font(.caption2.weight(.bold))
@@ -198,21 +202,21 @@ struct CrewTaskCard: View {
                         .foregroundStyle(.red)
                         .clipShape(Capsule())
                     }
-                   else if active {
+                    else if active {
                         HStack(spacing: 6) {
                             ZStack {
                                 Circle()
                                     .fill(Color.green.opacity(0.18))
                                     .frame(width: 16, height: 16)
                                     .scaleEffect(crewPulse ? 1.15 : 0.95)
-
+                                
                                 Circle()
                                     .fill(Color.green)
                                     .frame(width: 8, height: 8)
                                     .shadow(color: Color.green.opacity(0.35), radius: 6)
                             }
                             .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: crewPulse)
-
+                            
                             Text("LIVE")
                                 .font(.caption2.weight(.black))
                                 .padding(.horizontal, 8)
@@ -231,7 +235,7 @@ struct CrewTaskCard: View {
                             .clipShape(Capsule())
                     }
                 }
-
+                
                 if !commentPreview.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(commentPreview) { comment in
@@ -240,23 +244,23 @@ struct CrewTaskCard: View {
                                     Circle()
                                         .fill(Color.white.opacity(0.18))
                                         .frame(width: 28, height: 28)
-
+                                    
                                     Text(String(comment.authorName.prefix(1)).uppercased())
                                         .font(.caption2.weight(.bold))
                                         .foregroundStyle(.primary)
                                 }
-
+                                
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(comment.authorName)
                                         .font(.caption2.weight(.bold))
                                         .foregroundStyle(.primary)
-
+                                    
                                     Text(comment.message)
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
                                         .lineLimit(1)
                                 }
-
+                                
                                 Spacer()
                             }
                         }
@@ -291,14 +295,31 @@ struct CrewTaskCard: View {
         }
         .opacity(done ? 0.82 : 1.0)
         .shadow(
-            color: commentCount > 0
-            ? effectiveTint.opacity(commentPulse ? 0.16 : 0.06)
-            : .clear,
-            radius: commentCount > 0 ? (commentPulse ? 12 : 5) : 0
+            color: isLate
+            ? Color.red.opacity(latePulse ? 0.26 : 0.12)
+            : (
+                commentCount > 0
+                ? effectiveTint.opacity(commentPulse ? 0.16 : 0.06)
+                : .clear
+            ),
+            radius: isLate
+            ? (latePulse ? 16 : 8)
+            : (commentCount > 0 ? (commentPulse ? 12 : 5) : 0)
         )
-        .scaleEffect(active && crewPulse ? 1.008 : 1.0)
+        .scaleEffect(
+            isLate
+            ? (latePulse ? 1.01 : 1.0)
+            : (active && crewPulse ? 1.008 : 1.0)
+        )
         .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: crewPulse)
         .animation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true), value: commentPulse)
+        .animation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true), value: latePulse)
         .animation(.easeInOut(duration: 0.2), value: done)
+        .onAppear {
+            latePulse = isLate
+        }
+        .onChange(of: isLate) { _, newValue in
+            latePulse = newValue
+        }
     }
 }
