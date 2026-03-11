@@ -50,6 +50,10 @@ struct WeekView: View {
     @State private var animateSummary = false
     @State private var pulseTodayDot = false
     @State private var commentPulse = false
+    @State private var selectedCrewTask: CrewTask?
+    @State private var selectedCrewForDetail: Crew?
+    @State private var showCrewEntrance = false
+
 
     private let liveTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
@@ -124,6 +128,16 @@ struct WeekView: View {
                     NavigationStack { EditEventView(event: ev) }
                         .presentationDetents([.medium, .large])
                 }
+                .sheet(item: $selectedCrewTask) { task in
+                    if let crew = selectedCrewForDetail {
+                        NavigationStack {
+                            CrewTaskDetailView(task: task, crew: crew)
+                                .presentationDetents([.medium, .large])
+                                .presentationDragIndicator(.visible)
+                                .presentationCornerRadius(28)
+                        }
+                    }
+                }
                 .overlay(toastView, alignment: .bottom)
                 .onAppear {
                     onAppear(proxy: proxy)
@@ -143,8 +157,20 @@ struct WeekView: View {
                 }
                 .onChange(of: weekMode) { _, newValue in
                     if newValue == .crew {
-                        withAnimation(.spring(duration: 0.3)) {
+                        showCrewEntrance = false
+
+                        withAnimation(.spring(duration: 0.35)) {
                             selectedDay = weekdayIndexToday()
+                        }
+
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) {
+                            withAnimation(.spring(response: 0.45, dampingFraction: 0.86)) {
+                                showCrewEntrance = true
+                            }
+                        }
+                    } else {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showCrewEntrance = false
                         }
                     }
                 }
@@ -163,6 +189,10 @@ private extension WeekView {
             personalWeekList(proxy: proxy)
         } else {
             crewWeekList
+                .offset(y: showCrewEntrance ? 0 : 26)
+                .opacity(showCrewEntrance ? 1 : 0)
+                .scaleEffect(showCrewEntrance ? 1.0 : 0.985)
+                .animation(.spring(response: 0.45, dampingFraction: 0.86), value: showCrewEntrance)
         }
     }
     
@@ -279,6 +309,10 @@ private extension WeekView {
         }
         .background(Color(.systemGroupedBackground))
         .scrollIndicators(.hidden)
+        .offset(y: showCrewEntrance ? 0 : 30)
+        .opacity(showCrewEntrance ? 1 : 0)
+        .scaleEffect(showCrewEntrance ? 1 : 0.98)
+        .animation(.spring(response: 0.45, dampingFraction: 0.85), value: showCrewEntrance)
     }
     
     var crewDateSection: some View {
@@ -566,12 +600,29 @@ private extension WeekView {
             : .clear,
             radius: hasComments(task) ? (commentPulse ? 12 : 5) : 0
         )
+        .scaleEffect(active && crewPulse ? 1.008 : 1.0)
+        .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: crewPulse)
         .animation(
             .easeInOut(duration: 1.1).repeatForever(autoreverses: true),
             value: commentPulse
         )
         .animation(.easeInOut(duration: 0.2), value: done)
     }
+    func liveDot(tint: Color) -> some View {
+        ZStack {
+            Circle()
+                .fill(tint.opacity(0.18))
+                .frame(width: 16, height: 16)
+                .scaleEffect(crewPulse ? 1.15 : 0.95)
+
+            Circle()
+                .fill(tint)
+                .frame(width: 8, height: 8)
+                .shadow(color: tint.opacity(0.35), radius: 6)
+        }
+        .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: crewPulse)
+    }
+    
     func taskProjectBadge(crew: Crew) -> some View {
         let tint = hexColor(crew.colorHex)
 
@@ -594,6 +645,7 @@ private extension WeekView {
             Capsule()
                 .stroke(tint.opacity(0.22), lineWidth: 1)
         )
+        .shadow(color: tint.opacity(0.25), radius: 6)
     }
     
     func timelineIndicator(
@@ -647,18 +699,39 @@ private extension WeekView {
         active: Bool,
         done: Bool
     ) -> some View {
-        HStack {
+        HStack(alignment: .center, spacing: 10) {
             Text(task.title)
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundStyle(done ? .secondary : .primary)
                 .strikethrough(done, color: .secondary)
+                .lineLimit(2)
 
             Spacer()
 
-            if let start = task.scheduledStartMinute {
+            if active {
+                ZStack {
+                    Circle()
+                        .stroke(tint.opacity(0.18), lineWidth: 4)
+                        .frame(width: 30, height: 30)
+
+                    Circle()
+                        .trim(from: 0, to: taskProgress(task))
+                        .stroke(
+                            tint,
+                            style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: 30, height: 30)
+                        .animation(.easeInOut(duration: 0.35), value: taskProgress(task))
+
+                    Text("\(taskMinutesLeft(task))")
+                        .font(.system(size: 9, weight: .black, design: .rounded))
+                        .foregroundStyle(tint)
+                }
+            } else if let start = task.scheduledStartMinute {
                 Text(hm(start))
                     .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(active ? tint : .secondary)
+                    .foregroundStyle(.secondary)
                     .monospacedDigit()
             }
         }
@@ -730,13 +803,17 @@ private extension WeekView {
                 }
 
                 if active {
-                    Text("LIVE")
-                        .font(.caption2.weight(.black))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .background(Color.green.opacity(0.16))
-                        .foregroundStyle(.green)
-                        .clipShape(Capsule())
+                    HStack(spacing: 6) {
+                        liveDot(tint: .green)
+
+                        Text("LIVE")
+                            .font(.caption2.weight(.black))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(Color.green.opacity(0.16))
+                            .foregroundStyle(.green)
+                            .clipShape(Capsule())
+                    }
                 } else if soon {
                     Text("SOON")
                         .font(.caption2.weight(.black))
@@ -748,6 +825,28 @@ private extension WeekView {
                 }
             }
         }
+    }
+    
+    func taskProgress(_ task: CrewTask) -> Double {
+        guard isTaskActive(task),
+              let start = task.scheduledStartMinute,
+              let duration = task.scheduledDurationMinute,
+              duration > 0
+        else { return 0 }
+
+        let now = currentMinuteOfDay()
+        let elapsed = max(0, now - start)
+        return min(1, Double(elapsed) / Double(duration))
+    }
+
+    func taskMinutesLeft(_ task: CrewTask) -> Int {
+        guard let start = task.scheduledStartMinute,
+              let duration = task.scheduledDurationMinute
+        else { return 0 }
+
+        let now = currentMinuteOfDay()
+        let end = start + duration
+        return max(0, end - now)
     }
     
     func hasComments(_ task: CrewTask) -> Bool {
@@ -764,7 +863,7 @@ private extension WeekView {
                 HStack(alignment: .top, spacing: 8) {
                     ZStack {
                         Circle()
-                            .fill(Color.white.opacity(0.08))
+                            .fill(Color.white.opacity(0.18))
                             .frame(width: 28, height: 28)
 
                         Text(initialLetter(comment.authorName))
@@ -803,7 +902,7 @@ private extension WeekView {
         }
         .padding(.top, 4)
         .padding(.horizontal, 10)
-        .padding(.vertical, 10)
+        .padding(.vertical, 7)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.white.opacity(0.04))
@@ -1213,11 +1312,11 @@ private extension WeekView {
                 } else {
                     LazyVStack(spacing: 0) {
                         ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
-                            NavigationLink {
+                            Button {
                                 if let crew = crewMap[task.crewID] {
-                                    CrewTaskDetailView(task: task, crew: crew)
-                                } else {
-                                    EmptyView()
+                                    selectedCrewTask = task
+                                    selectedCrewForDetail = crew
+                                    Haptics.impact(.light)
                                 }
                             } label: {
                                 enhancedPremiumTimelineCard(task, isLast: index == tasks.count - 1)
@@ -1237,7 +1336,10 @@ private extension WeekView {
 
                                 if !commentsForTask(task).isEmpty {
                                     Button {
-                                        // Kart zaten detail'e gidiyor, burada ekstra işlem yok.
+                                        if let crew = crewMap[task.crewID] {
+                                            selectedCrewTask = task
+                                            selectedCrewForDetail = crew
+                                        }
                                     } label: {
                                         Label("Open Task & Comments", systemImage: "text.bubble.fill")
                                     }
@@ -1712,6 +1814,10 @@ private extension WeekView {
             
             animateSummary = true
             pulseTodayDot = true
+            
+            if weekMode == .crew {
+                showCrewEntrance = true
+            }
             
             Task {
                 await NotificationManager.shared.rescheduleAll(events: allEvents)
