@@ -11,6 +11,8 @@
 		6D02C9D32F5B4D1F008193F3 /* StreakEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D02C9D22F5B4D1F008193F3 /* StreakEngine.swift */; };
 		6D02C9D52F5B4D63008193F3 /* FocusTimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D02C9D42F5B4D63008193F3 /* FocusTimerView.swift */; };
 		6D02C9D72F5B4D95008193F3 /* SmartInsights.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D02C9D62F5B4D95008193F3 /* SmartInsights.swift */; };
+		6D2004522F61C6FC0022C810 /* EventRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004512F61C6FC0022C810 /* EventRow.swift */; };
+		6D2004542F61C7DA0022C810 /* CrewTaskCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004532F61C7DA0022C810 /* CrewTaskCard.swift */; };
 		6D215DA32F55FD7100F7B9D7 /* EditTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DA22F55FD7100F7B9D7 /* EditTaskView.swift */; };
 		6D215DA52F5602D100F7B9D7 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DA42F5602D100F7B9D7 /* MainTabView.swift */; };
 		6D215DA72F56035A00F7B9D7 /* EventItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DA62F56035A00F7B9D7 /* EventItem.swift */; };
@@ -99,6 +101,8 @@
 		6D02C9D22F5B4D1F008193F3 /* StreakEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreakEngine.swift; sourceTree = "<group>"; };
 		6D02C9D42F5B4D63008193F3 /* FocusTimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusTimerView.swift; sourceTree = "<group>"; };
 		6D02C9D62F5B4D95008193F3 /* SmartInsights.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartInsights.swift; sourceTree = "<group>"; };
+		6D2004512F61C6FC0022C810 /* EventRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventRow.swift; sourceTree = "<group>"; };
+		6D2004532F61C7DA0022C810 /* CrewTaskCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewTaskCard.swift; sourceTree = "<group>"; };
 		6D215DA22F55FD7100F7B9D7 /* EditTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditTaskView.swift; sourceTree = "<group>"; };
 		6D215DA42F5602D100F7B9D7 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		6D215DA62F56035A00F7B9D7 /* EventItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventItem.swift; sourceTree = "<group>"; };
@@ -292,6 +296,8 @@
 			isa = PBXGroup;
 			children = (
 				6D215DA82F5603B100F7B9D7 /* WeekView.swift */,
+				6D2004532F61C7DA0022C810 /* CrewTaskCard.swift */,
+				6D2004512F61C6FC0022C810 /* EventRow.swift */,
 				6D215DAA2F5603D600F7B9D7 /* AddEventView.swift */,
 				6D215DB22F56342E00F7B9D7 /* EditEventView.swift */,
 				6DC0CA9E2F5F7D0000A875ED /* ImportScheduleView.swift */,
@@ -551,6 +557,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6DF0C93D2F557DBF0043B887 /* RootView.swift in Sources */,
+				6D2004522F61C6FC0022C810 /* EventRow.swift in Sources */,
 				6D215DB52F56427E00F7B9D7 /* ShareSheet.swift in Sources */,
 				6DDF5B632F5FADBB003057C9 /* CrewTaskReaction.swift in Sources */,
 				6DF0C91D2F557AA50043B887 /* DailyTodoApp.swift in Sources */,
@@ -598,6 +605,7 @@
 				6D775B852F5F81CF0009D660 /* Color+Hex.swift in Sources */,
 				6D02C9D12F5B4718008193F3 /* InsightsView.swift in Sources */,
 				6DF0C9462F55E3960043B887 /* OnboardingView.swift in Sources */,
+				6D2004542F61C7DA0022C810 /* CrewTaskCard.swift in Sources */,
 				6D215DDC2F564C4100F7B9D7 /* WidgetSync+App.swift in Sources */,
 				6D215DA72F56035A00F7B9D7 /* EventItem.swift in Sources */,
 				6D215DB72F5642AE00F7B9D7 /* ScheduleExport.swift in Sources */,
