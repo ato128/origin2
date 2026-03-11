@@ -17,24 +17,24 @@ enum WeekMode {
 
 struct WeekView: View {
     
-    @Environment(\.modelContext) private var context
+    @Environment(\.modelContext)  var context
     
     @Query(sort: \EventItem.startMinute, order: .forward)
     private var allEvents: [EventItem]
-    @Query private var allCrewTasks: [CrewTask]
+    @Query var allCrewTasks: [CrewTask]
     @Query private var allCrews: [Crew]
     @Query(sort: \CrewActivity.createdAt, order: .reverse)
-    private var allCrewActivities: [CrewActivity]
+     var allCrewActivities: [CrewActivity]
     @Query(sort: \CrewTaskComment.createdAt, order: .reverse)
-    private var allCrewComments: [CrewTaskComment]
+    var allCrewComments: [CrewTaskComment]
     
-    private var crewMap: [UUID: Crew] {
+     var crewMap: [UUID: Crew] {
         Dictionary(uniqueKeysWithValues: allCrews.map { ($0.id, $0) })
     }
     
     private let liveTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
     
-    private let dayTitles = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
+     let dayTitles = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
     
     private var allEventIDs: [UUID] { allEvents.map(\.id) }
     
@@ -92,18 +92,18 @@ struct WeekView: View {
     }
     
     
-    @State private var selectedDay: Int = 0
+    @State  var selectedDay: Int = 0
     @State private var showingAdd: Bool = false
     @State private var editingEvent: EventItem? = nil
     @State private var weekMode: WeekMode = .personal
     @State private var showCopied: Bool = false
-    @State private var crewPulse = false
-    @State private var commentPulse = false
-    @State private var selectedCrewTask: CrewTask?
-    @State private var selectedCrewForDetail: Crew?
-    @State private var showCrewEntrance = false
-    @State private var showCrewTaskHeader = false
-    @State private var showCrewTaskCards = false
+    @State  var crewPulse = false
+    @State  var commentPulse = false
+    @State  var selectedCrewTask: CrewTask?
+    @State  var selectedCrewForDetail: Crew?
+    @State  var showCrewEntrance = false
+    @State  var showCrewTaskHeader = false
+    @State  var showCrewTaskCards = false
     @State private var didInitialAutoScroll: Bool = false
     @State private var lastAutoScrollTargetID: UUID? = nil
     @State private var didSetInitialDay: Bool = false
@@ -221,105 +221,7 @@ extension WeekView {
         .scrollContentBackground(.hidden)
         .background(Color(.systemGroupedBackground))
     }
-    @ViewBuilder
-    var crewWeekList: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                VStack(spacing: 16) {
-                    crewPickerSection
-                    
-                    HStack(alignment: .center, spacing: 14) {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Crew Week")
-                                .font(.system(size: 30, weight: .black, design: .rounded))
-                            
-                            Text(fullDateTextForSelectedDay())
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(.secondary)
-                            
-                            HStack(spacing: 8) {
-                                Image(systemName: "sparkles")
-                                    .foregroundStyle(.blue)
-                                
-                                Text("Team flow for today")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        
-                        Spacer()
-                        
-                        VStack(spacing: 10) {
-                            ZStack {
-                                Circle()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [
-                                                Color.accentColor.opacity(0.22),
-                                                Color.accentColor.opacity(0.08)
-                                            ],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                    .frame(width: 54, height: 54)
-                                
-                                Image(systemName: "person.3.fill")
-                                    .font(.title3.weight(.bold))
-                                    .foregroundStyle(Color.accentColor)
-                            }
-                            
-                            Text("\(allCrewTasksForSelectedDay.filter { !$0.isDone }.count) Görev")
-                                .font(.caption2.bold())
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(Color.accentColor.opacity(0.12))
-                                .foregroundStyle(Color.accentColor)
-                                .clipShape(Capsule())
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                }
-                .padding(.vertical, 16)
-                .background(Color(.systemGroupedBackground))
-                
-                VStack(spacing: 0) {
-                    crewWeekSection
-                        .padding(.horizontal, 20)
-                        .padding(.top, 10)
-                    
-                    if !allCrewTasksForSelectedDay.isEmpty {
-                        Divider()
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                        
-                        HStack {
-                            Text("Recent Activity")
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
-                            
-                            Spacer()
-                            
-                            Image(systemName: "bolt.fill")
-                                .foregroundStyle(.orange)
-                        }
-                        .padding(.horizontal, 20)
-                        
-                        activityListContent
-                            .padding(.horizontal, 20)
-                            .padding(.top, 8)
-                    }
-                }
-                
-                Spacer(minLength: 90)
-            }
-        }
-        .background(Color(.systemGroupedBackground))
-        .scrollIndicators(.hidden)
-        .offset(y: showCrewEntrance ? 0 : 30)
-        .opacity(showCrewEntrance ? 1 : 0)
-        .scaleEffect(showCrewEntrance ? 1 : 0.98)
-        .animation(.spring(response: 0.45, dampingFraction: 0.85), value: showCrewEntrance)
-    }
+    
     var pickerSection: some View {
         Section {
             VStack(spacing: 12) {
@@ -364,64 +266,7 @@ extension WeekView {
         .listRowBackground(Color.clear)
     }
     
-    var crewPickerSection: some View {
-        HStack(spacing: 6) {
-            ForEach(0..<7, id: \.self) { day in
-                Button {
-                    withAnimation(.spring(duration: 0.28)) {
-                        selectedDay = day
-                    }
-                } label: {
-                    Text(dayTitles[day])
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(day == selectedDay ? .white : .primary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(
-                                    day == selectedDay
-                                    ? LinearGradient(
-                                        colors: [
-                                            dayIndicatorColor(for: day),
-                                            dayIndicatorColor(for: day).opacity(0.82)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                    : LinearGradient(
-                                        colors: [
-                                            Color.white.opacity(0.05),
-                                            Color.white.opacity(0.025)
-                                        ],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    )
-                                )
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(
-                                    day == selectedDay
-                                    ? Color.white.opacity(0.12)
-                                    : Color.white.opacity(0.05),
-                                    lineWidth: 1
-                                )
-                        )
-                        .shadow(
-                            color: day == selectedDay
-                            ? dayIndicatorColor(for: day).opacity(0.30)
-                            : .clear,
-                            radius: day == selectedDay ? 12 : 0
-                        )
-                        .scaleEffect(day == selectedDay ? 1.02 : 1.0)
-                        .animation(.spring(duration: 0.22), value: selectedDay)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, 16)
-    }
+   
     var summarySection: some View {
         Section {
             daySummaryCard
@@ -693,436 +538,8 @@ extension WeekView {
         return "\(eventsForDay.count) ders • \(durationText(totalMinutesForDay)) toplam"
     }
 }
-    
-    
-    // MARK - Crew UI
-     extension WeekView {
-        var allCrewTasksForSelectedDay: [CrewTask] {
-            allCrewTasks
-                .filter { $0.showOnWeek && $0.scheduledWeekday == selectedDay }
-                .sorted {
-                    ($0.scheduledStartMinute ?? 0) < ($1.scheduledStartMinute ?? 0)
-                }
-        }
-        var activityListContent: some View {
-            let recent = Array(allCrewActivities.prefix(5))
-            
-            return VStack(alignment: .leading, spacing: 14) {
-                if recent.isEmpty {
-                    Text("No crew activity yet")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(Array(recent.enumerated()), id: \.element.id) { index, item in
-                        HStack(alignment: .top, spacing: 12) {
-                            VStack(spacing: 0) {
-                                Circle()
-                                    .fill(Color.orange.opacity(0.95))
-                                    .frame(width: 10, height: 10)
-                                
-                                if index != recent.count - 1 {
-                                    Rectangle()
-                                        .fill(Color.white.opacity(0.08))
-                                        .frame(width: 2)
-                                        .frame(maxHeight: .infinity)
-                                        .padding(.top, 5)
-                                }
-                            }
-                            .frame(width: 14)
-                            
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text(item.memberName)
-                                        .font(.caption.weight(.bold))
-                                    
-                                    Spacer()
-                                    
-                                    Text(item.createdAt, style: .time)
-                                        .font(.caption2)
-                                        .foregroundStyle(.tertiary)
-                                }
-                                
-                                Text(item.actionText)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(2)
-                            }
-                        }
-                        .padding(.vertical, 2)
-                    }
-                }
-            }
-        }
-        var crewWeekSection: some View {
-            Section {
-                let tasks = allCrewTasksForSelectedDay
-                
-                VStack(alignment: .leading, spacing: 14) {
-                    if tasks.isEmpty {
-                        VStack(spacing: 12) {
-                            Image(systemName: "calendar.badge.plus")
-                                .font(.system(size: 40))
-                                .foregroundStyle(.tertiary)
-                            
-                            Text("Bugün için görev yok")
-                                .font(.headline)
-                                .foregroundStyle(.secondary)
-                            
-                            Text("Seçili gün için crew görevi eklendiğinde burada görünecek.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .multilineTextAlignment(.center)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 40)
-                        .padding(.bottom, 20)
-                    } else {
-                        LazyVStack(spacing: 0) {
-                            ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
-                                Button {
-                                    if let crew = crewMap[task.crewID] {
-                                        selectedCrewTask = task
-                                        selectedCrewForDetail = crew
-                                        Haptics.impact(.light)
-                                    }
-                                } label: {
-                                    enhancedPremiumTimelineCard(task, isLast: index == tasks.count - 1)
-                                }
-                                .buttonStyle(.plain)
-                                .offset(y: showCrewTaskCards ? 0 : CGFloat(18 + (index * 8)))
-                                .opacity(showCrewTaskCards ? 1 : 0)
-                                .scaleEffect(showCrewTaskCards ? 1 : 0.985)
-                                .animation(
-                                    .spring(response: 0.48, dampingFraction: 0.88)
-                                    .delay(Double(index) * 0.06),
-                                    value: showCrewTaskCards
-                                )
-                                .contextMenu {
-                                    Button {
-                                        toggleCrewTaskDone(task)
-                                    } label: {
-                                        Label(
-                                            task.isDone ? "Mark as Undone" : "Mark as Done",
-                                            systemImage: task.isDone
-                                            ? "arrow.uturn.backward.circle.fill"
-                                            : "checkmark.circle.fill"
-                                        )
-                                    }
-                                    
-                                    if !commentsForTask(task).isEmpty {
-                                        Button {
-                                            if let crew = crewMap[task.crewID] {
-                                                selectedCrewTask = task
-                                                selectedCrewForDetail = crew
-                                            }
-                                        } label: {
-                                            Label("Open Task & Comments", systemImage: "text.bubble.fill")
-                                        }
-                                    }
-                                    
-                                    Button(role: .destructive) {
-                                        deleteCrewTask(task)
-                                    } label: {
-                                        Label("Delete Task", systemImage: "trash.fill")
-                                    }
-                                }
-                                .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                    Button {
-                                        toggleCrewTaskDone(task)
-                                    } label: {
-                                        Label(task.isDone ? "Undo" : "Done", systemImage: task.isDone ? "arrow.uturn.backward.circle.fill" : "checkmark.circle.fill")
-                                    }
-                                    .tint(task.isDone ? .orange : .green)
-                                }
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    Button(role: .destructive) {
-                                        deleteCrewTask(task)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash.fill")
-                                    }
-                                    
-                                    Button {
-                                        toggleCrewTaskDone(task)
-                                    } label: {
-                                        Label(task.isDone ? "Undo" : "Done", systemImage: task.isDone ? "arrow.uturn.backward.circle.fill" : "checkmark.circle.fill")
-                                    }
-                                    .tint(task.isDone ? .orange : .green)
-                                }
-                            }
-                        }
-                    }
-                }
-            } header: {
-                HStack {
-                    Text("Crew Tasks")
-                        .font(.system(size: 18, weight: .black, design: .rounded))
-                        .foregroundStyle(.primary)
-                    
-                    Spacer()
-                }
-                .textCase(nil)
-                .offset(y: showCrewTaskHeader ? 0 : 14)
-                .opacity(showCrewTaskHeader ? 1 : 0)
-            }
-        }
-         func enhancedPremiumTimelineCard(_ task: CrewTask, isLast: Bool) -> some View {
-             let tint = premiumPriorityColor(task.priority)
-             let active = isTaskActive(task)
-             let done = task.isDone
-             let soon = isTaskStartingSoon(task)
 
-             return CrewTaskCard(
-                 title: task.title,
-                 crewName: crewName(for: task),
-                 timeText: taskTimeText(task),
-                 priorityTitle: priorityTitle(task.priority),
-                 statusTitle: statusTitle(task.status),
-                 tint: tint,
-                 active: active,
-                 done: done,
-                 soon: soon,
-                 crewPulse: crewPulse,
-                 commentPulse: commentPulse,
-                 commentCount: commentsForTask(task).count,
-                 commentPreview: commentPreviewItems(for: task),
-                 minutesLeft: taskMinutesLeft(task),
-                 progress: taskProgress(task)
-             )
-         }
-         
-       
-        
-    }
-    
-    //MARK - Crew Helpers
-    extension WeekView {
-        func crewName(for task: CrewTask) -> String? {
-            crewMap[task.crewID]?.name
-        }
-
-        func commentPreviewItems(for task: CrewTask) -> [CrewTaskCommentPreviewItem] {
-            previewCommentsForTask(task).map {
-                CrewTaskCommentPreviewItem(
-                    id: $0.id,
-                    authorName: $0.authorName,
-                    message: $0.message
-                )
-            }
-        }
-
-        func taskTimeText(_ task: CrewTask) -> String? {
-            guard let start = task.scheduledStartMinute else { return nil }
-            return hm(start)
-        }
-        
-        
-        
-        func crewTasks(for day: Int) -> [CrewTask] {
-            allCrewTasks
-                .filter { $0.showOnWeek && $0.scheduledWeekday == day }
-                .sorted {
-                    ($0.scheduledStartMinute ?? 0) < ($1.scheduledStartMinute ?? 0)
-                }
-        }
-        
-        func commentsForTask(_ task: CrewTask) -> [CrewTaskComment] {
-            allCrewComments
-                .filter { $0.taskID == task.id }
-                .sorted { $0.createdAt > $1.createdAt }
-        }
-        
-        
-        
-        func previewCommentsForTask(_ task: CrewTask) -> [CrewTaskComment] {
-            Array(commentsForTask(task).prefix(2))
-        }
-        
-        func initialLetter(_ name: String) -> String {
-            let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-            return String(trimmed.prefix(1)).uppercased()
-        }
-        
-        func hasComments(_ task: CrewTask) -> Bool {
-            !commentsForTask(task).isEmpty
-        }
-        
-        
-        
-        func hasCrewTasks(on day: Int) -> Bool {
-            !crewTasks(for: day).isEmpty
-        }
-        
-        
-        func hasActiveCrewTask(on day: Int) -> Bool {
-            guard day == weekdayIndexToday() else { return false }
-            
-            let now = currentMinuteOfDay()
-            
-            return crewTasks(for: day).contains { task in
-                guard let start = task.scheduledStartMinute,
-                      let duration = task.scheduledDurationMinute else { return false }
-                let end = start + duration
-                return now >= start && now < end
-            }
-        }
-        
-        func hasUpcomingCrewTaskSoon(on day: Int) -> Bool {
-            guard day == weekdayIndexToday() else { return false }
-            
-            let now = currentMinuteOfDay()
-            
-            return crewTasks(for: day).contains { task in
-                guard let start = task.scheduledStartMinute else { return false }
-                let diff = start - now
-                return diff >= 0 && diff <= 30
-            }
-        }
-        
-        func shouldGlowDay(_ day: Int) -> Bool {
-            hasActiveCrewTask(on: day) || hasUpcomingCrewTaskSoon(on: day)
-        }
-        
-        func toggleCrewTaskDone(_ task: CrewTask) {
-            task.isDone.toggle()
-            
-            if task.isDone {
-                task.status = "done"
-                Haptics.notify(.success)
-            } else {
-                if task.status == "done" {
-                    task.status = "todo"
-                }
-                Haptics.impact(.light)
-            }
-            
-            try? context.save()
-        }
-        
-        func deleteCrewTask(_ task: CrewTask) {
-            context.delete(task)
-            Haptics.impact(.heavy)
-            try? context.save()
-        }
-        
-        func dayIndicatorColor(for day: Int) -> Color {
-            if hasActiveCrewTask(on: day) {
-                return .green
-            }
-            
-            if hasUpcomingCrewTaskSoon(on: day) {
-                return .orange
-            }
-            
-            if hasUrgentCrewTask(on: day) {
-                return .red
-            }
-            
-            if hasCrewTasks(on: day) {
-                return .blue
-            }
-            
-            return .secondary
-        }
-        
-        func dayIndicatorSize(for day: Int) -> CGFloat {
-            if hasActiveCrewTask(on: day) {
-                return 12
-            }
-            
-            if hasUpcomingCrewTaskSoon(on: day) {
-                return 10
-            }
-            
-            return hasCrewTasks(on: day) ? 8 : 6
-        }
-        
-        func dayPulseScale(for day: Int) -> CGFloat {
-            if hasActiveCrewTask(on: day) {
-                return 1.18
-            }
-            
-            if hasUpcomingCrewTaskSoon(on: day) {
-                return 1.08
-            }
-            
-            return 1.0
-        }
-        
-        func fullDateTextForSelectedDay() -> String {
-            let calendar = Calendar.current
-            let today = Date()
-            
-            guard let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: today)?.start,
-                  let targetDate = calendar.date(byAdding: .day, value: selectedDay, to: startOfWeek) else {
-                return "Date unavailable"
-            }
-            
-            return targetDate.formatted(date: .complete, time: .omitted)
-        }
-        func premiumPriorityColor(_ priority: String) -> Color {
-            switch priority {
-            case "urgent":
-                return Color(red: 1.00, green: 0.24, blue: 0.36)
-            case "high":
-                return Color(red: 1.00, green: 0.58, blue: 0.18)
-            case "medium":
-                return Color(red: 0.18, green: 0.56, blue: 1.00)
-            case "low":
-                return Color(red: 0.42, green: 0.78, blue: 0.67)
-            default:
-                return .secondary
-            }
-        }
-        
-        func hasUrgentCrewTask(on day: Int) -> Bool {
-            crewTasks(for: day).contains { $0.priority == "urgent" }
-        }
-        func taskProgress(_ task: CrewTask) -> Double {
-            guard isTaskActive(task),
-                  let start = task.scheduledStartMinute,
-                  let duration = task.scheduledDurationMinute,
-                  duration > 0
-            else { return 0 }
-            
-            let now = currentMinuteOfDay()
-            let elapsed = max(0, now - start)
-            return min(1, Double(elapsed) / Double(duration))
-        }
-        
-        func taskMinutesLeft(_ task: CrewTask) -> Int {
-            guard let start = task.scheduledStartMinute,
-                  let duration = task.scheduledDurationMinute
-            else { return 0 }
-            
-            let now = currentMinuteOfDay()
-            let end = start + duration
-            return max(0, end - now)
-        }
-        
-        func isTaskActive(_ task: CrewTask) -> Bool {
-            guard task.scheduledWeekday == weekdayIndexToday() else { return false }
-            
-            let now = currentMinuteOfDay()
-            guard let start = task.scheduledStartMinute,
-                  let duration = task.scheduledDurationMinute else { return false }
-            
-            let end = start + duration
-            return now >= start && now < end
-        }
-        
-        func isTaskStartingSoon(_ task: CrewTask) -> Bool {
-            guard task.scheduledWeekday == weekdayIndexToday() else { return false }
-            
-            let now = currentMinuteOfDay()
-            guard let start = task.scheduledStartMinute else { return false }
-            
-            let diff = start - now
-            return diff >= 0 && diff <= 30
-        }
-        
-    }
-    
-    //MARK - Legacy Crew Mode
+//MARK - Legacy Crew Mode
 extension WeekView {
     
     
