@@ -370,29 +370,10 @@ private extension CrewTaskDetailView {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(taskComments) { comment in
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text(comment.authorName)
-                                .font(.caption.weight(.bold))
-
-                            Spacer()
-
-                            Text(comment.createdAt, style: .time)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Text(comment.message)
-                            .font(.subheadline)
-                            .foregroundStyle(.primary)
+                VStack(spacing: 10) {
+                    ForEach(taskComments) { comment in
+                        commentBubble(comment)
                     }
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Color.secondary.opacity(0.08))
-                    )
                 }
             }
         }
@@ -400,7 +381,49 @@ private extension CrewTaskDetailView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
     }
+    func commentBubble(_ comment: CrewTaskComment) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(hexColor(crew.colorHex).opacity(0.16))
+                    .frame(width: 34, height: 34)
 
+                Text(initialLetter(comment.authorName))
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(hexColor(crew.colorHex))
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(comment.authorName)
+                        .font(.caption.weight(.bold))
+
+                    Spacer()
+
+                    Text(comment.createdAt, style: .time)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
+                Text(comment.message)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.secondary.opacity(0.08))
+            )
+        }
+    }
+    
+    func initialLetter(_ name: String) -> String {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return String(trimmed.prefix(1)).uppercased()
+    }
+    
+    
     func addComment() {
         let cleanMessage = newComment.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanMessage.isEmpty else { return }

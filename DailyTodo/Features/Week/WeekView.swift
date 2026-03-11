@@ -25,6 +25,12 @@ struct WeekView: View {
     @Query private var allCrews: [Crew]
     @Query(sort: \CrewActivity.createdAt, order: .reverse)
     private var allCrewActivities: [CrewActivity]
+    @Query(sort: \CrewTaskComment.createdAt, order: .reverse)
+    private var allCrewComments: [CrewTaskComment]
+    
+    private var crewMap: [UUID: Crew] {
+        Dictionary(uniqueKeysWithValues: allCrews.map { ($0.id, $0) })
+    }
    
 
     @State private var selectedDay: Int = 0
@@ -35,6 +41,7 @@ struct WeekView: View {
     
 
     @State private var showCopied: Bool = false
+    @State private var crewPulse = false
 
     @State private var didInitialAutoScroll: Bool = false
     @State private var lastAutoScrollTargetID: UUID? = nil
@@ -42,6 +49,7 @@ struct WeekView: View {
 
     @State private var animateSummary = false
     @State private var pulseTodayDot = false
+    @State private var commentPulse = false
 
     private let liveTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
@@ -117,7 +125,11 @@ struct WeekView: View {
                         .presentationDetents([.medium, .large])
                 }
                 .overlay(toastView, alignment: .bottom)
-                .onAppear { onAppear(proxy: proxy) }
+                .onAppear {
+                    onAppear(proxy: proxy)
+                    crewPulse = true
+                    commentPulse = true
+                }
                 .onChange(of: selectedDay) { _, _ in onDayChanged(proxy: proxy) }
                 .onChange(of: eventsForDayIDs) { _, _ in
                     animateSummaryCard()
@@ -144,153 +156,150 @@ struct WeekView: View {
 // MARK: - Main List
 // MARK: - Main List
 private extension WeekView {
-
-@ViewBuilder
-func mainList(proxy: ScrollViewProxy) -> some View {
-    if weekMode == .personal {
-        personalWeekList(proxy: proxy)
-    } else {
-        crewWeekList
-    }
-}
-
-
-
-@ViewBuilder
-func personalWeekList(proxy: ScrollViewProxy) -> some View {
-    List {
-        pickerSection
-        summarySection
-
-        if eventsForDay.isEmpty {
-            emptySection
+    
+    @ViewBuilder
+    func mainList(proxy: ScrollViewProxy) -> some View {
+        if weekMode == .personal {
+            personalWeekList(proxy: proxy)
         } else {
-            eventsSection
+            crewWeekList
         }
     }
-    .listStyle(.plain)
-    .scrollContentBackground(.hidden)
-    .background(Color(.systemGroupedBackground))
-}
-
-@ViewBuilder
-var crewWeekList: some View {
-    List {
-        crewPickerSection
-        crewDateSection
-        crewWeekSection
-        crewActivityPreviewSection
-    }
-    .listStyle(.plain)
-    .scrollContentBackground(.hidden)
-    .background(Color(.systemGroupedBackground))
-}
-
-    var crewPickerSection: some View {
-        Section {
-            VStack(alignment: .leading, spacing: 14) {
-                Picker("Week Mode", selection: $weekMode) {
-                    Text("Personal").tag(WeekMode.personal)
-                    Text("Crew").tag(WeekMode.crew)
-                }
-                .pickerStyle(.segmented)
-
-                ScrollViewReader { proxy in
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
-                            ForEach(0..<7, id: \.self) { day in
-                                Button {
-                                    withAnimation(.spring(duration: 0.28)) {
-                                        selectedDay = day
-                                    }
-                                } label: {
-                                    VStack(spacing: 8) {
-                                        Text(dayTitles[day])
-                                            .font(.subheadline.weight(.semibold))
-                                            .foregroundStyle(day == selectedDay ? .white : .primary)
-
-                                        ZStack {
-                                            Circle()
-                                                .fill(dayIndicatorColor(for: day).opacity(day == selectedDay ? 1 : 0.22))
-                                                .frame(
-                                                    width: dayIndicatorSize(for: day),
-                                                    height: dayIndicatorSize(for: day)
-                                                )
-                                                .scaleEffect(dayPulseScale(for: day))
-
-                                            if hasCrewTasks(on: day) {
-                                                Circle()
-                                                    .fill(day == selectedDay ? Color.white.opacity(0.95) : dayIndicatorColor(for: day))
-                                                    .frame(width: 6, height: 6)
-                                            }
-                                        }
-                                        .frame(height: 14)
-                                    }
-                                    .frame(width: 74)
-                                    .padding(.vertical, 12)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                            .fill(day == selectedDay ? dayIndicatorColor(for: day) : Color.white.opacity(0.04))
-                                    )
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                            .stroke(
-                                                day == selectedDay
-                                                ? dayIndicatorColor(for: day).opacity(0.9)
-                                                : Color.white.opacity(0.05),
-                                                lineWidth: 1
-                                            )
-                                    )
-                                    .shadow(
-                                        color: shouldGlowDay(day)
-                                        ? dayIndicatorColor(for: day).opacity(0.35)
-                                        : .clear,
-                                        radius: shouldGlowDay(day) ? 10 : 0
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                                .id(day)
-                            }
-                        }
-                        .padding(.horizontal, 2)
-                    }
-                    .onAppear {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            withAnimation(.spring(duration: 0.35)) {
-                                proxy.scrollTo(selectedDay, anchor: .center)
-                            }
-                        }
-                    }
-                    .onChange(of: selectedDay) { _, newValue in
-                        withAnimation(.spring(duration: 0.35)) {
-                            proxy.scrollTo(newValue, anchor: .center)
-                        }
-                    }
-                }
+    
+    
+    
+    @ViewBuilder
+    func personalWeekList(proxy: ScrollViewProxy) -> some View {
+        List {
+            pickerSection
+            summarySection
+            
+            if eventsForDay.isEmpty {
+                emptySection
+            } else {
+                eventsSection
             }
-            .padding(.vertical, 4)
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemGroupedBackground))
     }
-
+    
+    @ViewBuilder
+    var crewWeekList: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                VStack(spacing: 16) {
+                    crewPickerSection
+                    
+                    HStack(alignment: .center, spacing: 14) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Crew Week")
+                                .font(.system(size: 30, weight: .black, design: .rounded))
+                            
+                            Text(fullDateTextForSelectedDay())
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.secondary)
+                            
+                            HStack(spacing: 8) {
+                                Image(systemName: "sparkles")
+                                    .foregroundStyle(.blue)
+                                
+                                Text("Team flow for today")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        VStack(spacing: 10) {
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [
+                                                Color.accentColor.opacity(0.22),
+                                                Color.accentColor.opacity(0.08)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .frame(width: 54, height: 54)
+                                
+                                Image(systemName: "person.3.fill")
+                                    .font(.title3.weight(.bold))
+                                    .foregroundStyle(Color.accentColor)
+                            }
+                            
+                            Text("\(allCrewTasksForSelectedDay.filter { !$0.isDone }.count) Görev")
+                                .font(.caption2.bold())
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color.accentColor.opacity(0.12))
+                                .foregroundStyle(Color.accentColor)
+                                .clipShape(Capsule())
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
+                .padding(.vertical, 16)
+                .background(Color(.systemGroupedBackground))
+                
+                VStack(spacing: 0) {
+                    crewWeekSection
+                        .padding(.horizontal, 20)
+                        .padding(.top, 10)
+                    
+                    if !allCrewTasksForSelectedDay.isEmpty {
+                        Divider()
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                        
+                        HStack {
+                            Text("Recent Activity")
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                            
+                            Spacer()
+                            
+                            Image(systemName: "bolt.fill")
+                                .foregroundStyle(.orange)
+                        }
+                        .padding(.horizontal, 20)
+                        
+                        activityListContent
+                            .padding(.horizontal, 20)
+                            .padding(.top, 8)
+                    }
+                }
+                
+                Spacer(minLength: 90)
+            }
+        }
+        .background(Color(.systemGroupedBackground))
+        .scrollIndicators(.hidden)
+    }
+    
     var crewDateSection: some View {
         Section {
             HStack {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Crew Week")
                         .font(.system(size: 20, weight: .bold))
-
+                    
                     Text(fullDateTextForSelectedDay())
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-
+                
                 Spacer()
-
+                
                 ZStack {
                     Circle()
                         .fill(Color.white.opacity(0.06))
                         .frame(width: 42, height: 42)
-
+                    
                     Image(systemName: "person.3.fill")
                         .foregroundStyle(.secondary)
                 }
@@ -298,42 +307,42 @@ var crewWeekList: some View {
             .padding(.vertical, 6)
         }
     }
-var crewActivityPreviewSection: some View {
-    let recent = Array(allCrewActivities.prefix(4))
-
-    return Section("Recent Activity") {
-        if recent.isEmpty {
-            Text("No crew activity yet")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        } else {
-            ForEach(recent) { item in
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "bolt.fill")
-                        .foregroundStyle(.secondary)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(item.memberName)
-                            .font(.caption.weight(.semibold))
-
-                        Text(item.actionText)
-                            .font(.caption)
+    var crewActivityPreviewSection: some View {
+        let recent = Array(allCrewActivities.prefix(4))
+        
+        return Section("Recent Activity") {
+            if recent.isEmpty {
+                Text("No crew activity yet")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(recent) { item in
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "bolt.fill")
                             .foregroundStyle(.secondary)
-                            .lineLimit(2)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.memberName)
+                                .font(.caption.weight(.semibold))
+                            
+                            Text(item.actionText)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+                        
+                        Spacer()
+                        
+                        Text(item.createdAt, style: .time)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
                     }
-
-                    Spacer()
-
-                    Text(item.createdAt, style: .time)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                    .padding(.vertical, 2)
                 }
-                .padding(.vertical, 2)
             }
         }
     }
-}
-
+    
     var pickerSection: some View {
         Section {
             VStack(spacing: 12) {
@@ -353,7 +362,7 @@ var crewActivityPreviewSection: some View {
                 }
                 .pickerStyle(.segmented)
                 .padding(.vertical, 4)
-
+                
                 HStack {
                     ForEach(0..<7, id: \.self) { i in
                         VStack(spacing: 4) {
@@ -362,7 +371,7 @@ var crewActivityPreviewSection: some View {
                                 .frame(width: 6, height: 6)
                                 .scaleEffect(i == weekdayIndexToday() && pulseTodayDot ? 1.18 : 1.0)
                                 .opacity(i == weekdayIndexToday() ? 1 : 0)
-
+                            
                             Color.clear.frame(height: 1)
                         }
                         .frame(maxWidth: .infinity)
@@ -378,6 +387,394 @@ var crewActivityPreviewSection: some View {
         .listRowBackground(Color.clear)
     }
     
+    var activityListContent: some View {
+        let recent = Array(allCrewActivities.prefix(5))
+        
+        return VStack(alignment: .leading, spacing: 14) {
+            if recent.isEmpty {
+                Text("No crew activity yet")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(Array(recent.enumerated()), id: \.element.id) { index, item in
+                    HStack(alignment: .top, spacing: 12) {
+                        VStack(spacing: 0) {
+                            Circle()
+                                .fill(Color.orange.opacity(0.95))
+                                .frame(width: 10, height: 10)
+                            
+                            if index != recent.count - 1 {
+                                Rectangle()
+                                    .fill(Color.white.opacity(0.08))
+                                    .frame(width: 2)
+                                    .frame(maxHeight: .infinity)
+                                    .padding(.top, 5)
+                            }
+                        }
+                        .frame(width: 14)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(item.memberName)
+                                    .font(.caption.weight(.bold))
+                                
+                                Spacer()
+                                
+                                Text(item.createdAt, style: .time)
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                            
+                            Text(item.actionText)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+        }
+    }
+    
+    var crewPickerSection: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<7, id: \.self) { day in
+                Button {
+                    withAnimation(.spring(duration: 0.28)) {
+                        selectedDay = day
+                    }
+                } label: {
+                    Text(dayTitles[day])
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(day == selectedDay ? .white : .primary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(
+                                    day == selectedDay
+                                    ? LinearGradient(
+                                        colors: [
+                                            dayIndicatorColor(for: day),
+                                            dayIndicatorColor(for: day).opacity(0.82)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                    : LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(0.05),
+                                            Color.white.opacity(0.025)
+                                        ],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(
+                                    day == selectedDay
+                                    ? Color.white.opacity(0.12)
+                                    : Color.white.opacity(0.05),
+                                    lineWidth: 1
+                                )
+                        )
+                        .shadow(
+                            color: day == selectedDay
+                            ? dayIndicatorColor(for: day).opacity(0.30)
+                            : .clear,
+                            radius: day == selectedDay ? 12 : 0
+                        )
+                        .scaleEffect(day == selectedDay ? 1.02 : 1.0)
+                        .animation(.spring(duration: 0.22), value: selectedDay)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 16)
+    }
+    
+    var allCrewTasksForSelectedDay: [CrewTask] {
+        allCrewTasks
+            .filter { $0.showOnWeek && $0.scheduledWeekday == selectedDay }
+            .sorted {
+                ($0.scheduledStartMinute ?? 0) < ($1.scheduledStartMinute ?? 0)
+            }
+    }
+    
+    func enhancedPremiumTimelineCard(_ task: CrewTask, isLast: Bool) -> some View {
+        let tint = premiumPriorityColor(task.priority)
+        let active = isTaskActive(task)
+        let done = task.isDone
+        let soon = isTaskStartingSoon(task)
+
+        return timelineCardContent(
+            task: task,
+            isLast: isLast,
+            tint: tint,
+            active: active,
+            done: done,
+            soon: soon
+        )
+    }
+    
+    func timelineCardContent(
+        task: CrewTask,
+        isLast: Bool,
+        tint: Color,
+        active: Bool,
+        done: Bool,
+        soon: Bool
+    ) -> some View {
+        HStack(alignment: .top, spacing: 16) {
+            timelineIndicator(isLast: isLast, tint: tint, active: active, done: done, soon: soon)
+
+            VStack(alignment: .leading, spacing: 12) {
+                taskHeader(task: task, tint: tint, active: active, done: done)
+                taskMeta(task: task, tint: tint, active: active, soon: soon)
+
+                if !previewCommentsForTask(task).isEmpty {
+                    taskCommentPreview(task)
+                }
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color(UIColor.secondarySystemGroupedBackground))
+                    .shadow(
+                        color: active ? tint.opacity(0.25) : .black.opacity(0.08),
+                        radius: active ? 10 : 4,
+                        y: active ? 4 : 2
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(active ? tint.opacity(0.28) : Color.white.opacity(0.06), lineWidth: 1)
+            )
+        }
+        .opacity(done ? 0.82 : 1.0)
+        .animation(.easeInOut(duration: 0.2), value: done)
+    }
+    func timelineIndicator(
+        isLast: Bool,
+        tint: Color,
+        active: Bool,
+        done: Bool,
+        soon: Bool
+    ) -> some View {
+        VStack(spacing: 0) {
+            ZStack {
+                Circle()
+                    .fill(done ? Color.green : (active ? tint : tint.opacity(0.85)))
+                    .frame(width: active ? 16 : 13, height: active ? 16 : 13)
+                    .scaleEffect(active && crewPulse ? 1.12 : 1.0)
+                    .shadow(
+                        color: active ? tint.opacity(0.40) : (soon ? tint.opacity(0.18) : .clear),
+                        radius: active ? 14 : (soon ? 8 : 0)
+                    )
+
+                if active {
+                    Circle()
+                        .stroke(tint.opacity(0.24), lineWidth: 6)
+                        .frame(width: 16, height: 16)
+                        .scaleEffect(crewPulse ? 1.55 : 1.15)
+                        .opacity(crewPulse ? 0.35 : 0.12)
+                }
+            }
+            .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: crewPulse)
+
+            if !isLast {
+                LinearGradient(
+                    colors: [
+                        active ? tint.opacity(0.85) : tint.opacity(0.35),
+                        tint.opacity(0.15),
+                        Color.clear
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(width: 2)
+                .frame(maxHeight: .infinity)
+                .padding(.top, 6)
+            }
+        }
+        .frame(width: 20)
+    }
+    func taskHeader(
+        task: CrewTask,
+        tint: Color,
+        active: Bool,
+        done: Bool
+    ) -> some View {
+        HStack {
+            Text(task.title)
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundStyle(done ? .secondary : .primary)
+                .strikethrough(done, color: .secondary)
+
+            Spacer()
+
+            if let start = task.scheduledStartMinute {
+                Text(hm(start))
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(active ? tint : .secondary)
+                    .monospacedDigit()
+            }
+        }
+    }
+    func taskMeta(
+        task: CrewTask,
+        tint: Color,
+        active: Bool,
+        soon: Bool
+    ) -> some View {
+        let commentCount = commentsForTask(task).count
+        let hasComments = commentCount > 0
+
+        return VStack(alignment: .leading, spacing: 10) {
+            if !task.assignedTo.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "person.fill")
+                    Text(task.assignedTo)
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 8) {
+                Text(priorityTitle(task.priority))
+                    .font(.caption2.weight(.bold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(tint.opacity(0.14))
+                    .foregroundStyle(tint)
+                    .clipShape(Capsule())
+
+                Text(statusTitle(task.status))
+                    .font(.caption2.weight(.bold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(Color.white.opacity(0.06))
+                    .foregroundStyle(.secondary)
+                    .clipShape(Capsule())
+
+                Spacer()
+
+                if hasComments {
+                    HStack(spacing: 6) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.blue)
+                                .frame(width: 8, height: 8)
+                                .scaleEffect(commentPulse ? 1.18 : 1.0)
+                                .shadow(color: Color.blue.opacity(commentPulse ? 0.35 : 0.12), radius: commentPulse ? 8 : 3)
+                        }
+
+                        HStack(spacing: 5) {
+                            Image(systemName: "text.bubble.fill")
+                            Text("\(commentCount)")
+                                .monospacedDigit()
+                        }
+                        .font(.caption2.weight(.bold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(Color.blue.opacity(0.14))
+                        .foregroundStyle(.blue)
+                        .clipShape(Capsule())
+                    }
+                    .animation(
+                        .easeInOut(duration: 1.1).repeatForever(autoreverses: true),
+                        value: commentPulse
+                    )
+                }
+
+                if active {
+                    Text("LIVE")
+                        .font(.caption2.weight(.black))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(Color.green.opacity(0.16))
+                        .foregroundStyle(.green)
+                        .clipShape(Capsule())
+                } else if soon {
+                    Text("SOON")
+                        .font(.caption2.weight(.black))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(tint.opacity(0.14))
+                        .foregroundStyle(tint)
+                        .clipShape(Capsule())
+                }
+            }
+        }
+    }
+    
+    func hasComments(_ task: CrewTask) -> Bool {
+        !commentsForTask(task).isEmpty
+    }
+    
+    func taskCommentPreview(_ task: CrewTask) -> some View {
+        let comments = Array(previewCommentsForTask(task))
+        let totalCount = commentsForTask(task).count
+        let remaining = max(0, totalCount - comments.count)
+
+        return VStack(alignment: .leading, spacing: 10) {
+            ForEach(Array(comments.enumerated()), id: \.element.id) { _, comment in
+                HStack(alignment: .top, spacing: 8) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.white.opacity(0.08))
+                            .frame(width: 28, height: 28)
+
+                        Text(initialLetter(comment.authorName))
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(.primary)
+                    }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(comment.authorName)
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(.primary)
+
+                        Text(comment.message)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+
+                    Spacer()
+                }
+            }
+
+            HStack(spacing: 6) {
+                Image(systemName: "text.bubble")
+                Text("\(totalCount) comments")
+                    .font(.caption2.weight(.semibold))
+
+                if remaining > 0 {
+                    Text("• +\(remaining) more")
+                        .font(.caption2.weight(.semibold))
+                }
+
+                Spacer()
+            }
+            .foregroundStyle(.secondary)
+        }
+        .padding(.top, 4)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.white.opacity(0.04))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+        )
+    }
+    
     func crewTasks(for day: Int) -> [CrewTask] {
         allCrewTasks
             .filter { $0.showOnWeek && $0.scheduledWeekday == day }
@@ -386,20 +783,38 @@ var crewActivityPreviewSection: some View {
             }
     }
     
+    func commentsForTask(_ task: CrewTask) -> [CrewTaskComment] {
+        allCrewComments
+            .filter { $0.taskID == task.id }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+    
+    
+
+    func previewCommentsForTask(_ task: CrewTask) -> [CrewTaskComment] {
+        Array(commentsForTask(task).prefix(2))
+    }
+
+    func initialLetter(_ name: String) -> String {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return String(trimmed.prefix(1)).uppercased()
+    }
+    
     func currentMinuteOfDay() -> Int {
         let c = Calendar.current.dateComponents([.hour, .minute], from: Date())
         return (c.hour ?? 0) * 60 + (c.minute ?? 0)
     }
-
+    
     func hasCrewTasks(on day: Int) -> Bool {
         !crewTasks(for: day).isEmpty
     }
-
+    
+    
     func hasActiveCrewTask(on day: Int) -> Bool {
         guard day == weekdayIndexToday() else { return false }
-
+        
         let now = currentMinuteOfDay()
-
+        
         return crewTasks(for: day).contains { task in
             guard let start = task.scheduledStartMinute,
                   let duration = task.scheduledDurationMinute else { return false }
@@ -407,78 +822,100 @@ var crewActivityPreviewSection: some View {
             return now >= start && now < end
         }
     }
-
+    
     func hasUpcomingCrewTaskSoon(on day: Int) -> Bool {
         guard day == weekdayIndexToday() else { return false }
-
+        
         let now = currentMinuteOfDay()
-
+        
         return crewTasks(for: day).contains { task in
             guard let start = task.scheduledStartMinute else { return false }
             let diff = start - now
             return diff >= 0 && diff <= 30
         }
     }
-
+    
     func shouldGlowDay(_ day: Int) -> Bool {
         hasActiveCrewTask(on: day) || hasUpcomingCrewTaskSoon(on: day)
     }
+    
+    func toggleCrewTaskDone(_ task: CrewTask) {
+        task.isDone.toggle()
 
+        if task.isDone {
+            task.status = "done"
+            Haptics.notify(.success)
+        } else {
+            if task.status == "done" {
+                task.status = "todo"
+            }
+            Haptics.impact(.light)
+        }
+
+        try? context.save()
+    }
+
+    func deleteCrewTask(_ task: CrewTask) {
+        context.delete(task)
+        Haptics.impact(.heavy)
+        try? context.save()
+    }
+    
     func dayIndicatorColor(for day: Int) -> Color {
         if hasActiveCrewTask(on: day) {
             return .green
         }
-
+        
         if hasUpcomingCrewTaskSoon(on: day) {
             return .orange
         }
-
+        
         if hasUrgentCrewTask(on: day) {
             return .red
         }
-
+        
         if hasCrewTasks(on: day) {
             return .blue
         }
-
+        
         return .secondary
     }
-
+    
     func dayIndicatorSize(for day: Int) -> CGFloat {
         if hasActiveCrewTask(on: day) {
             return 12
         }
-
+        
         if hasUpcomingCrewTaskSoon(on: day) {
             return 10
         }
-
+        
         return hasCrewTasks(on: day) ? 8 : 6
     }
-
+    
     func dayPulseScale(for day: Int) -> CGFloat {
         if hasActiveCrewTask(on: day) {
             return 1.18
         }
-
+        
         if hasUpcomingCrewTaskSoon(on: day) {
             return 1.08
         }
-
+        
         return 1.0
     }
-
-func fullDateTextForSelectedDay() -> String {
-    let calendar = Calendar.current
-    let today = Date()
-
-    guard let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: today)?.start,
-          let targetDate = calendar.date(byAdding: .day, value: selectedDay, to: startOfWeek) else {
-        return "Date unavailable"
+    
+    func fullDateTextForSelectedDay() -> String {
+        let calendar = Calendar.current
+        let today = Date()
+        
+        guard let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: today)?.start,
+              let targetDate = calendar.date(byAdding: .day, value: selectedDay, to: startOfWeek) else {
+            return "Date unavailable"
+        }
+        
+        return targetDate.formatted(date: .complete, time: .omitted)
     }
-
-    return targetDate.formatted(date: .complete, time: .omitted)
-}
     func premiumPriorityColor(_ priority: String) -> Color {
         switch priority {
         case "urgent":
@@ -497,10 +934,10 @@ func fullDateTextForSelectedDay() -> String {
     func hasUrgentCrewTask(on day: Int) -> Bool {
         crewTasks(for: day).contains { $0.priority == "urgent" }
     }
-
+    
     func premiumCardFill(_ priority: String, active: Bool, soon: Bool) -> LinearGradient {
         let tint = premiumPriorityColor(priority)
-
+        
         return LinearGradient(
             colors: [
                 tint.opacity(priority == "urgent" ? 0.16 : (active ? 0.12 : 0.08)),
@@ -510,50 +947,50 @@ func fullDateTextForSelectedDay() -> String {
             endPoint: .bottomTrailing
         )
     }
-
+    
     func premiumBorderColor(_ priority: String, active: Bool, soon: Bool) -> Color {
         let tint = premiumPriorityColor(priority)
-
+        
         if priority == "urgent" {
             return tint.opacity(active ? 0.65 : 0.42)
         }
-
+        
         if active {
             return tint.opacity(0.50)
         }
-
+        
         if soon {
             return tint.opacity(0.30)
         }
-
+        
         return tint.opacity(0.18)
     }
-
+    
     func premiumGlowColor(_ priority: String, active: Bool, soon: Bool) -> Color {
         let tint = premiumPriorityColor(priority)
-
+        
         if priority == "urgent" {
             return tint.opacity(active ? 0.35 : 0.22)
         }
-
+        
         if active {
             return tint.opacity(0.20)
         }
-
+        
         if soon {
             return tint.opacity(0.10)
         }
-
+        
         return .clear
     }
-
+    
     func premiumPriorityBadge(_ priority: String, tint: Color) -> some View {
         HStack(spacing: 6) {
             if priority == "urgent" {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.caption2.weight(.bold))
             }
-
+            
             Text(priorityTitle(priority))
                 .font(.caption2.weight(.bold))
         }
@@ -569,7 +1006,7 @@ func fullDateTextForSelectedDay() -> String {
         )
         .foregroundStyle(tint)
     }
-
+    
     func premiumMetaPill(icon: String, text: String, tint: Color) -> some View {
         HStack(spacing: 5) {
             Image(systemName: icon)
@@ -589,12 +1026,12 @@ func fullDateTextForSelectedDay() -> String {
         let crew = allCrews.first { $0.id == task.crewID }
         let active = isTaskActive(task)
         let soon = isTaskStartingSoon(task)
-
+        
         let tint = premiumPriorityColor(task.priority)
         let cardFill = premiumCardFill(task.priority, active: active, soon: soon)
         let border = premiumBorderColor(task.priority, active: active, soon: soon)
         let glow = premiumGlowColor(task.priority, active: active, soon: soon)
-
+        
         return HStack(alignment: .top, spacing: 14) {
             VStack(spacing: 0) {
                 Circle()
@@ -609,7 +1046,7 @@ func fullDateTextForSelectedDay() -> String {
                             .stroke(.white.opacity(active ? 0.30 : 0.10), lineWidth: 1)
                     )
                     .scaleEffect(active ? 1.15 : (soon ? 1.06 : 1.0))
-
+                
                 if !isLast {
                     LinearGradient(
                         colors: [
@@ -625,7 +1062,7 @@ func fullDateTextForSelectedDay() -> String {
                 }
             }
             .frame(width: 18)
-
+            
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 8) {
                     if let start = task.scheduledStartMinute {
@@ -636,17 +1073,17 @@ func fullDateTextForSelectedDay() -> String {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(active ? tint : .secondary)
                     }
-
+                    
                     Spacer()
-
+                    
                     premiumPriorityBadge(task.priority, tint: tint)
                 }
-
+                
                 Text(task.title)
                     .font(.title3.weight(.bold))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
-
+                
                 if let crew {
                     HStack(spacing: 6) {
                         Image(systemName: "person.3.fill")
@@ -655,14 +1092,14 @@ func fullDateTextForSelectedDay() -> String {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 }
-
+                
                 HStack(spacing: 10) {
                     premiumMetaPill(
                         icon: "flag.fill",
                         text: statusTitle(task.status),
                         tint: .secondary
                     )
-
+                    
                     if !task.assignedTo.isEmpty {
                         premiumMetaPill(
                             icon: "person.fill",
@@ -671,13 +1108,13 @@ func fullDateTextForSelectedDay() -> String {
                         )
                     }
                 }
-
+                
                 if active {
                     HStack(spacing: 6) {
                         Circle()
                             .fill(.green)
                             .frame(width: 6, height: 6)
-
+                        
                         Text("Active now")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.green)
@@ -687,7 +1124,7 @@ func fullDateTextForSelectedDay() -> String {
                         Circle()
                             .fill(.orange)
                             .frame(width: 6, height: 6)
-
+                        
                         Text("Starting soon")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.orange)
@@ -713,102 +1150,117 @@ func fullDateTextForSelectedDay() -> String {
     
     var crewWeekSection: some View {
         Section("Crew Tasks") {
-            TabView(selection: $selectedDay) {
-                ForEach(0..<7, id: \.self) { day in
-                    crewDayPage(for: day)
-                        .tag(day)
-                        .padding(.top, 6)
-                }
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .frame(minHeight: 340)
-        }
-    }
-    var allCrewTasksForSelectedDay: [CrewTask] {
-        allCrewTasks
-            .filter { task in
-                task.showOnWeek && task.scheduledWeekday == selectedDay
-            }
-            .sorted {
-                ($0.scheduledStartMinute ?? 0) < ($1.scheduledStartMinute ?? 0)
-            }
-    }
-    
-    func crewDayPage(for day: Int) -> some View {
-        let tasks = allCrewTasks
-            .filter { $0.showOnWeek && $0.scheduledWeekday == day }
-            .sorted {
-                ($0.scheduledStartMinute ?? 0) < ($1.scheduledStartMinute ?? 0)
-            }
-
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(dayTitles[day])
-                        .font(.headline)
-
-                    Text(shortDateTextForDay(day))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                if hasCrewTasks(on: day) {
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(dayIndicatorColor(for: day))
-                            .frame(width: 7, height: 7)
-
-                        Text("\(tasks.count) task")
-                            .font(.caption.weight(.semibold))
+            let tasks = allCrewTasksForSelectedDay
+            
+            VStack(alignment: .leading, spacing: 14) {
+                if tasks.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "calendar.badge.plus")
+                            .font(.system(size: 40))
+                            .foregroundStyle(.tertiary)
+                        
+                        Text("Bugün için görev yok")
+                            .font(.headline)
                             .foregroundStyle(.secondary)
+                        
+                        Text("Seçili gün için crew görevi eklendiğinde burada görünecek.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
                     }
-                }
-            }
-
-            if tasks.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("No Crew Tasks")
-                        .font(.subheadline.weight(.semibold))
-
-                    Text("Shared tasks scheduled for this day will appear here.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 8)
-            } else {
-                VStack(spacing: 14) {
-                    ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
-                        NavigationLink {
-                            if let crew = allCrews.first(where: { $0.id == task.crewID }) {
-                                CrewTaskDetailView(task: task, crew: crew)
-                            } else {
-                                EmptyView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 40)
+                    .padding(.bottom, 20)
+                } else {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
+                            NavigationLink {
+                                if let crew = crewMap[task.crewID] {
+                                    CrewTaskDetailView(task: task, crew: crew)
+                                } else {
+                                    EmptyView()
+                                }
+                            } label: {
+                                enhancedPremiumTimelineCard(task, isLast: index == tasks.count - 1)
                             }
-                        } label: {
-                            crewTimelineTaskCard(task, isLast: index == tasks.count - 1)
+                            .buttonStyle(.plain)
+                            .contextMenu {
+                                Button {
+                                    toggleCrewTaskDone(task)
+                                } label: {
+                                    Label(
+                                        task.isDone ? "Mark as Undone" : "Mark as Done",
+                                        systemImage: task.isDone
+                                        ? "arrow.uturn.backward.circle.fill"
+                                        : "checkmark.circle.fill"
+                                    )
+                                }
+
+                                if !commentsForTask(task).isEmpty {
+                                    Button {
+                                        // Kart zaten detail'e gidiyor, burada ekstra işlem yok.
+                                    } label: {
+                                        Label("Open Task & Comments", systemImage: "text.bubble.fill")
+                                    }
+                                }
+
+                                Button(role: .destructive) {
+                                    deleteCrewTask(task)
+                                } label: {
+                                    Label("Delete Task", systemImage: "trash.fill")
+                                }
+                            }
+                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                Button {
+                                    toggleCrewTaskDone(task)
+                                } label: {
+                                    Label(task.isDone ? "Undo" : "Done", systemImage: task.isDone ? "arrow.uturn.backward.circle.fill" : "checkmark.circle.fill")
+                                }
+                                .tint(task.isDone ? .orange : .green)
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    deleteCrewTask(task)
+                                } label: {
+                                    Label("Delete", systemImage: "trash.fill")
+                                }
+
+                                Button {
+                                    toggleCrewTaskDone(task)
+                                } label: {
+                                    Label(task.isDone ? "Undo" : "Done", systemImage: task.isDone ? "arrow.uturn.backward.circle.fill" : "checkmark.circle.fill")
+                                }
+                                .tint(task.isDone ? .orange : .green)
+                            }
+                            .contextMenu {
+                                Button {
+                                    toggleCrewTaskDone(task)
+                                } label: {
+                                    Label(task.isDone ? "Mark as Undone" : "Mark as Done", systemImage: task.isDone ? "arrow.uturn.backward.circle" : "checkmark.circle")
+                                }
+
+                                Button(role: .destructive) {
+                                    deleteCrewTask(task)
+                                } label: {
+                                    Label("Delete Task", systemImage: "trash")
+                                }
+                            }
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }
-
-            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .contentShape(Rectangle())
     }
     
     func shortDateTextForDay(_ day: Int) -> String {
         let calendar = Calendar.current
         let today = Date()
-
+        
         guard let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: today)?.start,
               let targetDate = calendar.date(byAdding: .day, value: day, to: startOfWeek) else {
             return ""
         }
-
+        
         return targetDate.formatted(date: .abbreviated, time: .omitted)
     }
     
@@ -829,34 +1281,34 @@ func fullDateTextForSelectedDay() -> String {
     
     func isTaskActive(_ task: CrewTask) -> Bool {
         guard task.scheduledWeekday == weekdayIndexToday() else { return false }
-
+        
         let now = currentMinuteOfDay()
         guard let start = task.scheduledStartMinute,
               let duration = task.scheduledDurationMinute else { return false }
-
+        
         let end = start + duration
         return now >= start && now < end
     }
-
+    
     func isTaskStartingSoon(_ task: CrewTask) -> Bool {
         guard task.scheduledWeekday == weekdayIndexToday() else { return false }
-
+        
         let now = currentMinuteOfDay()
         guard let start = task.scheduledStartMinute else { return false }
-
+        
         let diff = start - now
         return diff >= 0 && diff <= 30
     }
     
-   
-
+    
+    
     func crewForTask(_ task: CrewTask) -> Crew? {
         allCrews.first { $0.id == task.crewID }
     }
-
+    
     func crewWeekTaskRow(_ task: CrewTask) -> some View {
         let crew = crewForTask(task)
-
+        
         return VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 10) {
                 Circle()
@@ -867,14 +1319,14 @@ func fullDateTextForSelectedDay() -> String {
                             .font(.caption.weight(.bold))
                             .foregroundStyle(task.isDone ? .green : priorityColor(task.priority))
                     )
-
+                
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
                         Text(task.title)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.primary)
                             .lineLimit(2)
-
+                        
                         Text(priorityTitle(task.priority))
                             .font(.caption2.weight(.bold))
                             .padding(.horizontal, 8)
@@ -885,38 +1337,38 @@ func fullDateTextForSelectedDay() -> String {
                             )
                             .foregroundStyle(priorityColor(task.priority))
                     }
-
+                    
                     if let crew {
                         Text(crew.name)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-
+                    
                     HStack(spacing: 10) {
                         if let start = task.scheduledStartMinute {
                             Label(hm(start), systemImage: "clock")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
-
+                        
                         if !task.assignedTo.isEmpty {
                             Label(task.assignedTo, systemImage: "person.fill")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
-
+                        
                         Label(statusTitle(task.status), systemImage: "flag.fill")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
                 }
-
+                
                 Spacer()
             }
             .padding(.vertical, 4)
         }
     }
-
+    
     var summarySection: some View {
         Section {
             daySummaryCard
@@ -925,24 +1377,24 @@ func fullDateTextForSelectedDay() -> String {
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
-
+    
     var emptySection: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Image(systemName: "calendar.badge.plus")
                     .font(.title3)
                     .foregroundStyle(Color.accentColor)
-
+                
                 Text("\(dayTitles[selectedDay]) günü boş")
                     .font(.headline)
-
+                
                 Spacer()
             }
-
+            
             Text("Bu güne henüz ders eklenmemiş. Sağ üstteki + ile hızlıca yeni ders oluşturabilirsin.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-
+            
             Button {
                 Haptics.impact(.medium)
                 showingAdd = true
@@ -961,11 +1413,11 @@ func fullDateTextForSelectedDay() -> String {
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
-
+    
     var eventsSection: some View {
         Section {
             let now = currentMinuteOfDay()
-
+            
             ForEach(eventsForDay) { ev in
                 AnyView(
                     EventRow(
@@ -983,7 +1435,7 @@ func fullDateTextForSelectedDay() -> String {
             }
         }
     }
-
+    
     var daySummaryCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .top) {
@@ -991,7 +1443,7 @@ func fullDateTextForSelectedDay() -> String {
                     HStack(spacing: 8) {
                         Text(dayTitles[selectedDay])
                             .font(.headline)
-
+                        
                         if isTodaySelected {
                             Text("Bugün")
                                 .font(.caption2.weight(.bold))
@@ -1003,7 +1455,7 @@ func fullDateTextForSelectedDay() -> String {
                                 )
                                 .foregroundStyle(Color.accentColor)
                         }
-
+                        
                         if liveEventForDay != nil {
                             Text("LIVE")
                                 .font(.caption2.weight(.bold))
@@ -1015,14 +1467,14 @@ func fullDateTextForSelectedDay() -> String {
                                 .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: animateSummary)
                         }
                     }
-
+                    
                     Text(summarySubtitle)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-
+                
                 Spacer()
-
+                
                 if totalMinutesForDay > 0 {
                     Text(durationText(totalMinutesForDay))
                         .font(.title3.bold())
@@ -1030,37 +1482,37 @@ func fullDateTextForSelectedDay() -> String {
                         .monospacedDigit()
                 }
             }
-
+            
             HStack(spacing: 10) {
                 summaryChip(
                     title: "Ders",
                     value: "\(eventsForDay.count)",
                     icon: "book.closed.fill"
                 )
-
+                
                 summaryChip(
                     title: "İlk",
                     value: firstEventOfDay.map { hm($0.startMinute) } ?? "--:--",
                     icon: "sunrise.fill"
                 )
-
+                
                 summaryChip(
                     title: "Son",
                     value: lastEventOfDay.map { hm($0.startMinute + $0.durationMinute) } ?? "--:--",
                     icon: "moon.stars.fill"
                 )
             }
-
+            
             if let live = liveEventForDay {
                 HStack(spacing: 8) {
                     Image(systemName: "dot.radiowaves.left.and.right")
                         .foregroundStyle(.green)
-
+                    
                     Text("\(live.title) şu an devam ediyor")
                         .font(.caption.weight(.semibold))
-
+                    
                     Spacer()
-
+                    
                     Text(timeText(for: live))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
@@ -1072,7 +1524,7 @@ func fullDateTextForSelectedDay() -> String {
                         .fill(Color.green.opacity(0.12))
                 )
             }
-
+            
             if let indicator = currentTimeIndicatorText {
                 HStack(spacing: 8) {
                     Circle()
@@ -1080,11 +1532,11 @@ func fullDateTextForSelectedDay() -> String {
                         .frame(width: 8, height: 8)
                         .scaleEffect(animateSummary ? 1.15 : 0.9)
                         .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: animateSummary)
-
+                    
                     Text(indicator)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
-
+                    
                     Spacer()
                 }
                 .padding(.horizontal, 12)
@@ -1100,13 +1552,13 @@ func fullDateTextForSelectedDay() -> String {
         .scaleEffect(animateSummary ? 1.01 : 1.0)
         .animation(.spring(response: 0.35, dampingFraction: 0.78), value: animateSummary)
     }
-
+    
     func summaryChip(title: String, value: String, icon: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Label(title, systemImage: icon)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-
+            
             Text(value)
                 .font(.subheadline.bold())
                 .monospacedDigit()
@@ -1120,7 +1572,7 @@ func fullDateTextForSelectedDay() -> String {
                 .fill(Color.white.opacity(0.05))
         )
     }
-
+    
     var toolbarContent: some ToolbarContent {
         ToolbarItemGroup(placement: .topBarTrailing) {
             Menu {
@@ -1130,14 +1582,14 @@ func fullDateTextForSelectedDay() -> String {
                 } label: {
                     Label("Bu günü paylaş", systemImage: "square.and.arrow.up")
                 }
-
+                
                 Button {
                     Haptics.impact(.light)
                     shareWeek()
                 } label: {
                     Label("Tüm haftayı paylaş", systemImage: "calendar")
                 }
-
+                
                 Button {
                     UIPasteboard.general.string = shareTextForSelectedDay()
                     Haptics.notify(.success)
@@ -1148,7 +1600,7 @@ func fullDateTextForSelectedDay() -> String {
             } label: {
                 Image(systemName: "square.and.arrow.up")
             }
-
+            
             Button {
                 Haptics.impact(.medium)
                 showingAdd = true
@@ -1157,7 +1609,7 @@ func fullDateTextForSelectedDay() -> String {
             }
         }
     }
-
+    
     var toastView: some View {
         Group {
             if showCopied {
@@ -1173,7 +1625,7 @@ func fullDateTextForSelectedDay() -> String {
             }
         }
     }
-
+    
     var sectionCardBackground: some View {
         RoundedRectangle(cornerRadius: 24, style: .continuous)
             .fill(.ultraThinMaterial)
@@ -1182,19 +1634,19 @@ func fullDateTextForSelectedDay() -> String {
                     .stroke(Color.white.opacity(0.08), lineWidth: 1)
             )
     }
-
+    
     var summarySubtitle: String {
         if eventsForDay.isEmpty {
             return "Bu gün için kayıtlı ders yok"
         }
-
+        
         if liveEventForDay != nil {
             return "Ders şu an aktif"
         }
-
+        
         return "\(eventsForDay.count) ders • \(durationText(totalMinutesForDay)) toplam"
     }
-
+    
     func animateSummaryCard() {
         animateSummary = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
@@ -1202,499 +1654,501 @@ func fullDateTextForSelectedDay() -> String {
         }
     }
 }
-
-// MARK: - Lifecycle
-private extension WeekView {
-
-    func onAppear(proxy: ScrollViewProxy) {
-        if !didSetInitialDay {
-            didSetInitialDay = true
-            selectedDay = weekdayIndexToday()
+    
+    
+    
+    // MARK: - Lifecycle
+    private extension WeekView {
+        
+        func onAppear(proxy: ScrollViewProxy) {
+            if !didSetInitialDay {
+                didSetInitialDay = true
+                selectedDay = weekdayIndexToday()
+            }
+            
+            if !didInitialAutoScroll {
+                didInitialAutoScroll = true
+                autoScrollIfNeeded(proxy: proxy)
+            }
+            
+            animateSummary = true
+            pulseTodayDot = true
+            
+            Task {
+                await NotificationManager.shared.rescheduleAll(events: allEvents)
+            }
         }
-
-        if !didInitialAutoScroll {
-            didInitialAutoScroll = true
+        
+        func onDayChanged(proxy: ScrollViewProxy) {
+            lastAutoScrollTargetID = nil
+            animateSummaryCard()
             autoScrollIfNeeded(proxy: proxy)
         }
-
-        animateSummary = true
-        pulseTodayDot = true
-
-        Task {
-            await NotificationManager.shared.rescheduleAll(events: allEvents)
-        }
     }
-
-    func onDayChanged(proxy: ScrollViewProxy) {
-        lastAutoScrollTargetID = nil
-        animateSummaryCard()
-        autoScrollIfNeeded(proxy: proxy)
-    }
-}
-
-
-// MARK: - Logic
-private extension WeekView {
-
-    func delete(_ ev: EventItem) {
-        context.delete(ev)
-        try? context.save()
-        WidgetAppSync.refreshFromSwiftData(context: context)
-
-        Task {
-            await NotificationManager.shared.rescheduleAll(events: allEvents.filter { $0.id != ev.id })
-        }
-    }
-
-    func timeText(for ev: EventItem) -> String {
-        let start = ev.startMinute
-        let end = ev.startMinute + ev.durationMinute
-        return "\(hm(start)) – \(hm(end))"
-    }
-
-    func hm(_ minute: Int) -> String {
-        let m = max(0, min(1439, minute))
-        let h = m / 60
-        let mm = m % 60
-        return String(format: "%02d:%02d", h, mm)
-    }
-
-    func durationText(_ minutes: Int) -> String {
-        let h = minutes / 60
-        let m = minutes % 60
-
-        if h == 0 { return "\(m)dk" }
-        if m == 0 { return "\(h)s" }
-        return "\(h)s \(m)dk"
-    }
-
-  
-    func weekdayIndexToday() -> Int {
-        let w = Calendar.current.component(.weekday, from: Date())
-        return (w + 5) % 7
-    }
-
-    func hasConflict(_ ev: EventItem) -> Bool {
-        for other in eventsForDay {
-            if other.id == ev.id { continue }
-            if overlaps(ev, other) { return true }
-        }
-        return false
-    }
-
-    func overlaps(_ a: EventItem, _ b: EventItem) -> Bool {
-        let aStart = a.startMinute
-        let aEnd = a.startMinute + a.durationMinute
-        let bStart = b.startMinute
-        let bEnd = b.startMinute + b.durationMinute
-        return max(aStart, bStart) < min(aEnd, bEnd)
-    }
-
-    func autoScrollTarget(now: Int) -> EventItem? {
-        guard !eventsForDay.isEmpty else { return nil }
-
-        if selectedDay == weekdayIndexToday() {
-            if let live = eventsForDay.first(where: { ev in
-                let s = ev.startMinute
-                let e = ev.startMinute + ev.durationMinute
-                return now >= s && now < e
-            }) {
-                return live
-            }
-
-            if let next = eventsForDay.first(where: { $0.startMinute > now }) {
-                return next
+    
+    
+    // MARK: - Logic
+    private extension WeekView {
+        
+        func delete(_ ev: EventItem) {
+            context.delete(ev)
+            try? context.save()
+            WidgetAppSync.refreshFromSwiftData(context: context)
+            
+            Task {
+                await NotificationManager.shared.rescheduleAll(events: allEvents.filter { $0.id != ev.id })
             }
         }
-
-        return eventsForDay.first
-    }
-
-    func autoScrollIfNeeded(proxy: ScrollViewProxy) {
-        let now = currentMinuteOfDay()
-        guard let target = autoScrollTarget(now: now) else { return }
-
-        if lastAutoScrollTargetID == target.id { return }
-        lastAutoScrollTargetID = target.id
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-            withAnimation(.easeInOut(duration: 0.35)) {
-                proxy.scrollTo(target.id, anchor: .center)
+        
+        func timeText(for ev: EventItem) -> String {
+            let start = ev.startMinute
+            let end = ev.startMinute + ev.durationMinute
+            return "\(hm(start)) – \(hm(end))"
+        }
+        
+        func hm(_ minute: Int) -> String {
+            let m = max(0, min(1439, minute))
+            let h = m / 60
+            let mm = m % 60
+            return String(format: "%02d:%02d", h, mm)
+        }
+        
+        func durationText(_ minutes: Int) -> String {
+            let h = minutes / 60
+            let m = minutes % 60
+            
+            if h == 0 { return "\(m)dk" }
+            if m == 0 { return "\(h)s" }
+            return "\(h)s \(m)dk"
+        }
+        
+        
+        func weekdayIndexToday() -> Int {
+            let w = Calendar.current.component(.weekday, from: Date())
+            return (w + 5) % 7
+        }
+        
+        func hasConflict(_ ev: EventItem) -> Bool {
+            for other in eventsForDay {
+                if other.id == ev.id { continue }
+                if overlaps(ev, other) { return true }
+            }
+            return false
+        }
+        
+        func overlaps(_ a: EventItem, _ b: EventItem) -> Bool {
+            let aStart = a.startMinute
+            let aEnd = a.startMinute + a.durationMinute
+            let bStart = b.startMinute
+            let bEnd = b.startMinute + b.durationMinute
+            return max(aStart, bStart) < min(aEnd, bEnd)
+        }
+        
+        func autoScrollTarget(now: Int) -> EventItem? {
+            guard !eventsForDay.isEmpty else { return nil }
+            
+            if selectedDay == weekdayIndexToday() {
+                if let live = eventsForDay.first(where: { ev in
+                    let s = ev.startMinute
+                    let e = ev.startMinute + ev.durationMinute
+                    return now >= s && now < e
+                }) {
+                    return live
+                }
+                
+                if let next = eventsForDay.first(where: { $0.startMinute > now }) {
+                    return next
+                }
+            }
+            
+            return eventsForDay.first
+        }
+        
+        func autoScrollIfNeeded(proxy: ScrollViewProxy) {
+            let now = currentMinuteOfDay()
+            guard let target = autoScrollTarget(now: now) else { return }
+            
+            if lastAutoScrollTargetID == target.id { return }
+            lastAutoScrollTargetID = target.id
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                withAnimation(.easeInOut(duration: 0.35)) {
+                    proxy.scrollTo(target.id, anchor: .center)
+                }
             }
         }
     }
-}
 
-// MARK: - Share
-private extension WeekView {
     
-    
-    
-
-    func shareDay() { presentShare(text: shareTextForSelectedDay()) }
-
-    func shareWeek() {
-        let parts: [String] = (0..<7).map { day in shareTextForDay(day) }
-        presentShare(text: parts.joined(separator: "\n\n"))
-    }
-
-    func presentShare(text: String) {
-        let vc = UIActivityViewController(activityItems: [text], applicationActivities: nil)
-        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let root = scene.windows.first?.rootViewController {
-            root.present(vc, animated: true)
+    // MARK: - Share
+    private extension WeekView {
+        
+        
+        
+        
+        func shareDay() { presentShare(text: shareTextForSelectedDay()) }
+        
+        func shareWeek() {
+            let parts: [String] = (0..<7).map { day in shareTextForDay(day) }
+            presentShare(text: parts.joined(separator: "\n\n"))
         }
-    }
-
-    func shareTextForSelectedDay() -> String { shareTextForDay(selectedDay) }
-    
-    
-
-    func priorityTitle(_ value: String) -> String {
-        switch value {
-        case "low": return "Low"
-        case "medium": return "Medium"
-        case "high": return "High"
-        case "urgent": return "Urgent"
-        default: return value.capitalized
+        
+        func presentShare(text: String) {
+            let vc = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+            if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let root = scene.windows.first?.rootViewController {
+                root.present(vc, animated: true)
+            }
         }
-    }
-
-    func statusTitle(_ value: String) -> String {
-        switch value {
-        case "todo": return "Todo"
-        case "inProgress": return "In Progress"
-        case "review": return "Review"
-        case "done": return "Done"
-        default: return value.capitalized
+        
+        func shareTextForSelectedDay() -> String { shareTextForDay(selectedDay) }
+        
+        
+        
+        func priorityTitle(_ value: String) -> String {
+            switch value {
+            case "low": return "Low"
+            case "medium": return "Medium"
+            case "high": return "High"
+            case "urgent": return "Urgent"
+            default: return value.capitalized
+            }
         }
-    }
-
-
-    func shareTextForDay(_ day: Int) -> String {
-        let d = max(0, min(6, day))
-        let dayName = dayTitles[d]
-
-        let items = allEvents
-            .filter { $0.weekday == d }
-            .sorted { $0.startMinute < $1.startMinute }
-
-        if items.isEmpty { return "📅 \(dayName) — Ders yok" }
-
-        let lines = items.map { ev in
-            let start = hm(ev.startMinute)
-            let end = hm(ev.startMinute + ev.durationMinute)
-            let loc = (ev.location ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            let locText = loc.isEmpty ? "" : " • \(loc)"
-            return "• \(start)–\(end)  \(ev.title)\(locText)"
+        
+        func statusTitle(_ value: String) -> String {
+            switch value {
+            case "todo": return "Todo"
+            case "inProgress": return "In Progress"
+            case "review": return "Review"
+            case "done": return "Done"
+            default: return value.capitalized
+            }
         }
-
-        return """
+        
+        
+        func shareTextForDay(_ day: Int) -> String {
+            let d = max(0, min(6, day))
+            let dayName = dayTitles[d]
+            
+            let items = allEvents
+                .filter { $0.weekday == d }
+                .sorted { $0.startMinute < $1.startMinute }
+            
+            if items.isEmpty { return "📅 \(dayName) — Ders yok" }
+            
+            let lines = items.map { ev in
+                let start = hm(ev.startMinute)
+                let end = hm(ev.startMinute + ev.durationMinute)
+                let loc = (ev.location ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                let locText = loc.isEmpty ? "" : " • \(loc)"
+                return "• \(start)–\(end)  \(ev.title)\(locText)"
+            }
+            
+            return """
         📅 \(dayName) Programım
-
+        
         \(lines.joined(separator: "\n"))
-
+        
         (DailyTodo ile oluşturuldu)
         """
-    }
-
-    func showCopiedToast() {
-        withAnimation { showCopied = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
-            withAnimation { showCopied = false }
+        }
+        
+        func showCopiedToast() {
+            withAnimation { showCopied = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+                withAnimation { showCopied = false }
+            }
         }
     }
-}
 
-// MARK: - Row
-private struct EventRow: View {
-
-    @State private var pulse: Bool = false
-    @State private var glowPhase: Bool = false
-
-    let event: EventItem
-    let timeText: String
-    let hasConflict: Bool
-    let nowMinute: Int
-    let isTodaySelected: Bool
-
-    let onTap: () -> Void
-    let onEdit: () -> Void
-    let onDelete: () -> Void
-
-    private var start: Int { event.startMinute }
-    private var end: Int { event.startMinute + event.durationMinute }
-    private var duration: Int { max(1, event.durationMinute) }
-
-    private var isLive: Bool {
-        guard isTodaySelected else { return false }
-        return nowMinute >= start && nowMinute < end
-    }
-
-    private var isUpNext: Bool {
-        guard isTodaySelected else { return false }
-        return nowMinute < start && (start - nowMinute) <= 15
-    }
-
-    private var isSoon: Bool {
-        guard isTodaySelected else { return false }
-        let diff = start - nowMinute
-        return diff > 0 && diff <= 5
-    }
-
-    private var isDone: Bool {
-        guard isTodaySelected else { return false }
-        return nowMinute >= end
-    }
-
-    private var progress: Double {
-        guard isLive else { return 0 }
-        return min(1, max(0, Double(nowMinute - start) / Double(duration)))
-    }
-
-    private var minutesLeft: Int { max(0, end - nowMinute) }
-    private var minutesUntilStart: Int { max(0, start - nowMinute) }
-
-    private func hm(_ minute: Int) -> String {
-        let m = max(0, min(1439, minute))
-        let h = m / 60
-        let mm = m % 60
-        return String(format: "%02d:%02d", h, mm)
-    }
-
-    var body: some View {
-
-        let baseColor = hexColor(event.colorHex)
-
-        let accent: Color = {
-            if isDone { return Color.secondary.opacity(0.55) }
-            if isSoon { return .orange }
-            return baseColor
-        }()
-
-        let bg: Color = {
-            if isDone { return Color.secondary.opacity(0.06) }
-            return accent.opacity(isLive ? 0.16 : (isUpNext ? 0.13 : 0.10))
-        }()
-
-        let strokeColor: Color = {
-            if hasConflict { return .red.opacity(0.40) }
-            if isDone { return .secondary.opacity(0.14) }
-            if isLive { return accent.opacity(glowPhase ? 0.75 : 0.45) }
-            if isSoon { return .orange.opacity(0.70) }
-            if isUpNext { return accent.opacity(0.35) }
-            return .secondary.opacity(0.10)
-        }()
-
-        let strokeWidth: CGFloat =
+    
+    // MARK: - Row
+    private struct EventRow: View {
+        
+        @State private var pulse: Bool = false
+        @State private var glowPhase: Bool = false
+        
+        let event: EventItem
+        let timeText: String
+        let hasConflict: Bool
+        let nowMinute: Int
+        let isTodaySelected: Bool
+        
+        let onTap: () -> Void
+        let onEdit: () -> Void
+        let onDelete: () -> Void
+        
+        private var start: Int { event.startMinute }
+        private var end: Int { event.startMinute + event.durationMinute }
+        private var duration: Int { max(1, event.durationMinute) }
+        
+        private var isLive: Bool {
+            guard isTodaySelected else { return false }
+            return nowMinute >= start && nowMinute < end
+        }
+        
+        private var isUpNext: Bool {
+            guard isTodaySelected else { return false }
+            return nowMinute < start && (start - nowMinute) <= 15
+        }
+        
+        private var isSoon: Bool {
+            guard isTodaySelected else { return false }
+            let diff = start - nowMinute
+            return diff > 0 && diff <= 5
+        }
+        
+        private var isDone: Bool {
+            guard isTodaySelected else { return false }
+            return nowMinute >= end
+        }
+        
+        private var progress: Double {
+            guard isLive else { return 0 }
+            return min(1, max(0, Double(nowMinute - start) / Double(duration)))
+        }
+        
+        private var minutesLeft: Int { max(0, end - nowMinute) }
+        private var minutesUntilStart: Int { max(0, start - nowMinute) }
+        
+        private func hm(_ minute: Int) -> String {
+            let m = max(0, min(1439, minute))
+            let h = m / 60
+            let mm = m % 60
+            return String(format: "%02d:%02d", h, mm)
+        }
+        
+        var body: some View {
+            
+            let baseColor = hexColor(event.colorHex)
+            
+            let accent: Color = {
+                if isDone { return Color.secondary.opacity(0.55) }
+                if isSoon { return .orange }
+                return baseColor
+            }()
+            
+            let bg: Color = {
+                if isDone { return Color.secondary.opacity(0.06) }
+                return accent.opacity(isLive ? 0.16 : (isUpNext ? 0.13 : 0.10))
+            }()
+            
+            let strokeColor: Color = {
+                if hasConflict { return .red.opacity(0.40) }
+                if isDone { return .secondary.opacity(0.14) }
+                if isLive { return accent.opacity(glowPhase ? 0.75 : 0.45) }
+                if isSoon { return .orange.opacity(0.70) }
+                if isUpNext { return accent.opacity(0.35) }
+                return .secondary.opacity(0.10)
+            }()
+            
+            let strokeWidth: CGFloat =
             hasConflict ? 1.6 :
             (isLive ? 2.2 :
-             (isSoon ? 2.0 :
-              (isUpNext ? 1.4 : 1.0)))
-
-        let mainTextOpacity: Double = isDone ? 0.55 : 1.0
-        let secondaryTextOpacity: Double = isDone ? 0.55 : 1.0
-
-        HStack(spacing: 12) {
-
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [accent.opacity(1.0), accent.opacity(0.55)],
-                        startPoint: .top,
-                        endPoint: .bottom
+                (isSoon ? 2.0 :
+                    (isUpNext ? 1.4 : 1.0)))
+            
+            let mainTextOpacity: Double = isDone ? 0.55 : 1.0
+            let secondaryTextOpacity: Double = isDone ? 0.55 : 1.0
+            
+            HStack(spacing: 12) {
+                
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [accent.opacity(1.0), accent.opacity(0.55)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
                     )
-                )
-                .frame(width: isLive ? 10 : 8)
-                .shadow(color: isLive ? accent.opacity(0.55) : .clear, radius: isLive ? 14 : 6)
-                .padding(.vertical, 10)
-                .opacity(isDone ? 0.75 : 1.0)
-
-            VStack(alignment: .leading, spacing: 10) {
-
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(event.title)
-                        .font(.headline)
-                        .lineLimit(1)
-                        .opacity(mainTextOpacity)
-
-                    if isLive {
-                        Text("Şu an")
-                            .font(.caption2.weight(.bold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Capsule().fill(accent.opacity(0.25)))
-                            .overlay(Capsule().stroke(accent.opacity(0.45), lineWidth: 1))
-                    } else if isSoon {
-                        Text("5 dk kaldı")
-                            .font(.caption2.weight(.bold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Capsule().fill(Color.orange.opacity(0.22)))
-                            .overlay(Capsule().stroke(Color.orange.opacity(0.55), lineWidth: 1))
-                    } else if isDone {
-                        Text("Bitti")
-                            .font(.caption2.weight(.bold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Capsule().fill(Color.secondary.opacity(0.12)))
-                            .overlay(Capsule().stroke(Color.secondary.opacity(0.18), lineWidth: 1))
-                            .opacity(0.9)
-                    }
-
-                    Spacer()
-
-                    if hasConflict {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.red)
-                            .accessibilityLabel("Çakışma var")
-                    }
-
-                    Text(timeText)
-                        .font(.caption.weight(.semibold))
-                        .monospacedDigit()
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Capsule().fill(isDone ? Color.secondary.opacity(0.10) : accent.opacity(isLive ? 0.25 : 0.18)))
-                        .overlay(Capsule().stroke(isDone ? Color.secondary.opacity(0.16) : accent.opacity(isLive ? 0.40 : 0.25), lineWidth: 1))
-                        .opacity(secondaryTextOpacity)
-                }
-
-                HStack(spacing: 8) {
-                    if let loc = event.location,
-                       !loc.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Label(loc, systemImage: "mappin.and.ellipse")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    .frame(width: isLive ? 10 : 8)
+                    .shadow(color: isLive ? accent.opacity(0.55) : .clear, radius: isLive ? 14 : 6)
+                    .padding(.vertical, 10)
+                    .opacity(isDone ? 0.75 : 1.0)
+                
+                VStack(alignment: .leading, spacing: 10) {
+                    
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(event.title)
+                            .font(.headline)
                             .lineLimit(1)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(Capsule().fill(Color.secondary.opacity(0.10)))
-                            .opacity(secondaryTextOpacity)
-                    }
-
-                    Spacer()
-
-                    Text("\(max(15, event.durationMinute)) dk")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .opacity(secondaryTextOpacity)
-                }
-
-                if isLive {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ProgressView(value: progress)
-                            .tint(baseColor)
-                            .animation(.smooth, value: progress)
-
-                        HStack(spacing: 8) {
-                            Image(systemName: "hourglass")
-                                .font(.caption2)
-                                .foregroundStyle(baseColor)
-
-                            Text("%\(Int(progress * 100)) tamamlandı")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-
-                            Spacer()
-
-                            Text("\(minutesLeft) dk kaldı")
-                                .font(.caption2.weight(.semibold))
-
-                            Text("• bitiyor: \(hm(end))")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                            .opacity(mainTextOpacity)
+                        
+                        if isLive {
+                            Text("Şu an")
+                                .font(.caption2.weight(.bold))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Capsule().fill(accent.opacity(0.25)))
+                                .overlay(Capsule().stroke(accent.opacity(0.45), lineWidth: 1))
+                        } else if isSoon {
+                            Text("5 dk kaldı")
+                                .font(.caption2.weight(.bold))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Capsule().fill(Color.orange.opacity(0.22)))
+                                .overlay(Capsule().stroke(Color.orange.opacity(0.55), lineWidth: 1))
+                        } else if isDone {
+                            Text("Bitti")
+                                .font(.caption2.weight(.bold))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Capsule().fill(Color.secondary.opacity(0.12)))
+                                .overlay(Capsule().stroke(Color.secondary.opacity(0.18), lineWidth: 1))
+                                .opacity(0.9)
                         }
-                    }
-                }
-
-                if isUpNext {
-                    HStack(spacing: 8) {
-                        Text("\(minutesUntilStart) dk")
-                            .font(.caption2.weight(.bold))
+                        
+                        Spacer()
+                        
+                        if hasConflict {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.red)
+                                .accessibilityLabel("Çakışma var")
+                        }
+                        
+                        Text(timeText)
+                            .font(.caption.weight(.semibold))
                             .monospacedDigit()
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
-                            .background(Capsule().fill((isDone ? Color.secondary.opacity(0.10) : accent.opacity(0.18))))
-                            .overlay(Capsule().stroke((isDone ? Color.secondary.opacity(0.16) : accent.opacity(0.28)), lineWidth: 1))
+                            .background(Capsule().fill(isDone ? Color.secondary.opacity(0.10) : accent.opacity(isLive ? 0.25 : 0.18)))
+                            .overlay(Capsule().stroke(isDone ? Color.secondary.opacity(0.16) : accent.opacity(isLive ? 0.40 : 0.25), lineWidth: 1))
                             .opacity(secondaryTextOpacity)
-
-                        Text("sonra (\(hm(start))) başlıyor")
-                            .font(.caption2.weight(.semibold))
+                    }
+                    
+                    HStack(spacing: 8) {
+                        if let loc = event.location,
+                           !loc.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Label(loc, systemImage: "mappin.and.ellipse")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Capsule().fill(Color.secondary.opacity(0.10)))
+                                .opacity(secondaryTextOpacity)
+                        }
+                        
+                        Spacer()
+                        
+                        Text("\(max(15, event.durationMinute)) dk")
+                            .font(.caption2)
                             .foregroundStyle(.secondary)
                             .opacity(secondaryTextOpacity)
-
-                        Spacer()
+                    }
+                    
+                    if isLive {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ProgressView(value: progress)
+                                .tint(baseColor)
+                                .animation(.smooth, value: progress)
+                            
+                            HStack(spacing: 8) {
+                                Image(systemName: "hourglass")
+                                    .font(.caption2)
+                                    .foregroundStyle(baseColor)
+                                
+                                Text("%\(Int(progress * 100)) tamamlandı")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                
+                                Spacer()
+                                
+                                Text("\(minutesLeft) dk kaldı")
+                                    .font(.caption2.weight(.semibold))
+                                
+                                Text("• bitiyor: \(hm(end))")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    
+                    if isUpNext {
+                        HStack(spacing: 8) {
+                            Text("\(minutesUntilStart) dk")
+                                .font(.caption2.weight(.bold))
+                                .monospacedDigit()
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Capsule().fill((isDone ? Color.secondary.opacity(0.10) : accent.opacity(0.18))))
+                                .overlay(Capsule().stroke((isDone ? Color.secondary.opacity(0.16) : accent.opacity(0.28)), lineWidth: 1))
+                                .opacity(secondaryTextOpacity)
+                            
+                            Text("sonra (\(hm(start))) başlıyor")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .opacity(secondaryTextOpacity)
+                            
+                            Spacer()
+                        }
                     }
                 }
+                .padding(.vertical, 12)
             }
-            .padding(.vertical, 12)
-        }
-        .padding(.horizontal, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(bg)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(isLive ? 0.16 : 0.10),
-                                    Color.white.opacity(0.00)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+            .padding(.horizontal, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(bg)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(isLive ? 0.16 : 0.10),
+                                        Color.white.opacity(0.00)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
-                        )
-                )
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(strokeColor, lineWidth: strokeWidth)
-        )
-        .shadow(color: isLive ? baseColor.opacity(glowPhase ? 0.42 : 0.22) : .clear, radius: isLive ? 18 : 0)
-        .shadow(color: isSoon ? Color.orange.opacity(0.30) : .clear, radius: isSoon ? 10 : 0)
-        .shadow(radius: isLive ? 8 : 0)
-        .scaleEffect(isLive && pulse ? 1.012 : 1.0)
-        .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: pulse)
-        .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: glowPhase)
-        .onAppear {
-            pulse = isLive
-            glowPhase = isLive
-        }
-        .onChange(of: isLive) { _, newValue in
-            pulse = newValue
-            glowPhase = newValue
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            Haptics.impact(.light)
-            onTap()
-        }
-        .swipeActions(edge: .leading, allowsFullSwipe: false) {
-            Button {
-                Haptics.impact(.light)
-                onEdit()
-            } label: {
-                Label("Düzenle", systemImage: "pencil")
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(strokeColor, lineWidth: strokeWidth)
+            )
+            .shadow(color: isLive ? baseColor.opacity(glowPhase ? 0.42 : 0.22) : .clear, radius: isLive ? 18 : 0)
+            .shadow(color: isSoon ? Color.orange.opacity(0.30) : .clear, radius: isSoon ? 10 : 0)
+            .shadow(radius: isLive ? 8 : 0)
+            .scaleEffect(isLive && pulse ? 1.012 : 1.0)
+            .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: pulse)
+            .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: glowPhase)
+            .onAppear {
+                pulse = isLive
+                glowPhase = isLive
             }
-            .tint(.blue)
-        }
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive) {
-                Haptics.impact(.heavy)
-                onDelete()
-            } label: {
-                Label("Sil", systemImage: "trash")
+            .onChange(of: isLive) { _, newValue in
+                pulse = newValue
+                glowPhase = newValue
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                Haptics.impact(.light)
+                onTap()
+            }
+            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                Button {
+                    Haptics.impact(.light)
+                    onEdit()
+                } label: {
+                    Label("Düzenle", systemImage: "pencil")
+                }
+                .tint(.blue)
+            }
+            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                Button(role: .destructive) {
+                    Haptics.impact(.heavy)
+                    onDelete()
+                } label: {
+                    Label("Sil", systemImage: "trash")
+                }
             }
         }
     }
-}
 
-// MARK: - Hex Color
- 
