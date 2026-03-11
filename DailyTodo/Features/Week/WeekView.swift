@@ -533,6 +533,11 @@ private extension WeekView {
 
             VStack(alignment: .leading, spacing: 12) {
                 taskHeader(task: task, tint: tint, active: active, done: done)
+
+                if let crew = crewMap[task.crewID] {
+                    taskProjectBadge(crew: crew)
+                }
+
                 taskMeta(task: task, tint: tint, active: active, soon: soon)
 
                 if !previewCommentsForTask(task).isEmpty {
@@ -555,8 +560,42 @@ private extension WeekView {
             )
         }
         .opacity(done ? 0.82 : 1.0)
+        .shadow(
+            color: hasComments(task)
+            ? tint.opacity(commentPulse ? 0.16 : 0.06)
+            : .clear,
+            radius: hasComments(task) ? (commentPulse ? 12 : 5) : 0
+        )
+        .animation(
+            .easeInOut(duration: 1.1).repeatForever(autoreverses: true),
+            value: commentPulse
+        )
         .animation(.easeInOut(duration: 0.2), value: done)
     }
+    func taskProjectBadge(crew: Crew) -> some View {
+        let tint = hexColor(crew.colorHex)
+
+        return HStack(spacing: 6) {
+            Circle()
+                .fill(tint)
+                .frame(width: 8, height: 8)
+                .shadow(color: tint.opacity(0.35), radius: 4)
+
+            Text(crew.name)
+                .font(.caption2.weight(.bold))
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background(tint.opacity(0.12))
+        .foregroundStyle(tint)
+        .clipShape(Capsule())
+        .overlay(
+            Capsule()
+                .stroke(tint.opacity(0.22), lineWidth: 1)
+        )
+    }
+    
     func timelineIndicator(
         isLast: Bool,
         tint: Color,
