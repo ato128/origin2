@@ -23,29 +23,34 @@ struct CrewTaskCard: View {
     let active: Bool
     let done: Bool
     let soon: Bool
+    let isLate: Bool
+    let lateText: String?
     let crewPulse: Bool
     let commentPulse: Bool
     let commentCount: Int
     let commentPreview: [CrewTaskCommentPreviewItem]
     let minutesLeft: Int
     let progress: Double
-
+    private var effectiveTint: Color {
+        isLate ? .red : tint
+    }
     var body: some View {
+       
         HStack(alignment: .top, spacing: 16) {
             VStack(spacing: 0) {
                 ZStack {
                     Circle()
-                        .fill(done ? Color.green : (active ? tint : tint.opacity(0.85)))
+                        .fill(done ? Color.green : (active ? effectiveTint : effectiveTint.opacity(0.85)))
                         .frame(width: active ? 16 : 13, height: active ? 16 : 13)
                         .scaleEffect(active && crewPulse ? 1.12 : 1.0)
                         .shadow(
-                            color: active ? tint.opacity(0.40) : (soon ? tint.opacity(0.18) : .clear),
+                            color: active ? effectiveTint.opacity(0.40) : (soon ? effectiveTint.opacity(0.18) : .clear),
                             radius: active ? 14 : (soon ? 8 : 0)
                         )
 
                     if active {
                         Circle()
-                            .stroke(tint.opacity(0.24), lineWidth: 6)
+                            .stroke(effectiveTint.opacity(0.24), lineWidth: 6)
                             .frame(width: 16, height: 16)
                             .scaleEffect(crewPulse ? 1.55 : 1.15)
                             .opacity(crewPulse ? 0.35 : 0.12)
@@ -57,8 +62,8 @@ struct CrewTaskCard: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                active ? tint.opacity(0.85) : tint.opacity(0.35),
-                                tint.opacity(0.15),
+                                active ? effectiveTint.opacity(0.85) : effectiveTint.opacity(0.35),
+                                effectiveTint.opacity(0.15),
                                 Color.clear
                             ],
                             startPoint: .top,
@@ -85,13 +90,13 @@ struct CrewTaskCard: View {
                     if active {
                         ZStack {
                             Circle()
-                                .stroke(tint.opacity(0.18), lineWidth: 4)
+                                .stroke(effectiveTint.opacity(0.18), lineWidth: 4)
                                 .frame(width: 30, height: 30)
 
                             Circle()
                                 .trim(from: 0, to: progress)
                                 .stroke(
-                                    tint,
+                                    effectiveTint,
                                     style: StrokeStyle(lineWidth: 4, lineCap: .round)
                                 )
                                 .rotationEffect(.degrees(-90))
@@ -100,7 +105,7 @@ struct CrewTaskCard: View {
 
                             Text("\(minutesLeft)")
                                 .font(.system(size: 9, weight: .black, design: .rounded))
-                                .foregroundStyle(tint)
+                                .foregroundStyle(effectiveTint)
                         }
                     } else if let timeText {
                         Text(timeText)
@@ -113,9 +118,9 @@ struct CrewTaskCard: View {
                 if let crewName {
                     HStack(spacing: 6) {
                         Circle()
-                            .fill(tint)
+                            .fill(effectiveTint)
                             .frame(width: 8, height: 8)
-                            .shadow(color: tint.opacity(0.35), radius: 4)
+                            .shadow(color: effectiveTint.opacity(0.35), radius: 4)
 
                         Text(crewName)
                             .font(.caption2.weight(.bold))
@@ -123,14 +128,14 @@ struct CrewTaskCard: View {
                     }
                     .padding(.horizontal, 9)
                     .padding(.vertical, 5)
-                    .background(tint.opacity(0.12))
-                    .foregroundStyle(tint)
+                    .background(effectiveTint.opacity(0.12))
+                    .foregroundStyle(effectiveTint)
                     .clipShape(Capsule())
                     .overlay(
                         Capsule()
-                            .stroke(tint.opacity(0.22), lineWidth: 1)
+                            .stroke(effectiveTint.opacity(0.22), lineWidth: 1)
                     )
-                    .shadow(color: tint.opacity(0.25), radius: 6)
+                    .shadow(color: effectiveTint.opacity(0.25), radius: 6)
                 }
 
                 HStack(spacing: 8) {
@@ -138,10 +143,10 @@ struct CrewTaskCard: View {
                         .font(.caption2.weight(.bold))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 5)
-                        .background(tint.opacity(0.14))
-                        .foregroundStyle(tint)
+                        .background(effectiveTint.opacity(0.14))
+                        .foregroundStyle(effectiveTint)
                         .clipShape(Capsule())
-
+                    
                     Text(statusTitle)
                         .font(.caption2.weight(.bold))
                         .padding(.horizontal, 8)
@@ -149,9 +154,9 @@ struct CrewTaskCard: View {
                         .background(Color.white.opacity(0.06))
                         .foregroundStyle(.secondary)
                         .clipShape(Capsule())
-
+                    
                     Spacer()
-
+                    
                     if commentCount > 0 {
                         HStack(spacing: 6) {
                             ZStack {
@@ -161,7 +166,7 @@ struct CrewTaskCard: View {
                                     .scaleEffect(commentPulse ? 1.18 : 1.0)
                                     .shadow(color: Color.blue.opacity(commentPulse ? 0.35 : 0.12), radius: commentPulse ? 8 : 3)
                             }
-
+                            
                             HStack(spacing: 5) {
                                 Image(systemName: "text.bubble.fill")
                                 Text("\(commentCount)")
@@ -176,8 +181,24 @@ struct CrewTaskCard: View {
                         }
                         .animation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true), value: commentPulse)
                     }
+                    if isLate {
+                        HStack(spacing: 6) {
+                            Text("LATE")
+                                .font(.caption2.weight(.black))
 
-                    if active {
+                            if let lateText {
+                                Text(lateText)
+                                    .font(.caption2.weight(.bold))
+                                    .monospacedDigit()
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(Color.red.opacity(0.16))
+                        .foregroundStyle(.red)
+                        .clipShape(Capsule())
+                    }
+                   else if active {
                         HStack(spacing: 6) {
                             ZStack {
                                 Circle()
@@ -205,8 +226,8 @@ struct CrewTaskCard: View {
                             .font(.caption2.weight(.black))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 5)
-                            .background(tint.opacity(0.14))
-                            .foregroundStyle(tint)
+                            .background(effectiveTint.opacity(0.14))
+                            .foregroundStyle(effectiveTint)
                             .clipShape(Capsule())
                     }
                 }
@@ -258,20 +279,20 @@ struct CrewTaskCard: View {
                 RoundedRectangle(cornerRadius: 20)
                     .fill(Color(UIColor.secondarySystemGroupedBackground))
                     .shadow(
-                        color: active ? tint.opacity(0.25) : .black.opacity(0.08),
+                        color: active ? effectiveTint.opacity(0.25) : .black.opacity(0.08),
                         radius: active ? 10 : 4,
                         y: active ? 4 : 2
                     )
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 20)
-                    .stroke(active ? tint.opacity(0.28) : Color.white.opacity(0.06), lineWidth: 1)
+                    .stroke(active ? effectiveTint.opacity(0.28) : Color.white.opacity(0.06), lineWidth: 1)
             )
         }
         .opacity(done ? 0.82 : 1.0)
         .shadow(
             color: commentCount > 0
-            ? tint.opacity(commentPulse ? 0.16 : 0.06)
+            ? effectiveTint.opacity(commentPulse ? 0.16 : 0.06)
             : .clear,
             radius: commentCount > 0 ? (commentPulse ? 12 : 5) : 0
         )

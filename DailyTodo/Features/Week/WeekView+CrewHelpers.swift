@@ -212,4 +212,62 @@ extension WeekView {
         let diff = start - now
         return diff >= 0 && diff <= 30
     }
+    func activeCrewTasksToday() -> [CrewTask] {
+        allCrewTasksForSelectedDay.filter { isTaskActive($0) && !$0.isDone }
+    }
+
+    func upcomingCrewTasksToday() -> [CrewTask] {
+        allCrewTasksForSelectedDay.filter { isTaskStartingSoon($0) && !isTaskActive($0) && !$0.isDone }
+    }
+
+    func laterCrewTasksToday() -> [CrewTask] {
+        if selectedDay != weekdayIndexToday() {
+            return allCrewTasksForSelectedDay.filter { !$0.isDone }
+        }
+
+        let now = currentMinuteOfDay()
+
+        return allCrewTasksForSelectedDay.filter { task in
+            guard !task.isDone else { return false }
+            guard let start = task.scheduledStartMinute else { return false }
+            return start > now + 30
+        }
+    }
+
+    func completedCrewTasksToday() -> [CrewTask] {
+        allCrewTasksForSelectedDay.filter { $0.isDone }
+    }
+    func lateCrewTasksToday() -> [CrewTask] {
+        guard selectedDay == weekdayIndexToday() else { return [] }
+
+        let now = currentMinuteOfDay()
+
+        return allCrewTasksForSelectedDay.filter { task in
+            guard !task.isDone else { return false }
+            guard let start = task.scheduledStartMinute else { return false }
+            return start < now && !isTaskActive(task)
+        }
+    }
+    func lateDurationText(for task: CrewTask) -> String? {
+        guard selectedDay == weekdayIndexToday() else { return nil }
+        guard !task.isDone else { return nil }
+        guard let start = task.scheduledStartMinute else { return nil }
+
+        let now = currentMinuteOfDay()
+        guard start < now, !isTaskActive(task) else { return nil }
+
+        let diff = now - start
+        let hours = diff / 60
+        let minutes = diff % 60
+
+        if hours == 0 {
+            return "Late by \(minutes)m"
+        }
+
+        if minutes == 0 {
+            return "Late by \(hours)h"
+        }
+
+        return "Late by \(hours)h \(minutes)m"
+    }
 }

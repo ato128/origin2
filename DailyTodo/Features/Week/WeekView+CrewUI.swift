@@ -250,53 +250,59 @@ extension WeekView {
                     .padding(.top, 40)
                     .padding(.bottom, 20)
                 } else {
-                    LazyVStack(spacing: 0) {
-                        ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
-                            Button {
-                                if let crew = crewMap[task.crewID] {
-                                    selectedCrewTask = task
-                                    selectedCrewForDetail = crew
-                                    Haptics.impact(.light)
+                    let nowTasks = activeCrewTasksToday()
+                    let nextTasks = upcomingCrewTasksToday()
+                    let lateTasks = lateCrewTasksToday()
+                    let laterTasks = laterCrewTasksToday()
+                    let doneTasks = completedCrewTasksToday()
+
+                    VStack(alignment: .leading, spacing: 14) {
+                        if !nowTasks.isEmpty {
+                            crewTimelineSectionHeader("Now", systemImage: "dot.radiowaves.left.and.right")
+
+                            LazyVStack(spacing: 0) {
+                                ForEach(Array(nowTasks.enumerated()), id: \.element.id) { index, task in
+                                    crewTaskButton(task: task, index: index, totalCount: nowTasks.count)
                                 }
-                            } label: {
-                                enhancedPremiumTimelineCard(task, isLast: index == tasks.count - 1)
                             }
-                            .buttonStyle(.plain)
-                            .offset(y: showCrewTaskCards ? 0 : CGFloat(18 + (index * 8)))
-                            .opacity(showCrewTaskCards ? 1 : 0)
-                            .scaleEffect(showCrewTaskCards ? 1 : 0.985)
-                            .animation(
-                                .spring(response: 0.48, dampingFraction: 0.88)
-                                    .delay(Double(index) * 0.06),
-                                value: showCrewTaskCards
-                            )
-                            .contextMenu {
-                                Button {
-                                    toggleCrewTaskDone(task)
-                                } label: {
-                                    Label(
-                                        task.isDone ? "Mark as Undone" : "Mark as Done",
-                                        systemImage: task.isDone
-                                        ? "arrow.uturn.backward.circle.fill"
-                                        : "checkmark.circle.fill"
-                                    )
-                                }
+                        }
 
-                                if !commentsForTask(task).isEmpty {
-                                    Button {
-                                        if let crew = crewMap[task.crewID] {
-                                            selectedCrewTask = task
-                                            selectedCrewForDetail = crew
-                                        }
-                                    } label: {
-                                        Label("Open Task & Comments", systemImage: "text.bubble.fill")
-                                    }
-                                }
+                        if !nextTasks.isEmpty {
+                            crewTimelineSectionHeader("Up Next", systemImage: "clock.badge")
 
-                                Button(role: .destructive) {
-                                    deleteCrewTask(task)
-                                } label: {
-                                    Label("Delete Task", systemImage: "trash.fill")
+                            LazyVStack(spacing: 0) {
+                                ForEach(Array(nextTasks.enumerated()), id: \.element.id) { index, task in
+                                    crewTaskButton(task: task, index: index, totalCount: nextTasks.count)
+                                }
+                            }
+                        }
+                        
+                        if !lateTasks.isEmpty {
+                            crewTimelineSectionHeader("Late", systemImage: "exclamationmark.circle")
+
+                            LazyVStack(spacing: 0) {
+                                ForEach(Array(lateTasks.enumerated()), id: \.element.id) { index, task in
+                                    crewTaskButton(task: task, index: index, totalCount: lateTasks.count)
+                                }
+                            }
+                        }
+
+                        if !laterTasks.isEmpty {
+                            crewTimelineSectionHeader("Later Today", systemImage: "calendar")
+
+                            LazyVStack(spacing: 0) {
+                                ForEach(Array(laterTasks.enumerated()), id: \.element.id) { index, task in
+                                    crewTaskButton(task: task, index: index, totalCount: laterTasks.count)
+                                }
+                            }
+                        }
+
+                        if !doneTasks.isEmpty {
+                            crewTimelineSectionHeader("Completed", systemImage: "checkmark.circle")
+
+                            LazyVStack(spacing: 0) {
+                                ForEach(Array(doneTasks.enumerated()), id: \.element.id) { index, task in
+                                    crewTaskButton(task: task, index: index, totalCount: doneTasks.count)
                                 }
                             }
                         }
@@ -322,6 +328,8 @@ extension WeekView {
         let active = isTaskActive(task)
         let done = task.isDone
         let soon = isTaskStartingSoon(task)
+        let isLate = lateCrewTasksToday().contains(where: { $0.id == task.id })
+        let lateText = lateDurationText(for: task)
 
         return CrewTaskCard(
             title: task.title,
@@ -333,6 +341,8 @@ extension WeekView {
             active: active,
             done: done,
             soon: soon,
+            isLate: isLate,
+            lateText: lateText,
             crewPulse: crewPulse,
             commentPulse: commentPulse,
             commentCount: commentsForTask(task).count,
@@ -340,5 +350,69 @@ extension WeekView {
             minutesLeft: taskMinutesLeft(task),
             progress: taskProgress(task)
         )
+    }
+    func crewTimelineSectionHeader(_ title: String, systemImage: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.secondary)
+
+            Text(title)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.secondary)
+
+            Spacer()
+        }
+        .padding(.top, 6)
+        .padding(.bottom, 4)
+    }
+    func crewTaskButton(task: CrewTask, index: Int, totalCount: Int) -> some View {
+        Button {
+            if let crew = crewMap[task.crewID] {
+                selectedCrewTask = task
+                selectedCrewForDetail = crew
+                Haptics.impact(.light)
+            }
+        } label: {
+            enhancedPremiumTimelineCard(task, isLast: index == totalCount - 1)
+        }
+        .buttonStyle(.plain)
+        .offset(y: showCrewTaskCards ? 0 : CGFloat(18 + (index * 8)))
+        .opacity(showCrewTaskCards ? 1 : 0)
+        .scaleEffect(showCrewTaskCards ? 1 : 0.985)
+        .animation(
+            .spring(response: 0.48, dampingFraction: 0.88)
+                .delay(Double(index) * 0.06),
+            value: showCrewTaskCards
+        )
+        .contextMenu {
+            Button {
+                toggleCrewTaskDone(task)
+            } label: {
+                Label(
+                    task.isDone ? "Mark as Undone" : "Mark as Done",
+                    systemImage: task.isDone
+                    ? "arrow.uturn.backward.circle.fill"
+                    : "checkmark.circle.fill"
+                )
+            }
+
+            if !commentsForTask(task).isEmpty {
+                Button {
+                    if let crew = crewMap[task.crewID] {
+                        selectedCrewTask = task
+                        selectedCrewForDetail = crew
+                    }
+                } label: {
+                    Label("Open Task & Comments", systemImage: "text.bubble.fill")
+                }
+            }
+
+            Button(role: .destructive) {
+                deleteCrewTask(task)
+            } label: {
+                Label("Delete Task", systemImage: "trash.fill")
+            }
+        }
     }
 }
