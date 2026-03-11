@@ -17,6 +17,8 @@
 		6D2004582F61D19B0022C810 /* WeekView+CrewUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004572F61D19B0022C810 /* WeekView+CrewUI.swift */; };
 		6D20045A2F61D73E0022C810 /* WeekView+CrewHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004592F61D73E0022C810 /* WeekView+CrewHelpers.swift */; };
 		6D20045C2F61DA7B0022C810 /* WeekView+PersonalUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D20045B2F61DA7B0022C810 /* WeekView+PersonalUI.swift */; };
+		6D20045E2F62148F0022C810 /* WeekView+ModeHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D20045D2F62148F0022C810 /* WeekView+ModeHeader.swift */; };
+		6D2004622F62265D0022C810 /* WeekView+ScrollTracking.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004612F62265D0022C810 /* WeekView+ScrollTracking.swift */; };
 		6D215DA32F55FD7100F7B9D7 /* EditTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DA22F55FD7100F7B9D7 /* EditTaskView.swift */; };
 		6D215DA52F5602D100F7B9D7 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DA42F5602D100F7B9D7 /* MainTabView.swift */; };
 		6D215DA72F56035A00F7B9D7 /* EventItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DA62F56035A00F7B9D7 /* EventItem.swift */; };
@@ -111,6 +113,8 @@
 		6D2004572F61D19B0022C810 /* WeekView+CrewUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeekView+CrewUI.swift"; sourceTree = "<group>"; };
 		6D2004592F61D73E0022C810 /* WeekView+CrewHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeekView+CrewHelpers.swift"; sourceTree = "<group>"; };
 		6D20045B2F61DA7B0022C810 /* WeekView+PersonalUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeekView+PersonalUI.swift"; sourceTree = "<group>"; };
+		6D20045D2F62148F0022C810 /* WeekView+ModeHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeekView+ModeHeader.swift"; sourceTree = "<group>"; };
+		6D2004612F62265D0022C810 /* WeekView+ScrollTracking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeekView+ScrollTracking.swift"; sourceTree = "<group>"; };
 		6D215DA22F55FD7100F7B9D7 /* EditTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditTaskView.swift; sourceTree = "<group>"; };
 		6D215DA42F5602D100F7B9D7 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		6D215DA62F56035A00F7B9D7 /* EventItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventItem.swift; sourceTree = "<group>"; };
@@ -304,6 +308,8 @@
 			isa = PBXGroup;
 			children = (
 				6D215DA82F5603B100F7B9D7 /* WeekView.swift */,
+				6D2004612F62265D0022C810 /* WeekView+ScrollTracking.swift */,
+				6D20045D2F62148F0022C810 /* WeekView+ModeHeader.swift */,
 				6D20045B2F61DA7B0022C810 /* WeekView+PersonalUI.swift */,
 				6D2004592F61D73E0022C810 /* WeekView+CrewHelpers.swift */,
 				6D2004572F61D19B0022C810 /* WeekView+CrewUI.swift */,
@@ -572,6 +578,7 @@
 				6D2004522F61C6FC0022C810 /* EventRow.swift in Sources */,
 				6D215DB52F56427E00F7B9D7 /* ShareSheet.swift in Sources */,
 				6DDF5B632F5FADBB003057C9 /* CrewTaskReaction.swift in Sources */,
+				6D2004622F62265D0022C810 /* WeekView+ScrollTracking.swift in Sources */,
 				6DF0C91D2F557AA50043B887 /* DailyTodoApp.swift in Sources */,
 				6D215DB12F5617BF00F7B9D7 /* TodoStore.swift in Sources */,
 				6D02C9D72F5B4D95008193F3 /* SmartInsights.swift in Sources */,
@@ -584,6 +591,7 @@
 				6D215DA92F5603B100F7B9D7 /* WeekView.swift in Sources */,
 				6DF8FB992F5B918100D548E4 /* HeatmapView.swift in Sources */,
 				6D02C9D32F5B4D1F008193F3 /* StreakEngine.swift in Sources */,
+				6D20045E2F62148F0022C810 /* WeekView+ModeHeader.swift in Sources */,
 				6DC0CAAF2F5F7D0000A875ED /* Haptics.swift in Sources */,
 				6D20045A2F61D73E0022C810 /* WeekView+CrewHelpers.swift in Sources */,
 				6DC0CAB02F5F7D0000A875ED /* NextClassCard.swift in Sources */,

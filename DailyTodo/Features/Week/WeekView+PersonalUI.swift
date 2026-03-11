@@ -12,32 +12,48 @@ extension WeekView {
 
     @ViewBuilder
     func personalWeekList(proxy: ScrollViewProxy) -> some View {
-        List {
-            pickerSection
-            summarySection
+        VStack(spacing: 0) {
+            modeTitleSwitcher
 
-            if eventsForDay.isEmpty {
-                emptySection
-            } else {
-                eventsSection
+            List {
+                GeometryReader { geo in
+                    Color.clear
+                        .preference(
+                            key: WeekScrollOffsetKey.self,
+                            value: max(0, -geo.frame(in: .named("personalScroll")).minY)
+                        )
+                }
+                .frame(height: 0)
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+
+                pickerSection
+                summarySection
+
+                if eventsForDay.isEmpty {
+                    emptySection
+                } else {
+                    eventsSection
+                }
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background(Color(.systemGroupedBackground))
+            .coordinateSpace(name: "personalScroll")
+            .onPreferenceChange(WeekScrollOffsetKey.self) { value in
+                personalScrollOffset = value
             }
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
         .background(Color(.systemGroupedBackground))
+        .offset(y: showPersonalEntrance ? 0 : 28)
+        .opacity(showPersonalEntrance ? 1 : 0)
+        .scaleEffect(showPersonalEntrance ? 1.0 : 0.985)
+        .animation(.spring(response: 0.44, dampingFraction: 0.86), value: showPersonalEntrance)
     }
-
     var pickerSection: some View {
         Section {
             VStack(spacing: 12) {
-
-                Picker("Week Mode", selection: $weekMode) {
-                    Text("Personal").tag(WeekMode.personal)
-                    Text("Crew").tag(WeekMode.crew)
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                .padding(.top, 8)
 
                 Picker("Gün", selection: $selectedDay) {
                     ForEach(0..<7, id: \.self) { i in
@@ -120,7 +136,7 @@ extension WeekView {
         Section {
             let now = currentMinuteOfDay()
 
-            ForEach(eventsForDay) { ev in
+            ForEach(Array(eventsForDay.enumerated()), id: \.element.id) { index, ev in
                 AnyView(
                     EventRow(
                         event: ev,
@@ -133,6 +149,14 @@ extension WeekView {
                         onDelete: { delete(ev) }
                     )
                     .id(ev.id)
+                    .offset(y: showPersonalEventCards ? 0 : CGFloat(24 + index * 10))
+                    .opacity(showPersonalEventCards ? 1 : 0)
+                    .scaleEffect(showPersonalEventCards ? 1 : 0.985)
+                    .animation(
+                        .spring(response: 0.48, dampingFraction: 0.86)
+                            .delay(Double(index) * 0.05),
+                        value: showPersonalEventCards
+                    )
                 )
             }
         }

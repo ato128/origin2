@@ -24,21 +24,21 @@ struct WeekView: View {
     @Query var allCrewTasks: [CrewTask]
     @Query private var allCrews: [Crew]
     @Query(sort: \CrewActivity.createdAt, order: .reverse)
-     var allCrewActivities: [CrewActivity]
+    var allCrewActivities: [CrewActivity]
     @Query(sort: \CrewTaskComment.createdAt, order: .reverse)
     var allCrewComments: [CrewTaskComment]
     
-     var crewMap: [UUID: Crew] {
+    var crewMap: [UUID: Crew] {
         Dictionary(uniqueKeysWithValues: allCrews.map { ($0.id, $0) })
     }
     
     private let liveTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
     
-     let dayTitles = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
+    let dayTitles = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
     
     private var allEventIDs: [UUID] { allEvents.map(\.id) }
     
-     var eventsForDay: [EventItem] {
+    var eventsForDay: [EventItem] {
         allEvents
             .filter { $0.weekday == selectedDay }
             .sorted { $0.startMinute < $1.startMinute }
@@ -46,23 +46,23 @@ struct WeekView: View {
     
     private var eventsForDayIDs: [UUID] { eventsForDay.map(\.id) }
     
-     var totalMinutesForDay: Int {
+    var totalMinutesForDay: Int {
         eventsForDay.reduce(0) { $0 + $1.durationMinute }
     }
     
-     var firstEventOfDay: EventItem? {
+    var firstEventOfDay: EventItem? {
         eventsForDay.first
     }
     
-     var lastEventOfDay: EventItem? {
+    var lastEventOfDay: EventItem? {
         eventsForDay.last
     }
     
-     var isTodaySelected: Bool {
+    var isTodaySelected: Bool {
         selectedDay == weekdayIndexToday()
     }
     
-     var liveEventForDay: EventItem? {
+    var liveEventForDay: EventItem? {
         guard isTodaySelected else { return nil }
         let now = currentMinuteOfDay()
         return eventsForDay.first(where: {
@@ -70,7 +70,7 @@ struct WeekView: View {
         })
     }
     
-     var currentTimeIndicatorText: String? {
+    var currentTimeIndicatorText: String? {
         guard isTodaySelected else { return nil }
         
         let now = currentMinuteOfDay()
@@ -110,13 +110,15 @@ struct WeekView: View {
     @State  var animateSummary = false
     @State  var pulseTodayDot = false
     @State  var showCompletedCrewTasks = false
+    @State  var showPersonalEntrance = false
+    @State  var showPersonalEventCards = false
+    @State  var crewScrollOffset: CGFloat = 0
+    @State  var personalScrollOffset: CGFloat = 0
     
     var body: some View {
         ScrollViewReader { proxy in
             mainList(proxy: proxy)
                 .animation(.easeInOut(duration: 0.25), value: weekMode)
-                .navigationTitle("Week")
-                .navigationBarTitleDisplayMode(.large)
                 .toolbar { toolbarContent }
                 .sheet(isPresented: $showingAdd) {
                     NavigationStack { AddEventView(defaultWeekday: selectedDay) }
@@ -155,9 +157,11 @@ struct WeekView: View {
                 }
                 .onChange(of: weekMode) { _, newValue in
                     if newValue == .crew {
+                        showPersonalEntrance = false
                         showCrewEntrance = false
                         showCrewTaskHeader = false
                         showCrewTaskCards = false
+                        showPersonalEventCards = false
                         
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
                             withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
@@ -178,16 +182,30 @@ struct WeekView: View {
                         }
                         
                     } else {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            showCrewEntrance = false
-                            showCrewTaskHeader = false
-                            showCrewTaskCards = false
+                        showCrewEntrance = false
+                        showCrewTaskHeader = false
+                        showCrewTaskCards = false
+                        showPersonalEntrance = false
+                        showPersonalEventCards = false
+
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+                            withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
+                                showPersonalEntrance = true
+                            }
+                        }
+
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
+                            withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
+                                showPersonalEventCards = true
+                            }
                         }
                     }
                 }
         }
     }
 }
+ 
+
 
 
 
@@ -552,7 +570,9 @@ extension WeekView {
             pulseTodayDot = true
             showCrewTaskHeader = weekMode == .crew
             showCrewTaskCards = weekMode == .crew
-            
+            showPersonalEntrance = weekMode == .personal
+            showPersonalEventCards = weekMode == .personal
+
             if weekMode == .crew {
                 showCrewEntrance = true
             }
@@ -566,6 +586,12 @@ extension WeekView {
             lastAutoScrollTargetID = nil
             animateSummaryCard()
             autoScrollIfNeeded(proxy: proxy)
+            showPersonalEventCards = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+                withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
+                    showPersonalEventCards = true
+                }
+            }
         }
     }
     

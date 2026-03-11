@@ -21,104 +21,116 @@ extension WeekView {
 
     @ViewBuilder
     var crewWeekList: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                VStack(spacing: 16) {
-                    crewPickerSection
+        VStack(spacing: 0) {
+           modeTitleSwitcher
 
-                    HStack(alignment: .center, spacing: 14) {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Crew Week")
-                                .font(.system(size: 30, weight: .black, design: .rounded))
-
-                            Text(fullDateTextForSelectedDay())
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(.secondary)
-
-                            HStack(spacing: 8) {
-                                Image(systemName: "sparkles")
-                                    .foregroundStyle(.blue)
-
-                                Text("Team flow for today")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-
-                        Spacer()
-
-                        VStack(spacing: 10) {
-                            ZStack {
-                                Circle()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [
-                                                Color.accentColor.opacity(0.22),
-                                                Color.accentColor.opacity(0.08)
-                                            ],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                    .frame(width: 54, height: 54)
-
-                                Image(systemName: "person.3.fill")
-                                    .font(.title3.weight(.bold))
-                                    .foregroundStyle(Color.accentColor)
-                            }
-
-                            Text("\(allCrewTasksForSelectedDay.filter { !$0.isDone }.count) Görev")
-                                .font(.caption2.bold())
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(Color.accentColor.opacity(0.12))
-                                .foregroundStyle(Color.accentColor)
-                                .clipShape(Capsule())
-                        }
-                    }
-                    .padding(.horizontal, 20)
+            ScrollView {
+                GeometryReader { geo in
+                    Color.clear
+                        .preference(
+                            key: WeekScrollOffsetKey.self,
+                            value: max(0, -geo.frame(in: .named("crewScroll")).minY)
+                        )
                 }
-                .padding(.vertical, 16)
-                .background(Color(.systemGroupedBackground))
-
+                .frame(height: 0)
                 VStack(spacing: 0) {
-                    crewWeekSection
-                        .padding(.horizontal, 20)
-                        .padding(.top, 10)
+                    VStack(spacing: 16) {
+                        crewPickerSection
 
-                    if !allCrewTasksForSelectedDay.isEmpty {
-                        Divider()
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
+                        HStack(alignment: .center, spacing: 14) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Today in Crew")
+                                    .font(.system(size: 30, weight: .black, design: .rounded))
 
-                        HStack {
-                            Text("Recent Activity")
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                Text(fullDateTextForSelectedDay())
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.secondary)
+
+                                HStack(spacing: 8) {
+                                    Image(systemName: "sparkles")
+                                        .foregroundStyle(.blue)
+
+                                    Text("Team flow for today")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
 
                             Spacer()
 
-                            Image(systemName: "bolt.fill")
-                                .foregroundStyle(.orange)
+                            VStack(spacing: 10) {
+                                ZStack {
+                                    Circle()
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [
+                                                    Color.accentColor.opacity(0.22),
+                                                    Color.accentColor.opacity(0.08)
+                                                ],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                        .frame(width: 54, height: 54)
+
+                                    Image(systemName: "person.3.fill")
+                                        .font(.title3.weight(.bold))
+                                        .foregroundStyle(Color.accentColor)
+                                }
+
+                                Text("\(allCrewTasksForSelectedDay.filter { !$0.isDone }.count) Görev")
+                                    .font(.caption2.bold())
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(Color.accentColor.opacity(0.12))
+                                    .foregroundStyle(Color.accentColor)
+                                    .clipShape(Capsule())
+                            }
                         }
                         .padding(.horizontal, 20)
-
-                        activityListContent
-                            .padding(.horizontal, 20)
-                            .padding(.top, 8)
                     }
-                }
+                    .padding(.vertical, 16)
+                    .background(Color(.systemGroupedBackground))
 
-                Spacer(minLength: 90)
+                    VStack(spacing: 0) {
+                        crewWeekSection
+                            .padding(.horizontal, 20)
+                            .padding(.top, 10)
+
+                        if !allCrewTasksForSelectedDay.isEmpty {
+                            Divider()
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 12)
+
+                            HStack {
+                                Text("Recent Activity")
+                                    .font(.system(size: 18, weight: .bold, design: .rounded))
+
+                                Spacer()
+
+                                Image(systemName: "bolt.fill")
+                                    .foregroundStyle(.orange)
+                            }
+                            .padding(.horizontal, 20)
+
+                            activityListContent
+                                .padding(.horizontal, 20)
+                                .padding(.top, 8)
+                        }
+                    }
+
+                    Spacer(minLength: 90)
+                }
             }
+            .background(Color(.systemGroupedBackground))
+            .scrollIndicators(.hidden)
         }
         .background(Color(.systemGroupedBackground))
-        .scrollIndicators(.hidden)
         .offset(y: showCrewEntrance ? 0 : 30)
         .opacity(showCrewEntrance ? 1 : 0)
         .scaleEffect(showCrewEntrance ? 1 : 0.98)
         .animation(.spring(response: 0.45, dampingFraction: 0.85), value: showCrewEntrance)
     }
-
     var crewPickerSection: some View {
         HStack(spacing: 6) {
             ForEach(0..<7, id: \.self) { day in
