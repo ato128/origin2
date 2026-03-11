@@ -53,6 +53,8 @@ struct WeekView: View {
     @State private var selectedCrewTask: CrewTask?
     @State private var selectedCrewForDetail: Crew?
     @State private var showCrewEntrance = false
+    @State private var showCrewTaskHeader = false
+    @State private var showCrewTaskCards = false
 
 
     private let liveTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
@@ -158,19 +160,32 @@ struct WeekView: View {
                 .onChange(of: weekMode) { _, newValue in
                     if newValue == .crew {
                         showCrewEntrance = false
+                        showCrewTaskHeader = false
+                        showCrewTaskCards = false
 
-                        withAnimation(.spring(duration: 0.35)) {
-                            selectedDay = weekdayIndexToday()
-                        }
-
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) {
-                            withAnimation(.spring(response: 0.45, dampingFraction: 0.86)) {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+                            withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
                                 showCrewEntrance = true
                             }
                         }
+
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
+                            withAnimation(.easeOut(duration: 0.28)) {
+                                showCrewTaskHeader = true
+                            }
+                        }
+
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.88)) {
+                                showCrewTaskCards = true
+                            }
+                        }
+
                     } else {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             showCrewEntrance = false
+                            showCrewTaskHeader = false
+                            showCrewTaskCards = false
                         }
                     }
                 }
@@ -1287,7 +1302,7 @@ private extension WeekView {
     }
     
     var crewWeekSection: some View {
-        Section("Crew Tasks") {
+        Section {
             let tasks = allCrewTasksForSelectedDay
             
             VStack(alignment: .leading, spacing: 14) {
@@ -1322,6 +1337,14 @@ private extension WeekView {
                                 enhancedPremiumTimelineCard(task, isLast: index == tasks.count - 1)
                             }
                             .buttonStyle(.plain)
+                            .offset(y: showCrewTaskCards ? 0 : CGFloat(18 + (index * 8)))
+                            .opacity(showCrewTaskCards ? 1 : 0)
+                            .scaleEffect(showCrewTaskCards ? 1 : 0.985)
+                            .animation(
+                                .spring(response: 0.48, dampingFraction: 0.88)
+                                    .delay(Double(index) * 0.06),
+                                value: showCrewTaskCards
+                            )
                             .contextMenu {
                                 Button {
                                     toggleCrewTaskDone(task)
@@ -1390,6 +1413,17 @@ private extension WeekView {
                     }
                 }
             }
+        } header: {
+            HStack {
+                Text("Crew Tasks")
+                    .font(.system(size: 18, weight: .black, design: .rounded))
+                    .foregroundStyle(.primary)
+
+                Spacer()
+            }
+            .textCase(nil)
+            .offset(y: showCrewTaskHeader ? 0 : 14)
+            .opacity(showCrewTaskHeader ? 1 : 0)
         }
     }
     
@@ -1814,6 +1848,8 @@ private extension WeekView {
             
             animateSummary = true
             pulseTodayDot = true
+            showCrewTaskHeader = weekMode == .crew
+            showCrewTaskCards = weekMode == .crew
             
             if weekMode == .crew {
                 showCrewEntrance = true
