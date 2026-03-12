@@ -9,48 +9,7 @@ import SwiftUI
 import SwiftData
 
 extension WeekView {
-
-    @ViewBuilder
-    func personalWeekList(proxy: ScrollViewProxy) -> some View {
-        VStack(spacing: 0) {
-            modeTitleSwitcher
-
-            List {
-                GeometryReader { geo in
-                    Color.clear
-                        .preference(
-                            key: WeekScrollOffsetKey.self,
-                            value: max(0, -geo.frame(in: .named("personalScroll")).minY)
-                        )
-                }
-                .frame(height: 0)
-                .listRowInsets(EdgeInsets())
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-
-                pickerSection
-                summarySection
-
-                if eventsForDay.isEmpty {
-                    emptySection
-                } else {
-                    eventsSection
-                }
-            }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .background(Color(.systemGroupedBackground))
-            .coordinateSpace(name: "personalScroll")
-            .onPreferenceChange(WeekScrollOffsetKey.self) { value in
-                personalScrollOffset = value
-            }
-        }
-        .background(Color(.systemGroupedBackground))
-        .offset(y: showPersonalEntrance ? 0 : 28)
-        .opacity(showPersonalEntrance ? 1 : 0)
-        .scaleEffect(showPersonalEntrance ? 1.0 : 0.985)
-        .animation(.spring(response: 0.44, dampingFraction: 0.86), value: showPersonalEntrance)
-    }
+    
     var pickerSection: some View {
         Section {
             VStack(spacing: 12) {

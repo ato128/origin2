@@ -19,6 +19,7 @@
 		6D20045C2F61DA7B0022C810 /* WeekView+PersonalUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D20045B2F61DA7B0022C810 /* WeekView+PersonalUI.swift */; };
 		6D20045E2F62148F0022C810 /* WeekView+ModeHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D20045D2F62148F0022C810 /* WeekView+ModeHeader.swift */; };
 		6D2004622F62265D0022C810 /* WeekView+ScrollTracking.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004612F62265D0022C810 /* WeekView+ScrollTracking.swift */; };
+		6D2004642F6230760022C810 /* ScrollOffsetReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004632F6230760022C810 /* ScrollOffsetReader.swift */; };
 		6D215DA32F55FD7100F7B9D7 /* EditTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DA22F55FD7100F7B9D7 /* EditTaskView.swift */; };
 		6D215DA52F5602D100F7B9D7 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DA42F5602D100F7B9D7 /* MainTabView.swift */; };
 		6D215DA72F56035A00F7B9D7 /* EventItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DA62F56035A00F7B9D7 /* EventItem.swift */; };
@@ -115,6 +116,7 @@
 		6D20045B2F61DA7B0022C810 /* WeekView+PersonalUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeekView+PersonalUI.swift"; sourceTree = "<group>"; };
 		6D20045D2F62148F0022C810 /* WeekView+ModeHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeekView+ModeHeader.swift"; sourceTree = "<group>"; };
 		6D2004612F62265D0022C810 /* WeekView+ScrollTracking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeekView+ScrollTracking.swift"; sourceTree = "<group>"; };
+		6D2004632F6230760022C810 /* ScrollOffsetReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollOffsetReader.swift; sourceTree = "<group>"; };
 		6D215DA22F55FD7100F7B9D7 /* EditTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditTaskView.swift; sourceTree = "<group>"; };
 		6D215DA42F5602D100F7B9D7 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		6D215DA62F56035A00F7B9D7 /* EventItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventItem.swift; sourceTree = "<group>"; };
@@ -323,6 +325,7 @@
 				6DC0CAA42F5F7D0000A875ED /* NextClassCard.swift */,
 				6DC0CAA52F5F7D0000A875ED /* NextClassEngine.swift */,
 				6DC0CAA62F5F7D0000A875ED /* NextClassResult.swift */,
+				6D2004632F6230760022C810 /* ScrollOffsetReader.swift */,
 			);
 			path = Week;
 			sourceTree = "<group>";
@@ -608,6 +611,7 @@
 				6DC0CABA2F5F7D0000A875ED /* CreateCrewView.swift in Sources */,
 				6DC0CABB2F5F7D0000A875ED /* InsightsEngine.swift in Sources */,
 				6DC0CABC2F5F7D0000A875ED /* CrewTask.swift in Sources */,
+				6D2004642F6230760022C810 /* ScrollOffsetReader.swift in Sources */,
 				6DC0CABD2F5F7D0000A875ED /* LiveActivityManager.swift in Sources */,
 				6DDF5B5B2F5F9DFF003057C9 /* CrewTaskComment.swift in Sources */,
 				6D2004562F61CF550022C810 /* WeekView+CrewCardHelpers.swift in Sources */,

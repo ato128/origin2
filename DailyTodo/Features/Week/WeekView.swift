@@ -114,6 +114,7 @@ struct WeekView: View {
     @State  var showPersonalEventCards = false
     @State  var crewScrollOffset: CGFloat = 0
     @State  var personalScrollOffset: CGFloat = 0
+    @State  var scrollY: CGFloat = 0
     
     var body: some View {
         ScrollViewReader { proxy in

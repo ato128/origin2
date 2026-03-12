@@ -9,60 +9,78 @@ import SwiftUI
 
 extension WeekView {
     var modeTitleSwitcher: some View {
-        let activeOffset = weekMode == .crew ? crewScrollOffset : personalScrollOffset
-        let collapseProgress = min(max(activeOffset / 80, 0), 1)
+        let activeOffset = scrollY
+        let collapseProgress = min(max(activeOffset / 90, 0), 1)
 
-        let bigFont: CGFloat = 44 - (10 * collapseProgress)
+        let frontFont: CGFloat = 44 - (12 * collapseProgress)
         let backFont: CGFloat = 34 - (6 * collapseProgress)
-        let topY: CGFloat = 18 - (12 * collapseProgress)
-        let backY: CGFloat = 2 - (6 * collapseProgress)
-        let blurOpacity = 0.0 + (0.95 * collapseProgress)
+
+        let frontTopOffset: CGFloat = 18 - (14 * collapseProgress)
+        let backTopOffset: CGFloat = 2 - (4 * collapseProgress)
+
+        let frontLeadingOffset: CGFloat = 0 + (110 * collapseProgress)
+        let blurOpacity: CGFloat = 0.0 + (0.98 * collapseProgress)
 
         return ZStack(alignment: .topLeading) {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .ignoresSafeArea(edges: .top)
+                .opacity(blurOpacity)
+
             if weekMode == .personal {
                 Text("Crew")
                     .font(.system(size: backFont, weight: .bold, design: .default))
                     .foregroundStyle(.primary.opacity(0.10))
-                    .offset(x: 10, y: backY)
+                    .offset(x: 12, y: backTopOffset)
                     .allowsHitTesting(false)
 
-                Text("Week")
-                    .font(.system(size: bigFont, weight: .bold, design: .default))
-                    .foregroundStyle(.primary)
-                    .offset(x: 0, y: topY)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        withAnimation(.interactiveSpring(response: 0.36, dampingFraction: 0.84)) {
-                            weekMode = .crew
+                HStack {
+                    Text("Week")
+                        .font(.system(size: frontFont, weight: .bold, design: .default))
+                        .foregroundStyle(.primary)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.interactiveSpring(response: 0.36, dampingFraction: 0.84)) {
+                                weekMode = .crew
+                            }
                         }
-                    }
+
+                    Spacer()
+                }
+                .offset(x: frontLeadingOffset, y: frontTopOffset)
+
             } else {
                 Text("Week")
                     .font(.system(size: backFont, weight: .bold, design: .default))
                     .foregroundStyle(.primary.opacity(0.10))
-                    .offset(x: 10, y: backY)
+                    .offset(x: 12, y: backTopOffset)
                     .allowsHitTesting(false)
 
-                Text("Crew")
-                    .font(.system(size: bigFont, weight: .bold, design: .default))
-                    .foregroundStyle(.primary)
-                    .offset(x: 0, y: topY)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        withAnimation(.interactiveSpring(response: 0.36, dampingFraction: 0.84)) {
-                            weekMode = .personal
+                HStack {
+                    Text("Crew")
+                        .font(.system(size: frontFont, weight: .bold, design: .default))
+                        .foregroundStyle(.primary)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.interactiveSpring(response: 0.36, dampingFraction: 0.84)) {
+                                weekMode = .personal
+                            }
                         }
-                    }
+                    Text("offset: \(Int(activeOffset))")
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.red)
+                        .offset(x: 220, y: 10)
+
+                    Spacer()
+                }
+                .offset(x: frontLeadingOffset, y: frontTopOffset)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: 86 - (18 * collapseProgress), alignment: .topLeading)
+        .frame(height: 92 - (20 * collapseProgress), alignment: .topLeading)
         .padding(.horizontal, 20)
         .padding(.top, 6)
         .padding(.bottom, 6)
-        .background(
-            .ultraThinMaterial.opacity(blurOpacity)
-        )
         .overlay(
             Rectangle()
                 .fill(Color.white.opacity(0.05 * blurOpacity))

@@ -19,112 +19,154 @@ extension WeekView {
             }
     }
 
+  
     @ViewBuilder
-    var crewWeekList: some View {
-        VStack(spacing: 0) {
-           modeTitleSwitcher
+    func personalWeekList(proxy: ScrollViewProxy) -> some View {
+        ScrollView {
+            GeometryReader { geo in
+                Color.clear
+                    .preference(
+                        key: WeekScrollOffsetKey.self,
+                        value: max(0, -geo.frame(in: .named("personalScroll")).minY)
+                    )
+            }
+            .frame(height: 0)
 
-            ScrollView {
-                GeometryReader { geo in
-                    Color.clear
-                        .preference(
-                            key: WeekScrollOffsetKey.self,
-                            value: max(0, -geo.frame(in: .named("crewScroll")).minY)
-                        )
-                }
-                .frame(height: 0)
-                VStack(spacing: 0) {
-                    VStack(spacing: 16) {
-                        crewPickerSection
+            VStack(spacing: 0) {
+                modeTitleSwitcher
 
-                        HStack(alignment: .center, spacing: 14) {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Today in Crew")
-                                    .font(.system(size: 30, weight: .black, design: .rounded))
+                LazyVStack(spacing: 0, pinnedViews: []) {
+                    pickerSection
+                    summarySection
 
-                                Text(fullDateTextForSelectedDay())
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(.secondary)
-
-                                HStack(spacing: 8) {
-                                    Image(systemName: "sparkles")
-                                        .foregroundStyle(.blue)
-
-                                    Text("Team flow for today")
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-
-                            Spacer()
-
-                            VStack(spacing: 10) {
-                                ZStack {
-                                    Circle()
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [
-                                                    Color.accentColor.opacity(0.22),
-                                                    Color.accentColor.opacity(0.08)
-                                                ],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                        .frame(width: 54, height: 54)
-
-                                    Image(systemName: "person.3.fill")
-                                        .font(.title3.weight(.bold))
-                                        .foregroundStyle(Color.accentColor)
-                                }
-
-                                Text("\(allCrewTasksForSelectedDay.filter { !$0.isDone }.count) Görev")
-                                    .font(.caption2.bold())
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 6)
-                                    .background(Color.accentColor.opacity(0.12))
-                                    .foregroundStyle(Color.accentColor)
-                                    .clipShape(Capsule())
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                    }
-                    .padding(.vertical, 16)
-                    .background(Color(.systemGroupedBackground))
-
-                    VStack(spacing: 0) {
-                        crewWeekSection
-                            .padding(.horizontal, 20)
-                            .padding(.top, 10)
-
-                        if !allCrewTasksForSelectedDay.isEmpty {
-                            Divider()
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 12)
-
-                            HStack {
-                                Text("Recent Activity")
-                                    .font(.system(size: 18, weight: .bold, design: .rounded))
-
-                                Spacer()
-
-                                Image(systemName: "bolt.fill")
-                                    .foregroundStyle(.orange)
-                            }
-                            .padding(.horizontal, 20)
-
-                            activityListContent
-                                .padding(.horizontal, 20)
-                                .padding(.top, 8)
-                        }
+                    if eventsForDay.isEmpty {
+                        emptySection
+                    } else {
+                        eventsSection
                     }
 
                     Spacer(minLength: 90)
                 }
             }
-            .background(Color(.systemGroupedBackground))
-            .scrollIndicators(.hidden)
         }
+        .coordinateSpace(name: "personalScroll")
+        .onPreferenceChange(WeekScrollOffsetKey.self) { value in
+            personalScrollOffset = value
+        }
+        .scrollIndicators(.hidden)
+        .background(Color(.systemGroupedBackground))
+        .offset(y: showPersonalEntrance ? 0 : 28)
+        .opacity(showPersonalEntrance ? 1 : 0)
+        .scaleEffect(showPersonalEntrance ? 1.0 : 0.985)
+        .animation(.spring(response: 0.44, dampingFraction: 0.86), value: showPersonalEntrance)
+    }
+    var crewWeekList: some View {
+        ScrollView {
+            GeometryReader { geo in
+                Color.clear
+                    .preference(
+                        key: WeekScrollOffsetKey.self,
+                        value: max(0, -geo.frame(in: .named("crewScroll")).minY)
+                    )
+            }
+            .frame(height: 0)
+
+            VStack(spacing: 0) {
+                modeTitleSwitcher
+
+                VStack(spacing: 16) {
+                    crewPickerSection
+
+                    HStack(alignment: .center, spacing: 14) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Today in Crew")
+                                .font(.system(size: 22, weight: .bold, design: .default))
+
+                            Text(fullDateTextForSelectedDay())
+                                .font(.footnote.weight(.medium))
+                                .foregroundStyle(.secondary)
+
+                            HStack(spacing: 8) {
+                                Image(systemName: "sparkles")
+                                    .foregroundStyle(.blue)
+
+                                Text("Team flow for today")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Spacer()
+
+                        VStack(spacing: 10) {
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [
+                                                Color.accentColor.opacity(0.22),
+                                                Color.accentColor.opacity(0.08)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .frame(width: 54, height: 54)
+
+                                Image(systemName: "person.3.fill")
+                                    .font(.title3.weight(.bold))
+                                    .foregroundStyle(Color.accentColor)
+                            }
+
+                            Text("\(allCrewTasksForSelectedDay.filter { !$0.isDone }.count) Görev")
+                                .font(.caption2.bold())
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color.accentColor.opacity(0.12))
+                                .foregroundStyle(Color.accentColor)
+                                .clipShape(Capsule())
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
+                .padding(.vertical, 16)
+                .background(Color(.systemGroupedBackground))
+
+                VStack(spacing: 0) {
+                    crewWeekSection
+                        .padding(.horizontal, 20)
+                        .padding(.top, 10)
+
+                    if !allCrewTasksForSelectedDay.isEmpty {
+                        Divider()
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+
+                        HStack {
+                            Text("Recent Activity")
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+
+                            Spacer()
+
+                            Image(systemName: "bolt.fill")
+                                .foregroundStyle(.orange)
+                        }
+                        .padding(.horizontal, 20)
+
+                        activityListContent
+                            .padding(.horizontal, 20)
+                            .padding(.top, 8)
+                    }
+                }
+
+                Spacer(minLength: 90)
+            }
+        }
+        .coordinateSpace(name: "crewScroll")
+        .onPreferenceChange(WeekScrollOffsetKey.self) { value in
+            crewScrollOffset = value
+        }
+        .scrollIndicators(.hidden)
         .background(Color(.systemGroupedBackground))
         .offset(y: showCrewEntrance ? 0 : 30)
         .opacity(showCrewEntrance ? 1 : 0)
