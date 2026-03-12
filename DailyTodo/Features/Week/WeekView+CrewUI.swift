@@ -10,16 +10,18 @@ import SwiftData
 
 extension WeekView {
     
-    
     var allCrewTasksForSelectedDay: [CrewTask] {
         allCrewTasks
-            .filter { $0.showOnWeek && $0.scheduledWeekday == selectedDay }
+            .filter {
+                $0.showOnWeek &&
+                $0.scheduledWeekday == selectedDay &&
+                (selectedCrewID == nil || $0.crewID == selectedCrewID)
+            }
             .sorted {
                 ($0.scheduledStartMinute ?? 0) < ($1.scheduledStartMinute ?? 0)
             }
     }
-
-  
+    
     @ViewBuilder
     func personalWeekList(proxy: ScrollViewProxy) -> some View {
         ScrollView {
@@ -60,6 +62,7 @@ extension WeekView {
         .scaleEffect(showPersonalEntrance ? 1.0 : 0.985)
         .animation(.spring(response: 0.44, dampingFraction: 0.86), value: showPersonalEntrance)
     }
+
     var crewWeekList: some View {
         ScrollView {
             GeometryReader { geo in
@@ -76,10 +79,11 @@ extension WeekView {
 
                 VStack(spacing: 16) {
                     crewPickerSection
+                    crewProjectSelector
 
                     HStack(alignment: .center, spacing: 14) {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("Today in Crew")
+                            Text(selectedCrew != nil ? "Today in \(selectedCrew!.name)" : "Today in Crew")
                                 .font(.system(size: 22, weight: .bold, design: .default))
 
                             Text(fullDateTextForSelectedDay())
@@ -88,7 +92,7 @@ extension WeekView {
 
                             HStack(spacing: 8) {
                                 Image(systemName: "sparkles")
-                                    .foregroundStyle(.blue)
+                                    .foregroundStyle(selectedCrew.map { hexColor($0.colorHex) } ?? .blue)
 
                                 Text("Team flow for today")
                                     .font(.caption.weight(.semibold))
@@ -104,8 +108,8 @@ extension WeekView {
                                     .fill(
                                         LinearGradient(
                                             colors: [
-                                                Color.accentColor.opacity(0.22),
-                                                Color.accentColor.opacity(0.08)
+                                                (selectedCrew.map { hexColor($0.colorHex) } ?? Color.accentColor).opacity(0.22),
+                                                (selectedCrew.map { hexColor($0.colorHex) } ?? Color.accentColor).opacity(0.08)
                                             ],
                                             startPoint: .topLeading,
                                             endPoint: .bottomTrailing
@@ -113,17 +117,17 @@ extension WeekView {
                                     )
                                     .frame(width: 54, height: 54)
 
-                                Image(systemName: "person.3.fill")
+                                Image(systemName: selectedCrew?.icon ?? "person.3.fill")
                                     .font(.title3.weight(.bold))
-                                    .foregroundStyle(Color.accentColor)
+                                    .foregroundStyle(selectedCrew.map { hexColor($0.colorHex) } ?? Color.accentColor)
                             }
 
                             Text("\(allCrewTasksForSelectedDay.filter { !$0.isDone }.count) Görev")
                                 .font(.caption2.bold())
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 6)
-                                .background(Color.accentColor.opacity(0.12))
-                                .foregroundStyle(Color.accentColor)
+                                .background((selectedCrew.map { hexColor($0.colorHex) } ?? Color.accentColor).opacity(0.12))
+                                .foregroundStyle(selectedCrew.map { hexColor($0.colorHex) } ?? Color.accentColor)
                                 .clipShape(Capsule())
                         }
                     }
@@ -178,6 +182,7 @@ extension WeekView {
             }
         }
     }
+
     var crewPickerSection: some View {
         HStack(spacing: 6) {
             ForEach(0..<7, id: \.self) { day in
@@ -237,8 +242,56 @@ extension WeekView {
         .padding(.horizontal, 16)
     }
 
+    var crewProjectSelector: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(allCrews, id: \.id) { crew in
+                    let isSelected = crew.id == selectedCrewID
+
+                    Button {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                            selectedCrewID = crew.id
+                        }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: crew.icon)
+                            Text(crew.name)
+                        }
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            Capsule()
+                                .fill(
+                                    isSelected
+                                    ? hexColor(crew.colorHex).opacity(0.18)
+                                    : Color.white.opacity(0.05)
+                                )
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(
+                                    isSelected
+                                    ? hexColor(crew.colorHex).opacity(0.35)
+                                    : Color.white.opacity(0.06),
+                                    lineWidth: 1
+                                )
+                        )
+                        .foregroundStyle(isSelected ? hexColor(crew.colorHex) : .primary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+
     var activityListContent: some View {
-        let recent = Array(allCrewActivities.prefix(5))
+        let recent = Array(
+            allCrewActivities
+                .filter { selectedCrewID == nil || $0.crewID == selectedCrewID }
+                .prefix(5)
+        )
 
         return VStack(alignment: .leading, spacing: 14) {
             if recent.isEmpty {
@@ -302,7 +355,7 @@ extension WeekView {
                             .font(.headline)
                             .foregroundStyle(.secondary)
 
-                        Text("Seçili gün için crew görevi eklendiğinde burada görünecek.")
+                        Text("Seçili gün ve crew için görev eklendiğinde burada görünecek.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -450,7 +503,6 @@ extension WeekView {
             commentPreview: commentPreviewItems(for: task),
             minutesLeft: taskMinutesLeft(task),
             progress: taskProgress(task),
-
             parallaxOffset: parallaxOffset,
             timelineParallaxOffset: timelineParallaxOffset
         )
@@ -471,6 +523,7 @@ extension WeekView {
         .padding(.top, 6)
         .padding(.bottom, 4)
     }
+
     func crewTaskButton(task: CrewTask, index: Int, totalCount: Int) -> some View {
         Button {
             if let crew = crewMap[task.crewID] {
@@ -507,6 +560,12 @@ extension WeekView {
         )
         .contextMenu {
             Button {
+                selectedTaskForEdit = task
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            
+            Button {
                 toggleCrewTaskDone(task)
             } label: {
                 Label(
@@ -535,6 +594,7 @@ extension WeekView {
             }
         }
     }
+
     func crewCollapsibleSectionHeader(
         _ title: String,
         systemImage: String,
@@ -572,6 +632,7 @@ extension WeekView {
         }
         .buttonStyle(.plain)
     }
+
     func completedTasksCollapsedSummary(_ tasks: [CrewTask]) -> some View {
         let count = tasks.count
         let firstTitle = tasks.first?.title ?? "Completed tasks"
@@ -636,7 +697,4 @@ extension WeekView {
         }
         .frame(height: 68)
     }
-   
 }
-
-

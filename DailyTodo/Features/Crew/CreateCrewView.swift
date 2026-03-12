@@ -107,61 +107,23 @@ struct CreateCrewView: View {
     }
 
     private func createCrew() {
+        let trimmedName = crewName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else { return }
+
         let crew = Crew(
-            name: crewName.trimmingCharacters(in: .whitespacesAndNewlines),
+            name: trimmedName,
             icon: selectedIcon,
             colorHex: selectedColorHex
         )
 
         modelContext.insert(crew)
 
-        let sampleMembers = [
-            CrewMember(
-                crewID: crew.id,
-                name: "Atakan",
-                role: "Manager",
-                isOnline: true,
-                avatarSymbol: "person.fill"
-            ),
-            CrewMember(
-                crewID: crew.id,
-                name: "Ahmet",
-                role: "Designer",
-                isOnline: false,
-                avatarSymbol: "paintpalette.fill"
-            ),
-            CrewMember(
-                crewID: crew.id,
-                name: "Selin",
-                role: "Engineer",
-                isOnline: true,
-                avatarSymbol: "gearshape.fill"
-            )
-        ]
-
-        let sampleTasks = [
-            CrewTask(crewID: crew.id, title: "Build first screen", assignedTo: "Atakan"),
-            CrewTask(crewID: crew.id, title: "Plan project structure", assignedTo: "Ahmet"),
-            CrewTask(crewID: crew.id, title: "Review ideas", assignedTo: "Selin", isDone: true)
-        ]
-
-        let sampleActivities = [
-            CrewActivity(crewID: crew.id, memberName: "Atakan", actionText: "created the crew"),
-            CrewActivity(crewID: crew.id, memberName: "Ahmet", actionText: "joined the crew"),
-            CrewActivity(crewID: crew.id, memberName: "Selin", actionText: "completed a task")
-        ]
-
-        for item in sampleMembers {
-            modelContext.insert(item)
-        }
-
-        for item in sampleTasks {
-            modelContext.insert(item)
-        }
-
-        for item in sampleActivities {
-            modelContext.insert(item)
-        }
+        let activity = CrewActivity(
+            crewID: crew.id,
+            memberName: "You",
+            actionText: "created the crew"
+        )
+        modelContext.insert(activity)
 
         try? modelContext.save()
         dismiss()

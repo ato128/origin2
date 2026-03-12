@@ -26,9 +26,7 @@ struct CreateCrewTaskView: View {
     @State private var status: String = "todo"
 
     @State private var showOnWeek: Bool = false
-    @State private var scheduledWeekday: Int = 0
-    @State private var scheduledHour: Int = 18
-    @State private var scheduledMinute: Int = 0
+    @State private var plannedDate: Date = Date()
     @State private var scheduledDurationMinute: Int = 60
 
     @State private var addPoll: Bool = false
@@ -38,14 +36,11 @@ struct CreateCrewTaskView: View {
 
     private let priorityOptions = ["low", "medium", "high", "urgent"]
     private let statusOptions = ["todo", "inProgress", "review", "done"]
-    private let weekdayTitles = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
-    private let durationOptions = [15,30,45,60,90,120]
+    private let durationOptions = [15, 30, 45, 60, 90, 120]
 
     var body: some View {
         NavigationStack {
-
             Form {
-
                 Section("Task") {
                     TextField("Task title", text: $title)
 
@@ -54,151 +49,109 @@ struct CreateCrewTaskView: View {
                 }
 
                 Section("Assignment") {
-
                     Picker("Assign Member", selection: $assignedTo) {
-
                         Text("Unassigned").tag("")
 
-                        ForEach(members, id:\.id) { member in
+                        ForEach(members, id: \.id) { member in
                             Text(member.name).tag(member.name)
                         }
-
                     }
 
                     TextField("Created by", text: $createdBy)
-
                 }
 
                 Section("Priority & Status") {
-
                     Picker("Priority", selection: $priority) {
-
-                        ForEach(priorityOptions, id:\.self) { item in
+                        ForEach(priorityOptions, id: \.self) { item in
                             Text(priorityTitle(item)).tag(item)
                         }
-
                     }
 
                     Picker("Status", selection: $status) {
-
-                        ForEach(statusOptions, id:\.self) { item in
+                        ForEach(statusOptions, id: \.self) { item in
                             Text(statusTitle(item)).tag(item)
                         }
-
                     }
-
                 }
 
                 Section("Week Planning") {
-
                     Toggle("Show on Week page", isOn: $showOnWeek)
 
                     if showOnWeek {
+                        DatePicker(
+                            "Date & Time",
+                            selection: $plannedDate,
+                            displayedComponents: [.date, .hourAndMinute]
+                        )
+                        .datePickerStyle(.wheel)
 
-                        Picker("Day", selection: $scheduledWeekday) {
-
-                            ForEach(0..<weekdayTitles.count, id:\.self) { index in
-                                Text(weekdayTitles[index]).tag(index)
+                        Picker("Duration", selection: $scheduledDurationMinute) {
+                            ForEach(durationOptions, id: \.self) { duration in
+                                Text("\(duration) min").tag(duration)
                             }
-
                         }
 
                         HStack {
+                            Text("Selected")
+                                .foregroundStyle(.secondary)
 
-                            Picker("Hour", selection: $scheduledHour) {
+                            Spacer()
 
-                                ForEach(0..<24, id:\.self) { hour in
-                                    Text(String(format:"%02d",hour)).tag(hour)
-                                }
-
-                            }
-
-                            Picker("Minute", selection: $scheduledMinute) {
-
-                                ForEach([0,5,10,15,20,30,40,45,50,55], id:\.self) { minute in
-                                    Text(String(format:"%02d",minute)).tag(minute)
-                                }
-
-                            }
-
+                            Text(formattedPlannedDate(plannedDate))
+                                .font(.subheadline.weight(.semibold))
                         }
-
-                        Picker("Duration", selection: $scheduledDurationMinute) {
-
-                            ForEach(durationOptions, id:\.self) { duration in
-                                Text("\(duration) min").tag(duration)
-                            }
-
-                        }
-
                     }
-
                 }
 
                 Section("Discussion") {
-
                     TextField("First note / idea", text: $firstNote, axis: .vertical)
                         .lineLimit(2...4)
 
                     Toggle("Add poll", isOn: $addPoll)
 
                     if addPoll {
-
                         TextField("Poll question", text: $pollQuestion)
-
                     }
-
                 }
 
                 Section {
-
                     Button("Create Task") {
-
                         saveTask()
-
                     }
-                    .frame(maxWidth:.infinity)
-
+                    .frame(maxWidth: .infinity)
                 }
-
             }
-
             .navigationTitle("Create Task")
             .navigationBarTitleDisplayMode(.inline)
-
             .toolbar {
-
-                ToolbarItem(placement:.topBarLeading) {
-
+                ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") {
                         dismiss()
                     }
-
                 }
 
-                ToolbarItem(placement:.topBarTrailing) {
-
+                ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
                         saveTask()
                     }
-                    .disabled(title.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)
-
+                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
-
             }
-
         }
     }
 
     private func saveTask() {
-
-        let cleanTitle = title.trimmingCharacters(in:.whitespacesAndNewlines)
+        let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanTitle.isEmpty else { return }
 
-        let startMinute = scheduledHour * 60 + scheduledMinute
+        let calendar = Calendar.current
+        let comps = calendar.dateComponents([.weekday, .hour, .minute], from: plannedDate)
+
+        let systemWeekday = comps.weekday ?? 2
+        let convertedWeekday = (systemWeekday + 5) % 7
+        let startMinute = ((comps.hour ?? 0) * 60) + (comps.minute ?? 0)
 
         let task = CrewTask(
-
             crewID: crew.id,
             title: cleanTitle,
             details: details,
@@ -207,84 +160,73 @@ struct CreateCrewTaskView: View {
             priority: priority,
             status: status,
             showOnWeek: showOnWeek,
-            scheduledWeekday: showOnWeek ? scheduledWeekday : nil,
+            scheduledWeekday: showOnWeek ? convertedWeekday : nil,
             scheduledStartMinute: showOnWeek ? startMinute : nil,
             scheduledDurationMinute: showOnWeek ? scheduledDurationMinute : nil,
             isDone: status == "done"
-
         )
 
         modelContext.insert(task)
 
         if addPoll {
-
-            let cleanPoll = pollQuestion.trimmingCharacters(in:.whitespacesAndNewlines)
+            let cleanPoll = pollQuestion.trimmingCharacters(in: .whitespacesAndNewlines)
 
             if !cleanPoll.isEmpty {
-
                 let poll = CrewTaskPoll(
                     taskID: task.id,
                     question: cleanPoll
                 )
-
                 modelContext.insert(poll)
-
             }
-
         }
 
-        if !firstNote.isEmpty {
-
+        let cleanFirstNote = firstNote.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !cleanFirstNote.isEmpty {
             let comment = CrewTaskComment(
                 taskID: task.id,
-                authorName: createdBy,
-                message: firstNote
+                authorName: createdBy.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "You" : createdBy,
+                message: cleanFirstNote
             )
-
             modelContext.insert(comment)
-
         }
 
         let activity = CrewActivity(
             crewID: crew.id,
-            memberName: createdBy,
+            memberName: createdBy.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "You" : createdBy,
             actionText: "created task \(cleanTitle)"
         )
 
         modelContext.insert(activity)
 
         try? modelContext.save()
-
         dismiss()
-
     }
 
-    private func priorityTitle(_ value:String) -> String {
+    private func formattedPlannedDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "tr_TR")
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
 
+    private func priorityTitle(_ value: String) -> String {
         switch value {
-
         case "low": return "Low"
         case "medium": return "Medium"
         case "high": return "High"
         case "urgent": return "Urgent"
-
-        default: return value
+        default: return value.capitalized
         }
-
     }
 
-    private func statusTitle(_ value:String) -> String {
-
+    private func statusTitle(_ value: String) -> String {
         switch value {
-
         case "todo": return "Todo"
         case "inProgress": return "In Progress"
         case "review": return "Review"
         case "done": return "Done"
-
-        default: return value
+        default: return value.capitalized
         }
-
     }
-
 }

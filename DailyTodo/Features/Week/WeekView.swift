@@ -17,12 +17,13 @@ enum WeekMode {
 
 struct WeekView: View {
     
-    @Environment(\.modelContext)  var context
+    @Environment(\.modelContext) var context
     
     @Query(sort: \EventItem.startMinute, order: .forward)
     private var allEvents: [EventItem]
     @Query var allCrewTasks: [CrewTask]
-    @Query private var allCrews: [Crew]
+    @Query  var allCrews: [Crew]
+    @Query private var allCrewMembers: [CrewMember]
     @Query(sort: \CrewActivity.createdAt, order: .reverse)
     var allCrewActivities: [CrewActivity]
     @Query(sort: \CrewTaskComment.createdAt, order: .reverse)
@@ -30,6 +31,11 @@ struct WeekView: View {
     
     var crewMap: [UUID: Crew] {
         Dictionary(uniqueKeysWithValues: allCrews.map { ($0.id, $0) })
+    }
+    
+    var selectedCrew: Crew? {
+        guard let selectedCrewID else { return allCrews.first }
+        return allCrews.first(where: { $0.id == selectedCrewID })
     }
     
     private let liveTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
@@ -91,32 +97,34 @@ struct WeekView: View {
         return nil
     }
     
-    
-    @State  var selectedDay: Int = 0
-    @State  var showingAdd: Bool = false
-    @State  var editingEvent: EventItem? = nil
-    @State  var weekMode: WeekMode = .personal
+    @State var selectedDay: Int = 0
+    @State var selectedTaskForEdit: CrewTask?
+    @State var showingAdd: Bool = false
+    @State private var showingCreateCrewTask = false
+    @State private var showCrewPickerSheet = false
+    @State var editingEvent: EventItem? = nil
+    @State var weekMode: WeekMode = .personal
     @State private var showCopied: Bool = false
-    @State  var crewPulse = false
-    @State  var commentPulse = false
-    @State  var selectedCrewTask: CrewTask?
-    @State  var selectedCrewForDetail: Crew?
-    @State  var showCrewEntrance = false
-    @State  var showCrewTaskHeader = false
-    @State  var showCrewTaskCards = false
-    @State  var didAnimateCrewCards = false
+    @State var crewPulse = false
+    @State var commentPulse = false
+    @State var selectedCrewTask: CrewTask?
+    @State var selectedCrewForDetail: Crew?
+    @State var showCrewEntrance = false
+    @State var showCrewTaskHeader = false
+    @State var showCrewTaskCards = false
+    @State var didAnimateCrewCards = false
     @State private var didInitialAutoScroll: Bool = false
     @State private var lastAutoScrollTargetID: UUID? = nil
     @State private var didSetInitialDay: Bool = false
-    @State  var animateSummary = false
-    @State  var pulseTodayDot = false
-    @State  var showCompletedCrewTasks = false
-    @State  var showPersonalEntrance = false
-    @State  var showPersonalEventCards = false
-    @State  var crewScrollOffset: CGFloat = 0
-    @State  var personalScrollOffset: CGFloat = 0
-    @State  var scrollY: CGFloat = 0
- 
+    @State var animateSummary = false
+    @State var pulseTodayDot = false
+    @State var showCompletedCrewTasks = false
+    @State var showPersonalEntrance = false
+    @State var showPersonalEventCards = false
+    @State var crewScrollOffset: CGFloat = 0
+    @State var personalScrollOffset: CGFloat = 0
+    @State var scrollY: CGFloat = 0
+    @State var selectedCrewID: UUID?
     
     var body: some View {
         ScrollViewReader { proxy in
@@ -124,12 +132,84 @@ struct WeekView: View {
                 .animation(.easeInOut(duration: 0.25), value: weekMode)
                 .toolbar { toolbarContent }
                 .sheet(isPresented: $showingAdd) {
-                    NavigationStack { AddEventView(defaultWeekday: selectedDay) }
-                        .presentationDetents([.medium, .large])
+                    NavigationStack {
+                        AddEventView(defaultWeekday: selectedDay)
+                    }
+                    .presentationDetents([.medium, .large])
+                }
+                .sheet(isPresented: $showCrewPickerSheet) {
+                    NavigationStack {
+                        List {
+                            ForEach(allCrews) { crew in
+                                Button {
+                                    selectedCrewID = crew.id
+                                    showCrewPickerSheet = false
+                                    
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                                        showingCreateCrewTask = true
+                                    }
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        ZStack {
+                                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                .fill(hexColor(crew.colorHex).opacity(0.16))
+                                                .frame(width: 42, height: 42)
+                                            
+                                            Image(systemName: crew.icon)
+                                                .foregroundStyle(hexColor(crew.colorHex))
+                                        }
+                                        
+                                        VStack(alignment: .leading, spacing: 3) {
+                                            Text(crew.name)
+                                                .font(.headline)
+                                            
+                                            Text("\(allCrewMembersForCrew(crew.id).count) members")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption.bold())
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .navigationTitle("Choose Crew")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarLeading) {
+                                Button("Cancel") {
+                                    showCrewPickerSheet = false
+                                }
+                            }
+                        }
+                    }
+                    .presentationDetents([.medium])
+                }
+                .sheet(isPresented: $showingCreateCrewTask) {
+                    NavigationStack {
+                        if let crew = selectedCrew {
+                            CreateCrewTaskView(
+                                crew: crew,
+                                members: allCrewMembersForCrew(crew.id)
+                            )
+                        } else {
+                            Text("No crew selected")
+                                .padding()
+                        }
+                    }
+                    .presentationDetents([.medium, .large])
                 }
                 .sheet(item: $editingEvent) { ev in
-                    NavigationStack { EditEventView(event: ev) }
-                        .presentationDetents([.medium, .large])
+                    NavigationStack {
+                        EditEventView(event: ev)
+                    }
+                    .presentationDetents([.medium, .large])
                 }
                 .sheet(item: $selectedCrewTask) { task in
                     if let crew = selectedCrewForDetail {
@@ -141,22 +221,36 @@ struct WeekView: View {
                         }
                     }
                 }
+                .sheet(item: $selectedTaskForEdit) { task in
+                    if let crew = crewMap[task.crewID] {
+                        NavigationStack {
+                            EditCrewTaskView(crew: crew, task: task)
+                        }
+                        .presentationDetents([.medium, .large])
+                    }
+                }
                 .overlay(toastView, alignment: .bottom)
                 .onAppear {
                     onAppear(proxy: proxy)
                     crewPulse = true
                     commentPulse = true
                 }
-                .onChange(of: selectedDay) { _, _ in onDayChanged(proxy: proxy) }
+                .onChange(of: selectedDay) { _, _ in
+                    onDayChanged(proxy: proxy)
+                }
                 .onChange(of: eventsForDayIDs) { _, _ in
                     animateSummaryCard()
                     autoScrollIfNeeded(proxy: proxy)
                 }
                 .onChange(of: allEventIDs) { _, _ in
-                    Task { await NotificationManager.shared.rescheduleAll(events: allEvents) }
+                    Task {
+                        await NotificationManager.shared.rescheduleAll(events: allEvents)
+                    }
                 }
                 .onReceive(liveTimer) { _ in
-                    Task { await LiveActivityManager.shared.autoSyncIfNeeded(events: allEvents) }
+                    Task {
+                        await LiveActivityManager.shared.autoSyncIfNeeded(events: allEvents)
+                    }
                 }
                 .onChange(of: weekMode) { _, newValue in
                     if newValue == .crew {
@@ -190,13 +284,13 @@ struct WeekView: View {
                         showCrewTaskCards = false
                         showPersonalEntrance = false
                         showPersonalEventCards = false
-
+                        
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
                             withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
                                 showPersonalEntrance = true
                             }
                         }
-
+                        
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
                             withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
                                 showPersonalEventCards = true
@@ -207,11 +301,6 @@ struct WeekView: View {
         }
     }
 }
- 
-
-
-
-
 
 // MARK: - Main UI
 extension WeekView {
@@ -233,30 +322,53 @@ extension WeekView {
         }
     }
     
-    
     var toolbarContent: some ToolbarContent {
         ToolbarItemGroup(placement: .topBarTrailing) {
             Menu {
-                Button {
-                    Haptics.impact(.light)
-                    shareDay()
-                } label: {
-                    Label("Bu günü paylaş", systemImage: "square.and.arrow.up")
-                }
-                
-                Button {
-                    Haptics.impact(.light)
-                    shareWeek()
-                } label: {
-                    Label("Tüm haftayı paylaş", systemImage: "calendar")
-                }
-                
-                Button {
-                    UIPasteboard.general.string = shareTextForSelectedDay()
-                    Haptics.notify(.success)
-                    showCopiedToast()
-                } label: {
-                    Label("Kopyala", systemImage: "doc.on.doc")
+                if weekMode == .crew {
+                    Button {
+                        Haptics.impact(.light)
+                        shareCrewDay()
+                    } label: {
+                        Label("Bugünkü crew görevlerini paylaş", systemImage: "square.and.arrow.up")
+                    }
+                    
+                    Button {
+                        Haptics.impact(.light)
+                        shareSelectedCrew()
+                    } label: {
+                        Label("Crew'ü paylaş", systemImage: "person.3.fill")
+                    }
+                    
+                    Button {
+                        UIPasteboard.general.string = shareTextForCrewDay()
+                        Haptics.notify(.success)
+                        showCopiedToast()
+                    } label: {
+                        Label("Kopyala", systemImage: "doc.on.doc")
+                    }
+                } else {
+                    Button {
+                        Haptics.impact(.light)
+                        shareDay()
+                    } label: {
+                        Label("Bu günü paylaş", systemImage: "square.and.arrow.up")
+                    }
+                    
+                    Button {
+                        Haptics.impact(.light)
+                        shareWeek()
+                    } label: {
+                        Label("Tüm haftayı paylaş", systemImage: "calendar")
+                    }
+                    
+                    Button {
+                        UIPasteboard.general.string = shareTextForSelectedDay()
+                        Haptics.notify(.success)
+                        showCopiedToast()
+                    } label: {
+                        Label("Kopyala", systemImage: "doc.on.doc")
+                    }
                 }
             } label: {
                 Image(systemName: "square.and.arrow.up")
@@ -264,12 +376,22 @@ extension WeekView {
             
             Button {
                 Haptics.impact(.medium)
-                showingAdd = true
+                
+                if weekMode == .crew {
+                    if selectedCrew != nil {
+                        showingCreateCrewTask = true
+                    } else {
+                        showCrewPickerSheet = true
+                    }
+                } else {
+                    showingAdd = true
+                }
             } label: {
                 Image(systemName: "plus")
             }
         }
     }
+    
     var toastView: some View {
         Group {
             if showCopied {
@@ -285,6 +407,7 @@ extension WeekView {
             }
         }
     }
+    
     var sectionCardBackground: some View {
         RoundedRectangle(cornerRadius: 24, style: .continuous)
             .fill(.ultraThinMaterial)
@@ -294,11 +417,9 @@ extension WeekView {
             )
     }
 }
-   
 
-//MARK - Legacy Crew Mode
+// MARK: - Legacy Crew Mode
 extension WeekView {
-    
     
     func premiumCardFill(_ priority: String, active: Bool, soon: Bool) -> LinearGradient {
         let tint = premiumPriorityColor(priority)
@@ -513,239 +634,285 @@ extension WeekView {
         .animation(.easeInOut(duration: 0.25), value: soon)
     }
 }
-    //MARK - Shared Time Helpers
-     extension WeekView {
-        func currentMinuteOfDay() -> Int {
-            let c = Calendar.current.dateComponents([.hour, .minute], from: Date())
-            return (c.hour ?? 0) * 60 + (c.minute ?? 0)
-        }
-        func timeText(for ev: EventItem) -> String {
-            let start = ev.startMinute
-            let end = ev.startMinute + ev.durationMinute
-            return "\(hm(start)) – \(hm(end))"
-        }
-        
-        func hm(_ minute: Int) -> String {
-            let m = max(0, min(1439, minute))
-            let h = m / 60
-            let mm = m % 60
-            return String(format: "%02d:%02d", h, mm)
-        }
-        
-        func durationText(_ minutes: Int) -> String {
-            let h = minutes / 60
-            let m = minutes % 60
-            
-            if h == 0 { return "\(m)dk" }
-            if m == 0 { return "\(h)s" }
-            return "\(h)s \(m)dk"
-        }
-        
-        
-        func weekdayIndexToday() -> Int {
-            let w = Calendar.current.component(.weekday, from: Date())
-            return (w + 5) % 7
-        }
-        func animateSummaryCard() {
-            animateSummary = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
-                animateSummary = false
-            }
-        }
-        
-    }
-   
-    // MARK: - Lifecycle
-     extension WeekView {
-        
-        func onAppear(proxy: ScrollViewProxy) {
-            if !didSetInitialDay {
-                didSetInitialDay = true
-                selectedDay = weekdayIndexToday()
-            }
-            
-            if !didInitialAutoScroll {
-                didInitialAutoScroll = true
-                autoScrollIfNeeded(proxy: proxy)
-            }
-            
-            animateSummary = true
-            pulseTodayDot = true
-            showCrewTaskHeader = weekMode == .crew
-            showCrewTaskCards = weekMode == .crew
-            showPersonalEntrance = weekMode == .personal
-            showPersonalEventCards = weekMode == .personal
 
-            if weekMode == .crew {
-                showCrewEntrance = true
-            }
-            
-            Task {
-                await NotificationManager.shared.rescheduleAll(events: allEvents)
-            }
+// MARK: - Shared Time Helpers
+extension WeekView {
+    func currentMinuteOfDay() -> Int {
+        let c = Calendar.current.dateComponents([.hour, .minute], from: Date())
+        return (c.hour ?? 0) * 60 + (c.minute ?? 0)
+    }
+    
+    func timeText(for ev: EventItem) -> String {
+        let start = ev.startMinute
+        let end = ev.startMinute + ev.durationMinute
+        return "\(hm(start)) – \(hm(end))"
+    }
+    
+    func hm(_ minute: Int) -> String {
+        let m = max(0, min(1439, minute))
+        let h = m / 60
+        let mm = m % 60
+        return String(format: "%02d:%02d", h, mm)
+    }
+    
+    func durationText(_ minutes: Int) -> String {
+        let h = minutes / 60
+        let m = minutes % 60
+        
+        if h == 0 { return "\(m)dk" }
+        if m == 0 { return "\(h)s" }
+        return "\(h)s \(m)dk"
+    }
+    
+    func weekdayIndexToday() -> Int {
+        let w = Calendar.current.component(.weekday, from: Date())
+        return (w + 5) % 7
+    }
+    
+    func animateSummaryCard() {
+        animateSummary = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+            animateSummary = false
+        }
+    }
+}
+
+// MARK: - Lifecycle
+extension WeekView {
+    
+    func onAppear(proxy: ScrollViewProxy) {
+        if !didSetInitialDay {
+            didSetInitialDay = true
+            selectedDay = weekdayIndexToday()
         }
         
-        func onDayChanged(proxy: ScrollViewProxy) {
-            lastAutoScrollTargetID = nil
-            animateSummaryCard()
+        if selectedCrewID == nil {
+            selectedCrewID = allCrews.first?.id
+        }
+        
+        if !didInitialAutoScroll {
+            didInitialAutoScroll = true
             autoScrollIfNeeded(proxy: proxy)
-            showPersonalEventCards = false
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
-                withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
-                    showPersonalEventCards = true
-                }
-            }
+        }
+        
+        animateSummary = true
+        pulseTodayDot = true
+        showCrewTaskHeader = weekMode == .crew
+        showCrewTaskCards = weekMode == .crew
+        showPersonalEntrance = weekMode == .personal
+        showPersonalEventCards = weekMode == .personal
+        
+        if weekMode == .crew {
+            showCrewEntrance = true
+        }
+        
+        Task {
+            await NotificationManager.shared.rescheduleAll(events: allEvents)
         }
     }
     
-    
-    // MARK: - Logic
- extension WeekView {
+    func onDayChanged(proxy: ScrollViewProxy) {
+        lastAutoScrollTargetID = nil
+        animateSummaryCard()
+        autoScrollIfNeeded(proxy: proxy)
+        showPersonalEventCards = false
         
-        func delete(_ ev: EventItem) {
-            context.delete(ev)
-            try? context.save()
-            WidgetAppSync.refreshFromSwiftData(context: context)
-            
-            Task {
-                await NotificationManager.shared.rescheduleAll(events: allEvents.filter { $0.id != ev.id })
-            }
-        }
-        
-        
-        
-        func hasConflict(_ ev: EventItem) -> Bool {
-            for other in eventsForDay {
-                if other.id == ev.id { continue }
-                if overlaps(ev, other) { return true }
-            }
-            return false
-        }
-        
-        func overlaps(_ a: EventItem, _ b: EventItem) -> Bool {
-            let aStart = a.startMinute
-            let aEnd = a.startMinute + a.durationMinute
-            let bStart = b.startMinute
-            let bEnd = b.startMinute + b.durationMinute
-            return max(aStart, bStart) < min(aEnd, bEnd)
-        }
-        
-        func autoScrollTarget(now: Int) -> EventItem? {
-            guard !eventsForDay.isEmpty else { return nil }
-            
-            if selectedDay == weekdayIndexToday() {
-                if let live = eventsForDay.first(where: { ev in
-                    let s = ev.startMinute
-                    let e = ev.startMinute + ev.durationMinute
-                    return now >= s && now < e
-                }) {
-                    return live
-                }
-                
-                if let next = eventsForDay.first(where: { $0.startMinute > now }) {
-                    return next
-                }
-            }
-            
-            return eventsForDay.first
-        }
-        
-        func autoScrollIfNeeded(proxy: ScrollViewProxy) {
-            let now = currentMinuteOfDay()
-            guard let target = autoScrollTarget(now: now) else { return }
-            
-            if lastAutoScrollTargetID == target.id { return }
-            lastAutoScrollTargetID = target.id
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                withAnimation(.easeInOut(duration: 0.35)) {
-                    proxy.scrollTo(target.id, anchor: .center)
-                }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+            withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
+                showPersonalEventCards = true
             }
         }
     }
+}
+
+// MARK: - Logic
+extension WeekView {
     
+    func delete(_ ev: EventItem) {
+        context.delete(ev)
+        try? context.save()
+        WidgetAppSync.refreshFromSwiftData(context: context)
+        
+        Task {
+            await NotificationManager.shared.rescheduleAll(events: allEvents.filter { $0.id != ev.id })
+        }
+    }
     
-    // MARK: - Share
-    extension WeekView {
-        
-        
-        
-        
-        func shareDay() { presentShare(text: shareTextForSelectedDay()) }
-        
-        func shareWeek() {
-            let parts: [String] = (0..<7).map { day in shareTextForDay(day) }
-            presentShare(text: parts.joined(separator: "\n\n"))
+    func allCrewMembersForCrew(_ crewID: UUID) -> [CrewMember] {
+        allCrewMembers.filter { $0.crewID == crewID }
+    }
+    
+    func hasConflict(_ ev: EventItem) -> Bool {
+        for other in eventsForDay {
+            if other.id == ev.id { continue }
+            if overlaps(ev, other) { return true }
         }
+        return false
+    }
+    
+    func overlaps(_ a: EventItem, _ b: EventItem) -> Bool {
+        let aStart = a.startMinute
+        let aEnd = a.startMinute + a.durationMinute
+        let bStart = b.startMinute
+        let bEnd = b.startMinute + b.durationMinute
+        return max(aStart, bStart) < min(aEnd, bEnd)
+    }
+    
+    func autoScrollTarget(now: Int) -> EventItem? {
+        guard !eventsForDay.isEmpty else { return nil }
         
-        func presentShare(text: String) {
-            let vc = UIActivityViewController(activityItems: [text], applicationActivities: nil)
-            if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let root = scene.windows.first?.rootViewController {
-                root.present(vc, animated: true)
+        if selectedDay == weekdayIndexToday() {
+            if let live = eventsForDay.first(where: { ev in
+                let s = ev.startMinute
+                let e = ev.startMinute + ev.durationMinute
+                return now >= s && now < e
+            }) {
+                return live
+            }
+            
+            if let next = eventsForDay.first(where: { $0.startMinute > now }) {
+                return next
             }
         }
         
-        func shareTextForSelectedDay() -> String { shareTextForDay(selectedDay) }
+        return eventsForDay.first
+    }
+    
+    func autoScrollIfNeeded(proxy: ScrollViewProxy) {
+        let now = currentMinuteOfDay()
+        guard let target = autoScrollTarget(now: now) else { return }
         
+        if lastAutoScrollTargetID == target.id { return }
+        lastAutoScrollTargetID = target.id
         
-        
-        func priorityTitle(_ value: String) -> String {
-            switch value {
-            case "low": return "Low"
-            case "medium": return "Medium"
-            case "high": return "High"
-            case "urgent": return "Urgent"
-            default: return value.capitalized
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            withAnimation(.easeInOut(duration: 0.35)) {
+                proxy.scrollTo(target.id, anchor: .center)
             }
         }
+    }
+}
+
+// MARK: - Share
+extension WeekView {
+    
+    func shareDay() {
+        presentShare(text: shareTextForSelectedDay())
+    }
+    
+    func shareWeek() {
+        let parts: [String] = (0..<7).map { day in shareTextForDay(day) }
+        presentShare(text: parts.joined(separator: "\n\n"))
+    }
+    
+    func presentShare(text: String) {
+        let vc = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let root = scene.windows.first?.rootViewController {
+            root.present(vc, animated: true)
+        }
+    }
+    
+    func shareCrewDay() {
+        presentShare(text: shareTextForCrewDay())
+    }
+    
+    func shareSelectedCrew() {
+        presentShare(text: shareTextForSelectedCrew())
+    }
+    
+    func shareTextForCrewDay() -> String {
+        let tasks = allCrewTasksForSelectedDay
         
-        func statusTitle(_ value: String) -> String {
-            switch value {
-            case "todo": return "Todo"
-            case "inProgress": return "In Progress"
-            case "review": return "Review"
-            case "done": return "Done"
-            default: return value.capitalized
-            }
+        if tasks.isEmpty {
+            return "👥 \(dayTitles[selectedDay]) crew planı — görev yok"
         }
         
-        
-        func shareTextForDay(_ day: Int) -> String {
-            let d = max(0, min(6, day))
-            let dayName = dayTitles[d]
-            
-            let items = allEvents
-                .filter { $0.weekday == d }
-                .sorted { $0.startMinute < $1.startMinute }
-            
-            if items.isEmpty { return "📅 \(dayName) — Ders yok" }
-            
-            let lines = items.map { ev in
-                let start = hm(ev.startMinute)
-                let end = hm(ev.startMinute + ev.durationMinute)
-                let loc = (ev.location ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-                let locText = loc.isEmpty ? "" : " • \(loc)"
-                return "• \(start)–\(end)  \(ev.title)\(locText)"
+        let lines = tasks.map { task in
+            let timeText: String
+            if let start = task.scheduledStartMinute {
+                timeText = hm(start)
+            } else {
+                timeText = "--:--"
             }
             
-            return """
+            let assigneeText = task.assignedTo.isEmpty ? "" : " • \(task.assignedTo)"
+            let crewNameText = crewMap[task.crewID]?.name ?? "Crew"
+            
+            return "• \(timeText)  \(task.title) • \(crewNameText)\(assigneeText)"
+        }
+        
+        return """
+        👥 \(dayTitles[selectedDay]) Crew Planı
+        
+        \(lines.joined(separator: "\n"))
+        
+        (DailyTodo ile oluşturuldu)
+        """
+    }
+    
+    func shareTextForSelectedCrew() -> String {
+        if let crew = selectedCrew {
+            return "Join my crew '\(crew.name)' on DailyTodo 🚀"
+        }
+        return "Join my crew on DailyTodo 🚀"
+    }
+    
+    func shareTextForSelectedDay() -> String {
+        shareTextForDay(selectedDay)
+    }
+    
+    func priorityTitle(_ value: String) -> String {
+        switch value {
+        case "low": return "Low"
+        case "medium": return "Medium"
+        case "high": return "High"
+        case "urgent": return "Urgent"
+        default: return value.capitalized
+        }
+    }
+    
+    func statusTitle(_ value: String) -> String {
+        switch value {
+        case "todo": return "Todo"
+        case "inProgress": return "In Progress"
+        case "review": return "Review"
+        case "done": return "Done"
+        default: return value.capitalized
+        }
+    }
+    
+    func shareTextForDay(_ day: Int) -> String {
+        let d = max(0, min(6, day))
+        let dayName = dayTitles[d]
+        
+        let items = allEvents
+            .filter { $0.weekday == d }
+            .sorted { $0.startMinute < $1.startMinute }
+        
+        if items.isEmpty { return "📅 \(dayName) — Ders yok" }
+        
+        let lines = items.map { ev in
+            let start = hm(ev.startMinute)
+            let end = hm(ev.startMinute + ev.durationMinute)
+            let loc = (ev.location ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let locText = loc.isEmpty ? "" : " • \(loc)"
+            return "• \(start)–\(end)  \(ev.title)\(locText)"
+        }
+        
+        return """
         📅 \(dayName) Programım
         
         \(lines.joined(separator: "\n"))
         
         (DailyTodo ile oluşturuldu)
         """
-        }
-        
-        func showCopiedToast() {
-            withAnimation { showCopied = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
-                withAnimation { showCopied = false }
-            }
-        }
     }
     
-    
-  
+    func showCopiedToast() {
+        withAnimation { showCopied = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+            withAnimation { showCopied = false }
+        }
+    }
+}

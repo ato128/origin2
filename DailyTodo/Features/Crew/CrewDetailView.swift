@@ -11,8 +11,12 @@ import SwiftData
 struct CrewDetailView: View {
     let crew: Crew
     
+    @Environment(\.modelContext) private var modelContext
+    
     @State private var showCreateTask = false
-
+    @State private var showAddMemberSheet = false
+    @State private var selectedTaskForEdit: CrewTask?
+    @State private var showShareSheet = false
     
     @Query private var members: [CrewMember]
     @Query private var tasks: [CrewTask]
@@ -24,13 +28,38 @@ struct CrewDetailView: View {
     @Query private var polls: [CrewTaskPoll]
     @Query private var reactions: [CrewTaskReaction]
     
-
-    
-    
-
     var body: some View {
         let crewMembers = members.filter { $0.crewID == crew.id }
-        let crewTasks = tasks.filter { $0.crewID == crew.id }
+        let crewTasks = tasks
+            .filter { $0.crewID == crew.id }
+            .sorted { lhs, rhs in
+                if lhs.isDone != rhs.isDone {
+                    return !lhs.isDone && rhs.isDone
+                }
+
+                let priorityRank: [String: Int] = [
+                    "urgent": 0,
+                    "high": 1,
+                    "medium": 2,
+                    "low": 3
+                ]
+
+                let lhsPriority = priorityRank[lhs.priority, default: 99]
+                let rhsPriority = priorityRank[rhs.priority, default: 99]
+
+                if lhsPriority != rhsPriority {
+                    return lhsPriority < rhsPriority
+                }
+
+                let lhsMinute = lhs.scheduledStartMinute ?? 9999
+                let rhsMinute = rhs.scheduledStartMinute ?? 9999
+
+                if lhsMinute != rhsMinute {
+                    return lhsMinute < rhsMinute
+                }
+
+                return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+            }
         let crewActivities = activities.filter { $0.crewID == crew.id }
 
         let completedTasks = crewTasks.filter(\.isDone).count
@@ -71,7 +100,19 @@ struct CrewDetailView: View {
                 members: crewMembers
             )
         }
-        
+        .sheet(isPresented: $showAddMemberSheet) {
+            AddMemberView(crew: crew)
+        }
+        .sheet(item: $selectedTaskForEdit) { task in
+            EditCrewTaskView(crew: crew, task: task)
+        }
+        .sheet(isPresented: $showShareSheet) {
+            ShareSheet(
+                items: [
+                    "Join my crew '\(crew.name)' on DailyTodo 🚀"
+                ]
+            )
+        }
     }
 }
 
@@ -93,8 +134,21 @@ private extension CrewDetailView {
                 }
 
                 Spacer()
-            }
 
+                Button {
+                    showShareSheet = true
+                } label: {
+                    Image(systemName: "person.badge.plus")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .frame(width: 38, height: 38)
+                        .background(
+                            Circle()
+                                .fill(hexColor(crew.colorHex))
+                        )
+                }
+                .buttonStyle(.plain)
+            }
             VStack(alignment: .leading, spacing: 4) {
                 Text(crew.name)
                     .font(.title2.bold())
@@ -183,6 +237,20 @@ private extension CrewDetailView {
 
                 Spacer()
 
+                Button {
+                    showAddMemberSheet = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.caption.bold())
+                        .foregroundStyle(.blue)
+                        .frame(width: 28, height: 28)
+                        .background(
+                            Circle()
+                                .fill(Color.blue.opacity(0.14))
+                        )
+                }
+                .buttonStyle(.plain)
+
                 Text("\(crewMembers.count)")
                     .font(.caption.weight(.bold))
                     .padding(.horizontal, 8)
@@ -195,7 +263,7 @@ private extension CrewDetailView {
             }
 
             if crewMembers.isEmpty {
-                emptyMiniState(text: "No members yet")
+                emptyMiniState(text: "No members yet • Tap + to add one")
             } else {
                 ForEach(crewMembers) { member in
                     HStack(spacing: 12) {
@@ -259,12 +327,15 @@ private extension CrewDetailView {
                     Text(task.title)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.primary)
+                        .strikethrough(task.isDone, color: .secondary)
+                        .opacity(task.isDone ? 0.65 : 1.0)
                         .lineLimit(2)
 
                     if !task.details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         Text(task.details)
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                            .opacity(task.isDone ? 0.7 : 1.0)
                             .lineLimit(2)
                     }
 
@@ -273,7 +344,15 @@ private extension CrewDetailView {
                             miniMeta(icon: "person.fill", text: task.assignedTo)
                         }
 
-                        miniMeta(icon: "flag.fill", text: priorityTitle(task.priority))
+                        taskPill(
+                            text: priorityTitle(task.priority),
+                            tint: priorityColor(task.priority)
+                        )
+
+                        taskPill(
+                            text: statusTitle(task.status),
+                            tint: task.isDone ? .green : .secondary
+                        )
 
                         if task.showOnWeek,
                            let weekday = task.scheduledWeekday,
@@ -305,13 +384,12 @@ private extension CrewDetailView {
 
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary.opacity(0.8))
             }
         }
+        .contentShape(Rectangle())
     }
-    
-   
-    
+
     func taskPill(text: String, tint: Color) -> some View {
         Text(text)
             .font(.caption2.weight(.semibold))
@@ -361,6 +439,15 @@ private extension CrewDetailView {
         default: return value.capitalized
         }
     }
+    func statusTitle(_ value: String) -> String {
+        switch value {
+        case "todo": return "Todo"
+        case "inProgress": return "In Progress"
+        case "review": return "Review"
+        case "done": return "Done"
+        default: return value.capitalized
+        }
+    }
 
     func weekdayShort(_ weekday: Int) -> String {
         let titles = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
@@ -371,6 +458,37 @@ private extension CrewDetailView {
         let h = max(0, min(23, minute / 60))
         let m = max(0, min(59, minute % 60))
         return String(format: "%02d:%02d", h, m)
+    }
+
+    func toggleTaskDone(_ task: CrewTask) {
+        task.isDone.toggle()
+        task.status = task.isDone ? "done" : "todo"
+
+        let activity = CrewActivity(
+            crewID: crew.id,
+            memberName: "You",
+            actionText: task.isDone
+            ? "completed task \(task.title)"
+            : "reopened task \(task.title)"
+        )
+        modelContext.insert(activity)
+
+        try? modelContext.save()
+    }
+
+    func deleteTask(_ task: CrewTask) {
+        let deletedTitle = task.title
+
+        modelContext.delete(task)
+
+        let activity = CrewActivity(
+            crewID: crew.id,
+            memberName: "You",
+            actionText: "deleted task \(deletedTitle)"
+        )
+        modelContext.insert(activity)
+
+        try? modelContext.save()
     }
 
     func tasksSection(_ crewTasks: [CrewTask]) -> some View {
@@ -408,8 +526,40 @@ private extension CrewDetailView {
                         CrewTaskDetailView(task: task, crew: crew)
                     } label: {
                         crewTaskRow(task)
+                            .padding(14)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(
+                                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                    .fill(Color.white.opacity(0.03))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                    .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                            )
                     }
                     .buttonStyle(.plain)
+                    .contextMenu {
+                        Button {
+                            selectedTaskForEdit = task
+                        } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+
+                        Button {
+                            toggleTaskDone(task)
+                        } label: {
+                            Label(
+                                task.isDone ? "Mark as Todo" : "Mark as Completed",
+                                systemImage: task.isDone ? "arrow.uturn.backward.circle" : "checkmark.circle"
+                            )
+                        }
+
+                        Button(role: .destructive) {
+                            deleteTask(task)
+                        } label: {
+                            Label("Delete Task", systemImage: "trash")
+                        }
+                    }
                 }
             }
         }
@@ -458,8 +608,6 @@ private extension CrewDetailView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
     }
-    
-    
     
     func activityIcon(for text: String) -> String {
         let lower = text.lowercased()
@@ -513,13 +661,13 @@ private extension CrewDetailView {
         .padding(.vertical, 4)
     }
 
-    
-    
-    
     func activitySection(_ crewActivities: [CrewActivity]) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("Activity")
+                Text("Recent team updates")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                     .font(.headline)
 
                 Spacer()
@@ -538,7 +686,7 @@ private extension CrewDetailView {
             if crewActivities.isEmpty {
                 emptyMiniState(text: "No activity yet")
             } else {
-                ForEach(crewActivities.prefix(8)) { item in
+                ForEach(crewActivities.prefix(5)) { item in
                     activityRow(item)
                 }
             }
@@ -547,6 +695,7 @@ private extension CrewDetailView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
     }
+
     func infoPill(text: String, tint: Color) -> some View {
         Text(text)
             .font(.caption.weight(.semibold))
@@ -579,5 +728,16 @@ private extension CrewDetailView {
                     .stroke(Color.white.opacity(0.08), lineWidth: 1)
             )
     }
-}
+    struct ShareSheet: UIViewControllerRepresentable {
+        var items: [Any]
 
+        func makeUIViewController(context: Context) -> UIActivityViewController {
+            UIActivityViewController(
+                activityItems: items,
+                applicationActivities: nil
+            )
+        }
+
+        func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+    }
+}

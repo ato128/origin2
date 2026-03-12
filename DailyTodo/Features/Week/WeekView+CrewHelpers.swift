@@ -12,7 +12,11 @@ extension WeekView {
     
     func crewTasks(for day: Int) -> [CrewTask] {
         allCrewTasks
-            .filter { $0.showOnWeek && $0.scheduledWeekday == day }
+            .filter {
+                $0.showOnWeek &&
+                $0.scheduledWeekday == day &&
+                (selectedCrewID == nil || $0.crewID == selectedCrewID)
+            }
             .sorted {
                 ($0.scheduledStartMinute ?? 0) < ($1.scheduledStartMinute ?? 0)
             }
@@ -23,8 +27,6 @@ extension WeekView {
             .filter { $0.taskID == task.id }
             .sorted { $0.createdAt > $1.createdAt }
     }
-    
-    
     
     func previewCommentsForTask(_ task: CrewTask) -> [CrewTaskComment] {
         Array(commentsForTask(task).prefix(2))
@@ -39,12 +41,9 @@ extension WeekView {
         !commentsForTask(task).isEmpty
     }
     
-    
-    
     func hasCrewTasks(on day: Int) -> Bool {
         !crewTasks(for: day).isEmpty
     }
-    
     
     func hasActiveCrewTask(on day: Int) -> Bool {
         guard day == weekdayIndexToday() else { return false }
@@ -152,6 +151,7 @@ extension WeekView {
         
         return targetDate.formatted(date: .complete, time: .omitted)
     }
+    
     func premiumPriorityColor(_ priority: String) -> Color {
         switch priority {
         case "urgent":
@@ -170,6 +170,7 @@ extension WeekView {
     func hasUrgentCrewTask(on day: Int) -> Bool {
         crewTasks(for: day).contains { $0.priority == "urgent" }
     }
+    
     func taskProgress(_ task: CrewTask) -> Double {
         guard isTaskActive(task),
               let start = task.scheduledStartMinute,
@@ -212,6 +213,7 @@ extension WeekView {
         let diff = start - now
         return diff >= 0 && diff <= 30
     }
+    
     func activeCrewTasksToday() -> [CrewTask] {
         allCrewTasksForSelectedDay.filter { isTaskActive($0) && !$0.isDone }
     }
@@ -237,6 +239,7 @@ extension WeekView {
     func completedCrewTasksToday() -> [CrewTask] {
         allCrewTasksForSelectedDay.filter { $0.isDone }
     }
+
     func lateCrewTasksToday() -> [CrewTask] {
         guard selectedDay == weekdayIndexToday() else { return [] }
 
@@ -248,6 +251,7 @@ extension WeekView {
             return start < now && !isTaskActive(task)
         }
     }
+
     func lateDurationText(for task: CrewTask) -> String? {
         guard selectedDay == weekdayIndexToday() else { return nil }
         guard !task.isDone else { return nil }
