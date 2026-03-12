@@ -9,7 +9,9 @@ import SwiftUI
 
 extension WeekView {
     var modeTitleSwitcher: some View {
-        let activeOffset = scrollY
+        let activeOffset = weekMode == .personal
+            ? personalScrollOffset
+            : crewScrollOffset
         let collapseProgress = min(max(activeOffset / 90, 0), 1)
 
         let frontFont: CGFloat = 44 - (12 * collapseProgress)
@@ -66,11 +68,8 @@ extension WeekView {
                                 weekMode = .personal
                             }
                         }
-                    Text("offset: \(Int(activeOffset))")
-                        .font(.caption2.monospacedDigit())
-                        .foregroundStyle(.red)
-                        .offset(x: 220, y: 10)
-
+                   
+                        
                     Spacer()
                 }
                 .offset(x: frontLeadingOffset, y: frontTopOffset)
@@ -87,6 +86,7 @@ extension WeekView {
                 .frame(height: 0.5),
             alignment: .bottom
         )
+        .animation(.spring(response: 0.35, dampingFraction: 0.82), value: activeOffset)
         .animation(.interactiveSpring(response: 0.28, dampingFraction: 0.86), value: weekMode)
         .animation(.easeInOut(duration: 0.18), value: collapseProgress)
     }

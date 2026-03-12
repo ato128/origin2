@@ -135,7 +135,7 @@ extension WeekView {
                 VStack(spacing: 0) {
                     crewWeekSection
                         .padding(.horizontal, 20)
-                        .padding(.top, 10)
+                        .padding(.top, 8)
 
                     if !allCrewTasksForSelectedDay.isEmpty {
                         Divider()
@@ -172,6 +172,11 @@ extension WeekView {
         .opacity(showCrewEntrance ? 1 : 0)
         .scaleEffect(showCrewEntrance ? 1 : 0.98)
         .animation(.spring(response: 0.45, dampingFraction: 0.85), value: showCrewEntrance)
+        .onAppear {
+            if !didAnimateCrewCards {
+                didAnimateCrewCards = true
+            }
+        }
     }
     var crewPickerSection: some View {
         HStack(spacing: 6) {
@@ -317,7 +322,7 @@ extension WeekView {
                         if !nowTasks.isEmpty {
                             crewTimelineSectionHeader("Now", systemImage: "dot.radiowaves.left.and.right")
 
-                            LazyVStack(spacing: 0) {
+                            LazyVStack(spacing: 12) {
                                 ForEach(Array(nowTasks.enumerated()), id: \.element.id) { index, task in
                                     crewTaskButton(task: task, index: index, totalCount: nowTasks.count)
                                 }
@@ -327,7 +332,7 @@ extension WeekView {
                         if !nextTasks.isEmpty {
                             crewTimelineSectionHeader("Up Next", systemImage: "clock.badge")
 
-                            LazyVStack(spacing: 0) {
+                            LazyVStack(spacing: 12) {
                                 ForEach(Array(nextTasks.enumerated()), id: \.element.id) { index, task in
                                     crewTaskButton(task: task, index: index, totalCount: nextTasks.count)
                                 }
@@ -337,7 +342,7 @@ extension WeekView {
                         if !lateTasks.isEmpty {
                             crewTimelineSectionHeader("Late", systemImage: "exclamationmark.circle")
 
-                            LazyVStack(spacing: 0) {
+                            LazyVStack(spacing: 12) {
                                 ForEach(Array(lateTasks.enumerated()), id: \.element.id) { index, task in
                                     crewTaskButton(task: task, index: index, totalCount: lateTasks.count)
                                 }
@@ -347,7 +352,7 @@ extension WeekView {
                         if !laterTasks.isEmpty {
                             crewTimelineSectionHeader("Later Today", systemImage: "calendar")
 
-                            LazyVStack(spacing: 0) {
+                            LazyVStack(spacing: 12) {
                                 ForEach(Array(laterTasks.enumerated()), id: \.element.id) { index, task in
                                     crewTaskButton(task: task, index: index, totalCount: laterTasks.count)
                                 }
@@ -368,7 +373,7 @@ extension WeekView {
                                 }
 
                                 if showCompletedCrewTasks {
-                                    LazyVStack(spacing: 0) {
+                                    LazyVStack(spacing: 12) {
                                         ForEach(Array(doneTasks.enumerated()), id: \.element.id) { index, task in
                                             crewTaskButton(task: task, index: index, totalCount: doneTasks.count)
                                                 .transition(
@@ -402,13 +407,24 @@ extension WeekView {
 
                 Spacer()
             }
+            .onAppear {
+                if !didAnimateCrewCards {
+                    didAnimateCrewCards = true
+                }
+            }
             .textCase(nil)
             .offset(y: showCrewTaskHeader ? 0 : 14)
             .opacity(showCrewTaskHeader ? 1 : 0)
         }
     }
 
-    func enhancedPremiumTimelineCard(_ task: CrewTask, isLast: Bool) -> some View {
+    func enhancedPremiumTimelineCard(
+        _ task: CrewTask,
+        isLast: Bool,
+        parallaxOffset: CGFloat,
+        timelineParallaxOffset: CGFloat
+    ) -> some View {
+
         let tint = premiumPriorityColor(task.priority)
         let active = isTaskActive(task)
         let done = task.isDone
@@ -433,9 +449,13 @@ extension WeekView {
             commentCount: commentsForTask(task).count,
             commentPreview: commentPreviewItems(for: task),
             minutesLeft: taskMinutesLeft(task),
-            progress: taskProgress(task)
+            progress: taskProgress(task),
+
+            parallaxOffset: parallaxOffset,
+            timelineParallaxOffset: timelineParallaxOffset
         )
     }
+    
     func crewTimelineSectionHeader(_ title: String, systemImage: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: systemImage)
@@ -459,16 +479,31 @@ extension WeekView {
                 Haptics.impact(.light)
             }
         } label: {
-            enhancedPremiumTimelineCard(task, isLast: index == totalCount - 1)
+            GeometryReader { geo in
+                let minY = geo.frame(in: .global).minY
+                let screenMid = UIScreen.main.bounds.height * 0.5
+                let distance = minY - screenMid
+
+                let parallax = max(-3, min(3, -distance * 0.025))
+                let timelineParallax = max(-8, min(8, -distance * 0.02))
+
+                enhancedPremiumTimelineCard(
+                    task,
+                    isLast: index == totalCount - 1,
+                    parallaxOffset: parallax,
+                    timelineParallaxOffset: timelineParallax
+                )
+            }
+            .frame(height: 210)
         }
         .buttonStyle(.plain)
-        .offset(y: showCrewTaskCards ? 0 : CGFloat(18 + (index * 8)))
-        .opacity(showCrewTaskCards ? 1 : 0)
-        .scaleEffect(showCrewTaskCards ? 1 : 0.985)
+        .offset(y: didAnimateCrewCards ? 0 : CGFloat(14 + (index * 6)))
+        .opacity(didAnimateCrewCards ? 1 : 0)
+        .scaleEffect(didAnimateCrewCards ? 1 : 0.985)
         .animation(
-            .spring(response: 0.48, dampingFraction: 0.88)
-                .delay(Double(index) * 0.06),
-            value: showCrewTaskCards
+            .spring(response: 0.42, dampingFraction: 0.86)
+                .delay(Double(index) * 0.04),
+            value: didAnimateCrewCards
         )
         .contextMenu {
             Button {

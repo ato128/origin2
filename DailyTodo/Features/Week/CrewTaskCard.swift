@@ -31,6 +31,8 @@ struct CrewTaskCard: View {
     let commentPreview: [CrewTaskCommentPreviewItem]
     let minutesLeft: Int
     let progress: Double
+    let parallaxOffset: CGFloat
+    let timelineParallaxOffset: CGFloat
     
     @State private var latePulse = false
     
@@ -79,6 +81,7 @@ struct CrewTaskCard: View {
                     .padding(.top, 6)
                     .opacity(0.9)
             }
+            .offset(y: timelineParallaxOffset)
             .frame(width: 20)
             
             VStack(alignment: .leading, spacing: 12) {
@@ -293,6 +296,7 @@ struct CrewTaskCard: View {
                     .stroke(active ? effectiveTint.opacity(0.28) : Color.white.opacity(0.06), lineWidth: 1)
             )
         }
+        .offset(y: parallaxOffset)
         .opacity(done ? 0.82 : 1.0)
         .shadow(
             color: isLate
@@ -311,9 +315,9 @@ struct CrewTaskCard: View {
             ? (latePulse ? 1.01 : 1.0)
             : (active && crewPulse ? 1.008 : 1.0)
         )
-        .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: crewPulse)
-        .animation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true), value: commentPulse)
-        .animation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true), value: latePulse)
+        .animation(active ? .easeInOut(duration: 0.9).repeatForever(autoreverses: true) : .default, value: crewPulse)
+        .animation(commentCount > 0 ? .easeInOut(duration: 1.1).repeatForever(autoreverses: true) : .default, value: commentPulse)
+        .animation(isLate ? .easeInOut(duration: 1.4).repeatForever(autoreverses: true) : .default, value: latePulse)
         .animation(.easeInOut(duration: 0.2), value: done)
         .onAppear {
             latePulse = isLate

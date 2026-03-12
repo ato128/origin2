@@ -104,6 +104,7 @@ struct WeekView: View {
     @State  var showCrewEntrance = false
     @State  var showCrewTaskHeader = false
     @State  var showCrewTaskCards = false
+    @State  var didAnimateCrewCards = false
     @State private var didInitialAutoScroll: Bool = false
     @State private var lastAutoScrollTargetID: UUID? = nil
     @State private var didSetInitialDay: Bool = false
@@ -115,6 +116,7 @@ struct WeekView: View {
     @State  var crewScrollOffset: CGFloat = 0
     @State  var personalScrollOffset: CGFloat = 0
     @State  var scrollY: CGFloat = 0
+ 
     
     var body: some View {
         ScrollViewReader { proxy in
