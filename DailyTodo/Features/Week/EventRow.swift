@@ -194,7 +194,7 @@ import SwiftUI
                                 .font(.caption2)
                                 .foregroundStyle(baseColor)
                             
-                            Text("%\(Int(progress * 100)) tamamlandı")
+                            Text("%\(Int(progress * 100))% tamamlandı")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                             
@@ -203,15 +203,13 @@ import SwiftUI
                             Text("\(minutesLeft) dk kaldı")
                                 .font(.caption2.weight(.semibold))
                             
-                            Text("• bitiyor: \(hm(end))")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                            
                         }
                     }
                 }
                 
                 if isUpNext {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 6) {
                         Text("\(minutesUntilStart) dk")
                             .font(.caption2.weight(.bold))
                             .monospacedDigit()

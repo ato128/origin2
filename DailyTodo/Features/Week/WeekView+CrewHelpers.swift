@@ -11,11 +11,19 @@ import SwiftData
 extension WeekView {
     
     func crewTasks(for day: Int) -> [CrewTask] {
-        allCrewTasks
-            .filter {
-                $0.showOnWeek &&
-                $0.scheduledWeekday == day &&
-                (selectedCrewID == nil || $0.crewID == selectedCrewID)
+        let calendar = Calendar.current
+        let targetDate = targetDateFor(day: day)
+
+        return allCrewTasks
+            .filter { task in
+                guard task.showOnWeek else { return false }
+                guard selectedCrewID == nil || task.crewID == selectedCrewID else { return false }
+
+                if let scheduledDate = task.scheduledDate {
+                    return calendar.isDate(scheduledDate, inSameDayAs: targetDate)
+                } else {
+                    return task.scheduledWeekday == day
+                }
             }
             .sorted {
                 ($0.scheduledStartMinute ?? 0) < ($1.scheduledStartMinute ?? 0)
@@ -47,27 +55,12 @@ extension WeekView {
     
     func hasActiveCrewTask(on day: Int) -> Bool {
         guard day == weekdayIndexToday() else { return false }
-        
-        let now = currentMinuteOfDay()
-        
-        return crewTasks(for: day).contains { task in
-            guard let start = task.scheduledStartMinute,
-                  let duration = task.scheduledDurationMinute else { return false }
-            let end = start + duration
-            return now >= start && now < end
-        }
+        return crewTasks(for: day).contains { isTaskActive($0) }
     }
     
     func hasUpcomingCrewTaskSoon(on day: Int) -> Bool {
         guard day == weekdayIndexToday() else { return false }
-        
-        let now = currentMinuteOfDay()
-        
-        return crewTasks(for: day).contains { task in
-            guard let start = task.scheduledStartMinute else { return false }
-            let diff = start - now
-            return diff >= 0 && diff <= 30
-        }
+        return crewTasks(for: day).contains { isTaskStartingSoon($0) }
     }
     
     func shouldGlowDay(_ day: Int) -> Bool {
@@ -141,14 +134,7 @@ extension WeekView {
     }
     
     func fullDateTextForSelectedDay() -> String {
-        let calendar = Calendar.current
-        let today = Date()
-        
-        guard let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: today)?.start,
-              let targetDate = calendar.date(byAdding: .day, value: selectedDay, to: startOfWeek) else {
-            return "Date unavailable"
-        }
-        
+        let targetDate = targetDateFor(day: selectedDay)
         return targetDate.formatted(date: .complete, time: .omitted)
     }
     
@@ -194,7 +180,13 @@ extension WeekView {
     }
     
     func isTaskActive(_ task: CrewTask) -> Bool {
-        guard task.scheduledWeekday == weekdayIndexToday() else { return false }
+        let calendar = Calendar.current
+
+        if let scheduledDate = task.scheduledDate {
+            guard calendar.isDateInToday(scheduledDate) else { return false }
+        } else {
+            guard task.scheduledWeekday == weekdayIndexToday() else { return false }
+        }
         
         let now = currentMinuteOfDay()
         guard let start = task.scheduledStartMinute,
@@ -205,7 +197,13 @@ extension WeekView {
     }
     
     func isTaskStartingSoon(_ task: CrewTask) -> Bool {
-        guard task.scheduledWeekday == weekdayIndexToday() else { return false }
+        let calendar = Calendar.current
+
+        if let scheduledDate = task.scheduledDate {
+            guard calendar.isDateInToday(scheduledDate) else { return false }
+        } else {
+            guard task.scheduledWeekday == weekdayIndexToday() else { return false }
+        }
         
         let now = currentMinuteOfDay()
         guard let start = task.scheduledStartMinute else { return false }
@@ -273,5 +271,18 @@ extension WeekView {
         }
 
         return "Late by \(hours)h \(minutes)m"
+    }
+    
+    func targetDateFor(day: Int) -> Date {
+        let calendar = Calendar.current
+        let today = Date()
+
+        guard let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: today)?.start,
+              let targetDate = calendar.date(byAdding: .day, value: day, to: startOfWeek)
+        else {
+            return today
+        }
+
+        return targetDate
     }
 }

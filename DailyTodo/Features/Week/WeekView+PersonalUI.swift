@@ -187,14 +187,17 @@ extension WeekView {
                     icon: "moon.stars.fill"
                 )
             }
-
             if let live = liveEventForDay {
                 HStack(spacing: 8) {
-                    Image(systemName: "dot.radiowaves.left.and.right")
-                        .foregroundStyle(.green)
+                    Circle()
+                        .fill(.green)
+                        .frame(width: 8, height: 8)
+                        .scaleEffect(animateSummary ? 1.12 : 0.92)
+                        .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: animateSummary)
 
-                    Text("\(live.title) şu an devam ediyor")
+                    Text("\(live.title) aktif")
                         .font(.caption.weight(.semibold))
+                        .foregroundStyle(.primary)
 
                     Spacer()
 
@@ -202,34 +205,6 @@ extension WeekView {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(
-                    Capsule()
-                        .fill(Color.green.opacity(0.12))
-                )
-            }
-
-            if let indicator = currentTimeIndicatorText {
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(Color.red)
-                        .frame(width: 8, height: 8)
-                        .scaleEffect(animateSummary ? 1.15 : 0.9)
-                        .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: animateSummary)
-
-                    Text(indicator)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    Spacer()
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(
-                    Capsule()
-                        .fill(Color.red.opacity(0.10))
-                )
             }
         }
         .padding(18)

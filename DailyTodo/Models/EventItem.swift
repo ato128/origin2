@@ -22,11 +22,13 @@ final class EventItem {
     /// Dakika cinsinden: en az 15
     var durationMinute: Int
 
+    /// Tek seferlik ileri tarihli kayıt için
+    var scheduledDate: Date?
+
     var location: String?
     var notes: String?
 
     /// Renk (HEX) ör: "4F46E5" veya "#4F46E5"
-    /// Not: SwiftData migrate işleriyle uğraşmamak için default veriyoruz.
     var colorHex: String
 
     var createdAt: Date
@@ -36,6 +38,7 @@ final class EventItem {
         weekday: Int,
         startMinute: Int,
         durationMinute: Int,
+        scheduledDate: Date? = nil,
         location: String? = nil,
         notes: String? = nil,
         colorHex: String = "#3B82F6",
@@ -46,6 +49,7 @@ final class EventItem {
         self.weekday = weekday
         self.startMinute = max(0, min(1439, startMinute))
         self.durationMinute = max(15, durationMinute)
+        self.scheduledDate = scheduledDate
         self.location = location
         self.notes = notes
         self.colorHex = colorHex

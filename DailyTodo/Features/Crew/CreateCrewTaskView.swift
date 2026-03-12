@@ -12,6 +12,7 @@ struct CreateCrewTaskView: View {
 
     let crew: Crew
     let members: [CrewMember]
+    let defaultDate: Date?
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -26,7 +27,7 @@ struct CreateCrewTaskView: View {
     @State private var status: String = "todo"
 
     @State private var showOnWeek: Bool = false
-    @State private var plannedDate: Date = Date()
+    @State private var plannedDate: Date
     @State private var scheduledDurationMinute: Int = 60
 
     @State private var addPoll: Bool = false
@@ -37,6 +38,13 @@ struct CreateCrewTaskView: View {
     private let priorityOptions = ["low", "medium", "high", "urgent"]
     private let statusOptions = ["todo", "inProgress", "review", "done"]
     private let durationOptions = [15, 30, 45, 60, 90, 120]
+
+    init(crew: Crew, members: [CrewMember], defaultDate: Date? = nil) {
+        self.crew = crew
+        self.members = members
+        self.defaultDate = defaultDate
+        _plannedDate = State(initialValue: defaultDate ?? Date())
+    }
 
     var body: some View {
         NavigationStack {
@@ -137,6 +145,11 @@ struct CreateCrewTaskView: View {
                     .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
+            .onAppear {
+                if defaultDate != nil {
+                    showOnWeek = true
+                }
+            }
         }
     }
 
@@ -163,6 +176,7 @@ struct CreateCrewTaskView: View {
             scheduledWeekday: showOnWeek ? convertedWeekday : nil,
             scheduledStartMinute: showOnWeek ? startMinute : nil,
             scheduledDurationMinute: showOnWeek ? scheduledDurationMinute : nil,
+            scheduledDate: showOnWeek ? plannedDate : nil,
             isDone: status == "done"
         )
 

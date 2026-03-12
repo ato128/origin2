@@ -26,10 +26,15 @@ final class CrewTask {
     var status: String
 
     var showOnWeek: Bool
+
+    /// Haftalık tekrar eden düzen için
     /// 0=Pzt ... 6=Paz
     var scheduledWeekday: Int?
     var scheduledStartMinute: Int?
     var scheduledDurationMinute: Int?
+
+    /// Tek seferlik ileri tarihli görev için
+    var scheduledDate: Date?
 
     var isDone: Bool
     var createdAt: Date
@@ -47,6 +52,7 @@ final class CrewTask {
         scheduledWeekday: Int? = nil,
         scheduledStartMinute: Int? = nil,
         scheduledDurationMinute: Int? = nil,
+        scheduledDate: Date? = nil,
         isDone: Bool = false,
         createdAt: Date = Date()
     ) {
@@ -62,6 +68,7 @@ final class CrewTask {
         self.scheduledWeekday = scheduledWeekday
         self.scheduledStartMinute = scheduledStartMinute
         self.scheduledDurationMinute = scheduledDurationMinute
+        self.scheduledDate = scheduledDate
         self.isDone = isDone
         self.createdAt = createdAt
     }

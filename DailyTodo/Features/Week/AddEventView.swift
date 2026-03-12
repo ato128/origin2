@@ -26,6 +26,7 @@ struct AddEventView: View {
     ]
 
     let defaultWeekday: Int
+    let defaultDate: Date?
 
     @State private var title: String = ""
     @State private var weekday: Int = 0
@@ -52,18 +53,22 @@ struct AddEventView: View {
 
             Section("Gün & Saat") {
                 Picker("Gün", selection: $weekday) {
-                    ForEach(0..<7) { i in
+                    ForEach(0..<7, id: \.self) { i in
                         Text(dayTitles[i]).tag(i)
                     }
                 }
 
-                DatePicker("Başlangıç",
-                           selection: $startTime,
-                           displayedComponents: [.hourAndMinute])
+                DatePicker(
+                    "Başlangıç",
+                    selection: $startTime,
+                    displayedComponents: [.hourAndMinute]
+                )
 
-                DatePicker("Bitiş",
-                           selection: $endTime,
-                           displayedComponents: [.hourAndMinute])
+                DatePicker(
+                    "Bitiş",
+                    selection: $endTime,
+                    displayedComponents: [.hourAndMinute]
+                )
 
                 Text("Süre: \(durationText)")
                     .font(.caption)
@@ -105,7 +110,7 @@ struct AddEventView: View {
             }
         }
         .onAppear {
-            weekday = max(0, min(6, defaultWeekday))
+            applyDefaultDateIfNeeded()
 
             if selectedColorHex.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 selectedColorHex = "#3B82F6"
@@ -156,6 +161,27 @@ struct AddEventView: View {
         let h = c.hour ?? 0
         let m = c.minute ?? 0
         return max(0, min(1439, h * 60 + m))
+    }
+
+    // MARK: Defaults
+
+    private func applyDefaultDateIfNeeded() {
+        let calendar = Calendar.current
+
+        if let defaultDate {
+            let comps = calendar.dateComponents([.weekday, .hour, .minute], from: defaultDate)
+
+            let systemWeekday = comps.weekday ?? 2
+            weekday = (systemWeekday + 5) % 7
+
+            let hour = comps.hour ?? 9
+            let minute = comps.minute ?? 0
+
+            startTime = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: defaultDate) ?? defaultDate
+            endTime = calendar.date(byAdding: .minute, value: 60, to: startTime) ?? startTime.addingTimeInterval(3600)
+        } else {
+            weekday = max(0, min(6, defaultWeekday))
+        }
     }
 
     // MARK: Conflict Check
@@ -214,12 +240,14 @@ struct AddEventView: View {
     // MARK: Insert Event
 
     private func insertEvent(title: String, start: Int, dur: Int) {
+        let scheduledDate = buildScheduledDate(startMinute: start)
 
         let ev = EventItem(
             title: title,
             weekday: weekday,
             startMinute: start,
             durationMinute: dur,
+            scheduledDate: scheduledDate,
             location: location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : location,
             notes: notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notes,
             colorHex: selectedColorHex
@@ -232,14 +260,41 @@ struct AddEventView: View {
 
             WidgetAppSync.refreshFromSwiftData(context: context)
 
-            // 🔔 Bildirim kur
             Task {
                 await NotificationManager.shared.schedule(for: ev, minutesBefore: 5)
             }
-            
+
         } catch {
             print("Save error:", error)
         }
+    }
+
+    private func buildScheduledDate(startMinute: Int) -> Date? {
+        let calendar = Calendar.current
+        let hour = startMinute / 60
+        let minute = startMinute % 60
+
+        if let defaultDate {
+            return calendar.date(
+                bySettingHour: hour,
+                minute: minute,
+                second: 0,
+                of: defaultDate
+            )
+        }
+
+        guard let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: Date())?.start,
+              let targetDate = calendar.date(byAdding: .day, value: weekday, to: startOfWeek)
+        else {
+            return nil
+        }
+
+        return calendar.date(
+            bySettingHour: hour,
+            minute: minute,
+            second: 0,
+            of: targetDate
+        )
     }
 
     // MARK: Helpers

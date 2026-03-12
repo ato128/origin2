@@ -42,7 +42,7 @@ struct CrewTaskCard: View {
     
     var body: some View {
         
-        HStack(alignment: .top, spacing: 16) {
+        HStack(alignment: .top, spacing: 12) {
             VStack(spacing: 0) {
                 ZStack {
                     Circle()
@@ -84,7 +84,7 @@ struct CrewTaskCard: View {
             .offset(y: timelineParallaxOffset)
             .frame(width: 20)
             
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .center, spacing: 10) {
                     Text(title)
                         .font(.system(size: 22, weight: .bold, design: .rounded))

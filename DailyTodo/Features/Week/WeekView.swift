@@ -14,6 +14,10 @@ enum WeekMode {
     case personal
     case crew
 }
+enum PlanAheadMode: String, CaseIterable {
+    case personal = "Personal"
+    case crew = "Crew"
+}
 
 struct WeekView: View {
     
@@ -45,9 +49,22 @@ struct WeekView: View {
     private var allEventIDs: [UUID] { allEvents.map(\.id) }
     
     var eventsForDay: [EventItem] {
-        allEvents
-            .filter { $0.weekday == selectedDay }
-            .sorted { $0.startMinute < $1.startMinute }
+        let calendar = Calendar.current
+        let targetDate = targetDateForSelectedDay()
+
+        return allEvents
+            .filter { ev in
+                if let scheduledDate = ev.scheduledDate {
+                    return calendar.isDate(scheduledDate, inSameDayAs: targetDate)
+                } else {
+                    return ev.weekday == selectedDay
+                }
+            }
+            .sorted { lhs, rhs in
+                let lhsMinute = lhs.startMinute
+                let rhsMinute = rhs.startMinute
+                return lhsMinute < rhsMinute
+            }
     }
     
     private var eventsForDayIDs: [UUID] { eventsForDay.map(\.id) }
@@ -125,6 +142,9 @@ struct WeekView: View {
     @State var personalScrollOffset: CGFloat = 0
     @State var scrollY: CGFloat = 0
     @State var selectedCrewID: UUID?
+    @State private var showPlanAheadSheet = false
+    @State private var planAheadDate: Date = Date()
+    @State private var planAheadMode: PlanAheadMode = .personal
     
     var body: some View {
         ScrollViewReader { proxy in
@@ -133,7 +153,34 @@ struct WeekView: View {
                 .toolbar { toolbarContent }
                 .sheet(isPresented: $showingAdd) {
                     NavigationStack {
-                        AddEventView(defaultWeekday: selectedDay)
+                        AddEventView(
+                            defaultWeekday: selectedDay,
+                            defaultDate: planAheadDate
+                        )
+                    }
+                    .presentationDetents([.medium, .large])
+                }
+                .sheet(isPresented: $showPlanAheadSheet) {
+                    NavigationStack {
+                        PlanAheadView(
+                            selectedDate: $planAheadDate,
+                            mode: $planAheadMode,
+                            onContinue: {
+                                showPlanAheadSheet = false
+                                
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                                    if planAheadMode == .crew {
+                                        if selectedCrew != nil {
+                                            showingCreateCrewTask = true
+                                        } else {
+                                            showCrewPickerSheet = true
+                                        }
+                                    } else {
+                                        showingAdd = true
+                                    }
+                                }
+                            }
+                        )
                     }
                     .presentationDetents([.medium, .large])
                 }
@@ -196,7 +243,8 @@ struct WeekView: View {
                         if let crew = selectedCrew {
                             CreateCrewTaskView(
                                 crew: crew,
-                                members: allCrewMembersForCrew(crew.id)
+                                members: allCrewMembersForCrew(crew.id),
+                                defaultDate: planAheadDate
                             )
                         } else {
                             Text("No crew selected")
@@ -375,6 +423,15 @@ extension WeekView {
             }
             
             Button {
+                Haptics.impact(.light)
+                planAheadDate = Date()
+                planAheadMode = weekMode == .crew ? .crew : .personal
+                showPlanAheadSheet = true
+            } label: {
+                Image(systemName: "calendar")
+            }
+            
+            Button {
                 Haptics.impact(.medium)
                 
                 if weekMode == .crew {
@@ -406,6 +463,9 @@ extension WeekView {
                     .padding(.bottom, 30)
             }
         }
+    }
+    var activeCrewTaskCount: Int {
+        allCrewTasksForSelectedDay.filter { !$0.isDone }.count
     }
     
     var sectionCardBackground: some View {
@@ -659,9 +719,9 @@ extension WeekView {
         let h = minutes / 60
         let m = minutes % 60
         
-        if h == 0 { return "\(m)dk" }
-        if m == 0 { return "\(h)s" }
-        return "\(h)s \(m)dk"
+        if h == 0 { return "\(m) dk" }
+        if m == 0 { return "\(h) sa" }
+        return "\(h) sa \(m) dk"
     }
     
     func weekdayIndexToday() -> Int {
@@ -800,6 +860,19 @@ extension WeekView {
         presentShare(text: shareTextForSelectedDay())
     }
     
+    func targetDateForSelectedDay() -> Date {
+        let calendar = Calendar.current
+        let today = Date()
+
+        guard let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: today)?.start,
+              let targetDate = calendar.date(byAdding: .day, value: selectedDay, to: startOfWeek)
+        else {
+            return today
+        }
+
+        return targetDate
+    }
+    
     func shareWeek() {
         let parts: [String] = (0..<7).map { day in shareTextForDay(day) }
         presentShare(text: parts.joined(separator: "\n\n"))
@@ -886,8 +959,26 @@ extension WeekView {
         let d = max(0, min(6, day))
         let dayName = dayTitles[d]
         
+        let calendar = Calendar.current
+        let today = Date()
+
+        let targetDate: Date = {
+            guard let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: today)?.start,
+                  let date = calendar.date(byAdding: .day, value: d, to: startOfWeek)
+            else {
+                return today
+            }
+            return date
+        }()
+
         let items = allEvents
-            .filter { $0.weekday == d }
+            .filter { ev in
+                if let scheduledDate = ev.scheduledDate {
+                    return calendar.isDate(scheduledDate, inSameDayAs: targetDate)
+                } else {
+                    return ev.weekday == d
+                }
+            }
             .sorted { $0.startMinute < $1.startMinute }
         
         if items.isEmpty { return "📅 \(dayName) — Ders yok" }
