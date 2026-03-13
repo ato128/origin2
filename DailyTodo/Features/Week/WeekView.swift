@@ -420,8 +420,8 @@ extension WeekView {
                 }
             } label: {
                 Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 18, weight: .semibold))
-                    .frame(width: 34, height: 34)
+                    .font(.system(size: 16, weight: .semibold))
+                    .frame(width: 30, height: 30)
             }
             
             Button {
@@ -431,8 +431,8 @@ extension WeekView {
                 showPlanAheadSheet = true
             } label: {
                 Image(systemName: "calendar")
-                    .font(.system(size: 18, weight: .semibold))
-                    .frame(width: 34, height: 34)
+                    .font(.system(size: 16, weight: .semibold))
+                    .frame(width: 30, height: 30)
             }
             
             Button {
@@ -449,8 +449,8 @@ extension WeekView {
                 }
             } label: {
                 Image(systemName: "plus")
-                    .font(.system(size: 20, weight: .semibold))
-                    .frame(width: 34, height: 34)
+                    .font(.system(size: 17, weight: .bold))
+                    .frame(width: 30, height: 30)
             }
         }
     }

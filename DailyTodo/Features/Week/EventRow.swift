@@ -260,7 +260,7 @@ struct EventRow: View {
             glowPhase = newValue
         }
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+        .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
         .contentShape(Rectangle())

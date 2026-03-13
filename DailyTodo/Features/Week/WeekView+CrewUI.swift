@@ -30,7 +30,7 @@ extension WeekView {
                 modeTitleSwitcher
                     .padding(.bottom, 6)
 
-                LazyVStack(spacing: 0, pinnedViews: []) {
+                LazyVStack(spacing: 14, pinnedViews: []) {
                     pickerSection
                     summarySection
 
