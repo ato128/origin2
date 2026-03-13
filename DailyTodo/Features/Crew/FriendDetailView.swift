@@ -25,6 +25,10 @@ struct FriendDetailView: View {
 
     @State private var showCopied = false
     @State private var showSharedFocusSheet = false
+    @State private var showHero = false
+    @State private var showSchedule = false
+    @State private var showMessagesCard = false
+    @State private var showActionsCard = false
 
     private var messages: [FriendMessage] {
         allMessages.filter { $0.friendID == friend.id }
@@ -54,11 +58,26 @@ struct FriendDetailView: View {
                     Color.clear.frame(height: 76)
 
                     customHeader
-                    heroCard
-                    todayScheduleCard
-                    recentMessagesCard
-                    actionsCard
 
+                    heroCard
+                        .offset(y: showHero ? 0 : 18)
+                        .opacity(showHero ? 1 : 0)
+                        .scaleEffect(showHero ? 1 : 0.985)
+
+                    todayScheduleCard
+                        .offset(y: showSchedule ? 0 : 18)
+                        .opacity(showSchedule ? 1 : 0)
+                        .scaleEffect(showSchedule ? 1 : 0.985)
+
+                    recentMessagesCard
+                        .offset(y: showMessagesCard ? 0 : 18)
+                        .opacity(showMessagesCard ? 1 : 0)
+                        .scaleEffect(showMessagesCard ? 1 : 0.985)
+
+                    actionsCard
+                        .offset(y: showActionsCard ? 0 : 18)
+                        .opacity(showActionsCard ? 1 : 0)
+                        .scaleEffect(showActionsCard ? 1 : 0.985)
                     Spacer(minLength: 90)
                 }
                 .padding(.horizontal, 16)
@@ -88,6 +107,35 @@ struct FriendDetailView: View {
         }
         .onAppear {
             seedFriendDetailIfNeeded()
+
+            showHero = false
+            showSchedule = false
+            showMessagesCard = false
+            showActionsCard = false
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
+                    showHero = true
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
+                withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
+                    showSchedule = true
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
+                    showMessagesCard = true
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.26) {
+                withAnimation(.spring(response: 0.48, dampingFraction: 0.86)) {
+                    showActionsCard = true
+                }
+            }
         }
         .sheet(isPresented: $showSharedFocusSheet) {
             FocusSessionView(

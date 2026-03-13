@@ -18,6 +18,12 @@ struct CrewDetailView: View {
     @State private var showAddMemberSheet = false
     @State private var selectedTaskForEdit: CrewTask?
     @State private var showShareSheet = false
+    @State private var showHeroCard = false
+    @State private var showStatsRow = false
+    @State private var showMembersSection = false
+    @State private var showTasksSection = false
+    @State private var showFocusSection = false
+    @State private var showActivitySection = false
     
     @Query private var members: [CrewMember]
     @Query private var tasks: [CrewTask]
@@ -75,20 +81,44 @@ struct CrewDetailView: View {
                     Color.clear.frame(height: 76)
 
                     customHeader
+
                     heroCard(
                         memberCount: crewMembers.count,
                         totalTasks: crewTasks.count,
                         progress: progress
                     )
+                    .offset(y: showHeroCard ? 0 : 18)
+                    .opacity(showHeroCard ? 1 : 0)
+                    .scaleEffect(showHeroCard ? 1 : 0.985)
+
                     quickStatsRow(
                         completed: completedTasks,
                         pending: pendingTasks,
                         memberCount: crewMembers.count
                     )
+                    .offset(y: showStatsRow ? 0 : 18)
+                    .opacity(showStatsRow ? 1 : 0)
+                    .scaleEffect(showStatsRow ? 1 : 0.985)
+
                     membersSection(crewMembers)
+                    .offset(y: showMembersSection ? 0 : 18)
+                    .opacity(showMembersSection ? 1 : 0)
+                    .scaleEffect(showMembersSection ? 1 : 0.985)
+
                     tasksSection(crewTasks)
+                    .offset(y: showTasksSection ? 0 : 18)
+                    .opacity(showTasksSection ? 1 : 0)
+                    .scaleEffect(showTasksSection ? 1 : 0.985)
+
                     focusSection(memberCount: crewMembers.count)
+                    .offset(y: showFocusSection ? 0 : 18)
+                    .opacity(showFocusSection ? 1 : 0)
+                    .scaleEffect(showFocusSection ? 1 : 0.985)
+
                     activitySection(crewActivities)
+                    .offset(y: showActivitySection ? 0 : 18)
+                    .opacity(showActivitySection ? 1 : 0)
+                    .scaleEffect(showActivitySection ? 1 : 0.985)
 
                     Spacer(minLength: 90)
                 }
@@ -100,6 +130,50 @@ struct CrewDetailView: View {
         .background(Color(.systemGroupedBackground))
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
+        .onAppear {
+            showHeroCard = false
+            showStatsRow = false
+            showMembersSection = false
+            showTasksSection = false
+            showFocusSection = false
+            showActivitySection = false
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
+                    showHeroCard = true
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
+                withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
+                    showStatsRow = true
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
+                    showMembersSection = true
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.26) {
+                withAnimation(.spring(response: 0.48, dampingFraction: 0.86)) {
+                    showTasksSection = true
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.34) {
+                withAnimation(.spring(response: 0.50, dampingFraction: 0.86)) {
+                    showFocusSection = true
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.42) {
+                withAnimation(.spring(response: 0.52, dampingFraction: 0.86)) {
+                    showActivitySection = true
+                }
+            }
+        }
         .sheet(isPresented: $showCreateTask) {
             CreateCrewTaskView(
                 crew: crew,

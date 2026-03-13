@@ -18,6 +18,8 @@ struct FriendChatView: View {
     private var allMessages: [FriendMessage]
 
     @State private var draftMessage: String = ""
+    @State private var animateMessages = false
+    @State private var sendPressed = false
 
     private var messages: [FriendMessage] {
         allMessages.filter { $0.friendID == friend.id }
@@ -168,9 +170,17 @@ private extension FriendChatView {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 12) {
-                    ForEach(messages) { message in
+                    ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
                         messageBubble(message)
                             .id(message.id)
+                            .offset(y: animateMessages ? 0 : CGFloat(12 + index * 4))
+                            .opacity(animateMessages ? 1 : 0)
+                            .scaleEffect(animateMessages ? 1 : 0.985)
+                            .animation(
+                                .spring(response: 0.40, dampingFraction: 0.86)
+                                    .delay(Double(index) * 0.03),
+                                value: animateMessages
+                            )
                     }
                 }
                 .padding(.horizontal, 16)
@@ -179,7 +189,15 @@ private extension FriendChatView {
             }
             .scrollIndicators(.hidden)
             .onAppear {
-                scrollToBottom(proxy: proxy)
+                seedMessagesIfNeeded()
+
+                animateMessages = false
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) {
+                    withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
+                        animateMessages = true
+                    }
+                }
             }
             .onChange(of: messages.count) { _, _ in
                 scrollToBottom(proxy: proxy)
@@ -291,9 +309,20 @@ private extension FriendChatView {
                             : .white
                         )
                 }
+                .scaleEffect(sendPressed ? 0.92 : 1.0)
+                .animation(.spring(response: 0.22, dampingFraction: 0.70), value: sendPressed)
             }
             .buttonStyle(.plain)
             .disabled(draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        sendPressed = true
+                    }
+                    .onEnded { _ in
+                        sendPressed = false
+                    }
+            )
         }
         .padding(.horizontal, 16)
         .padding(.top, 10)
@@ -320,6 +349,12 @@ private extension FriendChatView {
         try? modelContext.save()
 
         draftMessage = ""
+        animateMessages = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+            withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
+                animateMessages = true
+            }
+        }
     }
 
     func seedMessagesIfNeeded() {
