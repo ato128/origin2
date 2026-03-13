@@ -15,7 +15,7 @@ struct HomeDashboardView: View {
 
     @Query(sort: \EventItem.startMinute, order: .forward)
     var allEvents: [EventItem]
-    
+
     @Query(sort: \Friend.createdAt, order: .reverse)
     private var friends: [Friend]
 
@@ -39,9 +39,17 @@ struct HomeDashboardView: View {
     @State var nextClassPulse: Bool = false
     @State var nextClassSweep: Bool = false
     @State var selectedDay: Int = 0
-    @State  var showFriendsShortcut = false
-    @State  var showRecentFriendChat = false
-    @State  var pulseRecentFriendPill = false
+    @State var showFriendsShortcut = false
+    @State var showRecentFriendChat = false
+    @State var pulseRecentFriendPill = false
+
+    @State private var showHeaderCard = false
+    @State private var showWeekCard = false
+    @State private var showProgressCard = false
+    @State private var showFocusCard = false
+    @State private var showNextClassCard = false
+    @State private var showTodayTasksCard = false
+    @State private var showQuickActionsCard = false
 
     let focusRefreshTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -114,7 +122,7 @@ struct HomeDashboardView: View {
 
         return "🎯 Öncelikli görev"
     }
-    
+
     var recentChatFriend: Friend? {
         let sorted = allFriendMessages.sorted { $0.createdAt > $1.createdAt }
         guard let latestMessage = sorted.first else { return nil }
@@ -158,6 +166,7 @@ struct HomeDashboardView: View {
         guard let nextEvent else { return "--:--" }
         return "\(hm(nextEvent.startMinute)) – \(hm(nextEvent.startMinute + nextEvent.durationMinute))"
     }
+
     var hasAnyActiveFocusSession: Bool {
         guard let timestamp = UserDefaults.standard.object(forKey: "focus_end_date") as? Double else {
             return false
@@ -195,6 +204,7 @@ struct HomeDashboardView: View {
         }
         return focusTaskStatusText
     }
+
     var todayProgressValue: Double {
         guard totalTodayTaskCount > 0 else { return 0 }
         return Double(completedTodayCount) / Double(totalTodayTaskCount)
@@ -218,19 +228,36 @@ struct HomeDashboardView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: 14) {
                 headerCard
+                    .offset(y: showHeaderCard ? 0 : 18)
+                    .opacity(showHeaderCard ? 1 : 0)
+                    .scaleEffect(showHeaderCard ? 1 : 0.985)
+
                 homeMiniWeekCalendar
+                    .offset(y: showWeekCard ? 0 : 18)
+                    .opacity(showWeekCard ? 1 : 0)
+                    .scaleEffect(showWeekCard ? 1 : 0.985)
+
                 todayProgressCard
+                    .offset(y: showProgressCard ? 0 : 18)
+                    .opacity(showProgressCard ? 1 : 0)
+                    .scaleEffect(showProgressCard ? 1 : 0.985)
 
                 if hasAnyActiveFocusSession {
                     activeFocusCard
+                        .offset(y: showFocusCard ? 0 : 18)
+                        .opacity(showFocusCard ? 1 : 0)
+                        .scaleEffect(showFocusCard ? 1 : 0.985)
                         .transition(.asymmetric(
                             insertion: .scale(scale: 0.98).combined(with: .opacity),
                             removal: .scale(scale: 0.96).combined(with: .opacity)
                         ))
                 } else {
                     focusCard
+                        .offset(y: showFocusCard ? 0 : 18)
+                        .opacity(showFocusCard ? 1 : 0)
+                        .scaleEffect(showFocusCard ? 1 : 0.985)
                         .transition(.asymmetric(
                             insertion: .scale(scale: 0.98).combined(with: .opacity),
                             removal: .opacity
@@ -238,17 +265,29 @@ struct HomeDashboardView: View {
                 }
 
                 nextClassCard
+                    .offset(y: showNextClassCard ? 0 : 18)
+                    .opacity(showNextClassCard ? 1 : 0)
+                    .scaleEffect(showNextClassCard ? 1 : 0.985)
+
                 todayTasksCard
+                    .offset(y: showTodayTasksCard ? 0 : 18)
+                    .opacity(showTodayTasksCard ? 1 : 0)
+                    .scaleEffect(showTodayTasksCard ? 1 : 0.985)
+
                 quickActionsCard
+                    .offset(y: showQuickActionsCard ? 0 : 18)
+                    .opacity(showQuickActionsCard ? 1 : 0)
+                    .scaleEffect(showQuickActionsCard ? 1 : 0.985)
             }
-            .padding(16)
+            .padding(.horizontal, 16)
+            .padding(.top, 0)
             .padding(.bottom, 36)
             .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocusActive)
         }
         .safeAreaInset(edge: .bottom) {
             Color.clear.frame(height: 90)
         }
-        .background(Color(.systemGroupedBackground))
+       
         .sheet(isPresented: $showingFocusSession) {
             FocusSessionView(
                 taskTitle: focusTask?.title,
@@ -288,6 +327,56 @@ struct HomeDashboardView: View {
         .onAppear {
             selectedDay = weekdayIndexToday()
             syncActiveFocusCountdown()
+
+            showHeaderCard = false
+            showWeekCard = false
+            showProgressCard = false
+            showFocusCard = false
+            showNextClassCard = false
+            showTodayTasksCard = false
+            showQuickActionsCard = false
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+                withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
+                    showHeaderCard = true
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
+                    showWeekCard = true
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
+                withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
+                    showProgressCard = true
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
+                withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
+                    showFocusCard = true
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.26) {
+                withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
+                    showNextClassCard = true
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) {
+                withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
+                    showTodayTasksCard = true
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.38) {
+                withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
+                    showQuickActionsCard = true
+                }
+            }
         }
         .onChange(of: isFocusActive) { _, newValue in
             pulseActiveFocus = newValue

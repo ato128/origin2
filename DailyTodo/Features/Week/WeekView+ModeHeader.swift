@@ -34,15 +34,27 @@ extension WeekView {
                 .opacity(blurOpacity)
 
             Text(backgroundTitle)
-                .font(.system(size: backFont, weight: .bold, design: .default))
-                .foregroundStyle(.primary.opacity(0.06))
+                .font(.system(size: backFont, weight: .black, design: .rounded))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [
+                            Color.purple.opacity(0.18),
+                            Color.blue.opacity(0.12)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .blur(radius: 2)
+                .opacity(0.6)
                 .offset(x: 10, y: backTopOffset)
                 .allowsHitTesting(false)
 
             HStack {
                 Text(activeTitle)
-                    .font(.system(size: frontFont, weight: .bold, design: .default))
-                    .foregroundStyle(.primary)
+                    .font(.system(size: frontFont, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .shadow(color: Color.white.opacity(0.15), radius: 6, y: 2)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         withAnimation(.interactiveSpring(response: 0.34, dampingFraction: 0.86)) {

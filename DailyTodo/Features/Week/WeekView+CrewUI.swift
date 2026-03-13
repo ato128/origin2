@@ -31,7 +31,7 @@ extension WeekView {
                     .padding(.bottom, 6)
 
                 LazyVStack(spacing: 14, pinnedViews: []) {
-                    pickerSection
+                    personalDayPickerSection
                     summarySection
 
                     if eventsForDay.isEmpty {
@@ -50,7 +50,7 @@ extension WeekView {
             personalScrollOffset = value
         }
         .scrollIndicators(.hidden)
-        .background(Color(.systemGroupedBackground))
+        .background(Color.clear)
         .offset(y: showPersonalEntrance ? 0 : 22)
         .opacity(showPersonalEntrance ? 1 : 0)
         .scaleEffect(showPersonalEntrance ? 1.0 : 0.992)
@@ -138,7 +138,7 @@ extension WeekView {
                     .padding(.horizontal, 20)
                 }
                 .padding(.vertical, 16)
-                .background(Color(.systemGroupedBackground))
+                .background(Color.clear)
 
                 VStack(spacing: 0) {
                     crewWeekSection
@@ -175,7 +175,7 @@ extension WeekView {
             crewScrollOffset = value
         }
         .scrollIndicators(.hidden)
-        .background(Color(.systemGroupedBackground))
+        .background(Color.clear)
         .offset(y: showCrewEntrance ? 0 : 24)
         .opacity(showCrewEntrance ? 1 : 0)
         .scaleEffect(showCrewEntrance ? 1 : 0.99)

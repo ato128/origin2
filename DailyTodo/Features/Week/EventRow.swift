@@ -98,13 +98,13 @@ struct EventRow: View {
             RoundedRectangle(cornerRadius: 5, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: [accent.opacity(1.0), accent.opacity(0.55)],
+                        colors: [accent.opacity(1.0), accent.opacity(0.70)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
                 )
                 .frame(width: isLive ? 9 : 7)
-                .shadow(color: isLive ? accent.opacity(0.40) : .clear, radius: isLive ? 10 : 0)
+                .shadow(color: isLive ? accent.opacity(0.55) : .clear, radius: isLive ? 10 : 0)
                 .padding(.vertical, 10)
                 .opacity(isDone ? 0.72 : 1.0)
             
@@ -233,7 +233,7 @@ struct EventRow: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(isLive ? 0.11 : 0.06),
+                                    Color.white.opacity(isLive ? 0.18 : 0.04),
                                     Color.white.opacity(0.00)
                                 ],
                                 startPoint: .topLeading,
@@ -248,6 +248,12 @@ struct EventRow: View {
         )
         .shadow(color: isLive ? baseColor.opacity(glowPhase ? 0.30 : 0.14) : .clear, radius: isLive ? 12 : 0)
         .shadow(color: isSoon ? Color.orange.opacity(0.18) : .clear, radius: isSoon ? 8 : 0)
+        .shadow(
+            color: accent.opacity(0.25),
+            radius: 10,
+            x: 0,
+            y: 8
+        )
         .scaleEffect(isLive && pulse ? 1.006 : 1.0)
         .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: pulse)
         .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: glowPhase)

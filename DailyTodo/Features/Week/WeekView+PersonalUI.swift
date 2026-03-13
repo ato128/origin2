@@ -45,15 +45,82 @@ extension WeekView {
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
+    
+    var personalDayPickerSection: some View {
+        HStack(spacing: 8) {
+            ForEach(0..<7, id: \.self) { day in
+                let isSelected = day == selectedDay
+                let isToday = day == weekdayIndexToday()
+                let tint = dayIndicatorColor(for: day)
+
+                Button {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                        selectedDay = day
+                    }
+                } label: {
+                    VStack(spacing: 6) {
+                        Text(dayTitles[day])
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(isSelected ? .white : .primary)
+
+                        Circle()
+                            .fill(isToday ? Color.blue : Color.clear)
+                            .frame(width: 6, height: 6)
+                            .opacity(isToday ? 1 : 0)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(
+                                isSelected
+                                ? LinearGradient(
+                                    colors: [
+                                        tint,
+                                        tint.opacity(0.82)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                                : LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.05),
+                                        Color.white.opacity(0.025)
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(
+                                isSelected
+                                ? Color.white.opacity(0.14)
+                                : Color.white.opacity(0.05),
+                                lineWidth: 1
+                            )
+                    )
+                    .shadow(
+                        color: isSelected ? tint.opacity(0.26) : .clear,
+                        radius: isSelected ? 12 : 0
+                    )
+                    .scaleEffect(isSelected ? 1.02 : 1.0)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 16)
+    }
 
     var summarySection: some View {
-        Section {
-            daySummaryCard
-        }
-        .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 14, trailing: 16))
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
+        daySummaryCard
+        
+            .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 14, trailing: 16))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
     }
+    
 
     var emptySection: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -90,35 +157,74 @@ extension WeekView {
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
+    
+    var nowEvents: [EventItem] {
+        let now = currentMinuteOfDay()
+
+        return eventsForDay.filter { ev in
+            let start = ev.startMinute
+            let end = ev.startMinute + ev.durationMinute
+            return isTodaySelected && now >= start && now < end
+        }
+    }
+
+    var nextEvents: [EventItem] {
+        let now = currentMinuteOfDay()
+
+        return eventsForDay.filter { ev in
+            let start = ev.startMinute
+            let diff = start - now
+            return isTodaySelected && diff > 0 && diff <= 90
+        }
+    }
+
+    var laterEvents: [EventItem] {
+        let now = currentMinuteOfDay()
+
+        return eventsForDay.filter { ev in
+            let start = ev.startMinute
+            return !isTodaySelected || start - now > 90
+        }
+    }
+
+    var completedEvents: [EventItem] {
+        let now = currentMinuteOfDay()
+
+        return eventsForDay.filter { ev in
+            let end = ev.startMinute + ev.durationMinute
+            return isTodaySelected && now >= end
+        }
+    }
 
     var eventsSection: some View {
-        Section {
-            let now = currentMinuteOfDay()
+        VStack(spacing: 6) {
+            if !nowEvents.isEmpty {
+                personalEventGroup(nowEvents, title: "Now", systemImage: "dot.radiowaves.left.and.right", startIndex: 0)
+            }
 
-            ForEach(Array(eventsForDay.enumerated()), id: \.element.id) { index, ev in
-                AnyView(
-                    EventRow(
-                        event: ev,
-                        timeText: timeText(for: ev),
-                        hasConflict: hasConflict(ev),
-                        nowMinute: now,
-                        isTodaySelected: isTodaySelected,
-                        onTap: { editingEvent = ev },
-                        onEdit: { editingEvent = ev },
-                        onDelete: { delete(ev) }
-                    )
-                    .id(ev.id)
-                    .offset(y: showPersonalEventCards ? 0 : CGFloat(24 + index * 10))
-                    .opacity(showPersonalEventCards ? 1 : 0)
-                    .scaleEffect(showPersonalEventCards ? 1 : 0.985)
-                    .animation(
-                        .spring(response: 0.48, dampingFraction: 0.86)
-                            .delay(Double(index) * 0.05),
-                        value: showPersonalEventCards
-                    )
+            if !nextEvents.isEmpty {
+                personalEventGroup(nextEvents, title: "Up Next", systemImage: "clock.badge", startIndex: nowEvents.count)
+            }
+
+            if !laterEvents.isEmpty {
+                personalEventGroup(
+                    laterEvents,
+                    title: isTodaySelected ? "Later Today" : "Schedule",
+                    systemImage: "calendar",
+                    startIndex: nowEvents.count + nextEvents.count
+                )
+            }
+
+            if !completedEvents.isEmpty {
+                personalEventGroup(
+                    completedEvents,
+                    title: "Completed",
+                    systemImage: "checkmark.circle",
+                    startIndex: nowEvents.count + nextEvents.count + laterEvents.count
                 )
             }
         }
+        .padding(.top, 2)
     }
 
     var daySummaryCard: some View {
@@ -213,6 +319,56 @@ extension WeekView {
         .background(sectionCardBackground)
         .scaleEffect(animateSummary ? 1.01 : 1.0)
         .animation(.spring(response: 0.35, dampingFraction: 0.78), value: animateSummary)
+    }
+    
+    func personalEventGroup(_ items: [EventItem], title: String, systemImage: String, startIndex: Int = 0) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            personalTimelineSectionHeader(title, systemImage: systemImage)
+
+            LazyVStack(spacing: 14) {
+                let now = currentMinuteOfDay()
+
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, ev in
+                    EventRow(
+                        event: ev,
+                        timeText: timeText(for: ev),
+                        hasConflict: hasConflict(ev),
+                        nowMinute: now,
+                        isTodaySelected: isTodaySelected,
+                        onTap: { editingEvent = ev },
+                        onEdit: { editingEvent = ev },
+                        onDelete: { delete(ev) }
+                    )
+                    .id(ev.id)
+                    .padding(.horizontal, 16)
+                    .offset(y: showPersonalEventCards ? 0 : CGFloat(24 + ((startIndex + index) * 8)))
+                    .opacity(showPersonalEventCards ? 1 : 0)
+                    .scaleEffect(showPersonalEventCards ? 1 : 0.985)
+                    .animation(
+                        .spring(response: 0.48, dampingFraction: 0.86)
+                            .delay(Double(startIndex + index) * 0.04),
+                        value: showPersonalEventCards
+                    )
+                }
+            }
+        }
+    }
+    
+    func personalTimelineSectionHeader(_ title: String, systemImage: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.secondary)
+
+            Text(title)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.secondary)
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 6)
     }
 
     func summaryChip(title: String, value: String, icon: String) -> some View {
