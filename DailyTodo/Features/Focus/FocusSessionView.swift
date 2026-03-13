@@ -44,6 +44,10 @@ struct FocusSessionView: View {
         static let totalSeconds = "focus_total_seconds"
         static let selectedMinutes = "focus_selected_minutes"
         static let taskTitle = "focus_task_title"
+        
+        static let focusMode = "focus_mode"
+        static let focusFriendName = "focus_friend_name"
+        static let focusFriendID = "focus_friend_id"
     }
 
     private var progress: Double {
@@ -290,7 +294,7 @@ struct FocusSessionView: View {
                         completedSeconds,
                         true
                     )
-
+                    clearSharedFocusState()
                     clearSavedTimer()
                     return
                 }
@@ -443,6 +447,8 @@ struct FocusSessionView: View {
         showDoneState = false
         showCompletionBounce = false
         clearSavedTimer()
+        clearSavedDurationState()
+        clearSharedFocusState()
         onTick(remainingSeconds)
     }
 
@@ -465,6 +471,7 @@ struct FocusSessionView: View {
         showCompletionBounce = false
         clearSavedTimer()
         clearSavedDurationState()
+        clearSharedFocusState()
 
         onFinishFocus(
             resolvedTaskTitle,
@@ -498,6 +505,11 @@ struct FocusSessionView: View {
         UserDefaults.standard.removeObject(forKey: Keys.totalSeconds)
         UserDefaults.standard.removeObject(forKey: Keys.selectedMinutes)
         UserDefaults.standard.removeObject(forKey: Keys.taskTitle)
+    }
+    private func clearSharedFocusState() {
+        UserDefaults.standard.removeObject(forKey: Keys.focusMode)
+        UserDefaults.standard.removeObject(forKey: Keys.focusFriendName)
+        UserDefaults.standard.removeObject(forKey: Keys.focusFriendID)
     }
 
     private func syncTimerFromSavedState() {

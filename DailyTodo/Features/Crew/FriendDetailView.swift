@@ -23,6 +23,7 @@ struct FriendDetailView: View {
     private var allFocusSessions: [FriendFocusSession]
 
     @State private var showCopied = false
+    @State private var showSharedFocusSheet = false
 
     private var messages: [FriendMessage] {
         allMessages.filter { $0.friendID == friend.id }
@@ -71,6 +72,18 @@ struct FriendDetailView: View {
         }
         .onAppear {
             seedFriendDetailIfNeeded()
+            
+        }
+        .sheet(isPresented: $showSharedFocusSheet) {
+            FocusSessionView(
+                taskTitle: "Focus with \(friend.name)",
+                onStartFocus: { _, _ in
+                },
+                onTick: { _ in
+                },
+                onFinishFocus: { _, _, _, _, _, _ in
+                }
+            )
         }
     }
 }
@@ -268,7 +281,11 @@ private extension FriendDetailView {
                     title: activeFocusSession == nil ? "Start Focus" : "Stop Focus",
                     systemImage: activeFocusSession == nil ? "timer.circle.fill" : "stop.circle.fill"
                 ) {
-                    toggleSharedFocus()
+                    if activeFocusSession == nil {
+                        startSharedFocusAndJoin()
+                    } else {
+                        stopSharedFocus()
+                    }
                 }
 
                 actionButton(
@@ -287,22 +304,7 @@ private extension FriendDetailView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
     }
-    func toggleSharedFocus() {
-        if let active = activeFocusSession {
-            active.isActive = false
-
-            let stopMessage = FriendMessage(
-                friendID: friend.id,
-                senderName: friend.name,
-                text: "\(friend.name) ended the shared focus session.",
-                isFromMe: false
-            )
-
-            modelContext.insert(stopMessage)
-            try? modelContext.save()
-            return
-        }
-
+    func startSharedFocusAndJoin() {
         let session = FriendFocusSession(
             friendID: friend.id,
             title: "Shared Focus",
@@ -318,11 +320,41 @@ private extension FriendDetailView {
             isFromMe: false
         )
 
+        let joinMessage = FriendMessage(
+            friendID: friend.id,
+            senderName: "Me",
+            text: "I joined \(friend.name)’s shared focus session.",
+            isFromMe: true
+        )
+
         modelContext.insert(session)
         modelContext.insert(startMessage)
+        modelContext.insert(joinMessage)
+
         try? modelContext.save()
+
+        UserDefaults.standard.set("shared", forKey: "focus_mode")
+        UserDefaults.standard.set(friend.name, forKey: "focus_friend_name")
+        UserDefaults.standard.set(friend.id.uuidString, forKey: "focus_friend_id")
+
+        showSharedFocusSheet = true
     }
 
+    func stopSharedFocus() {
+        guard let active = activeFocusSession else { return }
+
+        active.isActive = false
+
+        let stopMessage = FriendMessage(
+            friendID: friend.id,
+            senderName: friend.name,
+            text: "\(friend.name) ended the shared focus session.",
+            isFromMe: false
+        )
+
+        modelContext.insert(stopMessage)
+        try? modelContext.save()
+    }
     func statPill(title: String, subtitle: String) -> some View {
         VStack(spacing: 4) {
             Text(title)

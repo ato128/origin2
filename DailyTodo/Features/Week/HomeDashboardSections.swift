@@ -163,17 +163,17 @@ extension HomeDashboardView {
             if let task = focusTask {
                 VStack(alignment: .leading, spacing: 14) {
                     HStack {
-                        Text("Focus Now")
+                        Text(focusCardTitle)
                             .font(.headline)
 
                         Spacer()
 
-                        Image(systemName: "scope")
+                        Image(systemName: isSharedFocusActive ? "person.2.fill" : "scope")
                             .font(.title2)
                             .foregroundStyle(Color.accentColor)
                     }
 
-                    Text(task.title)
+                    Text(focusCardMainText)
                         .font(.title3.weight(.semibold))
                         .lineLimit(2)
 
@@ -190,9 +190,9 @@ extension HomeDashboardView {
 
                         Spacer()
 
-                        Text(focusTaskStatusText)
+                        Text(focusCardStatusText)
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(store.isOverdue(task) ? .red : .secondary)
+                            .foregroundStyle(isSharedFocusActive ? .green : (store.isOverdue(task) ? .red : .secondary))
                     }
 
                     Button {
@@ -235,7 +235,7 @@ extension HomeDashboardView {
                                 value: liveDotPulse
                             )
 
-                        Text("Focus Running")
+                        Text(isSharedFocusActive ? "Shared Focus Running" : "Focus Running")
                             .font(.headline)
                     }
 
@@ -246,7 +246,11 @@ extension HomeDashboardView {
                         .monospacedDigit()
                 }
 
-                Text(activeFocusTaskTitle.isEmpty ? "Deep Work Session" : activeFocusTaskTitle)
+                Text(
+                    isSharedFocusActive
+                    ? ((activeSharedFriendName != nil) ? "\(activeSharedFriendName!) ile focus" : "Shared Focus")
+                    : (activeFocusTaskTitle.isEmpty ? "Deep Work Session" : activeFocusTaskTitle)
+                )
                     .font(.title3.weight(.semibold))
                     .lineLimit(2)
 

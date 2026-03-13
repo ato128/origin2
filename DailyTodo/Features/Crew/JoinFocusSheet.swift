@@ -70,6 +70,10 @@ struct JoinFocusSheet: View {
 
                         modelContext.insert(joinMessage)
                         try? modelContext.save()
+                        
+                        UserDefaults.standard.set("shared", forKey: "focus_mode")
+                        UserDefaults.standard.set(friend.name, forKey: "focus_friend_name")
+                        UserDefaults.standard.set(friend.id.uuidString, forKey: "focus_friend_id")
 
                         showFocusSession = true
                     } label: {

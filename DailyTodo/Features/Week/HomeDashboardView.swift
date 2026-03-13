@@ -143,7 +143,43 @@ struct HomeDashboardView: View {
         guard let nextEvent else { return "--:--" }
         return "\(hm(nextEvent.startMinute)) – \(hm(nextEvent.startMinute + nextEvent.durationMinute))"
     }
+    var hasAnyActiveFocusSession: Bool {
+        guard let timestamp = UserDefaults.standard.object(forKey: "focus_end_date") as? Double else {
+            return false
+        }
 
+        let endDate = Date(timeIntervalSince1970: timestamp)
+        return endDate.timeIntervalSinceNow > 0
+    }
+
+    var isSharedFocusActive: Bool {
+        UserDefaults.standard.string(forKey: "focus_mode") == "shared" && hasAnyActiveFocusSession
+    }
+
+    var activeSharedFriendName: String? {
+        UserDefaults.standard.string(forKey: "focus_friend_name")
+    }
+
+    var focusCardTitle: String {
+        if isSharedFocusActive {
+            return "Shared Focus"
+        }
+        return "Focus Now"
+    }
+
+    var focusCardMainText: String {
+        if isSharedFocusActive, let friendName = activeSharedFriendName {
+            return "\(friendName) ile focus"
+        }
+        return focusTask?.title ?? "Bugün odak görevi yok"
+    }
+
+    var focusCardStatusText: String {
+        if isSharedFocusActive {
+            return "🟢 Shared session active"
+        }
+        return focusTaskStatusText
+    }
     var todayProgressValue: Double {
         guard totalTodayTaskCount > 0 else { return 0 }
         return Double(completedTodayCount) / Double(totalTodayTaskCount)
@@ -172,7 +208,7 @@ struct HomeDashboardView: View {
                 homeMiniWeekCalendar
                 todayProgressCard
 
-                if isFocusActive {
+                if hasAnyActiveFocusSession {
                     activeFocusCard
                         .transition(.asymmetric(
                             insertion: .scale(scale: 0.98).combined(with: .opacity),
@@ -221,6 +257,7 @@ struct HomeDashboardView: View {
         }
         .onAppear {
             selectedDay = weekdayIndexToday()
+            syncActiveFocusCountdown()
         }
         .onChange(of: isFocusActive) { _, newValue in
             pulseActiveFocus = newValue
