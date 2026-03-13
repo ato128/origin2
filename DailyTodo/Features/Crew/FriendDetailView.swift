@@ -11,6 +11,7 @@ import SwiftData
 struct FriendDetailView: View {
     let friend: Friend
 
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
     @Query(sort: \FriendMessage.createdAt, order: .forward)
@@ -39,24 +40,35 @@ struct FriendDetailView: View {
     private var weekCount: Int {
         allSharedItems.filter { $0.friendID == friend.id }.count
     }
+
     private var activeFocusSession: FriendFocusSession? {
         allFocusSessions.first { $0.friendID == friend.id && $0.isActive }
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 18) {
-                heroCard
-                todayScheduleCard
-                recentMessagesCard
-                actionsCard
+        ZStack(alignment: .top) {
+            ambientBackground
+
+            ScrollView {
+                VStack(spacing: 18) {
+                    Color.clear.frame(height: 76)
+
+                    customHeader
+                    heroCard
+                    todayScheduleCard
+                    recentMessagesCard
+                    actionsCard
+
+                    Spacer(minLength: 90)
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 28)
             }
-            .padding(16)
-            .padding(.bottom, 28)
+            .scrollIndicators(.hidden)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle(friend.name)
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .overlay(alignment: .bottom) {
             if showCopied {
                 Text("Copied")
@@ -65,6 +77,10 @@ struct FriendDetailView: View {
                     .padding(.vertical, 10)
                     .background(.ultraThinMaterial)
                     .clipShape(Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
                     .shadow(radius: 8)
                     .padding(.bottom, 24)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -72,7 +88,6 @@ struct FriendDetailView: View {
         }
         .onAppear {
             seedFriendDetailIfNeeded()
-            
         }
         .sheet(isPresented: $showSharedFocusSheet) {
             FocusSessionView(
@@ -90,60 +105,110 @@ struct FriendDetailView: View {
 
 private extension FriendDetailView {
 
+    var ambientBackground: some View {
+        ZStack(alignment: .topLeading) {
+            Color(.systemGroupedBackground)
+                .ignoresSafeArea()
+
+            RadialGradient(
+                colors: [
+                    hexColor(friend.colorHex).opacity(0.16),
+                    Color.clear
+                ],
+                center: .topLeading,
+                startRadius: 30,
+                endRadius: 260
+            )
+            .ignoresSafeArea()
+
+            RadialGradient(
+                colors: [
+                    Color.blue.opacity(0.08),
+                    Color.clear
+                ],
+                center: .topTrailing,
+                startRadius: 60,
+                endRadius: 320
+            )
+            .ignoresSafeArea()
+        }
+    }
+
+    var customHeader: some View {
+        HStack {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 20, weight: .bold))
+                    .frame(width: 56, height: 56)
+                    .background(
+                        Circle()
+                            .fill(.ultraThinMaterial)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            )
+                    )
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            Text(friend.name)
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+
+            Spacer()
+
+            Color.clear.frame(width: 56, height: 56)
+        }
+    }
+
     var heroCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top) {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top, spacing: 14) {
                 ZStack {
                     Circle()
                         .fill(hexColor(friend.colorHex).opacity(0.16))
-                        .frame(width: 72, height: 72)
+                        .frame(width: 78, height: 78)
 
                     Image(systemName: friend.avatarSymbol)
-                        .font(.title.bold())
+                        .font(.title.weight(.bold))
                         .foregroundStyle(hexColor(friend.colorHex))
                 }
 
-                Spacer()
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(friend.name)
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
 
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(friend.isOnline ? .green : Color.gray.opacity(0.5))
-                        .frame(width: 8, height: 8)
-
-                    Text(friend.isOnline ? "Online" : "Offline")
-                        .font(.caption.weight(.semibold))
+                    Text(friend.subtitle)
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(friend.name)
-                            .font(.title2.bold())
 
-                        Text(friend.subtitle)
-                            .font(.subheadline)
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(friend.isOnline ? .green : Color.gray.opacity(0.5))
+                            .frame(width: 8, height: 8)
+
+                        Text(friend.isOnline ? "Online" : "Offline")
+                            .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
+                    }
 
-                        if let session = activeFocusSession {
-                            HStack(spacing: 8) {
-                                Circle()
-                                    .fill(.green)
-                                    .frame(width: 8, height: 8)
+                    if let session = activeFocusSession {
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(.green)
+                                .frame(width: 8, height: 8)
 
-                                Text("In focus now • \(session.durationMinute) min")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.green)
-                            }
+                            Text("In focus now • \(session.durationMinute) min")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.green)
                         }
                     }
                 }
-            }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(friend.name)
-                    .font(.title2.bold())
-
-                Text(friend.subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                Spacer()
             }
 
             HStack(spacing: 10) {
@@ -155,6 +220,7 @@ private extension FriendDetailView {
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
+        .shadow(color: hexColor(friend.colorHex).opacity(0.10), radius: 12, y: 6)
     }
 
     var todayScheduleCard: some View {
@@ -178,9 +244,9 @@ private extension FriendDetailView {
                 ForEach(todaySchedule) { item in
                     HStack(spacing: 12) {
                         ZStack {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .fill(hexColor(friend.colorHex).opacity(0.14))
-                                .frame(width: 42, height: 42)
+                                .frame(width: 52, height: 52)
 
                             Image(systemName: "calendar")
                                 .foregroundStyle(hexColor(friend.colorHex))
@@ -199,7 +265,7 @@ private extension FriendDetailView {
                     }
                     .padding(12)
                     .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .fill(Color.white.opacity(0.04))
                     )
                 }
@@ -230,18 +296,23 @@ private extension FriendDetailView {
             } else {
                 ForEach(Array(messages.suffix(3))) { message in
                     HStack {
-                        if message.isFromMe { Spacer() }
+                        if message.isFromMe { Spacer(minLength: 40) }
 
                         Text(message.text)
                             .font(.subheadline)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 10)
+                            .foregroundStyle(message.isFromMe ? .white : .primary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
                             .background(
-                                Capsule()
-                                    .fill(message.isFromMe ? Color.accentColor.opacity(0.16) : Color.white.opacity(0.06))
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .fill(
+                                        message.isFromMe
+                                        ? Color.accentColor.opacity(0.24)
+                                        : Color.white.opacity(0.06)
+                                    )
                             )
 
-                        if !message.isFromMe { Spacer() }
+                        if !message.isFromMe { Spacer(minLength: 40) }
                     }
                 }
             }
@@ -260,26 +331,16 @@ private extension FriendDetailView {
                 NavigationLink {
                     FriendChatView(friend: friend)
                 } label: {
-                    VStack(spacing: 10) {
-                        Image(systemName: "message.fill")
-                            .font(.title3)
-
-                        Text("Message")
-                            .font(.caption.weight(.semibold))
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Color.white.opacity(0.05))
+                    actionTile(
+                        title: "Message",
+                        systemImage: "message.fill"
                     )
                 }
                 .buttonStyle(.plain)
 
                 actionButton(
                     title: activeFocusSession == nil ? "Start Focus" : "Stop Focus",
-                    systemImage: activeFocusSession == nil ? "timer.circle.fill" : "stop.circle.fill"
+                    systemImage: activeFocusSession == nil ? "stopwatch.fill" : "stop.circle.fill"
                 ) {
                     if activeFocusSession == nil {
                         startSharedFocusAndJoin()
@@ -304,6 +365,24 @@ private extension FriendDetailView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
     }
+
+    func actionTile(title: String, systemImage: String) -> some View {
+        VStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.title3)
+
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.05))
+        )
+    }
+
     func startSharedFocusAndJoin() {
         let session = FriendFocusSession(
             friendID: friend.id,
@@ -355,39 +434,28 @@ private extension FriendDetailView {
         modelContext.insert(stopMessage)
         try? modelContext.save()
     }
+
     func statPill(title: String, subtitle: String) -> some View {
         VStack(spacing: 4) {
             Text(title)
-                .font(.subheadline.weight(.bold))
+                .font(.title3.weight(.bold))
+                .monospacedDigit()
 
             Text(subtitle)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
+        .padding(.vertical, 14)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(Color.white.opacity(0.05))
         )
     }
 
     func actionButton(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 10) {
-                Image(systemName: systemImage)
-                    .font(.title3)
-
-                Text(title)
-                    .font(.caption.weight(.semibold))
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.white.opacity(0.05))
-            )
+            actionTile(title: title, systemImage: systemImage)
         }
         .buttonStyle(.plain)
     }

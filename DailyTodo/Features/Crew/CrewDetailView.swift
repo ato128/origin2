@@ -11,6 +11,7 @@ import SwiftData
 struct CrewDetailView: View {
     let crew: Crew
     
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     
     @State private var showCreateTask = false
@@ -60,40 +61,45 @@ struct CrewDetailView: View {
 
                 return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
             }
+        
         let crewActivities = activities.filter { $0.crewID == crew.id }
-
         let completedTasks = crewTasks.filter(\.isDone).count
         let pendingTasks = max(0, crewTasks.count - completedTasks)
         let progress = crewTasks.isEmpty ? 0 : Double(completedTasks) / Double(crewTasks.count)
 
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                heroCard(
-                    memberCount: crewMembers.count,
-                    totalTasks: crewTasks.count,
-                    progress: progress
-                )
+        ZStack(alignment: .top) {
+            ambientBackground
 
-                quickStatsRow(
-                    completed: completedTasks,
-                    pending: pendingTasks,
-                    memberCount: crewMembers.count
-                )
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Color.clear.frame(height: 76)
 
-                membersSection(crewMembers)
+                    customHeader
+                    heroCard(
+                        memberCount: crewMembers.count,
+                        totalTasks: crewTasks.count,
+                        progress: progress
+                    )
+                    quickStatsRow(
+                        completed: completedTasks,
+                        pending: pendingTasks,
+                        memberCount: crewMembers.count
+                    )
+                    membersSection(crewMembers)
+                    tasksSection(crewTasks)
+                    focusSection(memberCount: crewMembers.count)
+                    activitySection(crewActivities)
 
-                tasksSection(crewTasks)
-
-                focusSection(memberCount: crewMembers.count)
-
-                activitySection(crewActivities)
+                    Spacer(minLength: 90)
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 28)
             }
-            .padding(16)
-            .padding(.bottom, 28)
+            .scrollIndicators(.hidden)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle(crew.name)
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showCreateTask) {
             CreateCrewTaskView(
                 crew: crew,
@@ -116,9 +122,66 @@ struct CrewDetailView: View {
     }
 }
 
-// MARK: - Sections
-
 private extension CrewDetailView {
+    
+    var ambientBackground: some View {
+        ZStack(alignment: .topLeading) {
+            Color(.systemGroupedBackground)
+                .ignoresSafeArea()
+
+            RadialGradient(
+                colors: [
+                    Color.purple.opacity(0.12),
+                    Color.clear
+                ],
+                center: .topLeading,
+                startRadius: 30,
+                endRadius: 260
+            )
+            .ignoresSafeArea()
+
+            RadialGradient(
+                colors: [
+                    hexColor(crew.colorHex).opacity(0.10),
+                    Color.clear
+                ],
+                center: .topTrailing,
+                startRadius: 60,
+                endRadius: 320
+            )
+            .ignoresSafeArea()
+        }
+    }
+
+    var customHeader: some View {
+        HStack {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 20, weight: .bold))
+                    .frame(width: 56, height: 56)
+                    .background(
+                        Circle()
+                            .fill(.ultraThinMaterial)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            )
+                    )
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            Text(crew.name)
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+
+            Spacer()
+
+            Color.clear.frame(width: 56, height: 56)
+        }
+    }
 
     func heroCard(memberCount: Int, totalTasks: Int, progress: Double) -> some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -126,7 +189,7 @@ private extension CrewDetailView {
                 ZStack {
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .fill(hexColor(crew.colorHex).opacity(0.18))
-                        .frame(width: 60, height: 60)
+                        .frame(width: 64, height: 64)
 
                     Image(systemName: crew.icon)
                         .font(.title2.weight(.semibold))
@@ -141,17 +204,19 @@ private extension CrewDetailView {
                     Image(systemName: "person.badge.plus")
                         .font(.headline)
                         .foregroundStyle(.white)
-                        .frame(width: 38, height: 38)
+                        .frame(width: 42, height: 42)
                         .background(
                             Circle()
                                 .fill(hexColor(crew.colorHex))
                         )
+                        .shadow(color: hexColor(crew.colorHex).opacity(0.28), radius: 10, y: 5)
                 }
                 .buttonStyle(.plain)
             }
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(crew.name)
-                    .font(.title2.bold())
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
 
                 Text("Manage members, shared tasks, and project activity in one place.")
                     .font(.subheadline)
@@ -184,6 +249,7 @@ private extension CrewDetailView {
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
+        .shadow(color: hexColor(crew.colorHex).opacity(0.10), radius: 12, y: 6)
     }
 
     func quickStatsRow(completed: Int, pending: Int, memberCount: Int) -> some View {
@@ -212,20 +278,21 @@ private extension CrewDetailView {
     }
 
     func statCard(value: String, title: String, icon: String, tint: Color) -> some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(tint)
 
             Text(value)
-                .font(.headline.bold())
+                .font(.title3.bold())
+                .monospacedDigit()
 
             Text(title)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
+        .padding(.vertical, 16)
         .background(cardBackground)
     }
 
@@ -243,7 +310,7 @@ private extension CrewDetailView {
                     Image(systemName: "plus")
                         .font(.caption.bold())
                         .foregroundStyle(.blue)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 30, height: 30)
                         .background(
                             Circle()
                                 .fill(Color.blue.opacity(0.14))
@@ -269,11 +336,11 @@ private extension CrewDetailView {
                     HStack(spacing: 12) {
                         ZStack {
                             Circle()
-                                .fill(Color.secondary.opacity(0.12))
+                                .fill(hexColor(crew.colorHex).opacity(0.14))
                                 .frame(width: 42, height: 42)
 
                             Image(systemName: member.avatarSymbol)
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(hexColor(crew.colorHex))
                         }
 
                         VStack(alignment: .leading, spacing: 2) {
@@ -297,6 +364,11 @@ private extension CrewDetailView {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.white.opacity(0.04))
+                    )
                 }
             }
         }
@@ -439,6 +511,7 @@ private extension CrewDetailView {
         default: return value.capitalized
         }
     }
+
     func statusTitle(_ value: String) -> String {
         switch value {
         case "todo": return "Todo"
@@ -468,8 +541,8 @@ private extension CrewDetailView {
             crewID: crew.id,
             memberName: "You",
             actionText: task.isDone
-            ? "completed task \(task.title)"
-            : "reopened task \(task.title)"
+                ? "completed task \(task.title)"
+                : "reopened task \(task.title)"
         )
         modelContext.insert(activity)
 
@@ -629,17 +702,28 @@ private extension CrewDetailView {
         }
     }
     
-    func activityRow(_ item: CrewActivity) -> some View {
+    func activityRow(_ item: CrewActivity, isLast: Bool) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(hexColor(crew.colorHex).opacity(0.14))
-                    .frame(width: 34, height: 34)
+            VStack(spacing: 0) {
+                ZStack {
+                    Circle()
+                        .fill(hexColor(crew.colorHex).opacity(0.16))
+                        .frame(width: 34, height: 34)
 
-                Image(systemName: activityIcon(for: item.actionText))
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(hexColor(crew.colorHex))
+                    Image(systemName: activityIcon(for: item.actionText))
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(hexColor(crew.colorHex))
+                }
+
+                if !isLast {
+                    Rectangle()
+                        .fill(Color.white.opacity(0.06))
+                        .frame(width: 2)
+                        .frame(maxHeight: .infinity)
+                        .padding(.top, 6)
+                }
             }
+            .frame(width: 34)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.memberName)
@@ -658,17 +742,18 @@ private extension CrewDetailView {
 
             Spacer()
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 2)
     }
 
     func activitySection(_ crewActivities: [CrewActivity]) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("Activity")
+                    .font(.headline)
+
                 Text("Recent team updates")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .font(.headline)
 
                 Spacer()
 
@@ -686,8 +771,8 @@ private extension CrewDetailView {
             if crewActivities.isEmpty {
                 emptyMiniState(text: "No activity yet")
             } else {
-                ForEach(crewActivities.prefix(5)) { item in
-                    activityRow(item)
+                ForEach(Array(crewActivities.prefix(5).enumerated()), id: \.element.id) { index, item in
+                    activityRow(item, isLast: index == min(crewActivities.prefix(5).count, 5) - 1)
                 }
             }
         }
@@ -728,6 +813,7 @@ private extension CrewDetailView {
                     .stroke(Color.white.opacity(0.08), lineWidth: 1)
             )
     }
+
     struct ShareSheet: UIViewControllerRepresentable {
         var items: [Any]
 

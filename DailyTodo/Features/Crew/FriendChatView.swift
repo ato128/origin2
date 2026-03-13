@@ -11,6 +11,7 @@ import SwiftData
 struct FriendChatView: View {
     let friend: Friend
 
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
     @Query(sort: \FriendMessage.createdAt, order: .forward)
@@ -23,18 +24,24 @@ struct FriendChatView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            if messages.isEmpty {
-                emptyState
-            } else {
-                messagesList
-            }
+        ZStack(alignment: .top) {
+            ambientBackground
 
-            composerBar
+            VStack(spacing: 0) {
+                customHeader
+
+                if messages.isEmpty {
+                    emptyState
+                } else {
+                    messagesList
+                }
+
+                composerBar
+            }
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle(friend.name)
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .onAppear {
             seedMessagesIfNeeded()
         }
@@ -43,16 +50,109 @@ struct FriendChatView: View {
 
 private extension FriendChatView {
 
+    var ambientBackground: some View {
+        ZStack(alignment: .topLeading) {
+            Color(.systemGroupedBackground)
+                .ignoresSafeArea()
+
+            RadialGradient(
+                colors: [
+                    hexColor(friend.colorHex).opacity(0.12),
+                    Color.clear
+                ],
+                center: .topLeading,
+                startRadius: 30,
+                endRadius: 240
+            )
+            .ignoresSafeArea()
+
+            RadialGradient(
+                colors: [
+                    Color.blue.opacity(0.07),
+                    Color.clear
+                ],
+                center: .topTrailing,
+                startRadius: 60,
+                endRadius: 280
+            )
+            .ignoresSafeArea()
+        }
+    }
+
+    var customHeader: some View {
+        HStack(spacing: 12) {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 20, weight: .bold))
+                    .frame(width: 52, height: 52)
+                    .background(
+                        Circle()
+                            .fill(.ultraThinMaterial)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            )
+                    )
+            }
+            .buttonStyle(.plain)
+
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(hexColor(friend.colorHex).opacity(0.16))
+                        .frame(width: 42, height: 42)
+
+                    Image(systemName: friend.avatarSymbol)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(hexColor(friend.colorHex))
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(friend.name)
+                        .font(.headline)
+
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(friend.isOnline ? .green : Color.gray.opacity(0.5))
+                            .frame(width: 7, height: 7)
+
+                        Text(friend.isOnline ? "Online" : "Offline")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
+        .background(
+            Rectangle()
+                .fill(.ultraThinMaterial.opacity(0.35))
+                .ignoresSafeArea(edges: .top)
+        )
+    }
+
     var emptyState: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 14) {
             Spacer()
 
-            Image(systemName: "message.fill")
-                .font(.system(size: 34))
-                .foregroundStyle(Color.accentColor)
+            ZStack {
+                Circle()
+                    .fill(hexColor(friend.colorHex).opacity(0.14))
+                    .frame(width: 82, height: 82)
+
+                Image(systemName: "message.fill")
+                    .font(.system(size: 32))
+                    .foregroundStyle(hexColor(friend.colorHex))
+            }
 
             Text("No messages yet")
-                .font(.headline)
+                .font(.title3.weight(.bold))
 
             Text("Start the conversation with \(friend.name).")
                 .font(.subheadline)
@@ -67,16 +167,17 @@ private extension FriendChatView {
     var messagesList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 10) {
+                LazyVStack(spacing: 12) {
                     ForEach(messages) { message in
                         messageBubble(message)
                             .id(message.id)
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 12)
-                .padding(.bottom, 12)
+                .padding(.top, 14)
+                .padding(.bottom, 16)
             }
+            .scrollIndicators(.hidden)
             .onAppear {
                 scrollToBottom(proxy: proxy)
             }
@@ -96,77 +197,112 @@ private extension FriendChatView {
             if isSystemFocusMessage {
                 Spacer()
 
-                Text(message.text)
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(
-                        Capsule()
-                            .fill(Color.accentColor.opacity(0.10))
-                    )
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkles")
+                        .font(.caption.weight(.bold))
+
+                    Text(message.text)
+                        .font(.caption.weight(.semibold))
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+                .background(
+                    Capsule()
+                        .fill(Color.accentColor.opacity(0.10))
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(Color.accentColor.opacity(0.12), lineWidth: 1)
+                )
+                .foregroundStyle(.secondary)
 
                 Spacer()
             } else {
-                if message.isFromMe {
-                    Spacer(minLength: 40)
-                }
+                if message.isFromMe { Spacer(minLength: 42) }
 
-                VStack(alignment: message.isFromMe ? .trailing : .leading, spacing: 4) {
+                VStack(alignment: message.isFromMe ? .trailing : .leading, spacing: 5) {
                     Text(message.text)
                         .font(.subheadline)
+                        .foregroundStyle(message.isFromMe ? .white : .primary)
                         .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
+                        .padding(.vertical, 11)
                         .background(
-                            Capsule()
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
                                 .fill(
                                     message.isFromMe
-                                    ? Color.accentColor.opacity(0.16)
-                                    : Color.white.opacity(0.08)
+                                    ? Color.accentColor.opacity(0.24)
+                                    : Color.white.opacity(0.07)
                                 )
                         )
-                        .foregroundStyle(.primary)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(
+                                    message.isFromMe
+                                    ? Color.accentColor.opacity(0.18)
+                                    : Color.white.opacity(0.06),
+                                    lineWidth: 1
+                                )
+                        )
 
                     Text(message.createdAt, style: .time)
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 4)
                 }
 
-                if !message.isFromMe {
-                    Spacer(minLength: 40)
-                }
+                if !message.isFromMe { Spacer(minLength: 42) }
             }
         }
     }
 
     var composerBar: some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .bottom, spacing: 10) {
             TextField("Message \(friend.name)...", text: $draftMessage, axis: .vertical)
                 .textFieldStyle(.plain)
+                .lineLimit(1...4)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
                 .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .fill(Color.white.opacity(0.08))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                        )
                 )
 
             Button {
                 sendMessage()
             } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 32))
-                    .foregroundStyle(
-                        draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? Color.secondary
-                        : Color.accentColor
-                    )
+                ZStack {
+                    Circle()
+                        .fill(
+                            draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? Color.white.opacity(0.08)
+                            : Color.accentColor
+                        )
+                        .frame(width: 46, height: 46)
+
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(
+                            draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? Color.secondary
+                            : .white
+                        )
+                }
             }
             .buttonStyle(.plain)
             .disabled(draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(.ultraThinMaterial)
+        .padding(.top, 10)
+        .padding(.bottom, 12)
+        .background(
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .ignoresSafeArea(edges: .bottom)
+        )
     }
 
     func sendMessage() {
