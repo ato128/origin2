@@ -1,8 +1,8 @@
 //
-//  ScrollOffsetReader.swift
+//  ScrollOffsetPreference.swift
 //  DailyTodo
 //
-//  Created by Atakan Ortaç on 12.03.2026.
+//  Created by Atakan Ortaç on 13.03.2026.
 //
 
 import SwiftUI
