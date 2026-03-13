@@ -24,9 +24,17 @@ struct CrewView: View {
 
     @Query(sort: \CrewActivity.createdAt, order: .reverse)
     private var activities: [CrewActivity]
+    
+    @Query(sort: \Friend.createdAt, order: .reverse)
+    private var friends: [Friend]
+    
+    @Query(sort: \FriendFocusSession.startedAt, order: .reverse)
+    private var focusSessions: [FriendFocusSession]
 
     @State private var showCreateCrew = false
     @State private var crewTabMode: CrewTabMode = .crews
+    @State private var showJoinFocusSheet = false
+    @State private var selectedFocusSession: FriendFocusSession?
 
     var body: some View {
         NavigationStack {
@@ -34,7 +42,7 @@ struct CrewView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     topHeader
                     crewTopSegment
-
+                    
                     if crewTabMode == .crews {
                         crewsContent
                     } else {
@@ -48,6 +56,15 @@ struct CrewView: View {
             .navigationTitle("Crew")
             .sheet(isPresented: $showCreateCrew) {
                 CreateCrewView()
+                    .sheet(isPresented: $showJoinFocusSheet) {
+                        if let session = selectedFocusSession,
+                           let friend = friendForFocusSession(session) {
+                            JoinFocusSheet(
+                                friend: friend,
+                                session: session
+                            )
+                        }
+                    }
             }
         }
     }
@@ -156,34 +173,114 @@ private extension CrewView {
         VStack(alignment: .leading, spacing: 16) {
             friendsOverviewCard
 
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Your Friends")
-                    .font(.headline)
-
-                friendRow(
-                    name: "Ahmet",
-                    subtitle: "Bugün 3 etkinlik",
-                    isOnline: true,
-                    color: .blue
-                )
-
-                friendRow(
-                    name: "Selin",
-                    subtitle: "Yarın sınav haftası",
-                    isOnline: false,
-                    color: .purple
-                )
-
-                friendRow(
-                    name: "Atakan",
-                    subtitle: "Bu hafta 8 ders",
-                    isOnline: true,
-                    color: .green
-                )
+            if !activeFocusSessions.isEmpty {
+                friendsFocusActivityCard
             }
 
-            friendsEmptyHintCard
+            if friends.isEmpty {
+                friendsEmptyStateCard
+            } else {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Your Friends")
+                        .font(.headline)
+
+                    ForEach(friends) { friend in
+                        friendRow(friend)
+                    }
+                }
+
+                friendsEmptyHintCard
+            }
         }
+    }
+    var friendsFocusActivityCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Focus Activity")
+                        .font(.headline)
+
+                    Text("Friends currently studying together")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                ZStack {
+                    Circle()
+                        .fill(Color.green.opacity(0.16))
+                        .frame(width: 40, height: 40)
+
+                    Image(systemName: "timer")
+                        .foregroundStyle(.green)
+                }
+            }
+
+            VStack(spacing: 10) {
+                ForEach(activeFocusSessions.prefix(3)) { session in
+                    if let friend = friendForFocusSession(session) {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(hexColor(friend.colorHex).opacity(0.16))
+                                    .frame(width: 38, height: 38)
+
+                                Image(systemName: friend.avatarSymbol)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(hexColor(friend.colorHex))
+                            }
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(friend.name)
+                                    .font(.subheadline.weight(.semibold))
+
+                                Text("\(session.title) • \(focusMinutesLeft(for: session)) min left")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+
+                            HStack(spacing: 6) {
+                                Circle()
+                                    .fill(.green)
+                                    .frame(width: 8, height: 8)
+
+                                Text("Live")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(.green)
+                            }
+                        }
+                        .padding(12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.white.opacity(0.04))
+                        )
+                    }
+                }
+            }
+
+            Button {
+                selectedFocusSession = activeFocusSessions.first
+                showJoinFocusSheet = selectedFocusSession != nil
+            } label: {
+                HStack {
+                    Image(systemName: "person.2.wave.2.fill")
+                    Text("Join Focus")
+                }
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color.accentColor.opacity(0.14))
+                .foregroundStyle(Color.accentColor)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBackground)
     }
 
     var crewOverviewCard: some View {
@@ -222,7 +319,9 @@ private extension CrewView {
     }
 
     var friendsOverviewCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        let onlineCount = friends.filter(\.isOnline).count
+
+        return VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Friends")
@@ -241,13 +340,66 @@ private extension CrewView {
             }
 
             HStack(spacing: 10) {
-                statPill(title: "3", subtitle: "Friends")
-                statPill(title: "2", subtitle: "Online")
-                statPill(title: "5", subtitle: "Shared")
+                statPill(title: "\(friends.count)", subtitle: "Friends")
+                statPill(title: "\(onlineCount)", subtitle: "Online")
+                statPill(title: "\(activeFriendFocusCount)", subtitle: "In Focus")
+            }
+
+            if activeFriendFocusCount > 0 {
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(.green)
+                        .frame(width: 8, height: 8)
+
+                    Text("\(activeFriendFocusCount) friend\(activeFriendFocusCount == 1 ? "" : "s") studying now")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+                }
+                .padding(.top, 2)
             }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBackground)
+    }
+    
+    var friendsEmptyStateCard: some View {
+        VStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(Color.accentColor.opacity(0.12))
+                    .frame(width: 70, height: 70)
+
+                Image(systemName: "person.2.fill")
+                    .font(.system(size: 28))
+                    .foregroundStyle(Color.accentColor)
+            }
+
+            Text("No friends yet")
+                .font(.headline)
+
+            Text("Add your first friend to start sharing schedules and chatting.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            Button {
+                seedMockFriendsIfNeeded()
+            } label: {
+                Text("Add Sample Friends")
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 11)
+                    .background(Color.accentColor)
+                    .foregroundStyle(.white)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(24)
         .background(cardBackground)
     }
 
@@ -304,6 +456,10 @@ private extension CrewView {
         .frame(maxWidth: .infinity)
         .padding(24)
         .background(cardBackground)
+    }
+    
+    var activeFriendFocusCount: Int {
+        focusSessions.filter(\.isActive).count
     }
 
     var friendsEmptyHintCard: some View {
@@ -455,46 +611,61 @@ private extension CrewView {
         .background(cardBackground)
     }
 
-    func friendRow(name: String, subtitle: String, isOnline: Bool, color: Color) -> some View {
-        NavigationLink {
-            FriendDetailView(
-                name: name,
-                subtitle: subtitle,
-                isOnline: isOnline,
-                color: color
-            )
+    func friendRow(_ friend: Friend) -> some View {
+        let activeSession = activeFocusSession(for: friend)
+
+        return NavigationLink {
+            FriendDetailView(friend: friend)
         } label: {
             HStack(spacing: 12) {
                 ZStack {
                     Circle()
-                        .fill(color.opacity(0.16))
+                        .fill(hexColor(friend.colorHex).opacity(0.16))
                         .frame(width: 46, height: 46)
 
-                    Text(String(name.prefix(1)).uppercased())
+                    Image(systemName: friend.avatarSymbol)
                         .font(.headline.bold())
-                        .foregroundStyle(color)
+                        .foregroundStyle(hexColor(friend.colorHex))
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(name)
+                    Text(friend.name)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.primary)
 
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if let session = activeSession {
+                        Text("Focusing • \(session.durationMinute) min")
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                    } else {
+                        Text(friend.subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Spacer()
 
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(isOnline ? Color.green : Color.gray.opacity(0.5))
-                        .frame(width: 8, height: 8)
+                if activeSession != nil {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 8, height: 8)
 
-                    Text(isOnline ? "Online" : "Offline")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        Text("Focusing")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(friend.isOnline ? Color.green : Color.gray.opacity(0.5))
+                            .frame(width: 8, height: 8)
+
+                        Text(friend.isOnline ? "Online" : "Offline")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Image(systemName: "chevron.right")
@@ -513,6 +684,10 @@ private extension CrewView {
         }
         .buttonStyle(.plain)
     }
+    func activeFocusSession(for friend: Friend) -> FriendFocusSession? {
+        focusSessions.first(where: { $0.friendID == friend.id && $0.isActive })
+    }
+    
     func avatarStack(for crewMembers: [CrewMember]) -> some View {
         HStack(spacing: -10) {
             ForEach(Array(crewMembers.prefix(4).enumerated()), id: \.offset) { _, member in
@@ -563,7 +738,106 @@ private extension CrewView {
         )
         .foregroundStyle(tint)
     }
+    func weekdayIndexToday() -> Int {
+        let w = Calendar.current.component(.weekday, from: Date())
+        return (w + 5) % 7
+    }
+    
+    func seedMockFriendsIfNeeded() {
+        guard friends.isEmpty else { return }
 
+        let ahmet = Friend(
+            name: "Ahmet",
+            subtitle: "Bugün 3 etkinlik",
+            avatarSymbol: "person.fill",
+            colorHex: "#3B82F6",
+            isOnline: true
+        )
+
+        let selin = Friend(
+            name: "Selin",
+            subtitle: "Yarın sınav haftası",
+            avatarSymbol: "person.fill",
+            colorHex: "#8B5CF6",
+            isOnline: false
+        )
+
+        let atakan = Friend(
+            name: "Atakan",
+            subtitle: "Bu hafta 8 ders",
+            avatarSymbol: "person.fill",
+            colorHex: "#22C55E",
+            isOnline: true
+        )
+
+        modelContext.insert(ahmet)
+        modelContext.insert(selin)
+        modelContext.insert(atakan)
+
+        let focusSession = FriendFocusSession(
+            friendID: ahmet.id,
+            title: "Shared Focus",
+            startedAt: Date(),
+            durationMinute: 25,
+            isActive: true
+        )
+
+        modelContext.insert(focusSession)
+
+        let startMessage = FriendMessage(
+            friendID: ahmet.id,
+            senderName: ahmet.name,
+            text: "\(ahmet.name) started a 25 min shared focus session.",
+            isFromMe: false
+        )
+
+        modelContext.insert(startMessage)
+
+        let sharedItems = [
+            SharedWeekItem(
+                friendID: ahmet.id,
+                title: "Math Lecture",
+                weekday: weekdayIndexToday(),
+                startMinute: 9 * 60,
+                durationMinute: 90
+            ),
+            SharedWeekItem(
+                friendID: ahmet.id,
+                title: "UI Study Session",
+                weekday: weekdayIndexToday(),
+                startMinute: 13 * 60,
+                durationMinute: 60
+            ),
+            SharedWeekItem(
+                friendID: ahmet.id,
+                title: "Physics Lab Prep",
+                weekday: weekdayIndexToday(),
+                startMinute: 18 * 60,
+                durationMinute: 60
+            )
+        ]
+
+        for item in sharedItems {
+            modelContext.insert(item)
+        }
+
+        try? modelContext.save()
+    }
+    
+    var activeFocusSessions: [FriendFocusSession] {
+        focusSessions.filter(\.isActive)
+    }
+
+    func friendForFocusSession(_ session: FriendFocusSession) -> Friend? {
+        friends.first(where: { $0.id == session.friendID })
+    }
+
+    func focusMinutesLeft(for session: FriendFocusSession) -> Int {
+        let endDate = session.startedAt.addingTimeInterval(TimeInterval(session.durationMinute * 60))
+        let remaining = Int(endDate.timeIntervalSinceNow / 60.0)
+        return max(0, remaining)
+    }
+    
     var cardBackground: some View {
         RoundedRectangle(cornerRadius: 24, style: .continuous)
             .fill(.ultraThinMaterial)

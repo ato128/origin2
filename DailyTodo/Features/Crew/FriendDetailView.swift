@@ -6,39 +6,55 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct FriendDetailView: View {
-    let name: String
-    let subtitle: String
-    let isOnline: Bool
-    let color: Color
+    let friend: Friend
+
+    @Environment(\.modelContext) private var modelContext
+
+    @Query(sort: \FriendMessage.createdAt, order: .forward)
+    private var allMessages: [FriendMessage]
+
+    @Query(sort: \SharedWeekItem.createdAt, order: .forward)
+    private var allSharedItems: [SharedWeekItem]
+    
+    @Query(sort: \FriendFocusSession.startedAt, order: .reverse)
+    private var allFocusSessions: [FriendFocusSession]
 
     @State private var showCopied = false
 
-    private let todaySchedule: [(title: String, time: String, type: String)] = [
-        ("Math Lecture", "09:00 – 10:30", "Class"),
-        ("UI Study Session", "13:00 – 14:00", "Focus"),
-        ("Physics Lab Prep", "18:00 – 19:00", "Task")
-    ]
+    private var messages: [FriendMessage] {
+        allMessages.filter { $0.friendID == friend.id }
+    }
 
-    private let weekStats: [(title: String, value: String)] = [
-        ("This Week", "8 events"),
-        ("Today", "3 plans"),
-        ("Shared", "2 items")
-    ]
+    private var todaySchedule: [SharedWeekItem] {
+        let today = weekdayIndexToday()
+        return allSharedItems
+            .filter { $0.friendID == friend.id && $0.weekday == today }
+            .sorted { $0.startMinute < $1.startMinute }
+    }
+
+    private var weekCount: Int {
+        allSharedItems.filter { $0.friendID == friend.id }.count
+    }
+    private var activeFocusSession: FriendFocusSession? {
+        allFocusSessions.first { $0.friendID == friend.id && $0.isActive }
+    }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 18) {
                 heroCard
                 todayScheduleCard
+                recentMessagesCard
                 actionsCard
             }
             .padding(16)
             .padding(.bottom, 28)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle(name)
+        .navigationTitle(friend.name)
         .navigationBarTitleDisplayMode(.inline)
         .overlay(alignment: .bottom) {
             if showCopied {
@@ -53,6 +69,9 @@ struct FriendDetailView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .onAppear {
+            seedFriendDetailIfNeeded()
+        }
     }
 }
 
@@ -63,40 +82,61 @@ private extension FriendDetailView {
             HStack(alignment: .top) {
                 ZStack {
                     Circle()
-                        .fill(color.opacity(0.16))
+                        .fill(hexColor(friend.colorHex).opacity(0.16))
                         .frame(width: 72, height: 72)
 
-                    Text(String(name.prefix(1)).uppercased())
+                    Image(systemName: friend.avatarSymbol)
                         .font(.title.bold())
-                        .foregroundStyle(color)
+                        .foregroundStyle(hexColor(friend.colorHex))
                 }
 
                 Spacer()
 
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(isOnline ? .green : Color.gray.opacity(0.5))
+                        .fill(friend.isOnline ? .green : Color.gray.opacity(0.5))
                         .frame(width: 8, height: 8)
 
-                    Text(isOnline ? "Online" : "Offline")
+                    Text(friend.isOnline ? "Online" : "Offline")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(friend.name)
+                            .font(.title2.bold())
+
+                        Text(friend.subtitle)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+
+                        if let session = activeFocusSession {
+                            HStack(spacing: 8) {
+                                Circle()
+                                    .fill(.green)
+                                    .frame(width: 8, height: 8)
+
+                                Text("In focus now • \(session.durationMinute) min")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.green)
+                            }
+                        }
+                    }
                 }
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(name)
+                Text(friend.name)
                     .font(.title2.bold())
 
-                Text(subtitle)
+                Text(friend.subtitle)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
 
             HStack(spacing: 10) {
-                ForEach(weekStats, id: \.title) { item in
-                    statPill(title: item.value, subtitle: item.title)
-                }
+                statPill(title: "\(weekCount)", subtitle: "This Week")
+                statPill(title: "\(todaySchedule.count)", subtitle: "Today")
+                statPill(title: "\(messages.count)", subtitle: "Messages")
             }
         }
         .padding(20)
@@ -117,43 +157,80 @@ private extension FriendDetailView {
                     .foregroundStyle(.secondary)
             }
 
-            ForEach(todaySchedule, id: \.title) { item in
-                HStack(spacing: 12) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(color.opacity(0.14))
-                            .frame(width: 42, height: 42)
+            if todaySchedule.isEmpty {
+                Text("No shared schedule for today.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(todaySchedule) { item in
+                    HStack(spacing: 12) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(hexColor(friend.colorHex).opacity(0.14))
+                                .frame(width: 42, height: 42)
 
-                        Image(systemName: iconForType(item.type))
-                            .foregroundStyle(color)
+                            Image(systemName: "calendar")
+                                .foregroundStyle(hexColor(friend.colorHex))
+                        }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(item.title)
+                                .font(.subheadline.weight(.semibold))
+
+                            Text("\(hm(item.startMinute)) – \(hm(item.startMinute + item.durationMinute))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
                     }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(item.title)
-                            .font(.subheadline.weight(.semibold))
-
-                        Text(item.time)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Spacer()
-
-                    Text(item.type)
-                        .font(.caption2.weight(.semibold))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .background(
-                            Capsule()
-                                .fill(Color.white.opacity(0.06))
-                        )
-                        .foregroundStyle(.secondary)
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.white.opacity(0.04))
+                    )
                 }
-                .padding(12)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.white.opacity(0.04))
-                )
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBackground)
+    }
+
+    var recentMessagesCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Recent Messages")
+                    .font(.headline)
+
+                Spacer()
+
+                Text("\(messages.suffix(3).count)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            if messages.isEmpty {
+                Text("No messages yet.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(Array(messages.suffix(3))) { message in
+                    HStack {
+                        if message.isFromMe { Spacer() }
+
+                        Text(message.text)
+                            .font(.subheadline)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(
+                                Capsule()
+                                    .fill(message.isFromMe ? Color.accentColor.opacity(0.16) : Color.white.opacity(0.06))
+                            )
+
+                        if !message.isFromMe { Spacer() }
+                    }
+                }
             }
         }
         .padding(18)
@@ -167,10 +244,31 @@ private extension FriendDetailView {
                 .font(.headline)
 
             HStack(spacing: 12) {
+                NavigationLink {
+                    FriendChatView(friend: friend)
+                } label: {
+                    VStack(spacing: 10) {
+                        Image(systemName: "message.fill")
+                            .font(.title3)
+
+                        Text("Message")
+                            .font(.caption.weight(.semibold))
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.white.opacity(0.05))
+                    )
+                }
+                .buttonStyle(.plain)
+
                 actionButton(
-                    title: "Message",
-                    systemImage: "message.fill"
+                    title: activeFocusSession == nil ? "Start Focus" : "Stop Focus",
+                    systemImage: activeFocusSession == nil ? "timer.circle.fill" : "stop.circle.fill"
                 ) {
+                    toggleSharedFocus()
                 }
 
                 actionButton(
@@ -178,27 +276,51 @@ private extension FriendDetailView {
                     systemImage: "square.and.arrow.up.fill"
                 ) {
                     UIPasteboard.general.string = "Check out my week on DailyTodo"
-                    withAnimation {
-                        showCopied = true
-                    }
-
+                    withAnimation { showCopied = true }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                        withAnimation {
-                            showCopied = false
-                        }
+                        withAnimation { showCopied = false }
                     }
-                }
-
-                actionButton(
-                    title: "Invite",
-                    systemImage: "person.badge.plus.fill"
-                ) {
                 }
             }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
+    }
+    func toggleSharedFocus() {
+        if let active = activeFocusSession {
+            active.isActive = false
+
+            let stopMessage = FriendMessage(
+                friendID: friend.id,
+                senderName: friend.name,
+                text: "\(friend.name) ended the shared focus session.",
+                isFromMe: false
+            )
+
+            modelContext.insert(stopMessage)
+            try? modelContext.save()
+            return
+        }
+
+        let session = FriendFocusSession(
+            friendID: friend.id,
+            title: "Shared Focus",
+            startedAt: Date(),
+            durationMinute: 25,
+            isActive: true
+        )
+
+        let startMessage = FriendMessage(
+            friendID: friend.id,
+            senderName: friend.name,
+            text: "\(friend.name) started a 25 min shared focus session.",
+            isFromMe: false
+        )
+
+        modelContext.insert(session)
+        modelContext.insert(startMessage)
+        try? modelContext.save()
     }
 
     func statPill(title: String, subtitle: String) -> some View {
@@ -238,13 +360,48 @@ private extension FriendDetailView {
         .buttonStyle(.plain)
     }
 
-    func iconForType(_ type: String) -> String {
-        switch type {
-        case "Class": return "book.closed.fill"
-        case "Focus": return "scope"
-        case "Task": return "checkmark.circle.fill"
-        default: return "calendar"
+    func seedFriendDetailIfNeeded() {
+        let existingShared = allSharedItems.filter { $0.friendID == friend.id }
+        if existingShared.isEmpty {
+            let today = weekdayIndexToday()
+
+            let sample = [
+                SharedWeekItem(friendID: friend.id, title: "Math Lecture", weekday: today, startMinute: 9 * 60, durationMinute: 90),
+                SharedWeekItem(friendID: friend.id, title: "UI Study Session", weekday: today, startMinute: 13 * 60, durationMinute: 60),
+                SharedWeekItem(friendID: friend.id, title: "Physics Lab Prep", weekday: today, startMinute: 18 * 60, durationMinute: 60)
+            ]
+
+            for item in sample {
+                modelContext.insert(item)
+            }
         }
+
+        let existingMessages = allMessages.filter { $0.friendID == friend.id }
+        if existingMessages.isEmpty {
+            let sampleMessages = [
+                FriendMessage(friendID: friend.id, senderName: friend.name, text: "Hey, are you free after class?", isFromMe: false),
+                FriendMessage(friendID: friend.id, senderName: "Me", text: "Yes, probably after 5.", isFromMe: true),
+                FriendMessage(friendID: friend.id, senderName: friend.name, text: "Nice, let's plan study time.", isFromMe: false)
+            ]
+
+            for item in sampleMessages {
+                modelContext.insert(item)
+            }
+        }
+
+        try? modelContext.save()
+    }
+
+    func weekdayIndexToday() -> Int {
+        let w = Calendar.current.component(.weekday, from: Date())
+        return (w + 5) % 7
+    }
+
+    func hm(_ minute: Int) -> String {
+        let m = max(0, min(1439, minute))
+        let h = m / 60
+        let mm = m % 60
+        return String(format: "%02d:%02d", h, mm)
     }
 
     var cardBackground: some View {
