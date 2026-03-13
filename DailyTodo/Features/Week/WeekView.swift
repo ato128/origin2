@@ -363,10 +363,10 @@ extension WeekView {
             crewWeekList
                 .id("crew")
                 .transition(.opacity)
-                .offset(y: showCrewEntrance ? 0 : 26)
+                .offset(y: showCrewEntrance ? 0 : 20)
                 .opacity(showCrewEntrance ? 1 : 0)
-                .scaleEffect(showCrewEntrance ? 1.0 : 0.985)
-                .animation(.spring(response: 0.45, dampingFraction: 0.86), value: showCrewEntrance)
+                .scaleEffect(showCrewEntrance ? 1.0 : 0.99)
+                .animation(.spring(response: 0.42, dampingFraction: 0.88), value: showCrewEntrance)
         }
     }
     
@@ -420,6 +420,8 @@ extension WeekView {
                 }
             } label: {
                 Image(systemName: "square.and.arrow.up")
+                    .font(.system(size: 18, weight: .semibold))
+                    .frame(width: 34, height: 34)
             }
             
             Button {
@@ -429,6 +431,8 @@ extension WeekView {
                 showPlanAheadSheet = true
             } label: {
                 Image(systemName: "calendar")
+                    .font(.system(size: 18, weight: .semibold))
+                    .frame(width: 34, height: 34)
             }
             
             Button {
@@ -445,6 +449,8 @@ extension WeekView {
                 }
             } label: {
                 Image(systemName: "plus")
+                    .font(.system(size: 20, weight: .semibold))
+                    .frame(width: 34, height: 34)
             }
         }
     }
@@ -473,7 +479,7 @@ extension WeekView {
             .fill(.ultraThinMaterial)
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
             )
     }
 }

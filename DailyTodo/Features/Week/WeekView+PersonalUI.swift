@@ -38,10 +38,10 @@ extension WeekView {
                 }
                 .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: pulseTodayDot)
             }
-            .padding(10)
+            .padding(8)
             .background(sectionCardBackground)
         }
-        .listRowInsets(EdgeInsets(top: 14, leading: 16, bottom: 6, trailing: 16))
+        .listRowInsets(EdgeInsets(top: 16, leading: 16, bottom: 8, trailing: 16))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
@@ -50,7 +50,7 @@ extension WeekView {
         Section {
             daySummaryCard
         }
-        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+        .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 14, trailing: 16))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
@@ -86,7 +86,7 @@ extension WeekView {
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(sectionCardBackground)
-        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 12, trailing: 16))
+        .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 16, trailing: 16))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
@@ -122,7 +122,7 @@ extension WeekView {
     }
 
     var daySummaryCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
@@ -162,13 +162,13 @@ extension WeekView {
 
                 if totalMinutesForDay > 0 {
                     Text(durationText(totalMinutesForDay))
-                        .font(.title3.bold())
+                        .font(.title3.weight(.semibold))
                         .foregroundStyle(.primary)
                         .monospacedDigit()
                 }
             }
 
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 summaryChip(
                     title: "Ders",
                     value: "\(eventsForDay.count)",
@@ -187,6 +187,7 @@ extension WeekView {
                     icon: "moon.stars.fill"
                 )
             }
+
             if let live = liveEventForDay {
                 HStack(spacing: 8) {
                     Circle()
@@ -207,7 +208,8 @@ extension WeekView {
                 }
             }
         }
-        .padding(18)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 18)
         .background(sectionCardBackground)
         .scaleEffect(animateSummary ? 1.01 : 1.0)
         .animation(.spring(response: 0.35, dampingFraction: 0.78), value: animateSummary)
@@ -220,15 +222,16 @@ extension WeekView {
                 .foregroundStyle(.secondary)
 
             Text(value)
-                .font(.subheadline.bold())
+                .font(.subheadline.weight(.semibold))
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
-        .padding(12)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.white.opacity(0.05))
         )
     }

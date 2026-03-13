@@ -7,8 +7,7 @@
 
 import SwiftUI
 
-// MARK: - Row
- struct EventRow: View {
+struct EventRow: View {
     
     @State private var pulse: Bool = false
     @State private var glowPhase: Bool = false
@@ -64,41 +63,39 @@ import SwiftUI
     }
     
     var body: some View {
-        
         let baseColor = hexColor(event.colorHex)
         
         let accent: Color = {
-            if isDone { return Color.secondary.opacity(0.55) }
+            if isDone { return Color.secondary.opacity(0.52) }
             if isSoon { return .orange }
             return baseColor
         }()
         
         let bg: Color = {
-            if isDone { return Color.secondary.opacity(0.06) }
-            return accent.opacity(isLive ? 0.16 : (isUpNext ? 0.13 : 0.10))
+            if isDone { return Color.secondary.opacity(0.045) }
+            return accent.opacity(isLive ? 0.14 : (isUpNext ? 0.10 : 0.075))
         }()
         
         let strokeColor: Color = {
-            if hasConflict { return .red.opacity(0.40) }
-            if isDone { return .secondary.opacity(0.14) }
-            if isLive { return accent.opacity(glowPhase ? 0.75 : 0.45) }
-            if isSoon { return .orange.opacity(0.70) }
-            if isUpNext { return accent.opacity(0.35) }
-            return .secondary.opacity(0.10)
+            if hasConflict { return .red.opacity(0.28) }
+            if isDone { return .secondary.opacity(0.11) }
+            if isLive { return accent.opacity(glowPhase ? 0.60 : 0.32) }
+            if isSoon { return .orange.opacity(0.54) }
+            if isUpNext { return accent.opacity(0.22) }
+            return .secondary.opacity(0.06)
         }()
         
         let strokeWidth: CGFloat =
-        hasConflict ? 1.6 :
-        (isLive ? 2.2 :
-            (isSoon ? 2.0 :
-                (isUpNext ? 1.4 : 1.0)))
+        hasConflict ? 1.35 :
+        (isLive ? 1.8 :
+            (isSoon ? 1.55 :
+                (isUpNext ? 1.15 : 1.0)))
         
         let mainTextOpacity: Double = isDone ? 0.55 : 1.0
         let secondaryTextOpacity: Double = isDone ? 0.55 : 1.0
         
-        HStack(spacing: 12) {
-            
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
+        HStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: 5, style: .continuous)
                 .fill(
                     LinearGradient(
                         colors: [accent.opacity(1.0), accent.opacity(0.55)],
@@ -106,59 +103,57 @@ import SwiftUI
                         endPoint: .bottom
                     )
                 )
-                .frame(width: isLive ? 10 : 8)
-                .shadow(color: isLive ? accent.opacity(0.55) : .clear, radius: isLive ? 14 : 6)
+                .frame(width: isLive ? 9 : 7)
+                .shadow(color: isLive ? accent.opacity(0.40) : .clear, radius: isLive ? 10 : 0)
                 .padding(.vertical, 10)
-                .opacity(isDone ? 0.75 : 1.0)
+                .opacity(isDone ? 0.72 : 1.0)
             
-            VStack(alignment: .leading, spacing: 10) {
-                
+            VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(event.title)
-                        .font(.headline)
+                        .font(.subheadline.weight(.bold))
                         .lineLimit(1)
                         .opacity(mainTextOpacity)
                     
                     if isLive {
-                        Text("Şu an")
-                            .font(.caption2.weight(.bold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Capsule().fill(accent.opacity(0.25)))
-                            .overlay(Capsule().stroke(accent.opacity(0.45), lineWidth: 1))
+                        statusPill("Şu an", tint: accent)
                     } else if isSoon {
-                        Text("5 dk kaldı")
-                            .font(.caption2.weight(.bold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Capsule().fill(Color.orange.opacity(0.22)))
-                            .overlay(Capsule().stroke(Color.orange.opacity(0.55), lineWidth: 1))
+                        statusPill("5 dk", tint: .orange)
                     } else if isDone {
-                        Text("Bitti")
-                            .font(.caption2.weight(.bold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Capsule().fill(Color.secondary.opacity(0.12)))
-                            .overlay(Capsule().stroke(Color.secondary.opacity(0.18), lineWidth: 1))
+                        statusPill("Bitti", tint: .secondary)
                             .opacity(0.9)
                     }
                     
-                    Spacer()
+                    Spacer(minLength: 6)
                     
                     if hasConflict {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.red)
-                            .accessibilityLabel("Çakışma var")
                     }
                     
                     Text(timeText)
                         .font(.caption.weight(.semibold))
                         .monospacedDigit()
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Capsule().fill(isDone ? Color.secondary.opacity(0.10) : accent.opacity(isLive ? 0.25 : 0.18)))
-                        .overlay(Capsule().stroke(isDone ? Color.secondary.opacity(0.16) : accent.opacity(isLive ? 0.40 : 0.25), lineWidth: 1))
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5)
+                        .background(
+                            Capsule()
+                                .fill(
+                                    isDone
+                                    ? Color.secondary.opacity(0.08)
+                                    : accent.opacity(isLive ? 0.22 : 0.14)
+                                )
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(
+                                    isDone
+                                    ? Color.secondary.opacity(0.14)
+                                    : accent.opacity(isLive ? 0.34 : 0.22),
+                                    lineWidth: 1
+                                )
+                        )
                         .opacity(secondaryTextOpacity)
                 }
                 
@@ -166,12 +161,12 @@ import SwiftUI
                     if let loc = event.location,
                        !loc.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         Label(loc, systemImage: "mappin.and.ellipse")
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(Capsule().fill(Color.secondary.opacity(0.10)))
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(Color.secondary.opacity(0.08)))
                             .opacity(secondaryTextOpacity)
                     }
                     
@@ -184,7 +179,7 @@ import SwiftUI
                 }
                 
                 if isLive {
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 5) {
                         ProgressView(value: progress)
                             .tint(baseColor)
                             .animation(.smooth, value: progress)
@@ -194,7 +189,7 @@ import SwiftUI
                                 .font(.caption2)
                                 .foregroundStyle(baseColor)
                             
-                            Text("%\(Int(progress * 100))% tamamlandı")
+                            Text("%\(Int(progress * 100))")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                             
@@ -202,8 +197,6 @@ import SwiftUI
                             
                             Text("\(minutesLeft) dk kaldı")
                                 .font(.caption2.weight(.semibold))
-                            
-                            
                         }
                     }
                 }
@@ -213,24 +206,25 @@ import SwiftUI
                         Text("\(minutesUntilStart) dk")
                             .font(.caption2.weight(.bold))
                             .monospacedDigit()
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(Capsule().fill((isDone ? Color.secondary.opacity(0.10) : accent.opacity(0.18))))
-                            .overlay(Capsule().stroke((isDone ? Color.secondary.opacity(0.16) : accent.opacity(0.28)), lineWidth: 1))
-                            .opacity(secondaryTextOpacity)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(accent.opacity(0.14)))
+                            .overlay(
+                                Capsule()
+                                    .stroke(accent.opacity(0.22), lineWidth: 1)
+                            )
                         
-                        Text("sonra (\(hm(start))) başlıyor")
+                        Text("sonra (\(hm(start)))")
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.secondary)
-                            .opacity(secondaryTextOpacity)
                         
                         Spacer()
                     }
                 }
             }
-            .padding(.vertical, 12)
+            .padding(.vertical, 10)
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 14)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(bg)
@@ -239,7 +233,7 @@ import SwiftUI
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(isLive ? 0.16 : 0.10),
+                                    Color.white.opacity(isLive ? 0.11 : 0.06),
                                     Color.white.opacity(0.00)
                                 ],
                                 startPoint: .topLeading,
@@ -252,10 +246,9 @@ import SwiftUI
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(strokeColor, lineWidth: strokeWidth)
         )
-        .shadow(color: isLive ? baseColor.opacity(glowPhase ? 0.42 : 0.22) : .clear, radius: isLive ? 18 : 0)
-        .shadow(color: isSoon ? Color.orange.opacity(0.30) : .clear, radius: isSoon ? 10 : 0)
-        .shadow(radius: isLive ? 8 : 0)
-        .scaleEffect(isLive && pulse ? 1.012 : 1.0)
+        .shadow(color: isLive ? baseColor.opacity(glowPhase ? 0.30 : 0.14) : .clear, radius: isLive ? 12 : 0)
+        .shadow(color: isSoon ? Color.orange.opacity(0.18) : .clear, radius: isSoon ? 8 : 0)
+        .scaleEffect(isLive && pulse ? 1.006 : 1.0)
         .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: pulse)
         .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: glowPhase)
         .onAppear {
@@ -278,21 +271,32 @@ import SwiftUI
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
             Button {
                 Haptics.impact(.light)
-                onEdit()
+                onTap()
             } label: {
-                Label("Düzenle", systemImage: "pencil")
+                Label("Details", systemImage: "info.circle")
             }
-            .tint(.blue)
+            .tint(.indigo)
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
                 Haptics.impact(.heavy)
                 onDelete()
             } label: {
-                Label("Sil", systemImage: "trash")
+                Label("Delete", systemImage: "trash")
             }
         }
     }
+    
+    @ViewBuilder
+    private func statusPill(_ text: String, tint: Color) -> some View {
+        Text(text)
+            .font(.caption2.weight(.bold))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(tint.opacity(0.18)))
+            .overlay(
+                Capsule()
+                    .stroke(tint.opacity(0.30), lineWidth: 1)
+            )
+    }
 }
-
-
