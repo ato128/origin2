@@ -20,6 +20,7 @@ struct FriendChatView: View {
     @State private var draftMessage: String = ""
     @State private var animateMessages = false
     @State private var sendPressed = false
+    
 
     private var messages: [FriendMessage] {
         allMessages.filter { $0.friendID == friend.id }
@@ -47,6 +48,7 @@ struct FriendChatView: View {
         .onAppear {
             seedMessagesIfNeeded()
         }
+       
     }
 }
 

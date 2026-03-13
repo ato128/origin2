@@ -16,6 +16,8 @@ struct CreateCrewTaskView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    
+    @Query private var tasks: [CrewTask]
 
     @State private var title: String = ""
     @State private var details: String = ""
@@ -163,6 +165,8 @@ struct CreateCrewTaskView: View {
         let systemWeekday = comps.weekday ?? 2
         let convertedWeekday = (systemWeekday + 5) % 7
         let startMinute = ((comps.hour ?? 0) * 60) + (comps.minute ?? 0)
+        
+       
 
         let task = CrewTask(
             crewID: crew.id,
@@ -179,6 +183,10 @@ struct CreateCrewTaskView: View {
             scheduledDate: showOnWeek ? plannedDate : nil,
             isDone: status == "done"
         )
+        let existingTasks = tasks.filter { $0.crewID == crew.id }
+        let maxOrder = existingTasks.map(\.orderIndex).max() ?? -1
+        task.orderIndex = maxOrder + 1
+       
 
         modelContext.insert(task)
 

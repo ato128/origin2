@@ -38,6 +38,8 @@ final class CrewTask {
 
     var isDone: Bool
     var createdAt: Date
+    
+    var orderIndex: Int = 0
 
     init(
         id: UUID = UUID(),
@@ -54,8 +56,10 @@ final class CrewTask {
         scheduledDurationMinute: Int? = nil,
         scheduledDate: Date? = nil,
         isDone: Bool = false,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        orderIndex: Int = 0
     ) {
+        self.orderIndex = orderIndex
         self.id = id
         self.crewID = crewID
         self.title = title

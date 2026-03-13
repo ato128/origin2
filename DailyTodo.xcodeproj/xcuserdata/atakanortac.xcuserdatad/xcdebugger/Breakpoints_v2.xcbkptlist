@@ -30,8 +30,8 @@
             filePath = "DailyTodo/Features/Crew/CrewView.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "726"
-            endingLineNumber = "726"
+            startingLineNumber = "742"
+            endingLineNumber = "742"
             landmarkName = "crewCard(for:)"
             landmarkType = "7">
          </BreakpointContent>

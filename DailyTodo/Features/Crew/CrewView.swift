@@ -37,6 +37,7 @@ struct CrewView: View {
     @State private var crewTabMode: CrewTabMode
     @State private var showJoinFocusSheet = false
     @State private var selectedFocusSession: FriendFocusSession?
+    @State private var pulseLiveIndicator = false
     
     init(initialTab: CrewTabMode = .crews) {
         self.initialTab = initialTab
@@ -65,6 +66,9 @@ struct CrewView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 28)
+                }
+                .onAppear {
+                    pulseLiveIndicator = true
                 }
                 .scrollIndicators(.hidden)
             }
@@ -360,9 +364,21 @@ private extension CrewView {
                             Spacer()
 
                             HStack(spacing: 6) {
-                                Circle()
-                                    .fill(.green)
-                                    .frame(width: 8, height: 8)
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.green)
+                                        .frame(width: 8, height: 8)
+
+                                    Circle()
+                                        .stroke(Color.green.opacity(0.40), lineWidth: 1.5)
+                                        .frame(width: 16, height: 16)
+                                        .scaleEffect(pulseLiveIndicator ? 1.22 : 0.86)
+                                        .opacity(pulseLiveIndicator ? 0.0 : 0.9)
+                                        .animation(
+                                            .easeOut(duration: 1.2).repeatForever(autoreverses: false),
+                                            value: pulseLiveIndicator
+                                        )
+                                }
 
                                 Text("Live")
                                     .font(.caption2.weight(.semibold))
@@ -770,9 +786,25 @@ private extension CrewView {
 
                 if activeSession != nil {
                     HStack(spacing: 6) {
-                        Circle()
-                            .fill(Color.green)
-                            .frame(width: 8, height: 8)
+                        ZStack {
+                            Circle()
+                                .fill(.green)
+                                .frame(width: 8, height: 8)
+
+                            Circle()
+                                .stroke(Color.green.opacity(0.45), lineWidth: 1.5)
+                                .frame(width: 16, height: 16)
+                                .scaleEffect(pulseLiveIndicator ? 1.25 : 0.85)
+                                .opacity(pulseLiveIndicator ? 0.0 : 0.9)
+                                .animation(
+                                    .easeOut(duration: 1.2).repeatForever(autoreverses: false),
+                                    value: pulseLiveIndicator
+                                )
+                        }
+
+                        Text("Live")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.green)
 
                         Text("Focusing")
                             .font(.caption2)
@@ -780,9 +812,23 @@ private extension CrewView {
                     }
                 } else {
                     HStack(spacing: 6) {
-                        Circle()
-                            .fill(friend.isOnline ? Color.green : Color.gray.opacity(0.5))
-                            .frame(width: 8, height: 8)
+                        ZStack {
+                            Circle()
+                                .fill(friend.isOnline ? Color.green : Color.gray.opacity(0.5))
+                                .frame(width: 8, height: 8)
+
+                            if friend.isOnline {
+                                Circle()
+                                    .stroke(Color.green.opacity(0.35), lineWidth: 1.5)
+                                    .frame(width: 16, height: 16)
+                                    .scaleEffect(pulseLiveIndicator ? 1.18 : 0.88)
+                                    .opacity(pulseLiveIndicator ? 0.0 : 0.85)
+                                    .animation(
+                                        .easeOut(duration: 1.2).repeatForever(autoreverses: false),
+                                        value: pulseLiveIndicator
+                                    )
+                            }
+                        }
 
                         Text(friend.isOnline ? "Online" : "Offline")
                             .font(.caption2)
