@@ -12,23 +12,125 @@ import Combine
 extension HomeDashboardView {
 
     var headerCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("\(greetingText) 👋")
-                .font(.title2.bold())
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("\(greetingText) 👋")
+                        .font(.title2.bold())
 
-            Text(todayDateText)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                    Text(todayDateText)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
 
-            Text("Stay productive today 🚀")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                    Text("Stay productive today 🚀")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 12)
+
+                if let recentFriend = recentChatFriend {
+                    Button {
+                        showRecentFriendChat = true
+                    } label: {
+                        HStack(spacing: 7) {
+                            ZStack {
+                                Circle()
+                                    .fill(hexColor(recentFriend.colorHex).opacity(0.14))
+                                    .frame(width: 20, height: 20)
+                                    .shadow(
+                                        color: isSharedFocusActive
+                                        ? hexColor(recentFriend.colorHex).opacity(0.28)
+                                        : .clear,
+                                        radius: isSharedFocusActive ? 5 : 0
+                                    )
+
+                                Image(systemName: recentFriend.avatarSymbol)
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundStyle(hexColor(recentFriend.colorHex))
+
+                                Circle()
+                                    .fill(isSharedFocusActive ? .green : Color.accentColor)
+                                    .frame(width: 7, height: 7)
+                                    .overlay(
+                                        Circle()
+                                            .stroke(Color.black, lineWidth: 1.4)
+                                    )
+                                    .scaleEffect(isSharedFocusActive ? (pulseRecentFriendPill ? 1.18 : 0.92) : 1.0)
+                                    .opacity(isSharedFocusActive ? (pulseRecentFriendPill ? 0.9 : 1.0) : 1.0)
+                                    .offset(x: 7, y: -7)
+                            }
+
+                            Text(
+                                isSharedFocusActive
+                                ? "\((recentFriend.name.components(separatedBy: " ").first ?? recentFriend.name)) • Focus"
+                                : (recentFriend.name.components(separatedBy: " ").first ?? recentFriend.name)
+                            )
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.white.opacity(0.92))
+                            .lineLimit(1)
+                        }
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(
+                                    isSharedFocusActive
+                                    ? Color.green.opacity(0.22)
+                                    : Color.white.opacity(0.08),
+                                    lineWidth: 1
+                                )
+                        )
+                        .shadow(
+                            color: isSharedFocusActive
+                            ? Color.green.opacity(pulseRecentFriendPill ? 0.16 : 0.08)
+                            : .clear,
+                            radius: isSharedFocusActive ? (pulseRecentFriendPill ? 10 : 4) : 0
+                        )
+                        .scaleEffect(pulseRecentFriendPill ? 1.015 : 1.0)
+                        .animation(
+                            .easeInOut(duration: 1.1).repeatForever(autoreverses: true),
+                            value: pulseRecentFriendPill
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .onAppear {
+                        pulseRecentFriendPill = isSharedFocusActive
+                    }
+                    .onChange(of: isSharedFocusActive) { _, newValue in
+                        pulseRecentFriendPill = newValue
+                    }
+                } else {
+                    Button {
+                        showFriendsShortcut = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "message.fill")
+                                .font(.system(size: 10, weight: .semibold))
+
+                            Text("Friends")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .foregroundStyle(.white.opacity(0.92))
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
         }
-        .padding(18)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
     }
-
     var homeMiniWeekCalendar: some View {
         VStack(spacing: 8) {
             HStack {
@@ -139,7 +241,7 @@ extension HomeDashboardView {
                 .tint(.accentColor)
                 .scaleEffect(y: 1.8)
 
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 miniBadge(
                     icon: "flame.fill",
                     text: "\(streakCount) gün seri",
@@ -222,21 +324,21 @@ extension HomeDashboardView {
             let urgencyColor = activeFocusUrgencyColor(for: liveRemaining)
             let warmState = liveRemaining > 0 && liveRemaining <= 30
 
-            VStack(alignment: .leading, spacing: 14) {
-                HStack {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .center) {
                     HStack(spacing: 8) {
                         Circle()
                             .fill(urgencyColor)
                             .frame(width: 8, height: 8)
-                            .scaleEffect(liveDotPulse ? 1.4 : 0.8)
-                            .opacity(liveDotPulse ? 0.6 : 1)
+                            .scaleEffect(liveDotPulse ? 1.35 : 0.85)
+                            .opacity(liveDotPulse ? 0.65 : 1)
                             .animation(
                                 .easeInOut(duration: 1).repeatForever(autoreverses: true),
                                 value: liveDotPulse
                             )
 
                         Text(isSharedFocusActive ? "Shared Focus Running" : "Focus Running")
-                            .font(.headline)
+                            .font(.subheadline.weight(.semibold))
                     }
 
                     Spacer()
@@ -251,33 +353,35 @@ extension HomeDashboardView {
                     ? ((activeSharedFriendName != nil) ? "\(activeSharedFriendName!) ile focus" : "Shared Focus")
                     : (activeFocusTaskTitle.isEmpty ? "Deep Work Session" : activeFocusTaskTitle)
                 )
-                    .font(.title3.weight(.semibold))
-                    .lineLimit(2)
+                .font(.title3.weight(.bold))
+                .lineLimit(2)
+                .minimumScaleFactor(0.9)
 
                 smoothActiveFocusProgressBar(at: now)
+                    .frame(height: 10)
 
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     miniBadge(
                         icon: "timer",
-                        text: liveRemaining <= 30 ? "Son 30 saniye" : "Odak aktif",
+                        text: liveRemaining <= 30 ? "Son 30 sn" : "Odak aktif",
                         tint: urgencyColor
                     )
 
                     miniBadge(
                         icon: "scope",
-                        text: "Devam ediyor",
+                        text: "Devam",
                         tint: warmState ? urgencyColor : .green
                     )
                 }
 
-                HStack(spacing: 12) {
+                HStack(spacing: 8) {
                     Button {
                         showingFocusSession = true
                     } label: {
                         Text("Open Focus")
                             .font(.subheadline.weight(.semibold))
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 11)
+                            .padding(.vertical, 8)
                             .background(Color.accentColor)
                             .foregroundStyle(.white)
                             .clipShape(Capsule())
@@ -290,7 +394,7 @@ extension HomeDashboardView {
                         Text("Stop")
                             .font(.subheadline.weight(.semibold))
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 11)
+                            .padding(.vertical, 8)
                             .background(Color.red.opacity(0.14))
                             .foregroundStyle(.red)
                             .clipShape(Capsule())
@@ -298,7 +402,7 @@ extension HomeDashboardView {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(18)
+            .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
@@ -310,18 +414,18 @@ extension HomeDashboardView {
                     .overlay(
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
                             .stroke(
-                                urgencyColor.opacity(pulseActiveFocus ? 0.38 : 0.18),
-                                lineWidth: 1.2
+                                urgencyColor.opacity(pulseActiveFocus ? 0.34 : 0.16),
+                                lineWidth: 1.1
                             )
                     )
             )
             .shadow(
-                color: urgencyColor.opacity(pulseActiveFocus ? 0.28 : 0.12),
-                radius: pulseActiveFocus ? 18 : 8,
+                color: urgencyColor.opacity(pulseActiveFocus ? 0.22 : 0.10),
+                radius: pulseActiveFocus ? 14 : 7,
                 x: 0,
-                y: 6
+                y: 5
             )
-            .scaleEffect(pulseActiveFocus ? 1.01 : 1.0)
+            .scaleEffect(pulseActiveFocus ? 1.008 : 1.0)
             .animation(
                 .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
                 value: pulseActiveFocus
@@ -662,14 +766,19 @@ extension HomeDashboardView {
     }
 
     func miniBadge(icon: String, text: String, tint: Color) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 5) {
             Image(systemName: icon)
+                .font(.caption2)
+
             Text(text)
         }
-        .font(.caption.weight(.semibold))
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(Capsule().fill(tint.opacity(0.15)))
+        .font(.caption2.weight(.semibold))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+            Capsule()
+                .fill(tint.opacity(0.14))
+        )
         .foregroundStyle(tint)
     }
 

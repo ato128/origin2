@@ -38,7 +38,7 @@ struct MainTabView: View {
             .tag(AppTab.week)
 
             NavigationStack {
-                CrewView()
+                CrewView(initialTab: .crews)
             }
             .tabItem { Label("Crew", systemImage: "person.3.fill") }
             .tag(AppTab.crew)

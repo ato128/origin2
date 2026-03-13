@@ -15,6 +15,8 @@ enum CrewTabMode: String, CaseIterable {
 
 struct CrewView: View {
     @Environment(\.modelContext) private var modelContext
+    
+    let initialTab: CrewTabMode
 
     @Query(sort: \Crew.createdAt, order: .reverse)
     private var crews: [Crew]
@@ -32,9 +34,14 @@ struct CrewView: View {
     private var focusSessions: [FriendFocusSession]
 
     @State private var showCreateCrew = false
-    @State private var crewTabMode: CrewTabMode = .crews
+    @State private var crewTabMode: CrewTabMode
     @State private var showJoinFocusSheet = false
     @State private var selectedFocusSession: FriendFocusSession?
+    
+    init(initialTab: CrewTabMode = .crews) {
+        self.initialTab = initialTab
+        _crewTabMode = State(initialValue: initialTab)
+    }
 
     var body: some View {
         NavigationStack {

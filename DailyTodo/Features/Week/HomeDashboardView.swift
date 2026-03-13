@@ -15,6 +15,12 @@ struct HomeDashboardView: View {
 
     @Query(sort: \EventItem.startMinute, order: .forward)
     var allEvents: [EventItem]
+    
+    @Query(sort: \Friend.createdAt, order: .reverse)
+    private var friends: [Friend]
+
+    @Query(sort: \FriendMessage.createdAt, order: .reverse)
+    private var allFriendMessages: [FriendMessage]
 
     let onAddTask: () -> Void
     let onOpenWeek: () -> Void
@@ -33,6 +39,9 @@ struct HomeDashboardView: View {
     @State var nextClassPulse: Bool = false
     @State var nextClassSweep: Bool = false
     @State var selectedDay: Int = 0
+    @State  var showFriendsShortcut = false
+    @State  var showRecentFriendChat = false
+    @State  var pulseRecentFriendPill = false
 
     let focusRefreshTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -104,6 +113,12 @@ struct HomeDashboardView: View {
         }
 
         return "🎯 Öncelikli görev"
+    }
+    
+    var recentChatFriend: Friend? {
+        let sorted = allFriendMessages.sorted { $0.createdAt > $1.createdAt }
+        guard let latestMessage = sorted.first else { return nil }
+        return friends.first(where: { $0.id == latestMessage.friendID })
     }
 
     var nextEvent: EventItem? {
@@ -227,8 +242,11 @@ struct HomeDashboardView: View {
                 quickActionsCard
             }
             .padding(16)
-            .padding(.bottom, 20)
+            .padding(.bottom, 36)
             .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocusActive)
+        }
+        .safeAreaInset(edge: .bottom) {
+            Color.clear.frame(height: 90)
         }
         .background(Color(.systemGroupedBackground))
         .sheet(isPresented: $showingFocusSession) {
@@ -254,6 +272,18 @@ struct HomeDashboardView: View {
                     pulseActiveFocus = false
                 }
             )
+        }
+        .sheet(isPresented: $showRecentFriendChat) {
+            if let recentFriend = recentChatFriend {
+                NavigationStack {
+                    FriendChatView(friend: recentFriend)
+                }
+            }
+        }
+        .sheet(isPresented: $showFriendsShortcut) {
+            NavigationStack {
+                CrewView(initialTab: .friends)
+            }
         }
         .onAppear {
             selectedDay = weekdayIndexToday()
