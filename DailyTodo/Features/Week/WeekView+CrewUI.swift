@@ -28,6 +28,7 @@ extension WeekView {
 
             VStack(spacing: 0) {
                 modeTitleSwitcher
+                    .padding(.bottom, 6)
 
                 LazyVStack(spacing: 0, pinnedViews: []) {
                     pickerSection
@@ -39,9 +40,10 @@ extension WeekView {
                         eventsSection
                     }
 
-                    Spacer(minLength: 90)
+                    Spacer(minLength: 104)
                 }
             }
+            .padding(.top, 4)
         }
         .coordinateSpace(name: "personalScroll")
         .onPreferenceChange(WeekScrollOffsetKey.self) { value in
@@ -49,10 +51,10 @@ extension WeekView {
         }
         .scrollIndicators(.hidden)
         .background(Color(.systemGroupedBackground))
-        .offset(y: showPersonalEntrance ? 0 : 28)
+        .offset(y: showPersonalEntrance ? 0 : 22)
         .opacity(showPersonalEntrance ? 1 : 0)
-        .scaleEffect(showPersonalEntrance ? 1.0 : 0.985)
-        .animation(.spring(response: 0.44, dampingFraction: 0.86), value: showPersonalEntrance)
+        .scaleEffect(showPersonalEntrance ? 1.0 : 0.992)
+        .animation(.spring(response: 0.40, dampingFraction: 0.88), value: showPersonalEntrance)
     }
 
     var crewWeekList: some View {
@@ -174,10 +176,10 @@ extension WeekView {
         }
         .scrollIndicators(.hidden)
         .background(Color(.systemGroupedBackground))
-        .offset(y: showCrewEntrance ? 0 : 30)
+        .offset(y: showCrewEntrance ? 0 : 24)
         .opacity(showCrewEntrance ? 1 : 0)
-        .scaleEffect(showCrewEntrance ? 1 : 0.98)
-        .animation(.spring(response: 0.45, dampingFraction: 0.85), value: showCrewEntrance)
+        .scaleEffect(showCrewEntrance ? 1 : 0.99)
+        .animation(.spring(response: 0.42, dampingFraction: 0.87), value: showCrewEntrance)
         .onAppear {
             if !didAnimateCrewCards {
                 didAnimateCrewCards = true
@@ -186,7 +188,7 @@ extension WeekView {
     }
 
     var crewPickerSection: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             ForEach(0..<7, id: \.self) { day in
                 Button {
                     withAnimation(.spring(duration: 0.28)) {
@@ -197,9 +199,9 @@ extension WeekView {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(day == selectedDay ? .white : .primary)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
+                        .padding(.vertical, 11)
                         .background(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .fill(
                                     day == selectedDay
                                     ? LinearGradient(
@@ -269,8 +271,8 @@ extension WeekView {
                             .lineLimit(1)
                     }
                     .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 9)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 7)
                     .background(
                         Capsule()
                             .fill(
