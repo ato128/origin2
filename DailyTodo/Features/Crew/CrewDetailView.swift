@@ -15,31 +15,34 @@ struct CrewDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) var dbContext
 
-    @State  var showCreateTask = false
-    @State  var showAddMemberSheet = false
-    @State  var selectedTaskForEdit: CrewTask?
-    @State  var showShareSheet = false
+    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
+    var palette: ThemePalette { ThemePalette() }
 
-    @State  var showHeroCard = false
-    @State  var showStatsRow = false
-    @State  var showMembersSection = false
-    @State  var showTasksSection = false
-    @State  var showFocusSection = false
-    @State  var showActivitySection = false
+    @State var showCreateTask = false
+    @State var showAddMemberSheet = false
+    @State var selectedTaskForEdit: CrewTask?
+    @State var showShareSheet = false
 
-    @State  var editableTasks: [CrewTask] = []
-    @State  var isReorderMode = false
-    @State  var draggedTask: CrewTask?
+    @State var showHeroCard = false
+    @State var showStatsRow = false
+    @State var showMembersSection = false
+    @State var showTasksSection = false
+    @State var showFocusSection = false
+    @State var showActivitySection = false
 
-    @Query  var members: [CrewMember]
-    @Query  var tasks: [CrewTask]
+    @State var editableTasks: [CrewTask] = []
+    @State var isReorderMode = false
+    @State var draggedTask: CrewTask?
+
+    @Query var members: [CrewMember]
+    @Query var tasks: [CrewTask]
 
     @Query(sort: \CrewActivity.createdAt, order: .reverse)
-     var activities: [CrewActivity]
+    var activities: [CrewActivity]
 
-    @Query  var comments: [CrewTaskComment]
-    @Query  var polls: [CrewTaskPoll]
-    @Query  var reactions: [CrewTaskReaction]
+    @Query var comments: [CrewTaskComment]
+    @Query var polls: [CrewTaskPoll]
+    @Query var reactions: [CrewTaskReaction]
 
     var body: some View {
         let crewMembers = members.filter { $0.crewID == crew.id }
@@ -137,7 +140,6 @@ struct CrewDetailView: View {
             }
             .scrollIndicators(.hidden)
         }
-        .background(Color(.systemGroupedBackground))
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
@@ -215,30 +217,31 @@ struct CrewDetailView: View {
 
     var ambientBackground: some View {
         ZStack(alignment: .topLeading) {
-            Color(.systemGroupedBackground)
+            AppBackground()
+
+            if appTheme == AppTheme.gradient.rawValue {
+                RadialGradient(
+                    colors: [
+                        Color.purple.opacity(0.12),
+                        Color.clear
+                    ],
+                    center: .topLeading,
+                    startRadius: 30,
+                    endRadius: 260
+                )
                 .ignoresSafeArea()
 
-            RadialGradient(
-                colors: [
-                    Color.purple.opacity(0.12),
-                    Color.clear
-                ],
-                center: .topLeading,
-                startRadius: 30,
-                endRadius: 260
-            )
-            .ignoresSafeArea()
-
-            RadialGradient(
-                colors: [
-                    hexColor(crew.colorHex).opacity(0.10),
-                    Color.clear
-                ],
-                center: .topTrailing,
-                startRadius: 60,
-                endRadius: 320
-            )
-            .ignoresSafeArea()
+                RadialGradient(
+                    colors: [
+                        hexColor(crew.colorHex).opacity(0.10),
+                        Color.clear
+                    ],
+                    center: .topTrailing,
+                    startRadius: 60,
+                    endRadius: 320
+                )
+                .ignoresSafeArea()
+            }
         }
     }
 
@@ -249,15 +252,17 @@ struct CrewDetailView: View {
             } label: {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(palette.primaryText)
                     .frame(width: 56, height: 56)
                     .background(
                         Circle()
-                            .fill(.ultraThinMaterial)
+                            .fill(palette.cardFill)
                             .overlay(
                                 Circle()
-                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                    .stroke(palette.cardStroke, lineWidth: 1)
                             )
                     )
+                    .shadow(color: palette.shadowColor, radius: 10, y: 4)
             }
             .buttonStyle(.plain)
 
@@ -265,6 +270,7 @@ struct CrewDetailView: View {
 
             Text(crew.name)
                 .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundStyle(palette.primaryText)
 
             Spacer()
 
@@ -306,28 +312,29 @@ struct CrewDetailView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(crew.name)
                     .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(palette.primaryText)
 
                 Text("Manage members, shared tasks, and project activity in one place.")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
             }
 
             HStack(spacing: 10) {
                 infoPill(text: "\(memberCount) members", tint: hexColor(crew.colorHex))
-                infoPill(text: "\(totalTasks) tasks", tint: .secondary)
+                infoPill(text: "\(totalTasks) tasks", tint: palette.secondaryText)
             }
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("Crew Progress")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
 
                     Spacer()
 
                     Text("\(Int(progress * 100))%")
                         .font(.caption.weight(.bold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                 }
 
                 ProgressView(value: progress)
@@ -374,21 +381,31 @@ struct CrewDetailView: View {
 
             Text(value)
                 .font(.title3.bold())
+                .foregroundStyle(palette.primaryText)
                 .monospacedDigit()
 
             Text(title)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
-        .background(cardBackground)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(palette.secondaryCardFill)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
+                )
+        )
     }
+
     func focusSection(memberCount: Int) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("Focus Together")
                     .font(.headline)
+                    .foregroundStyle(palette.primaryText)
 
                 Spacer()
 
@@ -398,11 +415,11 @@ struct CrewDetailView: View {
 
             Text("Start a shared focus session and keep your crew productive together.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
 
             HStack(spacing: 10) {
                 infoPill(text: "\(memberCount) participants", tint: hexColor(crew.colorHex))
-                infoPill(text: "25 min", tint: .secondary)
+                infoPill(text: "25 min", tint: palette.secondaryText)
             }
 
             Button {
@@ -425,9 +442,6 @@ struct CrewDetailView: View {
         .background(cardBackground)
     }
 
-   
-    
-
     func infoPill(text: String, tint: Color) -> some View {
         Text(text)
             .font(.caption.weight(.semibold))
@@ -443,21 +457,21 @@ struct CrewDetailView: View {
     func emptyMiniState(text: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: "sparkles")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
 
             Text(text)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
         }
         .padding(.vertical, 4)
     }
 
     var cardBackground: some View {
         RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(.ultraThinMaterial)
+            .fill(palette.cardFill)
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    .stroke(palette.cardStroke, lineWidth: 1)
             )
     }
 

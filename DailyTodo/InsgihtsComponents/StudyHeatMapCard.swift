@@ -10,6 +10,9 @@ import SwiftUI
 struct StudyHeatMapCard: View {
     let data: StudyHeatmapData
 
+    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
+    private let palette = ThemePalette()
+
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 7)
 
     @State private var isVisible = false
@@ -19,12 +22,13 @@ struct StudyHeatMapCard: View {
             HStack {
                 Text(data.title)
                     .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(palette.primaryText)
 
                 Spacer()
 
                 Text(data.subtitle)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
             }
 
             LazyVGrid(columns: columns, spacing: 9) {
@@ -39,32 +43,38 @@ struct StudyHeatMapCard: View {
                                         .blur(radius: 8)
                                         .scaleEffect(isVisible ? 1.15 : 0.85)
                                 }
-                                
+
                                 RoundedRectangle(cornerRadius: 7, style: .continuous)
                                     .fill(fillColor(for: cell))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                            .stroke(cell.isSelected ? Color.white.opacity(0.35) : .clear, lineWidth: 1)
+                                            .stroke(
+                                                cell.isSelected
+                                                ? (appTheme == AppTheme.light.rawValue
+                                                   ? Color.black.opacity(0.10)
+                                                   : Color.white.opacity(0.35))
+                                                : .clear,
+                                                lineWidth: 1
+                                            )
                                     )
                             }
-                                .frame(height: 20)
-                                .opacity(isVisible ? 1 : 0)
-                                .scaleEffect(isVisible ? (cell.isSelected ? 1.05 : 1.0) : 0.86)
-                                .offset(y: isVisible ? 0 : 6)
-                                .animation(
-                                    .spring(response: 0.48, dampingFraction: 0.82)
-                                        .delay(Double(index) * 0.012),
-                                    value: isVisible
-                                )
-               ) }
-            
-            
+                            .frame(height: 20)
+                            .opacity(isVisible ? 1 : 0)
+                            .scaleEffect(isVisible ? (cell.isSelected ? 1.05 : 1.0) : 0.86)
+                            .offset(y: isVisible ? 0 : 6)
+                            .animation(
+                                .spring(response: 0.48, dampingFraction: 0.82)
+                                    .delay(Double(index) * 0.012),
+                                value: isVisible
+                            )
+                        )
+                }
             }
 
             HStack(spacing: 8) {
                 Text("Az")
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
 
                 ForEach(0..<4, id: \.self) { level in
                     RoundedRectangle(cornerRadius: 5, style: .continuous)
@@ -74,12 +84,12 @@ struct StudyHeatMapCard: View {
 
                 Text("Çok")
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
             }
 
             Text(data.selectedDayText)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
         }
         .padding(18)
         .background(cardBackground)
@@ -92,28 +102,36 @@ struct StudyHeatMapCard: View {
 
     func fillColor(for cell: InsightsHeatmapCell) -> Color {
         switch cell.level {
-        case 0: return Color.white.opacity(0.06)
-        case 1: return Color.accentColor.opacity(0.26)
-        case 2: return Color.accentColor.opacity(0.50)
-        default: return Color.accentColor
+        case 0:
+            return palette.secondaryCardFill
+        case 1:
+            return Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.18 : 0.26)
+        case 2:
+            return Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.36 : 0.50)
+        default:
+            return Color.accentColor
         }
     }
 
     func legendColor(for level: Int) -> Color {
         switch level {
-        case 0: return Color.white.opacity(0.06)
-        case 1: return Color.accentColor.opacity(0.26)
-        case 2: return Color.accentColor.opacity(0.50)
-        default: return Color.accentColor
+        case 0:
+            return palette.secondaryCardFill
+        case 1:
+            return Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.18 : 0.26)
+        case 2:
+            return Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.36 : 0.50)
+        default:
+            return Color.accentColor
         }
     }
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(.ultraThinMaterial)
+            .fill(palette.cardFill)
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                    .stroke(palette.cardStroke, lineWidth: 1)
             )
     }
 }

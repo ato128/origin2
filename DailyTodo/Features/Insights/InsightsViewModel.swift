@@ -14,6 +14,8 @@ struct InsightsViewModel {
 
     private let calendar = Calendar.current
     private let dayLabels = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
+    
+    private let lastSuggestionKey = "lastSmartSuggestionIndex"
 
     private var completedTasks: [DTTaskItem] {
         tasks.filter(\.isDone)
@@ -243,28 +245,198 @@ struct InsightsViewModel {
             subtitle: "Bu haftanın en yoğun günü"
         )
     }
+    
+    private var activeTasksCount: Int {
+        tasks.filter { !$0.isDone }.count
+    }
+
+    private var completedTasksCount: Int {
+        tasks.filter { $0.isDone }.count
+    }
+
+    private var totalFocusSessionsCount: Int {
+        focusSessions.count
+    }
+
+    private var totalFocusMinutes: Int {
+        focusSessions.reduce(into: 0) { result, session in
+            result += session.completedSeconds / 60
+        }
+    }
+    
+    private var hasStrongTaskMomentum: Bool {
+        completedTasksCount >= 3
+    }
+
+    private var hasLowTaskMomentum: Bool {
+        activeTasksCount >= 5 && completedTasksCount == 0
+    }
+
+    private var hasNoFocusToday: Bool {
+        totalFocusSessionsCount == 0
+    }
+
+    private var bestDayLabel: String {
+        if let index = weeklyProgress.highlightIndex,
+           weeklyProgress.labels.indices.contains(index) {
+            return weeklyProgress.labels[index]
+        }
+        return "bu hafta"
+    }
+
+    private var isEveningProductive: Bool {
+        let eveningSessions = focusSessions.filter {
+            let hour = Calendar.current.component(.hour, from: $0.startedAt)
+            return hour >= 18
+        }
+        return eveningSessions.count >= max(1, focusSessions.count / 2)
+    }
+
+    private var hasTaskBacklog: Bool {
+        activeTasksCount >= 5
+    }
+
+    private var hasNoFocusHabit: Bool {
+        totalFocusSessionsCount == 0
+    }
+
+    private var hasStrongMomentum: Bool {
+        completedTasksCount >= 3 || totalFocusMinutes >= 60
+    }
+    
+    private func rotatedSuggestions() -> [SmartSuggestionData] {
+        var suggestions: [SmartSuggestionData] = []
+
+        if hasTaskBacklog {
+            suggestions.append(
+                SmartSuggestionData(
+                    title: "Task Insight",
+                    message: "Aktif görevlerin birikmiş görünüyor. Önce en küçük görevi kapatmak ritim kazanmanı sağlayabilir.",
+                    buttonTitle: "Open Tasks",
+                    action: .openTasks
+                )
+            )
+        }
+
+        if hasNoFocusHabit && activeTasksCount > 0 {
+            suggestions.append(
+                SmartSuggestionData(
+                    title: "Focus Suggestion",
+                    message: "Bugün henüz bir focus oturumu başlatmadın. 25 dakikalık kısa bir session iyi gelebilir.",
+                    buttonTitle: "Start Focus",
+                    action: .openFocus
+                )
+            )
+        }
+
+        if hasStrongMomentum {
+            suggestions.append(
+                SmartSuggestionData(
+                    title: "Momentum Insight",
+                    message: "Bugün ritim yakalamış görünüyorsun. Şimdi bir zor görevi bitirmek için iyi bir an olabilir.",
+                    buttonTitle: "Open Tasks",
+                    action: .openTasks
+                )
+            )
+        }
+
+        suggestions.append(
+            SmartSuggestionData(
+                title: "Pattern Insight",
+                message: "Bu hafta en verimli günün \(bestDayLabel). Önemli işlerini o güne yerleştirmek iyi sonuç verebilir.",
+                buttonTitle: "View Week",
+                action: .openWeek
+            )
+        )
+
+        if isEveningProductive {
+            suggestions.append(
+                SmartSuggestionData(
+                    title: "Focus Pattern",
+                    message: "Akşam saatlerinde daha iyi odaklanıyor gibisin. Derin işlerini 18:00 sonrası planlamayı deneyebilirsin.",
+                    buttonTitle: "Start Focus",
+                    action: .openFocus
+                )
+            )
+        }
+
+        if totalFocusMinutes >= 90 {
+            suggestions.append(
+                SmartSuggestionData(
+                    title: "Deep Work Insight",
+                    message: "Uzun focus oturumları sende işe yarıyor. Zor görevleri focus sonrası bloklara koymak verimini artırabilir.",
+                    buttonTitle: "View Week",
+                    action: .openWeek
+                )
+            )
+        }
+
+        suggestions.append(
+            SmartSuggestionData(
+                title: "Daily Suggestion",
+                message: "Küçük ama net bir görev tamamlamak günün geri kalanını daha verimli hale getirebilir.",
+                buttonTitle: "Open Tasks",
+                action: .openTasks
+            )
+        )
+
+        return suggestions
+    }
 
     var smartSuggestion: SmartSuggestionData {
-        if !activeTasks.isEmpty {
-            return .init(
-                title: "Smart Suggestion",
-                message: "Aktif görevlerinden birini bitirerek bugününü daha güçlü kapatabilirsin.",
-                buttonTitle: "Open Tasks"
+
+        let suggestions = rotatedSuggestions()
+        guard !suggestions.isEmpty else {
+            return SmartSuggestionData(
+                title: "Suggestion",
+                message: "Bugün küçük bir görev tamamlamak iyi bir başlangıç olabilir.",
+                buttonTitle: "Open Tasks",
+                action: .openTasks
             )
         }
 
-        if todayFocusMinutes < 15 {
-            return .init(
-                title: "Smart Suggestion",
-                message: "15 dakikalık kısa bir focus, bugünkü ritmi korumana yardımcı olabilir.",
-                buttonTitle: "Start Focus"
+        let todayIndex = Calendar.current.component(.day, from: Date()) % suggestions.count
+        let lastIndex = UserDefaults.standard.integer(forKey: lastSuggestionKey)
+
+        var index = todayIndex
+
+        if suggestions.count > 1 && index == lastIndex {
+            index = (index + 1) % suggestions.count
+        }
+
+        UserDefaults.standard.set(index, forKey: lastSuggestionKey)
+
+        return suggestions[index]
+    }
+    var aiCoach: AICoachData {
+
+        if totalFocusMinutes >= 60 && completedTasksCount >= 2 {
+            return AICoachData(
+                title: "AI Productivity Coach",
+                message: "Focus sonrası görev kapatma hızın artıyor gibi görünüyor. Önce kısa bir focus sonra zor görev iyi çalışabilir.",
+                buttonTitle: "Start Focus",
+                action: .openFocus
             )
         }
 
-        return .init(
-            title: "Smart Suggestion",
-            message: "Bugün iyi gidiyorsun. Ritmi korumak için küçük bir adım daha atabilirsin.",
-            buttonTitle: nil
+        if let index = weeklyProgress.highlightIndex,
+           weeklyProgress.labels.indices.contains(index) {
+
+            let bestDay = weeklyProgress.labels[index]
+
+            return AICoachData(
+                title: "AI Productivity Coach",
+                message: "\(bestDay) günü daha verimli görünüyorsun. Önemli işlerini o güne koymayı deneyebilirsin.",
+                buttonTitle: "View Week",
+                action: .openWeek
+            )
+        }
+
+        return AICoachData(
+            title: "AI Productivity Coach",
+            message: "Küçük görevleri hızlı kapatıp zor görevleri focus sonrası yapmak verimini artırabilir.",
+            buttonTitle: "Open Tasks",
+            action: .openTasks
         )
     }
 }

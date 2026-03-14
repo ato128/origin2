@@ -10,6 +10,9 @@ import SwiftUI
 struct WeeklyProgressCard: View {
     let data: WeeklyProgressData
 
+    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
+    private let palette = ThemePalette()
+
     @State private var isVisible = false
 
     var body: some View {
@@ -17,19 +20,24 @@ struct WeeklyProgressCard: View {
             HStack {
                 Text("Weekly Progress")
                     .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(palette.primaryText)
 
                 Spacer()
 
                 Text("7 gün")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
             }
 
             HStack(alignment: .bottom, spacing: 10) {
                 ForEach(Array(data.values.enumerated()), id: \.offset) { index, value in
                     VStack(spacing: 8) {
                         RoundedRectangle(cornerRadius: 11, style: .continuous)
-                            .fill(index == data.highlightIndex ? Color.accentColor : Color.white.opacity(0.08))
+                            .fill(
+                                index == data.highlightIndex
+                                ? Color.accentColor
+                                : palette.secondaryCardFill
+                            )
                             .frame(height: isVisible ? max(14, CGFloat(value) * 30) : 10)
                             .scaleEffect(y: isVisible ? 1 : 0.88, anchor: .bottom)
                             .shadow(
@@ -46,7 +54,7 @@ struct WeeklyProgressCard: View {
 
                         Text(data.labels[index])
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(palette.secondaryText)
 
                         CountUpText(
                             value: Double(value),
@@ -55,7 +63,7 @@ struct WeeklyProgressCard: View {
                             formatter: { "\(Int($0))" }
                         )
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -64,7 +72,7 @@ struct WeeklyProgressCard: View {
 
             Text(data.summaryText)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
         }
         .padding(18)
         .background(cardBackground)
@@ -77,10 +85,10 @@ struct WeeklyProgressCard: View {
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 22, style: .continuous)
-            .fill(.ultraThinMaterial)
+            .fill(palette.cardFill)
             .overlay(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                    .stroke(palette.cardStroke, lineWidth: 1)
             )
     }
 }

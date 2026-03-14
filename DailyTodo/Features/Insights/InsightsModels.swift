@@ -69,4 +69,12 @@ struct SmartSuggestionData {
     let title: String
     let message: String
     let buttonTitle: String?
+    let action: SmartSuggestionAction
+}
+
+enum SmartSuggestionAction {
+    case openTasks
+    case openFocus
+    case openWeek
+    case none
 }

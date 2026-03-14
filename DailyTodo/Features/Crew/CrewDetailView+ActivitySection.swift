@@ -44,7 +44,7 @@ extension CrewDetailView {
 
                 if !isLast {
                     Rectangle()
-                        .fill(Color.white.opacity(0.06))
+                        .fill(palette.secondaryCardFill)
                         .frame(width: 2)
                         .frame(maxHeight: .infinity)
                         .padding(.top, 6)
@@ -59,7 +59,7 @@ extension CrewDetailView {
 
                 Text(item.actionText)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.primaryText)
                     .lineLimit(2)
 
                 Text(item.createdAt.formatted(date: .omitted, time: .shortened))

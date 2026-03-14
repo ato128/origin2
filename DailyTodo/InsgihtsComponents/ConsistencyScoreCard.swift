@@ -10,6 +10,10 @@ import SwiftUI
 struct ConsistencyScoreCard: View {
 
     let data: ScoreCardData
+
+    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
+    private let palette = ThemePalette()
+
     @State private var isVisible = false
 
     private var scoreValue: Double {
@@ -22,6 +26,7 @@ struct ConsistencyScoreCard: View {
 
             Text(data.title)
                 .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(palette.primaryText)
 
             HStack {
 
@@ -36,11 +41,12 @@ struct ConsistencyScoreCard: View {
                             formatter: { "%\(Int($0))" }
                         )
                         .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
                     }
 
                     Text(data.subtitle)
                         .font(.system(size: 14))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                 }
 
                 Spacer()
@@ -61,6 +67,7 @@ struct ConsistencyScoreCard: View {
                         formatter: { "\(Int($0))" }
                     )
                     .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(palette.primaryText)
                 }
                 .frame(width: 82, height: 82)
             }
@@ -72,10 +79,10 @@ struct ConsistencyScoreCard: View {
 
     var cardBackground: some View {
         RoundedRectangle(cornerRadius: 22)
-            .fill(.ultraThinMaterial)
+            .fill(palette.cardFill)
             .overlay(
                 RoundedRectangle(cornerRadius: 22)
-                    .stroke(Color.white.opacity(0.07))
+                    .stroke(palette.cardStroke, lineWidth: 1)
             )
     }
 }

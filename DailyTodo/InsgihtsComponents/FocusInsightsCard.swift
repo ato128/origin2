@@ -10,6 +10,9 @@ import SwiftUI
 struct FocusInsightsCard: View {
     let data: FocusInsightsData
 
+    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
+    private let palette = ThemePalette()
+
     @State private var isVisible = false
     @State private var flamePulse = false
 
@@ -25,6 +28,7 @@ struct FocusInsightsCard: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Focus Insights")
                 .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(palette.primaryText)
 
             HStack(spacing: 12) {
                 ZStack {
@@ -44,22 +48,29 @@ struct FocusInsightsCard: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(data.streakTitle)
                         .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(palette.primaryText)
 
                     Text(data.streakSubtitle)
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                 }
 
                 Spacer()
             }
             .padding(15)
-            .background(Color.white.opacity(0.05))
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(palette.secondaryCardFill)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
+                    )
+            )
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("Today Focus")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
 
                 HStack(alignment: .lastTextBaseline, spacing: 4) {
                     CountUpText(
@@ -69,9 +80,11 @@ struct FocusInsightsCard: View {
                         formatter: { "\(Int($0))" }
                     )
                     .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .foregroundStyle(palette.primaryText)
 
                     Text("dk")
                         .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
                 }
 
                 HStack(spacing: 4) {
@@ -82,21 +95,35 @@ struct FocusInsightsCard: View {
                         formatter: { "\(Int($0))" }
                     )
                     .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(palette.primaryText)
 
                     Text("session")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                 }
 
                 Text(data.longestSessionText)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
             }
             .padding(15)
             .frame(maxWidth: 188, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.accentColor.opacity(0.12))
+                    .fill(
+                        appTheme == AppTheme.light.rawValue
+                        ? Color.accentColor.opacity(0.10)
+                        : Color.accentColor.opacity(0.12)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(
+                                appTheme == AppTheme.light.rawValue
+                                ? Color.accentColor.opacity(0.14)
+                                : Color.clear,
+                                lineWidth: 1
+                            )
+                    )
                     .shadow(color: Color.accentColor.opacity(0.10), radius: 14)
             )
         }
@@ -118,10 +145,10 @@ struct FocusInsightsCard: View {
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 22, style: .continuous)
-            .fill(.ultraThinMaterial)
+            .fill(palette.cardFill)
             .overlay(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                    .stroke(palette.cardStroke, lineWidth: 1)
             )
     }
 }

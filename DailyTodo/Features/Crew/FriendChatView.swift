@@ -14,13 +14,15 @@ struct FriendChatView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
+    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
+    private let palette = ThemePalette()
+
     @Query(sort: \FriendMessage.createdAt, order: .forward)
     private var allMessages: [FriendMessage]
 
     @State private var draftMessage: String = ""
     @State private var animateMessages = false
     @State private var sendPressed = false
-    
 
     private var messages: [FriendMessage] {
         allMessages.filter { $0.friendID == friend.id }
@@ -42,13 +44,11 @@ struct FriendChatView: View {
                 composerBar
             }
         }
-        .background(Color(.systemGroupedBackground))
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
             seedMessagesIfNeeded()
         }
-       
     }
 }
 
@@ -56,30 +56,31 @@ private extension FriendChatView {
 
     var ambientBackground: some View {
         ZStack(alignment: .topLeading) {
-            Color(.systemGroupedBackground)
+            AppBackground()
+
+            if appTheme == AppTheme.gradient.rawValue {
+                RadialGradient(
+                    colors: [
+                        hexColor(friend.colorHex).opacity(0.12),
+                        Color.clear
+                    ],
+                    center: .topLeading,
+                    startRadius: 30,
+                    endRadius: 240
+                )
                 .ignoresSafeArea()
 
-            RadialGradient(
-                colors: [
-                    hexColor(friend.colorHex).opacity(0.12),
-                    Color.clear
-                ],
-                center: .topLeading,
-                startRadius: 30,
-                endRadius: 240
-            )
-            .ignoresSafeArea()
-
-            RadialGradient(
-                colors: [
-                    Color.blue.opacity(0.07),
-                    Color.clear
-                ],
-                center: .topTrailing,
-                startRadius: 60,
-                endRadius: 280
-            )
-            .ignoresSafeArea()
+                RadialGradient(
+                    colors: [
+                        Color.blue.opacity(0.07),
+                        Color.clear
+                    ],
+                    center: .topTrailing,
+                    startRadius: 60,
+                    endRadius: 280
+                )
+                .ignoresSafeArea()
+            }
         }
     }
 
@@ -90,15 +91,17 @@ private extension FriendChatView {
             } label: {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(palette.primaryText)
                     .frame(width: 52, height: 52)
                     .background(
                         Circle()
-                            .fill(.ultraThinMaterial)
+                            .fill(palette.cardFill)
                             .overlay(
                                 Circle()
-                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                    .stroke(palette.cardStroke, lineWidth: 1)
                             )
                     )
+                    .shadow(color: palette.shadowColor, radius: 10, y: 4)
             }
             .buttonStyle(.plain)
 
@@ -116,6 +119,7 @@ private extension FriendChatView {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(friend.name)
                         .font(.headline)
+                        .foregroundStyle(palette.primaryText)
 
                     HStack(spacing: 6) {
                         Circle()
@@ -124,7 +128,7 @@ private extension FriendChatView {
 
                         Text(friend.isOnline ? "Online" : "Offline")
                             .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(palette.secondaryText)
                     }
                 }
             }
@@ -136,7 +140,13 @@ private extension FriendChatView {
         .padding(.bottom, 10)
         .background(
             Rectangle()
-                .fill(.ultraThinMaterial.opacity(0.35))
+                .fill(palette.cardFill)
+                .overlay(
+                    Rectangle()
+                        .fill(palette.cardStroke)
+                        .frame(height: 0.8),
+                    alignment: .bottom
+                )
                 .ignoresSafeArea(edges: .top)
         )
     }
@@ -157,10 +167,11 @@ private extension FriendChatView {
 
             Text("No messages yet")
                 .font(.title3.weight(.bold))
+                .foregroundStyle(palette.primaryText)
 
             Text("Start the conversation with \(friend.name).")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
 
             Spacer()
         }
@@ -228,13 +239,14 @@ private extension FriendChatView {
                 .padding(.vertical, 9)
                 .background(
                     Capsule()
-                        .fill(Color.accentColor.opacity(0.10))
+                        .fill(palette.secondaryCardFill)
                 )
                 .overlay(
                     Capsule()
-                        .stroke(Color.accentColor.opacity(0.12), lineWidth: 1)
-                )
-                .foregroundStyle(.secondary)
+                        .stroke(palette.cardStroke, lineWidth: 1)
+                    )
+                
+                .foregroundStyle(palette.secondaryText)
 
                 Spacer()
             } else {
@@ -243,15 +255,15 @@ private extension FriendChatView {
                 VStack(alignment: message.isFromMe ? .trailing : .leading, spacing: 5) {
                     Text(message.text)
                         .font(.subheadline)
-                        .foregroundStyle(message.isFromMe ? .white : .primary)
+                        .foregroundStyle(message.isFromMe ? .white : palette.primaryText)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 11)
                         .background(
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
                                 .fill(
                                     message.isFromMe
-                                    ? Color.accentColor.opacity(0.24)
-                                    : Color.white.opacity(0.07)
+                                    ? Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.90 : 0.24)
+                                    : palette.secondaryCardFill
                                 )
                         )
                         .overlay(
@@ -259,14 +271,14 @@ private extension FriendChatView {
                                 .stroke(
                                     message.isFromMe
                                     ? Color.accentColor.opacity(0.18)
-                                    : Color.white.opacity(0.06),
+                                    : palette.cardStroke.opacity(0.7),
                                     lineWidth: 1
                                 )
                         )
 
                     Text(message.createdAt, style: .time)
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(palette.tertiaryText)
                         .padding(.horizontal, 4)
                 }
 
@@ -279,15 +291,16 @@ private extension FriendChatView {
         HStack(alignment: .bottom, spacing: 10) {
             TextField("Message \(friend.name)...", text: $draftMessage, axis: .vertical)
                 .textFieldStyle(.plain)
+                .foregroundStyle(palette.primaryText)
                 .lineLimit(1...4)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
                 .background(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(Color.white.opacity(0.08))
+                        .fill(palette.secondaryCardFill)
                         .overlay(
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                                .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
                         )
                 )
 
@@ -298,7 +311,7 @@ private extension FriendChatView {
                     Circle()
                         .fill(
                             draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            ? Color.white.opacity(0.08)
+                            ? palette.secondaryCardFill
                             : Color.accentColor
                         )
                         .frame(width: 46, height: 46)
@@ -307,7 +320,7 @@ private extension FriendChatView {
                         .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(
                             draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            ? Color.secondary
+                            ? palette.secondaryText
                             : .white
                         )
                 }
@@ -331,7 +344,13 @@ private extension FriendChatView {
         .padding(.bottom, 12)
         .background(
             Rectangle()
-                .fill(.ultraThinMaterial)
+                .fill(palette.cardFill)
+                .overlay(
+                    Rectangle()
+                        .fill(palette.cardStroke)
+                        .frame(height: 0.8),
+                    alignment: .top
+                )
                 .ignoresSafeArea(edges: .bottom)
         )
     }

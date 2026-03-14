@@ -9,7 +9,15 @@ import SwiftUI
 import SwiftData
 
 struct InsightsView: View {
+    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
+    private let palette = ThemePalette()
+
     @State private var scrollOffset: CGFloat = 0
+    @State private var insightSelectedTab: AppTab = .tasks
+
+    @State private var goTasks = false
+    @State private var goWeek = false
+    @State private var goFocus = false
 
     @Query(sort: \DTTaskItem.createdAt, order: .reverse)
     private var tasks: [DTTaskItem]
@@ -43,18 +51,22 @@ struct InsightsView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            InsightsAmbientHeader()
-                .frame(height: 300)
-                .ignoresSafeArea()
+            AppBackground()
+
+            if appTheme == AppTheme.gradient.rawValue {
+                InsightsAmbientHeader()
+                    .frame(height: 300)
+                    .ignoresSafeArea()
+            }
 
             if showTopBlur {
                 Rectangle()
-                    .fill(.ultraThinMaterial)
+                    .fill(palette.cardFill)
                     .frame(height: 96)
                     .ignoresSafeArea(edges: .top)
                     .overlay(
                         Rectangle()
-                            .fill(Color.white.opacity(0.04))
+                            .fill(palette.cardStroke)
                             .frame(height: 0.5),
                         alignment: .bottom
                     )
@@ -68,7 +80,7 @@ struct InsightsView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         Text("Insights")
                             .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(palette.primaryText)
                             .padding(.horizontal, 20)
                             .padding(.top, 8)
                             .padding(.bottom, 22)
@@ -105,10 +117,21 @@ struct InsightsView: View {
 
                     InsightsCardContainer(delay: 0.23) {
                         MostBusyDayCard(data: vm.mostBusyDay)
+                            .frame(maxWidth: .infinity)
+                    }
+
+                    InsightsCardContainer(delay: 0.245) {
+                        AICoachCard(data: vm.aiCoach) { action in
+                            handleInsightAction(action)
+                        }
+                        .frame(maxWidth: .infinity)
                     }
 
                     InsightsCardContainer(delay: 0.26) {
-                        SmartSuggestionCard(data: vm.smartSuggestion)
+                        SmartSuggestionCard(data: vm.smartSuggestion) { action in
+                            handleInsightAction(action)
+                        }
+                        .frame(maxWidth: .infinity)
                     }
 
                     Spacer(minLength: 90)
@@ -125,7 +148,7 @@ struct InsightsView: View {
             VStack(spacing: 0) {
                 Text("Insights")
                     .font(.system(size: 17, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(palette.primaryText)
                     .opacity(smallTitleOpacity)
                     .padding(.top, 10)
 
@@ -133,7 +156,39 @@ struct InsightsView: View {
             }
             .animation(.spring(response: 0.28, dampingFraction: 0.86), value: collapseProgress)
         }
-        .background(Color(.systemGroupedBackground))
         .toolbar(.hidden, for: .navigationBar)
+        .background(
+            Group {
+                NavigationLink("", isActive: $goTasks) {
+                    TodoListView(selectedTab: $insightSelectedTab)
+                }
+                NavigationLink("", isActive: $goWeek) {
+                    WeekView()
+                }
+
+                NavigationLink("", isActive: $goFocus) {
+                    FocusSessionView(
+                        taskTitle: "Quick Focus",
+                        onStartFocus: { _, _ in },
+                        onTick: { _ in },
+                        onFinishFocus: { _, _, _, _, _, _ in }
+                    )
+                }
+            }
+            .hidden()
+        )
+    }
+
+    private func handleInsightAction(_ action: SmartSuggestionAction) {
+        switch action {
+        case .openTasks:
+            goTasks = true
+        case .openWeek:
+            goWeek = true
+        case .openFocus:
+            goFocus = true
+        case .none:
+            break
+        }
     }
 }

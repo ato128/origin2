@@ -31,15 +31,15 @@ extension CrewDetailView {
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .strikethrough(task.isDone, color: .secondary)
+                    .foregroundStyle(palette.primaryText)
+                    .strikethrough(task.isDone, color: palette.secondaryText)
                     .opacity(task.isDone ? 0.65 : 1.0)
                     .lineLimit(2)
 
                 if !task.details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Text(task.details)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                         .opacity(task.isDone ? 0.7 : 1.0)
                         .lineLimit(2)
                 }
@@ -56,7 +56,7 @@ extension CrewDetailView {
 
                     taskPill(
                         text: statusTitle(task.status),
-                        tint: task.isDone ? .green : .secondary
+                        tint: task.isDone ? .green : palette.secondaryText
                     )
 
                     if task.showOnWeek,
@@ -90,12 +90,12 @@ extension CrewDetailView {
             if isReorderMode {
                 Image(systemName: "line.3.horizontal")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
                     .padding(.top, 4)
             } else {
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(.secondary.opacity(0.8))
+                    .foregroundStyle(palette.tertiaryText)
             }
         }
         .contentShape(Rectangle())
@@ -139,7 +139,7 @@ extension CrewDetailView {
             Text(text)
         }
         .font(.caption2)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(palette.secondaryText)
     }
 
     func socialMeta(icon: String, text: String) -> some View {
@@ -148,7 +148,7 @@ extension CrewDetailView {
             Text(text)
         }
         .font(.caption2.weight(.semibold))
-        .foregroundStyle(.secondary)
+        .foregroundStyle(palette.secondaryText)
     }
 
     func priorityColor(_ value: String) -> Color {
@@ -211,7 +211,7 @@ extension CrewDetailView {
     func deleteTask(_ task: CrewTask) {
         let deletedTitle = task.title
 
-       dbContext.delete(task)
+        dbContext.delete(task)
 
         let activity = CrewActivity(
             crewID: crew.id,
@@ -219,7 +219,7 @@ extension CrewDetailView {
             actionText: "deleted task \(deletedTitle)"
         )
 
-       dbContext.insert(activity)
+        dbContext.insert(activity)
         try? dbContext.save()
     }
 
@@ -230,14 +230,14 @@ extension CrewDetailView {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.white.opacity(0.03))
+                    .fill(palette.secondaryCardFill)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .stroke(
                         draggedTask?.id == task.id
                         ? hexColor(crew.colorHex).opacity(0.35)
-                        : Color.white.opacity(0.05),
+                        : palette.cardStroke.opacity(0.7),
                         lineWidth: 1
                     )
             )
@@ -323,6 +323,7 @@ extension CrewDetailView {
         HStack {
             Text("Shared Tasks")
                 .font(.headline)
+                .foregroundStyle(palette.primaryText)
 
             Spacer()
 
@@ -345,9 +346,9 @@ extension CrewDetailView {
                 .padding(.vertical, 6)
                 .background(
                     Capsule()
-                        .fill(Color.white.opacity(0.06))
+                        .fill(palette.secondaryCardFill)
                 )
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
             }
             .buttonStyle(.plain)
 

@@ -14,6 +14,9 @@ struct TodoListView: View {
     @Binding var selectedTab: AppTab
     @EnvironmentObject private var store: TodoStore
 
+    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
+    private let palette = ThemePalette()
+
     @Query(sort: \EventItem.startMinute, order: .forward)
     private var allEvents: [EventItem]
 
@@ -95,7 +98,7 @@ struct TodoListView: View {
                             }
                         )
                         .environmentObject(store)
-                    
+
                     } else {
                         crewOverviewCard
                         crewListCard
@@ -119,16 +122,8 @@ struct TodoListView: View {
         .onReceive(chipTimer) { value in
             now = value
         }
-        .toolbar { toolbarContent }
-        .sheet(isPresented: $showingAdd) {
-            AddTaskView()
-                .environmentObject(store)
-                .presentationDetents([.medium, .large])
-        }
-        .onReceive(chipTimer) { value in
-            now = value
-        }
     }
+
     private var todayTasks: [DTTaskItem] {
         let calendar = Calendar.current
 
@@ -142,59 +137,9 @@ struct TodoListView: View {
                 ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture)
             }
     }
-    
-   
 
     private var tasksAmbientBackground: some View {
-        ZStack {
-            Color.black
-                .ignoresSafeArea()
-
-            RadialGradient(
-                colors: [
-                    Color.purple.opacity(0.30),
-                    Color.clear
-                ],
-                center: .topLeading,
-                startRadius: 0,
-                endRadius: 320
-            )
-            .ignoresSafeArea()
-
-            RadialGradient(
-                colors: [
-                    Color.blue.opacity(0.24),
-                    Color.clear
-                ],
-                center: .topTrailing,
-                startRadius: 20,
-                endRadius: 380
-            )
-            .ignoresSafeArea()
-
-            RadialGradient(
-                colors: [
-                    Color.blue.opacity(0.08),
-                    Color.clear
-                ],
-                center: .bottomLeading,
-                startRadius: 80,
-                endRadius: 280
-            )
-            .ignoresSafeArea()
-
-            LinearGradient(
-                colors: [
-                    Color.white.opacity(0.015),
-                    Color.clear,
-                    Color.white.opacity(0.01)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .blendMode(.screen)
-            .ignoresSafeArea()
-        }
+        AppBackground()
     }
 
     private var topSegment: some View {
@@ -209,24 +154,23 @@ struct TodoListView: View {
                 } label: {
                     Text(section.rawValue)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(isSelected ? .primary : .secondary)
+                        .foregroundStyle(isSelected ? palette.primaryText : palette.secondaryText)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                         .background(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .fill(
                                     isSelected
-                                    ? Color.accentColor.opacity(0.14)
-                                    : Color.white.opacity(0.04)
+                                    ? Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.14 : 0.18)
+                                    : palette.secondaryCardFill
                                 )
-                                .shadow(color: Color.black.opacity(0.18), radius: 12, y: 6)
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .stroke(
                                     isSelected
-                                    ? Color.accentColor.opacity(0.20)
-                                    : Color.white.opacity(0.05),
+                                    ? Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.22 : 0.30)
+                                    : palette.cardStroke.opacity(0.8),
                                     lineWidth: 1
                                 )
                         )
@@ -238,12 +182,11 @@ struct TodoListView: View {
         .padding(.vertical, 7)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(.ultraThinMaterial)
+                .fill(palette.cardFill)
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        .stroke(palette.cardStroke, lineWidth: 1)
                 )
-                .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
         )
     }
 
@@ -251,7 +194,7 @@ struct TodoListView: View {
         HStack(alignment: .center) {
             Text("Home")
                 .font(.system(size: 34, weight: .bold, design: .rounded))
-                .foregroundStyle(.primary)
+                .foregroundStyle(palette.primaryText)
 
             Spacer()
 
@@ -262,7 +205,11 @@ struct TodoListView: View {
                     }
                     haptic(.light)
                 } label: {
-                    LiveBadgeView(next: next)
+                    LiveBadgeView(
+                        next: next,
+                        palette: palette,
+                        appTheme: appTheme
+                    )
                 }
                 .buttonStyle(.plain)
             }
@@ -282,10 +229,11 @@ struct TodoListView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Overview")
                         .font(.headline)
+                        .foregroundStyle(palette.primaryText)
 
                     Text("Your team productivity at a glance")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                 }
 
                 Spacer()
@@ -311,6 +259,7 @@ struct TodoListView: View {
             HStack {
                 Text("Your Crews")
                     .font(.headline)
+                    .foregroundStyle(palette.primaryText)
 
                 Spacer()
 
@@ -332,7 +281,7 @@ struct TodoListView: View {
             if crews.isEmpty {
                 Text("No crew yet")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
             } else {
                 ForEach(crews.prefix(2)) { crew in
                     let crewMembers = members.filter { $0.crewID == crew.id }
@@ -354,10 +303,11 @@ struct TodoListView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(crew.name)
                                 .font(.headline)
+                                .foregroundStyle(palette.primaryText)
 
                             Text("\(crewMembers.count) members • \(tasksForCrew.count) tasks")
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(palette.secondaryText)
 
                             ProgressView(value: progress)
                                 .tint(hexColor(crew.colorHex))
@@ -368,12 +318,16 @@ struct TodoListView: View {
 
                         Text("\(Int(progress * 100))%")
                             .font(.caption.weight(.bold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(palette.secondaryText)
                     }
                     .padding(14)
                     .background(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(Color.white.opacity(0.04))
+                            .fill(palette.secondaryCardFill)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
+                            )
                     )
                 }
             }
@@ -390,18 +344,19 @@ struct TodoListView: View {
             HStack {
                 Text("Activity")
                     .font(.headline)
+                    .foregroundStyle(palette.primaryText)
 
                 Spacer()
 
                 Text("Recent updates")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
             }
 
             if topActivities.isEmpty {
                 Text("No activity yet")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
             } else {
                 ForEach(topActivities) { item in
                     HStack(alignment: .top, spacing: 12) {
@@ -417,15 +372,16 @@ struct TodoListView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(item.memberName)
                                 .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(palette.primaryText)
 
                             Text(item.actionText)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(palette.secondaryText)
                                 .lineLimit(2)
 
                             Text(item.createdAt.formatted(date: .omitted, time: .shortened))
                                 .font(.caption2)
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(palette.secondaryText.opacity(0.8))
                         }
 
                         Spacer()
@@ -442,6 +398,7 @@ struct TodoListView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Quick Actions")
                 .font(.headline)
+                .foregroundStyle(palette.primaryText)
 
             Button {
                 selectedTab = .crew
@@ -476,16 +433,21 @@ struct TodoListView: View {
         VStack(spacing: 6) {
             Text(value)
                 .font(.title3.bold())
+                .foregroundStyle(palette.primaryText)
 
             Text(title)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.04))
+                .fill(palette.secondaryCardFill)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
+                )
         )
     }
 
@@ -494,31 +456,36 @@ struct TodoListView: View {
             Image(systemName: icon)
                 .font(.headline)
                 .frame(width: 26)
+                .foregroundStyle(palette.primaryText)
 
             Text(title)
                 .font(.subheadline.weight(.semibold))
+                .foregroundStyle(palette.primaryText)
 
             Spacer()
 
             Image(systemName: "chevron.right")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
         }
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.04))
+                .fill(palette.secondaryCardFill)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
+                )
         )
     }
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(.ultraThinMaterial)
+            .fill(palette.cardFill)
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    .stroke(palette.cardStroke, lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.16), radius: 14, y: 8)
     }
 
     @ToolbarContentBuilder
@@ -550,6 +517,8 @@ struct TodoListView: View {
 
     private struct LiveBadgeView: View {
         let next: (title: String, timeText: String, status: TodoListView.NextClassStatus)
+        let palette: ThemePalette
+        let appTheme: String
 
         var body: some View {
             let isLive = next.status == .live
@@ -566,7 +535,7 @@ struct TodoListView: View {
 
                     Text(isLive ? "LIVE" : "NEXT")
                         .font(.caption2.weight(.semibold))
-                        .foregroundStyle(isLive ? .green : .orange)
+                        .foregroundStyle(isLive ? Color.green : Color.orange)
                 }
                 .padding(.horizontal, 7)
                 .padding(.vertical, 5)
@@ -585,11 +554,12 @@ struct TodoListView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(next.title.uppercased())
                         .font(.caption.weight(.semibold))
+                        .foregroundStyle(palette.primaryText)
                         .lineLimit(1)
 
                     Text(next.timeText)
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                 }
             }
             .padding(.horizontal, 10)
@@ -597,13 +567,12 @@ struct TodoListView: View {
             .frame(height: 34)
             .background(
                 Capsule()
-                    .fill(.ultraThinMaterial)
+                    .fill(palette.cardFill)
                     .overlay(
                         Capsule()
-                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            .stroke(palette.cardStroke, lineWidth: 1)
                     )
             )
-            .shadow(color: .black.opacity(0.18), radius: 8, x: 0, y: 3)
         }
     }
 }

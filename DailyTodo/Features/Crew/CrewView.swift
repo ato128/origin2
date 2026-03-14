@@ -15,7 +15,11 @@ enum CrewTabMode: String, CaseIterable {
 
 struct CrewView: View {
     @Environment(\.modelContext) private var modelContext
-    
+
+    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
+
+    private let palette = ThemePalette()
+
     let initialTab: CrewTabMode
 
     @Query(sort: \Crew.createdAt, order: .reverse)
@@ -26,10 +30,10 @@ struct CrewView: View {
 
     @Query(sort: \CrewActivity.createdAt, order: .reverse)
     private var activities: [CrewActivity]
-    
+
     @Query(sort: \Friend.createdAt, order: .reverse)
     private var friends: [Friend]
-    
+
     @Query(sort: \FriendFocusSession.startedAt, order: .reverse)
     private var focusSessions: [FriendFocusSession]
 
@@ -38,7 +42,7 @@ struct CrewView: View {
     @State private var showJoinFocusSheet = false
     @State private var selectedFocusSession: FriendFocusSession?
     @State private var pulseLiveIndicator = false
-    
+
     init(initialTab: CrewTabMode = .crews) {
         self.initialTab = initialTab
         _crewTabMode = State(initialValue: initialTab)
@@ -55,7 +59,7 @@ struct CrewView: View {
 
                         topHeader
                         crewTopSegment
-                        
+
                         if crewTabMode == .crews {
                             crewsContent
                         } else {
@@ -72,7 +76,6 @@ struct CrewView: View {
                 }
                 .scrollIndicators(.hidden)
             }
-            .background(Color(.systemGroupedBackground))
             .navigationBarHidden(true)
             .sheet(isPresented: $showCreateCrew) {
                 CreateCrewView()
@@ -96,76 +99,80 @@ private extension CrewView {
 
     var crewAmbientBackground: some View {
         ZStack(alignment: .topLeading) {
-            Color(.systemGroupedBackground)
+            AppBackground()
+
+            if appTheme == AppTheme.gradient.rawValue {
+                RadialGradient(
+                    colors: [
+                        Color.purple.opacity(0.18),
+                        Color.clear
+                    ],
+                    center: .topLeading,
+                    startRadius: 40,
+                    endRadius: 320
+                )
                 .ignoresSafeArea()
 
-            RadialGradient(
-                colors: [
-                    Color.purple.opacity(0.18),
-                    Color.clear
-                ],
-                center: .topLeading,
-                startRadius: 40,
-                endRadius: 320
-            )
-            .ignoresSafeArea()
+                RadialGradient(
+                    colors: [
+                        Color.blue.opacity(0.14),
+                        Color.clear
+                    ],
+                    center: .topTrailing,
+                    startRadius: 60,
+                    endRadius: 360
+                )
+                .ignoresSafeArea()
 
-            RadialGradient(
-                colors: [
-                    Color.blue.opacity(0.14),
-                    Color.clear
-                ],
-                center: .topTrailing,
-                startRadius: 60,
-                endRadius: 360
-            )
-            .ignoresSafeArea()
-
-            LinearGradient(
-                colors: [
-                    Color.blue.opacity(0.05),
-                    Color.clear,
-                    Color.black.opacity(0.08)
-                ],
-                startPoint: .topTrailing,
-                endPoint: .bottomLeading
-            )
-            .ignoresSafeArea()
+                LinearGradient(
+                    colors: [
+                        Color.blue.opacity(0.05),
+                        Color.clear,
+                        Color.black.opacity(0.08)
+                    ],
+                    startPoint: .topTrailing,
+                    endPoint: .bottomLeading
+                )
+                .ignoresSafeArea()
+            }
         }
     }
 
     var topHeader: some View {
         VStack(alignment: .leading, spacing: 18) {
             ZStack(alignment: .leading) {
-                Text("Crew")
-                    .font(.system(size: 68, weight: .black, design: .rounded))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [
-                                Color.purple.opacity(0.14),
-                                Color.blue.opacity(0.10)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                if appTheme == AppTheme.gradient.rawValue {
+                    Text("Crew")
+                        .font(.system(size: 68, weight: .black, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    Color.purple.opacity(0.14),
+                                    Color.blue.opacity(0.10)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
-                    )
-                    .blur(radius: 3)
-                    .opacity(0.55)
-                    .offset(x: 2, y: -6)
+                        .blur(radius: 3)
+                        .opacity(0.55)
+                        .offset(x: 2, y: -6)
+                }
 
                 Text("Crew")
                     .font(.system(size: 40, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(palette.primaryText)
             }
 
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Your Crew Space")
                         .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
 
                     Text("Build together, focus together, finish together.")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                 }
 
                 Spacer()
@@ -176,16 +183,17 @@ private extension CrewView {
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(Color.accentColor)
                             .frame(width: 54, height: 54)
                             .background(
                                 Circle()
-                                    .fill(.ultraThinMaterial)
+                                    .fill(palette.cardFill)
                                     .overlay(
                                         Circle()
-                                            .stroke(Color.blue.opacity(0.22), lineWidth: 1)
+                                            .stroke(palette.cardStroke, lineWidth: 1)
                                     )
                             )
-                            .shadow(color: Color.blue.opacity(0.35), radius: 18, y: 10)
+                            .shadow(color: palette.shadowColor, radius: 12, y: 6)
                     }
                     .buttonStyle(.plain)
                 } else {
@@ -193,16 +201,17 @@ private extension CrewView {
                     } label: {
                         Image(systemName: "person.badge.plus")
                             .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(Color.accentColor)
                             .frame(width: 54, height: 54)
                             .background(
                                 Circle()
-                                    .fill(.regularMaterial)
+                                    .fill(palette.cardFill)
                                     .overlay(
                                         Circle()
-                                            .stroke(Color.blue.opacity(0.22), lineWidth: 1)
+                                            .stroke(palette.cardStroke, lineWidth: 1)
                                     )
                             )
-                            .shadow(color: Color.blue.opacity(0.16), radius: 12, y: 6)
+                            .shadow(color: palette.shadowColor, radius: 12, y: 6)
                     }
                     .buttonStyle(.plain)
                 }
@@ -222,7 +231,7 @@ private extension CrewView {
                 } label: {
                     Text(mode.rawValue)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(isSelected ? .white : .secondary)
+                        .foregroundStyle(isSelected ? palette.primaryText : palette.secondaryText)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(
@@ -239,8 +248,8 @@ private extension CrewView {
                                     )
                                     : LinearGradient(
                                         colors: [
-                                            Color.white.opacity(0.025),
-                                            Color.white.opacity(0.01)
+                                            palette.secondaryCardFill,
+                                            palette.secondaryCardFill.opacity(0.7)
                                         ],
                                         startPoint: .top,
                                         endPoint: .bottom
@@ -252,7 +261,7 @@ private extension CrewView {
                                 .stroke(
                                     isSelected
                                     ? Color.accentColor.opacity(0.30)
-                                    : Color.white.opacity(0.06),
+                                    : palette.cardStroke,
                                     lineWidth: 1
                                 )
                         )
@@ -268,10 +277,10 @@ private extension CrewView {
         .padding(6)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(.ultraThinMaterial)
+                .fill(palette.cardFill)
                 .overlay(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                        .stroke(palette.cardStroke, lineWidth: 1)
                 )
         )
     }
@@ -303,6 +312,7 @@ private extension CrewView {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Your Friends")
                         .font(.headline)
+                        .foregroundStyle(palette.primaryText)
 
                     ForEach(friends) { friend in
                         friendRow(friend)
@@ -320,10 +330,11 @@ private extension CrewView {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Focus Activity")
                         .font(.headline)
+                        .foregroundStyle(palette.primaryText)
 
                     Text("Friends currently studying together")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                 }
 
                 Spacer()
@@ -355,10 +366,11 @@ private extension CrewView {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(friend.name)
                                     .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(palette.primaryText)
 
                                 Text("\(session.title) • \(focusMinutesLeft(for: session)) min left")
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(palette.secondaryText)
                             }
 
                             Spacer()
@@ -388,7 +400,7 @@ private extension CrewView {
                         .padding(12)
                         .background(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(Color.white.opacity(0.04))
+                                .fill(palette.secondaryCardFill)
                         )
                     }
                 }
@@ -427,10 +439,11 @@ private extension CrewView {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Overview")
                         .font(.headline)
+                        .foregroundStyle(palette.primaryText)
 
                     Text("Your team productivity at a glance")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                 }
 
                 Spacer()
@@ -459,10 +472,11 @@ private extension CrewView {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Friends")
                         .font(.headline)
+                        .foregroundStyle(palette.primaryText)
 
                     Text("Shared schedules and direct collaboration")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                 }
 
                 Spacer()
@@ -486,7 +500,7 @@ private extension CrewView {
 
                     Text("\(activeFriendFocusCount) friend\(activeFriendFocusCount == 1 ? "" : "s") studying now")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
 
                     Spacer()
                 }
@@ -497,7 +511,7 @@ private extension CrewView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
     }
-    
+
     var friendsEmptyStateCard: some View {
         VStack(spacing: 14) {
             ZStack {
@@ -512,10 +526,11 @@ private extension CrewView {
 
             Text("No friends yet")
                 .font(.headline)
+                .foregroundStyle(palette.primaryText)
 
             Text("Add your first friend to start sharing schedules and chatting.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
                 .multilineTextAlignment(.center)
 
             Button {
@@ -540,16 +555,17 @@ private extension CrewView {
         VStack(spacing: 4) {
             Text(title)
                 .font(.headline.weight(.bold))
+                .foregroundStyle(palette.primaryText)
 
             Text(subtitle)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.05))
+                .fill(palette.secondaryCardFill)
         )
     }
 
@@ -567,10 +583,11 @@ private extension CrewView {
 
             Text("No crew yet")
                 .font(.headline)
+                .foregroundStyle(palette.primaryText)
 
             Text("Create your first crew and start managing shared tasks, members, and activity together.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
                 .multilineTextAlignment(.center)
 
             Button {
@@ -590,7 +607,7 @@ private extension CrewView {
         .padding(24)
         .background(cardBackground)
     }
-    
+
     var activeFriendFocusCount: Int {
         focusSessions.filter(\.isActive).count
     }
@@ -603,10 +620,11 @@ private extension CrewView {
 
             Text("Friends chat & schedule sharing")
                 .font(.headline)
+                .foregroundStyle(palette.primaryText)
 
             Text("Next step: open a friend profile, view today's schedule, and start messaging.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -618,6 +636,7 @@ private extension CrewView {
         VStack(alignment: .leading, spacing: 14) {
             Text("Your Crews")
                 .font(.headline)
+                .foregroundStyle(palette.primaryText)
 
             ForEach(crews) { crew in
                 NavigationLink {
@@ -655,19 +674,19 @@ private extension CrewView {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(crew.name)
                         .font(.headline)
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(palette.primaryText)
                         .lineLimit(1)
 
                     Text("\(crewMembers.count) members • \(crewTasks.count) tasks")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                 }
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.tertiaryText)
             }
 
             HStack(alignment: .center) {
@@ -678,11 +697,11 @@ private extension CrewView {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("\(Int(progress * 100))%")
                         .font(.headline.weight(.bold))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(palette.primaryText)
 
                     Text("completed")
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                 }
             }
 
@@ -690,13 +709,13 @@ private extension CrewView {
                 HStack {
                     Text("Progress")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
 
                     Spacer()
 
                     Text("\(completedTasks) done • \(pendingCount) left")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                 }
 
                 ProgressView(value: progress)
@@ -727,14 +746,14 @@ private extension CrewView {
 
                     Text("\(activity.memberName) \(activity.actionText)")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                         .lineLimit(1)
 
                     Spacer()
 
                     Text(activity.createdAt, style: .time)
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(palette.tertiaryText)
                 }
                 .padding(.top, 2)
             }
@@ -743,9 +762,9 @@ private extension CrewView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
         .shadow(
-            color: hexColor(crew.colorHex).opacity(0.18),
-            radius: 14,
-            y: 8
+            color: hexColor(crew.colorHex).opacity(0.12),
+            radius: 10,
+            y: 6
         )
     }
 
@@ -769,7 +788,7 @@ private extension CrewView {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(friend.name)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(palette.primaryText)
 
                     if let session = activeSession {
                         Text("Focusing • \(session.durationMinute) min")
@@ -778,7 +797,7 @@ private extension CrewView {
                     } else {
                         Text(friend.subtitle)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(palette.secondaryText)
                     }
                 }
 
@@ -808,7 +827,7 @@ private extension CrewView {
 
                         Text("Focusing")
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(palette.secondaryText)
                     }
                 } else {
                     HStack(spacing: 6) {
@@ -832,21 +851,21 @@ private extension CrewView {
 
                         Text(friend.isOnline ? "Online" : "Offline")
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(palette.secondaryText)
                     }
                 }
 
                 Image(systemName: "chevron.right")
                     .font(.caption.bold())
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(palette.tertiaryText)
             }
             .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(.ultraThinMaterial)
+                    .fill(palette.cardFill)
                     .overlay(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                            .stroke(palette.cardStroke, lineWidth: 1)
                     )
             )
         }
@@ -856,29 +875,29 @@ private extension CrewView {
     func activeFocusSession(for friend: Friend) -> FriendFocusSession? {
         focusSessions.first(where: { $0.friendID == friend.id && $0.isActive })
     }
-    
+
     func avatarStack(for crewMembers: [CrewMember]) -> some View {
         HStack(spacing: -10) {
             ForEach(Array(crewMembers.prefix(4).enumerated()), id: \.offset) { _, member in
                 ZStack {
                     Circle()
-                        .fill(Color(.systemBackground))
+                        .fill(palette.cardFill)
                         .frame(width: 30, height: 30)
 
                     Circle()
-                        .fill(Color.secondary.opacity(0.14))
+                        .fill(palette.secondaryCardFill)
                         .frame(width: 26, height: 26)
 
                     Image(systemName: member.avatarSymbol)
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(palette.primaryText)
                 }
             }
 
             if crewMembers.count > 4 {
                 ZStack {
                     Circle()
-                        .fill(Color(.systemBackground))
+                        .fill(palette.cardFill)
                         .frame(width: 30, height: 30)
 
                     Circle()
@@ -912,7 +931,7 @@ private extension CrewView {
         let w = Calendar.current.component(.weekday, from: Date())
         return (w + 5) % 7
     }
-    
+
     func seedMockFriendsIfNeeded() {
         guard friends.isEmpty else { return }
 
@@ -993,7 +1012,7 @@ private extension CrewView {
 
         try? modelContext.save()
     }
-    
+
     var activeFocusSessions: [FriendFocusSession] {
         focusSessions.filter(\.isActive)
     }
@@ -1007,13 +1026,13 @@ private extension CrewView {
         let remaining = Int(endDate.timeIntervalSinceNow / 60.0)
         return max(0, remaining)
     }
-    
+
     var cardBackground: some View {
         RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(.ultraThinMaterial)
+            .fill(palette.cardFill)
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    .stroke(palette.cardStroke, lineWidth: 1)
             )
     }
 }

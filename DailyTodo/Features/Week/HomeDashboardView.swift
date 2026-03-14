@@ -10,6 +10,9 @@ import SwiftData
 import Combine
 
 struct HomeDashboardView: View {
+    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
+    private let palette = ThemePalette()
+    
     @Environment(\.modelContext) var modelContext
     @EnvironmentObject var store: TodoStore
 

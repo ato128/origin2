@@ -1,14 +1,14 @@
 //
-//  SmartSuggestionCard.swift
+//  AICoachCard.swift
 //  DailyTodo
 //
-//  Created by Atakan Ortaç on 13.03.2026.
+//  Created by Atakan Ortaç on 14.03.2026.
 //
 
 import SwiftUI
 
-struct SmartSuggestionCard: View {
-    let data: SmartSuggestionData
+struct AICoachCard: View {
+    let data: AICoachData
     let onTapAction: ((SmartSuggestionAction) -> Void)?
 
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
@@ -16,26 +16,24 @@ struct SmartSuggestionCard: View {
 
     @State private var isVisible = false
     @State private var pressed = false
-    @State private var glowPulse = false
+    @State private var pulse = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-
             HStack(spacing: 10) {
                 ZStack {
                     Circle()
                         .fill(Color.accentColor.opacity(0.12))
-                        .frame(width: 34, height: 34)
-                        .scaleEffect(glowPulse ? 1.08 : 0.96)
+                        .frame(width: 36, height: 36)
+                        .scaleEffect(pulse ? 1.08 : 0.96)
 
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 15, weight: .bold))
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(Color.accentColor)
-                        .scaleEffect(glowPulse ? 1.04 : 1.0)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Insight for today")
+                    Text("Behavior Analysis")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(palette.secondaryText)
 
@@ -75,24 +73,8 @@ struct SmartSuggestionCard: View {
                     .padding(.horizontal, 18)
                     .padding(.vertical, 11)
                     .background(
-                        ZStack {
-                            Capsule()
-                                .fill(Color.accentColor)
-
-                            Capsule()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            appTheme == AppTheme.light.rawValue
-                                            ? Color.black.opacity(0.06)
-                                            : Color.white.opacity(0.14),
-                                            Color.clear
-                                        ],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    )
-                                )
-                        }
+                        Capsule()
+                            .fill(Color.accentColor)
                     )
                     .foregroundStyle(.white)
                     .clipShape(Capsule())
@@ -105,20 +87,6 @@ struct SmartSuggestionCard: View {
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(
-                    LinearGradient(
-                        colors: [
-                            Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.10 : 0.14),
-                            Color.clear
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
-                )
-        )
         .opacity(isVisible ? 1 : 0)
         .scaleEffect(isVisible ? 1 : 0.985)
         .offset(y: isVisible ? 0 : 12)
@@ -126,23 +94,19 @@ struct SmartSuggestionCard: View {
         .animateWhenVisible($isVisible)
         .onChange(of: isVisible) { _, newValue in
             guard newValue else { return }
-            glowPulse = false
+            pulse = false
             withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
-                glowPulse = true
+                pulse = true
             }
         }
     }
 
     private func buttonIcon(for action: SmartSuggestionAction) -> String {
         switch action {
-        case .openTasks:
-            return "checklist"
-        case .openFocus:
-            return "timer"
-        case .openWeek:
-            return "calendar"
-        case .none:
-            return "sparkles"
+        case .openTasks: return "checklist"
+        case .openFocus: return "timer"
+        case .openWeek: return "calendar"
+        case .none: return "sparkles"
         }
     }
 
@@ -152,11 +116,6 @@ struct SmartSuggestionCard: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .stroke(palette.cardStroke, lineWidth: 1)
-            )
-            .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.03 : 0.05))
-                    .blur(radius: 18)
             )
     }
 }

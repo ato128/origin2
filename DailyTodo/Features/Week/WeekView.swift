@@ -148,7 +148,7 @@ struct WeekView: View {
     
     var body: some View {
         ZStack {
-            WeekAmbientBackground()
+            AppBackground()
             
             ScrollViewReader { proxy in
                 mainList(proxy: proxy)

@@ -10,6 +10,9 @@ import SwiftUI
 struct OverviewCard: View {
     let data: OverviewData
 
+    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
+    private let palette = ThemePalette()
+
     @State private var isVisible = false
     @State private var animatedProgress: Double = 0
 
@@ -19,6 +22,7 @@ struct OverviewCard: View {
             HStack {
                 Text("Overview")
                     .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(palette.primaryText)
 
                 Spacer()
 
@@ -40,17 +44,18 @@ struct OverviewCard: View {
                     formatter: { "%\(Int($0))" }
                 )
                 .font(.system(size: 36, weight: .bold, design: .rounded))
+                .foregroundStyle(palette.primaryText)
 
                 Text("tamamlanma")
                     .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
             }
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
 
                     Capsule()
-                        .fill(Color.white.opacity(0.08))
+                        .fill(palette.secondaryCardFill)
                         .frame(height: 8)
 
                     Capsule()
@@ -68,7 +73,11 @@ struct OverviewCard: View {
                         .shadow(color: Color.accentColor.opacity(0.20), radius: 8)
                         .overlay(alignment: .trailing) {
                             Circle()
-                                .fill(Color.white.opacity(0.22))
+                                .fill(
+                                    appTheme == AppTheme.light.rawValue
+                                    ? Color.black.opacity(0.10)
+                                    : Color.white.opacity(0.22)
+                                )
                                 .frame(width: 10, height: 10)
                                 .blur(radius: 2)
                                 .opacity(animatedProgress > 0.02 ? 1 : 0)
@@ -78,15 +87,13 @@ struct OverviewCard: View {
             .frame(height: 8)
 
             HStack(spacing: 10) {
-
                 pill(text: data.streakText, icon: "flame.fill")
-
                 pill(text: data.completedText, icon: "checkmark.circle.fill")
             }
 
             Text(data.subtitle)
                 .font(.system(size: 14))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
         }
         .padding(18)
         .background(cardBackground)
@@ -106,18 +113,19 @@ struct OverviewCard: View {
             Text(text)
         }
         .font(.system(size: 12, weight: .semibold))
+        .foregroundStyle(palette.secondaryText)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(Color.white.opacity(0.06))
+        .background(palette.secondaryCardFill)
         .clipShape(Capsule())
     }
 
     var cardBackground: some View {
         RoundedRectangle(cornerRadius: 22)
-            .fill(.ultraThinMaterial)
+            .fill(palette.cardFill)
             .overlay(
                 RoundedRectangle(cornerRadius: 22)
-                    .stroke(Color.white.opacity(0.08))
+                    .stroke(palette.cardStroke)
             )
     }
 }

@@ -5,10 +5,14 @@
 //  Created by Atakan Ortaç on 13.03.2026.
 //
 
+
 import SwiftUI
 
 struct DailyBoostCard: View {
     let data: DailyBoostData
+
+    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
+    private let palette = ThemePalette()
 
     @State private var isVisible = false
 
@@ -16,10 +20,11 @@ struct DailyBoostCard: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(data.title)
                 .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(palette.secondaryText)
 
             Text(data.message)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(.primary)
+                .foregroundStyle(palette.primaryText)
                 .multilineTextAlignment(.leading)
 
             if let buttonTitle = data.buttonTitle {
@@ -36,7 +41,9 @@ struct DailyBoostCard: View {
                                 .fill(
                                     LinearGradient(
                                         colors: [
-                                            Color.white.opacity(0.14),
+                                            appTheme == AppTheme.light.rawValue
+                                            ? Color.black.opacity(0.06)
+                                            : Color.white.opacity(0.14),
                                             Color.clear
                                         ],
                                         startPoint: .top,
@@ -62,10 +69,10 @@ struct DailyBoostCard: View {
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 22, style: .continuous)
-            .fill(.ultraThinMaterial)
+            .fill(palette.cardFill)
             .overlay(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                    .stroke(palette.cardStroke, lineWidth: 1)
             )
     }
 }

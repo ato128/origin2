@@ -13,6 +13,9 @@ struct CrewTaskDetailView: View {
 
     @Environment(\.modelContext) private var modelContext
 
+    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
+    private let palette = ThemePalette()
+
     @Query private var comments: [CrewTaskComment]
     @Query private var polls: [CrewTaskPoll]
     @Query private var reactions: [CrewTaskReaction]
@@ -31,40 +34,39 @@ struct CrewTaskDetailView: View {
         let taskPoll = polls.first { $0.taskID == task.id }
         let taskReactions = reactions.filter { $0.taskID == task.id }
 
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                headerCard
+        ZStack {
+            AppBackground()
 
-                quickActionsCard
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    headerCard
+                    quickActionsCard
+                    statusSection
 
-                statusSection
+                    if !task.details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        detailCard
+                    }
 
-                if !task.details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    detailCard
+                    scheduleSection
+
+                    if let poll = taskPoll {
+                        pollSection(poll)
+                    }
+
+                    reactionsSection(taskReactions)
+                    discussionComposer
+                    commentsSection(taskComments)
                 }
-
-                scheduleSection
-
-                if let poll = taskPoll {
-                    pollSection(poll)
-                }
-
-                reactionsSection(taskReactions)
-
-                discussionComposer
-
-                commentsSection(taskComments)
+                .padding(16)
+                .padding(.bottom, 28)
             }
-            .padding(16)
-            .padding(.bottom, 28)
         }
-        .background(Color(.systemGroupedBackground))
         .navigationTitle("Task Detail")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
 
-private extension CrewTaskDetailView {
+extension CrewTaskDetailView {
 
     var headerCard: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -72,6 +74,7 @@ private extension CrewTaskDetailView {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(task.title)
                         .font(.title3.bold())
+                        .foregroundStyle(palette.primaryText)
 
                     HStack(spacing: 8) {
                         badge(
@@ -103,7 +106,7 @@ private extension CrewTaskDetailView {
                 infoPill(
                     text: task.createdBy.isEmpty ? "Unknown" : task.createdBy,
                     icon: "plus.circle.fill",
-                    tint: .secondary
+                    tint: palette.secondaryText
                 )
             }
         }
@@ -116,6 +119,7 @@ private extension CrewTaskDetailView {
         VStack(alignment: .leading, spacing: 12) {
             Text("Quick Actions")
                 .font(.headline)
+                .foregroundStyle(palette.primaryText)
 
             HStack(spacing: 10) {
                 Button {
@@ -144,6 +148,7 @@ private extension CrewTaskDetailView {
         VStack(alignment: .leading, spacing: 12) {
             Text("Status")
                 .font(.headline)
+                .foregroundStyle(palette.primaryText)
 
             HStack(spacing: 10) {
                 ForEach(statusOptions, id: \.self) { status in
@@ -156,11 +161,13 @@ private extension CrewTaskDetailView {
                             .padding(.vertical, 8)
                             .background(
                                 Capsule()
-                                    .fill(task.status == status
-                                          ? statusColor(status).opacity(0.18)
-                                          : Color.secondary.opacity(0.08))
+                                    .fill(
+                                        task.status == status
+                                        ? statusColor(status).opacity(0.18)
+                                        : palette.secondaryCardFill
+                                    )
                             )
-                            .foregroundStyle(task.status == status ? statusColor(status) : .secondary)
+                            .foregroundStyle(task.status == status ? statusColor(status) : palette.secondaryText)
                     }
                     .buttonStyle(.plain)
                 }
@@ -175,10 +182,11 @@ private extension CrewTaskDetailView {
         VStack(alignment: .leading, spacing: 10) {
             Text("Details")
                 .font(.headline)
+                .foregroundStyle(palette.primaryText)
 
             Text(task.details)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -189,6 +197,7 @@ private extension CrewTaskDetailView {
         VStack(alignment: .leading, spacing: 12) {
             Text("Schedule")
                 .font(.headline)
+                .foregroundStyle(palette.primaryText)
 
             if task.showOnWeek,
                let weekday = task.scheduledWeekday,
@@ -204,7 +213,7 @@ private extension CrewTaskDetailView {
             } else {
                 Text("This task is not scheduled on the Week page.")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
             }
         }
         .padding(18)
@@ -217,6 +226,7 @@ private extension CrewTaskDetailView {
             HStack {
                 Text("Poll")
                     .font(.headline)
+                    .foregroundStyle(palette.primaryText)
 
                 Spacer()
 
@@ -233,6 +243,7 @@ private extension CrewTaskDetailView {
 
             Text(poll.question)
                 .font(.subheadline.weight(.semibold))
+                .foregroundStyle(palette.primaryText)
 
             HStack(spacing: 12) {
                 voteCard(title: "Yes", value: poll.yesVotes, tint: .green)
@@ -284,6 +295,7 @@ private extension CrewTaskDetailView {
         VStack(alignment: .leading, spacing: 12) {
             Text("Reactions")
                 .font(.headline)
+                .foregroundStyle(palette.primaryText)
 
             HStack(spacing: 10) {
                 ForEach(reactionOptions, id: \.self) { emoji in
@@ -296,13 +308,13 @@ private extension CrewTaskDetailView {
                             Text(emoji)
                             Text("\(count)")
                                 .font(.caption.weight(.bold))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(palette.secondaryText)
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)
                         .background(
                             Capsule()
-                                .fill(Color.secondary.opacity(0.10))
+                                .fill(palette.secondaryCardFill)
                         )
                     }
                     .buttonStyle(.plain)
@@ -318,11 +330,24 @@ private extension CrewTaskDetailView {
         VStack(alignment: .leading, spacing: 12) {
             Text("Discussion")
                 .font(.headline)
+                .foregroundStyle(palette.primaryText)
 
             TextField("Your name", text: $commentAuthor)
+                .foregroundStyle(palette.primaryText)
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(palette.secondaryCardFill)
+                )
 
             TextField("Add note or opinion...", text: $newComment, axis: .vertical)
                 .lineLimit(3...5)
+                .foregroundStyle(palette.primaryText)
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(palette.secondaryCardFill)
+                )
 
             Button {
                 addComment()
@@ -351,6 +376,7 @@ private extension CrewTaskDetailView {
             HStack {
                 Text("Notes & Comments")
                     .font(.headline)
+                    .foregroundStyle(palette.primaryText)
 
                 Spacer()
 
@@ -360,15 +386,15 @@ private extension CrewTaskDetailView {
                     .padding(.vertical, 4)
                     .background(
                         Capsule()
-                            .fill(Color.secondary.opacity(0.12))
+                            .fill(palette.secondaryCardFill)
                     )
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
             }
 
             if taskComments.isEmpty {
                 Text("No notes yet.")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
             } else {
                 VStack(spacing: 10) {
                     ForEach(taskComments) { comment in
@@ -381,6 +407,7 @@ private extension CrewTaskDetailView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
     }
+
     func commentBubble(_ comment: CrewTaskComment) -> some View {
         HStack(alignment: .top, spacing: 10) {
             ZStack {
@@ -397,33 +424,37 @@ private extension CrewTaskDetailView {
                 HStack {
                     Text(comment.authorName)
                         .font(.caption.weight(.bold))
+                        .foregroundStyle(palette.primaryText)
 
                     Spacer()
 
                     Text(comment.createdAt, style: .time)
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                 }
 
                 Text(comment.message)
                     .font(.subheadline)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(palette.primaryText)
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.secondary.opacity(0.08))
+                    .fill(palette.secondaryCardFill)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
+                    )
             )
         }
     }
-    
+
     func initialLetter(_ name: String) -> String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         return String(trimmed.prefix(1)).uppercased()
     }
-    
-    
+
     func addComment() {
         let cleanMessage = newComment.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanMessage.isEmpty else { return }
@@ -530,7 +561,7 @@ private extension CrewTaskDetailView {
         VStack(spacing: 6) {
             Text(title)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
 
             Text("\(value)")
                 .font(.title3.bold())
@@ -551,6 +582,7 @@ private extension CrewTaskDetailView {
 
             Text(text)
                 .font(.subheadline)
+                .foregroundStyle(palette.primaryText)
         }
     }
 
@@ -634,10 +666,10 @@ private extension CrewTaskDetailView {
 
     var cardBackground: some View {
         RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(.ultraThinMaterial)
+            .fill(palette.cardFill)
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    .stroke(palette.cardStroke, lineWidth: 1)
             )
     }
 }

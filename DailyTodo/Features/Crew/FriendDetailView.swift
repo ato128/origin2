@@ -14,12 +14,15 @@ struct FriendDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
+    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
+    private let palette = ThemePalette()
+
     @Query(sort: \FriendMessage.createdAt, order: .forward)
     private var allMessages: [FriendMessage]
 
     @Query(sort: \SharedWeekItem.createdAt, order: .forward)
     private var allSharedItems: [SharedWeekItem]
-    
+
     @Query(sort: \FriendFocusSession.startedAt, order: .reverse)
     private var allFocusSessions: [FriendFocusSession]
 
@@ -78,6 +81,7 @@ struct FriendDetailView: View {
                         .offset(y: showActionsCard ? 0 : 18)
                         .opacity(showActionsCard ? 1 : 0)
                         .scaleEffect(showActionsCard ? 1 : 0.985)
+
                     Spacer(minLength: 90)
                 }
                 .padding(.horizontal, 16)
@@ -85,22 +89,22 @@ struct FriendDetailView: View {
             }
             .scrollIndicators(.hidden)
         }
-        .background(Color(.systemGroupedBackground))
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .overlay(alignment: .bottom) {
             if showCopied {
                 Text("Copied")
                     .font(.caption.weight(.semibold))
+                    .foregroundStyle(palette.primaryText)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    .background(.ultraThinMaterial)
+                    .background(palette.cardFill)
                     .clipShape(Capsule())
                     .overlay(
                         Capsule()
-                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            .stroke(palette.cardStroke, lineWidth: 1)
                     )
-                    .shadow(radius: 8)
+                    .shadow(color: palette.shadowColor, radius: 8)
                     .padding(.bottom, 24)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
@@ -140,12 +144,9 @@ struct FriendDetailView: View {
         .sheet(isPresented: $showSharedFocusSheet) {
             FocusSessionView(
                 taskTitle: "Focus with \(friend.name)",
-                onStartFocus: { _, _ in
-                },
-                onTick: { _ in
-                },
-                onFinishFocus: { _, _, _, _, _, _ in
-                }
+                onStartFocus: { _, _ in },
+                onTick: { _ in },
+                onFinishFocus: { _, _, _, _, _, _ in }
             )
         }
     }
@@ -155,30 +156,31 @@ private extension FriendDetailView {
 
     var ambientBackground: some View {
         ZStack(alignment: .topLeading) {
-            Color(.systemGroupedBackground)
+            AppBackground()
+
+            if appTheme == AppTheme.gradient.rawValue {
+                RadialGradient(
+                    colors: [
+                        hexColor(friend.colorHex).opacity(0.16),
+                        Color.clear
+                    ],
+                    center: .topLeading,
+                    startRadius: 30,
+                    endRadius: 260
+                )
                 .ignoresSafeArea()
 
-            RadialGradient(
-                colors: [
-                    hexColor(friend.colorHex).opacity(0.16),
-                    Color.clear
-                ],
-                center: .topLeading,
-                startRadius: 30,
-                endRadius: 260
-            )
-            .ignoresSafeArea()
-
-            RadialGradient(
-                colors: [
-                    Color.blue.opacity(0.08),
-                    Color.clear
-                ],
-                center: .topTrailing,
-                startRadius: 60,
-                endRadius: 320
-            )
-            .ignoresSafeArea()
+                RadialGradient(
+                    colors: [
+                        Color.blue.opacity(0.08),
+                        Color.clear
+                    ],
+                    center: .topTrailing,
+                    startRadius: 60,
+                    endRadius: 320
+                )
+                .ignoresSafeArea()
+            }
         }
     }
 
@@ -189,15 +191,17 @@ private extension FriendDetailView {
             } label: {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(palette.primaryText)
                     .frame(width: 56, height: 56)
                     .background(
                         Circle()
-                            .fill(.ultraThinMaterial)
+                            .fill(palette.cardFill)
                             .overlay(
                                 Circle()
-                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                    .stroke(palette.cardStroke, lineWidth: 1)
                             )
                     )
+                    .shadow(color: palette.shadowColor, radius: 10, y: 4)
             }
             .buttonStyle(.plain)
 
@@ -205,6 +209,7 @@ private extension FriendDetailView {
 
             Text(friend.name)
                 .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundStyle(palette.primaryText)
 
             Spacer()
 
@@ -228,10 +233,11 @@ private extension FriendDetailView {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(friend.name)
                         .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
 
                     Text(friend.subtitle)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
 
                     HStack(spacing: 8) {
                         Circle()
@@ -240,7 +246,7 @@ private extension FriendDetailView {
 
                         Text(friend.isOnline ? "Online" : "Offline")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(palette.secondaryText)
                     }
 
                     if let session = activeFocusSession {
@@ -276,18 +282,19 @@ private extension FriendDetailView {
             HStack {
                 Text("Today Schedule")
                     .font(.headline)
+                    .foregroundStyle(palette.primaryText)
 
                 Spacer()
 
                 Text("\(todaySchedule.count) items")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
             }
 
             if todaySchedule.isEmpty {
                 Text("No shared schedule for today.")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
             } else {
                 ForEach(todaySchedule) { item in
                     HStack(spacing: 12) {
@@ -303,10 +310,11 @@ private extension FriendDetailView {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(item.title)
                                 .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(palette.primaryText)
 
                             Text("\(hm(item.startMinute)) – \(hm(item.startMinute + item.durationMinute))")
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(palette.secondaryText)
                         }
 
                         Spacer()
@@ -314,7 +322,11 @@ private extension FriendDetailView {
                     .padding(12)
                     .background(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(Color.white.opacity(0.04))
+                            .fill(palette.secondaryCardFill)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
+                            )
                     )
                 }
             }
@@ -329,18 +341,19 @@ private extension FriendDetailView {
             HStack {
                 Text("Recent Messages")
                     .font(.headline)
+                    .foregroundStyle(palette.primaryText)
 
                 Spacer()
 
                 Text("\(messages.suffix(3).count)")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
             }
 
             if messages.isEmpty {
                 Text("No messages yet.")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
             } else {
                 ForEach(Array(messages.suffix(3))) { message in
                     HStack {
@@ -348,15 +361,15 @@ private extension FriendDetailView {
 
                         Text(message.text)
                             .font(.subheadline)
-                            .foregroundStyle(message.isFromMe ? .white : .primary)
+                            .foregroundStyle(message.isFromMe ? .white : palette.primaryText)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 12)
                             .background(
                                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                                     .fill(
                                         message.isFromMe
-                                        ? Color.accentColor.opacity(0.24)
-                                        : Color.white.opacity(0.06)
+                                        ? Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.90 : 0.24)
+                                        : palette.secondaryCardFill
                                     )
                             )
 
@@ -374,6 +387,7 @@ private extension FriendDetailView {
         VStack(alignment: .leading, spacing: 14) {
             Text("Actions")
                 .font(.headline)
+                .foregroundStyle(palette.primaryText)
 
             HStack(spacing: 12) {
                 NavigationLink {
@@ -418,16 +432,22 @@ private extension FriendDetailView {
         VStack(spacing: 10) {
             Image(systemName: systemImage)
                 .font(.title3)
+                .foregroundStyle(palette.primaryText)
 
             Text(title)
                 .font(.caption.weight(.semibold))
                 .multilineTextAlignment(.center)
+                .foregroundStyle(palette.primaryText)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.05))
+                .fill(palette.secondaryCardFill)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
+                )
         )
     }
 
@@ -487,17 +507,22 @@ private extension FriendDetailView {
         VStack(spacing: 4) {
             Text(title)
                 .font(.title3.weight(.bold))
+                .foregroundStyle(palette.primaryText)
                 .monospacedDigit()
 
             Text(subtitle)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 14)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.05))
+                .fill(palette.secondaryCardFill)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
+                )
         )
     }
 
@@ -554,10 +579,10 @@ private extension FriendDetailView {
 
     var cardBackground: some View {
         RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(.ultraThinMaterial)
+            .fill(palette.cardFill)
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    .stroke(palette.cardStroke, lineWidth: 1)
             )
     }
 }

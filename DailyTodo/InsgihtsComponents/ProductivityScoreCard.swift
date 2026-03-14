@@ -10,6 +10,10 @@ import SwiftUI
 struct ProductivityScoreCard: View {
 
     let data: ScoreCardData
+
+    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
+    private let palette = ThemePalette()
+
     @State private var isVisible = false
 
     private var scoreValue: Double {
@@ -22,6 +26,7 @@ struct ProductivityScoreCard: View {
 
             Text(data.title)
                 .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(palette.primaryText)
 
             HStack {
 
@@ -36,15 +41,16 @@ struct ProductivityScoreCard: View {
                             formatter: { "\(Int($0))" }
                         )
                         .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
 
                         Text("/100")
                             .font(.system(size: 30, weight: .bold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(palette.secondaryText)
                     }
 
                     Text(data.subtitle)
                         .font(.system(size: 14))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                 }
 
                 Spacer()
@@ -65,6 +71,7 @@ struct ProductivityScoreCard: View {
                         formatter: { "\(Int($0))" }
                     )
                     .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(palette.primaryText)
                 }
                 .frame(width: 82, height: 82)
             }
@@ -76,10 +83,10 @@ struct ProductivityScoreCard: View {
 
     var cardBackground: some View {
         RoundedRectangle(cornerRadius: 22)
-            .fill(.ultraThinMaterial)
+            .fill(palette.cardFill)
             .overlay(
                 RoundedRectangle(cornerRadius: 22)
-                    .stroke(Color.white.opacity(0.07))
+                    .stroke(palette.cardStroke, lineWidth: 1)
             )
     }
 }

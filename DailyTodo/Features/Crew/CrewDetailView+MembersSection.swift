@@ -14,6 +14,7 @@ extension CrewDetailView {
             HStack {
                 Text("Members")
                     .font(.headline)
+                    .foregroundStyle(palette.primaryText)
 
                 Spacer()
 
@@ -37,9 +38,9 @@ extension CrewDetailView {
                     .padding(.vertical, 4)
                     .background(
                         Capsule()
-                            .fill(Color.secondary.opacity(0.12))
+                            .fill(palette.secondaryCardFill)
                     )
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
             }
 
             if crewMembers.isEmpty {
@@ -59,10 +60,11 @@ extension CrewDetailView {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(member.name)
                                 .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(palette.primaryText)
 
                             Text(member.role)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(palette.secondaryText)
                         }
 
                         Spacer()
@@ -74,13 +76,17 @@ extension CrewDetailView {
 
                             Text(member.isOnline ? "Online" : "Away")
                                 .font(.caption2)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(palette.secondaryText)
                         }
                     }
                     .padding(10)
                     .background(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Color.white.opacity(0.04))
+                            .fill(palette.secondaryCardFill)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
+                            )
                     )
                 }
             }
