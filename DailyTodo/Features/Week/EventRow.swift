@@ -80,20 +80,18 @@ struct EventRow: View {
 
         let bg: Color = {
             if isDone {
-                return palette.secondaryCardFill
-            }
-
-            if isLive {
-                return accent.opacity(isLightTheme ? 0.12 : 0.14)
-            }
-
-            if isUpNext {
                 return accent.opacity(isLightTheme ? 0.08 : 0.10)
             }
 
-            return isLightTheme
-                ? palette.secondaryCardFill
-                : accent.opacity(0.075)
+            if isLive {
+                return accent.opacity(isLightTheme ? 0.22 : 0.18)
+            }
+
+            if isUpNext {
+                return accent.opacity(isLightTheme ? 0.16 : 0.13)
+            }
+
+            return accent.opacity(isLightTheme ? 0.12 : 0.09)
         }()
 
         let strokeColor: Color = {
@@ -261,10 +259,9 @@ struct EventRow: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    isLightTheme
-                                    ? Color.white.opacity(isLive ? 0.35 : 0.18)
-                                    : Color.white.opacity(isLive ? 0.18 : 0.04),
-                                    Color.white.opacity(0.00)
+                                    Color.white.opacity(isLive ? 0.30 : 0.16),
+                                    accent.opacity(isLightTheme ? 0.05 : 0.02),
+                                    Color.clear
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -280,9 +277,9 @@ struct EventRow: View {
         .shadow(color: isSoon ? Color.orange.opacity(0.18) : .clear, radius: isSoon ? 8 : 0)
         .shadow(
             color: isLightTheme
-                ? Color.black.opacity(0.06)
+                ? accent.opacity(0.14)
                 : accent.opacity(0.25),
-            radius: 10,
+            radius: 12,
             x: 0,
             y: 8
         )
