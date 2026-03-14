@@ -9,11 +9,14 @@ import SwiftUI
 import SwiftData
 
 extension WeekView {
+    var palette: ThemePalette {
+        ThemePalette()
+    }
     
     var pickerSection: some View {
         Section {
             VStack(spacing: 12) {
-
+                
                 Picker("Gün", selection: $selectedDay) {
                     ForEach(0..<7, id: \.self) { i in
                         Text(dayTitles[i]).tag(i)
@@ -21,7 +24,7 @@ extension WeekView {
                 }
                 .pickerStyle(.segmented)
                 .padding(.vertical, 4)
-
+                
                 HStack {
                     ForEach(0..<7, id: \.self) { i in
                         VStack(spacing: 4) {
@@ -30,7 +33,7 @@ extension WeekView {
                                 .frame(width: 6, height: 6)
                                 .scaleEffect(i == weekdayIndexToday() && pulseTodayDot ? 1.18 : 1.0)
                                 .opacity(i == weekdayIndexToday() ? 1 : 0)
-
+                            
                             Color.clear.frame(height: 1)
                         }
                         .frame(maxWidth: .infinity)
@@ -48,9 +51,7 @@ extension WeekView {
     
     var personalDayPickerSection: some View {
         HStack(spacing: 8) {
-            ForEach(0..<7, id: \.self) { day in
-                let isSelected = day == selectedDay
-                let isToday = day == weekdayIndexToday()
+            ForEach(dayTitles.indices, id: \.self) { day in
                 let tint = dayIndicatorColor(for: day)
 
                 Button {
@@ -61,58 +62,47 @@ extension WeekView {
                     VStack(spacing: 6) {
                         Text(dayTitles[day])
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(isSelected ? .white : .primary)
+                            .foregroundStyle(
+                                selectedDay == day
+                                ? palette.primaryText
+                                : palette.secondaryText
+                            )
 
                         Circle()
-                            .fill(isToday ? Color.blue : Color.clear)
+                            .fill(day == weekdayIndexToday() ? Color.blue : Color.clear)
                             .frame(width: 6, height: 6)
-                            .opacity(isToday ? 1 : 0)
+                            .opacity(day == weekdayIndexToday() ? 1 : 0)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 11)
                     .background(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .fill(
-                                isSelected
-                                ? LinearGradient(
-                                    colors: [
-                                        tint,
-                                        tint.opacity(0.82)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                                : LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.05),
-                                        Color.white.opacity(0.025)
-                                    ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
+                                selectedDay == day
+                                ? tint.opacity(0.18)
+                                : palette.secondaryCardFill
                             )
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .stroke(
-                                isSelected
-                                ? Color.white.opacity(0.14)
-                                : Color.white.opacity(0.05),
+                                selectedDay == day
+                                ? tint.opacity(0.28)
+                                : palette.cardStroke,
                                 lineWidth: 1
                             )
                     )
                     .shadow(
-                        color: isSelected ? tint.opacity(0.26) : .clear,
-                        radius: isSelected ? 12 : 0
+                        color: selectedDay == day ? tint.opacity(0.18) : .clear,
+                        radius: selectedDay == day ? 12 : 0
                     )
-                    .scaleEffect(isSelected ? 1.02 : 1.0)
+                    .scaleEffect(selectedDay == day ? 1.02 : 1.0)
                 }
                 .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, 16)
     }
-
     var summarySection: some View {
         daySummaryCard
         
@@ -131,13 +121,14 @@ extension WeekView {
 
                 Text("\(dayTitles[selectedDay]) günü boş")
                     .font(.headline)
+                    .foregroundStyle(palette.primaryText)
 
                 Spacer()
             }
 
             Text("Bu güne henüz ders eklenmemiş. Sağ üstteki + ile hızlıca yeni ders oluşturabilirsin.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
 
             Button {
                 Haptics.impact(.medium)
@@ -148,6 +139,7 @@ extension WeekView {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .background(Capsule().fill(Color.accentColor.opacity(0.16)))
+                    .foregroundStyle(Color.accentColor)
             }
         }
         .padding(18)
@@ -234,6 +226,7 @@ extension WeekView {
                     HStack(spacing: 8) {
                         Text(dayTitles[selectedDay])
                             .font(.headline)
+                            .foregroundStyle(palette.primaryText)
 
                         if isTodaySelected {
                             Text("Bugün")
@@ -261,7 +254,7 @@ extension WeekView {
 
                     Text(summarySubtitle)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                 }
 
                 Spacer()
@@ -269,7 +262,7 @@ extension WeekView {
                 if totalMinutesForDay > 0 {
                     Text(durationText(totalMinutesForDay))
                         .font(.title3.weight(.semibold))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(palette.primaryText)
                         .monospacedDigit()
                 }
             }
@@ -304,13 +297,13 @@ extension WeekView {
 
                     Text("\(live.title) aktif")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(palette.primaryText)
 
                     Spacer()
 
                     Text(timeText(for: live))
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                 }
             }
         }
@@ -358,11 +351,11 @@ extension WeekView {
         HStack(spacing: 8) {
             Image(systemName: systemImage)
                 .font(.caption.weight(.bold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
 
             Text(title)
                 .font(.caption.weight(.bold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
 
             Spacer()
         }
@@ -375,10 +368,11 @@ extension WeekView {
         VStack(alignment: .leading, spacing: 8) {
             Label(title, systemImage: icon)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
 
             Text(value)
                 .font(.subheadline.weight(.semibold))
+                .foregroundStyle(palette.primaryText)
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
@@ -388,7 +382,11 @@ extension WeekView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(0.05))
+                .fill(palette.secondaryCardFill)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(palette.cardStroke, lineWidth: 1)
         )
     }
 

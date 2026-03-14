@@ -10,8 +10,9 @@ import SwiftData
 import Combine
 
 struct HomeDashboardView: View {
-    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
-    private let palette = ThemePalette()
+    @AppStorage("smartEngineEnabled") var smartEngineEnabled: Bool = true
+    @AppStorage("appTheme")  var appTheme = AppTheme.gradient.rawValue
+     let palette = ThemePalette()
     
     @Environment(\.modelContext) var modelContext
     @EnvironmentObject var store: TodoStore
@@ -56,6 +57,14 @@ struct HomeDashboardView: View {
     @State private var showQuickActionsCard = false
 
     let focusRefreshTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    
+    private var smartSuggestions: [SmartTaskSuggestion] {
+        guard smartEngineEnabled else { return [] }
+        return SmartTaskEngine.suggestions(
+            tasks: allTasks,
+            events: allEvents
+        )
+    }
 
     var allTasks: [DTTaskItem] { store.items }
 
@@ -70,6 +79,15 @@ struct HomeDashboardView: View {
             .sorted {
                 ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture)
             }
+    }
+    
+    private var themedCardBackground: some View {
+        RoundedRectangle(cornerRadius: 24, style: .continuous)
+            .fill(palette.cardFill)
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(palette.cardStroke, lineWidth: 1)
+            )
     }
 
     var completedTodayCount: Int {
@@ -277,6 +295,10 @@ struct HomeDashboardView: View {
                     .offset(y: showTodayTasksCard ? 0 : 18)
                     .opacity(showTodayTasksCard ? 1 : 0)
                     .scaleEffect(showTodayTasksCard ? 1 : 0.985)
+                
+                if smartEngineEnabled, let firstSuggestion = smartSuggestions.first {
+                    SmartTaskSuggestionCard(suggestion: firstSuggestion)
+                }
 
                 quickActionsCard
                     .offset(y: showQuickActionsCard ? 0 : 18)

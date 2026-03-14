@@ -81,7 +81,7 @@ extension WeekView {
 
                             Text(fullDateTextForSelectedDay())
                                 .font(.footnote.weight(.medium))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(palette.secondaryText)
 
                             HStack(spacing: 8) {
                                 Image(systemName: "sparkles")
@@ -90,7 +90,7 @@ extension WeekView {
 
                                 Text("Team flow for today")
                                     .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(palette.secondaryText)
 
                                 if activeCrewTaskCount > 0 {
                                     Text("Live")
@@ -153,6 +153,7 @@ extension WeekView {
                         HStack {
                             Text("Recent Activity")
                                 .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .foregroundStyle(palette.primaryText)
 
                             Spacer()
 
@@ -197,7 +198,7 @@ extension WeekView {
                 } label: {
                     Text(dayTitles[day])
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(day == selectedDay ? .white : .primary)
+                        .foregroundStyle(day == selectedDay ? .white : palette.primaryText)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 11)
                         .background(
@@ -214,8 +215,8 @@ extension WeekView {
                                     )
                                     : LinearGradient(
                                         colors: [
-                                            Color.white.opacity(0.05),
-                                            Color.white.opacity(0.025)
+                                            palette.secondaryCardFill,
+                                            palette.secondaryCardFill.opacity(0.92)
                                         ],
                                         startPoint: .top,
                                         endPoint: .bottom
@@ -227,7 +228,7 @@ extension WeekView {
                                 .stroke(
                                     day == selectedDay
                                     ? Color.white.opacity(0.12)
-                                    : Color.white.opacity(0.05),
+                                    : palette.cardStroke,
                                     lineWidth: 1
                                 )
                         )
@@ -249,7 +250,7 @@ extension WeekView {
     var crewProjectSelector: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
-                
+
                 let allSelected = selectedCrewID == nil
 
                 Button {
@@ -260,7 +261,7 @@ extension WeekView {
                     HStack(spacing: 8) {
                         ZStack {
                             Circle()
-                                .fill(allSelected ? Color.white.opacity(0.18) : Color.white.opacity(0.08))
+                                .fill(allSelected ? palette.primaryText.opacity(0.12) : palette.secondaryCardFill)
                                 .frame(width: 24, height: 24)
 
                             Image(systemName: "square.grid.2x2.fill")
@@ -279,16 +280,16 @@ extension WeekView {
                                 allSelected
                                 ? LinearGradient(
                                     colors: [
-                                        Color.white.opacity(0.18),
-                                        Color.white.opacity(0.10)
+                                        palette.primaryText.opacity(0.14),
+                                        palette.primaryText.opacity(0.08)
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
                                 : LinearGradient(
                                     colors: [
-                                        Color.white.opacity(0.06),
-                                        Color.white.opacity(0.03)
+                                        palette.secondaryCardFill,
+                                        palette.secondaryCardFill.opacity(0.92)
                                     ],
                                     startPoint: .top,
                                     endPoint: .bottom
@@ -299,22 +300,23 @@ extension WeekView {
                         Capsule()
                             .stroke(
                                 allSelected
-                                ? Color.white.opacity(0.30)
-                                : Color.white.opacity(0.06),
+                                ? palette.primaryText.opacity(0.18)
+                                : palette.cardStroke,
                                 lineWidth: 1
                             )
                     )
-                    .foregroundStyle(allSelected ? .white : .primary)
+                    .foregroundStyle(allSelected ? palette.primaryText : palette.primaryText)
                     .shadow(
-                        color: allSelected ? Color.white.opacity(0.10) : .clear,
+                        color: allSelected ? palette.primaryText.opacity(0.06) : .clear,
                         radius: 10
                     )
                 }
                 .buttonStyle(.plain)
-                
+
                 ForEach(allCrews, id: \.id) { crew in
                     let isSelected = selectedCrewID == crew.id
-                    
+                    let tint = hexColor(crew.colorHex)
+
                     Button {
                         withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
                             selectedCrewID = crew.id
@@ -331,20 +333,20 @@ extension WeekView {
                             Capsule()
                                 .fill(
                                     isSelected
-                                    ? hexColor(crew.colorHex).opacity(0.18)
-                                    : Color.white.opacity(0.05)
+                                    ? tint.opacity(0.18)
+                                    : palette.secondaryCardFill
                                 )
                         )
                         .overlay(
                             Capsule()
                                 .stroke(
                                     isSelected
-                                    ? hexColor(crew.colorHex).opacity(0.35)
-                                    : Color.white.opacity(0.06),
+                                    ? tint.opacity(0.35)
+                                    : palette.cardStroke,
                                     lineWidth: 1
                                 )
                         )
-                        .foregroundStyle(isSelected ? hexColor(crew.colorHex) : .primary)
+                        .foregroundStyle(isSelected ? tint : palette.primaryText)
                     }
                     .buttonStyle(.plain)
                 }
@@ -364,7 +366,7 @@ extension WeekView {
             if recent.isEmpty {
                 Text("No crew activity yet")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
             } else {
                 ForEach(Array(recent.enumerated()), id: \.element.id) { index, item in
                     HStack(alignment: .top, spacing: 12) {
@@ -375,7 +377,7 @@ extension WeekView {
 
                             if index != recent.count - 1 {
                                 Rectangle()
-                                    .fill(Color.white.opacity(0.08))
+                                    .fill(palette.cardStroke)
                                     .frame(width: 2)
                                     .frame(maxHeight: .infinity)
                                     .padding(.top, 5)
@@ -387,17 +389,18 @@ extension WeekView {
                             HStack {
                                 Text(item.memberName)
                                     .font(.caption.weight(.bold))
+                                    .foregroundStyle(palette.primaryText)
 
                                 Spacer()
 
                                 Text(item.createdAt, style: .time)
                                     .font(.caption2)
-                                    .foregroundStyle(.tertiary)
+                                    .foregroundStyle(palette.secondaryText)
                             }
 
                             Text(item.actionText)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(palette.secondaryText)
                                 .lineLimit(2)
                         }
                     }
@@ -406,7 +409,6 @@ extension WeekView {
             }
         }
     }
-
     var crewWeekSection: some View {
         Section {
             let tasks = allCrewTasksForSelectedDay
@@ -521,27 +523,25 @@ extension WeekView {
             }
         } header: {
             HStack(spacing: 10) {
-
                 Image(systemName: "checklist")
                     .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
 
                 Text("Crew Tasks")
                     .font(.system(size: 18, weight: .black, design: .rounded))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(palette.primaryText)
 
                 if activeCrewTaskCount > 0 {
                     Text("\(activeCrewTaskCount)")
                         .font(.caption.weight(.bold))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Color.white.opacity(0.06))
+                        .background(palette.secondaryCardFill)
                         .clipShape(Capsule())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                 }
 
                 Spacer()
-            
             }
             .onAppear {
                 if !didAnimateCrewCards {
@@ -611,11 +611,11 @@ extension WeekView {
         HStack(spacing: 8) {
             Image(systemName: systemImage)
                 .font(.caption.weight(.bold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
 
             Text(title)
                 .font(.caption.weight(.bold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
 
             Spacer()
         }
@@ -694,6 +694,7 @@ extension WeekView {
         }
     }
 
+   
     func crewCollapsibleSectionHeader(
         _ title: String,
         systemImage: String,
@@ -705,25 +706,25 @@ extension WeekView {
             HStack(spacing: 10) {
                 Image(systemName: systemImage)
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
 
                 Text(title)
                     .font(.headline.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(palette.primaryText)
 
                 Text("\(count)")
                     .font(.caption.weight(.bold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(Color.white.opacity(0.06))
+                    .background(palette.secondaryCardFill)
                     .clipShape(Capsule())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
 
                 Spacer()
 
                 Image(systemName: "chevron.down")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
                     .rotationEffect(.degrees(isExpanded ? 180 : 0))
                     .animation(.spring(response: 0.28, dampingFraction: 0.82), value: isExpanded)
             }
@@ -731,26 +732,25 @@ extension WeekView {
         }
         .buttonStyle(.plain)
     }
-
     func completedTasksCollapsedSummary(_ tasks: [CrewTask]) -> some View {
         let count = tasks.count
         let firstTitle = tasks.first?.title ?? "Completed tasks"
 
         return ZStack(alignment: .top) {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.018))
+                .fill(palette.secondaryCardFill.opacity(0.55))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.04), lineWidth: 1)
+                        .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
                 )
                 .offset(y: 10)
                 .padding(.horizontal, 10)
 
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.028))
+                .fill(palette.secondaryCardFill.opacity(0.75))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                        .stroke(palette.cardStroke.opacity(0.85), lineWidth: 1)
                 )
                 .offset(y: 5)
                 .padding(.horizontal, 5)
@@ -769,11 +769,11 @@ extension WeekView {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("\(count) completed")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(palette.primaryText)
 
                     Text(firstTitle)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                         .lineLimit(1)
                 }
 
@@ -781,17 +781,17 @@ extension WeekView {
 
                 Text("Show completed")
                     .font(.caption2)
-                    .foregroundStyle(.tertiary.opacity(0.8))
+                    .foregroundStyle(palette.secondaryText.opacity(0.85))
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 11)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color(UIColor.secondarySystemGroupedBackground))
+                    .fill(palette.cardFill)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                    .stroke(palette.cardStroke, lineWidth: 1)
             )
         }
         .frame(height: 68)

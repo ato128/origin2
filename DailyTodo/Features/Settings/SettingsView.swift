@@ -9,6 +9,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
+    @AppStorage("smartEngineEnabled") private var smartEngineEnabled: Bool = true
     @AppStorage("didFinishOnboarding") private var didFinishOnboarding = true
     @AppStorage("didFinishPermissionOnboarding") private var didFinishPermissionOnboarding = true
     @AppStorage("showOnlyToday") private var showOnlyToday: Bool = false
@@ -56,6 +57,16 @@ struct SettingsView: View {
 
     private var productivitySection: some View {
         Section("Productivity") {
+
+            Toggle(isOn: $smartEngineEnabled) {
+                settingsRow(
+                    icon: "brain.head.profile",
+                    iconColor: .purple,
+                    title: "Smart Task Engine",
+                    subtitle: "AI suggestions and smart planning"
+                )
+            }
+
             settingsRow(
                 icon: "bell.badge.fill",
                 iconColor: .red,

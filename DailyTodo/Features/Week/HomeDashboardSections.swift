@@ -10,21 +10,23 @@ import SwiftData
 import Combine
 
 extension HomeDashboardView {
-
+   
+    
     var headerCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("\(greetingText) 👋")
                         .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
 
                     Text(todayDateText)
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
 
                     Text("Stay productive today 🚀")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText)
                 }
 
                 Spacer(minLength: 12)
@@ -50,11 +52,11 @@ extension HomeDashboardView {
                                     .foregroundStyle(hexColor(recentFriend.colorHex))
 
                                 Circle()
-                                    .fill(isSharedFocusActive ? .green : Color.accentColor)
+                                    .fill(isSharedFocusActive ? .green : palette.accent)
                                     .frame(width: 7, height: 7)
                                     .overlay(
                                         Circle()
-                                            .stroke(Color.black, lineWidth: 1.4)
+                                            .stroke(palette.cardFill, lineWidth: 1.4)
                                     )
                                     .scaleEffect(isSharedFocusActive ? (pulseRecentFriendPill ? 1.18 : 0.92) : 1.0)
                                     .opacity(isSharedFocusActive ? (pulseRecentFriendPill ? 0.9 : 1.0) : 1.0)
@@ -67,19 +69,22 @@ extension HomeDashboardView {
                                 : (recentFriend.name.components(separatedBy: " ").first ?? recentFriend.name)
                             )
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.92))
+                            .foregroundStyle(palette.primaryText)
                             .lineLimit(1)
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(.ultraThinMaterial)
+                        .background(
+                            Capsule()
+                                .fill(palette.secondaryCardFill)
+                        )
                         .clipShape(Capsule())
                         .overlay(
                             Capsule()
                                 .stroke(
                                     isSharedFocusActive
                                     ? Color.green.opacity(0.22)
-                                    : Color.white.opacity(0.08),
+                                    : palette.cardStroke,
                                     lineWidth: 1
                                 )
                         )
@@ -113,14 +118,17 @@ extension HomeDashboardView {
                             Text("Friends")
                                 .font(.system(size: 12, weight: .semibold))
                         }
-                        .foregroundStyle(.white.opacity(0.92))
+                        .foregroundStyle(palette.primaryText)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(.ultraThinMaterial)
+                        .background(
+                            Capsule()
+                                .fill(palette.secondaryCardFill)
+                        )
                         .clipShape(Capsule())
                         .overlay(
                             Capsule()
-                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                .stroke(palette.cardStroke, lineWidth: 1)
                         )
                     }
                     .buttonStyle(.plain)
@@ -137,7 +145,7 @@ extension HomeDashboardView {
             HStack {
                 Text("This Week")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
 
                 Spacer()
 
@@ -146,14 +154,15 @@ extension HomeDashboardView {
                 } label: {
                     Image(systemName: "calendar")
                         .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(palette.primaryText)
                         .padding(7)
                         .background(
                             Circle()
-                                .fill(Color.white.opacity(0.08))
+                                .fill(palette.secondaryCardFill)
                         )
                         .overlay(
                             Circle()
-                                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                                .stroke(palette.cardStroke, lineWidth: 1)
                         )
                 }
                 .buttonStyle(.plain)
@@ -174,11 +183,11 @@ extension HomeDashboardView {
                         VStack(spacing: 5) {
                             Text(dayTitles[day])
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(isSelected ? .primary : .secondary)
+                                .foregroundStyle(isSelected ? palette.primaryText : palette.secondaryText)
 
                             Text("\(Calendar.current.component(.day, from: date))")
                                 .font(.system(size: 19, weight: .bold, design: .rounded))
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(palette.primaryText)
                                 .monospacedDigit()
 
                             ZStack {
@@ -188,7 +197,7 @@ extension HomeDashboardView {
                                         .frame(width: 7, height: 7)
                                 } else {
                                     Circle()
-                                        .fill(hasItems ? Color.accentColor : Color.white.opacity(0.16))
+                                        .fill(hasItems ? Color.accentColor : palette.cardStroke)
                                         .frame(width: hasItems ? 6 : 4, height: hasItems ? 6 : 4)
                                 }
                             }
@@ -201,16 +210,16 @@ extension HomeDashboardView {
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
                                 .fill(
                                     isSelected
-                                    ? Color.accentColor.opacity(0.13)
-                                    : Color.white.opacity(0.035)
+                                    ? Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.14 : 0.18)
+                                    : palette.secondaryCardFill
                                 )
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
                                 .stroke(
                                     isSelected
-                                    ? Color.accentColor.opacity(0.18)
-                                    : Color.white.opacity(0.045),
+                                    ? Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.22 : 0.30)
+                                    : palette.cardStroke,
                                     lineWidth: 1
                                 )
                         )
@@ -234,12 +243,14 @@ extension HomeDashboardView {
             HStack {
                 Text("Today Progress")
                     .font(.system(size: 19, weight: .bold))
+                    .foregroundStyle(palette.primaryText)
 
                 Spacer()
 
                 Text("\(completedTodayCount)/\(totalTodayTaskCount)")
                     .font(.system(size: 26, weight: .bold, design: .rounded))
                     .monospacedDigit()
+                    .foregroundStyle(palette.primaryText)
             }
 
             ProgressView(value: todayProgressValue)
@@ -264,7 +275,6 @@ extension HomeDashboardView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(heroCardBackground)
     }
-
     var focusCard: some View {
         Group {
             if let task = focusTask {
@@ -272,6 +282,7 @@ extension HomeDashboardView {
                     HStack {
                         Text(focusCardTitle)
                             .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(palette.primaryText)
 
                         Spacer()
 
@@ -282,6 +293,7 @@ extension HomeDashboardView {
 
                     Text(focusCardMainText)
                         .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
                         .lineLimit(2)
 
                     HStack(spacing: 8) {
@@ -292,14 +304,14 @@ extension HomeDashboardView {
                                 Image(systemName: "calendar")
                             }
                             .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(palette.secondaryText)
                         }
 
                         Spacer()
 
                         Text(focusCardStatusText)
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(isSharedFocusActive ? .green : (store.isOverdue(task) ? .red : .secondary))
+                            .foregroundStyle(isSharedFocusActive ? .green : (store.isOverdue(task) ? .red : palette.secondaryText))
                     }
 
                     Button {
@@ -711,33 +723,35 @@ extension HomeDashboardView {
             HStack {
                 Text("Today Tasks")
                     .font(.system(size: 19, weight: .bold))
+                    .foregroundStyle(palette.primaryText)
 
                 Spacer()
 
                 Text("\(todayTasks.prefix(3).count) gösteriliyor")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
             }
 
             if todayTasks.isEmpty {
                 Text("Bugün için aktif task yok.")
                     .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
             } else {
                 ForEach(Array(todayTasks.prefix(3))) { task in
                     HStack(spacing: 10) {
                         Image(systemName: "circle")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(palette.secondaryText)
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text(task.title)
                                 .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(palette.primaryText)
                                 .lineLimit(1)
 
                             if let due = task.dueDate {
                                 Text(due, style: .time)
                                     .font(.system(size: 12, weight: .medium))
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(palette.secondaryText)
                             }
                         }
 
@@ -746,11 +760,11 @@ extension HomeDashboardView {
                     .padding(12)
                     .background(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Color.white.opacity(0.05))
+                            .fill(palette.secondaryCardFill)
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                            .stroke(palette.cardStroke, lineWidth: 1)
                     )
                 }
             }
@@ -759,11 +773,11 @@ extension HomeDashboardView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(secondaryCardBackground)
     }
-
     var quickActionsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Quick Actions")
                 .font(.system(size: 19, weight: .bold))
+                .foregroundStyle(palette.primaryText)
 
             HStack(spacing: 12) {
                 quickActionButton(
@@ -795,19 +809,21 @@ extension HomeDashboardView {
             VStack(spacing: 12) {
                 Image(systemName: systemImage)
                     .font(.title2)
+                    .foregroundStyle(Color.accentColor)
 
                 Text(title)
                     .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(palette.primaryText)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 18)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.white.opacity(0.05))
+                    .fill(palette.secondaryCardFill)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                    .stroke(palette.cardStroke, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
@@ -845,24 +861,34 @@ extension HomeDashboardView {
 
     var heroCardBackground: some View {
         RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(.ultraThinMaterial)
+            .fill(palette.cardFill)
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    .stroke(palette.cardStroke, lineWidth: 1)
             )
-            .shadow(color: Color.white.opacity(0.02), radius: 10, y: 4)
+            .shadow(color: palette.cardShadow, radius: 14, y: 8)
     }
 
     var secondaryCardBackground: some View {
         RoundedRectangle(cornerRadius: 22, style: .continuous)
-            .fill(.ultraThinMaterial)
+            .fill(palette.cardFill)
             .overlay(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                    .stroke(palette.cardStroke, lineWidth: 1)
             )
     }
 
     var cardBackground: some View {
         secondaryCardBackground
+    }
+
+    private var themedCardBackground: some View {
+        RoundedRectangle(cornerRadius: 24, style: .continuous)
+            .fill(palette.cardFill)
+            .overlay(
+                RoundedRectangle(cornerRadius: 24)
+                    .stroke(palette.cardStroke, lineWidth: 1)
+            )
+            .shadow(color: palette.cardShadow, radius: 14, y: 8)
     }
 }

@@ -9,6 +9,7 @@ import SwiftUI
 import SwiftData
 
 struct InsightsView: View {
+    @AppStorage("smartEngineEnabled") private var smartEngineEnabled: Bool = true
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private let palette = ThemePalette()
 
@@ -120,18 +121,22 @@ struct InsightsView: View {
                             .frame(maxWidth: .infinity)
                     }
 
-                    InsightsCardContainer(delay: 0.245) {
-                        AICoachCard(data: vm.aiCoach) { action in
-                            handleInsightAction(action)
+                    if smartEngineEnabled {
+                        InsightsCardContainer(delay: 0.245) {
+                            AICoachCard(data: vm.aiCoach) { action in
+                                handleInsightAction(action)
+                            }
+                            .frame(maxWidth: .infinity)
                         }
-                        .frame(maxWidth: .infinity)
                     }
 
-                    InsightsCardContainer(delay: 0.26) {
-                        SmartSuggestionCard(data: vm.smartSuggestion) { action in
-                            handleInsightAction(action)
+                    if smartEngineEnabled {
+                        InsightsCardContainer(delay: 0.26) {
+                            SmartSuggestionCard(data: vm.smartSuggestion) { action in
+                                handleInsightAction(action)
+                            }
+                            .frame(maxWidth: .infinity)
                         }
-                        .frame(maxWidth: .infinity)
                     }
 
                     Spacer(minLength: 90)

@@ -99,4 +99,13 @@ struct ThemePalette {
     var shadowColor: Color {
         isLight ? Color.black.opacity(0.08) : Color.black.opacity(0.18)
     }
+    var accent: Color {
+        Color.accentColor
+    }
+
+    var cardShadow: Color {
+        Color.black.opacity(0.18)
+    }
+
+   
 }
