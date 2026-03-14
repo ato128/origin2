@@ -10,22 +10,38 @@ import SwiftData
 
 
 struct RootView: View {
+    @AppStorage("didFinishOnboarding") private var didFinishOnboarding = false
+    @AppStorage("didFinishPermissionOnboarding") private var didFinishPermissionOnboarding = false
 
     // ✅ Import state
     @State private var importExport: ScheduleExport? = nil
     @State private var showImportSheet: Bool = false
 
     var body: some View {
-        MainTabView()
-            .onOpenURL { url in
-                handleIncomingFileURL(url)
-            }
-            .sheet(isPresented: $showImportSheet) {
-                if let export = importExport {
-                    ImportScheduleView(export: export)
+
+        if !didFinishOnboarding {
+
+            OnboardingView()
+
+        } else if !didFinishPermissionOnboarding {
+
+            PermissionOnboardingView()
+
+        } else {
+
+            MainTabView()
+                .onOpenURL { url in
+                    handleIncomingFileURL(url)
                 }
-            }
+                .sheet(isPresented: $showImportSheet) {
+                    if let export = importExport {
+                        ImportScheduleView(export: export)
+                    }
+                }
+
+        }
     }
+    
 
     // MARK: - Import Handler
 

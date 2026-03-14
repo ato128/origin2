@@ -4,183 +4,249 @@
 //
 //  Created by Atakan Ortaç on 2.03.2026.
 //
-
 import SwiftUI
 
 struct OnboardingView: View {
-    @AppStorage("didFinishOnboarding") private var didFinishOnboarding: Bool = false
-    @State private var page: Int = 0
+    @AppStorage("didFinishOnboarding") private var didFinishOnboarding = false
+
+    @State private var currentPage = 0
+    @State private var showFinishBurst = false
+    @State private var animateFinalButton = false
 
     var body: some View {
         ZStack {
+            onboardingBackground
+
+            VStack(spacing: 0) {
+                topBar
+
+                TabView(selection: $currentPage) {
+                    OnboardingPageView(
+                        title: "Welcome to DailyTodo",
+                        subtitle: "Plan your day, stay focused and build momentum with a beautiful productivity system.",
+                        icon: "checklist",
+                        accent: .blue,
+                        isFinalPage: false
+                    )
+                    .scaleEffect(currentPage == 0 ? 1.0 : 0.96)
+                    .opacity(currentPage == 0 ? 1 : 0.72)
+                    .animation(.easeInOut(duration: 0.35), value: currentPage)
+                    .tag(0)
+
+                    OnboardingPageView(
+                        title: "Stay Focused",
+                        subtitle: "Start focus sessions, track progress and turn your tasks into real deep work.",
+                        icon: "timer",
+                        accent: .orange,
+                        isFinalPage: false
+                    )
+                    .scaleEffect(currentPage == 1 ? 1.0 : 0.96)
+                    .opacity(currentPage == 1 ? 1 : 0.72)
+                    .animation(.easeInOut(duration: 0.35), value: currentPage)
+                    .tag(1)
+
+                    OnboardingPageView(
+                        title: "Work Together",
+                        subtitle: "Create crews, share tasks and stay productive with your friends or team.",
+                        icon: "person.3.fill",
+                        accent: .purple,
+                        isFinalPage: true
+                    )
+                    .scaleEffect(currentPage == 2 ? 1.0 : 0.96)
+                    .opacity(currentPage == 2 ? 1 : 0.72)
+                    .animation(.easeInOut(duration: 0.35), value: currentPage)
+                    .tag(2)
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+
+                bottomControls
+            }
+        }
+        .onChange(of: currentPage) { _, newValue in
+            showFinishBurst = false
+            animateFinalButton = (newValue == 2)
+        }
+        .onAppear {
+            animateFinalButton = (currentPage == 2)
+        }
+    }
+
+    private var topBar: some View {
+        HStack {
+            Spacer()
+
+            if currentPage < 2 {
+                Button {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+                        didFinishOnboarding = true
+                    }
+                } label: {
+                    Text("Skip")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule()
+                                .fill(.ultraThinMaterial)
+                                .overlay(
+                                    Capsule()
+                                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+    }
+
+    private var bottomControls: some View {
+        VStack(spacing: 22) {
+
+            HStack(spacing: 8) {
+                ForEach(0..<3, id: \.self) { index in
+                    Capsule()
+                        .fill(index == currentPage ? Color.white : Color.white.opacity(0.18))
+                        .frame(width: index == currentPage ? 28 : 8, height: 8)
+                        .animation(.spring(response: 0.28, dampingFraction: 0.86), value: currentPage)
+                }
+            }
+
+            Button {
+                if currentPage < 2 {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+                        currentPage += 1
+                    }
+                } else {
+                    showFinishBurst = true
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+                            didFinishOnboarding = true
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    Text(currentPage == 2 ? "Start Using DailyTodo" : "Continue")
+
+                    Image(systemName: currentPage == 2
+                          ? "checkmark.circle.fill"
+                          : "arrow.right")
+                }
+                .font(.headline.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 18)
+                .background(
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.blue,
+                                    Color.purple
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                )
+                .scaleEffect(currentPage == 2 && animateFinalButton ? 1.05 : 1.0)
+                .shadow(
+                    color: currentPage == 2
+                    ? Color.purple.opacity(0.35)
+                    : Color.blue.opacity(0.24),
+                    radius: 18,
+                    y: 6
+                )
+                .overlay {
+                    if currentPage == 2 && showFinishBurst {
+                        SparkleBurstOverlay()
+                            .clipShape(Capsule())
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .animation(
+                currentPage == 2
+                ? .easeInOut(duration: 1.0).repeatForever(autoreverses: true)
+                : .easeOut(duration: 0.2),
+                value: animateFinalButton
+            )
+
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 34)
+    }
+
+    private var onboardingBackground: some View {
+        ZStack {
+            Color.black
+                .ignoresSafeArea()
+
+            RadialGradient(
+                colors: [
+                    Color.purple.opacity(0.32),
+                    Color.clear
+                ],
+                center: currentPage == 0 ? .topLeading : (currentPage == 1 ? .top : .leading),
+                startRadius: 0,
+                endRadius: 320
+            )
+            .ignoresSafeArea()
+            .animation(.easeInOut(duration: 0.6), value: currentPage)
+
+            RadialGradient(
+                colors: [
+                    Color.blue.opacity(0.26),
+                    Color.clear
+                ],
+                center: currentPage == 2 ? .topTrailing : .trailing,
+                startRadius: 20,
+                endRadius: 380
+            )
+            .ignoresSafeArea()
+            .animation(.easeInOut(duration: 0.6), value: currentPage)
+
             LinearGradient(
                 colors: [
-                    Color(.systemBackground),
-                    Color(.secondarySystemBackground)
+                    Color.white.opacity(0.018),
+                    Color.clear,
+                    Color.white.opacity(0.01)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
             )
+            .blendMode(.screen)
             .ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                header
-
-                TabView(selection: $page) {
-                    OnboardingPage(
-                        symbol: "checklist",
-                        title: "Gününü sadeleştir",
-                        subtitle: "Görevlerini ekle, önceliklendir, bitirdikçe rahatla.",
-                        tint: .blue
-                    )
-                    .tag(0)
-
-                    OnboardingPage(
-                        symbol: "hand.tap",
-                        title: "Swipe + Haptic",
-                        subtitle: "Sil, tamamla, düzenle. Hepsi iOS gibi akıcı ve hissiyatlı.",
-                        tint: .purple
-                    )
-                    .tag(1)
-
-                    OnboardingPage(
-                        symbol: "rectangle.3.group.bubble.left",
-                        title: "Widget ile hızlı kontrol",
-                        subtitle: "Ana ekrandan görevleri gör, tek dokunuşla aç.",
-                        tint: .green
-                    )
-                    .tag(2)
-                }
-                .tabViewStyle(.page(indexDisplayMode: .always))
-                .indexViewStyle(.page(backgroundDisplayMode: .always))
-                .animation(.spring(response: 0.35, dampingFraction: 0.85), value: page)
-
-                footer
-            }
-            .padding(.top, 8)
         }
-    }
-
-    private var header: some View {
-        HStack {
-            Text("DailyTodo")
-                .font(.system(size: 22, weight: .semibold, design: .rounded))
-
-            Spacer()
-
-            Button {
-                hapticImpact(.light)
-                finish()
-            } label: {
-                Text("Atla")
-                    .font(.system(size: 16, weight: .semibold))
-            }
-            .buttonStyle(.borderless)
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
-    }
-
-    private var footer: some View {
-        VStack(spacing: 12) {
-            Button {
-                hapticImpact(.medium)
-                if page < 2 {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                        page += 1
-                    }
-                } else {
-                    finish()
-                }
-            } label: {
-                HStack {
-                    Text(page < 2 ? "Devam" : "Başla")
-                        .font(.system(size: 17, weight: .semibold))
-                    Spacer()
-                    Image(systemName: page < 2 ? "chevron.right" : "checkmark")
-                        .font(.system(size: 16, weight: .semibold))
-                }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 14)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.blue)
-            .padding(.horizontal, 20)
-
-            Text("Devam ederek gizlilik politikasını kabul etmiş olursun.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .padding(.bottom, 14)
-        }
-        .padding(.top, 6)
-    }
-
-    private func finish() {
-        hapticNotify(.success)
-        withAnimation(.easeInOut(duration: 0.25)) {
-            didFinishOnboarding = true
-        }
-    }
-
-    // MARK: - Haptics
-    private func hapticImpact(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
-        let g = UIImpactFeedbackGenerator(style: style)
-        g.prepare()
-        g.impactOccurred()
-    }
-
-    private func hapticNotify(_ type: UINotificationFeedbackGenerator.FeedbackType) {
-        let g = UINotificationFeedbackGenerator()
-        g.prepare()
-        g.notificationOccurred(type)
     }
 }
 
-private struct OnboardingPage: View {
-    let symbol: String
-    let title: String
-    let subtitle: String
-    let tint: Color
-
-    @State private var appear = false
+private struct SparkleBurstOverlay: View {
+    @State private var animate = false
 
     var body: some View {
-        VStack(spacing: 18) {
-            Spacer(minLength: 24)
-
-            ZStack {
+        ZStack {
+            ForEach(0..<10, id: \.self) { index in
                 Circle()
-                    .fill(tint.opacity(0.12))
-                    .frame(width: 150, height: 150)
-
-                Image(systemName: symbol)
-                    .font(.system(size: 56, weight: .semibold))
-                    .foregroundStyle(tint)
-                    .scaleEffect(appear ? 1 : 0.92)
-                    .opacity(appear ? 1 : 0.5)
+                    .fill(index.isMultiple(of: 2) ? Color.white : Color.blue)
+                    .frame(width: 6, height: 6)
+                    .offset(y: animate ? -36 : 0)
+                    .rotationEffect(.degrees(Double(index) * 36))
+                    .scaleEffect(animate ? 1 : 0.2)
+                    .opacity(animate ? 0 : 1)
+                    .animation(
+                        .easeOut(duration: 0.55)
+                        .delay(Double(index) * 0.015),
+                        value: animate
+                    )
             }
-            .padding(.top, 18)
-            .animation(.spring(response: 0.45, dampingFraction: 0.75), value: appear)
-
-            VStack(spacing: 10) {
-                Text(title)
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .multilineTextAlignment(.center)
-
-                Text(subtitle)
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 28)
-            }
-            .offset(y: appear ? 0 : 8)
-            .opacity(appear ? 1 : 0)
-            .animation(.easeOut(duration: 0.35), value: appear)
-
-            Spacer()
         }
-        .onAppear { appear = true }
-        .onDisappear { appear = false }
-        .padding(.bottom, 10)
+        .onAppear {
+            animate = true
+        }
     }
 }
