@@ -25,6 +25,7 @@ struct HomeDashboardView: View {
     let onAddTask: () -> Void
     let onOpenWeek: () -> Void
     let onOpenInsights: () -> Void
+    
 
     let dayTitles = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
 

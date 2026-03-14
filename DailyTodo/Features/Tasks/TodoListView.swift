@@ -17,10 +17,18 @@ struct TodoListView: View {
     @Query(sort: \EventItem.startMinute, order: .forward)
     private var allEvents: [EventItem]
 
-    enum Filter: String, CaseIterable, Identifiable {
-        case all = "All"
-        case today = "Today"
-        case overdue = "Overdue"
+    @Query(sort: \Crew.createdAt, order: .reverse)
+    private var crews: [Crew]
+
+    @Query private var members: [CrewMember]
+    @Query private var crewTasks: [CrewTask]
+
+    @Query(sort: \CrewActivity.createdAt, order: .reverse)
+    private var activities: [CrewActivity]
+
+    enum HomeSection: String, CaseIterable, Identifiable {
+        case personal = "Personal"
+        case crew = "Crew"
         var id: String { rawValue }
     }
 
@@ -29,71 +37,13 @@ struct TodoListView: View {
         case next
     }
 
-    enum TopSection: String, CaseIterable, Identifiable {
-        case home = "Home"
-        case tasks = "Tasks"
-        var id: String { rawValue }
-    }
-
-    @State private var searchText: String = ""
-    @State private var filter: Filter = .all
-    @State private var showDone: Bool = true
-
     @State private var showingAdd: Bool = false
-    @State private var editingItem: DTTaskItem? = nil
-
-    @State private var animatingTaskID: PersistentIdentifier? = nil
-    @State private var sparkleTaskID: PersistentIdentifier? = nil
-    @State private var topSection: TopSection = .home
-    @State private var searchExpanded: Bool = false
-    @FocusState private var searchFocused: Bool
+    @State private var homeSection: HomeSection = .personal
 
     private let chipTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
     @State private var now = Date()
 
     private var items: [DTTaskItem] { store.items }
-
-    private var filteredItems: [DTTaskItem] {
-        let q = searchText
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-
-        var base = items
-
-        if !showDone {
-            base = base.filter { !$0.isDone }
-        }
-
-        if !q.isEmpty {
-            base = base.filter {
-                $0.title.lowercased().contains(q)
-            }
-        }
-
-        switch filter {
-        case .all:
-            break
-
-        case .today:
-            base = base.filter { item in
-                guard let d = item.dueDate else { return false }
-                return Calendar.current.isDate(d, inSameDayAs: Date())
-            }
-
-        case .overdue:
-            base = base.filter { store.isOverdue($0) }
-        }
-
-        let now = Date()
-
-        return base.sorted { a, b in
-            let aDate = a.dueDate ?? .distantFuture
-            let bDate = b.dueDate ?? .distantFuture
-            let aDiff = abs(aDate.timeIntervalSince(now))
-            let bDiff = abs(bDate.timeIntervalSince(now))
-            return aDiff < bDiff
-        }
-    }
 
     private var nextClassInfo: (title: String, timeText: String, status: NextClassStatus)? {
         let today = weekdayIndexToday()
@@ -121,41 +71,44 @@ struct TodoListView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .top) {
+        ZStack {
             tasksAmbientBackground
 
-            Group {
-                if topSection == .home {
-                    HomeDashboardView(
-                        onAddTask: {
-                            showingAdd = true
-                            haptic(.medium)
-                        },
-                        onOpenWeek: {
-                            selectedTab = .week
-                        },
-                        onOpenInsights: {
-                            selectedTab = .insights
-                        }
-                    )
-                    .environmentObject(store)
-                    .padding(.top, 104)
-                    .offset(y: 0)
-                } else {
-                    VStack(spacing: 0) {
-                        Color.clear.frame(height: 96)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Color.clear.frame(height: 76)
 
-                        if filteredItems.isEmpty {
-                            emptyState
-                        } else {
-                            list
-                        }
+                    tasksHeader
+                    topSegment
+
+                    if homeSection == .personal {
+                        HomeDashboardView(
+                            onAddTask: {
+                                showingAdd = true
+                                haptic(.medium)
+                            },
+                            onOpenWeek: {
+                                selectedTab = .week
+                            },
+                            onOpenInsights: {
+                                selectedTab = .insights
+                            }
+                        )
+                        .environmentObject(store)
+                    
+                    } else {
+                        crewOverviewCard
+                        crewListCard
+                        crewActivityCard
+                        socialQuickActionsCard
                     }
-                }
-            }
 
-            fixedTopArea
-                .zIndex(100)
+                    Spacer(minLength: 100)
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 28)
+            }
+            .scrollIndicators(.hidden)
         }
         .toolbar { toolbarContent }
         .sheet(isPresented: $showingAdd) {
@@ -163,58 +116,124 @@ struct TodoListView: View {
                 .environmentObject(store)
                 .presentationDetents([.medium, .large])
         }
-        .sheet(item: $editingItem) { item in
-            NavigationStack {
-                EditTaskView(item: item)
-                    .environmentObject(store)
-            }
-            .presentationDetents([.medium, .large])
+        .onReceive(chipTimer) { value in
+            now = value
         }
-        .overlay(alignment: .bottomTrailing) {
-            if topSection == .tasks {
-                floatingAddButton
-            }
+        .toolbar { toolbarContent }
+        .sheet(isPresented: $showingAdd) {
+            AddTaskView()
+                .environmentObject(store)
+                .presentationDetents([.medium, .large])
         }
         .onReceive(chipTimer) { value in
             now = value
         }
-        .onChange(of: topSection) { _, newValue in
-            if newValue != .tasks {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                    searchExpanded = false
-                    searchText = ""
-                }
-                searchFocused = false
-            }
-        }
     }
+    private var todayTasks: [DTTaskItem] {
+        let calendar = Calendar.current
 
-    private var fixedTopArea: some View {
-        VStack(spacing: 2) {
-            tasksHeader
-            topSegment
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 2)
-        .padding(.bottom, 6)
-        .background(
-            Color(.systemGroupedBackground)
-                .ignoresSafeArea(edges: .top)
-        )
+        return items
+            .filter { !$0.isDone }
+            .filter { item in
+                guard let dueDate = item.dueDate else { return false }
+                return calendar.isDate(dueDate, inSameDayAs: Date())
+            }
+            .sorted {
+                ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture)
+            }
     }
+    
+   
 
     private var tasksAmbientBackground: some View {
-        Color(.systemGroupedBackground)
+        ZStack {
+            Color.black
+                .ignoresSafeArea()
+
+            RadialGradient(
+                colors: [
+                    Color.purple.opacity(0.30),
+                    Color.clear
+                ],
+                center: .topLeading,
+                startRadius: 0,
+                endRadius: 320
+            )
             .ignoresSafeArea()
+
+            RadialGradient(
+                colors: [
+                    Color.blue.opacity(0.24),
+                    Color.clear
+                ],
+                center: .topTrailing,
+                startRadius: 20,
+                endRadius: 380
+            )
+            .ignoresSafeArea()
+
+            RadialGradient(
+                colors: [
+                    Color.blue.opacity(0.08),
+                    Color.clear
+                ],
+                center: .bottomLeading,
+                startRadius: 80,
+                endRadius: 280
+            )
+            .ignoresSafeArea()
+
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(0.015),
+                    Color.clear,
+                    Color.white.opacity(0.01)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .blendMode(.screen)
+            .ignoresSafeArea()
+        }
     }
 
     private var topSegment: some View {
-        Picker("", selection: $topSection) {
-            ForEach(TopSection.allCases) { section in
-                Text(section.rawValue).tag(section)
+        HStack(spacing: 8) {
+            ForEach(HomeSection.allCases) { section in
+                let isSelected = homeSection == section
+
+                Button {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                        homeSection = section
+                    }
+                } label: {
+                    Text(section.rawValue)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(isSelected ? .primary : .secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(
+                                    isSelected
+                                    ? Color.accentColor.opacity(0.14)
+                                    : Color.white.opacity(0.04)
+                                )
+                                .shadow(color: Color.black.opacity(0.18), radius: 12, y: 6)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(
+                                    isSelected
+                                    ? Color.accentColor.opacity(0.20)
+                                    : Color.white.opacity(0.05),
+                                    lineWidth: 1
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
             }
         }
-        .pickerStyle(.segmented)
         .padding(.horizontal, 8)
         .padding(.vertical, 7)
         .background(
@@ -230,353 +249,13 @@ struct TodoListView: View {
 
     private var tasksHeader: some View {
         HStack(alignment: .center) {
-            Text(topSection == .home ? "Home" : "Tasks")
+            Text("Home")
                 .font(.system(size: 34, weight: .bold, design: .rounded))
                 .foregroundStyle(.primary)
-                .scaleEffect(searchExpanded && topSection == .tasks ? 0.95 : 1.0, anchor: .leading)
-                .offset(y: searchExpanded && topSection == .tasks ? -10 : 0)
-                .animation(.interactiveSpring(response: 0.26, dampingFraction: 0.82, blendDuration: 0.08), value: searchExpanded)
 
             Spacer()
 
-            if topSection == .tasks {
-                animatedSearchBar
-            }
-        }
-        .padding(.horizontal, 4)
-        .padding(.top, 4)
-    }
-
-    private var animatedSearchBar: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                )
-                .shadow(
-                    color: .black.opacity(searchExpanded ? 0.14 : 0.08),
-                    radius: searchExpanded ? 12 : 6,
-                    x: 0,
-                    y: 4
-                )
-
-            HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 20, height: 20)
-                    .frame(maxWidth: searchExpanded ? nil : .infinity, alignment: .center)
-
-                if searchExpanded {
-                    TextField("Search", text: $searchText)
-                        .focused($searchFocused)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .transition(.opacity)
-
-                    if !searchText.isEmpty {
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.18)) {
-                                searchText = ""
-                            }
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                        .transition(.scale.combined(with: .opacity))
-                    }
-
-                    Button {
-                        searchFocused = false
-
-                        withAnimation(.interactiveSpring(response: 0.34, dampingFraction: 0.84, blendDuration: 0.12)) {
-                            searchExpanded = false
-                        }
-
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-                            searchText = ""
-                        }
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .transition(.scale.combined(with: .opacity))
-                }
-            }
-            .padding(.horizontal, searchExpanded ? 14 : 0)
-            .frame(maxWidth: .infinity, alignment: searchExpanded ? .leading : .center)
-            .clipped()
-        }
-        .frame(width: searchExpanded ? 236 : 56, height: 56)
-        .scaleEffect(searchExpanded ? 1.0 : 0.98)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            guard !searchExpanded else { return }
-
-            withAnimation(.interactiveSpring(response: 0.34, dampingFraction: 0.84, blendDuration: 0.12)) {
-                searchExpanded = true
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
-                searchFocused = true
-            }
-        }
-        .animation(.interactiveSpring(response: 0.26, dampingFraction: 0.82, blendDuration: 0.08), value: searchExpanded)
-        .animation(.easeInOut(duration: 0.18), value: searchText.isEmpty)
-    }
-
-    private var emptyState: some View {
-        VStack(spacing: 14) {
-            Spacer(minLength: 80)
-
-            ZStack {
-                Circle()
-                    .fill(.ultraThinMaterial)
-                    .frame(width: 86, height: 86)
-
-                Image(systemName: "checklist")
-                    .font(.system(size: 36, weight: .semibold))
-                    .foregroundStyle(.secondary)
-            }
-
-            Text("Henüz görev yok")
-                .font(.system(size: 24, weight: .bold, design: .rounded))
-
-            Text("Sağ alttaki + ile yeni görev ekleyebilirsin.")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(.secondary)
-
-            Button {
-                showingAdd = true
-                haptic(.medium)
-            } label: {
-                Label("İlk görevi ekle", systemImage: "plus")
-                    .font(.system(size: 14, weight: .semibold))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 11)
-                    .background(.ultraThinMaterial)
-                    .clipShape(Capsule())
-                    .overlay(
-                        Capsule()
-                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                    )
-            }
-            .padding(.top, 6)
-
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemGroupedBackground))
-    }
-
-    private var list: some View {
-        List {
-            Section {
-                ForEach(filteredItems) { item in
-                    row(item)
-                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                            Button {
-                                handleToggle(item)
-                            } label: {
-                                Label(
-                                    item.isDone ? "Geri al" : "Tamamla",
-                                    systemImage: item.isDone ? "arrow.uturn.left" : "checkmark"
-                                )
-                            }
-                            .tint(.green)
-                        }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) {
-                                store.delete(item)
-                                haptic(.heavy)
-                            } label: {
-                                Label("Sil", systemImage: "trash")
-                            }
-                        }
-                }
-            }
-            .padding(.top, 6)
-        }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .background(Color(.systemGroupedBackground))
-    }
-
-    private func row(_ item: DTTaskItem) -> some View {
-        let isAnimating = animatingTaskID == item.id
-        let showSparkle = sparkleTaskID == item.id
-
-        return Button {
-            editingItem = item
-        } label: {
-            HStack(spacing: 12) {
-                Button {
-                    handleToggle(item)
-                } label: {
-                    ZStack {
-                        if showSparkle {
-                            SparkleBurstView()
-                                .frame(width: 34, height: 34)
-                                .transition(.scale.combined(with: .opacity))
-                        }
-
-                        Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
-                            .font(.system(size: 24, weight: .medium))
-                            .foregroundStyle(item.isDone ? .green : .secondary)
-                            .scaleEffect(isAnimating ? 1.22 : 1.0)
-                            .shadow(
-                                color: item.isDone
-                                ? .green.opacity(isAnimating ? 0.45 : 0.0)
-                                : .clear,
-                                radius: isAnimating ? 8 : 0
-                            )
-                    }
-                }
-                .buttonStyle(.plain)
-
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(item.title)
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
-                            .foregroundStyle(.primary)
-                            .strikethrough(item.isDone, color: .secondary)
-                            .opacity(item.isDone ? 0.62 : 1.0)
-                            .lineLimit(2)
-
-                        Spacer(minLength: 8)
-
-                        if let badge = badgeText(for: item) {
-                            Text(badge.text)
-                                .font(.system(size: 11, weight: .bold))
-                                .padding(.horizontal, 9)
-                                .padding(.vertical, 5)
-                                .background(Capsule().fill(badge.background))
-                                .foregroundStyle(badge.foreground)
-                        }
-                    }
-
-                    if let d = item.dueDate {
-                        HStack(spacing: 6) {
-                            Image(systemName: "calendar")
-                            Text(d, style: .date)
-                            Text("•")
-                            Text(d, style: .time)
-                        }
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(store.isOverdue(item) && !item.isDone ? .red : .secondary)
-                    }
-                }
-
-                if store.isOverdue(item) && !item.isDone {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
-                }
-            }
-            .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(
-                                item.isDone
-                                ? Color.green.opacity(isAnimating ? 0.35 : 0.12)
-                                : Color.white.opacity(0.08),
-                                lineWidth: 1
-                            )
-                    )
-            )
-            .scaleEffect(isAnimating ? 1.02 : 1.0)
-            .opacity(item.isDone ? 0.90 : 1.0)
-            .shadow(
-                color: item.isDone
-                ? .green.opacity(isAnimating ? 0.18 : 0.0)
-                : .clear,
-                radius: isAnimating ? 12 : 0,
-                y: 4
-            )
-            .animation(.spring(response: 0.34, dampingFraction: 0.68), value: isAnimating)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func handleToggle(_ item: DTTaskItem) {
-        let wasDone = item.isDone
-
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-            store.toggleDone(item)
-            animatingTaskID = item.id
-        }
-
-        if !wasDone {
-            sparkleTaskID = item.id
-            haptic(.rigid)
-            notifySuccess()
-            NotificationCenter.default.post(name: .taskCompleted, object: nil)
-        } else {
-            haptic(.light)
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-                animatingTaskID = nil
-            }
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
-            withAnimation(.easeOut(duration: 0.2)) {
-                sparkleTaskID = nil
-            }
-        }
-    }
-
-    private func badgeText(for item: DTTaskItem) -> (text: String, background: Color, foreground: Color)? {
-        if item.isDone {
-            return ("DONE", .green.opacity(0.16), .green)
-        }
-
-        if store.isOverdue(item) {
-            return ("LATE", .red.opacity(0.16), .red)
-        }
-
-        if let d = item.dueDate, Calendar.current.isDate(d, inSameDayAs: Date()) {
-            return ("TODAY", .orange.opacity(0.18), .orange)
-        }
-
-        return nil
-    }
-
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            Menu {
-                Picker("Filter", selection: $filter) {
-                    ForEach(Filter.allCases) { f in
-                        Text(f.rawValue).tag(f)
-                    }
-                }
-
-                Toggle("Done göster", isOn: $showDone)
-
-                Button("Yenile") {
-                    store.reload()
-                }
-            } label: {
-                Image(systemName: "line.3.horizontal.decrease.circle")
-            }
-        }
-
-        ToolbarItem(placement: .topBarTrailing) {
-            if let next = nextClassInfo {
+            if homeSection == .personal, let next = nextClassInfo {
                 Button {
                     withAnimation(.easeInOut) {
                         selectedTab = .week
@@ -588,39 +267,269 @@ struct TodoListView: View {
                 .buttonStyle(.plain)
             }
         }
+        .padding(.horizontal, 4)
+        .padding(.top, 4)
     }
 
-    private var floatingAddButton: some View {
-        Button {
-            showingAdd = true
-            haptic(.medium)
-        } label: {
-            Image(systemName: "plus")
-                .font(.system(size: 24, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: 60, height: 60)
-                .background(
-                    ZStack {
-                        Circle()
-                            .fill(Color.accentColor)
+    private var crewOverviewCard: some View {
+        let totalCrews = crews.count
+        let totalMembers = members.count
+        let totalTasks = crewTasks.count
+        let completedTasks = crewTasks.filter(\.isDone).count
 
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.14),
-                                        Color.clear
-                                    ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            )
-                    }
-                )
-                .shadow(color: Color.accentColor.opacity(0.28), radius: 12, x: 0, y: 6)
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Overview")
+                        .font(.headline)
+
+                    Text("Your team productivity at a glance")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "person.3.fill")
+                    .font(.title3)
+                    .foregroundStyle(Color.accentColor)
+            }
+
+            HStack(spacing: 10) {
+                previewStatCard(value: "\(totalCrews)", title: "Crews")
+                previewStatCard(value: "\(totalMembers)", title: "Members")
+                previewStatCard(value: "\(completedTasks)/\(totalTasks)", title: "Tasks")
+            }
         }
-        .padding(.trailing, 20)
-        .padding(.bottom, 20)
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBackground)
+    }
+
+    private var crewListCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Your Crews")
+                    .font(.headline)
+
+                Spacer()
+
+                Button {
+                    selectedTab = .crew
+                    haptic(.light)
+                } label: {
+                    Text("Open")
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.accentColor.opacity(0.14))
+                        .foregroundStyle(Color.accentColor)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+
+            if crews.isEmpty {
+                Text("No crew yet")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(crews.prefix(2)) { crew in
+                    let crewMembers = members.filter { $0.crewID == crew.id }
+                    let tasksForCrew = crewTasks.filter { $0.crewID == crew.id }
+                    let completed = tasksForCrew.filter(\.isDone).count
+                    let progress = tasksForCrew.isEmpty ? 0 : Double(completed) / Double(tasksForCrew.count)
+
+                    HStack(spacing: 12) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(hexColor(crew.colorHex).opacity(0.18))
+                                .frame(width: 52, height: 52)
+
+                            Image(systemName: crew.icon)
+                                .font(.title3.weight(.semibold))
+                                .foregroundStyle(hexColor(crew.colorHex))
+                        }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(crew.name)
+                                .font(.headline)
+
+                            Text("\(crewMembers.count) members • \(tasksForCrew.count) tasks")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                            ProgressView(value: progress)
+                                .tint(hexColor(crew.colorHex))
+                                .scaleEffect(y: 1.4)
+                        }
+
+                        Spacer()
+
+                        Text("\(Int(progress * 100))%")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(Color.white.opacity(0.04))
+                    )
+                }
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBackground)
+    }
+
+    private var crewActivityCard: some View {
+        let topActivities = Array(activities.prefix(3))
+
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Activity")
+                    .font(.headline)
+
+                Spacer()
+
+                Text("Recent updates")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if topActivities.isEmpty {
+                Text("No activity yet")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(topActivities) { item in
+                    HStack(alignment: .top, spacing: 12) {
+                        Circle()
+                            .fill(Color.accentColor.opacity(0.16))
+                            .frame(width: 34, height: 34)
+                            .overlay(
+                                Image(systemName: "bolt.fill")
+                                    .font(.caption.bold())
+                                    .foregroundStyle(Color.accentColor)
+                            )
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(item.memberName)
+                                .font(.subheadline.weight(.semibold))
+
+                            Text(item.actionText)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+
+                            Text(item.createdAt.formatted(date: .omitted, time: .shortened))
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+
+                        Spacer()
+                    }
+                }
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBackground)
+    }
+
+    private var socialQuickActionsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Quick Actions")
+                .font(.headline)
+
+            Button {
+                selectedTab = .crew
+                haptic(.medium)
+            } label: {
+                socialActionRow(title: "Open Crew", icon: "person.3.fill")
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                selectedTab = .week
+                haptic(.light)
+            } label: {
+                socialActionRow(title: "Go to Week", icon: "calendar")
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                selectedTab = .insights
+                haptic(.light)
+            } label: {
+                socialActionRow(title: "Open Insights", icon: "chart.bar.fill")
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBackground)
+    }
+
+    private func previewStatCard(value: String, title: String) -> some View {
+        VStack(spacing: 6) {
+            Text(value)
+                .font(.title3.bold())
+
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.04))
+        )
+    }
+
+    private func socialActionRow(title: String, icon: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.headline)
+                .frame(width: 26)
+
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.04))
+        )
+    }
+
+    private var cardBackground: some View {
+        RoundedRectangle(cornerRadius: 24, style: .continuous)
+            .fill(.ultraThinMaterial)
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.16), radius: 14, y: 8)
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            EmptyView()
+        }
+
+        ToolbarItem(placement: .topBarTrailing) {
+            EmptyView()
+        }
     }
 
     private func currentMinuteOfDay() -> Int {
@@ -637,37 +546,6 @@ struct TodoListView: View {
         let gen = UIImpactFeedbackGenerator(style: style)
         gen.prepare()
         gen.impactOccurred()
-    }
-
-    private func notifySuccess() {
-        let gen = UINotificationFeedbackGenerator()
-        gen.prepare()
-        gen.notificationOccurred(.success)
-    }
-
-    private struct SparkleBurstView: View {
-        @State private var animate = false
-
-        var body: some View {
-            ZStack {
-                ForEach(0..<8, id: \.self) { index in
-                    Circle()
-                        .fill(index.isMultiple(of: 2) ? Color.yellow : Color.green.opacity(0.9))
-                        .frame(width: 5, height: 5)
-                        .offset(y: animate ? -18 : 0)
-                        .rotationEffect(.degrees(Double(index) * 45))
-                        .scaleEffect(animate ? 1 : 0.2)
-                        .opacity(animate ? 0 : 1)
-                        .animation(
-                            .easeOut(duration: 0.45).delay(Double(index) * 0.01),
-                            value: animate
-                        )
-                }
-            }
-            .onAppear {
-                animate = true
-            }
-        }
     }
 
     private struct LiveBadgeView: View {

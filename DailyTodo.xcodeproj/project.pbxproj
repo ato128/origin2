@@ -98,7 +98,6 @@
 		6DC0CAC12F5F7D0000A875ED /* NextClassEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAA52F5F7D0000A875ED /* NextClassEngine.swift */; };
 		6DC0CAC22F5F7D0000A875ED /* FocusSessionRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA992F5F7D0000A875ED /* FocusSessionRecord.swift */; };
 		6DC0CAC32F5F7D0000A875ED /* CrewMember.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA942F5F7D0000A875ED /* CrewMember.swift */; };
-		6DC0CAC42F5F7D0000A875ED /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA9D2F5F7D0000A875ED /* HomeView.swift */; };
 		6DC0CAC52F5F7D0000A875ED /* CrewActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA922F5F7D0000A875ED /* CrewActivity.swift */; };
 		6DC0CAC62F5F7D0000A875ED /* NextClassResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAA62F5F7D0000A875ED /* NextClassResult.swift */; };
 		6DC0CAC72F5F7D0000A875ED /* CrewDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA932F5F7D0000A875ED /* CrewDetailView.swift */; };
@@ -223,7 +222,6 @@
 		6DC0CA9A2F5F7D0000A875ED /* FocusSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusSessionView.swift; sourceTree = "<group>"; };
 		6DC0CA9B2F5F7D0000A875ED /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		6DC0CA9C2F5F7D0000A875ED /* HomeDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDashboardView.swift; sourceTree = "<group>"; };
-		6DC0CA9D2F5F7D0000A875ED /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		6DC0CA9E2F5F7D0000A875ED /* ImportScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportScheduleView.swift; sourceTree = "<group>"; };
 		6DC0CA9F2F5F7D0000A875ED /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		6DC0CAA02F5F7D0000A875ED /* InsightsEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsEngine.swift; sourceTree = "<group>"; };
@@ -246,7 +244,6 @@
 		6DF0C9192F557AA50043B887 /* DailyTodo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DailyTodo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6DF0C91C2F557AA50043B887 /* DailyTodoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyTodoApp.swift; sourceTree = "<group>"; };
 		6DF0C93C2F557DBF0043B887 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
-		6DF0C93E2F557F630043B887 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		6DF0C9402F557F730043B887 /* AddTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddTaskView.swift; sourceTree = "<group>"; };
 		6DF0C9452F55E3960043B887 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		6DF8FB982F5B918100D548E4 /* HeatmapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeatmapView.swift; sourceTree = "<group>"; };
@@ -347,7 +344,6 @@
 				6DC0CA8E2F5F7D0000A875ED /* ScheduleShared */,
 				6DC0CA8F2F5F7D0000A875ED /* Assets.xcassets */,
 				6DC0CA972F5F7D0000A875ED /* DailyTodo.entitlements */,
-				6DC0CA9D2F5F7D0000A875ED /* HomeView.swift */,
 				6DC0CA9F2F5F7D0000A875ED /* Info.plist */,
 				6DC0CAA72F5F7D0000A875ED /* NotificationManager.swift */,
 				6DC0CAA82F5F7D0000A875ED /* ScheduleShare.swift */,
@@ -442,7 +438,6 @@
 			children = (
 				6D215DB02F5617BF00F7B9D7 /* TodoStore.swift */,
 				6DC0CAAB2F5F7D0000A875ED /* TodoListView.swift */,
-				6DF0C93E2F557F630043B887 /* HomeView.swift */,
 				6DF0C9402F557F730043B887 /* AddTaskView.swift */,
 				6D215DA22F55FD7100F7B9D7 /* EditTaskView.swift */,
 			);
@@ -771,7 +766,6 @@
 				6DC0CAC32F5F7D0000A875ED /* CrewMember.swift in Sources */,
 				6D2004B72F644FFF0022C810 /* DailyBoostCard.swift in Sources */,
 				6D2004C52F6450E10022C810 /* SmartSuggestionCard.swift in Sources */,
-				6DC0CAC42F5F7D0000A875ED /* HomeView.swift in Sources */,
 				6DC0CAC52F5F7D0000A875ED /* CrewActivity.swift in Sources */,
 				6DC0CAC62F5F7D0000A875ED /* NextClassResult.swift in Sources */,
 				6DC0CAC72F5F7D0000A875ED /* CrewDetailView.swift in Sources */,
