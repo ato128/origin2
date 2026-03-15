@@ -305,6 +305,10 @@ struct TodoListView: View {
                 Text("Your Crews")
                     .font(.headline)
                     .foregroundStyle(palette.primaryText)
+                
+                Text("Ranked by focus time")
+                    .font(.caption)
+                    .foregroundStyle(palette.secondaryText)
 
                 Spacer()
 
@@ -328,13 +332,19 @@ struct TodoListView: View {
                     .font(.subheadline)
                     .foregroundStyle(palette.secondaryText)
             } else {
-                ForEach(crews.prefix(2)) { crew in
+                ForEach(
+                    crews
+                        .sorted { $0.totalFocusMinutes > $1.totalFocusMinutes }
+                        .prefix(3)
+                ) { crew in
                     let crewMembers = members.filter { $0.crewID == crew.id }
                     let tasksForCrew = crewTasks.filter { $0.crewID == crew.id }
                     let completed = tasksForCrew.filter(\.isDone).count
                     let progress = tasksForCrew.isEmpty ? 0 : Double(completed) / Double(tasksForCrew.count)
 
                     HStack(spacing: 12) {
+                        rankBadge(for: crew)
+
                         ZStack {
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .fill(hexColor(crew.colorHex).opacity(0.18))
@@ -371,8 +381,13 @@ struct TodoListView: View {
                             .fill(palette.secondaryCardFill)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
+                                    .stroke(rankColor(for: crew).opacity(0.22), lineWidth: 1)
                             )
+                    )
+                    .shadow(
+                        color: rankColor(for: crew).opacity(0.12),
+                        radius: 10,
+                        y: 4
                     )
                 }
             }
@@ -380,6 +395,18 @@ struct TodoListView: View {
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
+    }
+    
+    private func rankColor(for crew: Crew) -> Color {
+        let sorted = crews.sorted { $0.totalFocusMinutes > $1.totalFocusMinutes }
+        let rank = (sorted.firstIndex(where: { $0.id == crew.id }) ?? 999) + 1
+
+        switch rank {
+        case 1: return .yellow
+        case 2: return .gray
+        case 3: return .orange
+        default: return .clear
+        }
     }
 
     private var crewActivityCard: some View {
@@ -494,6 +521,30 @@ struct TodoListView: View {
                         .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
                 )
         )
+    }
+    
+    private func rankBadge(for crew: Crew) -> some View {
+        let sorted = crews.sorted { $0.totalFocusMinutes > $1.totalFocusMinutes }
+        let rank = (sorted.firstIndex(where: { $0.id == crew.id }) ?? 999) + 1
+
+        let color: Color = {
+            switch rank {
+            case 1: return .yellow
+            case 2: return .gray
+            case 3: return .orange
+            default: return .secondary
+            }
+        }()
+
+        return ZStack {
+            Circle()
+                .fill(color.opacity(0.16))
+                .frame(width: 34, height: 34)
+
+            Text("\(rank)")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(color)
+        }
     }
 
     private func socialActionRow(title: String, icon: String) -> some View {

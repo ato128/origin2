@@ -50,6 +50,8 @@ struct HomeDashboardView: View {
     @State var showRecentFriendChat = false
     @State var pulseRecentFriendPill = false
     @State var crewFocusGlowPulse: Bool = false
+    @State private var crewFocusNow = Date()
+    
 
     @State private var showHeaderCard = false
     @State private var showWeekCard = false
@@ -60,6 +62,7 @@ struct HomeDashboardView: View {
     @State private var showQuickActionsCard = false
 
     let focusRefreshTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    let crewFocusTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
     private var smartSuggestions: [SmartTaskSuggestion] {
         guard smartEngineEnabled else { return [] }
@@ -433,6 +436,9 @@ struct HomeDashboardView: View {
         .onReceive(focusRefreshTimer) { _ in
             syncActiveFocusCountdown()
         }
+        .onReceive(crewFocusTimer) { value in
+            crewFocusNow = value
+        }
     }
     
     func focusChip(title: String, icon: String, color: Color) -> some View {
@@ -450,7 +456,7 @@ struct HomeDashboardView: View {
         )
     }
     func crewFocusAccentColor(for session: CrewFocusSession) -> Color {
-        let remaining = max(0, Int(session.endDate.timeIntervalSinceNow))
+        let remaining = max(0, Int(session.endDate.timeIntervalSince(crewFocusNow)))
 
         if session.isPaused {
             return .orange
@@ -471,7 +477,7 @@ struct HomeDashboardView: View {
 
         let remaining = session.isPaused
             ? max(0, session.pausedRemainingSeconds ?? 0)
-            : max(0, Int(session.endDate.timeIntervalSinceNow))
+            : max(0, Int(session.endDate.timeIntervalSince(crewFocusNow)))
 
         let minutes = remaining / 60
         let seconds = remaining % 60
@@ -485,12 +491,16 @@ struct HomeDashboardView: View {
         return VStack(alignment: .leading, spacing: 14) {
 
             HStack {
+
                 HStack(spacing: 8) {
 
                     Circle()
-                        .fill(accent.opacity(crewFocusGlowPulse ? 1.0 : 0.75))
+                        .fill(accent.opacity(crewFocusGlowPulse ? 1 : 0.75))
                         .frame(width: 10, height: 10)
-                        .shadow(color: accent.opacity(crewFocusGlowPulse ? 0.45 : 0.20), radius: 8)
+                        .shadow(
+                            color: accent.opacity(crewFocusGlowPulse ? 0.45 : 0.20),
+                            radius: 8
+                        )
 
                     Text("Focus Running")
                         .font(.headline.weight(.bold))
@@ -500,20 +510,38 @@ struct HomeDashboardView: View {
                 Spacer()
 
                 Text(timeText)
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(palette.primaryText)
                     .contentTransition(.numericText())
+                    .animation(.easeInOut(duration: 0.2), value: timeText)
             }
 
             Text(session.title)
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
 
-            ProgressView(value: progress)
-                .progressViewStyle(.linear)
-                .tint(accent)
-                .scaleEffect(y: 1.4)
-                .animation(.linear(duration: 1), value: progress)
+            ZStack(alignment: .leading) {
+
+                Capsule()
+                    .fill(palette.secondaryCardFill)
+                    .frame(height: 10)
+
+                GeometryReader { geo in
+
+                    Capsule()
+                        .fill(accent)
+                        .frame(
+                            width: max(10, geo.size.width * progress),
+                            height: 10
+                        )
+                        .shadow(
+                            color: accent.opacity(crewFocusGlowPulse ? 0.45 : 0.20),
+                            radius: crewFocusGlowPulse ? 10 : 5
+                        )
+                        .animation(.linear(duration: 1), value: progress)
+                }
+            }
+            .frame(height: 10)
 
             HStack(spacing: 10) {
 
@@ -547,9 +575,15 @@ struct HomeDashboardView: View {
                 }
 
                 Button {
+
                     session.isActive = false
+                    session.isPaused = false
+                    session.pausedRemainingSeconds = nil
+
                     try? modelContext.save()
+
                 } label: {
+
                     Text("Stop")
                         .font(.headline.weight(.bold))
                         .foregroundStyle(.red)
@@ -584,7 +618,7 @@ struct HomeDashboardView: View {
                             endRadius: 260
                         )
                     )
-                    .blur(radius: 22)
+                    .blur(radius: 24)
             }
         )
         .shadow(

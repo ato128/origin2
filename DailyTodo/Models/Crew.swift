@@ -16,6 +16,8 @@ final class Crew {
     var colorHex: String
     var createdAt: Date
     var isMuted: Bool
+    var totalFocusMinutes: Int
+    var currentStreak: Int
 
     init(
         id: UUID = UUID(),
@@ -23,7 +25,9 @@ final class Crew {
         icon: String = "person.3.fill",
         colorHex: String = "#3B82F6",
         createdAt: Date = Date(),
-        isMuted: Bool = false
+        isMuted: Bool = false,
+        totalFocusMinutes: Int = 0,
+        currentStreak: Int = 0
     ) {
         self.id = id
         self.name = name
@@ -31,5 +35,7 @@ final class Crew {
         self.colorHex = colorHex
         self.createdAt = createdAt
         self.isMuted = isMuted
+        self.totalFocusMinutes = totalFocusMinutes
+        self.currentStreak = currentStreak
     }
 }
