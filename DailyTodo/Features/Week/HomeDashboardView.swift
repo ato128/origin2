@@ -25,6 +25,8 @@ struct HomeDashboardView: View {
 
     @Query(sort: \FriendMessage.createdAt, order: .reverse)
     private var allFriendMessages: [FriendMessage]
+    
+    @Query private var focusSessions: [CrewFocusSession]
 
     let onAddTask: () -> Void
     let onOpenWeek: () -> Void
@@ -47,6 +49,7 @@ struct HomeDashboardView: View {
     @State var showFriendsShortcut = false
     @State var showRecentFriendChat = false
     @State var pulseRecentFriendPill = false
+    @State var crewFocusGlowPulse: Bool = false
 
     @State private var showHeaderCard = false
     @State private var showWeekCard = false
@@ -188,6 +191,13 @@ struct HomeDashboardView: View {
         guard let nextEvent else { return "--:--" }
         return "\(hm(nextEvent.startMinute)) – \(hm(nextEvent.startMinute + nextEvent.durationMinute))"
     }
+    
+    var activeCrewFocusSession: CrewFocusSession? {
+        focusSessions
+            .filter { $0.isActive }
+            .sorted { $0.startedAt > $1.startedAt }
+            .first
+    }
 
     var hasAnyActiveFocusSession: Bool {
         guard let timestamp = UserDefaults.standard.object(forKey: "focus_end_date") as? Double else {
@@ -266,7 +276,17 @@ struct HomeDashboardView: View {
                     .opacity(showProgressCard ? 1 : 0)
                     .scaleEffect(showProgressCard ? 1 : 0.985)
 
-                if hasAnyActiveFocusSession {
+                if let session = activeCrewFocusSession {
+                    crewSharedFocusCard(session: session)
+                        .offset(y: showFocusCard ? 0 : 18)
+                        .opacity(showFocusCard ? 1 : 0)
+                        .scaleEffect(showFocusCard ? 1 : 0.985)
+                        .transition(.asymmetric(
+                            insertion: .scale(scale: 0.98).combined(with: .opacity),
+                            removal: .scale(scale: 0.96).combined(with: .opacity)
+                        ))
+                }
+                else if hasAnyActiveFocusSession {
                     activeFocusCard
                         .offset(y: showFocusCard ? 0 : 18)
                         .opacity(showFocusCard ? 1 : 0)
@@ -366,6 +386,9 @@ struct HomeDashboardView: View {
                 withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
                     showHeaderCard = true
                 }
+                withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
+                    crewFocusGlowPulse = true
+                }
             }
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
@@ -410,5 +433,164 @@ struct HomeDashboardView: View {
         .onReceive(focusRefreshTimer) { _ in
             syncActiveFocusCountdown()
         }
+    }
+    
+    func focusChip(title: String, icon: String, color: Color) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+            Text(title)
+        }
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(color)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(color.opacity(0.14))
+        )
+    }
+    func crewFocusAccentColor(for session: CrewFocusSession) -> Color {
+        let remaining = max(0, Int(session.endDate.timeIntervalSinceNow))
+
+        if session.isPaused {
+            return .orange
+        }
+
+        if remaining <= 180 {
+            return .red
+        }
+
+        if remaining <= 600 {
+            return .orange
+        }
+
+        return .blue
+    }
+    
+    func crewSharedFocusCard(session: CrewFocusSession) -> some View {
+
+        let remaining = session.isPaused
+            ? max(0, session.pausedRemainingSeconds ?? 0)
+            : max(0, Int(session.endDate.timeIntervalSinceNow))
+
+        let minutes = remaining / 60
+        let seconds = remaining % 60
+        let timeText = String(format: "%02d:%02d", minutes, seconds)
+
+        let total = Double(session.durationMinutes * 60)
+        let progress = min(1, max(0, 1 - Double(remaining) / total))
+
+        let accent = crewFocusAccentColor(for: session)
+
+        return VStack(alignment: .leading, spacing: 14) {
+
+            HStack {
+                HStack(spacing: 8) {
+
+                    Circle()
+                        .fill(accent.opacity(crewFocusGlowPulse ? 1.0 : 0.75))
+                        .frame(width: 10, height: 10)
+                        .shadow(color: accent.opacity(crewFocusGlowPulse ? 0.45 : 0.20), radius: 8)
+
+                    Text("Focus Running")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(palette.primaryText)
+                }
+
+                Spacer()
+
+                Text(timeText)
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .foregroundStyle(palette.primaryText)
+                    .contentTransition(.numericText())
+            }
+
+            Text(session.title)
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundStyle(palette.primaryText)
+
+            ProgressView(value: progress)
+                .progressViewStyle(.linear)
+                .tint(accent)
+                .scaleEffect(y: 1.4)
+                .animation(.linear(duration: 1), value: progress)
+
+            HStack(spacing: 10) {
+
+                focusChip(
+                    title: session.isPaused ? "Duraklatıldı" : "Odak aktif",
+                    icon: session.isPaused ? "pause.fill" : "timer",
+                    color: accent
+                )
+
+                focusChip(
+                    title: session.isPaused ? "Bekliyor" : "Devam",
+                    icon: session.isPaused ? "moon.zzz.fill" : "scope",
+                    color: session.isPaused ? .orange : .green
+                )
+            }
+
+            HStack(spacing: 12) {
+
+                NavigationLink {
+                    CrewFocusRoomView(session: session)
+                } label: {
+                    Text("Open Focus")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(accent == .red ? Color.red : accent)
+                        )
+                }
+
+                Button {
+                    session.isActive = false
+                    try? modelContext.save()
+                } label: {
+                    Text("Stop")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(Color.red.opacity(0.12))
+                        )
+                }
+            }
+        }
+        .padding(18)
+        .background(
+            ZStack {
+
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(palette.cardFill)
+
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .stroke(accent.opacity(0.30), lineWidth: 1)
+
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                accent.opacity(crewFocusGlowPulse ? 0.20 : 0.10),
+                                Color.clear
+                            ],
+                            center: .topLeading,
+                            startRadius: 20,
+                            endRadius: 260
+                        )
+                    )
+                    .blur(radius: 22)
+            }
+        )
+        .shadow(
+            color: accent.opacity(crewFocusGlowPulse ? 0.18 : 0.08),
+            radius: 18,
+            y: 8
+        )
     }
 }

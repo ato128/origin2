@@ -80,6 +80,8 @@
 		6D5FE3D22F66DA54007C124D /* FriendChatInfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3D12F66DA54007C124D /* FriendChatInfoView.swift */; };
 		6D5FE3D42F66DD72007C124D /* CrewChatInfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3D32F66DD72007C124D /* CrewChatInfoView.swift */; };
 		6D5FE3E62F66F3F8007C124D /* View+HideKeyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3E52F66F3F8007C124D /* View+HideKeyboard.swift */; };
+		6D5FE3F82F6755DA007C124D /* CrewFocusSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3F72F6755DA007C124D /* CrewFocusSession.swift */; };
+		6D5FE3FA2F675620007C124D /* CrewFocusRoomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3F92F675620007C124D /* CrewFocusRoomView.swift */; };
 		6D775B852F5F81CF0009D660 /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D775B842F5F81CF0009D660 /* Color+Hex.swift */; };
 		6D775B862F5F82F60009D660 /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D775B842F5F81CF0009D660 /* Color+Hex.swift */; };
 		6D8C3D342F65903B00ABF6CA /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D8C3D332F65903B00ABF6CA /* AppTheme.swift */; };
@@ -229,6 +231,8 @@
 		6D5FE3D12F66DA54007C124D /* FriendChatInfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendChatInfoView.swift; sourceTree = "<group>"; };
 		6D5FE3D32F66DD72007C124D /* CrewChatInfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewChatInfoView.swift; sourceTree = "<group>"; };
 		6D5FE3E52F66F3F8007C124D /* View+HideKeyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+HideKeyboard.swift"; sourceTree = "<group>"; };
+		6D5FE3F72F6755DA007C124D /* CrewFocusSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewFocusSession.swift; sourceTree = "<group>"; };
+		6D5FE3F92F675620007C124D /* CrewFocusRoomView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewFocusRoomView.swift; sourceTree = "<group>"; };
 		6D775B842F5F81CF0009D660 /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
 		6D81C1072F59E87500B65AF8 /* DailyTodo.entitlements.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = DailyTodo.entitlements.plist; sourceTree = "<group>"; };
 		6D8C3D332F65903B00ABF6CA /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
@@ -541,6 +545,8 @@
 				6D2004E42F64C8940022C810 /* CrewDetailView+ActivitySection.swift */,
 				6D2004E62F64C8BD0022C810 /* CrewDetailView+TasksSection.swift */,
 				6D5FE3D12F66DA54007C124D /* FriendChatInfoView.swift */,
+				6D5FE3F72F6755DA007C124D /* CrewFocusSession.swift */,
+				6D5FE3F92F675620007C124D /* CrewFocusRoomView.swift */,
 			);
 			path = Crew;
 			sourceTree = "<group>";
@@ -785,6 +791,7 @@
 				6D5FE3D22F66DA54007C124D /* FriendChatInfoView.swift in Sources */,
 				6D215DA52F5602D100F7B9D7 /* MainTabView.swift in Sources */,
 				6D215DD92F5645F200F7B9D7 /* WidgetShared.swift in Sources */,
+				6D5FE3F82F6755DA007C124D /* CrewFocusSession.swift in Sources */,
 				6D2004BD2F64505A0022C810 /* StudyHeatMapCard.swift in Sources */,
 				6D5FE3CC2F66CE68007C124D /* MessagesView.swift in Sources */,
 				6D215DA32F55FD7100F7B9D7 /* EditTaskView.swift in Sources */,
@@ -801,6 +808,7 @@
 				6D20049C2F6389460022C810 /* FriendChatView.swift in Sources */,
 				6D20045E2F62148F0022C810 /* WeekView+ModeHeader.swift in Sources */,
 				6D2004EB2F64EE8A0022C810 /* PermissionOnboardingView.swift in Sources */,
+				6D5FE3FA2F675620007C124D /* CrewFocusRoomView.swift in Sources */,
 				6D5FE3D42F66DD72007C124D /* CrewChatInfoView.swift in Sources */,
 				6D8C3D3F2F65B8F700ABF6CA /* AICoachCard.swift in Sources */,
 				6DC0CAAF2F5F7D0000A875ED /* Haptics.swift in Sources */,

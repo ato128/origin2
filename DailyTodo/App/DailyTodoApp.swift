@@ -31,7 +31,8 @@ struct DailyTodoApp: App {
                 FriendMessage.self,
                 SharedWeekItem.self,
                 FriendFocusSession.self,
-                CrewMessage.self
+                CrewMessage.self,
+                CrewFocusSession.self
             )
         } catch {
             fatalError("SwiftData container oluşturulamadı: \(error)")

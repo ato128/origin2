@@ -17,6 +17,7 @@ final class FriendMessage {
     var isFromMe: Bool
     var createdAt: Date
     var isRead: Bool
+    var reaction: String?
 
     init(
         id: UUID = UUID(),
