@@ -17,6 +17,11 @@ struct CrewChatView: View {
     @Query(sort: \CrewMessage.createdAt, order: .forward)
     private var allMessages: [CrewMessage]
 
+    @Query private var members: [CrewMember]
+
+    @State private var mentionQuery: String = ""
+    @State private var showMentionPicker = false
+
     @State private var draftMessage: String = ""
     @State private var animateMessages = false
     @State private var showCrewInfo = false
@@ -30,6 +35,22 @@ struct CrewChatView: View {
 
     private var messages: [CrewMessage] {
         allMessages.filter { $0.crewID == crew.id }
+    }
+
+    private var crewMembers: [CrewMember] {
+        members.filter { $0.crewID == crew.id }
+    }
+
+    private var filteredMentionMembers: [CrewMember] {
+        guard showMentionPicker else { return [] }
+
+        if mentionQuery.isEmpty {
+            return crewMembers
+        }
+
+        return crewMembers.filter {
+            $0.name.localizedCaseInsensitiveContains(mentionQuery)
+        }
     }
 
     var body: some View {
@@ -257,43 +278,57 @@ private extension CrewChatView {
                             .padding(.horizontal, 4)
                     }
 
-                    VStack(alignment: message.isFromMe ? .trailing : .leading, spacing: 6) {
+                    VStack(alignment: message.isFromMe ? .trailing : .leading, spacing: 5) {
                         if let replyPreview {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text("Reply")
-                                    .font(.caption2)
-                                    .foregroundStyle(
+                            HStack(spacing: 6) {
+                                Rectangle()
+                                    .fill(
                                         message.isFromMe
-                                        ? .white.opacity(0.80)
-                                        : palette.secondaryText
+                                        ? Color.white.opacity(0.75)
+                                        : Color.accentColor.opacity(0.9)
                                     )
+                                    .frame(width: 2, height: 24)
+                                    .clipShape(Capsule())
 
-                                Text(replyPreview)
-                                    .font(.caption2)
-                                    .foregroundStyle(
-                                        message.isFromMe
-                                        ? .white.opacity(0.90)
-                                        : palette.secondaryText
-                                    )
-                                    .lineLimit(1)
-                                    .opacity(0.85)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text("Reply")
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundStyle(
+                                            message.isFromMe
+                                            ? .white.opacity(0.78)
+                                            : palette.secondaryText
+                                        )
+
+                                    Text(replyPreview)
+                                        .font(.caption2)
+                                        .foregroundStyle(
+                                            message.isFromMe
+                                            ? .white.opacity(0.90)
+                                            : palette.secondaryText
+                                        )
+                                        .lineLimit(1)
+                                }
+
+                                Spacer(minLength: 0)
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 6)
                             .background(
                                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                                     .fill(
                                         message.isFromMe
-                                        ? Color.white.opacity(0.10)
-                                        : Color.white.opacity(appTheme == AppTheme.light.rawValue ? 0.35 : 0.05)
+                                        ? Color.white.opacity(0.08)
+                                        : Color.white.opacity(appTheme == AppTheme.light.rawValue ? 0.28 : 0.04)
                                     )
                             )
                         }
 
-                        Text(messageBody)
-                            .font(.subheadline)
-                            .foregroundStyle(message.isFromMe ? .white : palette.primaryText)
+                        mentionStyledText(
+                            messageBody,
+                            baseColor: message.isFromMe ? .white : palette.primaryText,
+                            mentionColor: message.isFromMe ? .white.opacity(0.95) : Color.accentColor
+                        )
+                        .font(.subheadline)
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 11)
@@ -340,15 +375,15 @@ private extension CrewChatView {
     }
 
     var composerBar: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 4) {
             if let replyingTo {
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     Rectangle()
                         .fill(Color.accentColor)
-                        .frame(width: 2)
+                        .frame(width: 2, height: 28)
                         .clipShape(Capsule())
 
-                    VStack(alignment: .leading, spacing: 3) {
+                    VStack(alignment: .leading, spacing: 2) {
                         Text("Replying to \(replyingTo.isFromMe ? "yourself" : replyingTo.senderName)")
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(Color.accentColor)
@@ -357,18 +392,17 @@ private extension CrewChatView {
                             .font(.caption2)
                             .foregroundStyle(palette.secondaryText)
                             .lineLimit(1)
-                            .opacity(0.85)
                     }
 
-                    Spacer()
+                    Spacer(minLength: 6)
 
                     Button {
                         self.replyingTo = nil
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.caption.weight(.bold))
+                            .font(.caption.bold())
                             .foregroundStyle(palette.secondaryText)
-                            .frame(width: 26, height: 26)
+                            .frame(width: 22, height: 22)
                             .background(
                                 Circle()
                                     .fill(palette.secondaryCardFill)
@@ -377,16 +411,56 @@ private extension CrewChatView {
                     .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 10)
-                .padding(.vertical, 6)
+                .padding(.vertical, 8)
                 .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(palette.secondaryCardFill)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(palette.cardFill.opacity(0.96))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(palette.cardStroke.opacity(0.65), lineWidth: 1)
                         )
                 )
                 .padding(.horizontal, 16)
+            }
+
+            if showMentionPicker && !filteredMentionMembers.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(filteredMentionMembers) { member in
+                            Button {
+                                insertMention(member.name)
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(hexColor(crew.colorHex).opacity(0.18))
+                                        .frame(width: 24, height: 24)
+                                        .overlay(
+                                            Text(String(member.name.prefix(1)).uppercased())
+                                                .font(.caption2.weight(.bold))
+                                                .foregroundStyle(hexColor(crew.colorHex))
+                                        )
+
+                                    Text("@\(member.name)")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(palette.primaryText)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 8)
+                                .background(
+                                    Capsule()
+                                        .fill(palette.secondaryCardFill)
+                                        .overlay(
+                                            Capsule()
+                                                .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
+                                        )
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+                .padding(.bottom, 2)
             }
 
             HStack(alignment: .bottom, spacing: 10) {
@@ -420,6 +494,9 @@ private extension CrewChatView {
                             )
                     )
                     .foregroundStyle(palette.primaryText)
+                    .onChange(of: draftMessage) { _, newValue in
+                        updateMentionState(for: newValue)
+                    }
 
                 Button {
                     sendMessage()
@@ -502,6 +579,8 @@ private extension CrewChatView {
         draftMessage = ""
         replyingTo = nil
         isComposerFocused = false
+        showMentionPicker = false
+        mentionQuery = ""
 
         animateMessages = false
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
@@ -598,5 +677,82 @@ private extension CrewChatView {
                 proxy.scrollTo(lastID, anchor: .bottom)
             }
         }
+    }
+    func updateMentionState(for text: String) {
+        guard let lastWord = text.split(separator: " ", omittingEmptySubsequences: false).last else {
+            showMentionPicker = false
+            mentionQuery = ""
+            return
+        }
+
+        if lastWord.hasPrefix("@") {
+            mentionQuery = String(lastWord.dropFirst())
+            showMentionPicker = true
+        } else {
+            mentionQuery = ""
+            showMentionPicker = false
+        }
+    }
+
+    func insertMention(_ name: String) {
+        let words = draftMessage.split(separator: " ", omittingEmptySubsequences: false).map(String.init)
+
+        guard !words.isEmpty else {
+            draftMessage = "@\(name) "
+            mentionQuery = ""
+            showMentionPicker = false
+            isComposerFocused = true
+            return
+        }
+
+        var mutableWords = words
+
+        if let last = mutableWords.last, last.hasPrefix("@") {
+            mutableWords.removeLast()
+        }
+
+        let prefix = mutableWords.joined(separator: " ")
+
+        if prefix.isEmpty {
+            draftMessage = "@\(name) "
+        } else {
+            draftMessage = "\(prefix) @\(name) "
+        }
+
+        mentionQuery = ""
+        showMentionPicker = false
+        isComposerFocused = true
+    }
+
+    func mentionStyledText(
+        _ text: String,
+        baseColor: Color,
+        mentionColor: Color
+    ) -> Text {
+        let words = text.split(separator: " ", omittingEmptySubsequences: false)
+        guard !words.isEmpty else { return Text("").foregroundColor(baseColor) }
+
+        var result = Text("")
+
+        for index in words.indices {
+            let word = String(words[index])
+            let piece: Text
+
+            if word.hasPrefix("@") && word.count > 1 {
+                piece = Text(word)
+                    .foregroundColor(mentionColor)
+            } else {
+                piece = Text(word)
+                    .foregroundColor(baseColor)
+            }
+
+            result = result + piece
+
+            if index != words.indices.last {
+                result = result + Text(" ").foregroundColor(baseColor)
+            }
+        }
+
+        return result
     }
 }

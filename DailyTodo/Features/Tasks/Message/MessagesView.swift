@@ -24,6 +24,9 @@ struct MessagesView: View {
     @Query(sort: \CrewMessage.createdAt, order: .reverse)
     private var crewMessages: [CrewMessage]
 
+    private let replyMarker = "[[reply]]"
+    private let bodyMarker = "[[body]]"
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -192,15 +195,29 @@ struct MessagesView: View {
         }
     }
 
+    private func cleanedPreview(_ text: String) -> String {
+        guard
+            text.hasPrefix(replyMarker),
+            let bodyRange = text.range(of: bodyMarker)
+        else {
+            return text
+        }
+
+        let bodyStart = bodyRange.upperBound
+        return String(text[bodyStart...])
+    }
+
     private func lastPreviewText(for friend: Friend) -> String {
         guard let last = friendMessages.first(where: { $0.friendID == friend.id }) else {
             return friend.subtitle
         }
 
+        let cleaned = cleanedPreview(last.text)
+
         if last.isFromMe {
-            return "You: \(last.text)"
+            return "You: \(cleaned)"
         } else {
-            return last.text
+            return cleaned
         }
     }
 
@@ -217,7 +234,8 @@ struct MessagesView: View {
             return "Crew conversation"
         }
 
-        return "\(last.senderName): \(last.text)"
+        let cleaned = cleanedPreview(last.text)
+        return "\(last.senderName): \(cleaned)"
     }
 
     private func lastCrewMessageDate(for crew: Crew) -> Date? {

@@ -279,36 +279,43 @@ private extension FriendChatView {
                 if message.isFromMe { Spacer(minLength: 42) }
 
                 VStack(alignment: message.isFromMe ? .trailing : .leading, spacing: 5) {
-                    VStack(alignment: message.isFromMe ? .trailing : .leading, spacing: 6) {
+                    VStack(alignment: message.isFromMe ? .trailing : .leading, spacing: 5) {
                         if let replyPreview {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text("Reply")
-                                    .font(.caption2)
-                                    .foregroundStyle(
-                                        message.isFromMe
-                                        ? .white.opacity(0.80)
-                                        : palette.secondaryText
-                                    )
+                            HStack(spacing: 6) {
+                                Rectangle()
+                                    .fill(message.isFromMe ? Color.white.opacity(0.75) : Color.accentColor.opacity(0.9))
+                                    .frame(width: 2, height: 24)
+                                    .clipShape(Capsule())
 
-                                Text(replyPreview)
-                                    .font(.caption2)
-                                    .foregroundStyle(
-                                        message.isFromMe
-                                        ? .white.opacity(0.90)
-                                        : palette.secondaryText
-                                    )
-                                    .lineLimit(1)
-                                    .opacity(0.85)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text("Reply")
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundStyle(
+                                            message.isFromMe
+                                            ? .white.opacity(0.78)
+                                            : palette.secondaryText
+                                        )
+
+                                    Text(replyPreview)
+                                        .font(.caption2)
+                                        .foregroundStyle(
+                                            message.isFromMe
+                                            ? .white.opacity(0.90)
+                                            : palette.secondaryText
+                                        )
+                                        .lineLimit(1)
+                                }
+
+                                Spacer(minLength: 0)
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 6)
                             .background(
                                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                                     .fill(
                                         message.isFromMe
-                                        ? Color.white.opacity(0.10)
-                                        : Color.white.opacity(appTheme == AppTheme.light.rawValue ? 0.35 : 0.05)
+                                        ? Color.white.opacity(0.08)
+                                        : Color.white.opacity(appTheme == AppTheme.light.rawValue ? 0.28 : 0.04)
                                     )
                             )
                         }
@@ -362,15 +369,15 @@ private extension FriendChatView {
     }
 
     var composerBar: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 4) {
             if let replyingTo {
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     Rectangle()
                         .fill(Color.accentColor)
-                        .frame(width: 2)
+                        .frame(width: 2, height: 28)
                         .clipShape(Capsule())
 
-                    VStack(alignment: .leading, spacing: 3) {
+                    VStack(alignment: .leading, spacing: 2) {
                         Text("Replying to \(replyingTo.isFromMe ? "yourself" : friend.name)")
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(Color.accentColor)
@@ -379,18 +386,17 @@ private extension FriendChatView {
                             .font(.caption2)
                             .foregroundStyle(palette.secondaryText)
                             .lineLimit(1)
-                            .opacity(0.85)
                     }
 
-                    Spacer()
+                    Spacer(minLength: 6)
 
                     Button {
                         self.replyingTo = nil
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.caption.weight(.bold))
+                            .font(.caption.bold())
                             .foregroundStyle(palette.secondaryText)
-                            .frame(width: 26, height: 26)
+                            .frame(width: 22, height: 22)
                             .background(
                                 Circle()
                                     .fill(palette.secondaryCardFill)
@@ -399,18 +405,17 @@ private extension FriendChatView {
                     .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 10)
-                .padding(.vertical, 6)
+                .padding(.vertical, 8)
                 .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(palette.secondaryCardFill)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(palette.cardFill.opacity(0.96))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(palette.cardStroke.opacity(0.65), lineWidth: 1)
                         )
                 )
                 .padding(.horizontal, 16)
             }
-
             HStack(alignment: .bottom, spacing: 10) {
                 TextField("Message \(friend.name)...", text: $draftMessage, axis: .vertical)
                     .textFieldStyle(.plain)
