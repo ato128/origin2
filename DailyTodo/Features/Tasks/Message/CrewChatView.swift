@@ -20,8 +20,13 @@ struct CrewChatView: View {
     @State private var draftMessage: String = ""
     @State private var animateMessages = false
     @State private var showCrewInfo = false
+    @State private var replyingTo: CrewMessage?
+
+    @FocusState private var isComposerFocused: Bool
 
     private let palette = ThemePalette()
+    private let replyMarker = "[[reply]]"
+    private let bodyMarker = "[[body]]"
 
     private var messages: [CrewMessage] {
         allMessages.filter { $0.crewID == crew.id }
@@ -43,10 +48,13 @@ struct CrewChatView: View {
                 composerBar
             }
         }
+        .contentShape(Rectangle())
+        .hideKeyboardOnTap()
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
             seedMessagesIfNeeded()
+            markMessagesAsRead()
         }
         .sheet(isPresented: $showCrewInfo) {
             NavigationStack {
@@ -64,6 +72,7 @@ private extension CrewChatView {
             } label: {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(palette.primaryText)
                     .frame(width: 52, height: 52)
                     .background(
                         Circle()
@@ -79,9 +88,7 @@ private extension CrewChatView {
             Button {
                 showCrewInfo = true
             } label: {
-
                 HStack(spacing: 10) {
-
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(hexColor(crew.colorHex).opacity(0.16))
                         .frame(width: 42, height: 42)
@@ -101,7 +108,6 @@ private extension CrewChatView {
                             .foregroundStyle(palette.secondaryText)
                     }
                 }
-
             }
             .buttonStyle(.plain)
 
@@ -167,23 +173,32 @@ private extension CrewChatView {
                 .padding(.bottom, 16)
             }
             .scrollIndicators(.hidden)
+            .hideKeyboardOnTap()
             .onAppear {
                 animateMessages = false
+
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) {
                     withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
                         animateMessages = true
                     }
                 }
+
+                scrollToBottom(proxy: proxy)
             }
             .onChange(of: messages.count) { _, _ in
+                markMessagesAsRead()
                 scrollToBottom(proxy: proxy)
             }
         }
     }
 
     func messageBubble(_ message: CrewMessage) -> some View {
+        let fullText = message.text
+        let messageBody = visibleMessageText(from: fullText)
+        let replyPreview = replyPreviewText(from: fullText)
+
         let isFocusSystemMessage =
-            message.text.contains("started a 25 min shared focus session")
+            messageBody.contains("started a 25 min shared focus session")
 
         return HStack(alignment: .bottom) {
             if isFocusSystemMessage {
@@ -242,97 +257,196 @@ private extension CrewChatView {
                             .padding(.horizontal, 4)
                     }
 
-                    Text(message.text)
-                        .font(.subheadline)
-                        .foregroundStyle(message.isFromMe ? .white : palette.primaryText)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 11)
-                        .background(
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .fill(
-                                    message.isFromMe
-                                    ? Color.accentColor.opacity(0.90)
-                                    : palette.secondaryCardFill
-                                )
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .stroke(
-                                    message.isFromMe
-                                    ? Color.accentColor.opacity(0.18)
-                                    : palette.cardStroke,
-                                    lineWidth: 1
-                                )
-                        )
+                    VStack(alignment: message.isFromMe ? .trailing : .leading, spacing: 6) {
+                        if let replyPreview {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Reply")
+                                    .font(.caption2)
+                                    .foregroundStyle(
+                                        message.isFromMe
+                                        ? .white.opacity(0.80)
+                                        : palette.secondaryText
+                                    )
+
+                                Text(replyPreview)
+                                    .font(.caption2)
+                                    .foregroundStyle(
+                                        message.isFromMe
+                                        ? .white.opacity(0.90)
+                                        : palette.secondaryText
+                                    )
+                                    .lineLimit(1)
+                                    .opacity(0.85)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(
+                                        message.isFromMe
+                                        ? Color.white.opacity(0.10)
+                                        : Color.white.opacity(appTheme == AppTheme.light.rawValue ? 0.35 : 0.05)
+                                    )
+                            )
+                        }
+
+                        Text(messageBody)
+                            .font(.subheadline)
+                            .foregroundStyle(message.isFromMe ? .white : palette.primaryText)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 11)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(
+                                message.isFromMe
+                                ? Color.accentColor.opacity(0.90)
+                                : palette.secondaryCardFill
+                            )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(
+                                message.isFromMe
+                                ? Color.accentColor.opacity(0.18)
+                                : palette.cardStroke,
+                                lineWidth: 1
+                            )
+                    )
 
                     Text(message.createdAt, style: .time)
                         .font(.caption2)
                         .foregroundStyle(palette.secondaryText)
                         .padding(.horizontal, 4)
                 }
+                .gesture(
+                    DragGesture(minimumDistance: 20)
+                        .onEnded { value in
+                            if value.translation.width > 65 {
+                                replyingTo = message
+                                isComposerFocused = true
+
+                                let gen = UIImpactFeedbackGenerator(style: .light)
+                                gen.prepare()
+                                gen.impactOccurred()
+                            }
+                        }
+                )
 
                 if !message.isFromMe { Spacer(minLength: 42) }
             }
         }
     }
+
     var composerBar: some View {
-        HStack(alignment: .bottom, spacing: 10) {
+        VStack(spacing: 6) {
+            if let replyingTo {
+                HStack(spacing: 10) {
+                    Rectangle()
+                        .fill(Color.accentColor)
+                        .frame(width: 2)
+                        .clipShape(Capsule())
 
-            Button {
-                sendFocusInvite()
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(Color.green.opacity(0.18))
-                        .frame(width: 42, height: 42)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Replying to \(replyingTo.isFromMe ? "yourself" : replyingTo.senderName)")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(Color.accentColor)
 
-                    Image(systemName: "timer")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(.green)
+                        Text(visibleMessageText(from: replyingTo.text))
+                            .font(.caption2)
+                            .foregroundStyle(palette.secondaryText)
+                            .lineLimit(1)
+                            .opacity(0.85)
+                    }
+
+                    Spacer()
+
+                    Button {
+                        self.replyingTo = nil
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(palette.secondaryText)
+                            .frame(width: 26, height: 26)
+                            .background(
+                                Circle()
+                                    .fill(palette.secondaryCardFill)
+                            )
+                    }
+                    .buttonStyle(.plain)
                 }
-            }
-            .buttonStyle(.plain)
-
-            TextField("Message \(crew.name)...", text: $draftMessage, axis: .vertical)
-                .textFieldStyle(.plain)
-                .lineLimit(1...4)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
                 .background(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .fill(palette.secondaryCardFill)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .stroke(palette.cardStroke, lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
                         )
                 )
-                .foregroundStyle(palette.primaryText)
-
-            Button {
-                sendMessage()
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(
-                            draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            ? palette.secondaryCardFill
-                            : Color.accentColor
-                        )
-                        .frame(width: 46, height: 46)
-
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(
-                            draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            ? palette.secondaryText
-                            : .white
-                        )
-                }
+                .padding(.horizontal, 16)
             }
-            .buttonStyle(.plain)
-            .disabled(draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+            HStack(alignment: .bottom, spacing: 10) {
+                Button {
+                    sendFocusInvite()
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(Color.green.opacity(0.18))
+                            .frame(width: 42, height: 42)
+
+                        Image(systemName: "timer")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(.green)
+                    }
+                }
+                .buttonStyle(.plain)
+
+                TextField("Message \(crew.name)...", text: $draftMessage, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .focused($isComposerFocused)
+                    .lineLimit(1...4)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(palette.secondaryCardFill)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .stroke(palette.cardStroke, lineWidth: 1)
+                            )
+                    )
+                    .foregroundStyle(palette.primaryText)
+
+                Button {
+                    sendMessage()
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                ? palette.secondaryCardFill
+                                : Color.accentColor
+                            )
+                            .frame(width: 46, height: 46)
+
+                        Image(systemName: "arrow.up")
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundStyle(
+                                draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                ? palette.secondaryText
+                                : .white
+                            )
+                    }
+                }
+                .buttonStyle(.plain)
+                .disabled(draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            .padding(.horizontal, 16)
         }
-        .padding(.horizontal, 16)
         .padding(.top, 10)
         .padding(.bottom, 12)
         .background(
@@ -346,14 +460,15 @@ private extension CrewChatView {
                 )
                 .ignoresSafeArea(edges: .bottom)
         )
-    }      
-    
+    }
+
     func sendFocusInvite() {
         let message = CrewMessage(
             crewID: crew.id,
             senderName: "Atakan",
             text: "started a 25 min shared focus session",
-            isFromMe: false
+            isFromMe: false,
+            isRead: false
         )
 
         modelContext.insert(message)
@@ -366,28 +481,82 @@ private extension CrewChatView {
             }
         }
     }
-    
+
     func sendMessage() {
         let clean = draftMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else { return }
 
+        let storedText = encodedMessageText(from: clean)
+
         let message = CrewMessage(
             crewID: crew.id,
             senderName: "Me",
-            text: clean,
-            isFromMe: true
+            text: storedText,
+            isFromMe: true,
+            isRead: true
         )
 
         modelContext.insert(message)
         try? modelContext.save()
 
         draftMessage = ""
+        replyingTo = nil
+        isComposerFocused = false
+
         animateMessages = false
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
             withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
                 animateMessages = true
             }
         }
+    }
+
+    func encodedMessageText(from clean: String) -> String {
+        guard let replyingTo else { return clean }
+
+        let preview = visibleMessageText(from: replyingTo.text)
+            .replacingOccurrences(of: "\n", with: " ")
+
+        return "\(replyMarker)\(preview)\(bodyMarker)\(clean)"
+    }
+
+    func replyPreviewText(from fullText: String) -> String? {
+        guard
+            fullText.hasPrefix(replyMarker),
+            let bodyRange = fullText.range(of: bodyMarker)
+        else {
+            return nil
+        }
+
+        let previewStart = fullText.index(fullText.startIndex, offsetBy: replyMarker.count)
+        let preview = String(fullText[previewStart..<bodyRange.lowerBound])
+        return preview.isEmpty ? nil : preview
+    }
+
+    func visibleMessageText(from fullText: String) -> String {
+        guard
+            fullText.hasPrefix(replyMarker),
+            let bodyRange = fullText.range(of: bodyMarker)
+        else {
+            return fullText
+        }
+
+        let bodyStart = bodyRange.upperBound
+        return String(fullText[bodyStart...])
+    }
+
+    func markMessagesAsRead() {
+        let unreadMessages = allMessages.filter { message in
+            message.crewID == crew.id && !message.isFromMe && !message.isRead
+        }
+
+        guard !unreadMessages.isEmpty else { return }
+
+        for message in unreadMessages {
+            message.isRead = true
+        }
+
+        try? modelContext.save()
     }
 
     func seedMessagesIfNeeded() {

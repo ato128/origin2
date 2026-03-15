@@ -18,6 +18,12 @@ struct MessagesView: View {
     @Query(sort: \Crew.createdAt, order: .reverse)
     private var crews: [Crew]
 
+    @Query(sort: \FriendMessage.createdAt, order: .reverse)
+    private var friendMessages: [FriendMessage]
+
+    @Query(sort: \CrewMessage.createdAt, order: .reverse)
+    private var crewMessages: [CrewMessage]
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -50,21 +56,53 @@ struct MessagesView: View {
                                                     .foregroundStyle(hexColor(friend.colorHex))
                                             )
 
-                                        VStack(alignment: .leading, spacing: 3) {
+                                        VStack(alignment: .leading, spacing: 4) {
                                             Text(friend.name)
                                                 .font(.headline)
 
-                                            Text(friend.subtitle)
+                                            Text(lastPreviewText(for: friend))
                                                 .font(.caption)
                                                 .foregroundStyle(.secondary)
+                                                .lineLimit(1)
+
+                                            if friend.isMuted {
+                                                Text("Muted")
+                                                    .font(.caption2.weight(.semibold))
+                                                    .foregroundStyle(.orange)
+                                            }
                                         }
 
                                         Spacer()
 
-                                        Circle()
-                                            .fill(friend.isOnline ? Color.green : Color.gray.opacity(0.4))
-                                            .frame(width: 8, height: 8)
+                                        VStack(alignment: .trailing, spacing: 8) {
+                                            if let lastDate = lastFriendMessageDate(for: friend) {
+                                                Text(lastDate, style: .time)
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.secondary)
+                                            }
+
+                                            HStack(spacing: 8) {
+                                                if unreadFriendCount(for: friend) > 0 {
+                                                    unreadBadge(unreadFriendCount(for: friend))
+                                                }
+
+                                                Circle()
+                                                    .fill(friend.isOnline ? Color.green : Color.gray.opacity(0.4))
+                                                    .frame(width: 8, height: 8)
+
+                                                if friend.isMuted {
+                                                    Image(systemName: "bell.slash.fill")
+                                                        .font(.caption.weight(.semibold))
+                                                        .foregroundStyle(.orange)
+                                                }
+
+                                                Image(systemName: "chevron.right")
+                                                    .font(.caption.weight(.bold))
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                        }
                                     }
+                                    .padding(.vertical, 4)
                                 }
                             }
                         }
@@ -92,17 +130,49 @@ struct MessagesView: View {
                                                     .foregroundStyle(hexColor(crew.colorHex))
                                             )
 
-                                        VStack(alignment: .leading, spacing: 3) {
+                                        VStack(alignment: .leading, spacing: 4) {
                                             Text(crew.name)
                                                 .font(.headline)
 
-                                            Text("Crew conversation")
+                                            Text(lastPreviewText(for: crew))
                                                 .font(.caption)
                                                 .foregroundStyle(.secondary)
+                                                .lineLimit(1)
+
+                                            if crew.isMuted {
+                                                Text("Muted")
+                                                    .font(.caption2.weight(.semibold))
+                                                    .foregroundStyle(.orange)
+                                            }
                                         }
 
                                         Spacer()
+
+                                        VStack(alignment: .trailing, spacing: 8) {
+                                            if let lastDate = lastCrewMessageDate(for: crew) {
+                                                Text(lastDate, style: .time)
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.secondary)
+                                            }
+
+                                            HStack(spacing: 8) {
+                                                if unreadCrewCount(for: crew) > 0 {
+                                                    unreadBadge(unreadCrewCount(for: crew))
+                                                }
+
+                                                if crew.isMuted {
+                                                    Image(systemName: "bell.slash.fill")
+                                                        .font(.caption.weight(.semibold))
+                                                        .foregroundStyle(.orange)
+                                                }
+
+                                                Image(systemName: "chevron.right")
+                                                    .font(.caption.weight(.bold))
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                        }
                                     }
+                                    .padding(.vertical, 4)
                                 }
                             }
                         }
@@ -121,6 +191,52 @@ struct MessagesView: View {
             }
         }
     }
+
+    private func lastPreviewText(for friend: Friend) -> String {
+        guard let last = friendMessages.first(where: { $0.friendID == friend.id }) else {
+            return friend.subtitle
+        }
+
+        if last.isFromMe {
+            return "You: \(last.text)"
+        } else {
+            return last.text
+        }
+    }
+
+    private func lastFriendMessageDate(for friend: Friend) -> Date? {
+        friendMessages.first(where: { $0.friendID == friend.id })?.createdAt
+    }
+
+    private func unreadFriendCount(for friend: Friend) -> Int {
+        friendMessages.filter { $0.friendID == friend.id && !$0.isRead && !$0.isFromMe }.count
+    }
+
+    private func lastPreviewText(for crew: Crew) -> String {
+        guard let last = crewMessages.first(where: { $0.crewID == crew.id }) else {
+            return "Crew conversation"
+        }
+
+        return "\(last.senderName): \(last.text)"
+    }
+
+    private func lastCrewMessageDate(for crew: Crew) -> Date? {
+        crewMessages.first(where: { $0.crewID == crew.id })?.createdAt
+    }
+
+    private func unreadCrewCount(for crew: Crew) -> Int {
+        crewMessages.filter { $0.crewID == crew.id && !$0.isRead && !$0.isFromMe }.count
+    }
+
+    private func unreadBadge(_ count: Int) -> some View {
+        Text(count > 99 ? "99+" : "\(count)")
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, count > 9 ? 7 : 6)
+            .padding(.vertical, 4)
+            .background(
+                Capsule()
+                    .fill(Color.accentColor)
+            )
+    }
 }
-
-

@@ -10,6 +10,7 @@ import SwiftData
 
 @Model
 final class CrewMessage {
+
     var id: UUID
     var crewID: UUID
     var senderName: String
@@ -17,7 +18,6 @@ final class CrewMessage {
     var isFromMe: Bool
     var createdAt: Date
     var isRead: Bool
-   
 
     init(
         id: UUID = UUID(),
@@ -25,8 +25,8 @@ final class CrewMessage {
         senderName: String,
         text: String,
         isFromMe: Bool,
-        createdAt: Date = Date()
-       
+        createdAt: Date = Date(),
+        isRead: Bool = false
     ) {
         self.id = id
         self.crewID = crewID
@@ -34,7 +34,6 @@ final class CrewMessage {
         self.text = text
         self.isFromMe = isFromMe
         self.createdAt = createdAt
-        self.isRead = false
-       
+        self.isRead = isRead
     }
 }

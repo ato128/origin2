@@ -79,6 +79,7 @@
 		6D5FE3D02F66D034007C124D /* CrewChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3CF2F66D034007C124D /* CrewChatView.swift */; };
 		6D5FE3D22F66DA54007C124D /* FriendChatInfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3D12F66DA54007C124D /* FriendChatInfoView.swift */; };
 		6D5FE3D42F66DD72007C124D /* CrewChatInfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3D32F66DD72007C124D /* CrewChatInfoView.swift */; };
+		6D5FE3E62F66F3F8007C124D /* View+HideKeyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3E52F66F3F8007C124D /* View+HideKeyboard.swift */; };
 		6D775B852F5F81CF0009D660 /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D775B842F5F81CF0009D660 /* Color+Hex.swift */; };
 		6D775B862F5F82F60009D660 /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D775B842F5F81CF0009D660 /* Color+Hex.swift */; };
 		6D8C3D342F65903B00ABF6CA /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D8C3D332F65903B00ABF6CA /* AppTheme.swift */; };
@@ -227,6 +228,7 @@
 		6D5FE3CF2F66D034007C124D /* CrewChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewChatView.swift; sourceTree = "<group>"; };
 		6D5FE3D12F66DA54007C124D /* FriendChatInfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendChatInfoView.swift; sourceTree = "<group>"; };
 		6D5FE3D32F66DD72007C124D /* CrewChatInfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewChatInfoView.swift; sourceTree = "<group>"; };
+		6D5FE3E52F66F3F8007C124D /* View+HideKeyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+HideKeyboard.swift"; sourceTree = "<group>"; };
 		6D775B842F5F81CF0009D660 /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
 		6D81C1072F59E87500B65AF8 /* DailyTodo.entitlements.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = DailyTodo.entitlements.plist; sourceTree = "<group>"; };
 		6D8C3D332F65903B00ABF6CA /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
@@ -362,6 +364,7 @@
 				6D5FE3CD2F66CF29007C124D /* CrewMessage.swift */,
 				6D5FE3CF2F66D034007C124D /* CrewChatView.swift */,
 				6D5FE3D32F66DD72007C124D /* CrewChatInfoView.swift */,
+				6D5FE3E52F66F3F8007C124D /* View+HideKeyboard.swift */,
 			);
 			path = Message;
 			sourceTree = "<group>";
@@ -777,6 +780,7 @@
 				6D8C3D3D2F65B83A00ABF6CA /* AICoachData.swift in Sources */,
 				6D02C9D72F5B4D95008193F3 /* SmartInsights.swift in Sources */,
 				6D2004902F6383480022C810 /* HomeDashboardSections.swift in Sources */,
+				6D5FE3E62F66F3F8007C124D /* View+HideKeyboard.swift in Sources */,
 				6D2004A02F6391320022C810 /* JoinFocusSheet.swift in Sources */,
 				6D5FE3D22F66DA54007C124D /* FriendChatInfoView.swift in Sources */,
 				6D215DA52F5602D100F7B9D7 /* MainTabView.swift in Sources */,

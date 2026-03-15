@@ -24,7 +24,8 @@ final class FriendMessage {
         senderName: String,
         text: String,
         isFromMe: Bool,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        isRead: Bool = false
     ) {
         self.id = id
         self.friendID = friendID
@@ -32,6 +33,6 @@ final class FriendMessage {
         self.text = text
         self.isFromMe = isFromMe
         self.createdAt = createdAt
-        self.isRead = false
+        self.isRead = isRead
     }
 }
