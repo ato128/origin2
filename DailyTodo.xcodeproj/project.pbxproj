@@ -74,6 +74,11 @@
 		6D215DD92F5645F200F7B9D7 /* WidgetShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DD82F5645F200F7B9D7 /* WidgetShared.swift */; };
 		6D215DDA2F56477500F7B9D7 /* WidgetShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DD82F5645F200F7B9D7 /* WidgetShared.swift */; };
 		6D215DDC2F564C4100F7B9D7 /* WidgetSync+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DDB2F564C4100F7B9D7 /* WidgetSync+App.swift */; };
+		6D5FE3CC2F66CE68007C124D /* MessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3CB2F66CE68007C124D /* MessagesView.swift */; };
+		6D5FE3CE2F66CF29007C124D /* CrewMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3CD2F66CF29007C124D /* CrewMessage.swift */; };
+		6D5FE3D02F66D034007C124D /* CrewChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3CF2F66D034007C124D /* CrewChatView.swift */; };
+		6D5FE3D22F66DA54007C124D /* FriendChatInfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3D12F66DA54007C124D /* FriendChatInfoView.swift */; };
+		6D5FE3D42F66DD72007C124D /* CrewChatInfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3D32F66DD72007C124D /* CrewChatInfoView.swift */; };
 		6D775B852F5F81CF0009D660 /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D775B842F5F81CF0009D660 /* Color+Hex.swift */; };
 		6D775B862F5F82F60009D660 /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D775B842F5F81CF0009D660 /* Color+Hex.swift */; };
 		6D8C3D342F65903B00ABF6CA /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D8C3D332F65903B00ABF6CA /* AppTheme.swift */; };
@@ -217,6 +222,11 @@
 		6D215DD72F5645B100F7B9D7 /* WidgetExtensionExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WidgetExtensionExtension.entitlements; sourceTree = "<group>"; };
 		6D215DD82F5645F200F7B9D7 /* WidgetShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetShared.swift; sourceTree = "<group>"; };
 		6D215DDB2F564C4100F7B9D7 /* WidgetSync+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WidgetSync+App.swift"; sourceTree = "<group>"; };
+		6D5FE3CB2F66CE68007C124D /* MessagesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagesView.swift; sourceTree = "<group>"; };
+		6D5FE3CD2F66CF29007C124D /* CrewMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewMessage.swift; sourceTree = "<group>"; };
+		6D5FE3CF2F66D034007C124D /* CrewChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewChatView.swift; sourceTree = "<group>"; };
+		6D5FE3D12F66DA54007C124D /* FriendChatInfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendChatInfoView.swift; sourceTree = "<group>"; };
+		6D5FE3D32F66DD72007C124D /* CrewChatInfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewChatInfoView.swift; sourceTree = "<group>"; };
 		6D775B842F5F81CF0009D660 /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
 		6D81C1072F59E87500B65AF8 /* DailyTodo.entitlements.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = DailyTodo.entitlements.plist; sourceTree = "<group>"; };
 		6D8C3D332F65903B00ABF6CA /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
@@ -343,6 +353,17 @@
 				6D215DC02F56458C00F7B9D7 /* SwiftUI.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		6D5FE3CA2F66CE4C007C124D /* Message */ = {
+			isa = PBXGroup;
+			children = (
+				6D5FE3CB2F66CE68007C124D /* MessagesView.swift */,
+				6D5FE3CD2F66CF29007C124D /* CrewMessage.swift */,
+				6D5FE3CF2F66D034007C124D /* CrewChatView.swift */,
+				6D5FE3D32F66DD72007C124D /* CrewChatInfoView.swift */,
+			);
+			path = Message;
 			sourceTree = "<group>";
 		};
 		6D8C3D322F65901D00ABF6CA /* Appearance */ = {
@@ -478,6 +499,7 @@
 		6DC0CACE2F5F804900A875ED /* Tasks */ = {
 			isa = PBXGroup;
 			children = (
+				6D5FE3CA2F66CE4C007C124D /* Message */,
 				6D215DB02F5617BF00F7B9D7 /* TodoStore.swift */,
 				6DC0CAAB2F5F7D0000A875ED /* TodoListView.swift */,
 				6DF0C9402F557F730043B887 /* AddTaskView.swift */,
@@ -515,6 +537,7 @@
 				6D2004E22F64C86C0022C810 /* CrewDetailView+MembersSection.swift */,
 				6D2004E42F64C8940022C810 /* CrewDetailView+ActivitySection.swift */,
 				6D2004E62F64C8BD0022C810 /* CrewDetailView+TasksSection.swift */,
+				6D5FE3D12F66DA54007C124D /* FriendChatInfoView.swift */,
 			);
 			path = Crew;
 			sourceTree = "<group>";
@@ -755,9 +778,11 @@
 				6D02C9D72F5B4D95008193F3 /* SmartInsights.swift in Sources */,
 				6D2004902F6383480022C810 /* HomeDashboardSections.swift in Sources */,
 				6D2004A02F6391320022C810 /* JoinFocusSheet.swift in Sources */,
+				6D5FE3D22F66DA54007C124D /* FriendChatInfoView.swift in Sources */,
 				6D215DA52F5602D100F7B9D7 /* MainTabView.swift in Sources */,
 				6D215DD92F5645F200F7B9D7 /* WidgetShared.swift in Sources */,
 				6D2004BD2F64505A0022C810 /* StudyHeatMapCard.swift in Sources */,
+				6D5FE3CC2F66CE68007C124D /* MessagesView.swift in Sources */,
 				6D215DA32F55FD7100F7B9D7 /* EditTaskView.swift in Sources */,
 				6DC0CA092F5F1AFA00A875ED /* ScheduleAttributes.swift in Sources */,
 				6DF0C9412F557F730043B887 /* AddTaskView.swift in Sources */,
@@ -772,6 +797,7 @@
 				6D20049C2F6389460022C810 /* FriendChatView.swift in Sources */,
 				6D20045E2F62148F0022C810 /* WeekView+ModeHeader.swift in Sources */,
 				6D2004EB2F64EE8A0022C810 /* PermissionOnboardingView.swift in Sources */,
+				6D5FE3D42F66DD72007C124D /* CrewChatInfoView.swift in Sources */,
 				6D8C3D3F2F65B8F700ABF6CA /* AICoachCard.swift in Sources */,
 				6DC0CAAF2F5F7D0000A875ED /* Haptics.swift in Sources */,
 				6D8C3D342F65903B00ABF6CA /* AppTheme.swift in Sources */,
@@ -788,8 +814,10 @@
 				6DC0CAB32F5F7D0000A875ED /* FocusSessionView.swift in Sources */,
 				6DC0CAB42F5F7D0000A875ED /* HomeDashboardView.swift in Sources */,
 				6DC0CAB52F5F7D0000A875ED /* Crew.swift in Sources */,
+				6D5FE3CE2F66CF29007C124D /* CrewMessage.swift in Sources */,
 				6D8C3D3A2F65971400ABF6CA /* ThemePalette.swift in Sources */,
 				6D20048E2F6375CB0022C810 /* MiniWeekCalendarView.swift in Sources */,
+				6D5FE3D02F66D034007C124D /* CrewChatView.swift in Sources */,
 				6D20049E2F638AC80022C810 /* FriendFocusSession.swift in Sources */,
 				6D2004922F6383720022C810 /* HomeDashboardHelpers.swift in Sources */,
 				6D2004E52F64C8940022C810 /* CrewDetailView+ActivitySection.swift in Sources */,

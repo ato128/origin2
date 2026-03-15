@@ -42,9 +42,18 @@ struct TodoListView: View {
 
     @State private var showingAdd: Bool = false
     @State private var homeSection: HomeSection = .personal
+    @State private var showMessages = false
+    @Query private var friendMessages: [FriendMessage]
+    @Query private var crewMessages: [CrewMessage]
 
     private let chipTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
     @State private var now = Date()
+    
+    private var unreadCount: Int {
+        let friendUnread = friendMessages.filter { !$0.isRead }.count
+        let crewUnread = crewMessages.filter { !$0.isRead }.count
+        return friendUnread + crewUnread
+    }
 
     private var items: [DTTaskItem] { store.items }
 
@@ -119,6 +128,9 @@ struct TodoListView: View {
                 .environmentObject(store)
                 .presentationDetents([.medium, .large])
         }
+        .sheet(isPresented: $showMessages) {
+            MessagesView()
+        }
         .onReceive(chipTimer) { value in
             now = value
         }
@@ -191,12 +203,45 @@ struct TodoListView: View {
     }
 
     private var tasksHeader: some View {
-        HStack(alignment: .center) {
+        HStack(alignment: .center, spacing: 12) {
             Text("Home")
                 .font(.system(size: 34, weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
 
             Spacer()
+
+            Button {
+                showMessages = true
+                haptic(.light)
+            } label: {
+
+                ZStack(alignment: .topTrailing) {
+
+                    Image(systemName: "bubble.left.and.bubble.right.fill")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(palette.primaryText)
+                        .frame(width: 42, height: 42)
+                        .background(
+                            Circle()
+                                .fill(palette.cardFill)
+                                .overlay(
+                                    Circle()
+                                        .stroke(palette.cardStroke, lineWidth: 1)
+                                )
+                        )
+
+                    if unreadCount > 0 {
+                        Text("\(unreadCount)")
+                            .font(.caption2.bold())
+                            .foregroundStyle(.white)
+                            .padding(5)
+                            .background(Color.red)
+                            .clipShape(Circle())
+                            .offset(x: 6, y: -6)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
 
             if homeSection == .personal, let next = nextClassInfo {
                 Button {

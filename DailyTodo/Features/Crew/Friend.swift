@@ -17,6 +17,7 @@ final class Friend {
     var colorHex: String
     var isOnline: Bool
     var createdAt: Date
+    var isMuted: Bool
 
     init(
         id: UUID = UUID(),
@@ -25,7 +26,8 @@ final class Friend {
         avatarSymbol: String = "person.fill",
         colorHex: String = "#3B82F6",
         isOnline: Bool = false,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        isMuted: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -34,5 +36,7 @@ final class Friend {
         self.colorHex = colorHex
         self.isOnline = isOnline
         self.createdAt = createdAt
+        self.isMuted = isMuted
+        
     }
 }

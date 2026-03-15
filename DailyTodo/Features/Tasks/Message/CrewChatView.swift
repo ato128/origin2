@@ -1,40 +1,38 @@
 //
-//  FriendChatView.swift
+//  CrewChatView.swift
 //  DailyTodo
 //
-//  Created by Atakan Ortaç on 13.03.2026.
+//  Created by Atakan Ortaç on 15.03.2026.
 //
-
 import SwiftUI
 import SwiftData
 
-struct FriendChatView: View {
-    let friend: Friend
+struct CrewChatView: View {
+    let crew: Crew
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
-
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
-    private let palette = ThemePalette()
 
-    @Query(sort: \FriendMessage.createdAt, order: .forward)
-    private var allMessages: [FriendMessage]
+    @Query(sort: \CrewMessage.createdAt, order: .forward)
+    private var allMessages: [CrewMessage]
 
     @State private var draftMessage: String = ""
     @State private var animateMessages = false
-    @State private var sendPressed = false
-    @State private var showFriendInfo = false
+    @State private var showCrewInfo = false
 
-    private var messages: [FriendMessage] {
-        allMessages.filter { $0.friendID == friend.id }
+    private let palette = ThemePalette()
+
+    private var messages: [CrewMessage] {
+        allMessages.filter { $0.crewID == crew.id }
     }
 
     var body: some View {
         ZStack(alignment: .top) {
-            ambientBackground
+            AppBackground()
 
             VStack(spacing: 0) {
-                customHeader
+                header
 
                 if messages.isEmpty {
                     emptyState
@@ -50,54 +48,22 @@ struct FriendChatView: View {
         .onAppear {
             seedMessagesIfNeeded()
         }
-        .sheet(isPresented: $showFriendInfo) {
+        .sheet(isPresented: $showCrewInfo) {
             NavigationStack {
-                FriendChatInfoView(friend: friend)
+                CrewChatInfoView(crew: crew)
             }
         }
     }
 }
 
-private extension FriendChatView {
-
-    var ambientBackground: some View {
-        ZStack(alignment: .topLeading) {
-            AppBackground()
-
-            if appTheme == AppTheme.gradient.rawValue {
-                RadialGradient(
-                    colors: [
-                        hexColor(friend.colorHex).opacity(0.12),
-                        Color.clear
-                    ],
-                    center: .topLeading,
-                    startRadius: 30,
-                    endRadius: 240
-                )
-                .ignoresSafeArea()
-
-                RadialGradient(
-                    colors: [
-                        Color.blue.opacity(0.07),
-                        Color.clear
-                    ],
-                    center: .topTrailing,
-                    startRadius: 60,
-                    endRadius: 280
-                )
-                .ignoresSafeArea()
-            }
-        }
-    }
-
-    var customHeader: some View {
+private extension CrewChatView {
+    var header: some View {
         HStack(spacing: 12) {
             Button {
                 dismiss()
             } label: {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(palette.primaryText)
                     .frame(width: 52, height: 52)
                     .background(
                         Circle()
@@ -107,40 +73,35 @@ private extension FriendChatView {
                                     .stroke(palette.cardStroke, lineWidth: 1)
                             )
                     )
-                    .shadow(color: palette.shadowColor, radius: 10, y: 4)
             }
             .buttonStyle(.plain)
 
             Button {
-                showFriendInfo = true
+                showCrewInfo = true
             } label: {
-                HStack(spacing: 10) {
-                    ZStack {
-                        Circle()
-                            .fill(hexColor(friend.colorHex).opacity(0.16))
-                            .frame(width: 42, height: 42)
 
-                        Image(systemName: friend.avatarSymbol)
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(hexColor(friend.colorHex))
-                    }
+                HStack(spacing: 10) {
+
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(hexColor(crew.colorHex).opacity(0.16))
+                        .frame(width: 42, height: 42)
+                        .overlay(
+                            Image(systemName: crew.icon)
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(hexColor(crew.colorHex))
+                        )
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(friend.name)
+                        Text(crew.name)
                             .font(.headline)
                             .foregroundStyle(palette.primaryText)
 
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(friend.isOnline ? .green : Color.gray.opacity(0.5))
-                                .frame(width: 7, height: 7)
-
-                            Text(friend.isOnline ? "Online" : "Offline")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(palette.secondaryText)
-                        }
+                        Text("Crew chat")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(palette.secondaryText)
                     }
                 }
+
             }
             .buttonStyle(.plain)
 
@@ -151,13 +112,7 @@ private extension FriendChatView {
         .padding(.bottom, 10)
         .background(
             Rectangle()
-                .fill(palette.cardFill)
-                .overlay(
-                    Rectangle()
-                        .fill(palette.cardStroke)
-                        .frame(height: 0.8),
-                    alignment: .bottom
-                )
+                .fill(.ultraThinMaterial.opacity(0.35))
                 .ignoresSafeArea(edges: .top)
         )
     }
@@ -167,20 +122,20 @@ private extension FriendChatView {
             Spacer()
 
             ZStack {
-                Circle()
-                    .fill(hexColor(friend.colorHex).opacity(0.14))
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(hexColor(crew.colorHex).opacity(0.14))
                     .frame(width: 82, height: 82)
 
-                Image(systemName: "message.fill")
-                    .font(.system(size: 32))
-                    .foregroundStyle(hexColor(friend.colorHex))
+                Image(systemName: "person.3.fill")
+                    .font(.system(size: 30))
+                    .foregroundStyle(hexColor(crew.colorHex))
             }
 
             Text("No messages yet")
                 .font(.title3.weight(.bold))
                 .foregroundStyle(palette.primaryText)
 
-            Text("Start the conversation with \(friend.name).")
+            Text("Start chatting with your crew.")
                 .font(.subheadline)
                 .foregroundStyle(palette.secondaryText)
 
@@ -213,10 +168,7 @@ private extension FriendChatView {
             }
             .scrollIndicators(.hidden)
             .onAppear {
-                seedMessagesIfNeeded()
-
                 animateMessages = false
-
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) {
                     withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
                         animateMessages = true
@@ -229,41 +181,67 @@ private extension FriendChatView {
         }
     }
 
-    func messageBubble(_ message: FriendMessage) -> some View {
-        let isSystemFocusMessage =
-            message.text.contains("started a 25 min shared focus session") ||
-            message.text.contains("ended the shared focus session") ||
-            message.text.contains("joined") && message.text.contains("shared focus session")
+    func messageBubble(_ message: CrewMessage) -> some View {
+        let isFocusSystemMessage =
+            message.text.contains("started a 25 min shared focus session")
 
-        return HStack {
-            if isSystemFocusMessage {
+        return HStack(alignment: .bottom) {
+            if isFocusSystemMessage {
                 Spacer()
 
-                HStack(spacing: 8) {
-                    Image(systemName: "sparkles")
-                        .font(.caption.weight(.bold))
+                VStack(spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "timer")
+                            .font(.caption.bold())
+                            .foregroundStyle(.green)
 
-                    Text(message.text)
-                        .font(.caption.weight(.semibold))
+                        Text("\(message.senderName) started a 25 min shared focus session")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(palette.primaryText)
+                            .multilineTextAlignment(.center)
+                    }
+
+                    Button {
+                    } label: {
+                        Text("Join Focus")
+                            .font(.caption.weight(.bold))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(
+                                Capsule()
+                                    .fill(Color.green.opacity(0.16))
+                            )
+                            .foregroundStyle(.green)
+                    }
+                    .buttonStyle(.plain)
+
+                    Text(message.createdAt, style: .time)
+                        .font(.caption2)
+                        .foregroundStyle(palette.secondaryText)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 9)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
                 .background(
-                    Capsule()
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .fill(palette.secondaryCardFill)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(palette.cardStroke, lineWidth: 1)
+                        )
                 )
-                .overlay(
-                    Capsule()
-                        .stroke(palette.cardStroke, lineWidth: 1)
-                    )
-                
-                .foregroundStyle(palette.secondaryText)
 
                 Spacer()
             } else {
                 if message.isFromMe { Spacer(minLength: 42) }
 
                 VStack(alignment: message.isFromMe ? .trailing : .leading, spacing: 5) {
+                    if !message.isFromMe {
+                        Text(message.senderName)
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(palette.secondaryText)
+                            .padding(.horizontal, 4)
+                    }
+
                     Text(message.text)
                         .font(.subheadline)
                         .foregroundStyle(message.isFromMe ? .white : palette.primaryText)
@@ -273,7 +251,7 @@ private extension FriendChatView {
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
                                 .fill(
                                     message.isFromMe
-                                    ? Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.90 : 0.24)
+                                    ? Color.accentColor.opacity(0.90)
                                     : palette.secondaryCardFill
                                 )
                         )
@@ -282,14 +260,14 @@ private extension FriendChatView {
                                 .stroke(
                                     message.isFromMe
                                     ? Color.accentColor.opacity(0.18)
-                                    : palette.cardStroke.opacity(0.7),
+                                    : palette.cardStroke,
                                     lineWidth: 1
                                 )
                         )
 
                     Text(message.createdAt, style: .time)
                         .font(.caption2)
-                        .foregroundStyle(palette.tertiaryText)
+                        .foregroundStyle(palette.secondaryText)
                         .padding(.horizontal, 4)
                 }
 
@@ -297,12 +275,26 @@ private extension FriendChatView {
             }
         }
     }
-
     var composerBar: some View {
         HStack(alignment: .bottom, spacing: 10) {
-            TextField("Message \(friend.name)...", text: $draftMessage, axis: .vertical)
+
+            Button {
+                sendFocusInvite()
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(Color.green.opacity(0.18))
+                        .frame(width: 42, height: 42)
+
+                    Image(systemName: "timer")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(.green)
+                }
+            }
+            .buttonStyle(.plain)
+
+            TextField("Message \(crew.name)...", text: $draftMessage, axis: .vertical)
                 .textFieldStyle(.plain)
-                .foregroundStyle(palette.primaryText)
                 .lineLimit(1...4)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
@@ -311,9 +303,10 @@ private extension FriendChatView {
                         .fill(palette.secondaryCardFill)
                         .overlay(
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
+                                .stroke(palette.cardStroke, lineWidth: 1)
                         )
                 )
+                .foregroundStyle(palette.primaryText)
 
             Button {
                 sendMessage()
@@ -335,27 +328,16 @@ private extension FriendChatView {
                             : .white
                         )
                 }
-                .scaleEffect(sendPressed ? 0.92 : 1.0)
-                .animation(.spring(response: 0.22, dampingFraction: 0.70), value: sendPressed)
             }
             .buttonStyle(.plain)
             .disabled(draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { _ in
-                        sendPressed = true
-                    }
-                    .onEnded { _ in
-                        sendPressed = false
-                    }
-            )
         }
         .padding(.horizontal, 16)
         .padding(.top, 10)
         .padding(.bottom, 12)
         .background(
             Rectangle()
-                .fill(palette.cardFill)
+                .fill(.ultraThinMaterial)
                 .overlay(
                     Rectangle()
                         .fill(palette.cardStroke)
@@ -364,14 +346,33 @@ private extension FriendChatView {
                 )
                 .ignoresSafeArea(edges: .bottom)
         )
-    }
+    }      
+    
+    func sendFocusInvite() {
+        let message = CrewMessage(
+            crewID: crew.id,
+            senderName: "Atakan",
+            text: "started a 25 min shared focus session",
+            isFromMe: false
+        )
 
+        modelContext.insert(message)
+        try? modelContext.save()
+
+        animateMessages = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+            withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
+                animateMessages = true
+            }
+        }
+    }
+    
     func sendMessage() {
         let clean = draftMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else { return }
 
-        let message = FriendMessage(
-            friendID: friend.id,
+        let message = CrewMessage(
+            crewID: crew.id,
             senderName: "Me",
             text: clean,
             isFromMe: true
@@ -393,9 +394,24 @@ private extension FriendChatView {
         guard messages.isEmpty else { return }
 
         let seed = [
-            FriendMessage(friendID: friend.id, senderName: friend.name, text: "Hey! How does your week look?", isFromMe: false),
-            FriendMessage(friendID: friend.id, senderName: "Me", text: "Pretty busy, especially Thursday.", isFromMe: true),
-            FriendMessage(friendID: friend.id, senderName: friend.name, text: "Let's sync after class.", isFromMe: false)
+            CrewMessage(
+                crewID: crew.id,
+                senderName: "Atakan",
+                text: "Bugünkü görevleri sıraya koyalım mı?",
+                isFromMe: false
+            ),
+            CrewMessage(
+                crewID: crew.id,
+                senderName: "Selin",
+                text: "Ben focus başlatacağım 20 dk içinde.",
+                isFromMe: false
+            ),
+            CrewMessage(
+                crewID: crew.id,
+                senderName: "Me",
+                text: "Olur, önce zor olanı bitirelim.",
+                isFromMe: true
+            )
         ]
 
         for item in seed {
