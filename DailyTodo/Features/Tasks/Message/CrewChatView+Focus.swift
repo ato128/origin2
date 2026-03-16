@@ -161,7 +161,7 @@ extension CrewChatView {
         @State private var now = Date()
         @State private var glowPulse = false
 
-        private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+        private let timer = Timer.publish(every: 3, on: .main, in: .common).autoconnect()
 
         private var remainingSeconds: Int {
             max(0, Int(session.endDate.timeIntervalSince(now)))
@@ -178,7 +178,7 @@ extension CrewChatView {
                 Circle()
                     .fill(Color.blue.opacity(glowPulse ? 1.0 : 0.72))
                     .frame(width: 10, height: 10)
-                    .shadow(color: Color.blue.opacity(glowPulse ? 0.40 : 0.16), radius: 8)
+                    .shadow(color: Color.blue.opacity(glowPulse ? 0.18 : 0.08), radius: 4)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Focus devam ediyor")
@@ -220,18 +220,19 @@ extension CrewChatView {
                                 endRadius: 180
                             )
                         )
-                        .blur(radius: 18)
+                        .blur(radius: 6)
                 }
             )
-            .shadow(color: Color.blue.opacity(glowPulse ? 0.18 : 0.08), radius: 12, y: 4)
+            .shadow(color: Color.blue.opacity(glowPulse ? 0.10 : 0.04), radius: 6, y: 2)
             .onAppear {
-                withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
+                withAnimation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) {
                     glowPulse = true
                 }
             }
             .onReceive(timer) { value in
                 now = value
             }
+            .compositingGroup()
         }
     }
 }

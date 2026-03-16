@@ -13,17 +13,10 @@ extension CrewChatView {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 12) {
-                    ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
+                    ForEach(messages, id: \.id) { message in
                         messageBubble(message)
                             .id(message.id)
-                            .offset(y: animateMessages ? 0 : CGFloat(12 + index * 4))
-                            .opacity(animateMessages ? 1 : 0)
-                            .scaleEffect(animateMessages ? 1 : 0.985)
-                            .animation(
-                                .spring(response: 0.40, dampingFraction: 0.86)
-                                    .delay(Double(index) * 0.03),
-                                value: animateMessages
-                            )
+                            .transition(.opacity)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -33,14 +26,6 @@ extension CrewChatView {
             .scrollIndicators(.hidden)
             .hideKeyboardOnTap()
             .onAppear {
-                animateMessages = false
-
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) {
-                    withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
-                        animateMessages = true
-                    }
-                }
-
                 scrollToBottom(proxy: proxy)
             }
             .onChange(of: messages.count) { _, _ in
@@ -137,13 +122,13 @@ extension CrewChatView {
                             .padding(.vertical, 8)
                             .background(
                                 Capsule()
-                                    .fill(.ultraThinMaterial)
+                                    .fill(palette.cardFill)
                                     .overlay(
                                         Capsule()
                                             .stroke(palette.cardStroke, lineWidth: 1)
                                     )
                             )
-                            .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
+                            .shadow(color: .black.opacity(0.10), radius: 5, y: 2)
                             .offset(y: -58)
                             .zIndex(2)
                         }
@@ -219,6 +204,7 @@ extension CrewChatView {
                                     lineWidth: 1
                                 )
                         )
+                        .compositingGroup()
 
                         if let reaction = message.reaction {
                             Text(reaction)
@@ -237,21 +223,21 @@ extension CrewChatView {
                                     x: message.isFromMe ? 10 : -10,
                                     y: 12
                                 )
-                                .shadow(color: palette.shadowColor.opacity(0.18), radius: 4, y: 2)
+                                .shadow(color: palette.shadowColor.opacity(0.10), radius: 2, y: 1)
                         }
                     }
                     .padding(.top, isReactionMenuOpen ? 52 : 0)
                     .padding(.bottom, message.reaction == nil ? 0 : 10)
-                    .scaleEffect(isPressed || isReactionMenuOpen ? 1.03 : 1.0)
+                    .scaleEffect(isPressed || isReactionMenuOpen ? 1.01 : 1.0)
                     .shadow(
                         color: (isPressed || isReactionMenuOpen)
-                        ? Color.black.opacity(0.16)
+                        ? Color.black.opacity(0.08)
                         : Color.clear,
-                        radius: 10,
-                        y: 4
+                        radius: 4,
+                        y: 2
                     )
-                    .animation(.spring(response: 0.22, dampingFraction: 0.82), value: isPressed)
-                    .animation(.spring(response: 0.22, dampingFraction: 0.82), value: isReactionMenuOpen)
+                    .animation(.easeOut(duration: 0.14), value: isPressed)
+                    .animation(.easeOut(duration: 0.14), value: isReactionMenuOpen)
 
                     Text(message.createdAt, style: .time)
                         .font(.caption2)
@@ -259,7 +245,7 @@ extension CrewChatView {
                         .padding(.horizontal, 4)
                 }
                 .opacity(reactionTarget == nil || reactionTarget?.id == message.id ? 1.0 : 0.55)
-                .animation(.easeInOut(duration: 0.16), value: reactionTarget?.id)
+                .animation(.easeOut(duration: 0.12), value: reactionTarget?.id)
                 .gesture(
                     DragGesture(minimumDistance: 20)
                         .onEnded { value in

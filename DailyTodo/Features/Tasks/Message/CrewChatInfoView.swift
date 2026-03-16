@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct CrewChatInfoView: View {
     @Bindable var crew: Crew
@@ -20,6 +21,8 @@ struct CrewChatInfoView: View {
     private let palette = ThemePalette()
 
     @State private var badgeGlow = false
+    @State private var previousBadgeTitle: String = ""
+    @State private var showBadgeUnlocked: Bool = false
 
     private var crewMembers: [CrewMember] {
         members.filter { $0.crewID == crew.id }
@@ -32,35 +35,12 @@ struct CrewChatInfoView: View {
     private var completedCount: Int {
         crewTasks.filter(\.isDone).count
     }
-
     private var focusBadgeTitle: String {
-        switch crew.totalFocusMinutes {
-        case 2400...:
-            return "Elite Focus"
-        case 1200...:
-            return "Gold Focus"
-        case 600...:
-            return "Silver Focus"
-        case 300...:
-            return "Bronze Focus"
-        default:
-            return "No Badge"
-        }
+        CrewBadgeHelper.title(for: crew.totalFocusMinutes)
     }
 
     private var focusBadgeColor: Color {
-        switch crew.totalFocusMinutes {
-        case 2400...:
-            return .purple
-        case 1200...:
-            return .yellow
-        case 600...:
-            return .gray
-        case 300...:
-            return .orange
-        default:
-            return .secondary
-        }
+        CrewBadgeHelper.color(for: crew.totalFocusMinutes)
     }
 
     var body: some View {
@@ -72,7 +52,10 @@ struct CrewChatInfoView: View {
                     topHeader
                     profileCard
                     statsCard
-                    badgeCard
+                    CrewBadgeCard(
+                        crew: crew,
+                        palette: palette
+                    )
                     membersCard
                     settingsCard
                 }
@@ -83,8 +66,32 @@ struct CrewChatInfoView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
+            previousBadgeTitle = focusBadgeTitle
+
             withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
                 badgeGlow = true
+            }
+        }
+        .onChange(of: crew.totalFocusMinutes) { _, _ in
+            let newBadgeTitle = focusBadgeTitle
+
+            guard newBadgeTitle != previousBadgeTitle else { return }
+            guard newBadgeTitle != "No Badge" else {
+                previousBadgeTitle = newBadgeTitle
+                return
+            }
+
+            previousBadgeTitle = newBadgeTitle
+            showBadgeUnlocked = true
+
+            let gen = UIImpactFeedbackGenerator(style: .medium)
+            gen.prepare()
+            gen.impactOccurred()
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    showBadgeUnlocked = false
+                }
             }
         }
     }
@@ -161,96 +168,7 @@ private extension CrewChatInfoView {
         .background(cardBackground)
     }
 
-    var badgeCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Crew Badge")
-                        .font(.headline)
-                        .foregroundStyle(palette.primaryText)
-
-                    Text("Unlocked by total focus hours")
-                        .font(.caption)
-                        .foregroundStyle(palette.secondaryText)
-                }
-
-                Spacer()
-
-                Image(systemName: "sparkles")
-                    .font(.title3)
-                    .foregroundStyle(focusBadgeColor)
-                    .shadow(color: focusBadgeColor.opacity(badgeGlow ? 0.45 : 0.16), radius: 10)
-            }
-
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(focusBadgeColor.opacity(badgeGlow ? 0.20 : 0.10))
-                        .frame(width: 56, height: 56)
-
-                    Circle()
-                        .stroke(focusBadgeColor.opacity(0.22), lineWidth: 1)
-                        .frame(width: 56, height: 56)
-
-                    Image(systemName: "medal.fill")
-                        .font(.title3)
-                        .foregroundStyle(focusBadgeColor)
-                        .shadow(color: focusBadgeColor.opacity(badgeGlow ? 0.35 : 0.12), radius: 10)
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(focusBadgeTitle)
-                        .font(.headline)
-                        .foregroundStyle(palette.primaryText)
-
-                    Text("\(crew.totalFocusMinutes / 60)h \(crew.totalFocusMinutes % 60)m total focus")
-                        .font(.caption)
-                        .foregroundStyle(palette.secondaryText)
-                }
-
-                Spacer()
-            }
-            .padding(14)
-            .background(
-                ZStack {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(focusBadgeColor.opacity(0.08))
-
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(focusBadgeColor.opacity(0.24), lineWidth: 1)
-
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(
-                            RadialGradient(
-                                colors: [
-                                    focusBadgeColor.opacity(badgeGlow ? 0.18 : 0.08),
-                                    Color.clear
-                                ],
-                                center: .topLeading,
-                                startRadius: 10,
-                                endRadius: 180
-                            )
-                        )
-                        .blur(radius: 18)
-                }
-            )
-            .scaleEffect(badgeGlow ? 1.0 : 0.985)
-            .animation(.easeInOut(duration: 0.25), value: focusBadgeTitle)
-
-            HStack(spacing: 8) {
-                Image(systemName: "flame.fill")
-                    .foregroundStyle(.orange)
-
-                Text("Streak: \(crew.currentStreak)")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(palette.primaryText)
-            }
-            .padding(.top, 2)
-        }
-        .padding(18)
-        .background(cardBackground)
-    }
-
+   
     var membersCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Members")

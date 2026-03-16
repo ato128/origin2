@@ -71,14 +71,21 @@ extension CrewDetailView {
 
                         HStack(spacing: 6) {
                             Circle()
-                                .fill(member.isOnline ? Color.green : Color.gray.opacity(0.4))
+                                .fill(presenceColor(for: member))
                                 .frame(width: 8, height: 8)
 
-                            Text(member.isOnline ? "Online" : "Away")
-                                .font(.caption2)
-                                .foregroundStyle(palette.secondaryText)
+                            Text(presenceText(for: member))
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(presenceColor(for: member))
                         }
                     }
+                    .shadow(
+                        color: member.presence == "focus"
+                        ? Color.green.opacity(0.18)
+                        : .clear,
+                        radius: member.presence == "focus" ? 10 : 0,
+                        y: 4
+                    )
                     .padding(10)
                     .background(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)

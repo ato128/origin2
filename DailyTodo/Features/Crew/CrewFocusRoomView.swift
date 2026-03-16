@@ -11,6 +11,7 @@ import SwiftData
 struct CrewFocusRoomView: View {
     
     @Query private var crews: [Crew]
+    @Query private var members: [CrewMember]
     @Bindable var session: CrewFocusSession
 
     @Environment(\.dismiss) private var dismiss
@@ -54,8 +55,12 @@ struct CrewFocusRoomView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
-            withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
+            withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) {
                 glowPulse = true
+            }
+
+            if session.isActive {
+                updatePresenceForParticipants("focus")
             }
         }
     }
@@ -167,7 +172,7 @@ private extension CrewFocusRoomView {
                     )
                     .rotationEffect(.degrees(-90))
                     .frame(width: 220, height: 220)
-                    .shadow(color: accent.opacity(glowPulse ? 0.45 : 0.22), radius: 12)
+                    .shadow(color: accent.opacity(glowPulse ? 0.22 : 0.10), radius: 6)
                     .animation(.linear(duration: 1), value: progress(at: currentDate))
 
                 Circle()
@@ -183,7 +188,7 @@ private extension CrewFocusRoomView {
                         )
                     )
                     .frame(width: 175, height: 175)
-                    .blur(radius: 12)
+                    .blur(radius: 5)
 
                 VStack(spacing: 8) {
                     Image(systemName: !session.isActive ? "checkmark.circle.fill" : session.isPaused ? "pause.fill" : "timer")
@@ -227,8 +232,8 @@ private extension CrewFocusRoomView {
                             colors: [
                                 accent.opacity(
                                     glowPulse
-                                    ? (isCritical(at: currentDate) ? 0.28 : isEndingSoon(at: currentDate) ? 0.24 : 0.18)
-                                    : (isCritical(at: currentDate) ? 0.16 : isEndingSoon(at: currentDate) ? 0.14 : 0.08)
+                                    ? (isCritical(at: currentDate) ? 0.16 : isEndingSoon(at: currentDate) ? 0.13 : 0.10)
+                                    : (isCritical(at: currentDate) ? 0.08 : isEndingSoon(at: currentDate) ? 0.07 : 0.04)
                                 ),
                                 Color.clear
                             ],
@@ -237,22 +242,34 @@ private extension CrewFocusRoomView {
                             endRadius: 260
                         )
                     )
-                    .blur(radius: 28)
+                    .blur(radius: 9)
             }
         )
         .shadow(
             color: accent.opacity(
                 glowPulse
-                ? (isCritical(at: currentDate) ? 0.32 : isEndingSoon(at: currentDate) ? 0.26 : 0.18)
-                : (isCritical(at: currentDate) ? 0.18 : isEndingSoon(at: currentDate) ? 0.14 : 0.08)
+                ? (isCritical(at: currentDate) ? 0.18 : isEndingSoon(at: currentDate) ? 0.14 : 0.10)
+                : (isCritical(at: currentDate) ? 0.10 : isEndingSoon(at: currentDate) ? 0.08 : 0.05)
             ),
-            radius: 18,
-            y: 8
+            radius: 10,
+            y: 4
         )
+        .compositingGroup()
     }
     
     var currentCrew: Crew? {
         crews.first(where: { $0.id == session.crewID })
+    }
+    func updatePresenceForParticipants(_ presence: String) {
+        let activeMembers = members.filter { $0.crewID == session.crewID }
+
+        for member in activeMembers {
+            if session.participantNames.contains(member.name) {
+                member.presence = presence
+            }
+        }
+
+        try? modelContext.save()
     }
 
     var participantsCard: some View {
@@ -300,6 +317,37 @@ private extension CrewFocusRoomView {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
+        .background(cardBackground)
+    }
+    
+    var streakCard: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Color.orange.opacity(0.16))
+                    .frame(width: 44, height: 44)
+
+                Image(systemName: "flame.fill")
+                    .foregroundStyle(.orange)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Crew Streak")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(palette.primaryText)
+
+                Text(
+                    (currentCrew?.currentStreak ?? 0) > 0
+                    ? "\(currentCrew?.currentStreak ?? 0) day streak"
+                    : "No streak yet"
+                )
+                .font(.caption)
+                .foregroundStyle(palette.secondaryText)
+            }
+
+            Spacer()
+        }
+        .padding(16)
         .background(cardBackground)
     }
 
@@ -440,6 +488,8 @@ private extension CrewFocusRoomView {
 
         session.participantNames.append(joinedName)
 
+        updatePresenceForParticipants("focus")
+
         let message = CrewMessage(
             crewID: session.crewID,
             senderName: joinedName,
@@ -459,14 +509,19 @@ private extension CrewFocusRoomView {
     }
 
     func endSession() {
-        if let crew = currentCrew {
-            let completedMinutes = session.durationMinutes
-            crew.totalFocusMinutes += completedMinutes
-        }
+        saveFocusRecordsForParticipants()
 
         session.isActive = false
         session.isPaused = false
         session.pausedRemainingSeconds = nil
+        updatePresenceForParticipants("online")
+        
+        let activity = CrewActivity(
+            crewID: session.crewID,
+            memberName: session.hostName,
+            actionText: "completed a shared focus session"
+        )
+        modelContext.insert(activity)
 
         let message = CrewMessage(
             crewID: session.crewID,
@@ -485,14 +540,20 @@ private extension CrewFocusRoomView {
         guard session.isActive, !session.isPaused else { return }
         guard remainingSeconds(at: currentDate) <= 0 else { return }
 
-        if let crew = currentCrew {
-            let completedMinutes = session.durationMinutes
-            crew.totalFocusMinutes += completedMinutes
-        }
+        saveFocusRecordsForParticipants()
 
         session.isActive = false
         session.isPaused = false
         session.pausedRemainingSeconds = nil
+        
+        updatePresenceForParticipants("online")
+        
+        let activity = CrewActivity(
+            crewID: session.crewID,
+            memberName: session.hostName,
+            actionText: "completed a shared focus session"
+        )
+        modelContext.insert(activity)
         
         let message = CrewMessage(
             crewID: session.crewID,
@@ -504,5 +565,59 @@ private extension CrewFocusRoomView {
 
         modelContext.insert(message)
         try? modelContext.save()
+    }
+    func updateCrewStreakIfNeeded() {
+        guard let crew = currentCrew else { return }
+
+        let calendar = Calendar.current
+        let today = Date()
+
+        if let lastFocusDate = crew.lastFocusDate {
+            if calendar.isDateInToday(lastFocusDate) {
+                return
+            }
+
+            if let yesterday = calendar.date(byAdding: .day, value: -1, to: today),
+               calendar.isDate(lastFocusDate, inSameDayAs: yesterday) {
+                crew.currentStreak += 1
+                crew.lastFocusDate = today
+            } else {
+                crew.currentStreak = 1
+                crew.lastFocusDate = today
+            }
+        } else {
+            crew.currentStreak = 1
+            crew.lastFocusDate = today
+        }
+    }
+    
+    func saveFocusRecordsForParticipants() {
+        let now = Date()
+
+        let elapsedSeconds: Int
+        if session.isPaused {
+            let pausedRemaining = session.pausedRemainingSeconds ?? 0
+            elapsedSeconds = max(0, session.durationMinutes * 60 - pausedRemaining)
+        } else {
+            elapsedSeconds = max(0, Int(now.timeIntervalSince(session.startedAt)))
+        }
+
+        let completedMinutes = max(1, elapsedSeconds / 60)
+        guard completedMinutes > 0 else { return }
+
+        for name in session.participantNames {
+            let record = CrewFocusRecord(
+                crewID: session.crewID,
+                memberName: name,
+                minutes: completedMinutes,
+                createdAt: now
+            )
+            modelContext.insert(record)
+        }
+
+        if let crew = currentCrew {
+            crew.totalFocusMinutes += completedMinutes * session.participantNames.count
+        }
+        updateCrewStreakIfNeeded()
     }
 }

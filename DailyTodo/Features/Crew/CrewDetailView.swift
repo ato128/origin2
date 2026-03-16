@@ -43,7 +43,8 @@ struct CrewDetailView: View {
     @Query var comments: [CrewTaskComment]
     @Query var polls: [CrewTaskPoll]
     @Query var reactions: [CrewTaskReaction]
-
+    @Query var focusRecords: [CrewFocusRecord]
+    
     var body: some View {
         let crewMembers = members.filter { $0.crewID == crew.id }
         let crewTasks = tasks
@@ -113,6 +114,19 @@ struct CrewDetailView: View {
                     .opacity(showStatsRow ? 1 : 0)
                     .scaleEffect(showStatsRow ? 1 : 0.985)
 
+                    leaderboardCard
+                        .offset(y: showStatsRow ? 0 : 18)
+                        .opacity(showStatsRow ? 1 : 0)
+                        .scaleEffect(showStatsRow ? 1 : 0.985)
+                    
+                    CrewBadgeCard(
+                        crew: crew,
+                        palette: palette
+                    )
+                        .offset(y: showStatsRow ? 0 : 18)
+                        .opacity(showStatsRow ? 1 : 0)
+                        .scaleEffect(showStatsRow ? 1 : 0.985)
+                    
                     membersSection(crewMembers)
                         .offset(y: showMembersSection ? 0 : 18)
                         .opacity(showMembersSection ? 1 : 0)
@@ -441,7 +455,178 @@ struct CrewDetailView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
     }
+     
+     var todayLeaderboard: [(name: String, minutes: Int)] {
+         let calendar = Calendar.current
 
+         let todayRecords = focusRecords.filter {
+             $0.crewID == crew.id && calendar.isDateInToday($0.createdAt)
+         }
+
+         let grouped = Dictionary(grouping: todayRecords, by: { $0.memberName })
+
+         return grouped
+             .map { name, records in
+                 (name: name, minutes: records.reduce(0) { $0 + $1.minutes })
+             }
+             .sorted { lhs, rhs in
+                 if lhs.minutes == rhs.minutes {
+                     return lhs.name < rhs.name
+                 }
+                 return lhs.minutes > rhs.minutes
+             }
+     }
+
+     var topThreeLeaderboard: [(name: String, minutes: Int)] {
+         Array(todayLeaderboard.prefix(3))
+     }
+
+     func focusTimeText(_ minutes: Int) -> String {
+         let hours = minutes / 60
+         let mins = minutes % 60
+
+         if hours > 0 {
+             return "\(hours)h \(mins)m"
+         } else {
+             return "\(mins)m"
+         }
+     }
+     
+     var leaderboardCard: some View {
+         VStack(alignment: .leading, spacing: 14) {
+             HStack {
+                 Text("Leaderboard")
+                     .font(.headline)
+                     .foregroundStyle(palette.primaryText)
+
+                 Spacer()
+
+                 Text("Today")
+                     .font(.caption.weight(.semibold))
+                     .foregroundStyle(palette.secondaryText)
+             }
+
+             if topThreeLeaderboard.isEmpty {
+                 Text("No shared focus records today")
+                     .font(.subheadline)
+                     .foregroundStyle(palette.secondaryText)
+             } else {
+                 ForEach(Array(topThreeLeaderboard.enumerated()), id: \.offset) { index, entry in
+                     CrewLeaderboardRow(
+                         rank: index + 1,
+                         name: entry.name,
+                         minutes: entry.minutes,
+                         palette: palette
+                     )
+                 }
+             }
+         }
+         .padding(18)
+         .background(cardBackground)
+     }
+     
+     var focusBadgeMinutes: Int {
+         crew.totalFocusMinutes
+     }
+
+     
+     
+     var badgeCard: some View {
+         let minutes = focusBadgeMinutes
+         let badgeTitle = CrewBadgeHelper.title(for: minutes)
+         let badgeColor = CrewBadgeHelper.color(for: minutes)
+         let nextTarget = CrewBadgeHelper.nextTarget(for: minutes)
+
+         return VStack(alignment: .leading, spacing: 14) {
+             HStack {
+                 VStack(alignment: .leading, spacing: 4) {
+                     Text("Crew Badge")
+                         .font(.headline)
+                         .foregroundStyle(palette.primaryText)
+
+                     Text("Unlocked by total focus time")
+                         .font(.caption)
+                         .foregroundStyle(palette.secondaryText)
+                 }
+
+                 Spacer()
+
+                 Image(systemName: "sparkles")
+                     .font(.title3)
+                     .foregroundStyle(badgeColor)
+             }
+
+             HStack(spacing: 12) {
+                 ZStack {
+                     Circle()
+                         .fill(badgeColor.opacity(0.16))
+                         .frame(width: 56, height: 56)
+
+                     Image(systemName: "medal.fill")
+                         .font(.title3)
+                         .foregroundStyle(badgeColor)
+                 }
+
+                 VStack(alignment: .leading, spacing: 4) {
+                     Text(badgeTitle)
+                         .font(.headline)
+                         .foregroundStyle(palette.primaryText)
+
+                     Text(focusTimeText(minutes))
+                         .font(.caption)
+                         .foregroundStyle(palette.secondaryText)
+                 }
+
+                 Spacer()
+             }
+
+             if let nextTarget {
+                 VStack(alignment: .leading, spacing: 8) {
+                     HStack {
+                         Text("Next badge")
+                             .font(.caption.weight(.semibold))
+                             .foregroundStyle(palette.secondaryText)
+
+                         Spacer()
+
+                         Text("\(focusTimeText(minutes)) / \(focusTimeText(nextTarget))")
+                             .font(.caption2.weight(.bold))
+                             .foregroundStyle(palette.secondaryText)
+                     }
+
+                     ProgressView(value: CrewBadgeHelper.progress(for: minutes))
+                         .tint(badgeColor)
+                         .scaleEffect(y: 1.5)
+                 }
+             }
+         }
+         .padding(18)
+         .background(cardBackground)
+     }
+     
+     
+     func presenceColor(for member: CrewMember) -> Color {
+         switch member.presence {
+         case "focus":
+             return .green
+         case "online":
+             return .orange
+         default:
+             return .gray
+         }
+     }
+
+     func presenceText(for member: CrewMember) -> String {
+         switch member.presence {
+         case "focus":
+             return "Focus"
+         case "online":
+             return "Online"
+         default:
+             return "Offline"
+         }
+     }
+     
     func infoPill(text: String, tint: Color) -> some View {
         Text(text)
             .font(.caption.weight(.semibold))

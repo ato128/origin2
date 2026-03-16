@@ -242,37 +242,64 @@ extension HomeDashboardView {
     }
     
     func crewFocusAccentColor(for session: CrewFocusSession) -> Color {
-        let remaining = max(0, Int(session.endDate.timeIntervalSince(crewFocusNow)))
-        
+        if !session.isActive {
+            return .green
+        }
+
+        let remaining = session.isPaused
+            ? max(0, session.pausedRemainingSeconds ?? 0)
+            : max(0, Int(session.endDate.timeIntervalSince(crewFocusNow)))
+
         if session.isPaused {
             return .orange
         }
-        
+
         if remaining <= 180 {
             return .red
         }
-        
+
         if remaining <= 600 {
             return .orange
         }
-        
+
         return .blue
+    }
+    
+    func toggleSharedFocusPause(session: CrewFocusSession) {
+        guard session.isActive else { return }
+
+        if session.isPaused {
+            let remaining = session.pausedRemainingSeconds ?? 0
+            session.startedAt = Date().addingTimeInterval(
+                -Double(session.durationMinutes * 60 - remaining)
+            )
+            session.isPaused = false
+            session.pausedRemainingSeconds = nil
+        } else {
+            let remaining = max(0, Int(ceil(session.endDate.timeIntervalSince(crewFocusNow))))
+            session.pausedRemainingSeconds = remaining
+            session.isPaused = true
+        }
+
+        try? modelContext.save()
     }
     
     func crewSharedFocusCard(session: CrewFocusSession) -> some View {
         let remaining = session.isPaused
-        ? max(0, session.pausedRemainingSeconds ?? 0)
-        : max(0, Int(session.endDate.timeIntervalSince(crewFocusNow)))
-        
+            ? max(0, session.pausedRemainingSeconds ?? 0)
+            : max(0, Int(session.endDate.timeIntervalSince(crewFocusNow)))
+
         let minutes = remaining / 60
         let seconds = remaining % 60
-        let timeText = String(format: "%02d:%02d", minutes, seconds)
-        
+        let liveTimeText = String(format: "%02d:%02d", minutes, seconds)
+
         let total = Double(session.durationMinutes * 60)
-        let progress = total > 0 ? min(1, max(0, 1 - Double(remaining) / total)) : 0
-        
+        let progress = total > 0
+            ? min(1, max(0, 1 - Double(remaining) / total))
+            : 0
+
         let accent = crewFocusAccentColor(for: session)
-        
+
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
                 HStack(spacing: 8) {
@@ -283,35 +310,41 @@ extension HomeDashboardView {
                             color: accent.opacity(crewFocusGlowPulse ? 0.45 : 0.20),
                             radius: 8
                         )
-                    
-                    Text("Focus Running")
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(palette.primaryText)
-                }
-                
-                Spacer()
-                
-                Text(timeText)
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
+
+                    Text(
+                        !session.isActive
+                        ? "Focus Completed"
+                        : session.isPaused
+                        ? "Focus Paused"
+                        : "Focus Running"
+                    )
+                    .font(.headline.weight(.bold))
                     .foregroundStyle(palette.primaryText)
+                }
+
+                Spacer()
+
+                Text(!session.isActive ? "DONE" : liveTimeText)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(!session.isActive ? .green : palette.primaryText)
                     .contentTransition(.numericText())
-                    .animation(.easeInOut(duration: 0.2), value: timeText)
+                    .animation(.easeInOut(duration: 0.2), value: liveTimeText)
             }
-            
+
             Text(session.title)
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
-            
+
             ZStack(alignment: .leading) {
                 Capsule()
                     .fill(palette.secondaryCardFill)
                     .frame(height: 10)
-                
+
                 GeometryReader { geo in
                     Capsule()
                         .fill(accent)
                         .frame(
-                            width: max(10, geo.size.width * progress),
+                            width: max(10, geo.size.width * (!session.isActive ? 1 : progress)),
                             height: 10
                         )
                         .shadow(
@@ -322,52 +355,83 @@ extension HomeDashboardView {
                 }
             }
             .frame(height: 10)
-            
+
             HStack(spacing: 10) {
-                focusChip(
-                    title: session.isPaused ? "Duraklatıldı" : "Odak aktif",
-                    icon: session.isPaused ? "pause.fill" : "timer",
-                    color: accent
-                )
-                
-                focusChip(
-                    title: session.isPaused ? "Bekliyor" : "Devam",
-                    icon: session.isPaused ? "moon.zzz.fill" : "scope",
-                    color: session.isPaused ? .orange : .green
-                )
+                if !session.isActive {
+                    focusChip(
+                        title: "Done",
+                        icon: "checkmark.circle.fill",
+                        color: .green
+                    )
+
+                    focusChip(
+                        title: "Completed",
+                        icon: "sparkles",
+                        color: .green
+                    )
+                } else {
+                    focusChip(
+                        title: session.isPaused ? "Duraklatıldı" : "Odak aktif",
+                        icon: session.isPaused ? "pause.fill" : "timer",
+                        color: accent
+                    )
+
+                    focusChip(
+                        title: session.isPaused ? "Bekliyor" : "Devam",
+                        icon: session.isPaused ? "pause.circle.fill" : "scope",
+                        color: session.isPaused ? .orange : .green
+                    )
+                }
             }
-            
-            HStack(spacing: 12) {
-                NavigationLink {
-                    CrewFocusRoomView(session: session)
-                } label: {
-                    Text("Open Focus")
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(accent == .red ? Color.red : accent)
-                        )
+
+            if session.isActive {
+                HStack(spacing: 12) {
+                    NavigationLink {
+                        CrewFocusRoomView(session: session)
+                    } label: {
+                        Text("Open Focus")
+                            .font(.headline.weight(.bold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .fill(Color.accentColor)
+                            )
+                    }
+
+                    Button {
+                        toggleSharedFocusPause(session: session)
+                    } label: {
+                        Text(session.isPaused ? "Resume" : "Pause")
+                            .font(.headline.weight(.bold))
+                            .foregroundStyle(session.isPaused ? .green : .orange)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .fill(
+                                        (session.isPaused ? Color.green : Color.orange)
+                                            .opacity(0.12)
+                                    )
+                            )
+                    }
                 }
-                
-                Button {
-                    session.isActive = false
-                    session.isPaused = false
-                    session.pausedRemainingSeconds = nil
-                    try? modelContext.save()
-                } label: {
-                    Text("Stop")
+            } else {
+                HStack {
+                    Label("Session Completed", systemImage: "checkmark.circle.fill")
                         .font(.headline.weight(.bold))
-                        .foregroundStyle(.red)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(Color.red.opacity(0.12))
-                        )
+                        .foregroundStyle(.green)
+
+                    Spacer()
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .padding(.horizontal, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.green.opacity(0.12))
+                )
             }
         }
         .padding(18)
@@ -375,10 +439,10 @@ extension HomeDashboardView {
             ZStack {
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
                     .fill(palette.cardFill)
-                
+
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
                     .stroke(accent.opacity(0.30), lineWidth: 1)
-                
+
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
                     .fill(
                         RadialGradient(

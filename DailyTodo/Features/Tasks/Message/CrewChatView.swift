@@ -33,6 +33,8 @@ struct CrewChatView: View {
     @State var pressedMessageID: UUID?
     @State var showFocusDurationSheet = false
     @State var customFocusMinutes: Int = 25
+    
+    let sessionCheckTimer = Timer.publish(every: 3, on: .main, in: .common).autoconnect()
 
     @FocusState var isComposerFocused: Bool
 
@@ -41,7 +43,7 @@ struct CrewChatView: View {
     let bodyMarker = "[[body]]"
 
     var messages: [CrewMessage] {
-        allMessages.filter { $0.crewID == crew.id }
+        Array(allMessages.filter { $0.crewID == crew.id }.suffix(80))
     }
 
     var crewMembers: [CrewMember] {
@@ -113,6 +115,10 @@ struct CrewChatView: View {
         .onAppear {
             seedMessagesIfNeeded()
             markMessagesAsRead()
+            finalizeExpiredCrewSessionsIfNeeded()
+        }
+        .onReceive(sessionCheckTimer) { _ in
+            finalizeExpiredCrewSessionsIfNeeded()
         }
         .sheet(isPresented: $showCrewInfo) {
             NavigationStack {
@@ -124,3 +130,66 @@ struct CrewChatView: View {
         }
     }
 }
+private extension CrewChatView {
+    func finalizeExpiredCrewSessionsIfNeeded() {
+        let activeSessions = focusSessions.filter {
+            $0.crewID == crew.id && $0.isActive && !$0.isPaused
+        }
+
+        guard !activeSessions.isEmpty else { return }
+
+        let now = Date()
+
+        for session in activeSessions {
+            let remaining = Int(ceil(session.endDate.timeIntervalSince(now)))
+            guard remaining <= 0 else { continue }
+
+            let elapsedSeconds = max(0, Int(now.timeIntervalSince(session.startedAt)))
+            let completedMinutes = max(1, elapsedSeconds / 60)
+            guard completedMinutes > 0 else { continue }
+
+            for name in session.participantNames {
+                let record = CrewFocusRecord(
+                    crewID: session.crewID,
+                    memberName: name,
+                    minutes: completedMinutes
+                )
+                modelContext.insert(record)
+            }
+
+            if crew.id == session.crewID {
+                crew.totalFocusMinutes += completedMinutes * session.participantNames.count
+            }
+
+            let activeMembers = members.filter { $0.crewID == session.crewID }
+            for member in activeMembers {
+                if session.participantNames.contains(member.name) {
+                    member.presence = "online"
+                }
+            }
+
+            let activity = CrewActivity(
+                crewID: session.crewID,
+                memberName: session.hostName,
+                actionText: "completed a shared focus session"
+            )
+            modelContext.insert(activity)
+
+            let message = CrewMessage(
+                crewID: session.crewID,
+                senderName: session.hostName,
+                text: "ended the shared focus session",
+                isFromMe: false,
+                isRead: false
+            )
+            modelContext.insert(message)
+
+            session.isActive = false
+            session.isPaused = false
+            session.pausedRemainingSeconds = nil
+        }
+
+        try? modelContext.save()
+    }
+}
+

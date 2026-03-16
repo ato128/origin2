@@ -16,6 +16,7 @@ final class CrewMember {
     var isOnline: Bool
     var avatarSymbol: String
     var joinedAt: Date
+    var presence: String = "online"
 
     init(
         id: UUID = UUID(),

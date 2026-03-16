@@ -17,7 +17,8 @@ final class Crew {
     var createdAt: Date
     var isMuted: Bool
     var totalFocusMinutes: Int
-    var currentStreak: Int
+    var currentStreak: Int = 0
+    var lastFocusDate: Date?
 
     init(
         id: UUID = UUID(),

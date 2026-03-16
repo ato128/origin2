@@ -187,9 +187,15 @@ struct HomeDashboardView: View {
         return "\(hm(nextEvent.startMinute)) – \(hm(nextEvent.startMinute + nextEvent.durationMinute))"
     }
 
-    var activeCrewFocusSession: CrewFocusSession? {
+    var latestRelevantCrewFocusSession: CrewFocusSession? {
         focusSessions
-            .filter { $0.isActive }
+            .filter { session in
+                if session.isActive {
+                    return true
+                }
+
+                return crewFocusNow.timeIntervalSince(session.endDate) <= 15
+            }
             .sorted { $0.startedAt > $1.startedAt }
             .first
     }
@@ -271,7 +277,7 @@ struct HomeDashboardView: View {
                     .opacity(showProgressCard ? 1 : 0)
                     .scaleEffect(showProgressCard ? 1 : 0.985)
 
-                if let session = activeCrewFocusSession {
+                if let session = latestRelevantCrewFocusSession {
                     crewSharedFocusCard(session: session)
                         .offset(y: showFocusCard ? 0 : 18)
                         .opacity(showFocusCard ? 1 : 0)
