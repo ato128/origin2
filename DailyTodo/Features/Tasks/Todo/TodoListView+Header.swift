@@ -1,0 +1,195 @@
+//
+//  TodoListView+Headeer.swift
+//  DailyTodo
+//
+//  Created by Atakan Ortaç on 16.03.2026.
+//
+
+import SwiftUI
+
+extension TodoListView {
+    var tasksAmbientBackground: some View {
+        AppBackground()
+    }
+
+    var topSegment: some View {
+        HStack(spacing: 8) {
+            ForEach(HomeSection.allCases) { section in
+                let isSelected = homeSection == section
+
+                Button {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                        homeSection = section
+                    }
+                } label: {
+                    Text(section.rawValue)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(isSelected ? palette.primaryText : palette.secondaryText)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(
+                                    isSelected
+                                    ? Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.14 : 0.18)
+                                    : palette.secondaryCardFill
+                                )
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(
+                                    isSelected
+                                    ? Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.22 : 0.30)
+                                    : palette.cardStroke.opacity(0.8),
+                                    lineWidth: 1
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 7)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(palette.cardFill)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(palette.cardStroke, lineWidth: 1)
+                )
+        )
+    }
+
+    var tasksHeader: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Text("Home")
+                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .foregroundStyle(palette.primaryText)
+
+            Spacer()
+
+            Button {
+                showMessages = true
+                haptic(.light)
+            } label: {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: "bubble.left.and.bubble.right.fill")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(palette.primaryText)
+                        .frame(width: 42, height: 42)
+                        .background(
+                            Circle()
+                                .fill(palette.cardFill)
+                                .overlay(
+                                    Circle()
+                                        .stroke(palette.cardStroke, lineWidth: 1)
+                                )
+                        )
+
+                    if unreadCount > 0 {
+                        Text("\(unreadCount)")
+                            .font(.caption2.bold())
+                            .foregroundStyle(.white)
+                            .padding(5)
+                            .background(Color.red)
+                            .clipShape(Circle())
+                            .offset(x: 6, y: -6)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+
+            if homeSection == .personal, let next = nextClassInfo {
+                Button {
+                    withAnimation(.easeInOut) {
+                        selectedTab = .week
+                    }
+                    haptic(.light)
+                } label: {
+                    LiveBadgeView(
+                        next: next,
+                        palette: palette,
+                        appTheme: appTheme
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 4)
+        .padding(.top, 4)
+    }
+
+    @ToolbarContentBuilder
+    var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            EmptyView()
+        }
+
+        ToolbarItem(placement: .topBarTrailing) {
+            EmptyView()
+        }
+    }
+}
+
+extension TodoListView {
+    struct LiveBadgeView: View {
+        let next: (title: String, timeText: String, status: TodoListView.NextClassStatus)
+        let palette: ThemePalette
+        let appTheme: String
+
+        var body: some View {
+            let isLive = next.status == .live
+
+            return HStack(spacing: 10) {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(isLive ? Color.green : Color.orange)
+                        .frame(width: 7, height: 7)
+                        .shadow(
+                            color: isLive ? Color.green.opacity(0.45) : Color.orange.opacity(0.35),
+                            radius: isLive ? 6 : 4
+                        )
+
+                    Text(isLive ? "LIVE" : "NEXT")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(isLive ? Color.green : Color.orange)
+                }
+                .padding(.horizontal, 7)
+                .padding(.vertical, 5)
+                .background(
+                    Capsule()
+                        .fill(isLive ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(
+                            isLive ? Color.green.opacity(0.22) : Color.orange.opacity(0.22),
+                            lineWidth: 0.8
+                        )
+                )
+
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(next.title.uppercased())
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(palette.primaryText)
+                        .lineLimit(1)
+
+                    Text(next.timeText)
+                        .font(.caption2)
+                        .foregroundStyle(palette.secondaryText)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .frame(height: 34)
+            .background(
+                Capsule()
+                    .fill(palette.cardFill)
+                    .overlay(
+                        Capsule()
+                            .stroke(palette.cardStroke, lineWidth: 1)
+                    )
+            )
+        }
+    }
+}

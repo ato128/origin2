@@ -11,9 +11,10 @@ import Combine
 
 struct HomeDashboardView: View {
     @AppStorage("smartEngineEnabled") var smartEngineEnabled: Bool = true
-    @AppStorage("appTheme")  var appTheme = AppTheme.gradient.rawValue
-     let palette = ThemePalette()
-    
+    @AppStorage("appTheme") var appTheme = AppTheme.gradient.rawValue
+
+    let palette = ThemePalette()
+
     @Environment(\.modelContext) var modelContext
     @EnvironmentObject var store: TodoStore
 
@@ -21,17 +22,16 @@ struct HomeDashboardView: View {
     var allEvents: [EventItem]
 
     @Query(sort: \Friend.createdAt, order: .reverse)
-    private var friends: [Friend]
+    var friends: [Friend]
 
     @Query(sort: \FriendMessage.createdAt, order: .reverse)
-    private var allFriendMessages: [FriendMessage]
-    
-    @Query private var focusSessions: [CrewFocusSession]
+    var allFriendMessages: [FriendMessage]
+
+    @Query var focusSessions: [CrewFocusSession]
 
     let onAddTask: () -> Void
     let onOpenWeek: () -> Void
     let onOpenInsights: () -> Void
-    
 
     let dayTitles = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
 
@@ -50,21 +50,20 @@ struct HomeDashboardView: View {
     @State var showRecentFriendChat = false
     @State var pulseRecentFriendPill = false
     @State var crewFocusGlowPulse: Bool = false
-    @State private var crewFocusNow = Date()
-    
+    @State var crewFocusNow = Date()
 
-    @State private var showHeaderCard = false
-    @State private var showWeekCard = false
-    @State private var showProgressCard = false
-    @State private var showFocusCard = false
-    @State private var showNextClassCard = false
-    @State private var showTodayTasksCard = false
-    @State private var showQuickActionsCard = false
+    @State var showHeaderCard = false
+    @State var showWeekCard = false
+    @State var showProgressCard = false
+    @State var showFocusCard = false
+    @State var showNextClassCard = false
+    @State var showTodayTasksCard = false
+    @State var showQuickActionsCard = false
 
     let focusRefreshTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     let crewFocusTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-    
-    private var smartSuggestions: [SmartTaskSuggestion] {
+
+    var smartSuggestions: [SmartTaskSuggestion] {
         guard smartEngineEnabled else { return [] }
         return SmartTaskEngine.suggestions(
             tasks: allTasks,
@@ -72,7 +71,9 @@ struct HomeDashboardView: View {
         )
     }
 
-    var allTasks: [DTTaskItem] { store.items }
+    var allTasks: [DTTaskItem] {
+        store.items
+    }
 
     var todayTasks: [DTTaskItem] {
         let cal = Calendar.current
@@ -85,15 +86,6 @@ struct HomeDashboardView: View {
             .sorted {
                 ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture)
             }
-    }
-    
-    private var themedCardBackground: some View {
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(palette.cardFill)
-            .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(palette.cardStroke, lineWidth: 1)
-            )
     }
 
     var completedTodayCount: Int {
@@ -194,7 +186,7 @@ struct HomeDashboardView: View {
         guard let nextEvent else { return "--:--" }
         return "\(hm(nextEvent.startMinute)) – \(hm(nextEvent.startMinute + nextEvent.durationMinute))"
     }
-    
+
     var activeCrewFocusSession: CrewFocusSession? {
         focusSessions
             .filter { $0.isActive }
@@ -288,8 +280,7 @@ struct HomeDashboardView: View {
                             insertion: .scale(scale: 0.98).combined(with: .opacity),
                             removal: .scale(scale: 0.96).combined(with: .opacity)
                         ))
-                }
-                else if hasAnyActiveFocusSession {
+                } else if hasAnyActiveFocusSession {
                     activeFocusCard
                         .offset(y: showFocusCard ? 0 : 18)
                         .opacity(showFocusCard ? 1 : 0)
@@ -318,7 +309,7 @@ struct HomeDashboardView: View {
                     .offset(y: showTodayTasksCard ? 0 : 18)
                     .opacity(showTodayTasksCard ? 1 : 0)
                     .scaleEffect(showTodayTasksCard ? 1 : 0.985)
-                
+
                 if smartEngineEnabled, let firstSuggestion = smartSuggestions.first {
                     SmartTaskSuggestionCard(suggestion: firstSuggestion)
                 }
@@ -336,7 +327,6 @@ struct HomeDashboardView: View {
         .safeAreaInset(edge: .bottom) {
             Color.clear.frame(height: 90)
         }
-       
         .sheet(isPresented: $showingFocusSession) {
             FocusSessionView(
                 taskTitle: focusTask?.title,
@@ -439,192 +429,5 @@ struct HomeDashboardView: View {
         .onReceive(crewFocusTimer) { value in
             crewFocusNow = value
         }
-    }
-    
-    func focusChip(title: String, icon: String, color: Color) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon)
-            Text(title)
-        }
-        .font(.caption.weight(.semibold))
-        .foregroundStyle(color)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(
-            Capsule()
-                .fill(color.opacity(0.14))
-        )
-    }
-    func crewFocusAccentColor(for session: CrewFocusSession) -> Color {
-        let remaining = max(0, Int(session.endDate.timeIntervalSince(crewFocusNow)))
-
-        if session.isPaused {
-            return .orange
-        }
-
-        if remaining <= 180 {
-            return .red
-        }
-
-        if remaining <= 600 {
-            return .orange
-        }
-
-        return .blue
-    }
-    
-    func crewSharedFocusCard(session: CrewFocusSession) -> some View {
-
-        let remaining = session.isPaused
-            ? max(0, session.pausedRemainingSeconds ?? 0)
-            : max(0, Int(session.endDate.timeIntervalSince(crewFocusNow)))
-
-        let minutes = remaining / 60
-        let seconds = remaining % 60
-        let timeText = String(format: "%02d:%02d", minutes, seconds)
-
-        let total = Double(session.durationMinutes * 60)
-        let progress = min(1, max(0, 1 - Double(remaining) / total))
-
-        let accent = crewFocusAccentColor(for: session)
-
-        return VStack(alignment: .leading, spacing: 14) {
-
-            HStack {
-
-                HStack(spacing: 8) {
-
-                    Circle()
-                        .fill(accent.opacity(crewFocusGlowPulse ? 1 : 0.75))
-                        .frame(width: 10, height: 10)
-                        .shadow(
-                            color: accent.opacity(crewFocusGlowPulse ? 0.45 : 0.20),
-                            radius: 8
-                        )
-
-                    Text("Focus Running")
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(palette.primaryText)
-                }
-
-                Spacer()
-
-                Text(timeText)
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(palette.primaryText)
-                    .contentTransition(.numericText())
-                    .animation(.easeInOut(duration: 0.2), value: timeText)
-            }
-
-            Text(session.title)
-                .font(.system(size: 22, weight: .bold, design: .rounded))
-                .foregroundStyle(palette.primaryText)
-
-            ZStack(alignment: .leading) {
-
-                Capsule()
-                    .fill(palette.secondaryCardFill)
-                    .frame(height: 10)
-
-                GeometryReader { geo in
-
-                    Capsule()
-                        .fill(accent)
-                        .frame(
-                            width: max(10, geo.size.width * progress),
-                            height: 10
-                        )
-                        .shadow(
-                            color: accent.opacity(crewFocusGlowPulse ? 0.45 : 0.20),
-                            radius: crewFocusGlowPulse ? 10 : 5
-                        )
-                        .animation(.linear(duration: 1), value: progress)
-                }
-            }
-            .frame(height: 10)
-
-            HStack(spacing: 10) {
-
-                focusChip(
-                    title: session.isPaused ? "Duraklatıldı" : "Odak aktif",
-                    icon: session.isPaused ? "pause.fill" : "timer",
-                    color: accent
-                )
-
-                focusChip(
-                    title: session.isPaused ? "Bekliyor" : "Devam",
-                    icon: session.isPaused ? "moon.zzz.fill" : "scope",
-                    color: session.isPaused ? .orange : .green
-                )
-            }
-
-            HStack(spacing: 12) {
-
-                NavigationLink {
-                    CrewFocusRoomView(session: session)
-                } label: {
-                    Text("Open Focus")
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(accent == .red ? Color.red : accent)
-                        )
-                }
-
-                Button {
-
-                    session.isActive = false
-                    session.isPaused = false
-                    session.pausedRemainingSeconds = nil
-
-                    try? modelContext.save()
-
-                } label: {
-
-                    Text("Stop")
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(.red)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(Color.red.opacity(0.12))
-                        )
-                }
-            }
-        }
-        .padding(18)
-        .background(
-            ZStack {
-
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .fill(palette.cardFill)
-
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .stroke(accent.opacity(0.30), lineWidth: 1)
-
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                accent.opacity(crewFocusGlowPulse ? 0.20 : 0.10),
-                                Color.clear
-                            ],
-                            center: .topLeading,
-                            startRadius: 20,
-                            endRadius: 260
-                        )
-                    )
-                    .blur(radius: 24)
-            }
-        )
-        .shadow(
-            color: accent.opacity(crewFocusGlowPulse ? 0.18 : 0.08),
-            radius: 18,
-            y: 8
-        )
     }
 }
