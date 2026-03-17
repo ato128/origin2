@@ -82,7 +82,7 @@ struct TasksView: View {
                                 taskCard(task)
                                     .transition(.asymmetric(
                                         insertion: .opacity,
-                                        removal: .opacity.combined(with: .move(edge: .bottom))
+                                        removal: .opacity.combined(with: .offset(y: 18)).combined(with: .scale(scale: 0.96))
                                     ))
                             }
                         }
@@ -304,13 +304,13 @@ private extension TasksView {
 
                         if isRecentlyCompleted {
                             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .fill(Color.green.opacity(0.14))
+                                .fill(Color.green.opacity(0.18))
                                 .transition(.opacity)
                         }
 
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
                             .stroke(
-                                isRecentlyCompleted ? Color.green.opacity(0.28) : palette.cardStroke,
+                                isRecentlyCompleted ? Color.green.opacity(0.34) : palette.cardStroke,
                                 lineWidth: 1
                             )
                     }
@@ -325,9 +325,10 @@ private extension TasksView {
                             Circle()
                                 .fill(Color.green)
                         )
-                        .shadow(color: Color.green.opacity(0.18), radius: 6, y: 2)
+                        .shadow(color: Color.green.opacity(0.22), radius: 8, y: 3)
                         .offset(x: -8, y: 8)
-                        .transition(.scale(scale: 0.8).combined(with: .opacity))
+                        .scaleEffect(1.0)
+                        .transition(.scale(scale: 0.7).combined(with: .opacity))
                 }
             }
         }
@@ -396,6 +397,9 @@ private extension TasksView {
 
         if store.items[index].isDone {
             store.items[index].completedAt = Date()
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.prepare()
+            generator.impactOccurred()
 
             recentlyCompletedTaskKey = key
             pendingRemovalTaskKeys.insert(key)
