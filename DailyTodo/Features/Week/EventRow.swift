@@ -303,16 +303,24 @@ struct EventRow: View {
             Haptics.impact(.light)
             onTap()
         }
-        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+        .onLongPressGesture(minimumDuration: 0.35) {
+            Haptics.impact(.medium)
+        }
+        .contextMenu {
             Button {
                 Haptics.impact(.light)
                 onTap()
             } label: {
-                Label("Details", systemImage: "info.circle")
+                Label("Detail", systemImage: "info.circle")
             }
-            .tint(.indigo)
-        }
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+
+            Button {
+                Haptics.impact(.light)
+                onEdit()
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+
             Button(role: .destructive) {
                 Haptics.impact(.heavy)
                 onDelete()

@@ -18,6 +18,7 @@ struct DailyTodoApp: App {
         do {
             container = try ModelContainer(
                 for: DTTaskItem.self,
+                WorkoutExerciseItem.self,
                 EventItem.self,
                 FocusSessionRecord.self,
                 Crew.self,

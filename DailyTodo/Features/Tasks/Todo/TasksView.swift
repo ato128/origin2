@@ -18,6 +18,9 @@ struct TasksView: View {
 
     @State private var recentlyCompletedTaskKey: String?
     @State private var pendingRemovalTaskKeys: Set<String> = []
+    
+    @State private var selectedTask: DTTaskItem?
+    @State private var selectedTaskForSchedule: DTTaskItem?
 
     private let palette = ThemePalette()
 
@@ -102,6 +105,16 @@ struct TasksView: View {
             AddTaskView()
                 .environmentObject(store)
                 .presentationDetents([.medium, .large])
+        }
+        .sheet(item: $selectedTask) { task in
+            NavigationStack {
+                TaskDetailView(task: task)
+            }
+        }
+        .sheet(item: $selectedTaskForSchedule) { task in
+            NavigationStack {
+                TaskScheduleSheet(task: task)
+            }
         }
     }
 }
@@ -257,9 +270,7 @@ private extension TasksView {
         let isRecentlyCompleted = recentlyCompletedTaskKey == key
 
         return Button {
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
-                toggleTask(task)
-            }
+            selectedTask = task
         } label: {
             ZStack(alignment: .topTrailing) {
                 HStack(spacing: 12) {
@@ -333,8 +344,38 @@ private extension TasksView {
             }
         }
         .buttonStyle(.plain)
-    }
+        .onLongPressGesture(minimumDuration: 0.35) {
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.prepare()
+            generator.impactOccurred()
 
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                toggleTask(task)
+            }
+        }
+        .contextMenu {
+            Button {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                    toggleTask(task)
+                }
+            } label: {
+                Label(task.isDone ? "Mark as Undone" : "Mark as Done",
+                      systemImage: task.isDone ? "arrow.uturn.backward.circle" : "checkmark.circle")
+            }
+
+            Button {
+                selectedTaskForSchedule = task
+            } label: {
+                Label("Schedule", systemImage: "calendar.badge.plus")
+            }
+
+            Button(role: .destructive) {
+                deleteTask(task)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+    }
     var emptyState: some View {
         VStack(spacing: 14) {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -426,6 +467,11 @@ private extension TasksView {
             }
 
             pendingRemovalTaskKeys.remove(key)
+        }
+    }
+    func deleteTask(_ task: DTTaskItem) {
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+            store.delete(task)
         }
     }
 }
