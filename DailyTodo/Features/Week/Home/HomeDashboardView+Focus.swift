@@ -17,19 +17,48 @@ extension HomeDashboardView {
                         Text(focusCardTitle)
                             .font(.system(size: 18, weight: .bold))
                             .foregroundStyle(palette.primaryText)
-                        
+
                         Spacer()
-                        
-                        Image(systemName: isSharedFocusActive ? "person.2.fill" : "scope")
+
+                        Image(systemName: isSharedFocusActive ? "person.2.fill" : (task.taskType == "workout" ? "dumbbell.fill" : "scope"))
                             .font(.title3)
                             .foregroundStyle(Color.accentColor)
                     }
-                    
+
                     Text(focusCardMainText)
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
                         .lineLimit(2)
-                    
+
+                    if task.taskType == "workout" {
+                        VStack(alignment: .leading, spacing: 8) {
+                            if !focusWorkoutExerciseName.isEmpty {
+                                Text(focusWorkoutExerciseName)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(palette.secondaryText)
+                                    .lineLimit(1)
+                            }
+
+                            HStack(spacing: 8) {
+                                if focusWorkoutCurrentSet > 0 && focusWorkoutTotalSets > 0 {
+                                    miniBadge(
+                                        icon: "figure.strengthtraining.traditional",
+                                        text: "Set \(focusWorkoutCurrentSet)/\(focusWorkoutTotalSets)",
+                                        tint: .green
+                                    )
+                                }
+
+                                if focusWorkoutIsResting {
+                                    miniBadge(
+                                        icon: "figure.cooldown",
+                                        text: "Rest",
+                                        tint: .orange
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     HStack(spacing: 8) {
                         if let due = task.dueDate {
                             Label {
@@ -40,22 +69,28 @@ extension HomeDashboardView {
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(palette.secondaryText)
                         }
-                        
+
                         Spacer()
-                        
-                        Text(focusCardStatusText)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(
-                                isSharedFocusActive
-                                ? .green
-                                : (store.isOverdue(task) ? .red : palette.secondaryText)
-                            )
+
+                        Text(
+                            task.taskType == "workout"
+                            ? (focusWorkoutIsResting ? "Rest aktif" : "Workout hazır")
+                            : focusCardStatusText
+                        )
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(
+                            task.taskType == "workout"
+                            ? (focusWorkoutIsResting ? .orange : .green)
+                            : (isSharedFocusActive
+                               ? .green
+                               : (store.isOverdue(task) ? .red : palette.secondaryText))
+                        )
                     }
-                    
+
                     Button {
-                        showingFocusSession = true
+                        startInlineFocus()
                     } label: {
-                        Text("Start Focus")
+                        Text(task.taskType == "workout" ? "Start Workout" : "Start Focus")
                             .font(.system(size: 15, weight: .semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
@@ -63,7 +98,7 @@ extension HomeDashboardView {
                                 ZStack {
                                     Capsule()
                                         .fill(Color.accentColor)
-                                    
+
                                     Capsule()
                                         .fill(
                                             LinearGradient(
@@ -89,19 +124,19 @@ extension HomeDashboardView {
             }
         }
     }
-    
+
     var activeFocusCard: some View {
         TimelineView(.animation) { timeline in
             let now = timeline.date
             let liveRemaining = liveFocusRemaining(at: now)
             let urgencyColor = activeFocusUrgencyColor(for: liveRemaining)
             let warmState = liveRemaining > 0 && liveRemaining <= 30
-            
+
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .center) {
                     HStack(spacing: 8) {
                         Circle()
-                            .fill(urgencyColor)
+                            .fill(focusWorkoutIsResting ? .orange : urgencyColor)
                             .frame(width: 8, height: 8)
                             .scaleEffect(liveDotPulse ? 1.35 : 0.85)
                             .opacity(liveDotPulse ? 0.65 : 1)
@@ -109,18 +144,24 @@ extension HomeDashboardView {
                                 .easeInOut(duration: 1).repeatForever(autoreverses: true),
                                 value: liveDotPulse
                             )
-                        
-                        Text(isSharedFocusActive ? "Shared Focus Running" : "Focus Running")
-                            .font(.system(size: 14, weight: .semibold))
+
+                        Text(
+                            isSharedFocusActive
+                            ? "Shared Focus Running"
+                            : (focusWorkoutMode
+                               ? (focusWorkoutIsResting ? "Workout Rest Running" : "Workout Running")
+                               : "Focus Running")
+                        )
+                        .font(.system(size: 14, weight: .semibold))
                     }
-                    
+
                     Spacer()
-                    
+
                     Text(liveFocusTimeText(at: now))
                         .font(.system(size: 22, weight: .bold, design: .rounded))
                         .monospacedDigit()
                 }
-                
+
                 Text(
                     isSharedFocusActive
                     ? ((activeSharedFriendName != nil) ? "\(activeSharedFriendName!) ile focus" : "Shared Focus")
@@ -129,55 +170,81 @@ extension HomeDashboardView {
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .lineLimit(2)
                 .minimumScaleFactor(0.9)
-                
+
+                if focusWorkoutMode {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if !focusWorkoutExerciseName.isEmpty {
+                            Text(focusWorkoutExerciseName)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(palette.primaryText)
+                                .lineLimit(1)
+                        }
+
+                        HStack(spacing: 8) {
+                            if focusWorkoutCurrentSet > 0 && focusWorkoutTotalSets > 0 {
+                                miniBadge(
+                                    icon: "figure.strengthtraining.traditional",
+                                    text: "Set \(focusWorkoutCurrentSet)/\(focusWorkoutTotalSets)",
+                                    tint: .green
+                                )
+                            }
+
+                            if focusWorkoutIsResting {
+                                miniBadge(
+                                    icon: "figure.cooldown",
+                                    text: "Rest",
+                                    tint: .orange
+                                )
+                            }
+                        }
+                    }
+                }
+
                 smoothActiveFocusProgressBar(at: now)
                     .frame(height: 10)
-                
+
                 HStack(spacing: 8) {
                     miniBadge(
-                        icon: "timer",
-                        text: liveRemaining <= 30 ? "Son 30 sn" : "Odak aktif",
-                        tint: urgencyColor
+                        icon: focusWorkoutIsResting ? "figure.cooldown" : "timer",
+                        text: focusWorkoutIsResting
+                            ? "Rest aktif"
+                            : (liveRemaining <= 30 ? "Son 30 sn" : (focusWorkoutMode ? "Workout aktif" : "Odak aktif")),
+                        tint: focusWorkoutIsResting ? .orange : urgencyColor
                     )
-                    
+
                     miniBadge(
-                        icon: "scope",
-                        text: "Devam",
-                        tint: warmState ? urgencyColor : .green
+                        icon: focusWorkoutMode ? "dumbbell.fill" : "scope",
+                        text: focusWorkoutMode
+                            ? (focusWorkoutIsResting ? "Dinlenme" : "Set devam")
+                            : "Devam",
+                        tint: focusWorkoutIsResting ? .orange : (warmState ? urgencyColor : .green)
                     )
                 }
-                
+
                 HStack(spacing: 8) {
                     Button {
-                        showingFocusSession = true
+                        if focusWorkoutMode {
+                            advanceInlineWorkout()
+                        }
                     } label: {
-                        Text("Open Focus")
-                            .font(.system(size: 15, weight: .semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(
-                                ZStack {
-                                    Capsule()
-                                        .fill(Color.accentColor)
-                                    
-                                    Capsule()
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [
-                                                    Color.white.opacity(0.14),
-                                                    Color.clear
-                                                ],
-                                                startPoint: .top,
-                                                endPoint: .bottom
-                                            )
-                                        )
-                                }
-                            )
-                            .foregroundStyle(.white)
-                            .clipShape(Capsule())
+                        Text(
+                            focusWorkoutMode
+                            ? (focusWorkoutIsResting ? "Continue After Rest" : "Next Set")
+                            : "Focus Active"
+                        )
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule()
+                                .fill(focusWorkoutMode ? Color.accentColor : Color.accentColor.opacity(0.16))
+                        )
+                        .foregroundStyle(focusWorkoutMode ? .white : Color.accentColor)
+                        .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
-                    
+                    .disabled(!focusWorkoutMode)
+
                     Button {
                         stopActiveFocus()
                     } label: {
@@ -199,18 +266,18 @@ extension HomeDashboardView {
                     .fill(.ultraThinMaterial)
                     .overlay(
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .fill(urgencyColor.opacity(warmState ? 0.08 : 0.06))
+                            .fill((focusWorkoutIsResting ? Color.orange : urgencyColor).opacity(warmState ? 0.08 : 0.06))
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
                             .stroke(
-                                urgencyColor.opacity(pulseActiveFocus ? 0.34 : 0.16),
+                                (focusWorkoutIsResting ? Color.orange : urgencyColor).opacity(pulseActiveFocus ? 0.34 : 0.16),
                                 lineWidth: 1.1
                             )
                     )
             )
             .shadow(
-                color: urgencyColor.opacity(pulseActiveFocus ? 0.22 : 0.10),
+                color: (focusWorkoutIsResting ? Color.orange : urgencyColor).opacity(pulseActiveFocus ? 0.22 : 0.10),
                 radius: pulseActiveFocus ? 14 : 7,
                 x: 0,
                 y: 5
@@ -225,7 +292,9 @@ extension HomeDashboardView {
             liveDotPulse = true
         }
     }
+
     
+
     func focusChip(title: String, icon: String, color: Color) -> some View {
         HStack(spacing: 6) {
             Image(systemName: icon)
@@ -240,7 +309,7 @@ extension HomeDashboardView {
                 .fill(color.opacity(0.14))
         )
     }
-    
+
     func crewFocusAccentColor(for session: CrewFocusSession) -> Color {
         if !session.isActive {
             return .green
@@ -264,7 +333,7 @@ extension HomeDashboardView {
 
         return .blue
     }
-    
+
     func toggleSharedFocusPause(session: CrewFocusSession) {
         guard session.isActive else { return }
 
@@ -283,7 +352,7 @@ extension HomeDashboardView {
 
         try? modelContext.save()
     }
-    
+
     func crewSharedFocusCard(session: CrewFocusSession) -> some View {
         let remaining = session.isPaused
             ? max(0, session.pausedRemainingSeconds ?? 0)
@@ -464,5 +533,4 @@ extension HomeDashboardView {
             y: 8
         )
     }
-    
 }

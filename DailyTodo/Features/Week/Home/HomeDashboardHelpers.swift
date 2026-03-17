@@ -34,70 +34,9 @@ extension HomeDashboardView {
         return (w + 5) % 7
     }
 
-    func syncActiveFocusCountdown() {
-        guard let timestamp =
-            UserDefaults.standard.object(forKey: "focus_end_date") as? Double else {
-            return
-        }
+   
 
-        let savedEnd = Date(timeIntervalSince1970: timestamp)
-        let remaining = max(0, Int(savedEnd.timeIntervalSinceNow.rounded(.down)))
-
-        if remaining > 0 {
-            activeFocusRemainingSeconds = remaining
-            isFocusActive = true
-
-            if let savedTotal =
-                UserDefaults.standard.object(forKey: "focus_total_seconds") as? Int,
-               savedTotal > 0 {
-                activeFocusTotalSeconds = savedTotal
-            }
-
-            if let savedTitle =
-                UserDefaults.standard.string(forKey: "focus_task_title"),
-               !savedTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                activeFocusTaskTitle = savedTitle
-            }
-
-        } else {
-            saveFocusRecordFromHomeIfNeeded()
-
-            UserDefaults.standard.removeObject(forKey: "focus_end_date")
-            UserDefaults.standard.removeObject(forKey: "focus_total_seconds")
-            UserDefaults.standard.removeObject(forKey: "focus_selected_minutes")
-            UserDefaults.standard.removeObject(forKey: "focus_task_title")
-
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.88)) {
-                isFocusActive = false
-                pulseActiveFocus = false
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                activeFocusTaskTitle = ""
-                activeFocusRemainingSeconds = 25 * 60
-                activeFocusTotalSeconds = 25 * 60
-                activeFocusStartedAt = nil
-            }
-        }
-    }
-
-    func stopActiveFocus() {
-        UserDefaults.standard.removeObject(forKey: "focus_end_date")
-        UserDefaults.standard.removeObject(forKey: "focus_total_seconds")
-        UserDefaults.standard.removeObject(forKey: "focus_selected_minutes")
-        UserDefaults.standard.removeObject(forKey: "focus_task_title")
-
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.88)) {
-            pulseActiveFocus = false
-            isFocusActive = false
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            activeFocusTaskTitle = ""
-            activeFocusRemainingSeconds = 25 * 60
-            activeFocusTotalSeconds = 25 * 60
-        }
-    }
+    
 
     func saveFocusRecordFromHomeIfNeeded() {
         guard activeFocusTotalSeconds > 0 else { return }
