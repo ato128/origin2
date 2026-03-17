@@ -229,6 +229,18 @@ struct HomeDashboardView: View {
         focusWorkoutTotalSets = 0
         focusWorkoutIsResting = false
     }
+    
+    func completeLinkedWeekEvent(for task: DTTaskItem) {
+        if let matchedEvent = allEvents.first(where: { $0.sourceTaskUUID == task.taskUUID }) {
+            matchedEvent.isCompleted = true
+
+            do {
+                try modelContext.save()
+            } catch {
+                print("❌ Linked week event complete error:", error)
+            }
+        }
+    }
 
     func advanceInlineWorkout() {
         guard let exercises = workoutExercisesForFocusTask(),
@@ -283,6 +295,14 @@ struct HomeDashboardView: View {
         if let task = focusTask {
             task.isDone = true
             task.completedAt = Date()
+
+            completeLinkedWeekEvent(for: task)
+
+            do {
+                try modelContext.save()
+            } catch {
+                print("❌ Task save error:", error)
+            }
         }
 
         isFocusActive = false

@@ -180,19 +180,23 @@ extension WeekView {
     }
 
     var completedEvents: [EventItem] {
-        let now = currentMinuteOfDay()
+        let calendar = Calendar.current
+        let targetDate = targetDateForSelectedDay()
 
-        return eventsForDay.filter { ev in
-            let end = ev.startMinute + ev.durationMinute
+        return (allEventsAccessible ?? [])
+            .filter { ev in
+                guard ev.isCompleted else { return false }
 
-            if ev.isCompleted {
-                return true
+                if let scheduledDate = ev.scheduledDate {
+                    return calendar.isDate(scheduledDate, inSameDayAs: targetDate)
+                } else {
+                    return ev.weekday == selectedDay
+                }
             }
-
-            return isTodaySelected && now >= end
-        }
+            .sorted { lhs, rhs in
+                lhs.startMinute < rhs.startMinute
+            }
     }
-
     var eventsSection: some View {
         VStack(spacing: 6) {
             if !nowEvents.isEmpty {

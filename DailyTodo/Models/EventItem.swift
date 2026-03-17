@@ -27,7 +27,7 @@ final class EventItem {
 
     var location: String?
     var notes: String?
-
+    
     /// Renk (HEX) ör: "4F46E5" veya "#4F46E5"
     var colorHex: String
     
@@ -36,6 +36,8 @@ final class EventItem {
     var createdAt: Date
     
     var isCompleted: Bool
+    
+    
 
     init(
         title: String,

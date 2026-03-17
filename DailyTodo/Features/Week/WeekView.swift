@@ -40,6 +40,10 @@ struct WeekView: View {
         Dictionary(uniqueKeysWithValues: allCrews.map { ($0.id, $0) })
     }
     
+    var allEventsAccessible: [EventItem] {
+        allEvents
+    }
+    
     var selectedCrew: Crew? {
         guard let selectedCrewID else { return allCrews.first }
         return allCrews.first(where: { $0.id == selectedCrewID })
@@ -54,9 +58,11 @@ struct WeekView: View {
     var eventsForDay: [EventItem] {
         let calendar = Calendar.current
         let targetDate = targetDateForSelectedDay()
-        
+
         return allEvents
             .filter { ev in
+                guard !ev.isCompleted else { return false }
+
                 if let scheduledDate = ev.scheduledDate {
                     return calendar.isDate(scheduledDate, inSameDayAs: targetDate)
                 } else {

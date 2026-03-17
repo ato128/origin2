@@ -82,31 +82,35 @@ extension HomeDashboardView {
     }
 
     func smoothActiveFocusProgressBar(at date: Date) -> some View {
-        let remaining = liveFocusRemaining(at: date)
         let progress = liveFocusProgress(at: date)
-        let urgencyColor = activeFocusUrgencyColor(for: remaining)
 
         return GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(Color.white.opacity(0.10))
+                    .fill(Color.white.opacity(0.08))
 
                 Capsule()
                     .fill(
                         LinearGradient(
                             colors: [
-                                urgencyColor,
-                                urgencyColor.opacity(0.85)
+                                Color.blue,
+                                Color.cyan
                             ],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
                     )
-                    .shadow(color: urgencyColor.opacity(0.5), radius: 6)
                     .frame(width: max(8, geo.size.width * progress))
+                    .animation(.linear(duration: 1), value: progress)
+
+                // ✨ glow efekti
+                Capsule()
+                    .fill(Color.blue.opacity(0.25))
+                    .frame(width: max(8, geo.size.width * progress))
+                    .blur(radius: 8)
+                    .animation(.linear(duration: 1), value: progress)
             }
         }
-        .frame(height: 12)
     }
 
     func liveFocusProgress(at date: Date) -> Double {

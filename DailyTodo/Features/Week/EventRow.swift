@@ -18,7 +18,6 @@ struct EventRow: View {
     let hasConflict: Bool
     let nowMinute: Int
     let isTodaySelected: Bool
-    
     let isWorkout: Bool
     let workoutDay: String?
     let exerciseCount: Int
@@ -34,16 +33,19 @@ struct EventRow: View {
     private var duration: Int { max(1, event.durationMinute) }
 
     private var isLive: Bool {
+        guard !event.isCompleted else { return false }
         guard isTodaySelected else { return false }
         return nowMinute >= start && nowMinute < end
     }
 
     private var isUpNext: Bool {
+        guard !event.isCompleted else { return false }
         guard isTodaySelected else { return false }
         return nowMinute < start && (start - nowMinute) <= 15
     }
 
     private var isSoon: Bool {
+        guard !event.isCompleted else { return false }
         guard isTodaySelected else { return false }
         let diff = start - nowMinute
         return diff > 0 && diff <= 5
@@ -78,12 +80,17 @@ struct EventRow: View {
         let baseColor = hexColor(event.colorHex)
 
         let accent: Color = {
+            if event.isCompleted { return .green }
             if isDone { return palette.secondaryText.opacity(0.8) }
             if isSoon { return .orange }
             return baseColor
         }()
 
         let bg: Color = {
+            if event.isCompleted {
+                return Color.green.opacity(isLightTheme ? 0.12 : 0.16)
+            }
+
             if isDone {
                 return accent.opacity(isLightTheme ? 0.08 : 0.10)
             }
@@ -100,6 +107,7 @@ struct EventRow: View {
         }()
 
         let strokeColor: Color = {
+            if event.isCompleted { return Color.green.opacity(0.32) }
             if hasConflict { return .red.opacity(0.28) }
             if isDone { return palette.cardStroke }
             if isLive { return accent.opacity(glowPhase ? 0.60 : 0.32) }
@@ -109,13 +117,14 @@ struct EventRow: View {
         }()
 
         let strokeWidth: CGFloat =
+            event.isCompleted ? 1.25 :
             hasConflict ? 1.35 :
             (isLive ? 1.8 :
             (isSoon ? 1.55 :
             (isUpNext ? 1.15 : 1.0)))
 
-        let mainTextOpacity: Double = isDone ? 0.55 : 1.0
-        let secondaryTextOpacity: Double = isDone ? 0.55 : 1.0
+        let mainTextOpacity: Double = isDone ? 0.72 : 1.0
+        let secondaryTextOpacity: Double = isDone ? 0.72 : 1.0
 
         HStack(spacing: 10) {
             RoundedRectangle(cornerRadius: 5, style: .continuous)
@@ -127,35 +136,47 @@ struct EventRow: View {
                     )
                 )
                 .frame(width: isLive ? 9 : 7)
-                .shadow(color: isLive ? accent.opacity(0.55) : .clear, radius: isLive ? 10 : 0)
+                .shadow(
+                    color: event.isCompleted
+                    ? Color.green.opacity(0.22)
+                    : (isLive ? accent.opacity(0.55) : .clear),
+                    radius: event.isCompleted ? 8 : (isLive ? 10 : 0)
+                )
                 .padding(.vertical, 10)
-                .opacity(isDone ? 0.72 : 1.0)
+                .opacity(isDone ? 0.8 : 1.0)
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(event.title)
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(palette.primaryText)
-                        .lineLimit(1)
-                        .opacity(mainTextOpacity)
+                    HStack(spacing: 6) {
+                        Text(event.title)
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(palette.primaryText)
+                            .lineLimit(1)
+                            .opacity(mainTextOpacity)
+
+                        if event.isCompleted {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.green)
+                                .transition(.scale.combined(with: .opacity))
+                        }
+                    }
 
                     if isLive {
                         statusPill("Şu an", tint: accent)
                     } else if isSoon {
                         statusPill("5 dk", tint: .orange)
+                    } else if event.isCompleted {
+                        statusPill("Tamamlandı", tint: .green)
+                            .opacity(0.95)
                     } else if isDone {
-                        if isWorkout {
-                            statusPill("Finished Workout", tint: .green)
-                                .opacity(0.95)
-                        } else {
-                            statusPill("Bitti", tint: palette.secondaryText)
-                                .opacity(0.9)
-                        }
+                        statusPill("Bitti", tint: palette.secondaryText)
+                            .opacity(0.9)
                     }
 
                     Spacer(minLength: 6)
 
-                    if hasConflict {
+                    if hasConflict && !event.isCompleted {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.red)
@@ -186,22 +207,6 @@ struct EventRow: View {
                         )
                         .opacity(secondaryTextOpacity)
                 }
-                if isWorkout {
-                    HStack(spacing: 8) {
-                        miniPill("Workout", tint: .green)
-
-                        if let workoutDay,
-                           !workoutDay.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            miniPill(workoutDay, tint: hexColor(event.colorHex))
-                        }
-
-                        if exerciseCount > 0 {
-                            miniPill("\(exerciseCount) moves", tint: .orange)
-                        }
-
-                        Spacer()
-                    }
-                }
 
                 HStack(spacing: 8) {
                     if let loc = event.location,
@@ -216,6 +221,38 @@ struct EventRow: View {
                             .overlay(
                                 Capsule()
                                     .stroke(palette.cardStroke, lineWidth: 1)
+                            )
+                            .opacity(secondaryTextOpacity)
+                    }
+
+                    if isWorkout {
+                        Label(
+                            workoutDay ?? "Workout",
+                            systemImage: "dumbbell.fill"
+                        )
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.green)
+                        .lineLimit(1)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(Color.green.opacity(0.14)))
+                        .overlay(
+                            Capsule()
+                                .stroke(Color.green.opacity(0.22), lineWidth: 1)
+                        )
+                        .opacity(secondaryTextOpacity)
+                    }
+
+                    if exerciseCount > 0 {
+                        Text("\(exerciseCount) hareket")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.blue)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(Color.blue.opacity(0.12)))
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.blue.opacity(0.18), lineWidth: 1)
                             )
                             .opacity(secondaryTextOpacity)
                     }
@@ -285,7 +322,9 @@ struct EventRow: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(isLive ? 0.30 : 0.16),
+                                    event.isCompleted
+                                    ? Color.green.opacity(0.14)
+                                    : Color.white.opacity(isLive ? 0.30 : 0.16),
                                     accent.opacity(isLightTheme ? 0.05 : 0.02),
                                     Color.clear
                                 ],
@@ -299,19 +338,27 @@ struct EventRow: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(strokeColor, lineWidth: strokeWidth)
         )
-        .shadow(color: isLive ? baseColor.opacity(glowPhase ? 0.30 : 0.14) : .clear, radius: isLive ? 12 : 0)
+        .shadow(
+            color: event.isCompleted
+            ? Color.green.opacity(0.16)
+            : (isLive ? baseColor.opacity(glowPhase ? 0.30 : 0.14) : .clear),
+            radius: event.isCompleted ? 10 : (isLive ? 12 : 0)
+        )
         .shadow(color: isSoon ? Color.orange.opacity(0.18) : .clear, radius: isSoon ? 8 : 0)
         .shadow(
             color: isLightTheme
-                ? accent.opacity(0.14)
-                : accent.opacity(0.25),
+                ? accent.opacity(event.isCompleted ? 0.10 : 0.14)
+                : accent.opacity(event.isCompleted ? 0.18 : 0.25),
             radius: 12,
             x: 0,
             y: 8
         )
-        .scaleEffect(isLive && pulse ? 1.006 : 1.0)
+        .scaleEffect(isLive && pulse ? 1.006 : (event.isCompleted ? 0.985 : 1.0))
+        .opacity(event.isCompleted ? 0.72 : 1)
+        .blur(radius: event.isCompleted ? 1.2 : 0)
         .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: pulse)
         .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: glowPhase)
+        .animation(.easeInOut(duration: 0.25), value: event.isCompleted)
         .onAppear {
             pulse = isLive
             glowPhase = isLive
@@ -329,31 +376,6 @@ struct EventRow: View {
             Haptics.impact(.light)
             onTap()
         }
-        .onLongPressGesture(minimumDuration: 0.35) {
-            Haptics.impact(.medium)
-        }
-        .contextMenu {
-            Button {
-                Haptics.impact(.light)
-                onTap()
-            } label: {
-                Label("Detail", systemImage: "info.circle")
-            }
-
-            Button {
-                Haptics.impact(.light)
-                onEdit()
-            } label: {
-                Label("Edit", systemImage: "pencil")
-            }
-
-            Button(role: .destructive) {
-                Haptics.impact(.heavy)
-                onDelete()
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
-        }
     }
 
     @ViewBuilder
@@ -367,22 +389,6 @@ struct EventRow: View {
             .overlay(
                 Capsule()
                     .stroke(tint.opacity(0.30), lineWidth: 1)
-            )
-    }
-    @ViewBuilder
-    private func miniPill(_ text: String, tint: Color) -> some View {
-        Text(text)
-            .font(.caption2.weight(.semibold))
-            .foregroundStyle(tint)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-            .background(
-                Capsule()
-                    .fill(tint.opacity(0.12))
-            )
-            .overlay(
-                Capsule()
-                    .stroke(tint.opacity(0.22), lineWidth: 1)
             )
     }
 }

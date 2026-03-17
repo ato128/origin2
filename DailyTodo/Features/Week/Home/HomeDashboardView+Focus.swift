@@ -292,6 +292,8 @@ extension HomeDashboardView {
             liveDotPulse = true
         }
     }
+    
+    
 
     
 

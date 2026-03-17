@@ -26,7 +26,12 @@ struct OnboardingView: View {
                         subtitle: "Plan your day, stay focused and build momentum with a beautiful productivity system.",
                         icon: "checklist",
                         accent: .blue,
-                        isFinalPage: false
+                        isFinalPage: false,
+                        features: [
+                            ("sparkles", "Beautiful planning"),
+                            ("timer", "Focus sessions"),
+                            ("person.3.fill", "Crew productivity")
+                        ]
                     )
                     .scaleEffect(currentPage == 0 ? 1.0 : 0.96)
                     .opacity(currentPage == 0 ? 1 : 0.72)
@@ -38,7 +43,12 @@ struct OnboardingView: View {
                         subtitle: "Start focus sessions, track progress and turn your tasks into real deep work.",
                         icon: "timer",
                         accent: .orange,
-                        isFinalPage: false
+                        isFinalPage: false,
+                        features: [
+                            ("timer", "Timed sessions"),
+                            ("chart.line.uptrend.xyaxis", "Track progress"),
+                            ("dumbbell.fill", "Workout focus")
+                        ]
                     )
                     .scaleEffect(currentPage == 1 ? 1.0 : 0.96)
                     .opacity(currentPage == 1 ? 1 : 0.72)
@@ -46,16 +56,38 @@ struct OnboardingView: View {
                     .tag(1)
 
                     OnboardingPageView(
-                        title: "Work Together",
-                        subtitle: "Create crews, share tasks and stay productive with your friends or team.",
-                        icon: "person.3.fill",
-                        accent: .purple,
-                        isFinalPage: true
+                        title: "How DailyTodo Works",
+                        subtitle: "Create tasks, plan them in your week, then use focus sessions to get them done.",
+                        icon: "arrow.triangle.branch",
+                        accent: .green,
+                        isFinalPage: false,
+                        features: [
+                            ("checkmark.circle", "Add tasks"),
+                            ("calendar", "Plan your week"),
+                            ("timer", "Complete with focus")
+                        ]
                     )
                     .scaleEffect(currentPage == 2 ? 1.0 : 0.96)
                     .opacity(currentPage == 2 ? 1 : 0.72)
                     .animation(.easeInOut(duration: 0.35), value: currentPage)
                     .tag(2)
+
+                    OnboardingPageView(
+                        title: "Work Together",
+                        subtitle: "Create crews, share tasks and stay productive with your friends or team.",
+                        icon: "person.3.fill",
+                        accent: .purple,
+                        isFinalPage: true,
+                        features: [
+                            ("person.2.wave.2.fill", "Shared focus"),
+                            ("bubble.left.and.bubble.right.fill", "Friend chat"),
+                            ("person.3.fill", "Crew productivity")
+                        ]
+                    )
+                    .scaleEffect(currentPage == 3 ? 1.0 : 0.96)
+                    .opacity(currentPage == 3 ? 1 : 0.72)
+                    .animation(.easeInOut(duration: 0.35), value: currentPage)
+                    .tag(3)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
 
@@ -64,10 +96,10 @@ struct OnboardingView: View {
         }
         .onChange(of: currentPage) { _, newValue in
             showFinishBurst = false
-            animateFinalButton = (newValue == 2)
+            animateFinalButton = (newValue == 3)
         }
         .onAppear {
-            animateFinalButton = (currentPage == 2)
+            animateFinalButton = (currentPage == 3)
         }
     }
 
@@ -75,7 +107,7 @@ struct OnboardingView: View {
         HStack {
             Spacer()
 
-            if currentPage < 2 {
+            if currentPage < 3 {
                 Button {
                     withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
                         didFinishOnboarding = true
@@ -104,9 +136,8 @@ struct OnboardingView: View {
 
     private var bottomControls: some View {
         VStack(spacing: 22) {
-
             HStack(spacing: 8) {
-                ForEach(0..<3, id: \.self) { index in
+                ForEach(0..<4, id: \.self) { index in
                     Capsule()
                         .fill(index == currentPage ? Color.white : Color.white.opacity(0.18))
                         .frame(width: index == currentPage ? 28 : 8, height: 8)
@@ -115,7 +146,7 @@ struct OnboardingView: View {
             }
 
             Button {
-                if currentPage < 2 {
+                if currentPage < 3 {
                     withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
                         currentPage += 1
                     }
@@ -130,9 +161,9 @@ struct OnboardingView: View {
                 }
             } label: {
                 HStack(spacing: 10) {
-                    Text(currentPage == 2 ? "Start Using DailyTodo" : "Continue")
+                    Text(currentPage == 3 ? "Start Using DailyTodo" : "Continue")
 
-                    Image(systemName: currentPage == 2
+                    Image(systemName: currentPage == 3
                           ? "checkmark.circle.fill"
                           : "arrow.right")
                 }
@@ -153,16 +184,16 @@ struct OnboardingView: View {
                             )
                         )
                 )
-                .scaleEffect(currentPage == 2 && animateFinalButton ? 1.05 : 1.0)
+                .scaleEffect(currentPage == 3 && animateFinalButton ? 1.05 : 1.0)
                 .shadow(
-                    color: currentPage == 2
+                    color: currentPage == 3
                     ? Color.purple.opacity(0.35)
                     : Color.blue.opacity(0.24),
                     radius: 18,
                     y: 6
                 )
                 .overlay {
-                    if currentPage == 2 && showFinishBurst {
+                    if currentPage == 3 && showFinishBurst {
                         SparkleBurstOverlay()
                             .clipShape(Capsule())
                     }
@@ -170,12 +201,11 @@ struct OnboardingView: View {
             }
             .buttonStyle(.plain)
             .animation(
-                currentPage == 2
+                currentPage == 3
                 ? .easeInOut(duration: 1.0).repeatForever(autoreverses: true)
                 : .easeOut(duration: 0.2),
                 value: animateFinalButton
             )
-
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 34)
@@ -203,7 +233,7 @@ struct OnboardingView: View {
                     Color.blue.opacity(0.26),
                     Color.clear
                 ],
-                center: currentPage == 2 ? .topTrailing : .trailing,
+                center: currentPage == 3 ? .topTrailing : .trailing,
                 startRadius: 20,
                 endRadius: 380
             )
@@ -240,7 +270,7 @@ private struct SparkleBurstOverlay: View {
                     .opacity(animate ? 0 : 1)
                     .animation(
                         .easeOut(duration: 0.55)
-                        .delay(Double(index) * 0.015),
+                            .delay(Double(index) * 0.015),
                         value: animate
                     )
             }

@@ -13,6 +13,7 @@ struct OnboardingPageView: View {
     let icon: String
     let accent: Color
     let isFinalPage: Bool
+    let features: [(String, String)]
 
     @State private var animateIcon = false
     @State private var animateCard = false
@@ -71,9 +72,9 @@ struct OnboardingPageView: View {
             .animation(.spring(response: 0.55, dampingFraction: 0.86), value: animateText)
 
             VStack(spacing: 12) {
-                featurePill(icon: "sparkles", text: "Beautiful planning")
-                featurePill(icon: "timer", text: "Focus sessions")
-                featurePill(icon: "person.3.fill", text: "Crew productivity")
+                ForEach(Array(features.enumerated()), id: \.offset) { _, item in
+                    featurePill(icon: item.0, text: item.1)
+                }
             }
             .opacity(animateCard ? 1 : 0)
             .offset(y: animateCard ? 0 : 18)
