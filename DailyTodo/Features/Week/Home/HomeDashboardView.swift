@@ -12,6 +12,11 @@ import Combine
 struct HomeDashboardView: View {
     @AppStorage("smartEngineEnabled") var smartEngineEnabled: Bool = true
     @AppStorage("appTheme") var appTheme = AppTheme.gradient.rawValue
+    @AppStorage("focus_workout_mode") private var focusWorkoutMode: Bool = false
+    @AppStorage("focus_workout_exercise_name") private var focusWorkoutExerciseName: String = ""
+    @AppStorage("focus_workout_current_set") private var focusWorkoutCurrentSet: Int = 0
+    @AppStorage("focus_workout_total_sets") private var focusWorkoutTotalSets: Int = 0
+    @AppStorage("focus_workout_is_resting") private var focusWorkoutIsResting: Bool = false
 
     let palette = ThemePalette()
 
@@ -28,6 +33,7 @@ struct HomeDashboardView: View {
     var allFriendMessages: [FriendMessage]
 
     @Query var focusSessions: [CrewFocusSession]
+    @Query private var allWorkoutExercises: [WorkoutExerciseItem]
 
     let onAddTask: () -> Void
     let onOpenWeek: () -> Void
@@ -133,6 +139,22 @@ struct HomeDashboardView: View {
             let bDiff = abs(bDate.timeIntervalSince(now))
             return aDiff < bDiff
         }.first
+    }
+    
+    func workoutExercisesForFocusTask() -> [WorkoutExerciseItem]? {
+        guard let focusTask else { return nil }
+        guard focusTask.taskType == "workout" else { return nil }
+
+        let items = allWorkoutExercises
+            .filter { $0.taskUUID == focusTask.taskUUID }
+            .sorted { lhs, rhs in
+                if lhs.orderIndex != rhs.orderIndex {
+                    return lhs.orderIndex < rhs.orderIndex
+                }
+                return lhs.createdAt < rhs.createdAt
+            }
+
+        return items.isEmpty ? nil : items
     }
 
     var focusTaskStatusText: String {
@@ -363,7 +385,7 @@ struct HomeDashboardView: View {
                     activeFocusStartedAt = nil
                     pulseActiveFocus = false
                 },
-                workoutExercises: nil
+                workoutExercises: workoutExercisesForFocusTask()
             )
         }
     

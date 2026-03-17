@@ -17,6 +17,8 @@ struct FocusSessionView: View {
     let onTick: (_ remainingSeconds: Int) -> Void
     let onFinishFocus: (_ title: String, _ startedAt: Date, _ endedAt: Date, _ totalSeconds: Int, _ completedSeconds: Int, _ isCompleted: Bool) -> Void
     let workoutExercises: [WorkoutExerciseItem]?
+    
+    
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
@@ -58,6 +60,11 @@ struct FocusSessionView: View {
         static let focusMode = "focus_mode"
         static let focusFriendName = "focus_friend_name"
         static let focusFriendID = "focus_friend_id"
+        static let workoutMode = "focus_workout_mode"
+        static let workoutExerciseName = "focus_workout_exercise_name"
+        static let workoutCurrentSet = "focus_workout_current_set"
+        static let workoutTotalSets = "focus_workout_total_sets"
+        static let workoutIsResting = "focus_workout_is_resting"
     }
 
     private var isWorkoutMode: Bool {
@@ -296,10 +303,13 @@ struct FocusSessionView: View {
                 .padding(24)
                 .navigationBarTitleDisplayMode(.inline)
                 .onAppear {
-                    if !isWorkoutMode {
-                        syncTimerFromSavedState()
-                    }
+                    syncTimerFromSavedState()
                     breathing = true
+
+                    // 🔥 workout ise home card için state pushla
+                    if isWorkoutMode {
+                        saveWorkoutLiveState()
+                    }
                 }
                 .onChange(of: scenePhase) { _, newPhase in
                     guard newPhase == .active else { return }
@@ -497,6 +507,32 @@ private extension FocusSessionView {
         if isEndingSoon { return .orange }
         return .blue
     }
+    
+    private func saveWorkoutLiveState() {
+        let defaults = UserDefaults.standard
+
+        defaults.set(isWorkoutMode, forKey: Keys.workoutMode)
+        defaults.set(isRestPhase, forKey: Keys.workoutIsResting)
+
+        if let exercise = currentExercise {
+            defaults.set(exercise.name, forKey: Keys.workoutExerciseName)
+            defaults.set(currentSet, forKey: Keys.workoutCurrentSet)
+            defaults.set(exercise.sets, forKey: Keys.workoutTotalSets)
+        } else {
+            defaults.removeObject(forKey: Keys.workoutExerciseName)
+            defaults.removeObject(forKey: Keys.workoutCurrentSet)
+            defaults.removeObject(forKey: Keys.workoutTotalSets)
+        }
+    }
+
+    private func clearWorkoutLiveState() {
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: Keys.workoutMode)
+        defaults.removeObject(forKey: Keys.workoutExerciseName)
+        defaults.removeObject(forKey: Keys.workoutCurrentSet)
+        defaults.removeObject(forKey: Keys.workoutTotalSets)
+        defaults.removeObject(forKey: Keys.workoutIsResting)
+    }
 
     func handleTimerTick() {
         guard isRunning else { return }
@@ -512,6 +548,7 @@ private extension FocusSessionView {
                 isRestPhase = false
                 restOverlayVisible = false
                 restOverlaySeconds = 0
+                saveWorkoutLiveState()
 
                 let gen = UINotificationFeedbackGenerator()
                 gen.prepare()
@@ -604,6 +641,7 @@ private extension FocusSessionView {
 
         if currentSet < exercise.sets {
             currentSet += 1
+            saveWorkoutLiveState()
 
             if exercise.restSeconds > 0 {
                 startRestTimer(seconds: exercise.restSeconds)
@@ -612,6 +650,7 @@ private extension FocusSessionView {
             if currentExerciseIndex < workoutExercises.count - 1 {
                 currentExerciseIndex += 1
                 currentSet = 1
+                saveWorkoutLiveState()
 
                 if exercise.restSeconds > 0 {
                     startRestTimer(seconds: exercise.restSeconds)
@@ -636,6 +675,8 @@ private extension FocusSessionView {
         let gen = UIImpactFeedbackGenerator(style: .rigid)
         gen.prepare()
         gen.impactOccurred()
+
+        saveWorkoutLiveState()
     }
 
     func finishWorkout() {
@@ -680,6 +721,7 @@ private extension FocusSessionView {
             name: .workoutCompleted,
             object: taskID
         )
+        clearWorkoutLiveState()
     }
 
     func applyPreset(_ minutes: Int) {
@@ -711,6 +753,7 @@ private extension FocusSessionView {
         clearSavedTimer()
         clearSavedDurationState()
         clearSharedFocusState()
+        clearWorkoutLiveState()
         onTick(remainingSeconds)
     }
 
@@ -745,7 +788,9 @@ private extension FocusSessionView {
             totalSeconds,
             completedSeconds,
             isCompleted
+            
         )
+        clearWorkoutLiveState()
 
         dismiss()
     }
