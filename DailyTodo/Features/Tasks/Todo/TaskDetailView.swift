@@ -24,6 +24,7 @@ struct TaskDetailView: View {
     
     @State private var showWorkoutTemplateSheet = false
     @State private var showWeekAddedToast = false
+    @State private var showFinishWorkoutToast = false
     
     let workoutDays = [
         "Leg Day",
@@ -62,6 +63,31 @@ struct TaskDetailView: View {
                 .padding(.bottom, 30)
             }
             .scrollIndicators(.hidden)
+            
+            if showFinishWorkoutToast {
+                VStack {
+                    Spacer()
+
+                    HStack(spacing: 10) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.white)
+
+                        Text("Workout finished")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(
+                        Capsule()
+                            .fill(Color.green)
+                    )
+                    .shadow(color: Color.green.opacity(0.22), radius: 10, y: 4)
+                    .padding(.bottom, 28)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                .zIndex(5)
+            }
             
             if showWeekAddedToast {
                 VStack {
@@ -737,27 +763,64 @@ private extension TaskDetailView {
                 task.isDone = willBeDone
                 task.completedAt = willBeDone ? Date() : nil
 
-                if willBeDone {
+                if willBeDone && task.taskType == "workout" {
                     saveWorkoutHistoryIfNeeded()
                 }
 
                 markRelatedWeekEventsCompleted()
-                dismiss()
+
+                if willBeDone && task.taskType == "workout" {
+                    let generator = UINotificationFeedbackGenerator()
+                    generator.prepare()
+                    generator.notificationOccurred(.success)
+
+                    withAnimation(.spring(response: 0.30, dampingFraction: 0.86)) {
+                        showFinishWorkoutToast = true
+                    }
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+                        withAnimation(.easeOut(duration: 0.22)) {
+                            showFinishWorkoutToast = false
+                        }
+                    }
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        dismiss()
+                    }
+                } else {
+                    dismiss()
+                }
             } label: {
-                Text(task.isDone ? "Mark as Undone" : "Mark as Done")
+                Text(primaryActionTitle)
                     .font(.headline)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                     .background(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(task.isDone ? Color.orange : Color.green)
+                            .fill(primaryActionColor)
                     )
             }
             .buttonStyle(.plain)
         }
         .padding(18)
         .background(cardBackground)
+    }
+    
+    var primaryActionTitle: String {
+        if task.taskType == "workout" {
+            return task.isDone ? "Reopen Workout" : "Finish Workout"
+        } else {
+            return task.isDone ? "Mark as Undone" : "Mark as Done"
+        }
+    }
+
+    var primaryActionColor: Color {
+        if task.taskType == "workout" {
+            return task.isDone ? .orange : .green
+        } else {
+            return task.isDone ? .orange : .green
+        }
     }
 
     var cardBackground: some View {

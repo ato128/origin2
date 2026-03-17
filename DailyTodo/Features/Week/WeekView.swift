@@ -313,6 +313,11 @@ struct WeekView: View {
                             await LiveActivityManager.shared.autoSyncIfNeeded(events: allEvents)
                         }
                     }
+                    .onReceive(NotificationCenter.default.publisher(for: .workoutCompleted)) { notification in
+                        if let taskID = notification.object as? PersistentIdentifier {
+                            markWorkoutTaskDone(taskID: taskID)
+                        }
+                    }
                     .onChange(of: weekMode) { _, newValue in
                         if newValue == .crew {
                             showPersonalEntrance = false
@@ -512,6 +517,12 @@ extension WeekView {
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
+    }
+    
+    private func markWorkoutTaskDone(taskID: PersistentIdentifier) {
+        guard let task = tasks.first(where: { $0.id == taskID }) else { return }
+        task.isDone = true
+        task.completedAt = Date()
     }
     
     func premiumBorderColor(_ priority: String, active: Bool, soon: Bool) -> Color {

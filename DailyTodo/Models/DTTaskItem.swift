@@ -26,6 +26,8 @@ final class DTTaskItem {
 
     var scheduledWeekDate: Date?
     var scheduledWeekDurationMinutes: Int?
+    
+    var workoutExercises: [WorkoutExerciseItem]? = nil
 
     init(
         taskUUID: String = UUID().uuidString,

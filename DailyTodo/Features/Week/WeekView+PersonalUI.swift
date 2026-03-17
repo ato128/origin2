@@ -156,7 +156,7 @@ extension WeekView {
         return eventsForDay.filter { ev in
             let start = ev.startMinute
             let end = ev.startMinute + ev.durationMinute
-            return isTodaySelected && now >= start && now < end
+            return !ev.isCompleted && isTodaySelected && now >= start && now < end
         }
     }
 
@@ -166,7 +166,7 @@ extension WeekView {
         return eventsForDay.filter { ev in
             let start = ev.startMinute
             let diff = start - now
-            return isTodaySelected && diff > 0 && diff <= 90
+            return !ev.isCompleted && isTodaySelected && diff > 0 && diff <= 90
         }
     }
 
@@ -175,7 +175,7 @@ extension WeekView {
 
         return eventsForDay.filter { ev in
             let start = ev.startMinute
-            return !isTodaySelected || start - now > 90
+            return !ev.isCompleted && (!isTodaySelected || start - now > 90)
         }
     }
 
@@ -184,6 +184,11 @@ extension WeekView {
 
         return eventsForDay.filter { ev in
             let end = ev.startMinute + ev.durationMinute
+
+            if ev.isCompleted {
+                return true
+            }
+
             return isTodaySelected && now >= end
         }
     }

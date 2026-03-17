@@ -173,10 +173,12 @@ struct InsightsView: View {
 
                 NavigationLink("", isActive: $goFocus) {
                     FocusSessionView(
+                        taskID: nil,
                         taskTitle: "Quick Focus",
                         onStartFocus: { _, _ in },
                         onTick: { _ in },
-                        onFinishFocus: { _, _, _, _, _, _ in }
+                        onFinishFocus: { _, _, _, _, _, _ in },
+                        workoutExercises: nil
                     )
                 }
             }

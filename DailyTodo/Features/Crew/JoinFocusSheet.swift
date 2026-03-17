@@ -109,14 +109,19 @@ struct JoinFocusSheet: View {
             .background(Color(.systemGroupedBackground))
             .sheet(isPresented: $showFocusSession) {
                 FocusSessionView(
+                    taskID: nil,
+
                     taskTitle: "Focus with \(friend.name)",
-                    onStartFocus: { _, _ in
-                    },
-                    onTick: { _ in
-                    },
+
+                    onStartFocus: { _, _ in },
+
+                    onTick: { _ in },
+
                     onFinishFocus: { _, _, _, _, _, _ in
                         dismiss()
-                    }
+                    },
+
+                    workoutExercises: nil
                 )
             }
         }

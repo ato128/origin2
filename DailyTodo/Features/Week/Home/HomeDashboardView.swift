@@ -273,17 +273,17 @@ struct HomeDashboardView: View {
                     .offset(y: showHeaderCard ? 0 : 18)
                     .opacity(showHeaderCard ? 1 : 0)
                     .scaleEffect(showHeaderCard ? 1 : 0.985)
-
+                
                 homeMiniWeekCalendar
                     .offset(y: showWeekCard ? 0 : 18)
                     .opacity(showWeekCard ? 1 : 0)
                     .scaleEffect(showWeekCard ? 1 : 0.985)
-
+                
                 todayProgressCard
                     .offset(y: showProgressCard ? 0 : 18)
                     .opacity(showProgressCard ? 1 : 0)
                     .scaleEffect(showProgressCard ? 1 : 0.985)
-
+                
                 if let session = latestRelevantCrewFocusSession {
                     crewSharedFocusCard(session: session)
                         .offset(y: showFocusCard ? 0 : 18)
@@ -312,21 +312,21 @@ struct HomeDashboardView: View {
                             removal: .opacity
                         ))
                 }
-
+                
                 nextClassCard
                     .offset(y: showNextClassCard ? 0 : 18)
                     .opacity(showNextClassCard ? 1 : 0)
                     .scaleEffect(showNextClassCard ? 1 : 0.985)
-
+                
                 todayTasksCard
                     .offset(y: showTodayTasksCard ? 0 : 18)
                     .opacity(showTodayTasksCard ? 1 : 0)
                     .scaleEffect(showTodayTasksCard ? 1 : 0.985)
-
+                
                 if smartEngineEnabled, let firstSuggestion = smartSuggestions.first {
                     SmartTaskSuggestionCard(suggestion: firstSuggestion)
                 }
-
+                
                 quickActionsCard
                     .offset(y: showQuickActionsCard ? 0 : 18)
                     .opacity(showQuickActionsCard ? 1 : 0)
@@ -342,6 +342,7 @@ struct HomeDashboardView: View {
         }
         .sheet(isPresented: $showingFocusSession) {
             FocusSessionView(
+                taskID: focusTask?.id,
                 taskTitle: focusTask?.title,
                 onStartFocus: { title, totalSeconds in
                     activeFocusTaskTitle = title
@@ -361,9 +362,11 @@ struct HomeDashboardView: View {
                     activeFocusTotalSeconds = 25 * 60
                     activeFocusStartedAt = nil
                     pulseActiveFocus = false
-                }
+                },
+                workoutExercises: nil
             )
         }
+    
         .sheet(isPresented: $showRecentFriendChat) {
             if let recentFriend = recentChatFriend {
                 NavigationStack {

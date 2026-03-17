@@ -143,10 +143,17 @@ struct FriendDetailView: View {
         }
         .sheet(isPresented: $showSharedFocusSheet) {
             FocusSessionView(
+                taskID: nil, // 👈 EKLE
+
                 taskTitle: "Focus with \(friend.name)",
+
                 onStartFocus: { _, _ in },
+
                 onTick: { _ in },
-                onFinishFocus: { _, _, _, _, _, _ in }
+
+                onFinishFocus: { _, _, _, _, _, _ in },
+
+                workoutExercises: nil
             )
         }
     }

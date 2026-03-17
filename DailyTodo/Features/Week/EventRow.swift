@@ -144,8 +144,13 @@ struct EventRow: View {
                     } else if isSoon {
                         statusPill("5 dk", tint: .orange)
                     } else if isDone {
-                        statusPill("Bitti", tint: palette.secondaryText)
-                            .opacity(0.9)
+                        if isWorkout {
+                            statusPill("Finished Workout", tint: .green)
+                                .opacity(0.95)
+                        } else {
+                            statusPill("Bitti", tint: palette.secondaryText)
+                                .opacity(0.9)
+                        }
                     }
 
                     Spacer(minLength: 6)
