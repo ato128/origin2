@@ -33,6 +33,9 @@ struct WeekView: View {
     @Query(sort: \CrewTaskComment.createdAt, order: .reverse)
     var allCrewComments: [CrewTaskComment]
     
+    @Query var tasks: [DTTaskItem]
+    @Query  var workoutExercises: [WorkoutExerciseItem]
+    
     var crewMap: [UUID: Crew] {
         Dictionary(uniqueKeysWithValues: allCrews.map { ($0.id, $0) })
     }
@@ -145,6 +148,8 @@ struct WeekView: View {
     @State private var showPlanAheadSheet = false
     @State private var planAheadDate: Date = Date()
     @State private var planAheadMode: PlanAheadMode = .personal
+    @State  var selectedEventForDetail: EventItem?
+    
     
     var body: some View {
         ZStack {
@@ -278,6 +283,11 @@ struct WeekView: View {
                                 EditCrewTaskView(crew: crew, task: task)
                             }
                             .presentationDetents([.medium, .large])
+                        }
+                    }
+                    .sheet(item: $selectedEventForDetail) { event in
+                        NavigationStack {
+                            WeekEventDetailView(event: event)
                         }
                     }
                     .overlay(toastView, alignment: .bottom)

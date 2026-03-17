@@ -30,8 +30,12 @@ final class EventItem {
 
     /// Renk (HEX) ör: "4F46E5" veya "#4F46E5"
     var colorHex: String
+    
+    var sourceTaskUUID: String?
 
     var createdAt: Date
+    
+    var isCompleted: Bool
 
     init(
         title: String,
@@ -42,7 +46,9 @@ final class EventItem {
         location: String? = nil,
         notes: String? = nil,
         colorHex: String = "#3B82F6",
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        sourceTaskUUID: String? = nil,
+        isCompleted: Bool = false
     ) {
         self.id = UUID()
         self.title = title
@@ -54,5 +60,7 @@ final class EventItem {
         self.notes = notes
         self.colorHex = colorHex
         self.createdAt = createdAt
+        self.sourceTaskUUID = sourceTaskUUID
+        self.isCompleted = isCompleted
     }
 }

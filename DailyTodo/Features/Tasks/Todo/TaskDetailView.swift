@@ -13,6 +13,10 @@ struct TaskDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var allWorkoutExercises: [WorkoutExerciseItem]
     
+    @Query private var allExerciseHistory: [WorkoutExerciseHistoryItem]
+    
+    @Query private var allEvents: [EventItem]
+    
     @Environment(\.dismiss) private var dismiss
     
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
@@ -205,6 +209,34 @@ private extension TaskDetailView {
                 return lhs.createdAt < rhs.createdAt
             }
     }
+    
+    func saveWorkoutHistoryIfNeeded() {
+        guard task.taskType == "workout" else { return }
+
+        let exercises = allWorkoutExercises
+            .filter { $0.taskUUID == task.taskUUID }
+            .sorted { lhs, rhs in
+                if lhs.orderIndex != rhs.orderIndex {
+                    return lhs.orderIndex < rhs.orderIndex
+                }
+                return lhs.createdAt < rhs.createdAt
+            }
+
+        guard !exercises.isEmpty else { return }
+
+        for exercise in exercises {
+            let item = WorkoutExerciseHistoryItem(
+                taskUUID: task.taskUUID,
+                exerciseName: exercise.name,
+                sets: exercise.sets,
+                reps: exercise.reps,
+                weight: exercise.weight,
+                durationSeconds: exercise.durationSeconds,
+                restSeconds: exercise.restSeconds
+            )
+            modelContext.insert(item)
+        }
+    }
 
     var recommendedExercises: [String] {
         WorkoutExerciseLibrary.recommended(for: selectedWorkoutDay)
@@ -278,6 +310,23 @@ private extension TaskDetailView {
                 }
                 .buttonStyle(.plain)
             }
+            if latestHistory(for: exercise) != nil || bestHistory(for: exercise) != nil {
+                VStack(alignment: .leading, spacing: 6) {
+                    if let latest = latestHistory(for: exercise) {
+                        historyMiniLine(
+                            title: "Last",
+                            value: historyText(for: latest)
+                        )
+                    }
+
+                    if let best = bestHistory(for: exercise) {
+                        historyMiniLine(
+                            title: "Best",
+                            value: historyText(for: best)
+                        )
+                    }
+                }
+            }
 
             HStack(spacing: 10) {
                 stepCard(title: "Sets", value: exercise.sets) {
@@ -291,6 +340,36 @@ private extension TaskDetailView {
                 } increment: {
                     exercise.reps += 1
                 }
+            }
+            
+            HStack(spacing: 10) {
+                stepCard(title: "KG", value: Int(exercise.weight)) {
+                    if exercise.weight >= 2.5 { exercise.weight -= 2.5 }
+                } increment: {
+                    exercise.weight += 2.5
+                }
+
+                Toggle(
+                    isOn: Binding(
+                        get: { exercise.isSuperset },
+                        set: { exercise.isSuperset = $0 }
+                    )
+                ) {
+                    Text("Superset")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(palette.secondaryText)
+                }
+                .toggleStyle(.switch)
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(palette.cardFill)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(palette.cardStroke, lineWidth: 1)
+                        )
+                )
             }
 
             HStack(spacing: 10) {
@@ -306,6 +385,23 @@ private extension TaskDetailView {
                     exercise.restSeconds += 5
                 }
             }
+            TextField(
+                "Notes (optional)",
+                text: Binding(
+                    get: { exercise.notes },
+                    set: { exercise.notes = $0 }
+                )
+            )
+            .font(.caption)
+            .padding(10)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(palette.cardFill)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(palette.cardStroke, lineWidth: 1)
+                    )
+            )
         }
         .padding(14)
         .background(
@@ -315,6 +411,43 @@ private extension TaskDetailView {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .stroke(palette.cardStroke, lineWidth: 1)
                 )
+        )
+    }
+    
+    func historyText(for item: WorkoutExerciseHistoryItem) -> String {
+        if item.weight > 0 {
+            return "\(Int(item.weight)) kg × \(item.reps)"
+        } else {
+            return "\(item.sets) set × \(item.reps) rep"
+        }
+    }
+    
+    func markRelatedWeekEventsCompleted() {
+        let relatedEvents = allEvents.filter { $0.sourceTaskUUID == task.taskUUID }
+
+        for event in relatedEvents {
+            event.isCompleted = task.isDone
+        }
+    }
+
+    func historyMiniLine(title: String, value: String) -> some View {
+        HStack(spacing: 8) {
+            Text(title)
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.green)
+
+            Text(value)
+                .font(.caption2)
+                .foregroundStyle(palette.secondaryText)
+                .lineLimit(1)
+
+            Spacer()
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(
+            Capsule()
+                .fill(Color.green.opacity(0.10))
         )
     }
 
@@ -388,10 +521,33 @@ private extension TaskDetailView {
             scheduledDate: selectedDate,
             location: nil,
             notes: task.notes.isEmpty ? nil : task.notes,
-            colorHex: task.taskType == "workout" ? "#22C55E" : "#3B82F6"
+            colorHex: task.taskType == "workout" ? "#22C55E" : "#3B82F6",
+            sourceTaskUUID: task.taskUUID
+            
         )
+        
 
         modelContext.insert(event)
+    }
+    
+    func historyItems(for exercise: WorkoutExerciseItem) -> [WorkoutExerciseHistoryItem] {
+        allExerciseHistory
+            .filter { $0.exerciseName == exercise.name }
+            .sorted { $0.recordedAt > $1.recordedAt }
+    }
+
+    func latestHistory(for exercise: WorkoutExerciseItem) -> WorkoutExerciseHistoryItem? {
+        historyItems(for: exercise).first
+    }
+
+    func bestHistory(for exercise: WorkoutExerciseItem) -> WorkoutExerciseHistoryItem? {
+        historyItems(for: exercise)
+            .max { lhs, rhs in
+                if lhs.weight == rhs.weight {
+                    return lhs.reps < rhs.reps
+                }
+                return lhs.weight < rhs.weight
+            }
     }
 
     var workoutCard: some View {
@@ -576,8 +732,16 @@ private extension TaskDetailView {
     var actionCard: some View {
         VStack(spacing: 12) {
             Button {
-                task.isDone.toggle()
-                task.completedAt = task.isDone ? Date() : nil
+                let willBeDone = !task.isDone
+
+                task.isDone = willBeDone
+                task.completedAt = willBeDone ? Date() : nil
+
+                if willBeDone {
+                    saveWorkoutHistoryIfNeeded()
+                }
+
+                markRelatedWeekEventsCompleted()
                 dismiss()
             } label: {
                 Text(task.isDone ? "Mark as Undone" : "Mark as Done")

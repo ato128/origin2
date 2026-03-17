@@ -18,16 +18,22 @@ final class WorkoutExerciseItem {
     var restSeconds: Int
     var orderIndex: Int
     var createdAt: Date
+    var weight: Double
+    var notes: String
+    var isSuperset: Bool
 
     init(
         taskUUID: String,
         name: String,
-        sets: Int = 3,
-        reps: Int = 10,
-        durationSeconds: Int = 0,
-        restSeconds: Int = 60,
-        orderIndex: Int = 0,
-        createdAt: Date = Date()
+        sets: Int,
+        reps: Int,
+        durationSeconds: Int,
+        restSeconds: Int,
+        orderIndex: Int,
+        createdAt: Date = Date(),
+        weight: Double = 0,
+        notes: String = "",
+        isSuperset: Bool = false
     ) {
         self.taskUUID = taskUUID
         self.name = name
@@ -37,5 +43,8 @@ final class WorkoutExerciseItem {
         self.restSeconds = restSeconds
         self.orderIndex = orderIndex
         self.createdAt = createdAt
+        self.weight = weight
+        self.notes = notes
+        self.isSuperset = isSuperset
     }
 }

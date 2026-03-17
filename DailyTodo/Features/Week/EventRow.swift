@@ -18,6 +18,10 @@ struct EventRow: View {
     let hasConflict: Bool
     let nowMinute: Int
     let isTodaySelected: Bool
+    
+    let isWorkout: Bool
+    let workoutDay: String?
+    let exerciseCount: Int
 
     let onTap: () -> Void
     let onEdit: () -> Void
@@ -46,6 +50,7 @@ struct EventRow: View {
     }
 
     private var isDone: Bool {
+        if event.isCompleted { return true }
         guard isTodaySelected else { return false }
         return nowMinute >= end
     }
@@ -175,6 +180,22 @@ struct EventRow: View {
                                 )
                         )
                         .opacity(secondaryTextOpacity)
+                }
+                if isWorkout {
+                    HStack(spacing: 8) {
+                        miniPill("Workout", tint: .green)
+
+                        if let workoutDay,
+                           !workoutDay.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            miniPill(workoutDay, tint: hexColor(event.colorHex))
+                        }
+
+                        if exerciseCount > 0 {
+                            miniPill("\(exerciseCount) moves", tint: .orange)
+                        }
+
+                        Spacer()
+                    }
                 }
 
                 HStack(spacing: 8) {
@@ -341,6 +362,22 @@ struct EventRow: View {
             .overlay(
                 Capsule()
                     .stroke(tint.opacity(0.30), lineWidth: 1)
+            )
+    }
+    @ViewBuilder
+    private func miniPill(_ text: String, tint: Color) -> some View {
+        Text(text)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(
+                Capsule()
+                    .fill(tint.opacity(0.12))
+            )
+            .overlay(
+                Capsule()
+                    .stroke(tint.opacity(0.22), lineWidth: 1)
             )
     }
 }

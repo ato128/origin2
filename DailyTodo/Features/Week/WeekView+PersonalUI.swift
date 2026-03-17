@@ -328,7 +328,10 @@ extension WeekView {
                         hasConflict: hasConflict(ev),
                         nowMinute: now,
                         isTodaySelected: isTodaySelected,
-                        onTap: { editingEvent = ev },
+                        isWorkout: isWorkoutEvent(ev),
+                        workoutDay: workoutDayText(for: ev),
+                        exerciseCount: workoutExerciseCount(for: ev),
+                        onTap: { selectedEventForDetail = ev },
                         onEdit: { editingEvent = ev },
                         onDelete: { delete(ev) }
                     )
@@ -345,6 +348,24 @@ extension WeekView {
                 }
             }
         }
+    }
+    
+    func sourceTask(for event: EventItem) -> DTTaskItem? {
+        guard let sourceTaskUUID = event.sourceTaskUUID else { return nil }
+        return tasks.first(where: { $0.taskUUID == sourceTaskUUID })
+    }
+
+    func workoutExerciseCount(for event: EventItem) -> Int {
+        guard let sourceTaskUUID = event.sourceTaskUUID else { return 0 }
+        return workoutExercises.filter { $0.taskUUID == sourceTaskUUID }.count
+    }
+
+    func isWorkoutEvent(_ event: EventItem) -> Bool {
+        sourceTask(for: event)?.taskType == "workout"
+    }
+
+    func workoutDayText(for event: EventItem) -> String? {
+        sourceTask(for: event)?.workoutDay
     }
     
     func personalTimelineSectionHeader(_ title: String, systemImage: String) -> some View {

@@ -148,6 +148,8 @@
 		6DD2828A2F6979E500B1281A /* TasksScheduleSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD282892F6979E500B1281A /* TasksScheduleSheet.swift */; };
 		6DD2828D2F697DF100B1281A /* WorkoutExerciseItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD2828C2F697DF100B1281A /* WorkoutExerciseItem.swift */; };
 		6DD2828F2F697E1900B1281A /* WorkoutExerciseLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD2828E2F697E1900B1281A /* WorkoutExerciseLibrary.swift */; };
+		6DD282912F698F6F00B1281A /* WeekEventDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD282902F698F6F00B1281A /* WeekEventDetailView.swift */; };
+		6DD282932F699C2D00B1281A /* WorkoutExerciseHistoryItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD282922F699C2D00B1281A /* WorkoutExerciseHistoryItem.swift */; };
 		6DDF5B5B2F5F9DFF003057C9 /* CrewTaskComment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DDF5B5A2F5F9DFE003057C9 /* CrewTaskComment.swift */; };
 		6DDF5B5D2F5F9E21003057C9 /* CrewTaskPoll.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DDF5B5C2F5F9E21003057C9 /* CrewTaskPoll.swift */; };
 		6DDF5B5F2F5FA38A003057C9 /* CreateCrewTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DDF5B5E2F5FA38A003057C9 /* CreateCrewTaskView.swift */; };
@@ -327,6 +329,8 @@
 		6DD282892F6979E500B1281A /* TasksScheduleSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TasksScheduleSheet.swift; sourceTree = "<group>"; };
 		6DD2828C2F697DF100B1281A /* WorkoutExerciseItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutExerciseItem.swift; sourceTree = "<group>"; };
 		6DD2828E2F697E1900B1281A /* WorkoutExerciseLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutExerciseLibrary.swift; sourceTree = "<group>"; };
+		6DD282902F698F6F00B1281A /* WeekEventDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekEventDetailView.swift; sourceTree = "<group>"; };
+		6DD282922F699C2D00B1281A /* WorkoutExerciseHistoryItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutExerciseHistoryItem.swift; sourceTree = "<group>"; };
 		6DDF5B5A2F5F9DFE003057C9 /* CrewTaskComment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewTaskComment.swift; sourceTree = "<group>"; };
 		6DDF5B5C2F5F9E21003057C9 /* CrewTaskPoll.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewTaskPoll.swift; sourceTree = "<group>"; };
 		6DDF5B5E2F5FA38A003057C9 /* CreateCrewTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateCrewTaskView.swift; sourceTree = "<group>"; };
@@ -608,6 +612,7 @@
 				6D215DB22F56342E00F7B9D7 /* EditEventView.swift */,
 				6DC0CA9E2F5F7D0000A875ED /* ImportScheduleView.swift */,
 				6D2004E02F6490C60022C810 /* WeekAmbientBackground.swift */,
+				6DD282902F698F6F00B1281A /* WeekEventDetailView.swift */,
 			);
 			path = Week;
 			sourceTree = "<group>";
@@ -660,6 +665,7 @@
 			children = (
 				6DD2828C2F697DF100B1281A /* WorkoutExerciseItem.swift */,
 				6DD2828E2F697E1900B1281A /* WorkoutExerciseLibrary.swift */,
+				6DD282922F699C2D00B1281A /* WorkoutExerciseHistoryItem.swift */,
 			);
 			path = Workout;
 			sourceTree = "<group>";
@@ -890,6 +896,7 @@
 				6D2004C72F6452230022C810 /* ProgressRing.swift in Sources */,
 				6D2004E72F64C8BD0022C810 /* CrewDetailView+TasksSection.swift in Sources */,
 				6DD2828D2F697DF100B1281A /* WorkoutExerciseItem.swift in Sources */,
+				6DD282932F699C2D00B1281A /* WorkoutExerciseHistoryItem.swift in Sources */,
 				6D2004C92F645D170022C810 /* CountUpText.swift in Sources */,
 				6D2004522F61C6FC0022C810 /* EventRow.swift in Sources */,
 				6D215DB52F56427E00F7B9D7 /* ShareSheet.swift in Sources */,
@@ -963,6 +970,7 @@
 				6DC0CAB72F5F7D0000A875ED /* DTTaskItem.swift in Sources */,
 				6DC0CAB82F5F7D0000A875ED /* InsightsScheduleChart.swift in Sources */,
 				6D2004DD2F646DEC0022C810 /* ScrollOffsetReader.swift in Sources */,
+				6DD282912F698F6F00B1281A /* WeekEventDetailView.swift in Sources */,
 				6DC0CAB92F5F7D0000A875ED /* CrewView.swift in Sources */,
 				6D5FE4192F678DBF007C124D /* FriendChatView+Messages.swift in Sources */,
 				6D2004CF2F6461D70022C810 /* InsightsCardContainer.swift in Sources */,
