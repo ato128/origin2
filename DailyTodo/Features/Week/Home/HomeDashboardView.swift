@@ -59,6 +59,7 @@ struct HomeDashboardView: View {
     @State var showNextClassCard = false
     @State var showTodayTasksCard = false
     @State var showQuickActionsCard = false
+    @State var showTasksShortcut = false
 
     let focusRefreshTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     let crewFocusTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -69,6 +70,12 @@ struct HomeDashboardView: View {
             tasks: allTasks,
             events: allEvents
         )
+    }
+    
+    var overdueTaskCount: Int {
+        allTasks.filter { task in
+            !task.isDone && store.isOverdue(task)
+        }.count
     }
 
     var allTasks: [DTTaskItem] {
@@ -367,6 +374,12 @@ struct HomeDashboardView: View {
         .sheet(isPresented: $showFriendsShortcut) {
             NavigationStack {
                 CrewView(initialTab: .friends)
+            }
+        }
+        .sheet(isPresented: $showTasksShortcut) {
+            NavigationStack {
+                TasksView()
+                    .environmentObject(store)
             }
         }
         .onAppear {

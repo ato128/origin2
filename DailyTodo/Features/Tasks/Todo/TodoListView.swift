@@ -50,6 +50,7 @@ struct TodoListView: View {
     @State var homeSection: HomeSection = .personal
     @State var showMessages = false
     @State var now = Date()
+    @State var showTasksShortcut = false
 
     let chipTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
@@ -162,6 +163,12 @@ struct TodoListView: View {
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) {
                     showLeaderboardPodium = true
                 }
+            }
+        }
+        .sheet(isPresented: $showTasksShortcut) {
+            NavigationStack {
+                TasksView()
+                    .environmentObject(store)
             }
         }
         .onChange(of: crews.map { "\($0.id.uuidString)-\($0.totalFocusMinutes)" }) { _, _ in
