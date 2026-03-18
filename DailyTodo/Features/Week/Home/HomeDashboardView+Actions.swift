@@ -17,23 +17,39 @@ extension HomeDashboardView {
                 .foregroundStyle(palette.primaryText)
 
             HStack(spacing: 12) {
+
+                // ADD TASK
                 quickActionButton(
                     title: "Add Task",
                     systemImage: "plus.circle.fill",
-                    action: onAddTask
-                )
+                    isHighlighted: guide.currentStep == .homeTasksPrompt
+                ) {
+                    onAddTask()
+                }
 
+                // WEEK
                 quickActionButton(
                     title: "Week",
                     systemImage: "calendar",
-                    action: onOpenWeek
-                )
+                    isHighlighted: guide.currentStep == .weekPrompt
+                ) {
+                    onOpenWeek()
 
+                    if guide.currentStep == .weekPrompt {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                            guide.next()
+                        }
+                    }
+                }
+
+                // INSIGHTS
                 quickActionButton(
                     title: "Insights",
                     systemImage: "chart.bar.fill",
-                    action: onOpenInsights
-                )
+                    isHighlighted: false
+                ) {
+                    onOpenInsights()
+                }
             }
         }
         .padding(18)
@@ -44,13 +60,16 @@ extension HomeDashboardView {
     func quickActionButton(
         title: String,
         systemImage: String,
+        isHighlighted: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
+
         Button(action: action) {
             VStack(spacing: 12) {
+
                 Image(systemName: systemImage)
                     .font(.title2)
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(isHighlighted ? .white : Color.accentColor)
 
                 Text(title)
                     .font(.system(size: 12, weight: .semibold))
@@ -60,13 +79,28 @@ extension HomeDashboardView {
             .padding(.vertical, 18)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(palette.secondaryCardFill)
+                    .fill(
+                        isHighlighted
+                        ? Color.accentColor.opacity(0.22)
+                        : palette.secondaryCardFill
+                    )
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(palette.cardStroke, lineWidth: 1)
+                    .stroke(
+                        isHighlighted
+                        ? Color.accentColor.opacity(0.95)
+                        : palette.cardStroke,
+                        lineWidth: isHighlighted ? 2 : 1
+                    )
             )
+            .shadow(
+                color: isHighlighted ? Color.accentColor.opacity(0.28) : .clear,
+                radius: isHighlighted ? 14 : 0
+            )
+            .scaleEffect(isHighlighted ? 1.02 : 1.0)
         }
         .buttonStyle(.plain)
     }
 }
+

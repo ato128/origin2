@@ -150,6 +150,8 @@
 		6DD282912F698F6F00B1281A /* WeekEventDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD282902F698F6F00B1281A /* WeekEventDetailView.swift */; };
 		6DD282932F699C2D00B1281A /* WorkoutExerciseHistoryItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD282922F699C2D00B1281A /* WorkoutExerciseHistoryItem.swift */; };
 		6DD282962F69AA5800B1281A /* Notification+Names.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD282952F69AA5800B1281A /* Notification+Names.swift */; };
+		6DD282A82F6AE68600B1281A /* AppGuideManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD282A72F6AE68600B1281A /* AppGuideManager.swift */; };
+		6DD282AA2F6AE7E500B1281A /* AppGuideOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD282A92F6AE7E500B1281A /* AppGuideOverlayView.swift */; };
 		6DDF5B5B2F5F9DFF003057C9 /* CrewTaskComment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DDF5B5A2F5F9DFE003057C9 /* CrewTaskComment.swift */; };
 		6DDF5B5D2F5F9E21003057C9 /* CrewTaskPoll.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DDF5B5C2F5F9E21003057C9 /* CrewTaskPoll.swift */; };
 		6DDF5B5F2F5FA38A003057C9 /* CreateCrewTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DDF5B5E2F5FA38A003057C9 /* CreateCrewTaskView.swift */; };
@@ -331,6 +333,8 @@
 		6DD282902F698F6F00B1281A /* WeekEventDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekEventDetailView.swift; sourceTree = "<group>"; };
 		6DD282922F699C2D00B1281A /* WorkoutExerciseHistoryItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutExerciseHistoryItem.swift; sourceTree = "<group>"; };
 		6DD282952F69AA5800B1281A /* Notification+Names.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Notification+Names.swift"; sourceTree = "<group>"; };
+		6DD282A72F6AE68600B1281A /* AppGuideManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGuideManager.swift; sourceTree = "<group>"; };
+		6DD282A92F6AE7E500B1281A /* AppGuideOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGuideOverlayView.swift; sourceTree = "<group>"; };
 		6DDF5B5A2F5F9DFE003057C9 /* CrewTaskComment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewTaskComment.swift; sourceTree = "<group>"; };
 		6DDF5B5C2F5F9E21003057C9 /* CrewTaskPoll.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewTaskPoll.swift; sourceTree = "<group>"; };
 		6DDF5B5E2F5FA38A003057C9 /* CreateCrewTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateCrewTaskView.swift; sourceTree = "<group>"; };
@@ -774,6 +778,8 @@
 				6DF0C9452F55E3960043B887 /* OnboardingView.swift */,
 				6D2004E82F64E7210022C810 /* OnboardingPageView.swift */,
 				6D2004EA2F64EE8A0022C810 /* PermissionOnboardingView.swift */,
+				6DD282A72F6AE68600B1281A /* AppGuideManager.swift */,
+				6DD282A92F6AE7E500B1281A /* AppGuideOverlayView.swift */,
 			);
 			path = Onboarding;
 			sourceTree = "<group>";
@@ -949,6 +955,7 @@
 				6D5FE3D42F66DD72007C124D /* CrewChatInfoView.swift in Sources */,
 				6D8C3D3F2F65B8F700ABF6CA /* AICoachCard.swift in Sources */,
 				6DC0CAAF2F5F7D0000A875ED /* Haptics.swift in Sources */,
+				6DD282AA2F6AE7E500B1281A /* AppGuideOverlayView.swift in Sources */,
 				6D8C3D342F65903B00ABF6CA /* AppTheme.swift in Sources */,
 				6D20045A2F61D73E0022C810 /* WeekView+CrewHelpers.swift in Sources */,
 				6DC0CAB02F5F7D0000A875ED /* NextClassCard.swift in Sources */,
@@ -1001,6 +1008,7 @@
 				6D5FE4242F6790EA007C124D /* TodoListView+Cards.swift in Sources */,
 				6DC0CABF2F5F7D0000A875ED /* SettingsView.swift in Sources */,
 				6D5FE4262F67912E007C124D /* TodoListView+Helpers.swift in Sources */,
+				6DD282A82F6AE68600B1281A /* AppGuideManager.swift in Sources */,
 				6DDF5B5D2F5F9E21003057C9 /* CrewTaskPoll.swift in Sources */,
 				6D2004C12F6450AA0022C810 /* ProductivityScoreCard.swift in Sources */,
 				6D2004982F6387F00022C810 /* FriendMessage.swift in Sources */,

@@ -22,6 +22,7 @@ enum PlanAheadMode: String, CaseIterable {
 struct WeekView: View {
     
     @Environment(\.modelContext)  var context
+    @EnvironmentObject var guide: AppGuideManager
     
     @Query(sort: \EventItem.startMinute, order: .forward)
     private var allEvents: [EventItem]
@@ -58,11 +59,11 @@ struct WeekView: View {
     var eventsForDay: [EventItem] {
         let calendar = Calendar.current
         let targetDate = targetDateForSelectedDay()
-
+        
         return allEvents
             .filter { ev in
                 guard !ev.isCompleted else { return false }
-
+                
                 if let scheduledDate = ev.scheduledDate {
                     return calendar.isDate(scheduledDate, inSameDayAs: targetDate)
                 } else {
@@ -156,224 +157,254 @@ struct WeekView: View {
     @State private var planAheadMode: PlanAheadMode = .personal
     @State  var selectedEventForDetail: EventItem?
     
+    @ViewBuilder
+    var weekGuideOverlay: some View {
+        if guide.isActive && guide.currentScreen == .week {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .zIndex(99)
+            
+            AppGuideOverlayView(
+                onPrimaryAction: {
+                    guide.next()
+                },
+                onBack: {
+                    guide.back()
+                },
+                onSkip: {
+                    guide.finish()
+                }
+            )
+            .zIndex(100)
+        }
+    }
     
     var body: some View {
         ZStack {
             AppBackground()
             
-            ScrollViewReader { proxy in
-                mainList(proxy: proxy)
-                    .animation(.easeInOut(duration: 0.25), value: weekMode)
-                    .toolbar { toolbarContent }
-                    .sheet(isPresented: $showingAdd) {
-                        NavigationStack {
-                            AddEventView(
-                                defaultWeekday: selectedDay,
-                                defaultDate: planAheadDate
-                            )
-                        }
-                        .presentationDetents([.medium, .large])
+            weekMainContent
+            
+            weekGuideOverlay
+        }
+    }
+    
+    var weekMainContent: some View {
+        ScrollViewReader { proxy in
+            mainList(proxy: proxy)
+                .animation(.easeInOut(duration: 0.25), value: weekMode)
+                .toolbar { toolbarContent }
+                .sheet(isPresented: $showingAdd) {
+                    NavigationStack {
+                        AddEventView(
+                            defaultWeekday: selectedDay,
+                            defaultDate: planAheadDate
+                        )
                     }
-                    .sheet(isPresented: $showPlanAheadSheet) {
-                        NavigationStack {
-                            PlanAheadView(
-                                selectedDate: $planAheadDate,
-                                mode: $planAheadMode,
-                                onContinue: {
-                                    showPlanAheadSheet = false
+                    .presentationDetents([.medium, .large])
+                }
+                .sheet(isPresented: $showPlanAheadSheet) {
+                    NavigationStack {
+                        PlanAheadView(
+                            selectedDate: $planAheadDate,
+                            mode: $planAheadMode,
+                            onContinue: {
+                                showPlanAheadSheet = false
+                                
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                                    if planAheadMode == .crew {
+                                        if selectedCrew != nil {
+                                            showingCreateCrewTask = true
+                                        } else {
+                                            showCrewPickerSheet = true
+                                        }
+                                    } else {
+                                        showingAdd = true
+                                    }
+                                }
+                            }
+                        )
+                    }
+                    .presentationDetents([.medium, .large])
+                }
+                .sheet(isPresented: $showCrewPickerSheet) {
+                    NavigationStack {
+                        List {
+                            ForEach(allCrews) { crew in
+                                Button {
+                                    selectedCrewID = crew.id
+                                    showCrewPickerSheet = false
                                     
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-                                        if planAheadMode == .crew {
-                                            if selectedCrew != nil {
-                                                showingCreateCrewTask = true
-                                            } else {
-                                                showCrewPickerSheet = true
-                                            }
-                                        } else {
-                                            showingAdd = true
-                                        }
+                                        showingCreateCrewTask = true
                                     }
-                                }
-                            )
-                        }
-                        .presentationDetents([.medium, .large])
-                    }
-                    .sheet(isPresented: $showCrewPickerSheet) {
-                        NavigationStack {
-                            List {
-                                ForEach(allCrews) { crew in
-                                    Button {
-                                        selectedCrewID = crew.id
-                                        showCrewPickerSheet = false
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        ZStack {
+                                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                .fill(hexColor(crew.colorHex).opacity(0.16))
+                                                .frame(width: 42, height: 42)
+                                            
+                                            Image(systemName: crew.icon)
+                                                .foregroundStyle(hexColor(crew.colorHex))
+                                        }
                                         
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-                                            showingCreateCrewTask = true
+                                        VStack(alignment: .leading, spacing: 3) {
+                                            Text(crew.name)
+                                                .font(.headline)
+                                            
+                                            Text("\(allCrewMembersForCrew(crew.id).count) members")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
                                         }
-                                    } label: {
-                                        HStack(spacing: 12) {
-                                            ZStack {
-                                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                                    .fill(hexColor(crew.colorHex).opacity(0.16))
-                                                    .frame(width: 42, height: 42)
-                                                
-                                                Image(systemName: crew.icon)
-                                                    .foregroundStyle(hexColor(crew.colorHex))
-                                            }
-                                            
-                                            VStack(alignment: .leading, spacing: 3) {
-                                                Text(crew.name)
-                                                    .font(.headline)
-                                                
-                                                Text("\(allCrewMembersForCrew(crew.id).count) members")
-                                                    .font(.caption)
-                                                    .foregroundStyle(.secondary)
-                                            }
-                                            
-                                            Spacer()
-                                            
-                                            Image(systemName: "chevron.right")
-                                                .font(.caption.bold())
-                                                .foregroundStyle(.tertiary)
-                                        }
-                                        .contentShape(Rectangle())
+                                        
+                                        Spacer()
+                                        
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption.bold())
+                                            .foregroundStyle(.tertiary)
                                     }
-                                    .buttonStyle(.plain)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .navigationTitle("Choose Crew")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarLeading) {
+                                Button("Cancel") {
+                                    showCrewPickerSheet = false
                                 }
                             }
-                            .navigationTitle("Choose Crew")
-                            .navigationBarTitleDisplayMode(.inline)
-                            .toolbar {
-                                ToolbarItem(placement: .topBarLeading) {
-                                    Button("Cancel") {
-                                        showCrewPickerSheet = false
-                                    }
-                                }
-                            }
-                        }
-                        .presentationDetents([.medium])
-                    }
-                    .sheet(isPresented: $showingCreateCrewTask) {
-                        NavigationStack {
-                            if let crew = selectedCrew {
-                                CreateCrewTaskView(
-                                    crew: crew,
-                                    members: allCrewMembersForCrew(crew.id),
-                                    defaultDate: planAheadDate
-                                )
-                            } else {
-                                Text("No crew selected")
-                                    .padding()
-                            }
-                        }
-                        .presentationDetents([.medium, .large])
-                    }
-                    .sheet(item: $editingEvent) { ev in
-                        NavigationStack {
-                            EditEventView(event: ev)
-                        }
-                        .presentationDetents([.medium, .large])
-                    }
-                    .sheet(item: $selectedCrewTask) { task in
-                        if let crew = selectedCrewForDetail {
-                            NavigationStack {
-                                CrewTaskDetailView(task: task, crew: crew)
-                                    .presentationDetents([.medium, .large])
-                                    .presentationDragIndicator(.visible)
-                                    .presentationCornerRadius(28)
-                            }
                         }
                     }
-                    .sheet(item: $selectedTaskForEdit) { task in
-                        if let crew = crewMap[task.crewID] {
-                            NavigationStack {
-                                EditCrewTaskView(crew: crew, task: task)
-                            }
-                            .presentationDetents([.medium, .large])
-                        }
-                    }
-                    .sheet(item: $selectedEventForDetail) { event in
-                        NavigationStack {
-                            WeekEventDetailView(event: event)
-                        }
-                    }
-                    .overlay(toastView, alignment: .bottom)
-                    .onAppear {
-                        onAppear(proxy: proxy)
-                        crewPulse = true
-                        commentPulse = true
-                    }
-                    .onChange(of: selectedDay) { _, _ in
-                        onDayChanged(proxy: proxy)
-                    }
-                    .onChange(of: eventsForDayIDs) { _, _ in
-                        animateSummaryCard()
-                        autoScrollIfNeeded(proxy: proxy)
-                    }
-                    .onChange(of: allEventIDs) { _, _ in
-                        Task {
-                            await NotificationManager.shared.rescheduleAll(events: allEvents)
-                        }
-                    }
-                    .onReceive(liveTimer) { _ in
-                        Task {
-                            await LiveActivityManager.shared.autoSyncIfNeeded(events: allEvents)
-                        }
-                    }
-                    .onReceive(NotificationCenter.default.publisher(for: .workoutCompleted)) { notification in
-                        if let taskID = notification.object as? PersistentIdentifier {
-                            markWorkoutTaskDone(taskID: taskID)
-                        }
-                    }
-                    .onChange(of: weekMode) { _, newValue in
-                        if newValue == .crew {
-                            showPersonalEntrance = false
-                            showCrewEntrance = false
-                            showCrewTaskHeader = false
-                            showCrewTaskCards = false
-                            showPersonalEventCards = false
-                            
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
-                                withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
-                                    showCrewEntrance = true
-                                }
-                            }
-                            
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
-                                withAnimation(.easeOut(duration: 0.28)) {
-                                    showCrewTaskHeader = true
-                                }
-                            }
-                            
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-                                withAnimation(.spring(response: 0.5, dampingFraction: 0.88)) {
-                                    showCrewTaskCards = true
-                                }
-                            }
-                            
+                    .presentationDetents([.medium])
+                }
+                .sheet(isPresented: $showingCreateCrewTask) {
+                    NavigationStack {
+                        if let crew = selectedCrew {
+                            CreateCrewTaskView(
+                                crew: crew,
+                                members: allCrewMembersForCrew(crew.id),
+                                defaultDate: planAheadDate
+                            )
                         } else {
-                            showCrewEntrance = false
-                            showCrewTaskHeader = false
-                            showCrewTaskCards = false
-                            showPersonalEntrance = false
-                            showPersonalEventCards = false
-                            
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
-                                withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
-                                    showPersonalEntrance = true
-                                }
+                            Text("No crew selected")
+                                .padding()
+                        }
+                    }
+                    .presentationDetents([.medium, .large])
+                }
+                .sheet(item: $editingEvent) { ev in
+                    NavigationStack {
+                        EditEventView(event: ev)
+                    }
+                    .presentationDetents([.medium, .large])
+                }
+                .sheet(item: $selectedCrewTask) { task in
+                    if let crew = selectedCrewForDetail {
+                        NavigationStack {
+                            CrewTaskDetailView(task: task, crew: crew)
+                                .presentationDetents([.medium, .large])
+                                .presentationDragIndicator(.visible)
+                                .presentationCornerRadius(28)
+                        }
+                    }
+                }
+                .sheet(item: $selectedTaskForEdit) { task in
+                    if let crew = crewMap[task.crewID] {
+                        NavigationStack {
+                            EditCrewTaskView(crew: crew, task: task)
+                        }
+                        .presentationDetents([.medium, .large])
+                    }
+                }
+                .sheet(item: $selectedEventForDetail) { event in
+                    NavigationStack {
+                        WeekEventDetailView(event: event)
+                    }
+                }
+                .overlay(toastView, alignment: .bottom)
+                .onAppear {
+                    onAppear(proxy: proxy)
+                    crewPulse = true
+                    commentPulse = true
+                }
+                .onChange(of: selectedDay) { _, _ in
+                    onDayChanged(proxy: proxy)
+                }
+                .onChange(of: eventsForDayIDs) { _, _ in
+                    animateSummaryCard()
+                    autoScrollIfNeeded(proxy: proxy)
+                }
+                .onChange(of: allEventIDs) { _, _ in
+                    Task {
+                        await NotificationManager.shared.rescheduleAll(events: allEvents)
+                    }
+                }
+                .onReceive(liveTimer) { _ in
+                    Task {
+                        await LiveActivityManager.shared.autoSyncIfNeeded(events: allEvents)
+                    }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .workoutCompleted)) { notification in
+                    if let taskID = notification.object as? PersistentIdentifier {
+                        markWorkoutTaskDone(taskID: taskID)
+                    }
+                }
+                .onChange(of: weekMode) { _, newValue in
+                    if newValue == .crew {
+                        showPersonalEntrance = false
+                        showCrewEntrance = false
+                        showCrewTaskHeader = false
+                        showCrewTaskCards = false
+                        showPersonalEventCards = false
+                        
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+                            withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                                showCrewEntrance = true
                             }
-                            
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
-                                withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
-                                    showPersonalEventCards = true
-                                }
+                        }
+                        
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
+                            withAnimation(.easeOut(duration: 0.28)) {
+                                showCrewTaskHeader = true
+                            }
+                        }
+                        
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.88)) {
+                                showCrewTaskCards = true
+                            }
+                        }
+                        
+                    } else {
+                        showCrewEntrance = false
+                        showCrewTaskHeader = false
+                        showCrewTaskCards = false
+                        showPersonalEntrance = false
+                        showPersonalEventCards = false
+                        
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+                            withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
+                                showPersonalEntrance = true
+                            }
+                        }
+                        
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
+                            withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
+                                showPersonalEventCards = true
                             }
                         }
                     }
-            }
+                }
         }
     }
 }
+        
+    
+            
 
 // MARK: - Main UI
 extension WeekView {

@@ -17,30 +17,31 @@ struct HomeDashboardView: View {
     @AppStorage("focus_workout_current_set")  var focusWorkoutCurrentSet: Int = 0
     @AppStorage("focus_workout_total_sets") var focusWorkoutTotalSets: Int = 0
     @AppStorage("focus_workout_is_resting")  var focusWorkoutIsResting: Bool = false
-
+    
     let palette = ThemePalette()
-
+    
     @Environment(\.modelContext) var modelContext
     @EnvironmentObject var store: TodoStore
-
+    @EnvironmentObject var guide: AppGuideManager
+    
     @Query(sort: \EventItem.startMinute, order: .forward)
     var allEvents: [EventItem]
-
+    
     @Query(sort: \Friend.createdAt, order: .reverse)
     var friends: [Friend]
-
+    
     @Query(sort: \FriendMessage.createdAt, order: .reverse)
     var allFriendMessages: [FriendMessage]
-
+    
     @Query var focusSessions: [CrewFocusSession]
     @Query private var allWorkoutExercises: [WorkoutExerciseItem]
-
+    
     let onAddTask: () -> Void
     let onOpenWeek: () -> Void
     let onOpenInsights: () -> Void
-
+    
     let dayTitles = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
-
+    
     @State var isFocusActive: Bool = false
     @State var activeFocusTaskTitle: String = ""
     @State var activeFocusRemainingSeconds: Int = 25 * 60
@@ -56,7 +57,7 @@ struct HomeDashboardView: View {
     @State var pulseRecentFriendPill = false
     @State var crewFocusGlowPulse: Bool = false
     @State var crewFocusNow = Date()
-
+    
     @State var showHeaderCard = false
     @State var showWeekCard = false
     @State var showProgressCard = false
@@ -65,15 +66,15 @@ struct HomeDashboardView: View {
     @State var showTodayTasksCard = false
     @State var showQuickActionsCard = false
     @State var showTasksShortcut = false
-
+    
     @State private var inlineWorkoutExerciseIndex: Int = 0
     @State private var inlineWorkoutCurrentSet: Int = 1
     @State private var inlineWorkoutIsResting: Bool = false
     @State private var inlineWorkoutRestSeconds: Int = 0
-
+    
     let focusRefreshTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     let crewFocusTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-
+    
     var smartSuggestions: [SmartTaskSuggestion] {
         guard smartEngineEnabled else { return [] }
         return SmartTaskEngine.suggestions(
@@ -81,17 +82,17 @@ struct HomeDashboardView: View {
             events: allEvents
         )
     }
-
+    
     var overdueTaskCount: Int {
         allTasks.filter { task in
             !task.isDone && store.isOverdue(task)
         }.count
     }
-
+    
     var allTasks: [DTTaskItem] {
         store.items
     }
-
+    
     var todayTasks: [DTTaskItem] {
         let cal = Calendar.current
         return allTasks
@@ -104,7 +105,7 @@ struct HomeDashboardView: View {
                 ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture)
             }
     }
-
+    
     var completedTodayCount: Int {
         let cal = Calendar.current
         return allTasks.filter { task in
@@ -112,30 +113,30 @@ struct HomeDashboardView: View {
             return cal.isDateInToday(completedAt)
         }.count
     }
-
+    
     var totalTodayTaskCount: Int {
         completedTodayCount + todayTasks.count
     }
-
+    
     var streakCount: Int {
         StreakEngine.currentStreak(tasks: allTasks)
     }
-
+    
     var focusTask: DTTaskItem? {
         let active = allTasks.filter { !$0.isDone }
         let now = Date()
-
+        
         let upcoming = active.filter {
             guard let due = $0.dueDate else { return false }
             return due >= now
         }
-
+        
         if let nearestUpcoming = upcoming.sorted(by: {
             ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture)
         }).first {
             return nearestUpcoming
         }
-
+        
         return active.sorted { a, b in
             let aDate = a.dueDate ?? .distantFuture
             let bDate = b.dueDate ?? .distantFuture
@@ -144,11 +145,11 @@ struct HomeDashboardView: View {
             return aDiff < bDiff
         }.first
     }
-
+    
     func workoutExercisesForFocusTask() -> [WorkoutExerciseItem]? {
         guard let focusTask else { return nil }
         guard focusTask.taskType == "workout" else { return nil }
-
+        
         let items = allWorkoutExercises
             .filter { $0.taskUUID == focusTask.taskUUID }
             .sorted { lhs, rhs in
@@ -157,34 +158,47 @@ struct HomeDashboardView: View {
                 }
                 return lhs.createdAt < rhs.createdAt
             }
-
+        
         return items.isEmpty ? nil : items
     }
-
+    
     var currentInlineWorkoutExercise: WorkoutExerciseItem? {
         guard let exercises = workoutExercisesForFocusTask(),
               inlineWorkoutExerciseIndex >= 0,
               inlineWorkoutExerciseIndex < exercises.count else { return nil }
         return exercises[inlineWorkoutExerciseIndex]
     }
-
+    
+    @ViewBuilder
+    func guideBorder(active: Bool, cornerRadius: CGFloat) -> some View {
+        if active {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .stroke(Color.accentColor.opacity(0.95), lineWidth: 2)
+                .background(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(Color.accentColor.opacity(0.08))
+                )
+                .shadow(color: Color.accentColor.opacity(0.28), radius: 18)
+        }
+    }
+    
     func startInlineFocus() {
         if let exercises = workoutExercisesForFocusTask(), !exercises.isEmpty {
             inlineWorkoutExerciseIndex = 0
             inlineWorkoutCurrentSet = 1
             inlineWorkoutIsResting = false
             inlineWorkoutRestSeconds = 0
-
+            
             let firstExercise = exercises[inlineWorkoutExerciseIndex]
-
+            
             focusWorkoutMode = true
             focusWorkoutExerciseName = firstExercise.name
             focusWorkoutCurrentSet = inlineWorkoutCurrentSet
             focusWorkoutTotalSets = firstExercise.sets
             focusWorkoutIsResting = false
-
+            
             let duration = max(60, firstExercise.restSeconds > 0 ? firstExercise.restSeconds : 60)
-
+            
             activeFocusTaskTitle = focusTask?.title ?? "Workout"
             activeFocusTotalSeconds = duration
             activeFocusRemainingSeconds = duration
@@ -193,14 +207,14 @@ struct HomeDashboardView: View {
             pulseActiveFocus = true
         } else {
             let duration: Int
-
+            
             if let task = focusTask, let due = task.dueDate {
                 let diff = Int(due.timeIntervalSinceNow)
                 duration = max(15 * 60, min(diff, 60 * 60))
             } else {
                 duration = 25 * 60
             }
-
+            
             activeFocusTaskTitle = focusTask?.title ?? "Focus"
             activeFocusTotalSeconds = duration
             activeFocusRemainingSeconds = duration
@@ -209,7 +223,7 @@ struct HomeDashboardView: View {
             pulseActiveFocus = true
         }
     }
-
+    
     func stopActiveFocus() {
         isFocusActive = false
         pulseActiveFocus = false
@@ -217,12 +231,12 @@ struct HomeDashboardView: View {
         activeFocusRemainingSeconds = 25 * 60
         activeFocusTotalSeconds = 25 * 60
         activeFocusStartedAt = nil
-
+        
         inlineWorkoutExerciseIndex = 0
         inlineWorkoutCurrentSet = 1
         inlineWorkoutIsResting = false
         inlineWorkoutRestSeconds = 0
-
+        
         focusWorkoutMode = false
         focusWorkoutExerciseName = ""
         focusWorkoutCurrentSet = 0
@@ -233,7 +247,7 @@ struct HomeDashboardView: View {
     func completeLinkedWeekEvent(for task: DTTaskItem) {
         if let matchedEvent = allEvents.first(where: { $0.sourceTaskUUID == task.taskUUID }) {
             matchedEvent.isCompleted = true
-
+            
             do {
                 try modelContext.save()
                 print("✅ Event completed:", matchedEvent.title)
@@ -244,24 +258,24 @@ struct HomeDashboardView: View {
             print("❌ No matched week event found for taskUUID:", task.taskUUID)
         }
     }
-
+    
     func advanceInlineWorkout() {
         guard let exercises = workoutExercisesForFocusTask(),
               inlineWorkoutExerciseIndex < exercises.count else { return }
-
+        
         let exercise = exercises[inlineWorkoutExerciseIndex]
-
+        
         if inlineWorkoutIsResting {
             inlineWorkoutIsResting = false
             focusWorkoutIsResting = false
             activeFocusStartedAt = Date()
             return
         }
-
+        
         if inlineWorkoutCurrentSet < exercise.sets {
             inlineWorkoutCurrentSet += 1
             focusWorkoutCurrentSet = inlineWorkoutCurrentSet
-
+            
             if exercise.restSeconds > 0 {
                 inlineWorkoutIsResting = true
                 inlineWorkoutRestSeconds = exercise.restSeconds
@@ -274,12 +288,12 @@ struct HomeDashboardView: View {
             if inlineWorkoutExerciseIndex < exercises.count - 1 {
                 inlineWorkoutExerciseIndex += 1
                 inlineWorkoutCurrentSet = 1
-
+                
                 let nextExercise = exercises[inlineWorkoutExerciseIndex]
                 focusWorkoutExerciseName = nextExercise.name
                 focusWorkoutCurrentSet = 1
                 focusWorkoutTotalSets = nextExercise.sets
-
+                
                 if exercise.restSeconds > 0 {
                     inlineWorkoutIsResting = true
                     inlineWorkoutRestSeconds = exercise.restSeconds
@@ -293,50 +307,50 @@ struct HomeDashboardView: View {
             }
         }
     }
-
+    
     func finishInlineWorkout() {
         if let task = focusTask {
             task.isDone = true
             task.completedAt = Date()
-
+            
             completeLinkedWeekEvent(for: task)
-
+            
             do {
                 try modelContext.save()
             } catch {
                 print("❌ Task save error:", error)
             }
         }
-
+        
         isFocusActive = false
         pulseActiveFocus = false
-
+        
         focusWorkoutMode = false
         focusWorkoutExerciseName = ""
         focusWorkoutCurrentSet = 0
         focusWorkoutTotalSets = 0
         focusWorkoutIsResting = false
-
+        
         inlineWorkoutExerciseIndex = 0
         inlineWorkoutCurrentSet = 1
         inlineWorkoutIsResting = false
         inlineWorkoutRestSeconds = 0
-
+        
         activeFocusTaskTitle = ""
         activeFocusRemainingSeconds = 25 * 60
         activeFocusTotalSeconds = 25 * 60
         activeFocusStartedAt = nil
     }
-
+    
     func syncActiveFocusCountdown() {
         guard isFocusActive else { return }
         guard let startedAt = activeFocusStartedAt else { return }
-
+        
         let elapsed = Int(Date().timeIntervalSince(startedAt))
         let remaining = max(0, activeFocusTotalSeconds - elapsed)
-
+        
         activeFocusRemainingSeconds = remaining
-
+        
         if remaining == 0 {
             if focusWorkoutMode {
                 if inlineWorkoutIsResting {
@@ -352,52 +366,52 @@ struct HomeDashboardView: View {
             }
         }
     }
-
+    
     var focusTaskStatusText: String {
         guard let task = focusTask else { return "Bugün odak görevi yok" }
-
+        
         if store.isOverdue(task) {
             return "⚠️ Gecikmiş görev"
         }
-
+        
         if let due = task.dueDate,
            Calendar.current.isDateInToday(due) {
             return "🔥 Bugün tamamla"
         }
-
+        
         return "🎯 Öncelikli görev"
     }
-
+    
     var recentChatFriend: Friend? {
         let sorted = allFriendMessages.sorted { $0.createdAt > $1.createdAt }
         guard let latestMessage = sorted.first else { return nil }
         return friends.first(where: { $0.id == latestMessage.friendID })
     }
-
+    
     var nextEvent: EventItem? {
         let today = weekdayIndexToday()
         let now = currentMinuteOfDay()
-
+        
         let todaysEvents = allEvents
             .filter { $0.weekday == today }
             .sorted { $0.startMinute < $1.startMinute }
-
+        
         if let live = todaysEvents.first(where: {
             now >= $0.startMinute && now < ($0.startMinute + $0.durationMinute)
         }) {
             return live
         }
-
+        
         return todaysEvents.first(where: { $0.startMinute > now })
     }
-
+    
     var nextEventStatusText: String {
         guard let nextEvent else { return "Bugün başka ders yok" }
-
+        
         let now = currentMinuteOfDay()
         let start = nextEvent.startMinute
         let end = nextEvent.startMinute + nextEvent.durationMinute
-
+        
         if now >= start && now < end {
             let left = max(0, end - now)
             return "Şu an aktif • \(left) dk kaldı"
@@ -406,68 +420,68 @@ struct HomeDashboardView: View {
             return "\(remain) dk sonra"
         }
     }
-
+    
     var nextEventTimeText: String {
         guard let nextEvent else { return "--:--" }
         return "\(hm(nextEvent.startMinute)) – \(hm(nextEvent.startMinute + nextEvent.durationMinute))"
     }
-
+    
     var latestRelevantCrewFocusSession: CrewFocusSession? {
         focusSessions
             .filter { session in
                 if session.isActive {
                     return true
                 }
-
+                
                 return crewFocusNow.timeIntervalSince(session.endDate) <= 15
             }
             .sorted { $0.startedAt > $1.startedAt }
             .first
     }
-
+    
     var hasAnyActiveFocusSession: Bool {
         guard let timestamp = UserDefaults.standard.object(forKey: "focus_end_date") as? Double else {
             return false
         }
-
+        
         let endDate = Date(timeIntervalSince1970: timestamp)
         return endDate.timeIntervalSinceNow > 0
     }
-
+    
     var isSharedFocusActive: Bool {
         UserDefaults.standard.string(forKey: "focus_mode") == "shared" && hasAnyActiveFocusSession
     }
-
+    
     var activeSharedFriendName: String? {
         UserDefaults.standard.string(forKey: "focus_friend_name")
     }
-
+    
     var focusCardTitle: String {
         if isSharedFocusActive {
             return "Shared Focus"
         }
         return "Focus Now"
     }
-
+    
     var focusCardMainText: String {
         if isSharedFocusActive, let friendName = activeSharedFriendName {
             return "\(friendName) ile focus"
         }
         return focusTask?.title ?? "Bugün odak görevi yok"
     }
-
+    
     var focusCardStatusText: String {
         if isSharedFocusActive {
             return "🟢 Shared session active"
         }
         return focusTaskStatusText
     }
-
+    
     var todayProgressValue: Double {
         guard totalTodayTaskCount > 0 else { return 0 }
         return Double(completedTodayCount) / Double(totalTodayTaskCount)
     }
-
+    
     var greetingText: String {
         let hour = Calendar.current.component(.hour, from: Date())
         switch hour {
@@ -476,171 +490,214 @@ struct HomeDashboardView: View {
         default: return "Good evening"
         }
     }
-
+    
     var todayDateText: String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "tr_TR")
         f.dateFormat = "d MMMM, EEEE"
         return f.string(from: Date())
     }
-
+    
     var body: some View {
-        ScrollView {
-            VStack(spacing: 14) {
-                headerCard
-                    .offset(y: showHeaderCard ? 0 : 18)
-                    .opacity(showHeaderCard ? 1 : 0)
-                    .scaleEffect(showHeaderCard ? 1 : 0.985)
-
-                homeMiniWeekCalendar
-                    .offset(y: showWeekCard ? 0 : 18)
-                    .opacity(showWeekCard ? 1 : 0)
-                    .scaleEffect(showWeekCard ? 1 : 0.985)
-
-                todayProgressCard
-                    .offset(y: showProgressCard ? 0 : 18)
-                    .opacity(showProgressCard ? 1 : 0)
-                    .scaleEffect(showProgressCard ? 1 : 0.985)
-
-                if let session = latestRelevantCrewFocusSession {
-                    crewSharedFocusCard(session: session)
-                        .offset(y: showFocusCard ? 0 : 18)
-                        .opacity(showFocusCard ? 1 : 0)
-                        .scaleEffect(showFocusCard ? 1 : 0.985)
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.98).combined(with: .opacity),
-                            removal: .scale(scale: 0.96).combined(with: .opacity)
-                        ))
-                } else if isFocusActive || hasAnyActiveFocusSession {
-                    activeFocusCard
-                        .offset(y: showFocusCard ? 0 : 18)
-                        .opacity(showFocusCard ? 1 : 0)
-                        .scaleEffect(showFocusCard ? 1 : 0.985)
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.98).combined(with: .opacity),
-                            removal: .scale(scale: 0.96).combined(with: .opacity)
-                        ))
-                } else {
-                    focusCard
-                        .offset(y: showFocusCard ? 0 : 18)
-                        .opacity(showFocusCard ? 1 : 0)
-                        .scaleEffect(showFocusCard ? 1 : 0.985)
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.98).combined(with: .opacity),
-                            removal: .opacity
-                        ))
+        ZStack {
+            ScrollView {
+                VStack(spacing: 14) {
+                    headerCard
+                        .offset(y: showHeaderCard ? 0 : 18)
+                        .opacity(showHeaderCard ? 1 : 0)
+                        .scaleEffect(showHeaderCard ? 1 : 0.985)
+                    
+                    homeMiniWeekCalendar
+                        .offset(y: showWeekCard ? 0 : 18)
+                        .opacity(showWeekCard ? 1 : 0)
+                        .scaleEffect(showWeekCard ? 1 : 0.985)
+                    
+                    todayProgressCard
+                        .offset(y: showProgressCard ? 0 : 18)
+                        .opacity(showProgressCard ? 1 : 0)
+                        .scaleEffect(showProgressCard ? 1 : 0.985)
+                    
+                    if let session = latestRelevantCrewFocusSession {
+                        crewSharedFocusCard(session: session)
+                            .offset(y: showFocusCard ? 0 : 18)
+                            .opacity(showFocusCard ? 1 : 0)
+                            .scaleEffect(showFocusCard ? 1 : 0.985)
+                            .transition(.asymmetric(
+                                insertion: .scale(scale: 0.98).combined(with: .opacity),
+                                removal: .scale(scale: 0.96).combined(with: .opacity)
+                            ))
+                    } else if isFocusActive || hasAnyActiveFocusSession {
+                        activeFocusCard
+                            .offset(y: showFocusCard ? 0 : 18)
+                            .opacity(showFocusCard ? 1 : 0)
+                            .scaleEffect(showFocusCard ? 1 : 0.985)
+                            .transition(.asymmetric(
+                                insertion: .scale(scale: 0.98).combined(with: .opacity),
+                                removal: .scale(scale: 0.96).combined(with: .opacity)
+                            ))
+                    } else {
+                        focusCard
+                            .offset(y: showFocusCard ? 0 : 18)
+                            .opacity(showFocusCard ? 1 : 0)
+                            .scaleEffect(showFocusCard ? 1 : 0.985)
+                            .transition(.asymmetric(
+                                insertion: .scale(scale: 0.98).combined(with: .opacity),
+                                removal: .opacity
+                            ))
+                    }
+                    
+                    nextClassCard
+                        .offset(y: showNextClassCard ? 0 : 18)
+                        .opacity(showNextClassCard ? 1 : 0)
+                        .scaleEffect(showNextClassCard ? 1 : 0.985)
+                    
+                    todayTasksCard
+                        .offset(y: showTodayTasksCard ? 0 : 18)
+                        .opacity(showTodayTasksCard ? 1 : 0)
+                        .scaleEffect(showTodayTasksCard ? 1 : 0.985)
+                    
+                    if smartEngineEnabled, let firstSuggestion = smartSuggestions.first {
+                        SmartTaskSuggestionCard(suggestion: firstSuggestion)
+                    }
+                    
+                    quickActionsCard
+                        .offset(y: showQuickActionsCard ? 0 : 18)
+                        .opacity(showQuickActionsCard ? 1 : 0)
+                        .scaleEffect(showQuickActionsCard ? 1 : 0.985)
                 }
-
-                nextClassCard
-                    .offset(y: showNextClassCard ? 0 : 18)
-                    .opacity(showNextClassCard ? 1 : 0)
-                    .scaleEffect(showNextClassCard ? 1 : 0.985)
-
-                todayTasksCard
-                    .offset(y: showTodayTasksCard ? 0 : 18)
-                    .opacity(showTodayTasksCard ? 1 : 0)
-                    .scaleEffect(showTodayTasksCard ? 1 : 0.985)
-
-                if smartEngineEnabled, let firstSuggestion = smartSuggestions.first {
-                    SmartTaskSuggestionCard(suggestion: firstSuggestion)
-                }
-
-                quickActionsCard
-                    .offset(y: showQuickActionsCard ? 0 : 18)
-                    .opacity(showQuickActionsCard ? 1 : 0)
-                    .scaleEffect(showQuickActionsCard ? 1 : 0.985)
+                .padding(.horizontal, 16)
+                .padding(.top, 0)
+                .padding(.bottom, 36)
+                .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocusActive)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 0)
-            .padding(.bottom, 36)
-            .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocusActive)
-        }
-        .safeAreaInset(edge: .bottom) {
-            Color.clear.frame(height: 90)
-        }
-        .sheet(isPresented: $showRecentFriendChat) {
-            if let recentFriend = recentChatFriend {
+            .safeAreaInset(edge: .bottom) {
+                Color.clear.frame(height: 90)
+            }
+            .sheet(isPresented: $showRecentFriendChat) {
+                if let recentFriend = recentChatFriend {
+                    NavigationStack {
+                        FriendChatView(friend: recentFriend)
+                    }
+                }
+            }
+            .sheet(isPresented: $showFriendsShortcut) {
                 NavigationStack {
-                    FriendChatView(friend: recentFriend)
+                    CrewView(initialTab: .friends)
                 }
             }
-        }
-        .sheet(isPresented: $showFriendsShortcut) {
-            NavigationStack {
-                CrewView(initialTab: .friends)
+            .sheet(isPresented: $showTasksShortcut) {
+                NavigationStack {
+                    TasksView()
+                        .environmentObject(store)
+                }
             }
-        }
-        .sheet(isPresented: $showTasksShortcut) {
-            NavigationStack {
-                TasksView()
-                    .environmentObject(store)
+            .onAppear {
+                selectedDay = weekdayIndexToday()
+                syncActiveFocusCountdown()
+                
+                showHeaderCard = false
+                showWeekCard = false
+                showProgressCard = false
+                showFocusCard = false
+                showNextClassCard = false
+                showTodayTasksCard = false
+                showQuickActionsCard = false
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
+                        showHeaderCard = true
+                    }
+                    withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
+                        crewFocusGlowPulse = true
+                    }
+                }
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
+                        showWeekCard = true
+                    }
+                }
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
+                        showProgressCard = true
+                    }
+                }
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
+                        showFocusCard = true
+                    }
+                }
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.26) {
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
+                        showNextClassCard = true
+                    }
+                }
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) {
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
+                        showTodayTasksCard = true
+                    }
+                }
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.38) {
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
+                        showQuickActionsCard = true
+                    }
+                }
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    guide.startIfNeeded()
+                }
             }
-        }
-        .onAppear {
-            selectedDay = weekdayIndexToday()
-            syncActiveFocusCountdown()
+            .onChange(of: isFocusActive) { _, newValue in
+                pulseActiveFocus = newValue
+            }
+            .onReceive(focusRefreshTimer) { _ in
+                syncActiveFocusCountdown()
+            }
+            .onReceive(crewFocusTimer) { value in
+                crewFocusNow = value
+            }
+            
+            if guide.isActive {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .zIndex(99)
 
-            showHeaderCard = false
-            showWeekCard = false
-            showProgressCard = false
-            showFocusCard = false
-            showNextClassCard = false
-            showTodayTasksCard = false
-            showQuickActionsCard = false
+                AppGuideOverlayView(
+                    onPrimaryAction: {
+                        switch guide.currentStep {
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
-                withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
-                    showHeaderCard = true
-                }
-                withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
-                    crewFocusGlowPulse = true
-                }
-            }
+                        case .homeWelcome,
+                             .homeProgress,
+                             .homeFocusStarted:
+                            guide.next()
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
-                    showWeekCard = true
-                }
-            }
+                        case .homeFocusPrompt:
+                            break
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
-                withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
-                    showProgressCard = true
-                }
-            }
+                        case .homeTasksPrompt:
+                            break
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
-                withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
-                    showFocusCard = true
-                }
-            }
+                        case .weekPrompt:
+                            break
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.26) {
-                withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
-                    showNextClassCard = true
-                }
+                        default:
+                            guide.next()
+                        }
+                    },
+                    onBack: {
+                        guide.back()
+                    },
+                    onSkip: {
+                        guide.finish()
+                    }
+                )
+                .zIndex(100)
             }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) {
-                withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
-                    showTodayTasksCard = true
-                }
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.38) {
-                withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
-                    showQuickActionsCard = true
-                }
-            }
-        }
-        .onChange(of: isFocusActive) { _, newValue in
-            pulseActiveFocus = newValue
-        }
-        .onReceive(focusRefreshTimer) { _ in
-            syncActiveFocusCountdown()
-        }
-        .onReceive(crewFocusTimer) { value in
-            crewFocusNow = value
         }
     }
 }
