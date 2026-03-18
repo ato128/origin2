@@ -8,7 +8,11 @@
 import SwiftUI
 import SwiftData
 
+
+
 extension WeekView {
+   
+    
     var palette: ThemePalette {
         ThemePalette()
     }
@@ -180,22 +184,37 @@ extension WeekView {
     }
 
     var completedEvents: [EventItem] {
+        let now = currentMinuteOfDay()
         let calendar = Calendar.current
         let targetDate = targetDateForSelectedDay()
 
-        return (allEventsAccessible ?? [])
+        let items = (allEventsAccessible ?? [])
             .filter { ev in
-                guard ev.isCompleted else { return false }
+                let end = ev.startMinute + ev.durationMinute
 
+                // ✅ 1. Manuel completed
+                if ev.isCompleted {
+                    return true
+                }
+
+                // ✅ 2. Zaman geçmişse otomatik completed
+                if isTodaySelected && now >= end {
+                    return true
+                }
+
+                return false
+            }
+            .filter { ev in
                 if let scheduledDate = ev.scheduledDate {
                     return calendar.isDate(scheduledDate, inSameDayAs: targetDate)
                 } else {
                     return ev.weekday == selectedDay
                 }
             }
-            .sorted { lhs, rhs in
-                lhs.startMinute < rhs.startMinute
-            }
+            .sorted { $0.startMinute < $1.startMinute }
+
+        print("✅ completedEvents count:", items.count)
+        return items
     }
     var eventsSection: some View {
         VStack(spacing: 6) {
@@ -331,32 +350,49 @@ extension WeekView {
                 let now = currentMinuteOfDay()
 
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, ev in
-                    EventRow(
-                        event: ev,
-                        timeText: timeText(for: ev),
-                        hasConflict: hasConflict(ev),
-                        nowMinute: now,
-                        isTodaySelected: isTodaySelected,
-                        isWorkout: isWorkoutEvent(ev),
-                        workoutDay: workoutDayText(for: ev),
-                        exerciseCount: workoutExerciseCount(for: ev),
-                        onTap: { selectedEventForDetail = ev },
-                        onEdit: { editingEvent = ev },
-                        onDelete: { delete(ev) }
-                    )
-                    .id(ev.id)
-                    .padding(.horizontal, 16)
-                    .offset(y: showPersonalEventCards ? 0 : CGFloat(24 + ((startIndex + index) * 8)))
-                    .opacity(showPersonalEventCards ? 1 : 0)
-                    .scaleEffect(showPersonalEventCards ? 1 : 0.985)
-                    .animation(
-                        .spring(response: 0.48, dampingFraction: 0.86)
-                            .delay(Double(startIndex + index) * 0.04),
-                        value: showPersonalEventCards
+                    personalEventRow(
+                        ev,
+                        now: now,
+                        startIndex: startIndex,
+                        index: index
                     )
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    func personalEventRow(_ ev: EventItem, now: Int, startIndex: Int, index: Int) -> some View {
+        EventRow(
+            event: ev,
+            timeText: timeText(for: ev),
+            hasConflict: hasConflict(ev),
+            nowMinute: now,
+            isTodaySelected: isTodaySelected,
+            isWorkout: isWorkoutEvent(ev),
+            workoutDay: workoutDayText(for: ev),
+            exerciseCount: workoutExerciseCount(for: ev),
+            onTap: { selectedEventForDetail = ev },
+            onEdit: { editingEvent = ev },
+            onDelete: { delete(ev) },
+            onComplete: { markEventCompleted(ev) }
+        )
+        .id(ev.id)
+        .padding(.horizontal, 16)
+        .offset(y: showPersonalEventCards ? 0 : CGFloat(24 + ((startIndex + index) * 8)))
+        .opacity(showPersonalEventCards ? 1 : 0)
+        .scaleEffect(showPersonalEventCards ? 1 : 0.985)
+        .animation(
+            .spring(response: 0.48, dampingFraction: 0.86)
+                .delay(Double(startIndex + index) * 0.04),
+            value: showPersonalEventCards
+        )
+    }
+    
+    func markEventCompleted(_ event: EventItem) {
+        event.isCompleted = true
+        try? context.save()
+        Haptics.impact(.medium)
     }
     
     func sourceTask(for event: EventItem) -> DTTaskItem? {

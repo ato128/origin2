@@ -22,7 +22,6 @@
 		6D2004862F63334D0022C810 /* AddMemberView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004852F63334D0022C810 /* AddMemberView.swift */; };
 		6D2004882F6336A20022C810 /* EditCrewTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004872F6336A20022C810 /* EditCrewTaskView.swift */; };
 		6D20048C2F636EB30022C810 /* PlanAheadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D20048B2F636EB30022C810 /* PlanAheadView.swift */; };
-		6D20048E2F6375CB0022C810 /* MiniWeekCalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D20048D2F6375CB0022C810 /* MiniWeekCalendarView.swift */; };
 		6D2004922F6383720022C810 /* HomeDashboardHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004912F6383720022C810 /* HomeDashboardHelpers.swift */; };
 		6D2004942F63862E0022C810 /* FriendDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004932F63862E0022C810 /* FriendDetailView.swift */; };
 		6D2004962F6387D20022C810 /* Friend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004952F6387D20022C810 /* Friend.swift */; };
@@ -204,7 +203,6 @@
 		6D2004852F63334D0022C810 /* AddMemberView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMemberView.swift; sourceTree = "<group>"; };
 		6D2004872F6336A20022C810 /* EditCrewTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditCrewTaskView.swift; sourceTree = "<group>"; };
 		6D20048B2F636EB30022C810 /* PlanAheadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanAheadView.swift; sourceTree = "<group>"; };
-		6D20048D2F6375CB0022C810 /* MiniWeekCalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniWeekCalendarView.swift; sourceTree = "<group>"; };
 		6D2004912F6383720022C810 /* HomeDashboardHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDashboardHelpers.swift; sourceTree = "<group>"; };
 		6D2004932F63862E0022C810 /* FriendDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendDetailView.swift; sourceTree = "<group>"; };
 		6D2004952F6387D20022C810 /* Friend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Friend.swift; sourceTree = "<group>"; };
@@ -475,7 +473,6 @@
 		6D5FE4272F67950A007C124D /* Home */ = {
 			isa = PBXGroup;
 			children = (
-				6D20048D2F6375CB0022C810 /* MiniWeekCalendarView.swift */,
 				6D2004912F6383720022C810 /* HomeDashboardHelpers.swift */,
 				6DC0CA9C2F5F7D0000A875ED /* HomeDashboardView.swift */,
 				6DC0CAA42F5F7D0000A875ED /* NextClassCard.swift */,
@@ -969,7 +966,6 @@
 				6DC0CAB52F5F7D0000A875ED /* Crew.swift in Sources */,
 				6D5FE3CE2F66CF29007C124D /* CrewMessage.swift in Sources */,
 				6D8C3D3A2F65971400ABF6CA /* ThemePalette.swift in Sources */,
-				6D20048E2F6375CB0022C810 /* MiniWeekCalendarView.swift in Sources */,
 				6D5FE3D02F66D034007C124D /* CrewChatView.swift in Sources */,
 				6D20049E2F638AC80022C810 /* FriendFocusSession.swift in Sources */,
 				6D5FE44B2F689BA5007C124D /* CrewBadgeCard.swift in Sources */,

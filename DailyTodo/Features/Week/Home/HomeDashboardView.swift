@@ -236,9 +236,12 @@ struct HomeDashboardView: View {
 
             do {
                 try modelContext.save()
+                print("✅ Event completed:", matchedEvent.title)
             } catch {
                 print("❌ Linked week event complete error:", error)
             }
+        } else {
+            print("❌ No matched week event found for taskUUID:", task.taskUUID)
         }
     }
 

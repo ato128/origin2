@@ -21,7 +21,7 @@ enum PlanAheadMode: String, CaseIterable {
 
 struct WeekView: View {
     
-    @Environment(\.modelContext) var context
+    @Environment(\.modelContext)  var context
     
     @Query(sort: \EventItem.startMinute, order: .forward)
     private var allEvents: [EventItem]

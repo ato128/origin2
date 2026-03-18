@@ -25,6 +25,8 @@ struct EventRow: View {
     let onTap: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
+    let onComplete: (() -> Void)?
+    
 
     private let palette = ThemePalette()
 
@@ -375,6 +377,30 @@ struct EventRow: View {
         .onTapGesture {
             Haptics.impact(.light)
             onTap()
+        }
+        .contextMenu {
+            Button {
+                Haptics.impact(.light)
+                onTap()
+            } label: {
+                Label("Detay", systemImage: "info.circle")
+            }
+
+            if !event.isCompleted {
+                Button {
+                    Haptics.impact(.medium)
+                    onComplete?()
+                } label: {
+                    Label("Tamamlandı", systemImage: "checkmark.circle")
+                }
+            }
+
+            Button(role: .destructive) {
+                Haptics.impact(.heavy)
+                onDelete()
+            } label: {
+                Label("Sil", systemImage: "trash")
+            }
         }
     }
 
