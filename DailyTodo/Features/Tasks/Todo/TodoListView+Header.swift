@@ -188,11 +188,11 @@ extension TodoListView {
         var body: some View {
             let isLive = next.status == .live
 
-            return HStack(spacing: 10) {
-                HStack(spacing: 6) {
+            HStack(spacing: 8) {
+                HStack(spacing: 5) {
                     Circle()
                         .fill(isLive ? Color.green : Color.orange)
-                        .frame(width: 7, height: 7)
+                        .frame(width: 6, height: 6)
                         .shadow(
                             color: isLive ? Color.green.opacity(0.45) : Color.orange.opacity(0.35),
                             radius: isLive ? 6 : 4
@@ -201,9 +201,11 @@ extension TodoListView {
                     Text(isLive ? "LIVE" : "NEXT")
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(isLive ? Color.green : Color.orange)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
-                .padding(.horizontal, 7)
-                .padding(.vertical, 5)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
                 .background(
                     Capsule()
                         .fill(isLive ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
@@ -216,20 +218,26 @@ extension TodoListView {
                         )
                 )
 
-                VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text(next.title.uppercased())
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(palette.primaryText)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .truncationMode(.tail)
+                        .layoutPriority(1)
 
                     Text(next.timeText)
                         .font(.caption2)
                         .foregroundStyle(palette.secondaryText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
+
+                Spacer(minLength: 0)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
-            .frame(height: 34)
             .background(
                 Capsule()
                     .fill(palette.cardFill)
