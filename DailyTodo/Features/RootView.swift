@@ -11,11 +11,13 @@ import SwiftData
 struct RootView: View {
     @AppStorage("didFinishOnboarding") private var didFinishOnboarding = false
     @AppStorage("didFinishPermissionOnboarding") private var didFinishPermissionOnboarding = false
-
-    @StateObject private var guide = AppGuideManager()
+    @AppStorage("didFinishIntroFlow") private var didFinishIntroFlow = false
 
     @State private var importExport: ScheduleExport? = nil
     @State private var showImportSheet: Bool = false
+
+    @StateObject private var session = SessionStore()
+    @StateObject private var crewStore = CrewStore()
 
     var body: some View {
         if !didFinishOnboarding {
@@ -24,12 +26,13 @@ struct RootView: View {
         } else if !didFinishPermissionOnboarding {
             PermissionOnboardingView()
 
+        } else if !didFinishIntroFlow {
+            IntroFlowView()
+
         } else {
             MainTabView()
-                .environmentObject(guide)
-                .onAppear {
-                    guide.forceStart()
-                }
+                .environmentObject(session)
+                .environmentObject(crewStore)
                 .onOpenURL { url in
                     handleIncomingFileURL(url)
                 }
@@ -53,7 +56,6 @@ struct RootView: View {
 
         do {
             let tempURL = try copyToTemporaryIfNeeded(url)
-
             let export = try ScheduleShare.readJSON(from: tempURL)
             importExport = export
             showImportSheet = true

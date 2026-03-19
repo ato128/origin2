@@ -11,6 +11,7 @@ import UniformTypeIdentifiers
 
 struct CrewDetailView: View {
     let crew: Crew
+    let currentUserID = UUID()
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) var dbContext
@@ -33,7 +34,12 @@ struct CrewDetailView: View {
     @State var editableTasks: [CrewTask] = []
     @State var isReorderMode = false
     @State var draggedTask: CrewTask?
-
+    
+    @State private var inviteCode: String = ""
+    @State private var showInviteSheet = false
+    
+    @StateObject var crewStore = CrewStore()
+    
     @Query var members: [CrewMember]
     @Query var tasks: [CrewTask]
 
@@ -104,6 +110,9 @@ struct CrewDetailView: View {
                     .offset(y: showHeroCard ? 0 : 18)
                     .opacity(showHeroCard ? 1 : 0)
                     .scaleEffect(showHeroCard ? 1 : 0.985)
+                    
+                    Text("BURADAYIM")
+                        .foregroundColor(.red)
 
                     quickStatsRow(
                         completed: completedTasks,
@@ -211,6 +220,7 @@ struct CrewDetailView: View {
                 members: crewMembers
             )
         }
+        
         .sheet(isPresented: $showAddMemberSheet) {
             AddMemberView(crew: crew)
         }
@@ -223,6 +233,20 @@ struct CrewDetailView: View {
                     "Join my crew '\(crew.name)' on DailyTodo 🚀"
                 ]
             )
+        }
+        .sheet(isPresented: $showInviteSheet) {
+            VStack(spacing: 20) {
+                Text("Invite Code")
+                    .font(.headline)
+
+                Text(inviteCode)
+                    .font(.largeTitle.bold())
+
+                Button("Copy") {
+                    UIPasteboard.general.string = inviteCode
+                }
+            }
+            .padding()
         }
     }
 }
@@ -308,7 +332,18 @@ struct CrewDetailView: View {
                 Spacer()
 
                 Button {
-                    showShareSheet = true
+                    Task {
+                        do {
+                            let code = try await crewStore.createInvite(
+                                for: crew.id,
+                                userID: currentUserID
+                            )
+                            inviteCode = code
+                            showInviteSheet = true
+                        } catch {
+                            print("INVITE ERROR:", error.localizedDescription)
+                        }
+                    }
                 } label: {
                     Image(systemName: "person.badge.plus")
                         .font(.headline)

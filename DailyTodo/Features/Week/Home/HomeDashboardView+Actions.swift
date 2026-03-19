@@ -18,31 +18,22 @@ extension HomeDashboardView {
 
             HStack(spacing: 12) {
 
-                // ADD TASK
                 quickActionButton(
                     title: "Add Task",
                     systemImage: "plus.circle.fill",
-                    isHighlighted: guide.currentStep == .homeTasksPrompt
+                    isHighlighted: false
                 ) {
                     onAddTask()
                 }
 
-                // WEEK
                 quickActionButton(
                     title: "Week",
                     systemImage: "calendar",
-                    isHighlighted: guide.currentStep == .weekPrompt
+                    isHighlighted: false
                 ) {
                     onOpenWeek()
-
-                    if guide.currentStep == .weekPrompt {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                            guide.next()
-                        }
-                    }
                 }
 
-                // INSIGHTS
                 quickActionButton(
                     title: "Insights",
                     systemImage: "chart.bar.fill",
@@ -63,10 +54,8 @@ extension HomeDashboardView {
         isHighlighted: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
-
         Button(action: action) {
             VStack(spacing: 12) {
-
                 Image(systemName: systemImage)
                     .font(.title2)
                     .foregroundStyle(isHighlighted ? .white : Color.accentColor)

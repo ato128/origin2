@@ -22,7 +22,7 @@ struct HomeDashboardView: View {
     
     @Environment(\.modelContext) var modelContext
     @EnvironmentObject var store: TodoStore
-    @EnvironmentObject var guide: AppGuideManager
+   
     
     @Query(sort: \EventItem.startMinute, order: .forward)
     var allEvents: [EventItem]
@@ -169,18 +169,7 @@ struct HomeDashboardView: View {
         return exercises[inlineWorkoutExerciseIndex]
     }
     
-    @ViewBuilder
-    func guideBorder(active: Bool, cornerRadius: CGFloat) -> some View {
-        if active {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(Color.accentColor.opacity(0.95), lineWidth: 2)
-                .background(
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(Color.accentColor.opacity(0.08))
-                )
-                .shadow(color: Color.accentColor.opacity(0.28), radius: 18)
-        }
-    }
+    
     
     func startInlineFocus() {
         if let exercises = workoutExercisesForFocusTask(), !exercises.isEmpty {
@@ -649,7 +638,7 @@ struct HomeDashboardView: View {
                 }
                 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    guide.startIfNeeded()
+                    
                 }
             }
             .onChange(of: isFocusActive) { _, newValue in
@@ -660,43 +649,6 @@ struct HomeDashboardView: View {
             }
             .onReceive(crewFocusTimer) { value in
                 crewFocusNow = value
-            }
-            
-            if guide.isActive {
-                Color.black.opacity(0.4)
-                    .ignoresSafeArea()
-                    .zIndex(99)
-
-                AppGuideOverlayView(
-                    onPrimaryAction: {
-                        switch guide.currentStep {
-
-                        case .homeWelcome,
-                             .homeProgress,
-                             .homeFocusStarted:
-                            guide.next()
-
-                        case .homeFocusPrompt:
-                            break
-
-                        case .homeTasksPrompt:
-                            break
-
-                        case .weekPrompt:
-                            break
-
-                        default:
-                            guide.next()
-                        }
-                    },
-                    onBack: {
-                        guide.back()
-                    },
-                    onSkip: {
-                        guide.finish()
-                    }
-                )
-                .zIndex(100)
             }
         }
     }

@@ -10,7 +10,7 @@ import SwiftUI
 struct TasksView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var store: TodoStore
-    @EnvironmentObject var guide: AppGuideManager
+    
     
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     
@@ -33,18 +33,7 @@ struct TasksView: View {
         var id: String { rawValue }
     }
     
-    @ViewBuilder
-    func guideBorder(active: Bool, cornerRadius: CGFloat) -> some View {
-        if active {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(Color.accentColor.opacity(0.95), lineWidth: 2)
-                .background(
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(Color.accentColor.opacity(0.08))
-                )
-                .shadow(color: Color.accentColor.opacity(0.28), radius: 18)
-        }
-    }
+    
     
     var filteredTasks: [DTTaskItem] {
         let baseTasks: [DTTaskItem]
@@ -88,24 +77,12 @@ struct TasksView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
-                        .overlay(
-                            guideBorder(
-                                active: guide.currentStep == .tasksIntro,
-                                cornerRadius: 24
-                            )
-                        )
                     
                     filterSegment
                     summaryCard
                     
                     if filteredTasks.isEmpty {
                         emptyState
-                            .overlay(
-                                guideBorder(
-                                    active: guide.currentStep == .tasksWorkoutPrompt,
-                                    cornerRadius: 24
-                                )
-                            )
                     } else {
                         LazyVStack(spacing: 12) {
                             ForEach(filteredTasks) { task in
@@ -118,12 +95,6 @@ struct TasksView: View {
                                     ))
                             }
                         }
-                        .overlay(
-                            guideBorder(
-                                active: guide.currentStep == .tasksWorkoutPrompt,
-                                cornerRadius: 24
-                            )
-                        )
                     }
                     
                     Spacer(minLength: 80)
@@ -133,34 +104,6 @@ struct TasksView: View {
                 .padding(.bottom, 30)
             }
             .scrollIndicators(.hidden)
-            
-            if guide.isActive && guide.currentScreen == .tasks {
-                Color.black.opacity(0.4)
-                    .ignoresSafeArea()
-                    .zIndex(99)
-                
-                AppGuideOverlayView(
-                    onPrimaryAction: {
-                        switch guide.currentStep {
-                        case .tasksIntro:
-                            guide.next()
-                            
-                        case .tasksWorkoutPrompt:
-                            guide.next()
-                            
-                        default:
-                            guide.next()
-                        }
-                    },
-                    onBack: {
-                        guide.back()
-                    },
-                    onSkip: {
-                        guide.finish()
-                    }
-                )
-                .zIndex(100)
-            }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
@@ -177,13 +120,6 @@ struct TasksView: View {
         .sheet(item: $selectedTaskForSchedule) { task in
             NavigationStack {
                 TaskScheduleSheet(task: task)
-            }
-        }
-        .onAppear {
-            if guide.currentStep == .homeTasksPrompt {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    guide.next()
-                }
             }
         }
     }

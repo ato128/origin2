@@ -15,6 +15,10 @@ enum CrewTabMode: String, CaseIterable {
 
 struct CrewView: View {
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject var session: SessionStore
+    @EnvironmentObject var crewStore: CrewStore
+
+    @State private var showCreateCrewBackend = false
 
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
 
@@ -88,6 +92,14 @@ struct CrewView: View {
                             )
                         }
                     }
+            }
+            .sheet(isPresented: $showCreateCrewBackend) {
+                CreateCrewBackendView()
+                    .environmentObject(session)
+                    .environmentObject(crewStore)
+            }
+            .task {
+                await crewStore.loadCrews()
             }
         }
     }
@@ -179,7 +191,7 @@ private extension CrewView {
 
                 if crewTabMode == .crews {
                     Button {
-                        showCreateCrew = true
+                        showCreateCrewBackend = true
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 18, weight: .bold))
@@ -287,13 +299,116 @@ private extension CrewView {
 
     var crewsContent: some View {
         Group {
-            if crews.isEmpty {
+            if crewStore.crews.isEmpty {
                 emptyStateCard
             } else {
                 VStack(alignment: .leading, spacing: 18) {
-                    crewOverviewCard
-                    crewsSection
+                    backendCrewOverviewCard
+                    backendCrewsSection
                 }
+            }
+        }
+    }
+    
+    var backendCrewOverviewCard: some View {
+        let totalCrews = crewStore.crews.count
+
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Overview")
+                        .font(.headline)
+                        .foregroundStyle(palette.primaryText)
+
+                    Text("Your team productivity at a glance")
+                        .font(.caption)
+                        .foregroundStyle(palette.secondaryText)
+                }
+
+                Spacer()
+
+                Image(systemName: "person.3.sequence.fill")
+                    .font(.title3)
+                    .foregroundStyle(Color.accentColor)
+            }
+
+            HStack(spacing: 10) {
+                statPill(title: "\(totalCrews)", subtitle: "Crews")
+                statPill(title: "—", subtitle: "Members")
+                statPill(title: "—", subtitle: "Tasks")
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBackground)
+    }
+    
+    func backendCrewCard(for crew: CrewDTO) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(hexColor(crew.color_hex).opacity(0.18))
+                        .frame(width: 52, height: 52)
+
+                    Image(systemName: crew.icon)
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(hexColor(crew.color_hex))
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(crew.name)
+                        .font(.headline)
+                        .foregroundStyle(palette.primaryText)
+                        .lineLimit(1)
+
+                    Text("Backend crew")
+                        .font(.caption)
+                        .foregroundStyle(palette.secondaryText)
+                }
+
+                Spacer()
+            }
+
+            HStack(spacing: 10) {
+                miniPill(
+                    icon: "person.crop.circle.fill",
+                    text: "Owner",
+                    tint: hexColor(crew.color_hex)
+                )
+
+                miniPill(
+                    icon: "externaldrive.connected.to.line.below.fill",
+                    text: "Supabase",
+                    tint: .green
+                )
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBackground)
+        .shadow(
+            color: hexColor(crew.color_hex).opacity(0.12),
+            radius: 10,
+            y: 6
+        )
+    }
+
+    var backendCrewsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Your Crews")
+                .font(.headline)
+                .foregroundStyle(palette.primaryText)
+
+            ForEach(crewStore.crews) { crew in
+                NavigationLink {
+                    BackendCrewDetailView(crew: crew)
+                        .environmentObject(crewStore)
+                        .environmentObject(session)
+                } label: {
+                    backendCrewCard(for: crew)
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -591,7 +706,7 @@ private extension CrewView {
                 .multilineTextAlignment(.center)
 
             Button {
-                showCreateCrew = true
+                showCreateCrewBackend = true
             } label: {
                 Text("Create Your First Crew")
                     .font(.subheadline.weight(.semibold))

@@ -22,7 +22,7 @@ enum PlanAheadMode: String, CaseIterable {
 struct WeekView: View {
     
     @Environment(\.modelContext)  var context
-    @EnvironmentObject var guide: AppGuideManager
+   
     
     @Query(sort: \EventItem.startMinute, order: .forward)
     private var allEvents: [EventItem]
@@ -157,27 +157,7 @@ struct WeekView: View {
     @State private var planAheadMode: PlanAheadMode = .personal
     @State  var selectedEventForDetail: EventItem?
     
-    @ViewBuilder
-    var weekGuideOverlay: some View {
-        if guide.isActive && guide.currentScreen == .week {
-            Color.black.opacity(0.4)
-                .ignoresSafeArea()
-                .zIndex(99)
-            
-            AppGuideOverlayView(
-                onPrimaryAction: {
-                    guide.next()
-                },
-                onBack: {
-                    guide.back()
-                },
-                onSkip: {
-                    guide.finish()
-                }
-            )
-            .zIndex(100)
-        }
-    }
+    
     
     var body: some View {
         ZStack {
@@ -185,7 +165,7 @@ struct WeekView: View {
             
             weekMainContent
             
-            weekGuideOverlay
+            
         }
     }
     

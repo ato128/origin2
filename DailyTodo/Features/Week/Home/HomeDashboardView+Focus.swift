@@ -89,12 +89,6 @@ extension HomeDashboardView {
                     
                     Button {
                         startInlineFocus()
-                        
-                        if guide.currentStep == .homeFocusPrompt {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                                guide.next()
-                            }
-                        }
                     } label: {
                         Text(task.taskType == "workout" ? "Start Workout" : "Start Focus")
                             .font(.system(size: 15, weight: .semibold))
@@ -127,12 +121,6 @@ extension HomeDashboardView {
                 .padding(18)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(heroCardBackground)
-                .overlay(
-                    guideBorder(
-                        active: guide.highlightsHomeFocus,
-                        cornerRadius: 24
-                    )
-                )
             }
         }
     }
@@ -288,12 +276,7 @@ extension HomeDashboardView {
                             )
                     )
             )
-            .overlay(
-                guideBorder(
-                    active: guide.currentStep == .homeFocusStarted,
-                    cornerRadius: 22
-                )
-            )
+        
             .shadow(
                 color: (focusWorkoutIsResting ? Color.orange : urgencyColor).opacity(pulseActiveFocus ? 0.22 : 0.10),
                 radius: pulseActiveFocus ? 14 : 7,

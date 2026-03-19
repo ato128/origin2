@@ -8,12 +8,17 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var session: SessionStore
 
     @AppStorage("smartEngineEnabled") private var smartEngineEnabled: Bool = true
     @AppStorage("didFinishOnboarding") private var didFinishOnboarding = true
     @AppStorage("didFinishPermissionOnboarding") private var didFinishPermissionOnboarding = true
     @AppStorage("showOnlyToday") private var showOnlyToday: Bool = false
     @AppStorage("appTheme") private var appTheme: String = AppTheme.gradient.rawValue
+    
+    @State private var showEditProfile = false
+
+    @State private var showAuthSheet = false
 
     var body: some View {
         NavigationStack {
@@ -22,6 +27,7 @@ struct SettingsView: View {
                     .ignoresSafeArea()
 
                 Form {
+                    accountSection
                     appearanceSection
                     productivitySection
                     appSection
@@ -32,6 +38,105 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
+            .sheet(isPresented: $showAuthSheet) {
+                AuthView()
+                    .environmentObject(session)
+                
+            }
+            .sheet(isPresented: $showEditProfile) {
+                EditProfileView()
+                    .environmentObject(session)
+            }
+        }
+    }
+
+    private var accountSection: some View {
+        Section("Account") {
+            if let user = session.currentUser {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.accentColor.opacity(0.16))
+                                .frame(width: 46, height: 46)
+
+                            Image(systemName: "person.fill")
+                                .foregroundStyle(Color.accentColor)
+                        }
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(user.fullName)
+                                .font(.headline)
+
+                            Text("@\(user.username)")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+
+                            Text(user.email)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+                    }
+                    .padding(.vertical, 4)
+                    
+                    Button {
+                        showEditProfile = true
+                    } label: {
+                        settingsRow(
+                            icon: "pencil",
+                            iconColor: .blue,
+                            title: "Edit Profile",
+                            subtitle: "Change your name and username",
+                            showsChevron: true
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(role: .destructive) {
+                        session.signOut()
+                    } label: {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(Color.red.opacity(0.14))
+                                    .frame(width: 34, height: 34)
+
+                                Image(systemName: "rectangle.portrait.and.arrow.right")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.red)
+                            }
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Sign Out")
+                                    .foregroundStyle(.red)
+
+                                Text("Sign out from your account")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.plain)
+                }
+            } else {
+                Button {
+                    showAuthSheet = true
+                } label: {
+                    settingsRow(
+                        icon: "person.crop.circle.badge.plus",
+                        iconColor: .blue,
+                        title: "Sign In / Create Account",
+                        subtitle: "Prepare your account for sync, friends and crews",
+                        showsChevron: true
+                    )
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 
@@ -57,7 +162,6 @@ struct SettingsView: View {
 
     private var productivitySection: some View {
         Section("Productivity") {
-
             Toggle(isOn: $smartEngineEnabled) {
                 settingsRow(
                     icon: "brain.head.profile",
