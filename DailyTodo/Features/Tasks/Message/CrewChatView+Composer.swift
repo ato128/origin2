@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-extension CrewChatView{
+extension CrewChatView {
     var composerBar: some View {
         VStack(spacing: 4) {
             if let replyingTo {
@@ -18,7 +18,11 @@ extension CrewChatView{
                         .clipShape(Capsule())
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Replying to \(replyingTo.isFromMe ? "yourself" : replyingTo.senderName)")
+                        let replyingName = replyingTo.sender_id == session.currentUser?.id
+                        ? "yourself"
+                        : replyingTo.sender_name
+
+                        Text("Replying to \(replyingName)")
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(Color.accentColor)
 
@@ -130,6 +134,7 @@ extension CrewChatView{
                     .foregroundStyle(palette.primaryText)
                     .onChange(of: draftMessage) { _, newValue in
                         updateMentionState(for: newValue)
+                        handleTypingChange(for: newValue)
                     }
 
                 Button {
@@ -171,80 +176,5 @@ extension CrewChatView{
                 )
                 .ignoresSafeArea(edges: .bottom)
         )
-    }
-    func updateMentionState(for text: String) {
-        guard let lastWord = text.split(separator: " ", omittingEmptySubsequences: false).last else {
-            showMentionPicker = false
-            mentionQuery = ""
-            return
-        }
-
-        if lastWord.hasPrefix("@") {
-            mentionQuery = String(lastWord.dropFirst())
-            showMentionPicker = true
-        } else {
-            mentionQuery = ""
-            showMentionPicker = false
-        }
-    }
-    func insertMention(_ name: String) {
-        let words = draftMessage.split(separator: " ", omittingEmptySubsequences: false).map(String.init)
-
-        guard !words.isEmpty else {
-            draftMessage = "@\(name) "
-            mentionQuery = ""
-            showMentionPicker = false
-            isComposerFocused = true
-            return
-        }
-
-        var mutableWords = words
-
-        if let last = mutableWords.last, last.hasPrefix("@") {
-            mutableWords.removeLast()
-        }
-
-        let prefix = mutableWords.joined(separator: " ")
-
-        if prefix.isEmpty {
-            draftMessage = "@\(name) "
-        } else {
-            draftMessage = "\(prefix) @\(name) "
-        }
-
-        mentionQuery = ""
-        showMentionPicker = false
-        isComposerFocused = true
-    }
-    func mentionStyledText(
-        _ text: String,
-        baseColor: Color,
-        mentionColor: Color
-    ) -> Text {
-        let words = text.split(separator: " ", omittingEmptySubsequences: false)
-        guard !words.isEmpty else { return Text("").foregroundColor(baseColor) }
-
-        var result = Text("")
-
-        for index in words.indices {
-            let word = String(words[index])
-            let piece: Text
-
-            if word.hasPrefix("@") && word.count > 1 {
-                piece = Text(word)
-                    .foregroundColor(mentionColor)
-            } else {
-                piece = Text(word)
-                    .foregroundColor(baseColor)
-            }
-
-            result = result + piece
-
-            if index != words.indices.last {
-                result = result + Text(" ").foregroundColor(baseColor)
-            }
-        }
-
-        return result
     }
 }

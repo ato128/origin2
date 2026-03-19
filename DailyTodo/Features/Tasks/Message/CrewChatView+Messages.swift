@@ -6,17 +6,53 @@
 //
 
 import SwiftUI
-import SwiftData
 
 extension CrewChatView {
+    @ViewBuilder
+    var typingIndicatorView: some View {
+        if !typingNames.isEmpty {
+            HStack {
+                HStack(spacing: 8) {
+                    TypingDotsView()
+
+                    Text(typingIndicatorText)
+                        .font(.caption)
+                        .foregroundStyle(palette.secondaryText)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(palette.secondaryCardFill)
+                        .overlay(
+                            Capsule()
+                                .stroke(palette.cardStroke, lineWidth: 1)
+                        )
+                )
+
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 6)
+            .transition(.opacity.combined(with: .move(edge: .bottom)))
+        }
+    }
+
     var messagesList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 12) {
-                    ForEach(messages, id: \.id) { message in
-                        messageBubble(message)
-                            .id(message.id)
-                            .transition(.opacity)
+                LazyVStack(spacing: 4) {
+                    ForEach(Array(messages.enumerated()), id: \.element.id) { index, row in
+                        VStack(spacing: 8) {
+                            if shouldShowDateSeparator(at: index) {
+                                dateSeparator(for: row.createdAt)
+                                    .padding(.vertical, 10)
+                            }
+
+                            messageBubble(row, index: index)
+                                .id(row.id)
+                                .transition(.opacity)
+                        }
                     }
                 }
                 .padding(.horizontal, 16)
@@ -26,19 +62,24 @@ extension CrewChatView {
             .scrollIndicators(.hidden)
             .hideKeyboardOnTap()
             .onAppear {
-                scrollToBottom(proxy: proxy)
+                scrollToBottom(proxy: proxy, animated: false)
             }
             .onChange(of: messages.count) { _, _ in
-                markMessagesAsRead()
-                scrollToBottom(proxy: proxy)
+                scrollToBottom(proxy: proxy, animated: true)
             }
         }
     }
-    
-    func messageBubble(_ message: CrewMessage) -> some View {
-        let fullText = message.text
+
+    @ViewBuilder
+    func messageBubble(_ row: CrewMessageRowItem, index: Int) -> some View {
+        let isFromMe = row.senderID == session.currentUser?.id
+        let fullText = row.text
         let messageBody = visibleMessageText(from: fullText)
         let replyPreview = replyPreviewText(from: fullText)
+        let createdAt = row.createdAt
+        let backendMessage = row.backendMessage
+        let isReactionMenuOpen = backendMessage != nil && reactionTarget?.id == backendMessage?.id
+        let isPressed = backendMessage != nil && pressedMessageID == backendMessage?.id
 
         let isFocusSystemMessage =
             messageBody.contains("started a") && messageBody.contains("shared focus session") ||
@@ -47,10 +88,10 @@ extension CrewChatView {
             messageBody.contains("paused the shared focus session") ||
             messageBody.contains("resumed the shared focus session")
 
-        let isReactionMenuOpen = reactionTarget?.id == message.id
-        let isPressed = pressedMessageID == message.id
+        let showSenderName = shouldShowSenderName(at: index)
+        let topSpacing: CGFloat = shouldTightenSpacing(at: index) ? 2 : 8
 
-        return HStack(alignment: .bottom) {
+        HStack(alignment: .bottom) {
             if isFocusSystemMessage {
                 Spacer()
 
@@ -78,67 +119,29 @@ extension CrewChatView {
 
                 Spacer()
             } else {
-                if message.isFromMe { Spacer(minLength: 42) }
+                if isFromMe {
+                    Spacer(minLength: 42)
+                }
 
-                VStack(alignment: message.isFromMe ? .trailing : .leading, spacing: 5) {
-                    if !message.isFromMe {
-                        Text(message.senderName)
+                VStack(alignment: isFromMe ? .trailing : .leading, spacing: 5) {
+                    if !isFromMe && showSenderName {
+                        Text(row.senderName)
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(palette.secondaryText)
                             .padding(.horizontal, 4)
                     }
 
-                    ZStack(alignment: message.isFromMe ? .bottomTrailing : .bottomLeading) {
-
-                        if isReactionMenuOpen {
-                            HStack(spacing: 10) {
-                                ForEach(["👍", "❤️", "😂", "😮", "😢"], id: \.self) { emoji in
-                                    Button {
-                                        let gen = UIImpactFeedbackGenerator(style: .medium)
-                                        gen.prepare()
-                                        gen.impactOccurred()
-
-                                        if message.reaction == emoji {
-                                            message.reaction = nil
-                                        } else {
-                                            message.reaction = emoji
-                                        }
-
-                                        try? modelContext.save()
-                                        reactionTarget = nil
-                                    } label: {
-                                        Text(emoji)
-                                            .font(.title3)
-                                            .frame(width: 36, height: 36)
-                                            .background(
-                                                Circle()
-                                                    .fill(palette.cardFill)
-                                            )
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 8)
-                            .background(
-                                Capsule()
-                                    .fill(palette.cardFill)
-                                    .overlay(
-                                        Capsule()
-                                            .stroke(palette.cardStroke, lineWidth: 1)
-                                    )
-                            )
-                            .shadow(color: .black.opacity(0.10), radius: 5, y: 2)
-                            .offset(y: -58)
-                            .zIndex(2)
+                    ZStack(alignment: isFromMe ? .bottomTrailing : .bottomLeading) {
+                        if let backendMessage, isReactionMenuOpen {
+                            reactionMenu(for: backendMessage)
                         }
 
-                        VStack(alignment: message.isFromMe ? .trailing : .leading, spacing: 5) {
+                        VStack(alignment: isFromMe ? .trailing : .leading, spacing: 5) {
                             if let replyPreview {
                                 HStack(spacing: 6) {
                                     Rectangle()
                                         .fill(
-                                            message.isFromMe
+                                            isFromMe
                                             ? Color.white.opacity(0.75)
                                             : Color.accentColor.opacity(0.9)
                                         )
@@ -149,7 +152,7 @@ extension CrewChatView {
                                         Text("Reply")
                                             .font(.caption2.weight(.semibold))
                                             .foregroundStyle(
-                                                message.isFromMe
+                                                isFromMe
                                                 ? .white.opacity(0.78)
                                                 : palette.secondaryText
                                             )
@@ -157,7 +160,7 @@ extension CrewChatView {
                                         Text(replyPreview)
                                             .font(.caption2)
                                             .foregroundStyle(
-                                                message.isFromMe
+                                                isFromMe
                                                 ? .white.opacity(0.90)
                                                 : palette.secondaryText
                                             )
@@ -171,7 +174,7 @@ extension CrewChatView {
                                 .background(
                                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                                         .fill(
-                                            message.isFromMe
+                                            isFromMe
                                             ? Color.white.opacity(0.08)
                                             : Color.white.opacity(appTheme == AppTheme.light.rawValue ? 0.28 : 0.04)
                                         )
@@ -180,8 +183,8 @@ extension CrewChatView {
 
                             mentionStyledText(
                                 messageBody,
-                                baseColor: message.isFromMe ? .white : palette.primaryText,
-                                mentionColor: message.isFromMe ? .white.opacity(0.95) : Color.accentColor
+                                baseColor: isFromMe ? .white : palette.primaryText,
+                                mentionColor: isFromMe ? .white.opacity(0.95) : Color.accentColor
                             )
                             .font(.subheadline)
                         }
@@ -190,7 +193,7 @@ extension CrewChatView {
                         .background(
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
                                 .fill(
-                                    message.isFromMe
+                                    isFromMe
                                     ? Color.accentColor.opacity(0.90)
                                     : palette.secondaryCardFill
                                 )
@@ -198,7 +201,7 @@ extension CrewChatView {
                         .overlay(
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
                                 .stroke(
-                                    message.isFromMe
+                                    isFromMe
                                     ? Color.accentColor.opacity(0.18)
                                     : palette.cardStroke,
                                     lineWidth: 1
@@ -206,7 +209,7 @@ extension CrewChatView {
                         )
                         .compositingGroup()
 
-                        if let reaction = message.reaction {
+                        if let reaction = row.reaction, !reaction.isEmpty {
                             Text(reaction)
                                 .font(.caption)
                                 .padding(.horizontal, 7)
@@ -220,37 +223,41 @@ extension CrewChatView {
                                         )
                                 )
                                 .offset(
-                                    x: message.isFromMe ? 10 : -10,
+                                    x: isFromMe ? 10 : -10,
                                     y: 12
                                 )
                                 .shadow(color: palette.shadowColor.opacity(0.10), radius: 2, y: 1)
                         }
                     }
                     .padding(.top, isReactionMenuOpen ? 52 : 0)
-                    .padding(.bottom, message.reaction == nil ? 0 : 10)
-                    .scaleEffect(isPressed || isReactionMenuOpen ? 1.01 : 1.0)
+                    .padding(.bottom, ((row.reaction ?? "").isEmpty ? 0 : 10))
+                    .scaleEffect(isPressed ? 1.01 : 1.0)
                     .shadow(
-                        color: (isPressed || isReactionMenuOpen)
-                        ? Color.black.opacity(0.08)
-                        : Color.clear,
+                        color: isPressed ? Color.black.opacity(0.08) : Color.clear,
                         radius: 4,
                         y: 2
                     )
                     .animation(.easeOut(duration: 0.14), value: isPressed)
                     .animation(.easeOut(duration: 0.14), value: isReactionMenuOpen)
 
-                    Text(message.createdAt, style: .time)
-                        .font(.caption2)
-                        .foregroundStyle(palette.secondaryText)
-                        .padding(.horizontal, 4)
+                    HStack(spacing: 6) {
+                        Text(createdAt, style: .time)
+                            .font(.caption2)
+                            .foregroundStyle(palette.secondaryText)
+
+                        messageStatusView(for: row, isFromMe: isFromMe)
+                    }
+                    .padding(.horizontal, 4)
+                    .opacity(row.isOptimistic ? 0.85 : 1.0)
                 }
-                .opacity(reactionTarget == nil || reactionTarget?.id == message.id ? 1.0 : 0.55)
+                .padding(.top, topSpacing)
+                .opacity(reactionTarget == nil || reactionTarget?.id == backendMessage?.id ? 1.0 : 0.55)
                 .animation(.easeOut(duration: 0.12), value: reactionTarget?.id)
                 .gesture(
                     DragGesture(minimumDistance: 20)
                         .onEnded { value in
-                            if value.translation.width > 65 {
-                                replyingTo = message
+                            if value.translation.width > 65, let backendMessage {
+                                replyingTo = backendMessage
                                 isComposerFocused = true
 
                                 let gen = UIImpactFeedbackGenerator(style: .light)
@@ -259,100 +266,59 @@ extension CrewChatView {
                             }
                         }
                 )
-                .simultaneousGesture(
-                    LongPressGesture(minimumDuration: 0.18)
-                        .onChanged { _ in
-                            if pressedMessageID != message.id {
-                                pressedMessageID = message.id
 
-                                let gen = UIImpactFeedbackGenerator(style: .light)
-                                gen.prepare()
-                                gen.impactOccurred()
-                            }
-                        }
-                        .onEnded { _ in
-                            let gen = UIImpactFeedbackGenerator(style: .medium)
-                            gen.prepare()
-                            gen.impactOccurred()
-
-                            if reactionTarget?.id == message.id {
-                                reactionTarget = nil
-                            } else {
-                                reactionTarget = message
-                            }
-
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                                pressedMessageID = nil
-                            }
-                        }
-                )
-
-                if !message.isFromMe { Spacer(minLength: 42) }
+                if !isFromMe {
+                    Spacer(minLength: 42)
+                }
             }
         }
     }
-    func reactionPicker(for message: CrewMessage) -> some View {
-        let reactions = ["👍", "❤️", "😂", "😮", "😢"]
 
-        return ZStack {
-            Color.black.opacity(0.001)
-                .ignoresSafeArea()
-                .onTapGesture {
-                    reactionTarget = nil
-                }
+    func reactionMenu(for message: CrewMessageDTO) -> some View {
+        HStack(spacing: 10) {
+            ForEach(["👍", "❤️", "😂", "😮", "😢"], id: \.self) { emoji in
+                Button {
+                    let gen = UIImpactFeedbackGenerator(style: .medium)
+                    gen.prepare()
+                    gen.impactOccurred()
 
-            VStack {
-                Spacer()
-
-                HStack {
-                    if message.isFromMe { Spacer() }
-
-                    HStack(spacing: 12) {
-                        ForEach(reactions, id: \.self) { emoji in
-                            Button {
-                                let gen = UIImpactFeedbackGenerator(style: .light)
-                                gen.prepare()
-                                gen.impactOccurred()
-
-                                if message.reaction == emoji {
-                                    message.reaction = nil
-                                } else {
-                                    message.reaction = emoji
-                                }
-
-                                try? modelContext.save()
-                                reactionTarget = nil
-                            } label: {
-                                Text(emoji)
-                                    .font(.title3)
-                                    .frame(width: 40, height: 40)
-                                    .background(
-                                        Circle()
-                                            .fill(palette.cardFill)
-                                    )
-                            }
-                            .buttonStyle(.plain)
+                    Task {
+                        do {
+                            let newReaction = message.reaction == emoji ? nil : emoji
+                            try await crewStore.updateCrewMessageReaction(
+                                messageID: message.id,
+                                reaction: newReaction
+                            )
+                            await crewStore.loadCrewMessages(for: crew.id)
+                            reactionTarget = nil
+                        } catch {
+                            print("UPDATE REACTION ERROR:", error.localizedDescription)
                         }
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(
-                        Capsule()
-                            .fill(.ultraThinMaterial)
-                            .overlay(
-                                Capsule()
-                                    .stroke(palette.cardStroke, lineWidth: 1)
-                            )
-                    )
-                    .shadow(color: .black.opacity(0.18), radius: 12, y: 6)
-                    .padding(.horizontal, 20)
-
-                    if !message.isFromMe { Spacer() }
+                } label: {
+                    Text(emoji)
+                        .font(.title3)
+                        .frame(width: 36, height: 36)
+                        .background(
+                            Circle()
+                                .fill(palette.cardFill)
+                        )
                 }
-                .padding(.bottom, 160)
+                .buttonStyle(.plain)
             }
-            .transition(.scale.combined(with: .opacity))
-            .animation(.spring(response: 0.28, dampingFraction: 0.82), value: reactionTarget)
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(palette.cardFill)
+                .overlay(
+                    Capsule()
+                        .stroke(palette.cardStroke, lineWidth: 1)
+                )
+        )
+        .shadow(color: .black.opacity(0.10), radius: 5, y: 2)
+        .offset(y: -58)
+        .zIndex(2)
     }
 }

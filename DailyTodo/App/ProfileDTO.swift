@@ -9,7 +9,14 @@ import Foundation
 
 struct ProfileDTO: Codable, Identifiable, Equatable {
     let id: UUID
-    let email: String
+    let email: String?
     let username: String?
     let full_name: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case email
+        case username
+        case full_name
+    }
 }

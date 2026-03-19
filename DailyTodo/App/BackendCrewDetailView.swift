@@ -1105,7 +1105,7 @@ extension BackendCrewDetailView {
             return username
         }
 
-        return profile.email
+        return profile.email ?? "Unkown user"
     }
 
     func memberUsername(from profile: ProfileDTO?) -> String {
@@ -1113,7 +1113,7 @@ extension BackendCrewDetailView {
         if let username = profile.username, !username.isEmpty {
             return username
         }
-        return profile.email
+        return profile.email ?? "Unkown user"
     }
 
     func memberInitial(from profile: ProfileDTO?) -> String {
@@ -1337,7 +1337,7 @@ struct BackendCreateCrewTaskSheet: View {
             return username
         }
 
-        return profile.email
+        return profile.email ?? "Unkown user"
     }
 
     private func priorityLabel(_ raw: String) -> String {

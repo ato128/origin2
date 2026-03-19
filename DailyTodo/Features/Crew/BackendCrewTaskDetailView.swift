@@ -335,7 +335,7 @@ private extension BackendCrewTaskDetailView {
             return username
         }
 
-        return profile.email
+        return profile.email ?? "Unkown user"
     }
 
     var cardBackground: some View {

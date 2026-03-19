@@ -245,7 +245,7 @@ struct BackendEditCrewTaskView: View {
             return username
         }
 
-        return profile.email
+        return profile.email ?? "Unkown user"
     }
 
     private func priorityLabel(_ raw: String) -> String {

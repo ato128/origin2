@@ -65,6 +65,7 @@ extension CrewChatView {
                 .ignoresSafeArea(edges: .top)
         )
     }
+
     var emptyState: some View {
         VStack(spacing: 14) {
             Spacer()

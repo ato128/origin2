@@ -10,22 +10,30 @@ import SwiftData
 
 struct MessagesView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var crewStore: CrewStore
+    @EnvironmentObject var session: SessionStore
+
     @State private var selectedTab = 0
 
     @Query(sort: \Friend.createdAt, order: .reverse)
     private var friends: [Friend]
 
-    @Query(sort: \Crew.createdAt, order: .reverse)
-    private var crews: [Crew]
-
     @Query(sort: \FriendMessage.createdAt, order: .reverse)
     private var friendMessages: [FriendMessage]
 
-    @Query(sort: \CrewMessage.createdAt, order: .reverse)
-    private var crewMessages: [CrewMessage]
-
     private let replyMarker = "[[reply]]"
     private let bodyMarker = "[[body]]"
+
+    private var backendCrews: [WeekCrewItem] {
+        crewStore.crews.map {
+            WeekCrewItem(
+                id: $0.id,
+                name: $0.name,
+                icon: $0.icon,
+                colorHex: $0.color_hex
+            )
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -111,18 +119,21 @@ struct MessagesView: View {
                         }
                     }
                     .listStyle(.plain)
+
                 } else {
                     List {
-                        if crews.isEmpty {
+                        if backendCrews.isEmpty {
                             ContentUnavailableView(
                                 "No Crews Yet",
                                 systemImage: "person.3.slash",
                                 description: Text("Your crew chats will appear here.")
                             )
                         } else {
-                            ForEach(crews) { crew in
+                            ForEach(backendCrews) { crew in
                                 NavigationLink {
                                     CrewChatView(crew: crew)
+                                        .environmentObject(crewStore)
+                                        .environmentObject(session)
                                 } label: {
                                     HStack(spacing: 12) {
                                         RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -141,12 +152,6 @@ struct MessagesView: View {
                                                 .font(.caption)
                                                 .foregroundStyle(.secondary)
                                                 .lineLimit(1)
-
-                                            if crew.isMuted {
-                                                Text("Muted")
-                                                    .font(.caption2.weight(.semibold))
-                                                    .foregroundStyle(.orange)
-                                            }
                                         }
 
                                         Spacer()
@@ -161,12 +166,6 @@ struct MessagesView: View {
                                             HStack(spacing: 8) {
                                                 if unreadCrewCount(for: crew) > 0 {
                                                     unreadBadge(unreadCrewCount(for: crew))
-                                                }
-
-                                                if crew.isMuted {
-                                                    Image(systemName: "bell.slash.fill")
-                                                        .font(.caption.weight(.semibold))
-                                                        .foregroundStyle(.orange)
                                                 }
 
                                                 Image(systemName: "chevron.right")
@@ -190,6 +189,13 @@ struct MessagesView: View {
                     Button("Done") {
                         dismiss()
                     }
+                }
+            }
+            .task {
+                await crewStore.loadCrews()
+
+                for crew in crewStore.crews {
+                    await crewStore.loadCrewMessages(for: crew.id)
                 }
             }
         }
@@ -229,21 +235,30 @@ struct MessagesView: View {
         friendMessages.filter { $0.friendID == friend.id && !$0.isRead && !$0.isFromMe }.count
     }
 
-    private func lastPreviewText(for crew: Crew) -> String {
-        guard let last = crewMessages.first(where: { $0.crewID == crew.id }) else {
+    private func crewMessages(for crew: WeekCrewItem) -> [CrewMessageDTO] {
+        crewStore.crewMessages
+            .filter { $0.crew_id == crew.id }
+            .sorted { lhs, rhs in
+                (isoDate(lhs.created_at) ?? .distantPast) > (isoDate(rhs.created_at) ?? .distantPast)
+            }
+    }
+
+    private func lastPreviewText(for crew: WeekCrewItem) -> String {
+        guard let last = crewMessages(for: crew).first else {
             return "Crew conversation"
         }
 
         let cleaned = cleanedPreview(last.text)
-        return "\(last.senderName): \(cleaned)"
+        return "\(last.sender_name): \(cleaned)"
     }
 
-    private func lastCrewMessageDate(for crew: Crew) -> Date? {
-        crewMessages.first(where: { $0.crewID == crew.id })?.createdAt
+    private func lastCrewMessageDate(for crew: WeekCrewItem) -> Date? {
+        guard let raw = crewMessages(for: crew).first?.created_at else { return nil }
+        return isoDate(raw)
     }
 
-    private func unreadCrewCount(for crew: Crew) -> Int {
-        crewMessages.filter { $0.crewID == crew.id && !$0.isRead && !$0.isFromMe }.count
+    private func unreadCrewCount(for crew: WeekCrewItem) -> Int {
+        crewMessages(for: crew).filter { !$0.is_read }.count
     }
 
     private func unreadBadge(_ count: Int) -> some View {
@@ -256,5 +271,22 @@ struct MessagesView: View {
                 Capsule()
                     .fill(Color.accentColor)
             )
+    }
+
+    private func isoDate(_ raw: String?) -> Date? {
+        guard let raw else { return nil }
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [
+            .withInternetDateTime,
+            .withFractionalSeconds
+        ]
+
+        if let date = formatter.date(from: raw) {
+            return date
+        }
+
+        let fallback = ISO8601DateFormatter()
+        return fallback.date(from: raw)
     }
 }
