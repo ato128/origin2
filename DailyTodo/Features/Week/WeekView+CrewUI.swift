@@ -10,7 +10,7 @@ import SwiftData
 
 extension WeekView {
     
-    var allCrewTasksForSelectedDay: [CrewTask] {
+    var allCrewTasksForSelectedDay: [WeekCrewTaskItem] {
         crewTasks(for: selectedDay)
     }
     
@@ -77,7 +77,8 @@ extension WeekView {
 
                     HStack(alignment: .center, spacing: 14) {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(crewSummaryTitle)            .font(.system(size: 22, weight: .bold, design: .default))
+                            Text(crewSummaryTitle)
+                                .font(.system(size: 22, weight: .bold, design: .default))
 
                             Text(fullDateTextForSelectedDay())
                                 .font(.footnote.weight(.medium))
@@ -305,7 +306,7 @@ extension WeekView {
                                 lineWidth: 1
                             )
                     )
-                    .foregroundStyle(allSelected ? palette.primaryText : palette.primaryText)
+                    .foregroundStyle(palette.primaryText)
                     .shadow(
                         color: allSelected ? palette.primaryText.opacity(0.06) : .clear,
                         radius: 10
@@ -409,6 +410,7 @@ extension WeekView {
             }
         }
     }
+
     var crewWeekSection: some View {
         Section {
             let tasks = allCrewTasksForSelectedDay
@@ -553,6 +555,7 @@ extension WeekView {
             .opacity(showCrewTaskHeader ? 1 : 0)
         }
     }
+
     var crewSummaryIconName: String {
         selectedCrew?.icon ?? "person.3.fill"
     }
@@ -571,7 +574,7 @@ extension WeekView {
     }
 
     func enhancedPremiumTimelineCard(
-        _ task: CrewTask,
+        _ task: WeekCrewTaskItem,
         isLast: Bool,
         parallaxOffset: CGFloat,
         timelineParallaxOffset: CGFloat
@@ -623,7 +626,7 @@ extension WeekView {
         .padding(.bottom, 4)
     }
 
-    func crewTaskButton(task: CrewTask, index: Int, totalCount: Int) -> some View {
+    func crewTaskButton(task: WeekCrewTaskItem, index: Int, totalCount: Int) -> some View {
         Button {
             if let crew = crewMap[task.crewID] {
                 selectedCrewTask = task
@@ -694,7 +697,6 @@ extension WeekView {
         }
     }
 
-   
     func crewCollapsibleSectionHeader(
         _ title: String,
         systemImage: String,
@@ -732,7 +734,8 @@ extension WeekView {
         }
         .buttonStyle(.plain)
     }
-    func completedTasksCollapsedSummary(_ tasks: [CrewTask]) -> some View {
+
+    func completedTasksCollapsedSummary(_ tasks: [WeekCrewTaskItem]) -> some View {
         let count = tasks.count
         let firstTitle = tasks.first?.title ?? "Completed tasks"
 

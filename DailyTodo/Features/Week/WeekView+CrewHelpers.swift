@@ -6,11 +6,10 @@
 //
 
 import SwiftUI
-import SwiftData
 
 extension WeekView {
     
-    func crewTasks(for day: Int) -> [CrewTask] {
+    func crewTasks(for day: Int) -> [WeekCrewTaskItem] {
         let calendar = Calendar.current
         let targetDate = targetDateFor(day: day)
 
@@ -30,13 +29,13 @@ extension WeekView {
             }
     }
     
-    func commentsForTask(_ task: CrewTask) -> [CrewTaskComment] {
+    func commentsForTask(_ task: WeekCrewTaskItem) -> [WeekCrewCommentItem] {
         allCrewComments
             .filter { $0.taskID == task.id }
             .sorted { $0.createdAt > $1.createdAt }
     }
     
-    func previewCommentsForTask(_ task: CrewTask) -> [CrewTaskComment] {
+    func previewCommentsForTask(_ task: WeekCrewTaskItem) -> [WeekCrewCommentItem] {
         Array(commentsForTask(task).prefix(2))
     }
     
@@ -45,7 +44,7 @@ extension WeekView {
         return String(trimmed.prefix(1)).uppercased()
     }
     
-    func hasComments(_ task: CrewTask) -> Bool {
+    func hasComments(_ task: WeekCrewTaskItem) -> Bool {
         !commentsForTask(task).isEmpty
     }
     
@@ -67,26 +66,35 @@ extension WeekView {
         hasActiveCrewTask(on: day) || hasUpcomingCrewTaskSoon(on: day)
     }
     
-    func toggleCrewTaskDone(_ task: CrewTask) {
-        task.isDone.toggle()
+    func toggleCrewTaskDone(_ task: WeekCrewTaskItem) {
+        guard let dto = crewStore.crewTasks.first(where: { $0.id == task.id }) else { return }
         
-        if task.isDone {
-            task.status = "done"
-            Haptics.notify(.success)
-        } else {
-            if task.status == "done" {
-                task.status = "todo"
+        let willBeDone = !dto.is_done
+        
+        Task {
+            await crewStore.toggleTask(dto)
+            
+            if willBeDone {
+                Haptics.notify(.success)
+            } else {
+                Haptics.impact(.light)
             }
-            Haptics.impact(.light)
         }
-        
-        try? context.save()
     }
     
-    func deleteCrewTask(_ task: CrewTask) {
-        context.delete(task)
-        Haptics.impact(.heavy)
-        try? context.save()
+    func deleteCrewTask(_ task: WeekCrewTaskItem) {
+        Task {
+            do {
+                try await crewStore.deleteTask(
+                    taskID: task.id,
+                    crewID: task.crewID,
+                    title: task.title
+                )
+                Haptics.impact(.heavy)
+            } catch {
+                print("DELETE CREW TASK ERROR:", error.localizedDescription)
+            }
+        }
     }
     
     func dayIndicatorColor(for day: Int) -> Color {
@@ -157,7 +165,7 @@ extension WeekView {
         crewTasks(for: day).contains { $0.priority == "urgent" }
     }
     
-    func taskProgress(_ task: CrewTask) -> Double {
+    func taskProgress(_ task: WeekCrewTaskItem) -> Double {
         guard isTaskActive(task),
               let start = task.scheduledStartMinute,
               let duration = task.scheduledDurationMinute,
@@ -169,7 +177,7 @@ extension WeekView {
         return min(1, Double(elapsed) / Double(duration))
     }
     
-    func taskMinutesLeft(_ task: CrewTask) -> Int {
+    func taskMinutesLeft(_ task: WeekCrewTaskItem) -> Int {
         guard let start = task.scheduledStartMinute,
               let duration = task.scheduledDurationMinute
         else { return 0 }
@@ -179,9 +187,9 @@ extension WeekView {
         return max(0, end - now)
     }
     
-    func isTaskActive(_ task: CrewTask) -> Bool {
+    func isTaskActive(_ task: WeekCrewTaskItem) -> Bool {
         let calendar = Calendar.current
-
+        
         if let scheduledDate = task.scheduledDate {
             guard calendar.isDateInToday(scheduledDate) else { return false }
         } else {
@@ -190,15 +198,16 @@ extension WeekView {
         
         let now = currentMinuteOfDay()
         guard let start = task.scheduledStartMinute,
-              let duration = task.scheduledDurationMinute else { return false }
+              let duration = task.scheduledDurationMinute
+        else { return false }
         
         let end = start + duration
         return now >= start && now < end
     }
     
-    func isTaskStartingSoon(_ task: CrewTask) -> Bool {
+    func isTaskStartingSoon(_ task: WeekCrewTaskItem) -> Bool {
         let calendar = Calendar.current
-
+        
         if let scheduledDate = task.scheduledDate {
             guard calendar.isDateInToday(scheduledDate) else { return false }
         } else {
@@ -212,15 +221,15 @@ extension WeekView {
         return diff >= 0 && diff <= 30
     }
     
-    func activeCrewTasksToday() -> [CrewTask] {
+    func activeCrewTasksToday() -> [WeekCrewTaskItem] {
         allCrewTasksForSelectedDay.filter { isTaskActive($0) && !$0.isDone }
     }
 
-    func upcomingCrewTasksToday() -> [CrewTask] {
+    func upcomingCrewTasksToday() -> [WeekCrewTaskItem] {
         allCrewTasksForSelectedDay.filter { isTaskStartingSoon($0) && !isTaskActive($0) && !$0.isDone }
     }
 
-    func laterCrewTasksToday() -> [CrewTask] {
+    func laterCrewTasksToday() -> [WeekCrewTaskItem] {
         if selectedDay != weekdayIndexToday() {
             return allCrewTasksForSelectedDay.filter { !$0.isDone }
         }
@@ -234,11 +243,11 @@ extension WeekView {
         }
     }
 
-    func completedCrewTasksToday() -> [CrewTask] {
+    func completedCrewTasksToday() -> [WeekCrewTaskItem] {
         allCrewTasksForSelectedDay.filter { $0.isDone }
     }
 
-    func lateCrewTasksToday() -> [CrewTask] {
+    func lateCrewTasksToday() -> [WeekCrewTaskItem] {
         guard selectedDay == weekdayIndexToday() else { return [] }
 
         let now = currentMinuteOfDay()
@@ -250,7 +259,7 @@ extension WeekView {
         }
     }
 
-    func lateDurationText(for task: CrewTask) -> String? {
+    func lateDurationText(for task: WeekCrewTaskItem) -> String? {
         guard selectedDay == weekdayIndexToday() else { return nil }
         guard !task.isDone else { return nil }
         guard let start = task.scheduledStartMinute else { return nil }

@@ -7,11 +7,11 @@
 import SwiftUI
 
 extension WeekView {
-    func crewName(for task: CrewTask) -> String? {
+    func crewName(for task: WeekCrewTaskItem) -> String? {
         crewMap[task.crewID]?.name
     }
 
-    func commentPreviewItems(for task: CrewTask) -> [CrewTaskCommentPreviewItem] {
+    func commentPreviewItems(for task: WeekCrewTaskItem) -> [CrewTaskCommentPreviewItem] {
         previewCommentsForTask(task).map {
             CrewTaskCommentPreviewItem(
                 id: $0.id,
@@ -21,9 +21,8 @@ extension WeekView {
         }
     }
 
-    func taskTimeText(_ task: CrewTask) -> String? {
+    func taskTimeText(_ task: WeekCrewTaskItem) -> String? {
         guard let start = task.scheduledStartMinute else { return nil }
         return hm(start)
     }
 }
-

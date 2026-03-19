@@ -74,17 +74,40 @@ struct DailyTodoApp: App {
                         Task {
                             await LiveActivityManager.shared.end()
                         }
-                    } else if url.absoluteString == "dailytodo://week" {
+                        return
+                    }
+
+                    if url.absoluteString == "dailytodo://week" {
                         NotificationCenter.default.post(
                             name: .openWeekFromWidget,
                             object: nil
                         )
+                        return
                     }
+
+                    handleIncomingInviteURL(url)
                 }
         }
+    }
+
+    private func handleIncomingInviteURL(_ url: URL) {
+        guard url.scheme == "dailytodo" else { return }
+        guard url.host == "join-crew" else { return }
+
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let code = components.queryItems?.first(where: { $0.name == "code" })?.value,
+              !code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return
+        }
+
+        NotificationCenter.default.post(
+            name: .openCrewInviteFromLink,
+            object: code
+        )
     }
 }
 
 extension Notification.Name {
     static let openWeekFromWidget = Notification.Name("openWeekFromWidget")
+    static let openCrewInviteFromLink = Notification.Name("openCrewInviteFromLink")
 }

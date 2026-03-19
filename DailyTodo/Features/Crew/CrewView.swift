@@ -26,26 +26,18 @@ struct CrewView: View {
 
     let initialTab: CrewTabMode
 
-    @Query(sort: \Crew.createdAt, order: .reverse)
-    private var crews: [Crew]
-
-    @Query private var members: [CrewMember]
-    @Query private var tasks: [CrewTask]
-
-    @Query(sort: \CrewActivity.createdAt, order: .reverse)
-    private var activities: [CrewActivity]
-
     @Query(sort: \Friend.createdAt, order: .reverse)
     private var friends: [Friend]
 
     @Query(sort: \FriendFocusSession.startedAt, order: .reverse)
     private var focusSessions: [FriendFocusSession]
 
-    @State private var showCreateCrew = false
     @State private var crewTabMode: CrewTabMode
     @State private var showJoinFocusSheet = false
     @State private var selectedFocusSession: FriendFocusSession?
     @State private var pulseLiveIndicator = false
+    @State private var showJoinCrewSheet = false
+    @State private var pendingInviteCode = ""
 
     init(initialTab: CrewTabMode = .crews) {
         self.initialTab = initialTab
@@ -81,25 +73,34 @@ struct CrewView: View {
                 .scrollIndicators(.hidden)
             }
             .navigationBarHidden(true)
-            .sheet(isPresented: $showCreateCrew) {
-                CreateCrewView()
-                    .sheet(isPresented: $showJoinFocusSheet) {
-                        if let session = selectedFocusSession,
-                           let friend = friendForFocusSession(session) {
-                            JoinFocusSheet(
-                                friend: friend,
-                                session: session
-                            )
-                        }
-                    }
-            }
             .sheet(isPresented: $showCreateCrewBackend) {
                 CreateCrewBackendView()
                     .environmentObject(session)
                     .environmentObject(crewStore)
             }
+            .sheet(isPresented: $showJoinCrewSheet) {
+                JoinCrewSheet(code: pendingInviteCode)
+                    .environmentObject(crewStore)
+                    .environmentObject(session)
+            }
+            .sheet(isPresented: $showJoinFocusSheet) {
+                if let session = selectedFocusSession,
+                   let friend = friendForFocusSession(session) {
+                    JoinFocusSheet(
+                        friend: friend,
+                        session: session
+                    )
+                }
+            }
             .task {
                 await crewStore.loadCrews()
+                await crewStore.loadStatsForAllCrews()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .openCrewInviteFromLink)) { notification in
+                if let code = notification.object as? String {
+                    pendingInviteCode = code
+                    showJoinCrewSheet = true
+                }
             }
         }
     }
@@ -190,24 +191,46 @@ private extension CrewView {
                 Spacer()
 
                 if crewTabMode == .crews {
-                    Button {
-                        showCreateCrewBackend = true
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(Color.accentColor)
-                            .frame(width: 54, height: 54)
-                            .background(
-                                Circle()
-                                    .fill(palette.cardFill)
-                                    .overlay(
-                                        Circle()
-                                            .stroke(palette.cardStroke, lineWidth: 1)
-                                    )
-                            )
-                            .shadow(color: palette.shadowColor, radius: 12, y: 6)
+                    HStack(spacing: 10) {
+                        Button {
+                            pendingInviteCode = ""
+                            showJoinCrewSheet = true
+                        } label: {
+                            Image(systemName: "person.badge.plus")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundStyle(.green)
+                                .frame(width: 54, height: 54)
+                                .background(
+                                    Circle()
+                                        .fill(palette.cardFill)
+                                        .overlay(
+                                            Circle()
+                                                .stroke(palette.cardStroke, lineWidth: 1)
+                                        )
+                                )
+                                .shadow(color: palette.shadowColor, radius: 12, y: 6)
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            showCreateCrewBackend = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundStyle(Color.accentColor)
+                                .frame(width: 54, height: 54)
+                                .background(
+                                    Circle()
+                                        .fill(palette.cardFill)
+                                        .overlay(
+                                            Circle()
+                                                .stroke(palette.cardStroke, lineWidth: 1)
+                                        )
+                                )
+                                .shadow(color: palette.shadowColor, radius: 12, y: 6)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 } else {
                     Button {
                     } label: {
@@ -309,9 +332,11 @@ private extension CrewView {
             }
         }
     }
-    
+
     var backendCrewOverviewCard: some View {
         let totalCrews = crewStore.crews.count
+        let totalMembers = crewStore.memberCountByCrew.values.reduce(0, +)
+        let totalTasks = crewStore.taskCountByCrew.values.reduce(0, +)
 
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
@@ -334,17 +359,23 @@ private extension CrewView {
 
             HStack(spacing: 10) {
                 statPill(title: "\(totalCrews)", subtitle: "Crews")
-                statPill(title: "—", subtitle: "Members")
-                statPill(title: "—", subtitle: "Tasks")
+                statPill(title: "\(totalMembers)", subtitle: "Members")
+                statPill(title: "\(totalTasks)", subtitle: "Tasks")
             }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
     }
-    
+
     func backendCrewCard(for crew: CrewDTO) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
+        let memberCount = crewStore.memberCountByCrew[crew.id] ?? 0
+        let taskCount = crewStore.taskCountByCrew[crew.id] ?? 0
+        let completedTasks = crewStore.completedTaskCountByCrew[crew.id] ?? 0
+        let pendingCount = max(0, taskCount - completedTasks)
+        let progress = taskCount == 0 ? 0.0 : Double(completedTasks) / Double(taskCount)
+
+        return VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 12) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -362,27 +393,83 @@ private extension CrewView {
                         .foregroundStyle(palette.primaryText)
                         .lineLimit(1)
 
-                    Text("Backend crew")
+                    Text("\(memberCount) members • \(taskCount) tasks")
                         .font(.caption)
                         .foregroundStyle(palette.secondaryText)
                 }
 
                 Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(palette.tertiaryText)
+            }
+
+            HStack(alignment: .center) {
+                backendAvatarStack(memberCount: memberCount, tint: hexColor(crew.color_hex))
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("\(Int(progress * 100))%")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(palette.primaryText)
+
+                    Text("completed")
+                        .font(.caption2)
+                        .foregroundStyle(palette.secondaryText)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Progress")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(palette.secondaryText)
+
+                    Spacer()
+
+                    Text("\(completedTasks) done • \(pendingCount) left")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(palette.secondaryText)
+                }
+
+                ProgressView(value: progress)
+                    .tint(hexColor(crew.color_hex))
+                    .scaleEffect(y: 1.7)
+                    .animation(.easeInOut, value: progress)
             }
 
             HStack(spacing: 10) {
                 miniPill(
-                    icon: "person.crop.circle.fill",
-                    text: "Owner",
+                    icon: "checkmark.circle.fill",
+                    text: "\(completedTasks)/\(taskCount) tasks",
                     tint: hexColor(crew.color_hex)
                 )
 
                 miniPill(
-                    icon: "externaldrive.connected.to.line.below.fill",
-                    text: "Supabase",
-                    tint: .green
+                    icon: "person.crop.circle.fill",
+                    text: memberCount > 0 ? "\(memberCount) members" : "No members",
+                    tint: .secondary
                 )
             }
+
+            HStack(spacing: 8) {
+                Image(systemName: "bolt.horizontal.circle.fill")
+                    .foregroundStyle(hexColor(crew.color_hex))
+
+                Text(taskCount > 0 ? "Shared crew tasks are active" : "Backend crew is ready for shared tasks")
+                    .font(.caption)
+                    .foregroundStyle(palette.secondaryText)
+                    .lineLimit(1)
+
+                Spacer()
+
+                Text("Now")
+                    .font(.caption2)
+                    .foregroundStyle(palette.tertiaryText)
+            }
+            .padding(.top, 2)
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -392,6 +479,42 @@ private extension CrewView {
             radius: 10,
             y: 6
         )
+    }
+
+    func backendAvatarStack(memberCount: Int, tint: Color) -> some View {
+        HStack(spacing: -10) {
+            ForEach(0..<min(memberCount, 4), id: \.self) { _ in
+                ZStack {
+                    Circle()
+                        .fill(palette.cardFill)
+                        .frame(width: 30, height: 30)
+
+                    Circle()
+                        .fill(palette.secondaryCardFill)
+                        .frame(width: 26, height: 26)
+
+                    Image(systemName: "person.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(tint)
+                }
+            }
+
+            if memberCount > 4 {
+                ZStack {
+                    Circle()
+                        .fill(palette.cardFill)
+                        .frame(width: 30, height: 30)
+
+                    Circle()
+                        .fill(Color.accentColor.opacity(0.14))
+                        .frame(width: 26, height: 26)
+
+                    Text("+\(memberCount - 4)")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(Color.accentColor)
+                }
+            }
+        }
     }
 
     var backendCrewsSection: some View {
@@ -537,42 +660,6 @@ private extension CrewView {
                 .clipShape(Capsule())
             }
             .buttonStyle(.plain)
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
-    }
-
-    var crewOverviewCard: some View {
-        let totalCrews = crews.count
-        let totalTasks = tasks.count
-        let completedTasks = tasks.filter(\.isDone).count
-        let totalMembers = members.count
-
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Overview")
-                        .font(.headline)
-                        .foregroundStyle(palette.primaryText)
-
-                    Text("Your team productivity at a glance")
-                        .font(.caption)
-                        .foregroundStyle(palette.secondaryText)
-                }
-
-                Spacer()
-
-                Image(systemName: "person.3.sequence.fill")
-                    .font(.title3)
-                    .foregroundStyle(Color.accentColor)
-            }
-
-            HStack(spacing: 10) {
-                statPill(title: "\(totalCrews)", subtitle: "Crews")
-                statPill(title: "\(totalMembers)", subtitle: "Members")
-                statPill(title: "\(completedTasks)/\(totalTasks)", subtitle: "Tasks")
-            }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -747,142 +834,6 @@ private extension CrewView {
         .background(cardBackground)
     }
 
-    var crewsSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Your Crews")
-                .font(.headline)
-                .foregroundStyle(palette.primaryText)
-
-            ForEach(crews) { crew in
-                NavigationLink {
-                    CrewDetailView(crew: crew)
-                } label: {
-                    crewCard(for: crew)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    func crewCard(for crew: Crew) -> some View {
-        let crewMembers = members.filter { $0.crewID == crew.id }
-        let crewTasks = tasks.filter { $0.crewID == crew.id }
-        let crewActivities = activities.filter { $0.crewID == crew.id }
-
-        let completedTasks = crewTasks.filter(\.isDone).count
-        let progress = crewTasks.isEmpty ? 0 : Double(completedTasks) / Double(crewTasks.count)
-        let pendingCount = max(0, crewTasks.count - completedTasks)
-        let lastActivity = crewActivities.first
-
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(hexColor(crew.colorHex).opacity(0.18))
-                        .frame(width: 52, height: 52)
-
-                    Image(systemName: crew.icon)
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(hexColor(crew.colorHex))
-                }
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(crew.name)
-                        .font(.headline)
-                        .foregroundStyle(palette.primaryText)
-                        .lineLimit(1)
-
-                    Text("\(crewMembers.count) members • \(crewTasks.count) tasks")
-                        .font(.caption)
-                        .foregroundStyle(palette.secondaryText)
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(palette.tertiaryText)
-            }
-
-            HStack(alignment: .center) {
-                avatarStack(for: crewMembers)
-
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(Int(progress * 100))%")
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(palette.primaryText)
-
-                    Text("completed")
-                        .font(.caption2)
-                        .foregroundStyle(palette.secondaryText)
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Progress")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(palette.secondaryText)
-
-                    Spacer()
-
-                    Text("\(completedTasks) done • \(pendingCount) left")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(palette.secondaryText)
-                }
-
-                ProgressView(value: progress)
-                    .tint(hexColor(crew.colorHex))
-                    .scaleEffect(y: 1.7)
-            }
-
-            HStack(spacing: 10) {
-                miniPill(
-                    icon: "checkmark.circle.fill",
-                    text: "\(completedTasks)/\(crewTasks.count) tasks",
-                    tint: hexColor(crew.colorHex)
-                )
-
-                if let firstMember = crewMembers.first {
-                    miniPill(
-                        icon: firstMember.avatarSymbol,
-                        text: firstMember.name,
-                        tint: .secondary
-                    )
-                }
-            }
-
-            if let activity = lastActivity {
-                HStack(spacing: 8) {
-                    Image(systemName: "bolt.horizontal.circle.fill")
-                        .foregroundStyle(hexColor(crew.colorHex))
-
-                    Text("\(activity.memberName) \(activity.actionText)")
-                        .font(.caption)
-                        .foregroundStyle(palette.secondaryText)
-                        .lineLimit(1)
-
-                    Spacer()
-
-                    Text(activity.createdAt, style: .time)
-                        .font(.caption2)
-                        .foregroundStyle(palette.tertiaryText)
-                }
-                .padding(.top, 2)
-            }
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
-        .shadow(
-            color: hexColor(crew.colorHex).opacity(0.12),
-            radius: 10,
-            y: 6
-        )
-    }
-
     func friendRow(_ friend: Friend) -> some View {
         let activeSession = activeFocusSession(for: friend)
 
@@ -989,42 +940,6 @@ private extension CrewView {
 
     func activeFocusSession(for friend: Friend) -> FriendFocusSession? {
         focusSessions.first(where: { $0.friendID == friend.id && $0.isActive })
-    }
-
-    func avatarStack(for crewMembers: [CrewMember]) -> some View {
-        HStack(spacing: -10) {
-            ForEach(Array(crewMembers.prefix(4).enumerated()), id: \.offset) { _, member in
-                ZStack {
-                    Circle()
-                        .fill(palette.cardFill)
-                        .frame(width: 30, height: 30)
-
-                    Circle()
-                        .fill(palette.secondaryCardFill)
-                        .frame(width: 26, height: 26)
-
-                    Image(systemName: member.avatarSymbol)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(palette.primaryText)
-                }
-            }
-
-            if crewMembers.count > 4 {
-                ZStack {
-                    Circle()
-                        .fill(palette.cardFill)
-                        .frame(width: 30, height: 30)
-
-                    Circle()
-                        .fill(Color.accentColor.opacity(0.14))
-                        .frame(width: 26, height: 26)
-
-                    Text("+\(crewMembers.count - 4)")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(Color.accentColor)
-                }
-            }
-        }
     }
 
     func miniPill(icon: String, text: String, tint: Color) -> some View {

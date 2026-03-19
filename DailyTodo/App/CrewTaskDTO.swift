@@ -15,4 +15,12 @@ struct CrewTaskDTO: Codable, Identifiable {
     let is_done: Bool
     let assigned_to: UUID?
     let created_at: String?
+
+    let details: String?
+    let priority: String
+    let status: String
+    let show_on_week: Bool
+    let scheduled_weekday: Int?
+    let scheduled_start_minute: Int?
+    let scheduled_duration_minute: Int?
 }

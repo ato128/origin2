@@ -19,25 +19,105 @@ enum PlanAheadMode: String, CaseIterable {
     case crew = "Crew"
 }
 
+
+
+
 struct WeekView: View {
     
     @Environment(\.modelContext)  var context
+    @EnvironmentObject var crewStore: CrewStore
+    @EnvironmentObject var session: SessionStore
    
     
     @Query(sort: \EventItem.startMinute, order: .forward)
     private var allEvents: [EventItem]
-    @Query var allCrewTasks: [CrewTask]
-    @Query  var allCrews: [Crew]
-    @Query private var allCrewMembers: [CrewMember]
-    @Query(sort: \CrewActivity.createdAt, order: .reverse)
-    var allCrewActivities: [CrewActivity]
-    @Query(sort: \CrewTaskComment.createdAt, order: .reverse)
-    var allCrewComments: [CrewTaskComment]
+    
     
     @Query var tasks: [DTTaskItem]
     @Query  var workoutExercises: [WorkoutExerciseItem]
     
-    var crewMap: [UUID: Crew] {
+    var allCrews: [WeekCrewItem] {
+        crewStore.crews.map {
+            WeekCrewItem(
+                id: $0.id,
+                name: $0.name,
+                icon: $0.icon,
+                colorHex: $0.color_hex
+            )
+        }
+    }
+
+    var allCrewTasks: [WeekCrewTaskItem] {
+        crewStore.crewTasks.map { task in
+            let assignedProfile = crewStore.memberProfiles.first(where: { $0.id == task.assigned_to })
+            let creatorProfile = crewStore.memberProfiles.first(where: { $0.id == task.created_by })
+
+            let assignedName: String = {
+                guard let assignedProfile else { return "Unassigned" }
+
+                if let fullName = assignedProfile.full_name,
+                   !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    return fullName
+                }
+
+                if let username = assignedProfile.username,
+                   !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    return username
+                }
+
+                return "Unassigned"
+            }()
+
+            let createdByName =
+                creatorProfile?.full_name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                ? creatorProfile!.full_name!
+                : (creatorProfile?.username ?? creatorProfile?.email ?? "Unknown")
+
+            return WeekCrewTaskItem(
+                id: task.id,
+                crewID: task.crew_id,
+                title: task.title,
+                details: task.details ?? "",
+                assignedTo: assignedName,
+                createdBy: createdByName,
+                priority: task.priority,
+                status: task.status ?? (task.is_done ? "done" : "todo"),
+                showOnWeek: task.show_on_week ?? false,
+                scheduledWeekday: task.scheduled_weekday,
+                scheduledStartMinute: task.scheduled_start_minute,
+                scheduledDurationMinute: task.scheduled_duration_minute,
+                scheduledDate: nil,
+                isDone: task.is_done,
+                createdAt: isoDate(task.created_at) ?? Date()
+            )
+        }
+    }
+
+    var allCrewActivities: [WeekCrewActivityItem] {
+        crewStore.crewActivities.map {
+            WeekCrewActivityItem(
+                id: $0.id,
+                crewID: $0.crew_id,
+                memberName: $0.member_name,
+                actionText: $0.action_text,
+                createdAt: isoDate($0.created_at) ?? Date()
+            )
+        }
+    }
+
+    var allCrewComments: [WeekCrewCommentItem] {
+        crewStore.crewTaskComments.map {
+            WeekCrewCommentItem(
+                id: $0.id,
+                taskID: $0.task_id,
+                authorName: $0.author_name,
+                message: $0.message,
+                createdAt: isoDate($0.created_at) ?? Date()
+            )
+        }
+    }
+    
+    var crewMap: [UUID: WeekCrewItem] {
         Dictionary(uniqueKeysWithValues: allCrews.map { ($0.id, $0) })
     }
     
@@ -45,7 +125,7 @@ struct WeekView: View {
         allEvents
     }
     
-    var selectedCrew: Crew? {
+    var selectedCrew: WeekCrewItem? {
         guard let selectedCrewID else { return allCrews.first }
         return allCrews.first(where: { $0.id == selectedCrewID })
     }
@@ -125,7 +205,6 @@ struct WeekView: View {
     }
     
     @State var selectedDay: Int = 0
-    @State var selectedTaskForEdit: CrewTask?
     @State var showingAdd: Bool = false
     @State private var showingCreateCrewTask = false
     @State private var showCrewPickerSheet = false
@@ -134,8 +213,9 @@ struct WeekView: View {
     @State private var showCopied: Bool = false
     @State var crewPulse = false
     @State var commentPulse = false
-    @State var selectedCrewTask: CrewTask?
-    @State var selectedCrewForDetail: Crew?
+    @State var selectedTaskForEdit: WeekCrewTaskItem?
+    @State var selectedCrewTask: WeekCrewTaskItem?
+    @State var selectedCrewForDetail: WeekCrewItem?
     @State var showCrewEntrance = false
     @State var showCrewTaskHeader = false
     @State var showCrewTaskCards = false
@@ -263,17 +343,21 @@ struct WeekView: View {
                 }
                 .sheet(isPresented: $showingCreateCrewTask) {
                     NavigationStack {
-                        if let crew = selectedCrew {
-                            CreateCrewTaskView(
-                                crew: crew,
-                                members: allCrewMembersForCrew(crew.id),
-                                defaultDate: planAheadDate
+                        if let crew = selectedCrew,
+                           let crewDTO = crewStore.crews.first(where: { $0.id == crew.id }) {
+                            BackendCreateCrewTaskSheet(
+                                crew: crewDTO,
+                                members: crewStore.crewMembers.filter { $0.crew_id == crew.id },
+                                memberProfiles: crewStore.memberProfiles
                             )
+                            .environmentObject(crewStore)
+                            .environmentObject(session)
                         } else {
                             Text("No crew selected")
                                 .padding()
                         }
                     }
+                
                     .presentationDetents([.medium, .large])
                 }
                 .sheet(item: $editingEvent) { ev in
@@ -283,21 +367,23 @@ struct WeekView: View {
                     .presentationDetents([.medium, .large])
                 }
                 .sheet(item: $selectedCrewTask) { task in
-                    if let crew = selectedCrewForDetail {
+                    if let crewDTO = crewStore.crews.first(where: { $0.id == task.crewID }),
+                       let taskDTO = crewStore.crewTasks.first(where: { $0.id == task.id }) {
                         NavigationStack {
-                            CrewTaskDetailView(task: task, crew: crew)
-                                .presentationDetents([.medium, .large])
-                                .presentationDragIndicator(.visible)
-                                .presentationCornerRadius(28)
+                            BackendCrewTaskDetailView(task: taskDTO, crew: crewDTO)
+                                .environmentObject(crewStore)
+                                .environmentObject(session)
                         }
                     }
                 }
                 .sheet(item: $selectedTaskForEdit) { task in
-                    if let crew = crewMap[task.crewID] {
+                    if let crewDTO = crewStore.crews.first(where: { $0.id == task.crewID }),
+                       let taskDTO = crewStore.crewTasks.first(where: { $0.id == task.id }) {
                         NavigationStack {
-                            EditCrewTaskView(crew: crew, task: task)
+                            BackendEditCrewTaskView(crew: crewDTO, task: taskDTO)
+                                .environmentObject(crewStore)
+                                .environmentObject(session)
                         }
-                        .presentationDetents([.medium, .large])
                     }
                 }
                 .sheet(item: $selectedEventForDetail) { event in
@@ -310,6 +396,24 @@ struct WeekView: View {
                     onAppear(proxy: proxy)
                     crewPulse = true
                     commentPulse = true
+                }
+                .task {
+                    await crewStore.loadCrews()
+
+                    if selectedCrewID == nil {
+                        selectedCrewID = crewStore.crews.first?.id
+                    }
+
+                    if let crewID = selectedCrewID {
+                        await loadWeekCrewBackend(for: crewID)
+                    }
+                }
+                .onChange(of: selectedCrewID) { _, newCrewID in
+                    guard let newCrewID else { return }
+
+                    Task {
+                        await loadWeekCrewBackend(for: newCrewID)
+                    }
                 }
                 .onChange(of: selectedDay) { _, _ in
                     onDayChanged(proxy: proxy)
@@ -331,6 +435,16 @@ struct WeekView: View {
                 .onReceive(NotificationCenter.default.publisher(for: .workoutCompleted)) { notification in
                     if let taskID = notification.object as? PersistentIdentifier {
                         markWorkoutTaskDone(taskID: taskID)
+                    }
+                }
+                .onDisappear {
+                    crewStore.unsubscribe()
+                }
+                .onChange(of: showingCreateCrewTask) { _, isPresented in
+                    if !isPresented, let crewID = selectedCrewID {
+                        Task {
+                            await loadWeekCrewBackend(for: crewID)
+                        }
                     }
                 }
                 .onChange(of: weekMode) { _, newValue in
@@ -404,6 +518,15 @@ extension WeekView {
                 .scaleEffect(showCrewEntrance ? 1.0 : 0.99)
                 .animation(.spring(response: 0.42, dampingFraction: 0.88), value: showCrewEntrance)
         }
+    }
+    
+    func loadWeekCrewBackend(for crewID: UUID) async {
+        await crewStore.loadMembers(for: crewID)
+        await crewStore.loadMemberProfiles(for: crewStore.crewMembers)
+        await crewStore.loadTasks(for: crewID)
+        await crewStore.loadActivities(for: crewID)
+        await crewStore.loadComments(for: crewID)
+        crewStore.subscribeToCrewRealtime(crewID: crewID)
     }
     
     var toolbarContent: some ToolbarContent {
@@ -616,7 +739,7 @@ extension WeekView {
         .foregroundStyle(tint)
     }
     
-    func crewTimelineTaskCard(_ task: CrewTask, isLast: Bool) -> some View {
+    func crewTimelineTaskCard(_ task: WeekCrewTaskItem, isLast: Bool) -> some View {
         let crew = allCrews.first { $0.id == task.crewID }
         let active = isTaskActive(task)
         let soon = isTaskStartingSoon(task)
@@ -749,6 +872,12 @@ extension WeekView {
         let c = Calendar.current.dateComponents([.hour, .minute], from: Date())
         return (c.hour ?? 0) * 60 + (c.minute ?? 0)
     }
+    func isoDate(_ raw: String?) -> Date? {
+        guard let raw else { return nil }
+
+        let formatter = ISO8601DateFormatter()
+        return formatter.date(from: raw)
+    }
     
     func timeText(for ev: EventItem) -> String {
         let start = ev.startMinute
@@ -846,8 +975,8 @@ extension WeekView {
         }
     }
     
-    func allCrewMembersForCrew(_ crewID: UUID) -> [CrewMember] {
-        allCrewMembers.filter { $0.crewID == crewID }
+    func allCrewMembersForCrew(_ crewID: UUID) -> [CrewMemberDTO] {
+        crewStore.crewMembers.filter { $0.crew_id == crewID }
     }
     
     func hasConflict(_ ev: EventItem) -> Bool {
