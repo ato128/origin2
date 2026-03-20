@@ -11,6 +11,7 @@ import SwiftData
 @Model
 final class Crew {
     var id: UUID
+    var backendCrewID: UUID?
     var name: String
     var icon: String
     var colorHex: String
@@ -22,6 +23,7 @@ final class Crew {
 
     init(
         id: UUID = UUID(),
+        backendCrewID: UUID? = nil,
         name: String,
         icon: String = "person.3.fill",
         colorHex: String = "#3B82F6",
@@ -31,6 +33,7 @@ final class Crew {
         currentStreak: Int = 0
     ) {
         self.id = id
+        self.backendCrewID = backendCrewID
         self.name = name
         self.icon = icon
         self.colorHex = colorHex

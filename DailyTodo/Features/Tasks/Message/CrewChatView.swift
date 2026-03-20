@@ -79,6 +79,7 @@ struct CrewChatView: View {
         .onAppear {
             Task {
                 await loadChatData()
+                await crewStore.loadCrews()
                 await crewStore.loadActiveFocusSession(for: crew.id)
 
                 if let activeFocusSession {
@@ -109,7 +110,21 @@ struct CrewChatView: View {
         }
         .sheet(isPresented: $showCrewInfo) {
             NavigationStack {
-                CrewChatInfoBackendView(crew: crew)
+                if let backendCrew = crewStore.crews.first(where: { $0.id == crew.id }) {
+                    BackendCrewDetailView(crew: backendCrew)
+                        .environmentObject(crewStore)
+                        .environmentObject(session)
+                } else {
+                    ZStack {
+                        AppBackground()
+
+                        ProgressView("Loading crew info...")
+                            .foregroundStyle(.white)
+                    }
+                    .task {
+                        await crewStore.loadCrews()
+                    }
+                }
             }
         }
         .sheet(isPresented: $showFocusDurationSheet) {

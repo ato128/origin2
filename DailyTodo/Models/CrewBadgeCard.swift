@@ -11,30 +11,32 @@ import UIKit
 struct CrewBadgeCard: View {
     let crew: Crew
     let palette: ThemePalette
+    let totalFocusMinutes: Int
 
     @State private var badgeGlow = false
     @State private var previousBadgeTitle: String = ""
     @State private var showBadgeUnlocked = false
 
     private var focusBadgeTitle: String {
-        CrewBadgeHelper.title(for: crew.totalFocusMinutes)
+        CrewBadgeHelper.title(for: totalFocusMinutes)
     }
 
     private var focusBadgeColor: Color {
-        CrewBadgeHelper.color(for: crew.totalFocusMinutes)
+        CrewBadgeHelper.color(for: totalFocusMinutes)
     }
 
     private var nextTarget: Int? {
-        CrewBadgeHelper.nextTarget(for: crew.totalFocusMinutes)
+        CrewBadgeHelper.nextTarget(for: totalFocusMinutes)
     }
 
     private var badgeProgress: Double {
-        CrewBadgeHelper.progress(for: crew.totalFocusMinutes)
+        CrewBadgeHelper.progress(for: totalFocusMinutes)
     }
 
     private func focusTimeText(_ minutes: Int) -> String {
-        let hours = minutes / 60
-        let mins = minutes % 60
+        let safeMinutes = max(0, minutes)
+        let hours = safeMinutes / 60
+        let mins = safeMinutes % 60
 
         if hours > 0 {
             return "\(hours)h \(mins)m"
@@ -104,16 +106,16 @@ struct CrewBadgeCard: View {
                     HStack(spacing: 6) {
                         Text(focusBadgeTitle)
 
-                        if crew.totalFocusMinutes >= 15 {
+                        if totalFocusMinutes >= 15 {
                             Image(systemName: "checkmark.seal.fill")
                                 .foregroundStyle(focusBadgeColor)
                                 .font(.caption)
                         }
                     }
-                        .font(.headline)
-                        .foregroundStyle(palette.primaryText)
+                    .font(.headline)
+                    .foregroundStyle(palette.primaryText)
 
-                    Text(focusTimeText(crew.totalFocusMinutes))
+                    Text(focusTimeText(totalFocusMinutes))
                         .font(.caption)
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -156,7 +158,7 @@ struct CrewBadgeCard: View {
 
                         Spacer()
 
-                        Text("\(focusTimeText(nextTarget - crew.totalFocusMinutes)) left")
+                        Text("\(focusTimeText(max(0, nextTarget - totalFocusMinutes))) left")
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(palette.secondaryText)
                     }
@@ -214,7 +216,7 @@ struct CrewBadgeCard: View {
                 badgeGlow = true
             }
         }
-        .onChange(of: crew.totalFocusMinutes) { _, _ in
+        .onChange(of: totalFocusMinutes) { _, _ in
             let newBadgeTitle = focusBadgeTitle
 
             guard newBadgeTitle != previousBadgeTitle else { return }
@@ -235,8 +237,8 @@ struct CrewBadgeCard: View {
                     showBadgeUnlocked = false
                 }
             }
-            
         }
+        .id(totalFocusMinutes)
         .compositingGroup()
     }
 }

@@ -7,10 +7,12 @@
 
 import SwiftUI
 import SwiftData
+import Supabase
 
 struct CreateCrewView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @StateObject private var crewStore = CrewStore()
 
     @State private var crewName: String = ""
     @State private var selectedIcon: String = "person.3.fill"
@@ -107,25 +109,32 @@ struct CreateCrewView: View {
     }
 
     private func createCrew() {
-        let trimmedName = crewName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else { return }
+        guard let userID = SupabaseManager.shared.client.auth.currentUser?.id else { return }
 
-        let crew = Crew(
-            name: trimmedName,
-            icon: selectedIcon,
-            colorHex: selectedColorHex
-        )
+        Task {
+            do {
+                let dto = try await crewStore.createCrew(
+                    name: crewName,
+                    icon: selectedIcon,
+                    colorHex: selectedColorHex,
+                    ownerID: userID
+                )
 
-        modelContext.insert(crew)
+                let localCrew = Crew(
+                    id: dto.id,
+                    backendCrewID: dto.id,
+                    name: dto.name,
+                    icon: dto.icon,
+                    colorHex: dto.color_hex
+                )
 
-        let activity = CrewActivity(
-            crewID: crew.id,
-            memberName: "You",
-            actionText: "created the crew"
-        )
-        modelContext.insert(activity)
+                modelContext.insert(localCrew)
 
-        try? modelContext.save()
-        dismiss()
+                try? modelContext.save()
+
+            } catch {
+                print("CREATE CREW ERROR:", error.localizedDescription)
+            }
+        }
     }
 }

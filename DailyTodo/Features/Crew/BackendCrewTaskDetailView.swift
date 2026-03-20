@@ -346,4 +346,9 @@ private extension BackendCrewTaskDetailView {
                     .stroke(palette.cardStroke, lineWidth: 1)
             )
     }
+    var totalFocusMinutes: Int {
+        crewStore.crewFocusRecords
+            .filter { $0.crew_id == crew.id }
+            .reduce(0) { $0 + $1.minutes }
+    }
 }

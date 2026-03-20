@@ -20,9 +20,15 @@ struct CrewChatInfoView: View {
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private let palette = ThemePalette()
 
+    @StateObject private var crewStore = CrewStore()
+
     @State private var badgeGlow = false
     @State private var previousBadgeTitle: String = ""
-    @State private var showBadgeUnlocked: Bool = false
+    @State private var showBadgeUnlocked = false
+
+    private var resolvedCrewID: UUID {
+        crew.backendCrewID ?? crew.id
+    }
 
     private var crewMembers: [CrewMember] {
         members.filter { $0.crewID == crew.id }
@@ -35,12 +41,19 @@ struct CrewChatInfoView: View {
     private var completedCount: Int {
         crewTasks.filter(\.isDone).count
     }
+
+    private var leaderboardTotalFocusMinutes: Int {
+        crewStore.crewFocusRecords
+            .filter { $0.crew_id == resolvedCrewID }
+            .reduce(0) { $0 + $1.minutes }
+    }
+
     private var focusBadgeTitle: String {
-        CrewBadgeHelper.title(for: crew.totalFocusMinutes)
+        CrewBadgeHelper.title(for: leaderboardTotalFocusMinutes)
     }
 
     private var focusBadgeColor: Color {
-        CrewBadgeHelper.color(for: crew.totalFocusMinutes)
+        CrewBadgeHelper.color(for: leaderboardTotalFocusMinutes)
     }
 
     var body: some View {
@@ -52,10 +65,13 @@ struct CrewChatInfoView: View {
                     topHeader
                     profileCard
                     statsCard
+
                     CrewBadgeCard(
                         crew: crew,
-                        palette: palette
+                        palette: palette,
+                        totalFocusMinutes: leaderboardTotalFocusMinutes
                     )
+
                     membersCard
                     settingsCard
                 }
@@ -71,8 +87,19 @@ struct CrewChatInfoView: View {
             withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
                 badgeGlow = true
             }
+
+            Task {
+                await crewStore.loadFocusRecords(for: resolvedCrewID)
+            }
+
+            crewStore.subscribeToCrewRealtime(crewID: resolvedCrewID)
         }
-        .onChange(of: crew.totalFocusMinutes) { _, _ in
+        .onDisappear {
+            crewStore.unsubscribe()
+        }
+        .onChange(of: leaderboardTotalFocusMinutes) { _, newValue in
+            crew.totalFocusMinutes = newValue
+
             let newBadgeTitle = focusBadgeTitle
 
             guard newBadgeTitle != previousBadgeTitle else { return }
@@ -168,7 +195,6 @@ private extension CrewChatInfoView {
         .background(cardBackground)
     }
 
-   
     var membersCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Members")

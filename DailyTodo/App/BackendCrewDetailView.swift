@@ -218,6 +218,45 @@ extension BackendCrewDetailView {
         }
     }
     
+    var totalFocusMinutes: Int {
+        crewStore.crewFocusRecords
+            .filter { $0.crew_id == crew.id }
+            .reduce(0) { $0 + $1.minutes }
+    }
+
+    var currentStreakText: String {
+        let calendar = Calendar.current
+
+        let uniqueDays = Set(
+            crewStore.crewFocusRecords
+                .filter { $0.crew_id == crew.id }
+                .compactMap { record -> Date? in
+                    guard let raw = record.created_at else { return nil }
+                    return ISO8601DateFormatter().date(from: raw)
+                }
+                .map { calendar.startOfDay(for: $0) }
+        )
+
+        guard !uniqueDays.isEmpty else { return "0" }
+
+        let sortedDays = uniqueDays.sorted(by: >)
+
+        var streak = 0
+        var cursor = calendar.startOfDay(for: Date())
+
+        for day in sortedDays {
+            if calendar.isDate(day, inSameDayAs: cursor) {
+                streak += 1
+                guard let previousDay = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
+                cursor = previousDay
+            } else if day < cursor {
+                break
+            }
+        }
+
+        return "\(streak)"
+    }
+    
     var todayLeaderboard: [(name: String, minutes: Int)] {
         let todayPrefix = ISO8601DateFormatter().string(from: Date()).prefix(10)
 
@@ -278,7 +317,7 @@ extension BackendCrewDetailView {
     }
 
     var backendBadgeCard: some View {
-        let minutes = 2
+        let minutes = totalFocusMinutes
         let badgeTitle = CrewBadgeHelper.title(for: minutes)
         let badgeColor = CrewBadgeHelper.color(for: minutes)
         let nextTarget = CrewBadgeHelper.nextTarget(for: minutes)
@@ -344,7 +383,7 @@ extension BackendCrewDetailView {
 
                         Spacer()
 
-                        Text("\(focusTimeText(nextTarget - minutes)) left")
+                        Text("\(focusTimeText(max(0, nextTarget - minutes))) left")
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(palette.secondaryText)
                     }
@@ -359,7 +398,7 @@ extension BackendCrewDetailView {
                 Image(systemName: "flame.fill")
                     .foregroundStyle(.orange)
 
-                Text("Streak: 1")
+                Text("Streak: \(currentStreakText)")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(palette.primaryText)
             }
@@ -367,7 +406,6 @@ extension BackendCrewDetailView {
         .padding(18)
         .background(cardBackground)
     }
-
     func focusTimeText(_ minutes: Int) -> String {
         let hours = minutes / 60
         let mins = minutes % 60

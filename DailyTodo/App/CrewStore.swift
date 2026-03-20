@@ -1008,7 +1008,7 @@ final class CrewStore: ObservableObject {
         await loadMemberProfiles(for: crewMembers)
     }
 
-    func createCrew(name: String, icon: String, colorHex: String, ownerID: UUID) async throws {
+    func createCrew(name: String, icon: String, colorHex: String, ownerID: UUID) async throws -> CrewDTO {
         let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
 
         let crewResponse = try await SupabaseManager.shared.client
@@ -1035,6 +1035,7 @@ final class CrewStore: ObservableObject {
             .execute()
 
         await loadCrews()
+        return createdCrew
     }
 
     func joinCrew(with code: String, userID: UUID) async throws {
