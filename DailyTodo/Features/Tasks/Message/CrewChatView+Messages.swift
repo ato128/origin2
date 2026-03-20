@@ -35,10 +35,96 @@ extension CrewChatView {
             }
             .onChange(of: messages.count) { _, _ in
                 scrollToBottom(proxy: proxy, animated: true)
+
+                guard let myID = session.currentUser?.id else { return }
+
+                Task {
+                    try? await Task.sleep(nanoseconds: 700_000_000)
+
+                    await crewStore.markCrewMessagesAsRead(
+                        crewID: crew.id,
+                        userID: myID
+                    )
+                }
+            }
+        }
+    }
+    
+    func lastReadDate(for userID: UUID) -> Date? {
+        guard let raw = crewStore.crewMessageReads.first(where: {
+            $0.crew_id == crew.id && $0.user_id == userID
+        })?.last_read_at else {
+            return nil
+        }
+
+        return ISO8601DateFormatter().date(from: raw)
+    }
+
+    func messageSeenByAnyone(_ message: CrewChatMessageItem) -> Bool {
+        guard let currentUserID = session.currentUser?.id else { return false }
+        guard message.senderID == currentUserID else { return false }
+
+        let otherMembers = crewMembers.filter { $0.userID != currentUserID }
+        guard !otherMembers.isEmpty else { return false }
+
+        return otherMembers.contains { member in
+            guard let readDate = lastReadDate(for: member.userID) else { return false }
+            return readDate.timeIntervalSince1970 >= message.createdAt.timeIntervalSince1970 - 1
+        }
+    }
+    
+    var crewMembers: [WeekCrewMemberItem] {
+        crewStore.crewMembers
+            .filter { $0.crew_id == crew.id }
+            .map { member in
+                let profile = crewStore.memberProfiles.first(where: { $0.id == member.user_id })
+
+                let name: String
+                if let fullName = profile?.full_name?.trimmingCharacters(in: .whitespacesAndNewlines),
+                   !fullName.isEmpty {
+                    name = fullName
+                } else if let username = profile?.username, !username.isEmpty {
+                    name = username
+                } else {
+                    name = "User"
+                }
+
+                return WeekCrewMemberItem(
+                    id: member.id,
+                    crewID: member.crew_id,
+                    userID: member.user_id,
+                    name: name,
+                    role: member.role
+                )
+            }
+    }
+
+    @ViewBuilder
+    func messageStatusView(for message: CrewChatMessageItem) -> some View {
+        if message.isPending {
+            Image(systemName: "clock")
+                .font(.caption2)
+                .foregroundStyle(message.isFromMe ? .white.opacity(0.78) : palette.secondaryText)
+        } else if message.isFailed {
+            Image(systemName: "exclamationmark.circle.fill")
+                .font(.caption2)
+                .foregroundStyle(.red)
+        } else if message.isFromMe {
+            let seen = messageSeenByAnyone(message)
+
+            HStack(spacing: -2) {
+                Image(systemName: "checkmark")
+                    .font(.caption2.bold())
+                    .foregroundStyle(seen ? .blue : .white.opacity(0.82))
+
+                Image(systemName: "checkmark")
+                    .font(.caption2.bold())
+                    .foregroundStyle(seen ? .blue : .white.opacity(0.82))
             }
         }
     }
 
+    @ViewBuilder
     func messageBubble(_ message: CrewChatMessageItem, index: Int) -> some View {
         let isFocusSystemMessage =
             message.displayText.contains("started a") && message.displayText.contains("shared focus session") ||
@@ -49,8 +135,9 @@ extension CrewChatView {
 
         let showSenderName = shouldShowSenderName(at: index)
         let topSpacing: CGFloat = shouldTightenSpacing(at: index) ? 2 : 8
+        let isFromMe = message.isFromMe
 
-        return HStack(alignment: .bottom) {
+        HStack(alignment: .bottom) {
             if isFocusSystemMessage || message.isSystemMessage {
                 Spacer()
 
@@ -78,25 +165,25 @@ extension CrewChatView {
 
                 Spacer()
             } else {
-                if message.isFromMe {
+                if isFromMe {
                     Spacer(minLength: 42)
                 }
 
-                VStack(alignment: message.isFromMe ? .trailing : .leading, spacing: 5) {
-                    if !message.isFromMe && showSenderName {
+                VStack(alignment: isFromMe ? .trailing : .leading, spacing: 3) {
+                    if !isFromMe && showSenderName {
                         Text(message.senderName)
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(palette.secondaryText)
                             .padding(.horizontal, 4)
                     }
 
-                    VStack(alignment: message.isFromMe ? .trailing : .leading, spacing: 5) {
+                    VStack(alignment: isFromMe ? .trailing : .leading, spacing: 6) {
                         if let replyPreview = message.replyPreview {
                             HStack(spacing: 6) {
                                 Rectangle()
                                     .fill(
-                                        message.isFromMe
-                                        ? Color.white.opacity(0.75)
+                                        isFromMe
+                                        ? Color.white.opacity(0.78)
                                         : Color.accentColor.opacity(0.9)
                                     )
                                     .frame(width: 2, height: 24)
@@ -106,16 +193,16 @@ extension CrewChatView {
                                     Text("Reply")
                                         .font(.caption2.weight(.semibold))
                                         .foregroundStyle(
-                                            message.isFromMe
-                                            ? .white.opacity(0.78)
+                                            isFromMe
+                                            ? .white.opacity(0.82)
                                             : palette.secondaryText
                                         )
 
                                     Text(replyPreview)
                                         .font(.caption2)
                                         .foregroundStyle(
-                                            message.isFromMe
-                                            ? .white.opacity(0.90)
+                                            isFromMe
+                                            ? .white.opacity(0.92)
                                             : palette.secondaryText
                                         )
                                         .lineLimit(1)
@@ -128,8 +215,8 @@ extension CrewChatView {
                             .background(
                                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                                     .fill(
-                                        message.isFromMe
-                                        ? Color.white.opacity(0.08)
+                                        isFromMe
+                                        ? Color.white.opacity(0.10)
                                         : Color.white.opacity(appTheme == AppTheme.light.rawValue ? 0.28 : 0.04)
                                     )
                             )
@@ -137,66 +224,71 @@ extension CrewChatView {
 
                         Text(message.displayText)
                             .font(.subheadline)
-                            .foregroundStyle(message.isFromMe ? .white : palette.primaryText)
+                            .foregroundStyle(isFromMe ? .white : palette.primaryText)
+                            .multilineTextAlignment(.leading)
+
+                        if isFromMe {
+                            HStack(spacing: 5) {
+                                Text(message.createdAt, style: .time)
+                                    .font(.caption2)
+                                    .foregroundStyle(.white.opacity(0.78))
+
+                                messageStatusView(for: message)
+                            }
+                            .padding(.top, 1)
+                        }
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 11)
                     .background(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
                             .fill(
-                                message.isFromMe
-                                ? Color.accentColor.opacity(0.90)
+                                isFromMe
+                                ? Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.68 : 0.24)
                                 : palette.secondaryCardFill
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [
+                                                Color.white.opacity(isFromMe ? 0.14 : 0.00),
+                                                Color.clear
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
                             )
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .stroke(
-                                message.isFromMe
-                                ? Color.accentColor.opacity(0.18)
+                                isFromMe
+                                ? Color.white.opacity(0.10)
                                 : palette.cardStroke.opacity(0.7),
                                 lineWidth: 1
                             )
                     )
-                    .gesture(
-                        DragGesture(minimumDistance: 20)
-                            .onEnded { value in
-                                if value.translation.width > 65 {
-                                    replyingTo = message
-                                    isComposerFocused = true
+                    .padding(.top, topSpacing)
 
-                                    let gen = UIImpactFeedbackGenerator(style: .light)
-                                    gen.prepare()
-                                    gen.impactOccurred()
-                                }
-                            }
-                    )
-
-                    HStack(spacing: 6) {
-                        Text(message.createdAt, style: .time)
-                            .font(.caption2)
-                            .foregroundStyle(palette.secondaryText)
-
-                        if message.isPending {
-                            Image(systemName: "clock")
+                    if !isFromMe {
+                        HStack(spacing: 6) {
+                            Text(message.createdAt, style: .time)
                                 .font(.caption2)
                                 .foregroundStyle(palette.secondaryText)
-                        }
 
-                        if message.isFailed {
-                            Image(systemName: "exclamationmark.circle.fill")
-                                .font(.caption2)
-                                .foregroundStyle(.red)
+                            messageStatusView(for: message)
                         }
+                        .padding(.horizontal, 4)
                     }
-                    .padding(.horizontal, 4)
                 }
-                .padding(.top, topSpacing)
 
-                if !message.isFromMe {
+                if !isFromMe {
                     Spacer(minLength: 42)
                 }
             }
         }
     }
-}
+    }
+

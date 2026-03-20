@@ -82,6 +82,9 @@ extension CrewChatView {
                     .lineLimit(1...4)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
+                    .onChange(of: draftMessage) { _, newValue in
+                        handleTypingChange(newValue)
+                    }
                     .background(
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .fill(palette.secondaryCardFill)

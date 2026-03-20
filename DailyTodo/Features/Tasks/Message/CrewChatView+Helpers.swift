@@ -16,6 +16,102 @@ extension CrewChatView {
             for: crew.id,
             currentUserID: session.currentUser?.id
         )
+
+        await crewStore.loadMembers(for: crew.id)
+        await crewStore.loadMemberProfiles(for: crewStore.crewMembers)
+        await crewStore.loadCrewMessageReads(for: crew.id)
+        await crewStore.loadCrewTypingStatuses(for: crew.id)
+
+        crewStore.subscribeToCrewMessagesRealtime(
+            crewID: crew.id,
+            currentUserID: session.currentUser?.id
+        )
+
+        if let myID = session.currentUser?.id {
+            await crewStore.markCrewMessagesAsRead(
+                crewID: crew.id,
+                userID: myID
+            )
+        }
+    }
+    
+    var typingNames: [String] {
+        guard let myID = session.currentUser?.id else { return [] }
+
+        return crewStore.crewTypingStatuses
+            .filter { $0.crew_id == crew.id }
+            .filter { $0.user_id != myID }
+            .filter { $0.is_typing }
+            .map(\.name)
+    }
+
+    var typingText: String? {
+        guard !typingNames.isEmpty else { return nil }
+
+        if typingNames.count == 1 {
+            return "\(typingNames[0]) yazıyor..."
+        } else if typingNames.count == 2 {
+            return "\(typingNames[0]) ve \(typingNames[1]) yazıyor..."
+        } else {
+            return "Birileri yazıyor..."
+        }
+    }
+
+    func currentDisplayName() -> String {
+        if let email = session.currentUser?.email, !email.isEmpty {
+            return email
+        }
+        return "User"
+    }
+
+    func handleTypingChange(_ newValue: String) {
+        guard let myID = session.currentUser?.id else { return }
+
+        let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let shouldBeTyping = !trimmed.isEmpty
+
+        typingStopTask?.cancel()
+
+        if shouldBeTyping {
+            if !isCurrentlyTyping {
+                isCurrentlyTyping = true
+
+                Task {
+                    await crewStore.sendTypingEvent(
+                        crewID: crew.id,
+                        userID: myID,
+                        name: currentDisplayName(),
+                        isTyping: true
+                    )
+                }
+            }
+
+            typingStopTask = Task {
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+
+                if !Task.isCancelled {
+                    isCurrentlyTyping = false
+
+                    await crewStore.sendTypingEvent(
+                        crewID: crew.id,
+                        userID: myID,
+                        name: currentDisplayName(),
+                        isTyping: false
+                    )
+                }
+            }
+        } else {
+            isCurrentlyTyping = false
+
+            Task {
+                await crewStore.sendTypingEvent(
+                    crewID: crew.id,
+                    userID: myID,
+                    name: currentDisplayName(),
+                    isTyping: false
+                )
+            }
+        }
     }
 
     func sendMessage() {
@@ -29,6 +125,19 @@ extension CrewChatView {
         draftMessage = ""
         replyingTo = nil
         isComposerFocused = false
+        typingStopTask?.cancel()
+        isCurrentlyTyping = false
+
+        if let myID = session.currentUser?.id {
+            Task {
+                await crewStore.sendTypingEvent(
+                    crewID: crew.id,
+                    userID: myID,
+                    name: currentDisplayName(),
+                    isTyping: false
+                )
+            }
+        }
 
         Task {
             await crewStore.sendCrewMessageOptimistic(
@@ -85,12 +194,7 @@ extension CrewChatView {
         }
     }
 
-    func currentDisplayName() -> String {
-        if let email = session.currentUser?.email, !email.isEmpty {
-            return email
-        }
-        return "You"
-    }
+    
 
     func shouldShowDateSeparator(at index: Int) -> Bool {
         guard messages.indices.contains(index) else { return false }

@@ -10,18 +10,20 @@ import Combine
 struct CrewChatView: View {
     let crew: WeekCrewItem
 
-    @Environment(\.dismiss)  var dismiss
+    @Environment(\.dismiss) var dismiss
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var session: SessionStore
-    @AppStorage("appTheme")  var appTheme = AppTheme.gradient.rawValue
+    @AppStorage("appTheme") var appTheme = AppTheme.gradient.rawValue
 
-    @State  var draftMessage: String = ""
-    @State  var showCrewInfo = false
-    @State  var replyingTo: CrewChatMessageItem?
-    @State  var showFocusDurationSheet = false
-    @State  var customFocusMinutes: Int = 25
+    @State var draftMessage: String = ""
+    @State var showCrewInfo = false
+    @State var replyingTo: CrewChatMessageItem?
+    @State var showFocusDurationSheet = false
+    @State var customFocusMinutes: Int = 25
+    @State var typingStopTask: Task<Void, Never>?
+    @State var isCurrentlyTyping = false
 
-    @FocusState  var isComposerFocused: Bool
+    @FocusState var isComposerFocused: Bool
 
     let palette = ThemePalette()
     let replyMarker = "[[reply]]"
@@ -33,6 +35,18 @@ struct CrewChatView: View {
 
             VStack(spacing: 0) {
                 header
+
+                if let typingText {
+                    HStack {
+                        Text(typingText)
+                            .font(.caption)
+                            .foregroundStyle(palette.secondaryText)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 4)
+                    .padding(.bottom, 6)
+                }
 
                 if messages.isEmpty {
                     emptyState
@@ -50,14 +64,23 @@ struct CrewChatView: View {
         .onAppear {
             Task {
                 await loadChatData()
-
-                crewStore.subscribeToCrewMessagesRealtime(
-                    crewID: crew.id,
-                    currentUserID: session.currentUser?.id
-                )
             }
         }
         .onDisappear {
+            typingStopTask?.cancel()
+
+            if let myID = session.currentUser?.id {
+                DispatchQueue.main.async {
+                    Task {
+                        await crewStore.sendTypingEvent(
+                            crewID: crew.id,
+                            userID: myID,
+                            name: currentDisplayName(),
+                            isTyping: false
+                        )
+                    }
+                }
+            }
             crewStore.unsubscribeCrewChat()
         }
         .sheet(isPresented: $showCrewInfo) {

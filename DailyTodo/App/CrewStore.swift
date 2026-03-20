@@ -30,6 +30,8 @@ final class CrewStore: ObservableObject {
     @Published var crewActivities: [CrewActivityDTO] = []
     @Published var crewFocusRecords: [CrewFocusRecordDTO] = []
     @Published var crewTaskComments: [CrewTaskCommentDTO] = []
+    @Published var crewMessageReads: [CrewMessageReadDTO] = []
+    @Published var crewTypingStatuses: [CrewTypingStatusDTO] = []
 
     @Published var chatMessagesByCrew: [UUID: [CrewChatMessageItem]] = [:]
 
@@ -38,7 +40,8 @@ final class CrewStore: ObservableObject {
     private var activityChannel: RealtimeChannel?
     private var focusChannel: RealtimeChannel?
     private var commentChannel: RealtimeChannel?
-
+    private var lastTypingStateByCrew: [UUID: Bool] = [:]
+    
     private var crewMessagesChannel: RealtimeChannel?
     private var subscribedCrewMessageID: UUID?
 
@@ -273,6 +276,107 @@ final class CrewStore: ObservableObject {
         } catch {
             print("SEND CREW MESSAGE OPTIMISTIC ERROR:", error.localizedDescription)
             markPendingMessageFailed(crewID: crewID, localID: localID)
+        }
+    }
+    
+    func markCrewMessagesAsRead(
+        crewID: UUID,
+        userID: UUID
+    ) async {
+        do {
+            struct ReadPayload: Encodable {
+                let crew_id: UUID
+                let user_id: UUID
+                let last_read_at: String
+            }
+
+            let payload = ReadPayload(
+                crew_id: crewID,
+                user_id: userID,
+                last_read_at: ISO8601DateFormatter().string(from: Date())
+            )
+
+            try await SupabaseManager.shared.client
+                .from("crew_message_reads")
+                .upsert(payload, onConflict: "crew_id,user_id")
+                .execute()
+
+            await loadCrewMessageReads(for: crewID)
+        } catch {
+            print("MARK CREW MESSAGES AS READ ERROR:", error.localizedDescription)
+        }
+    }
+    
+    func sendTypingEvent(
+        crewID: UUID,
+        userID: UUID,
+        name: String,
+        isTyping: Bool
+    ) async {
+        if lastTypingStateByCrew[crewID] == isTyping {
+            return
+        }
+
+        lastTypingStateByCrew[crewID] = isTyping
+
+        struct TypingPayload: Encodable {
+            let crew_id: UUID
+            let user_id: UUID
+            let name: String
+            let is_typing: Bool
+            let updated_at: String
+        }
+
+        let payload = TypingPayload(
+            crew_id: crewID,
+            user_id: userID,
+            name: name,
+            is_typing: isTyping,
+            updated_at: ISO8601DateFormatter().string(from: Date())
+        )
+
+        do {
+            try await SupabaseManager.shared.client
+                .from("crew_typing_status")
+                .upsert(payload, onConflict: "crew_id,user_id")
+                .execute()
+
+            await loadCrewTypingStatuses(for: crewID)
+        } catch {
+            print("SEND TYPING EVENT ERROR:", error.localizedDescription)
+        }
+    }
+    
+    func loadCrewTypingStatuses(for crewID: UUID) async {
+        do {
+            let response = try await SupabaseManager.shared.client
+                .from("crew_typing_status")
+                .select()
+                .eq("crew_id", value: crewID.uuidString)
+                .execute()
+
+            let decoded = try JSONDecoder().decode([CrewTypingStatusDTO].self, from: response.data)
+
+            crewTypingStatuses.removeAll { $0.crew_id == crewID }
+            crewTypingStatuses.append(contentsOf: decoded)
+        } catch {
+            print("LOAD CREW TYPING STATUS ERROR:", error.localizedDescription)
+        }
+    }
+    
+    func loadCrewMessageReads(for crewID: UUID) async {
+        do {
+            let response = try await SupabaseManager.shared.client
+                .from("crew_message_reads")
+                .select()
+                .eq("crew_id", value: crewID.uuidString)
+                .execute()
+
+            let decoded = try JSONDecoder().decode([CrewMessageReadDTO].self, from: response.data)
+            crewMessageReads.removeAll { $0.crew_id == crewID }
+            crewMessageReads.append(contentsOf: decoded)
+        } catch {
+            print("LOAD CREW MESSAGE READS ERROR:", error.localizedDescription)
         }
     }
 
