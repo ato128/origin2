@@ -13,10 +13,12 @@ enum CrewTabMode: String, CaseIterable {
     case friends = "Friends"
 }
 
+
 struct CrewView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var crewStore: CrewStore
+    @EnvironmentObject var friendStore: FriendStore
 
     @State private var showCreateCrewBackend = false
 
@@ -31,6 +33,9 @@ struct CrewView: View {
 
     @Query(sort: \FriendFocusSession.startedAt, order: .reverse)
     private var focusSessions: [FriendFocusSession]
+    
+    @Query(sort: \FriendRequest.createdAt, order: .reverse)
+    private var friendRequests: [FriendRequest]
 
     @State private var crewTabMode: CrewTabMode
     @State private var showJoinFocusSheet = false
@@ -38,6 +43,9 @@ struct CrewView: View {
     @State private var pulseLiveIndicator = false
     @State private var showJoinCrewSheet = false
     @State private var pendingInviteCode = ""
+    
+   
+    
 
     init(initialTab: CrewTabMode = .crews) {
         self.initialTab = initialTab
@@ -95,6 +103,28 @@ struct CrewView: View {
             .task {
                 await crewStore.loadCrews()
                 await crewStore.loadStatsForAllCrews()
+
+                guard let currentUserID = session.currentUser?.id else { return }
+
+                // ✅ Backend friendships çek
+                await friendStore.loadAcceptedFriendships(currentUserID: currentUserID)
+
+                // ✅ karşı taraf userID'leri bul
+                let otherUserIDs = friendStore.friendships.map {
+                    $0.requester_id == currentUserID ? $0.addressee_id : $0.requester_id
+                }
+
+                // ✅ profilleri çek
+                await friendStore.loadProfiles(for: otherUserIDs)
+
+                // 🔥 KRİTİK: modelContext oluştur
+               
+
+                // ✅ local'e yaz
+                friendStore.syncAcceptedFriendsToLocal(
+                    currentUserID: currentUserID,
+                    modelContext: modelContext
+                )
             }
             .onReceive(NotificationCenter.default.publisher(for: .openCrewInviteFromLink)) { notification in
                 if let code = notification.object as? String {
@@ -233,6 +263,7 @@ private extension CrewView {
                     }
                 } else {
                     Button {
+                        seedMockFriendRequestsIfNeeded()
                     } label: {
                         Image(systemName: "person.badge.plus")
                             .font(.system(size: 18, weight: .bold))
@@ -535,16 +566,32 @@ private extension CrewView {
             }
         }
     }
+    
+    var incomingRequests: [FriendRequest] {
+        friendRequests.filter { $0.direction == .incoming && $0.status == .pending }
+    }
+
+    var sentRequests: [FriendRequest] {
+        friendRequests.filter { $0.direction == .sent && $0.status == .pending }
+    }
 
     var friendsContent: some View {
         VStack(alignment: .leading, spacing: 16) {
             friendsOverviewCard
 
+            if !incomingRequests.isEmpty {
+                incomingRequestsCard
+            }
+
+            if !sentRequests.isEmpty {
+                sentRequestsCard
+            }
+
             if !activeFocusSessions.isEmpty {
                 friendsFocusActivityCard
             }
 
-            if friends.isEmpty {
+            if friends.isEmpty && incomingRequests.isEmpty && sentRequests.isEmpty {
                 friendsEmptyStateCard
             } else {
                 VStack(alignment: .leading, spacing: 14) {
@@ -690,7 +737,7 @@ private extension CrewView {
 
             HStack(spacing: 10) {
                 statPill(title: "\(friends.count)", subtitle: "Friends")
-                statPill(title: "\(onlineCount)", subtitle: "Online")
+                statPill(title: "\(incomingRequests.count)", subtitle: "Requests")
                 statPill(title: "\(activeFriendFocusCount)", subtitle: "In Focus")
             }
 
@@ -707,10 +754,51 @@ private extension CrewView {
                     Spacer()
                 }
                 .padding(.top, 2)
+            } else if !incomingRequests.isEmpty {
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(.orange)
+                        .frame(width: 8, height: 8)
+
+                    Text("\(incomingRequests.count) pending friend request")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(palette.secondaryText)
+
+                    Spacer()
+                }
+                .padding(.top, 2)
             }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBackground)
+    }
+    
+    var incomingRequestsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Incoming Requests")
+                    .font(.headline)
+                    .foregroundStyle(palette.primaryText)
+
+                Spacer()
+
+                Text("\(incomingRequests.count)")
+                    .font(.caption.weight(.bold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(Color.orange.opacity(0.14))
+                    )
+                    .foregroundStyle(.orange)
+            }
+
+            ForEach(incomingRequests) { request in
+                incomingRequestRow(request)
+            }
+        }
+        .padding(18)
         .background(cardBackground)
     }
 
@@ -736,9 +824,10 @@ private extension CrewView {
                 .multilineTextAlignment(.center)
 
             Button {
-                seedMockFriendsIfNeeded()
+                print("ADD SAMPLE REQUESTS TAPPED")
+                seedMockFriendRequestsIfNeeded()
             } label: {
-                Text("Add Sample Friends")
+                Text("Add Sample Requests")
                     .font(.subheadline.weight(.semibold))
                     .padding(.horizontal, 18)
                     .padding(.vertical, 11)
@@ -833,12 +922,176 @@ private extension CrewView {
         .padding(20)
         .background(cardBackground)
     }
+    
+    func acceptRequest(_ request: FriendRequest) {
+        request.status = .accepted
+        try? modelContext.save()
+
+        Task {
+            guard let currentUserID = session.currentUser?.id else { return }
+
+            await friendStore.loadAcceptedFriendships(currentUserID: currentUserID)
+
+            let allUserIDs = friendStore.friendships.flatMap { friendship -> [UUID] in
+                [friendship.requester_id, friendship.addressee_id]
+            }
+
+            await friendStore.loadProfiles(for: allUserIDs)
+
+            await MainActor.run {
+                friendStore.syncAcceptedFriendsToLocal(
+                    currentUserID: currentUserID,
+                    modelContext: modelContext
+                )
+            }
+        }
+    }
+
+    func declineRequest(_ request: FriendRequest) {
+        request.status = .declined
+        try? modelContext.save()
+    }
+
+    func cancelRequest(_ request: FriendRequest) {
+        request.status = .cancelled
+        try? modelContext.save()
+    }
+    
+    func sentRequestRow(_ request: FriendRequest) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(hexColor(request.colorHex).opacity(0.16))
+                    .frame(width: 42, height: 42)
+
+                Image(systemName: request.avatarSymbol)
+                    .foregroundStyle(hexColor(request.colorHex))
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(request.name)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(palette.primaryText)
+
+                Text("@\(request.username)")
+                    .font(.caption)
+                    .foregroundStyle(palette.secondaryText)
+            }
+
+            Spacer()
+
+            Button {
+                cancelRequest(request)
+            } label: {
+                Text("Cancel")
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(Color.orange.opacity(0.14))
+                    .foregroundStyle(.orange)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(palette.secondaryCardFill)
+        )
+    }
+    var sentRequestsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Sent Requests")
+                    .font(.headline)
+                    .foregroundStyle(palette.primaryText)
+
+                Spacer()
+
+                Text("\(sentRequests.count)")
+                    .font(.caption.weight(.bold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(Color.blue.opacity(0.14))
+                    )
+                    .foregroundStyle(.blue)
+            }
+
+            ForEach(sentRequests) { request in
+                sentRequestRow(request)
+            }
+        }
+        .padding(18)
+        .background(cardBackground)
+    }
+    
+    func incomingRequestRow(_ request: FriendRequest) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(hexColor(request.colorHex).opacity(0.16))
+                    .frame(width: 42, height: 42)
+
+                Image(systemName: request.avatarSymbol)
+                    .foregroundStyle(hexColor(request.colorHex))
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(request.name)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(palette.primaryText)
+
+                Text("@\(request.username)")
+                    .font(.caption)
+                    .foregroundStyle(palette.secondaryText)
+            }
+
+            Spacer()
+
+            HStack(spacing: 8) {
+                Button {
+                    acceptRequest(request)
+                } label: {
+                    Text("Accept")
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Color.green.opacity(0.14))
+                        .foregroundStyle(.green)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    declineRequest(request)
+                } label: {
+                    Text("Decline")
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Color.red.opacity(0.14))
+                        .foregroundStyle(.red)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(palette.secondaryCardFill)
+        )
+    }
 
     func friendRow(_ friend: Friend) -> some View {
         let activeSession = activeFocusSession(for: friend)
 
         return NavigationLink {
             FriendDetailView(friend: friend)
+                .environmentObject(friendStore)
+                .environmentObject(session)
         } label: {
             HStack(spacing: 12) {
                 ZStack {
@@ -961,6 +1214,8 @@ private extension CrewView {
         let w = Calendar.current.component(.weekday, from: Date())
         return (w + 5) % 7
     }
+    
+    
 
     func seedMockFriendsIfNeeded() {
         guard friends.isEmpty else { return }
@@ -1041,6 +1296,49 @@ private extension CrewView {
         }
 
         try? modelContext.save()
+    }
+    
+    func seedMockFriendRequestsIfNeeded() {
+        let existingPending = friendRequests.filter { $0.status == .pending }
+        guard existingPending.isEmpty else {
+            print("Pending requests already exist")
+            return
+        }
+
+        let incoming1 = FriendRequest(
+            name: "Ahmet",
+            username: "ahmetk",
+            avatarSymbol: "person.fill",
+            colorHex: "#3B82F6",
+            direction: .incoming
+        )
+
+        let incoming2 = FriendRequest(
+            name: "Selin",
+            username: "selinnotes",
+            avatarSymbol: "person.fill",
+            colorHex: "#8B5CF6",
+            direction: .incoming
+        )
+
+        let sent1 = FriendRequest(
+            name: "Atakan",
+            username: "atakan12",
+            avatarSymbol: "person.fill",
+            colorHex: "#22C55E",
+            direction: .sent
+        )
+
+        modelContext.insert(incoming1)
+        modelContext.insert(incoming2)
+        modelContext.insert(sent1)
+
+        do {
+            try modelContext.save()
+            print("Sample friend requests added")
+        } catch {
+            print("SAVE FRIEND REQUEST ERROR:", error.localizedDescription)
+        }
     }
 
     var activeFocusSessions: [FriendFocusSession] {

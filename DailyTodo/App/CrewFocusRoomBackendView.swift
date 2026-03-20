@@ -24,6 +24,8 @@ struct CrewFocusRoomBackendView: View {
     @State private var isJoining = false
     @State private var isLeaving = false
     @State private var isTogglingPause = false
+    @State private var localParticipants: [CrewFocusParticipantDTO] = []
+    @State private var didInitialLoad = false
 
     init(crew: WeekCrewItem, sessionDTO: CrewFocusSessionDTO) {
         self.crew = crew
@@ -32,7 +34,7 @@ struct CrewFocusRoomBackendView: View {
     }
 
     var participants: [CrewFocusParticipantDTO] {
-        crewStore.focusParticipantsBySession[localSession.id] ?? []
+        localParticipants
     }
 
     var currentUserID: UUID? {
@@ -41,7 +43,8 @@ struct CrewFocusRoomBackendView: View {
 
     var currentUserName: String {
         if let email = session.currentUser?.email, !email.isEmpty {
-            return email.components(separatedBy: "@").first ?? email
+            let prefix = email.split(separator: "@").first.map(String.init)
+            return prefix?.isEmpty == false ? prefix! : email
         }
         return "You"
     }
@@ -68,11 +71,21 @@ struct CrewFocusRoomBackendView: View {
 
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 let currentDate = context.date
+                let remaining = remainingSeconds(at: currentDate)
+                let progressValue = progress(forRemaining: remaining)
+                let timeText = mmss(forRemaining: remaining)
+                let accent = focusAccentColor(forRemaining: remaining)
 
                 ScrollView {
                     VStack(spacing: 20) {
                         headerCard
-                        timerCard(currentDate: currentDate)
+                        timerCard(
+                            currentDate: currentDate,
+                            remaining: remaining,
+                            progressValue: progressValue,
+                            timeText: timeText,
+                            accent: accent
+                        )
                         participantsCard
                         controlsCard(currentDate: currentDate)
                     }
@@ -80,7 +93,7 @@ struct CrewFocusRoomBackendView: View {
                     .padding(.top, 12)
                     .padding(.bottom, 30)
                 }
-                .onChange(of: remainingSeconds(at: currentDate)) { _, newValue in
+                .onChange(of: remaining) { _, newValue in
                     guard !isEnding else { return }
                     guard localSession.is_active, !localSession.is_paused else { return }
 
@@ -100,21 +113,29 @@ struct CrewFocusRoomBackendView: View {
                 glowPulse = true
             }
 
+            guard !didInitialLoad else { return }
+            didInitialLoad = true
+
             Task {
                 await crewStore.loadActiveFocusSession(for: crew.id)
 
                 if let active = crewStore.activeFocusSessionByCrew[crew.id] {
                     localSession = active
                     await crewStore.loadFocusParticipants(sessionID: active.id)
+                    localParticipants = crewStore.focusParticipantsBySession[active.id] ?? []
                 }
             }
         }
         .onChange(of: crewStore.activeFocusSessionByCrew[crew.id]) { _, newValue in
             if let newValue {
                 localSession = newValue
+                localParticipants = crewStore.focusParticipantsBySession[newValue.id] ?? localParticipants
             } else {
                 dismiss()
             }
+        }
+        .onChange(of: crewStore.focusParticipantsBySession[localSession.id]) { _, newValue in
+            localParticipants = newValue ?? []
         }
     }
 }
@@ -136,34 +157,25 @@ private extension CrewFocusRoomBackendView {
     }
    
 
-    func progress(at date: Date) -> Double {
+    func progress(forRemaining remaining: Int) -> Double {
         let total = Double(localSession.duration_minutes * 60)
         guard total > 0 else { return 0 }
 
-        let elapsed = total - Double(remainingSeconds(at: date))
+        let elapsed = total - Double(remaining)
         return min(1, max(0, elapsed / total))
     }
 
-    func mmss(at date: Date) -> String {
-        let remaining = remainingSeconds(at: date)
+    func mmss(forRemaining remaining: Int) -> String {
         let minutes = remaining / 60
         let seconds = remaining % 60
         return String(format: "%02d:%02d", minutes, seconds)
     }
 
-    func isEndingSoon(at date: Date) -> Bool {
-        remainingSeconds(at: date) <= 600
-    }
-
-    func isCritical(at date: Date) -> Bool {
-        remainingSeconds(at: date) <= 180
-    }
-
-    func focusAccentColor(at date: Date) -> Color {
+    func focusAccentColor(forRemaining remaining: Int) -> Color {
         if !localSession.is_active { return .green }
         if localSession.is_paused { return .orange }
-        if isCritical(at: date) { return .red }
-        if isEndingSoon(at: date) { return .orange }
+        if remaining <= 180 { return .red }
+        if remaining <= 600 { return .orange }
         return .blue
     }
 
@@ -200,8 +212,13 @@ private extension CrewFocusRoomBackendView {
         }
     }
 
-    func timerCard(currentDate: Date) -> some View {
-        let accent = focusAccentColor(at: currentDate)
+    func timerCard(
+        currentDate: Date,
+        remaining: Int,
+        progressValue: Double,
+        timeText: String,
+        accent: Color
+    ) -> some View {
 
         return VStack(spacing: 18) {
             Text(localSession.title)
@@ -227,7 +244,7 @@ private extension CrewFocusRoomBackendView {
                     .frame(width: 220, height: 220)
 
                 Circle()
-                    .trim(from: 0, to: progress(at: currentDate))
+                    .trim(from: 0, to: progressValue)
                     .stroke(
                         accent,
                         style: StrokeStyle(lineWidth: 16, lineCap: .round)
@@ -235,7 +252,7 @@ private extension CrewFocusRoomBackendView {
                     .rotationEffect(.degrees(-90))
                     .frame(width: 220, height: 220)
                     .shadow(color: accent.opacity(glowPulse ? 0.22 : 0.10), radius: 6)
-                    .animation(.linear(duration: 1), value: progress(at: currentDate))
+                    .animation(.linear(duration: 1), value: progressValue)
 
                 Circle()
                     .fill(
@@ -257,16 +274,16 @@ private extension CrewFocusRoomBackendView {
                         .font(.title2)
                         .foregroundStyle(accent)
 
-                    if !localSession.is_active || remainingSeconds(at: currentDate) <= 0 {
+                    if !localSession.is_active || remaining <= 0 {
                         Text("Done")
                             .font(.system(size: 42, weight: .bold, design: .rounded))
                             .foregroundStyle(.green)
                     } else {
-                        Text(mmss(at: currentDate))
+                        Text(timeText)
                             .font(.system(size: 46, weight: .bold, design: .rounded))
                             .foregroundStyle(palette.primaryText)
                             .contentTransition(.numericText())
-                            .animation(.easeInOut(duration: 0.18), value: mmss(at: currentDate))
+                            .animation(.easeInOut(duration: 0.18), value: timeText)
                     }
 
                     Text("\(localSession.duration_minutes) min")
@@ -300,8 +317,8 @@ private extension CrewFocusRoomBackendView {
                             colors: [
                                 accent.opacity(
                                     glowPulse
-                                    ? (isCritical(at: currentDate) ? 0.16 : isEndingSoon(at: currentDate) ? 0.13 : 0.10)
-                                    : (isCritical(at: currentDate) ? 0.08 : isEndingSoon(at: currentDate) ? 0.07 : 0.04)
+                                    ? (remaining <= 180 ? 0.16 : remaining <= 600 ? 0.13 : 0.10)
+                                    : (remaining <= 180 ? 0.08 : remaining <= 600 ? 0.07 : 0.04)
                                 ),
                                 Color.clear
                             ],
@@ -316,8 +333,8 @@ private extension CrewFocusRoomBackendView {
         .shadow(
             color: accent.opacity(
                 glowPulse
-                ? (isCritical(at: currentDate) ? 0.18 : isEndingSoon(at: currentDate) ? 0.14 : 0.10)
-                : (isCritical(at: currentDate) ? 0.10 : isEndingSoon(at: currentDate) ? 0.08 : 0.05)
+                ? (remaining <= 180 ? 0.18 : remaining <= 600 ? 0.14 : 0.10)
+                : (remaining <= 180 ? 0.10 : remaining <= 600 ? 0.08 : 0.05)
             ),
             radius: 10,
             y: 4

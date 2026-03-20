@@ -29,6 +29,8 @@ struct CrewChatView: View {
 
     @State var typingStopTask: Task<Void, Never>?
     @State var isCurrentlyTyping = false
+    @State private var didInitialLoad = false
+    @State private var localActiveFocusSession: CrewFocusSessionDTO?
 
     @FocusState var isComposerFocused: Bool
 
@@ -37,7 +39,7 @@ struct CrewChatView: View {
     let bodyMarker = "[[body]]"
 
     var activeFocusSession: CrewFocusSessionDTO? {
-        crewStore.activeFocusSessionByCrew[crew.id] ?? nil
+        localActiveFocusSession ?? crewStore.activeFocusSessionByCrew[crew.id]
     }
 
     var body: some View {
@@ -77,13 +79,18 @@ struct CrewChatView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
+            guard !didInitialLoad else { return }
+            didInitialLoad = true
+
             Task {
                 await loadChatData()
-                await crewStore.loadCrews()
                 await crewStore.loadActiveFocusSession(for: crew.id)
 
-                if let activeFocusSession {
-                    await crewStore.loadFocusParticipants(sessionID: activeFocusSession.id)
+                let loadedSession = crewStore.activeFocusSessionByCrew[crew.id]
+                localActiveFocusSession = loadedSession
+
+                if let loadedSession {
+                    await crewStore.loadFocusParticipants(sessionID: loadedSession.id)
                 }
 
                 crewStore.subscribeToActiveFocusRealtime(crewID: crew.id)
@@ -93,15 +100,13 @@ struct CrewChatView: View {
             typingStopTask?.cancel()
 
             if let myID = session.currentUser?.id {
-                DispatchQueue.main.async {
-                    Task {
-                        await crewStore.sendTypingEvent(
-                            crewID: crew.id,
-                            userID: myID,
-                            name: currentDisplayName(),
-                            isTyping: false
-                        )
-                    }
+                Task {
+                    await crewStore.sendTypingEvent(
+                        crewID: crew.id,
+                        userID: myID,
+                        name: currentDisplayName(),
+                        isTyping: false
+                    )
                 }
             }
 
@@ -110,19 +115,23 @@ struct CrewChatView: View {
         }
         .sheet(isPresented: $showCrewInfo) {
             NavigationStack {
-                if let backendCrew = crewStore.crews.first(where: { $0.id == crew.id }) {
-                    BackendCrewDetailView(crew: backendCrew)
-                        .environmentObject(crewStore)
-                        .environmentObject(session)
-                } else {
-                    ZStack {
-                        AppBackground()
+                Group {
+                    if let backendCrew = crewStore.crews.first(where: { $0.id == crew.id }) {
+                        BackendCrewDetailView(crew: backendCrew)
+                            .environmentObject(crewStore)
+                            .environmentObject(session)
+                    } else {
+                        ZStack {
+                            AppBackground()
 
-                        ProgressView("Loading crew info...")
-                            .foregroundStyle(.white)
-                    }
-                    .task {
-                        await crewStore.loadCrews()
+                            ProgressView("Loading crew info...")
+                                .foregroundStyle(.white)
+                        }
+                        .task {
+                            if crewStore.crews.isEmpty {
+                                await crewStore.loadCrews()
+                            }
+                        }
                     }
                 }
             }
@@ -142,6 +151,9 @@ struct CrewChatView: View {
                 .environmentObject(crewStore)
                 .environmentObject(session)
             }
+        }
+        .onChange(of: crewStore.activeFocusSessionByCrew[crew.id]) { _, newValue in
+            localActiveFocusSession = newValue
         }
     }
 }

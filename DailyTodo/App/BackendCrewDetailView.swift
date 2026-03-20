@@ -32,21 +32,11 @@ struct BackendCrewDetailView: View {
     @State private var showFocusSection = false
     @State private var showActivitySection = false
     @State private var showShareSheet = false
+    @State private var didInitialLoad = false
     
 
     var body: some View {
-        let crewMembers = crewStore.crewMembers
-
-        let crewTasks = crewStore.crewTasks.sorted {
-            if $0.is_done != $1.is_done {
-                return !$0.is_done && $1.is_done
-            }
-            return $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
-        }
-
-        let completedTasks = crewTasks.filter(\.is_done).count
-        let pendingTasks = max(0, crewTasks.count - completedTasks)
-        let progress = crewTasks.isEmpty ? 0 : Double(completedTasks) / Double(crewTasks.count)
+        
 
         ZStack(alignment: .top) {
             ambientBackground
@@ -59,16 +49,16 @@ struct BackendCrewDetailView: View {
 
                     heroCard(
                         memberCount: crewMembers.count,
-                        totalTasks: crewTasks.count,
-                        progress: progress
+                        totalTasks: sortedCrewTasks.count,
+                        progress: crewProgressValue
                     )
                     .offset(y: showHeroCard ? 0 : 18)
                     .opacity(showHeroCard ? 1 : 0)
                     .scaleEffect(showHeroCard ? 1 : 0.985)
 
                     quickStatsRow(
-                        completed: completedTasks,
-                        pending: pendingTasks,
+                        completed: completedTasksCount,
+                        pending: pendingTasksCount,
                         memberCount: crewMembers.count
                     )
                     .offset(y: showStatsRow ? 0 : 18)
@@ -90,7 +80,7 @@ struct BackendCrewDetailView: View {
                         .opacity(showMembersSection ? 1 : 0)
                         .scaleEffect(showMembersSection ? 1 : 0.985)
 
-                    tasksSection(crewTasks)
+                    tasksSection(sortedCrewTasks)
                         .offset(y: showTasksSection ? 0 : 18)
                         .opacity(showTasksSection ? 1 : 0)
                         .scaleEffect(showTasksSection ? 1 : 0.985)
@@ -115,6 +105,9 @@ struct BackendCrewDetailView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .task {
+            guard !didInitialLoad else { return }
+            didInitialLoad = true
+
             await crewStore.loadMembers(for: crew.id)
             await crewStore.loadMemberProfiles(for: crewStore.crewMembers)
             await crewStore.loadTasks(for: crew.id)
@@ -218,6 +211,33 @@ extension BackendCrewDetailView {
         }
     }
     
+    var crewMembers: [CrewMemberDTO] {
+        crewStore.crewMembers
+    }
+    
+    private static let backendISOFormatter = ISO8601DateFormatter()
+
+    var sortedCrewTasks: [CrewTaskDTO] {
+        crewStore.crewTasks.sorted {
+            if $0.is_done != $1.is_done {
+                return !$0.is_done && $1.is_done
+            }
+            return $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+        }
+    }
+
+    var completedTasksCount: Int {
+        sortedCrewTasks.filter(\.is_done).count
+    }
+
+    var pendingTasksCount: Int {
+        max(0, sortedCrewTasks.count - completedTasksCount)
+    }
+
+    var crewProgressValue: Double {
+        sortedCrewTasks.isEmpty ? 0 : Double(completedTasksCount) / Double(sortedCrewTasks.count)
+    }
+    
     var totalFocusMinutes: Int {
         crewStore.crewFocusRecords
             .filter { $0.crew_id == crew.id }
@@ -232,7 +252,7 @@ extension BackendCrewDetailView {
                 .filter { $0.crew_id == crew.id }
                 .compactMap { record -> Date? in
                     guard let raw = record.created_at else { return nil }
-                    return ISO8601DateFormatter().date(from: raw)
+                    return Self.backendISOFormatter.date(from: raw)
                 }
                 .map { calendar.startOfDay(for: $0) }
         )
@@ -258,7 +278,7 @@ extension BackendCrewDetailView {
     }
     
     var todayLeaderboard: [(name: String, minutes: Int)] {
-        let todayPrefix = ISO8601DateFormatter().string(from: Date()).prefix(10)
+        let todayPrefix = Self.backendISOFormatter.string(from: Date()).prefix(10)
 
         let todayRecords = crewStore.crewFocusRecords.filter {
             $0.crew_id == crew.id &&
@@ -526,8 +546,7 @@ extension BackendCrewDetailView {
     func activityTimeText(_ raw: String?) -> String {
         guard let raw else { return "Now" }
 
-        let formatter = ISO8601DateFormatter()
-        if let date = formatter.date(from: raw) {
+        if let date = Self.backendISOFormatter.date(from: raw) {
             let out = DateFormatter()
             out.dateFormat = "HH:mm"
             return out.string(from: date)
@@ -706,6 +725,9 @@ extension BackendCrewDetailView {
                 )
         )
     }
+    var memberProfilesByID: [UUID: ProfileDTO] {
+        Dictionary(uniqueKeysWithValues: crewStore.memberProfiles.map { ($0.id, $0) })
+    }
 
     func membersSection(_ crewMembers: [CrewMemberDTO]) -> some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -772,7 +794,7 @@ extension BackendCrewDetailView {
                 emptyMiniState(text: "No members yet • Tap + to add one")
             } else {
                 ForEach(crewMembers) { member in
-                    let profile = crewStore.memberProfiles.first(where: { $0.id == member.user_id })
+                    let profile = memberProfilesByID[member.user_id]
 
                     HStack(spacing: 12) {
                         ZStack {
@@ -1093,9 +1115,11 @@ extension BackendCrewDetailView {
 
     func assigneeName(for task: CrewTaskDTO) -> String? {
         guard let assignedID = task.assigned_to else { return nil }
-        let profile = crewStore.memberProfiles.first(where: { $0.id == assignedID })
+        let profile = memberProfilesByID[assignedID]
         return memberName(from: profile)
     }
+    
+    
 
     func infoPill(text: String, tint: Color) -> some View {
         Text(text)

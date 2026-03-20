@@ -14,6 +14,10 @@ struct DailyTodoApp: App {
     @Environment(\.scenePhase) private var scenePhase
     private let container: ModelContainer
 
+    @StateObject private var session = SessionStore()
+    @StateObject private var crewStore = CrewStore()
+    @StateObject private var friendStore = FriendStore()
+
     init() {
         do {
             container = try ModelContainer(
@@ -35,7 +39,8 @@ struct DailyTodoApp: App {
                 FriendFocusSession.self,
                 CrewMessage.self,
                 CrewFocusSession.self,
-                CrewFocusRecord.self
+                CrewFocusRecord.self,
+                FriendRequest.self
             )
         } catch {
             fatalError("SwiftData container oluşturulamadı: \(error)")
@@ -49,6 +54,9 @@ struct DailyTodoApp: App {
                 .environmentObject(
                     TodoStore(context: ModelContext(container))
                 )
+                .environmentObject(session)
+                .environmentObject(crewStore)
+                .environmentObject(friendStore)
                 .onAppear {
                     let context = ModelContext(container)
                     WidgetAppSync.refreshFromSwiftData(context: context)
@@ -111,3 +119,5 @@ extension Notification.Name {
     static let openWeekFromWidget = Notification.Name("openWeekFromWidget")
     static let openCrewInviteFromLink = Notification.Name("openCrewInviteFromLink")
 }
+
+

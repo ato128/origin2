@@ -11,6 +11,9 @@ import SwiftData
 @Model
 final class Friend {
     var id: UUID
+    var backendFriendshipID: UUID?
+    var backendUserID: UUID?
+
     var name: String
     var subtitle: String
     var avatarSymbol: String
@@ -21,6 +24,8 @@ final class Friend {
 
     init(
         id: UUID = UUID(),
+        backendFriendshipID: UUID? = nil,
+        backendUserID: UUID? = nil,
         name: String,
         subtitle: String = "",
         avatarSymbol: String = "person.fill",
@@ -30,6 +35,8 @@ final class Friend {
         isMuted: Bool = false
     ) {
         self.id = id
+        self.backendFriendshipID = backendFriendshipID
+        self.backendUserID = backendUserID
         self.name = name
         self.subtitle = subtitle
         self.avatarSymbol = avatarSymbol
@@ -37,6 +44,5 @@ final class Friend {
         self.isOnline = isOnline
         self.createdAt = createdAt
         self.isMuted = isMuted
-        
     }
 }

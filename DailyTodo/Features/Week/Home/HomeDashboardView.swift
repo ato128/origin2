@@ -72,11 +72,11 @@ struct HomeDashboardView: View {
     @State private var inlineWorkoutCurrentSet: Int = 1
     @State private var inlineWorkoutIsResting: Bool = false
     @State private var inlineWorkoutRestSeconds: Int = 0
+    @State private var didLoadCrewFocusSessions = false
 
     @State  var focusRoomSession: CrewFocusSessionDTO?
 
-    let focusRefreshTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-    let crewFocusTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    let dashboardTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var smartSuggestions: [SmartTaskSuggestion] {
         guard smartEngineEnabled else { return [] }
@@ -126,27 +126,33 @@ struct HomeDashboardView: View {
     }
 
     var focusTask: DTTaskItem? {
-        let active = allTasks.filter { !$0.isDone }
         let now = Date()
+        let active = allTasks.filter { !$0.isDone }
 
-        let upcoming = active.filter {
-            guard let due = $0.dueDate else { return false }
-            return due >= now
+        var nearestUpcoming: DTTaskItem?
+        var nearestUpcomingDate: Date?
+
+        var nearestOverall: DTTaskItem?
+        var nearestOverallDistance: TimeInterval?
+
+        for task in active {
+            let due = task.dueDate ?? .distantFuture
+
+            if due >= now {
+                if nearestUpcomingDate == nil || due < nearestUpcomingDate! {
+                    nearestUpcoming = task
+                    nearestUpcomingDate = due
+                }
+            }
+
+            let distance = abs(due.timeIntervalSince(now))
+            if nearestOverallDistance == nil || distance < nearestOverallDistance! {
+                nearestOverall = task
+                nearestOverallDistance = distance
+            }
         }
 
-        if let nearestUpcoming = upcoming.sorted(by: {
-            ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture)
-        }).first {
-            return nearestUpcoming
-        }
-
-        return active.sorted { a, b in
-            let aDate = a.dueDate ?? .distantFuture
-            let bDate = b.dueDate ?? .distantFuture
-            let aDiff = abs(aDate.timeIntervalSince(now))
-            let bDiff = abs(bDate.timeIntervalSince(now))
-            return aDiff < bDiff
-        }.first
+        return nearestUpcoming ?? nearestOverall
     }
 
     func workoutExercisesForFocusTask() -> [WorkoutExerciseItem]? {
@@ -388,8 +394,9 @@ struct HomeDashboardView: View {
     }
 
     var recentChatFriend: Friend? {
-        let sorted = allFriendMessages.sorted { $0.createdAt > $1.createdAt }
-        guard let latestMessage = sorted.first else { return nil }
+        guard let latestMessage = allFriendMessages.max(by: { $0.createdAt < $1.createdAt }) else {
+            return nil
+        }
         return friends.first(where: { $0.id == latestMessage.friendID })
     }
 
@@ -397,17 +404,25 @@ struct HomeDashboardView: View {
         let today = weekdayIndexToday()
         let now = currentMinuteOfDay()
 
-        let todaysEvents = allEvents
-            .filter { $0.weekday == today }
-            .sorted { $0.startMinute < $1.startMinute }
+        var liveEvent: EventItem?
+        var upcomingEvent: EventItem?
 
-        if let live = todaysEvents.first(where: {
-            now >= $0.startMinute && now < ($0.startMinute + $0.durationMinute)
-        }) {
-            return live
+        for event in allEvents where event.weekday == today {
+            let start = event.startMinute
+            let end = event.startMinute + event.durationMinute
+
+            if now >= start && now < end {
+                if liveEvent == nil || start < liveEvent!.startMinute {
+                    liveEvent = event
+                }
+            } else if start > now {
+                if upcomingEvent == nil || start < upcomingEvent!.startMinute {
+                    upcomingEvent = event
+                }
+            }
         }
 
-        return todaysEvents.first(where: { $0.startMinute > now })
+        return liveEvent ?? upcomingEvent
     }
 
     var nextEventStatusText: String {
@@ -612,11 +627,15 @@ struct HomeDashboardView: View {
                 selectedDay = weekdayIndexToday()
                 syncActiveFocusCountdown()
 
-                Task {
-                    await crewStore.loadCrews()
+                if !didLoadCrewFocusSessions {
+                    didLoadCrewFocusSessions = true
 
-                    for crew in crewStore.crews {
-                        await crewStore.loadActiveFocusSession(for: crew.id)
+                    Task {
+                        await crewStore.loadCrews()
+
+                        for crew in crewStore.crews {
+                            await crewStore.loadActiveFocusSession(for: crew.id)
+                        }
                     }
                 }
 
@@ -676,11 +695,9 @@ struct HomeDashboardView: View {
             .onChange(of: isFocusActive) { _, newValue in
                 pulseActiveFocus = newValue
             }
-            .onReceive(focusRefreshTimer) { _ in
-                syncActiveFocusCountdown()
-            }
-            .onReceive(crewFocusTimer) { value in
+            .onReceive(dashboardTimer) { value in
                 crewFocusNow = value
+                syncActiveFocusCountdown()
             }
         }
     }

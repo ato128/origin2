@@ -50,6 +50,7 @@ final class CrewStore: ObservableObject {
     
     private var crewMessagesChannel: RealtimeChannel?
     private var subscribedCrewMessageID: UUID?
+    private var hasLoadedCrews = false
 
     // MARK: - Chat Helpers
 
@@ -305,8 +306,6 @@ final class CrewStore: ObservableObject {
                 .from("crew_message_reads")
                 .upsert(payload, onConflict: "crew_id,user_id")
                 .execute()
-
-            await loadCrewMessageReads(for: crewID)
         } catch {
             print("MARK CREW MESSAGES AS READ ERROR:", error.localizedDescription)
         }
@@ -345,8 +344,6 @@ final class CrewStore: ObservableObject {
                 .from("crew_typing_status")
                 .upsert(payload, onConflict: "crew_id,user_id")
                 .execute()
-
-            await loadCrewTypingStatuses(for: crewID)
         } catch {
             print("SEND TYPING EVENT ERROR:", error.localizedDescription)
         }
@@ -613,7 +610,11 @@ final class CrewStore: ObservableObject {
 
     // MARK: - Existing Loads / Actions
 
-    func loadCrews() async {
+    func loadCrews(force: Bool = false) async {
+        if hasLoadedCrews && !force {
+            return
+        }
+
         isLoading = true
         defer { isLoading = false }
 
@@ -626,6 +627,7 @@ final class CrewStore: ObservableObject {
 
             let decoded = try JSONDecoder().decode([CrewDTO].self, from: response.data)
             crews = decoded
+            hasLoadedCrews = true
         } catch {
             print("LOAD CREWS ERROR:", error.localizedDescription)
         }
@@ -647,7 +649,7 @@ final class CrewStore: ObservableObject {
     }
 
     func loadMemberProfiles(for members: [CrewMemberDTO]) async {
-        let ids = members.map { $0.user_id.uuidString }
+        let ids = Array(Set(members.map { $0.user_id.uuidString }))
 
         guard !ids.isEmpty else {
             memberProfiles = []
@@ -801,8 +803,6 @@ final class CrewStore: ObservableObject {
                     "action_text": actionText
                 ])
                 .execute()
-
-            await loadActivities(for: crewID)
         } catch {
             print("CREATE ACTIVITY ERROR:", error.localizedDescription)
         }
@@ -826,8 +826,6 @@ final class CrewStore: ObservableObject {
                 .from("crew_focus_records")
                 .insert(payload)
                 .execute()
-
-            await loadFocusRecords(for: crewID)
         } catch {
             print("CREATE FOCUS RECORD ERROR:", error.localizedDescription)
         }
@@ -843,17 +841,14 @@ final class CrewStore: ObservableObject {
                 .eq("id", value: task.id.uuidString)
                 .execute()
 
-            let actorName = memberProfiles.first(where: { $0.id == task.created_by })?.full_name
-                ?? memberProfiles.first(where: { $0.id == task.created_by })?.username
-                ?? "You"
+            let profile = memberProfiles.first(where: { $0.id == task.created_by })
+            let actorName = profile?.full_name ?? profile?.username ?? "You"
 
             await createActivity(
                 crewID: task.crew_id,
                 memberName: actorName,
                 actionText: !task.is_done ? "completed task \(task.title)" : "reopened task \(task.title)"
             )
-
-            await loadTasks(for: task.crew_id)
         } catch {
             print("TOGGLE ERROR:", error.localizedDescription)
         }
@@ -916,7 +911,7 @@ final class CrewStore: ObservableObject {
             actionText: "created task \(clean)"
         )
 
-        await loadTasks(for: crewID)
+        
     }
 
     func updateTask(
@@ -978,7 +973,7 @@ final class CrewStore: ObservableObject {
             actionText: "deleted task \(title ?? "")"
         )
 
-        await loadTasks(for: crewID)
+       
     }
 
     func addMember(by username: String, to crewID: UUID) async throws {
@@ -1034,7 +1029,7 @@ final class CrewStore: ObservableObject {
             ])
             .execute()
 
-        await loadCrews()
+        await loadCrews(force: true)
         return createdCrew
     }
 
@@ -1057,7 +1052,7 @@ final class CrewStore: ObservableObject {
             ])
             .execute()
 
-        await loadCrews()
+        await loadCrews(force: true)
     }
 
     func createInvite(for crewID: UUID, userID: UUID) async throws -> String {
@@ -1522,3 +1517,4 @@ final class CrewStore: ObservableObject {
         let minutes: Int
     }
 }
+

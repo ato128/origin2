@@ -13,6 +13,8 @@ struct FriendDetailView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject var friendStore: FriendStore
+    @EnvironmentObject var session: SessionStore
 
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private let palette = ThemePalette()
@@ -61,6 +63,25 @@ struct FriendDetailView: View {
                     Color.clear.frame(height: 76)
 
                     customHeader
+                    Button("➕ Test Friend Request") {
+                        Task {
+                            guard let currentUserID = session.currentUser?.id else { return }
+
+                            do {
+                                let target = try await friendStore.findUserByUsername("berill")
+
+                                try await friendStore.sendFriendRequest(
+                                    to: target.id,
+                                    currentUserID: currentUserID
+                                )
+
+                                print("✅ REQUEST SENT")
+                            } catch {
+                                print("❌ REQUEST ERROR:", error.localizedDescription)
+                            }
+                        }
+                    }
+                    .padding()
 
                     heroCard
                         .offset(y: showHero ? 0 : 18)
@@ -399,6 +420,8 @@ private extension FriendDetailView {
             HStack(spacing: 12) {
                 NavigationLink {
                     FriendChatView(friend: friend)
+                        .environmentObject(friendStore)
+                        .environmentObject(session)
                 } label: {
                     actionTile(
                         title: "Message",
