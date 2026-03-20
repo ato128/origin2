@@ -9,14 +9,13 @@ import Foundation
 import Supabase
 import Combine
 
+
 struct CreateFocusRecordPayload: Encodable {
     let crew_id: String
     let user_id: String?
     let member_name: String
     let minutes: Int
 }
-
-
 
 @MainActor
 final class CrewStore: ObservableObject {
@@ -31,9 +30,8 @@ final class CrewStore: ObservableObject {
     @Published var crewActivities: [CrewActivityDTO] = []
     @Published var crewFocusRecords: [CrewFocusRecordDTO] = []
     @Published var crewTaskComments: [CrewTaskCommentDTO] = []
-    @Published var crewMessages: [CrewMessageDTO] = []
-    @Published var crewMessageReads: [CrewMessageReadDTO] = []
-    @Published var crewTypingStatuses: [CrewTypingStatusDTO] = []
+
+    @Published var chatMessagesByCrew: [UUID: [CrewChatMessageItem]] = [:]
 
     private var taskChannel: RealtimeChannel?
     private var memberChannel: RealtimeChannel?
@@ -41,17 +39,447 @@ final class CrewStore: ObservableObject {
     private var focusChannel: RealtimeChannel?
     private var commentChannel: RealtimeChannel?
 
-    private var crewMessageChannel: RealtimeChannel?
-    private var crewReadsChannel: RealtimeChannel?
-    private var crewTypingChannel: RealtimeChannel?
-
+    private var crewMessagesChannel: RealtimeChannel?
     private var subscribedCrewMessageID: UUID?
-    private var subscribedCrewReadsID: UUID?
-    private var subscribedCrewTypingID: UUID?
 
-    private var lastTypingStateByCrew: [UUID: Bool] = [:]
+    // MARK: - Chat Helpers
 
-    // MARK: - Loads
+    private func isoDate(_ raw: String?) -> Date {
+        guard let raw else { return Date() }
+        return ISO8601DateFormatter().date(from: raw) ?? Date()
+    }
+
+    private func mapDTOToChatItem(
+        _ dto: CrewMessageDTO,
+        currentUserID: UUID?
+    ) -> CrewChatMessageItem {
+        CrewChatMessageItem(
+            id: dto.id,
+            serverID: dto.id,
+            clientID: dto.client_id,
+            crewID: dto.crew_id,
+            senderID: dto.sender_id,
+            senderName: dto.sender_name,
+            text: dto.text,
+            createdAt: isoDate(dto.created_at),
+            reaction: dto.reaction,
+            isSystemMessage: dto.is_system_message ?? false,
+            isFromMe: dto.sender_id == currentUserID,
+            isPending: false,
+            isFailed: false
+        )
+    }
+
+    private func setChatMessages(
+        _ items: [CrewChatMessageItem],
+        for crewID: UUID
+    ) {
+        chatMessagesByCrew[crewID] = items.sorted { $0.createdAt < $1.createdAt }
+    }
+
+    private func appendChatMessage(
+        _ item: CrewChatMessageItem,
+        for crewID: UUID
+    ) {
+        var items = chatMessagesByCrew[crewID] ?? []
+        items.append(item)
+        items.sort { $0.createdAt < $1.createdAt }
+        chatMessagesByCrew[crewID] = Array(items.suffix(30))
+    }
+
+    private func markPendingMessageFailed(
+        crewID: UUID,
+        localID: UUID
+    ) {
+        var items = chatMessagesByCrew[crewID] ?? []
+
+        guard let index = items.firstIndex(where: { $0.id == localID }) else { return }
+
+        let old = items[index]
+        items[index] = CrewChatMessageItem(
+            id: old.id,
+            serverID: old.serverID,
+            clientID: old.clientID,
+            crewID: old.crewID,
+            senderID: old.senderID,
+            senderName: old.senderName,
+            text: old.text,
+            createdAt: old.createdAt,
+            reaction: old.reaction,
+            isSystemMessage: old.isSystemMessage,
+            isFromMe: old.isFromMe,
+            isPending: false,
+            isFailed: true
+        )
+
+        chatMessagesByCrew[crewID] = items
+    }
+    private func replacePendingMessageByClientID(
+        crewID: UUID,
+        clientID: String,
+        with item: CrewChatMessageItem
+    ) {
+        var items = chatMessagesByCrew[crewID] ?? []
+
+        if let index = items.firstIndex(where: { $0.clientID == clientID && $0.serverID == nil }) {
+            items[index] = item
+        } else if let existingIndex = items.firstIndex(where: { $0.serverID == item.serverID }) {
+            items[existingIndex] = item
+        } else {
+            items.append(item)
+        }
+
+        items.sort { $0.createdAt < $1.createdAt }
+        chatMessagesByCrew[crewID] = Array(items.suffix(30))
+    }
+    
+    private func fetchInsertedMessage(
+        crewID: UUID,
+        clientID: String,
+        currentUserID: UUID?
+    ) async {
+        do {
+            let response = try await SupabaseManager.shared.client
+                .from("crew_messages")
+                .select()
+                .eq("crew_id", value: crewID.uuidString)
+                .eq("client_id", value: clientID)
+                .order("created_at", ascending: false)
+                .limit(1)
+                .single()
+                .execute()
+
+            let dto = try JSONDecoder().decode(CrewMessageDTO.self, from: response.data)
+            let item = mapDTOToChatItem(dto, currentUserID: currentUserID)
+
+            replacePendingMessageByClientID(
+                crewID: crewID,
+                clientID: clientID,
+                with: item
+            )
+        } catch {
+            print("FETCH INSERTED MESSAGE ERROR:", error.localizedDescription)
+        }
+    }
+
+    func handleIncomingMessage(
+        _ dto: CrewMessageDTO,
+        currentUserID: UUID?
+    ) {
+        let item = mapDTOToChatItem(dto, currentUserID: currentUserID)
+        var items = chatMessagesByCrew[dto.crew_id] ?? []
+
+        if let existingIndex = items.firstIndex(where: { $0.serverID == dto.id }) {
+            items[existingIndex] = item
+        } else if let clientID = dto.client_id,
+                  let pendingIndex = items.firstIndex(where: {
+                      $0.serverID == nil &&
+                      $0.clientID == clientID
+                  }) {
+            items[pendingIndex] = item
+        } else {
+            items.append(item)
+        }
+
+        items.sort { $0.createdAt < $1.createdAt }
+        chatMessagesByCrew[dto.crew_id] = Array(items.suffix(30))
+    }
+
+    // MARK: - Chat Load
+
+    func loadInitialChatMessages(
+        for crewID: UUID,
+        currentUserID: UUID?
+    ) async {
+        do {
+            let response = try await SupabaseManager.shared.client
+                .from("crew_messages")
+                .select()
+                .eq("crew_id", value: crewID.uuidString)
+                .order("created_at", ascending: true)
+                .limit(30)
+                .execute()
+
+            let decoded = try JSONDecoder().decode([CrewMessageDTO].self, from: response.data)
+            let items = decoded.map { mapDTOToChatItem($0, currentUserID: currentUserID) }
+            setChatMessages(items, for: crewID)
+        } catch {
+            print("LOAD INITIAL CHAT MESSAGES ERROR:", error.localizedDescription)
+            setChatMessages([], for: crewID)
+        }
+    }
+
+    // MARK: - Chat Send
+
+    func sendCrewMessageOptimistic(
+        crewID: UUID,
+        senderID: UUID?,
+        senderName: String,
+        text: String
+    ) async {
+        let localID = UUID()
+        let clientID = UUID().uuidString
+
+        let pendingItem = CrewChatMessageItem(
+            id: localID,
+            serverID: nil,
+            clientID: clientID,
+            crewID: crewID,
+            senderID: senderID,
+            senderName: senderName,
+            text: text,
+            createdAt: Date(),
+            reaction: nil,
+            isSystemMessage: false,
+            isFromMe: true,
+            isPending: true,
+            isFailed: false
+        )
+
+        appendChatMessage(pendingItem, for: crewID)
+
+        do {
+            struct Payload: Encodable {
+                let crew_id: UUID
+                let sender_id: UUID?
+                let sender_name: String
+                let text: String
+                let is_read: Bool
+                let reaction: String?
+                let client_id: String
+            }
+
+            let payload = Payload(
+                crew_id: crewID,
+                sender_id: senderID,
+                sender_name: senderName,
+                text: text,
+                is_read: false,
+                reaction: nil,
+                client_id: clientID
+            )
+
+            try await SupabaseManager.shared.client
+                .from("crew_messages")
+                .insert(payload)
+                .execute()
+
+            await fetchInsertedMessage(
+                crewID: crewID,
+                clientID: clientID,
+                currentUserID: senderID
+            )
+
+        } catch {
+            print("SEND CREW MESSAGE OPTIMISTIC ERROR:", error.localizedDescription)
+            markPendingMessageFailed(crewID: crewID, localID: localID)
+        }
+    }
+
+    func createCrewMessage(
+        crewID: UUID,
+        senderID: UUID?,
+        senderName: String,
+        text: String,
+        isSystemMessage: Bool = false
+    ) async throws {
+        struct Payload: Encodable {
+            let crew_id: UUID
+            let sender_id: UUID?
+            let sender_name: String
+            let text: String
+            let is_read: Bool
+            let is_system_message: Bool
+            let reaction: String?
+            let client_id: String
+        }
+
+        let payload = Payload(
+            crew_id: crewID,
+            sender_id: senderID,
+            sender_name: senderName,
+            text: text,
+            is_read: isSystemMessage,
+            is_system_message: isSystemMessage,
+            reaction: nil,
+            client_id: UUID().uuidString
+        )
+
+        try await SupabaseManager.shared.client
+            .from("crew_messages")
+            .insert(payload)
+            .execute()
+    }
+
+    // MARK: - Chat Realtime
+
+    func subscribeToCrewMessagesRealtime(
+        crewID: UUID,
+        currentUserID: UUID?
+    ) {
+        if subscribedCrewMessageID == crewID {
+            return
+        }
+
+        let client = SupabaseManager.shared.client
+
+        crewMessagesChannel?.unsubscribe()
+
+        crewMessagesChannel = client.realtime.channel("crew-messages-\(crewID.uuidString)")
+        subscribedCrewMessageID = crewID
+
+        crewMessagesChannel?
+            .on(
+                "postgres_changes",
+                filter: ChannelFilter(
+                    event: "*",
+                    schema: "public",
+                    table: "crew_messages",
+                    filter: "crew_id=eq.\(crewID.uuidString)"
+                )
+            ) { payload in
+
+                let dict = payload.payload
+
+                guard
+                    let record = dict["record"],
+                    let data = try? JSONSerialization.data(withJSONObject: record),
+                    let dto = try? JSONDecoder().decode(CrewMessageDTO.self, from: data)
+                else {
+                    return
+                }
+
+                Task { @MainActor in
+                    self.handleIncomingMessage(dto, currentUserID: currentUserID)
+                }
+            }
+
+        crewMessagesChannel?.subscribe()
+    }
+
+    func unsubscribeCrewChat() {
+        crewMessagesChannel?.unsubscribe()
+        crewMessagesChannel = nil
+        subscribedCrewMessageID = nil
+    }
+
+    // MARK: - General Crew Realtime
+
+    func subscribeToCrewRealtime(crewID: UUID) {
+        let client = SupabaseManager.shared.client
+
+        commentChannel?.unsubscribe()
+        taskChannel?.unsubscribe()
+        memberChannel?.unsubscribe()
+        activityChannel?.unsubscribe()
+        focusChannel?.unsubscribe()
+
+        commentChannel = client.realtime.channel("public:crew_task_comments:\(crewID.uuidString)")
+        taskChannel = client.realtime.channel("public:crew_tasks:\(crewID.uuidString)")
+        memberChannel = client.realtime.channel("public:crew_members:\(crewID.uuidString)")
+        activityChannel = client.realtime.channel("public:crew_activities:\(crewID.uuidString)")
+        focusChannel = client.realtime.channel("public:crew_focus_records:\(crewID.uuidString)")
+
+        commentChannel?
+            .on(
+                "postgres_changes",
+                filter: ChannelFilter(
+                    event: "*",
+                    schema: "public",
+                    table: "crew_task_comments",
+                    filter: "crew_id=eq.\(crewID.uuidString)"
+                )
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    await self?.loadComments(for: crewID)
+                }
+            }
+
+        taskChannel?
+            .on(
+                "postgres_changes",
+                filter: ChannelFilter(
+                    event: "*",
+                    schema: "public",
+                    table: "crew_tasks",
+                    filter: "crew_id=eq.\(crewID.uuidString)"
+                )
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    await self?.loadTasks(for: crewID)
+                }
+            }
+
+        memberChannel?
+            .on(
+                "postgres_changes",
+                filter: ChannelFilter(
+                    event: "*",
+                    schema: "public",
+                    table: "crew_members",
+                    filter: "crew_id=eq.\(crewID.uuidString)"
+                )
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    guard let self else { return }
+                    await self.loadMembers(for: crewID)
+                    await self.loadMemberProfiles(for: self.crewMembers)
+                    await self.loadMemberCount(for: crewID)
+                }
+            }
+
+        activityChannel?
+            .on(
+                "postgres_changes",
+                filter: ChannelFilter(
+                    event: "*",
+                    schema: "public",
+                    table: "crew_activities",
+                    filter: "crew_id=eq.\(crewID.uuidString)"
+                )
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    await self?.loadActivities(for: crewID)
+                }
+            }
+
+        focusChannel?
+            .on(
+                "postgres_changes",
+                filter: ChannelFilter(
+                    event: "*",
+                    schema: "public",
+                    table: "crew_focus_records",
+                    filter: "crew_id=eq.\(crewID.uuidString)"
+                )
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    await self?.loadFocusRecords(for: crewID)
+                }
+            }
+
+        commentChannel?.subscribe()
+        taskChannel?.subscribe()
+        memberChannel?.subscribe()
+        activityChannel?.subscribe()
+        focusChannel?.subscribe()
+    }
+
+    func unsubscribe() {
+        commentChannel?.unsubscribe()
+        taskChannel?.unsubscribe()
+        memberChannel?.unsubscribe()
+        activityChannel?.unsubscribe()
+        focusChannel?.unsubscribe()
+
+        commentChannel = nil
+        taskChannel = nil
+        memberChannel = nil
+        activityChannel = nil
+        focusChannel = nil
+    }
+
+    // MARK: - Existing Loads / Actions
 
     func loadCrews() async {
         isLoading = true
@@ -173,65 +601,6 @@ final class CrewStore: ObservableObject {
         }
     }
 
-    func loadCrewMessages(for crewID: UUID) async {
-        do {
-            let response = try await SupabaseManager.shared.client
-                .from("crew_messages")
-                .select()
-                .eq("crew_id", value: crewID.uuidString)
-                .order("created_at", ascending: true)
-                .limit(80)
-                .execute()
-
-            let decoded = try JSONDecoder().decode([CrewMessageDTO].self, from: response.data)
-
-            crewMessages.removeAll { $0.crew_id == crewID }
-            crewMessages.append(contentsOf: decoded)
-            crewMessages.sort { $0.created_at < $1.created_at }
-        } catch {
-            print("LOAD CREW MESSAGES ERROR:", error.localizedDescription)
-            crewMessages.removeAll { $0.crew_id == crewID }
-        }
-    }
-
-    func loadCrewMessageReads(for crewID: UUID) async {
-        do {
-            let response = try await SupabaseManager.shared.client
-                .from("crew_message_reads")
-                .select()
-                .eq("crew_id", value: crewID.uuidString)
-                .execute()
-
-            let decoded = try JSONDecoder().decode([CrewMessageReadDTO].self, from: response.data)
-
-            crewMessageReads.removeAll { $0.crew_id == crewID }
-            crewMessageReads.append(contentsOf: decoded)
-        } catch {
-            print("LOAD CREW MESSAGE READS ERROR:", error.localizedDescription)
-            crewMessageReads.removeAll { $0.crew_id == crewID }
-        }
-    }
-
-    func loadCrewTypingStatuses(for crewID: UUID) async {
-        do {
-            let response = try await SupabaseManager.shared.client
-                .from("crew_typing_status")
-                .select()
-                .eq("crew_id", value: crewID.uuidString)
-                .execute()
-
-            let decoded = try JSONDecoder().decode([CrewTypingStatusDTO].self, from: response.data)
-
-            crewTypingStatuses.removeAll { $0.crew_id == crewID }
-            crewTypingStatuses.append(contentsOf: decoded)
-        } catch {
-            print("LOAD CREW TYPING STATUS ERROR:", error.localizedDescription)
-            crewTypingStatuses.removeAll { $0.crew_id == crewID }
-        }
-    }
-
-    // MARK: - Counts / Stats
-
     func loadMemberCount(for crewID: UUID) async {
         do {
             let response = try await SupabaseManager.shared.client
@@ -285,58 +654,6 @@ final class CrewStore: ObservableObject {
             await loadCompletedTaskCount(for: crew.id)
         }
     }
-
-    // MARK: - Helpers
-
-    private func upsertCrewMessage(_ message: CrewMessageDTO) {
-        if let index = crewMessages.firstIndex(where: { $0.id == message.id }) {
-            crewMessages[index] = message
-        } else {
-            crewMessages.append(message)
-        }
-
-        crewMessages.sort { $0.created_at < $1.created_at }
-
-        let crewSpecific = crewMessages.filter { $0.crew_id == message.crew_id }
-        if crewSpecific.count > 80 {
-            let idsToKeep = Set(crewSpecific.suffix(80).map(\.id))
-            crewMessages.removeAll { item in
-                item.crew_id == message.crew_id && !idsToKeep.contains(item.id)
-            }
-        }
-    }
-
-    private func removeCrewMessage(messageID: UUID) {
-        crewMessages.removeAll { $0.id == messageID }
-    }
-
-    private func upsertCrewMessageRead(_ read: CrewMessageReadDTO) {
-        if let index = crewMessageReads.firstIndex(where: {
-            $0.crew_id == read.crew_id && $0.user_id == read.user_id
-        }) {
-            crewMessageReads[index] = read
-        } else {
-            crewMessageReads.append(read)
-        }
-    }
-
-    private func upsertCrewTypingStatus(_ status: CrewTypingStatusDTO) {
-        if let index = crewTypingStatuses.firstIndex(where: {
-            $0.crew_id == status.crew_id && $0.user_id == status.user_id
-        }) {
-            crewTypingStatuses[index] = status
-        } else {
-            crewTypingStatuses.append(status)
-        }
-    }
-
-    private func removeCrewTypingStatus(crewID: UUID, userID: UUID) {
-        crewTypingStatuses.removeAll {
-            $0.crew_id == crewID && $0.user_id == userID
-        }
-    }
-
-    // MARK: - Actions
 
     func createActivity(
         crewID: UUID,
@@ -624,378 +941,6 @@ final class CrewStore: ObservableObject {
 
         return String(code)
     }
-
-    // MARK: - Chat
-
-    func createCrewMessage(
-        crewID: UUID,
-        senderID: UUID?,
-        senderName: String,
-        text: String,
-        isSystemMessage: Bool = false
-    ) async throws {
-        struct Payload: Encodable {
-            let crew_id: UUID
-            let sender_id: UUID?
-            let sender_name: String
-            let text: String
-            let is_read: Bool
-            let is_system_message: Bool
-            let reaction: String?
-        }
-
-        let payload = Payload(
-            crew_id: crewID,
-            sender_id: senderID,
-            sender_name: senderName,
-            text: text,
-            is_read: isSystemMessage,
-            is_system_message: isSystemMessage,
-            reaction: nil
-        )
-
-        try await SupabaseManager.shared.client
-            .from("crew_messages")
-            .insert(payload)
-            .execute()
-    }
-
-    func sendCrewMessage(
-        crewID: UUID,
-        senderID: UUID?,
-        senderName: String,
-        text: String
-    ) async throws {
-        struct Payload: Encodable {
-            let crew_id: UUID
-            let sender_id: UUID?
-            let sender_name: String
-            let text: String
-            let is_read: Bool
-            let reaction: String?
-        }
-
-        let payload = Payload(
-            crew_id: crewID,
-            sender_id: senderID,
-            sender_name: senderName,
-            text: text,
-            is_read: false,
-            reaction: nil
-        )
-
-        try await SupabaseManager.shared.client
-            .from("crew_messages")
-            .insert(payload)
-            .execute()
-    }
-
-    func updateCrewMessageReaction(
-        messageID: UUID,
-        reaction: String?
-    ) async throws {
-        struct ReactionPayload: Encodable {
-            let reaction: String?
-        }
-
-        try await SupabaseManager.shared.client
-            .from("crew_messages")
-            .update(ReactionPayload(reaction: reaction))
-            .eq("id", value: messageID.uuidString)
-            .execute()
-    }
-
-    func markCrewMessagesAsRead(
-        crewID: UUID,
-        excludingUserID: UUID?
-    ) async {
-        do {
-            if let excludingUserID {
-                try await SupabaseManager.shared.client
-                    .from("crew_messages")
-                    .update(["is_read": true])
-                    .eq("crew_id", value: crewID.uuidString)
-                    .neq("sender_id", value: excludingUserID.uuidString)
-                    .eq("is_read", value: false)
-                    .execute()
-            } else {
-                try await SupabaseManager.shared.client
-                    .from("crew_messages")
-                    .update(["is_read": true])
-                    .eq("crew_id", value: crewID.uuidString)
-                    .eq("is_read", value: false)
-                    .execute()
-            }
-
-            if let userID = excludingUserID {
-                struct ReadPayload: Encodable {
-                    let crew_id: UUID
-                    let user_id: UUID
-                    let last_read_at: String
-                }
-
-                let payload = ReadPayload(
-                    crew_id: crewID,
-                    user_id: userID,
-                    last_read_at: ISO8601DateFormatter().string(from: Date())
-                )
-
-                try await SupabaseManager.shared.client
-                    .from("crew_message_reads")
-                    .upsert(payload, onConflict: "crew_id,user_id")
-                    .execute()
-            }
-
-            await loadCrewMessageReads(for: crewID)
-        } catch {
-            print("MARK CREW MESSAGES AS READ ERROR:", error.localizedDescription)
-        }
-    }
-
-    func sendTypingEvent(
-        crewID: UUID,
-        userID: UUID,
-        name: String,
-        isTyping: Bool
-    ) async {
-        if lastTypingStateByCrew[crewID] == isTyping {
-            return
-        }
-
-        lastTypingStateByCrew[crewID] = isTyping
-
-        struct TypingPayload: Encodable {
-            let crew_id: UUID
-            let user_id: UUID
-            let name: String
-            let is_typing: Bool
-            let updated_at: String
-        }
-
-        let payload = TypingPayload(
-            crew_id: crewID,
-            user_id: userID,
-            name: name,
-            is_typing: isTyping,
-            updated_at: ISO8601DateFormatter().string(from: Date())
-        )
-
-        do {
-            try await SupabaseManager.shared.client
-                .from("crew_typing_status")
-                .upsert(payload, onConflict: "crew_id,user_id")
-                .execute()
-        } catch {
-            print("SEND TYPING EVENT ERROR:", error.localizedDescription)
-        }
-    }
-
-    // MARK: - Realtime (Chat)
-
-    func subscribeToCrewMessagesRealtime(crewID: UUID) {
-        if subscribedCrewMessageID == crewID,
-           subscribedCrewReadsID == crewID,
-           subscribedCrewTypingID == crewID {
-            return
-        }
-
-        let client = SupabaseManager.shared.client
-
-        crewMessageChannel?.unsubscribe()
-        crewReadsChannel?.unsubscribe()
-        crewTypingChannel?.unsubscribe()
-
-        crewMessageChannel = client.realtime.channel("crew-messages-\(crewID.uuidString)")
-        crewReadsChannel = client.realtime.channel("crew-reads-\(crewID.uuidString)")
-        crewTypingChannel = client.realtime.channel("crew-typing-\(crewID.uuidString)")
-
-        subscribedCrewMessageID = crewID
-        subscribedCrewReadsID = crewID
-        subscribedCrewTypingID = crewID
-
-        print("SUBSCRIBED CREW CHAT:", crewID)
-
-        crewMessageChannel?
-            .on(
-                "postgres_changes",
-                filter: ChannelFilter(
-                    event: "*",
-                    schema: "public",
-                    table: "crew_messages",
-                    filter: "crew_id=eq.\(crewID.uuidString)"
-                )
-            ) { [weak self] _ in
-                Task { @MainActor in
-                    await self?.loadCrewMessages(for: crewID)
-                }
-            }
-
-        crewReadsChannel?
-            .on(
-                "postgres_changes",
-                filter: ChannelFilter(
-                    event: "*",
-                    schema: "public",
-                    table: "crew_message_reads",
-                    filter: "crew_id=eq.\(crewID.uuidString)"
-                )
-            ) { [weak self] _ in
-                Task { @MainActor in
-                    await self?.loadCrewMessageReads(for: crewID)
-                }
-            }
-
-        crewTypingChannel?
-            .on(
-                "postgres_changes",
-                filter: ChannelFilter(
-                    event: "*",
-                    schema: "public",
-                    table: "crew_typing_status",
-                    filter: "crew_id=eq.\(crewID.uuidString)"
-                )
-            ) { [weak self] _ in
-                Task { @MainActor in
-                    await self?.loadCrewTypingStatuses(for: crewID)
-                }
-            }
-
-        crewMessageChannel?.subscribe()
-        crewReadsChannel?.subscribe()
-        crewTypingChannel?.subscribe()
-    }
-
-    func unsubscribeCrewChat() {
-        crewMessageChannel?.unsubscribe()
-        crewReadsChannel?.unsubscribe()
-        crewTypingChannel?.unsubscribe()
-
-        crewMessageChannel = nil
-        crewReadsChannel = nil
-        crewTypingChannel = nil
-
-        subscribedCrewMessageID = nil
-        subscribedCrewReadsID = nil
-        subscribedCrewTypingID = nil
-    }
-
-    // MARK: - Realtime (General Crew)
-
-    func subscribeToCrewRealtime(crewID: UUID) {
-        let client = SupabaseManager.shared.client
-
-        commentChannel?.unsubscribe()
-        taskChannel?.unsubscribe()
-        memberChannel?.unsubscribe()
-        activityChannel?.unsubscribe()
-        focusChannel?.unsubscribe()
-
-        commentChannel = client.realtime.channel("public:crew_task_comments:\(crewID.uuidString)")
-        taskChannel = client.realtime.channel("public:crew_tasks:\(crewID.uuidString)")
-        memberChannel = client.realtime.channel("public:crew_members:\(crewID.uuidString)")
-        activityChannel = client.realtime.channel("public:crew_activities:\(crewID.uuidString)")
-        focusChannel = client.realtime.channel("public:crew_focus_records:\(crewID.uuidString)")
-
-        commentChannel?
-            .on(
-                "postgres_changes",
-                filter: ChannelFilter(
-                    event: "*",
-                    schema: "public",
-                    table: "crew_task_comments",
-                    filter: "crew_id=eq.\(crewID.uuidString)"
-                )
-            ) { [weak self] _ in
-                Task { @MainActor in
-                    await self?.loadComments(for: crewID)
-                }
-            }
-
-        taskChannel?
-            .on(
-                "postgres_changes",
-                filter: ChannelFilter(
-                    event: "*",
-                    schema: "public",
-                    table: "crew_tasks",
-                    filter: "crew_id=eq.\(crewID.uuidString)"
-                )
-            ) { [weak self] _ in
-                Task { @MainActor in
-                    await self?.loadTasks(for: crewID)
-                }
-            }
-
-        memberChannel?
-            .on(
-                "postgres_changes",
-                filter: ChannelFilter(
-                    event: "*",
-                    schema: "public",
-                    table: "crew_members",
-                    filter: "crew_id=eq.\(crewID.uuidString)"
-                )
-            ) { [weak self] _ in
-                Task { @MainActor in
-                    guard let self else { return }
-                    await self.loadMembers(for: crewID)
-                    await self.loadMemberProfiles(for: self.crewMembers)
-                    await self.loadMemberCount(for: crewID)
-                }
-            }
-
-        activityChannel?
-            .on(
-                "postgres_changes",
-                filter: ChannelFilter(
-                    event: "*",
-                    schema: "public",
-                    table: "crew_activities",
-                    filter: "crew_id=eq.\(crewID.uuidString)"
-                )
-            ) { [weak self] _ in
-                Task { @MainActor in
-                    await self?.loadActivities(for: crewID)
-                }
-            }
-
-        focusChannel?
-            .on(
-                "postgres_changes",
-                filter: ChannelFilter(
-                    event: "*",
-                    schema: "public",
-                    table: "crew_focus_records",
-                    filter: "crew_id=eq.\(crewID.uuidString)"
-                )
-            ) { [weak self] _ in
-                Task { @MainActor in
-                    await self?.loadFocusRecords(for: crewID)
-                }
-            }
-
-        commentChannel?.subscribe()
-        taskChannel?.subscribe()
-        memberChannel?.subscribe()
-        activityChannel?.subscribe()
-        focusChannel?.subscribe()
-    }
-
-    func unsubscribe() {
-        commentChannel?.unsubscribe()
-        taskChannel?.unsubscribe()
-        memberChannel?.unsubscribe()
-        activityChannel?.unsubscribe()
-        focusChannel?.unsubscribe()
-
-        commentChannel = nil
-        taskChannel = nil
-        memberChannel = nil
-        activityChannel = nil
-        focusChannel = nil
-    }
-
-    // MARK: - Invite DTO
 
     struct CrewInviteDTO: Codable {
         let id: UUID

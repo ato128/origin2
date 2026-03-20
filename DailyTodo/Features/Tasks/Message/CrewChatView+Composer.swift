@@ -4,13 +4,12 @@
 //
 //  Created by Atakan Ortaç on 16.03.2026.
 //
-
 import SwiftUI
 
 extension CrewChatView {
     var composerBar: some View {
         VStack(spacing: 4) {
-            if let replyingTo {
+            if let currentReply = replyingTo {
                 HStack(spacing: 8) {
                     Rectangle()
                         .fill(Color.accentColor)
@@ -18,15 +17,14 @@ extension CrewChatView {
                         .clipShape(Capsule())
 
                     VStack(alignment: .leading, spacing: 2) {
-                        let replyingName = replyingTo.sender_id == session.currentUser?.id
-                        ? "yourself"
-                        : replyingTo.sender_name
+                        let replyingName = currentReply.isFromMe ? "yourself" : currentReply.senderName
+                        Text(currentReply.displayText)
 
                         Text("Replying to \(replyingName)")
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(Color.accentColor)
 
-                        Text(visibleMessageText(from: replyingTo.text))
+                        Text(currentReply.displayText)
                             .font(.caption2)
                             .foregroundStyle(palette.secondaryText)
                             .lineLimit(1)
@@ -35,7 +33,7 @@ extension CrewChatView {
                     Spacer(minLength: 6)
 
                     Button {
-                        self.replyingTo = nil
+                        replyingTo = nil
                     } label: {
                         Image(systemName: "xmark")
                             .font(.caption.bold())
@@ -61,46 +59,6 @@ extension CrewChatView {
                 .padding(.horizontal, 16)
             }
 
-            if showMentionPicker && !filteredMentionMembers.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(filteredMentionMembers) { member in
-                            Button {
-                                insertMention(member.name)
-                            } label: {
-                                HStack(spacing: 6) {
-                                    Circle()
-                                        .fill(hexColor(crew.colorHex).opacity(0.18))
-                                        .frame(width: 24, height: 24)
-                                        .overlay(
-                                            Text(String(member.name.prefix(1)).uppercased())
-                                                .font(.caption2.weight(.bold))
-                                                .foregroundStyle(hexColor(crew.colorHex))
-                                        )
-
-                                    Text("@\(member.name)")
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(palette.primaryText)
-                                }
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 8)
-                                .background(
-                                    Capsule()
-                                        .fill(palette.secondaryCardFill)
-                                        .overlay(
-                                            Capsule()
-                                                .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
-                                        )
-                                )
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                }
-                .padding(.bottom, 2)
-            }
-
             HStack(alignment: .bottom, spacing: 10) {
                 Button {
                     showFocusDurationSheet = true
@@ -119,6 +77,7 @@ extension CrewChatView {
 
                 TextField("Message \(crew.name)...", text: $draftMessage, axis: .vertical)
                     .textFieldStyle(.plain)
+                    .foregroundStyle(palette.primaryText)
                     .focused($isComposerFocused)
                     .lineLimit(1...4)
                     .padding(.horizontal, 14)
@@ -128,14 +87,9 @@ extension CrewChatView {
                             .fill(palette.secondaryCardFill)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                    .stroke(palette.cardStroke, lineWidth: 1)
+                                    .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
                             )
                     )
-                    .foregroundStyle(palette.primaryText)
-                    .onChange(of: draftMessage) { _, newValue in
-                        updateMentionState(for: newValue)
-                        handleTypingChange(for: newValue)
-                    }
 
                 Button {
                     sendMessage()
@@ -167,7 +121,7 @@ extension CrewChatView {
         .padding(.bottom, 12)
         .background(
             Rectangle()
-                .fill(.ultraThinMaterial)
+                .fill(palette.cardFill)
                 .overlay(
                     Rectangle()
                         .fill(palette.cardStroke)
@@ -178,3 +132,4 @@ extension CrewChatView {
         )
     }
 }
+

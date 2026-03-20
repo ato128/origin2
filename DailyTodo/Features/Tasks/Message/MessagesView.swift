@@ -164,10 +164,6 @@ struct MessagesView: View {
                                             }
 
                                             HStack(spacing: 8) {
-                                                if unreadCrewCount(for: crew) > 0 {
-                                                    unreadBadge(unreadCrewCount(for: crew))
-                                                }
-
                                                 Image(systemName: "chevron.right")
                                                     .font(.caption.weight(.bold))
                                                     .foregroundStyle(.secondary)
@@ -195,7 +191,10 @@ struct MessagesView: View {
                 await crewStore.loadCrews()
 
                 for crew in crewStore.crews {
-                    await crewStore.loadCrewMessages(for: crew.id)
+                    await crewStore.loadInitialChatMessages(
+                        for: crew.id,
+                        currentUserID: session.currentUser?.id
+                    )
                 }
             }
         }
@@ -235,30 +234,24 @@ struct MessagesView: View {
         friendMessages.filter { $0.friendID == friend.id && !$0.isRead && !$0.isFromMe }.count
     }
 
-    private func crewMessages(for crew: WeekCrewItem) -> [CrewMessageDTO] {
-        crewStore.crewMessages
-            .filter { $0.crew_id == crew.id }
-            .sorted { lhs, rhs in
-                (isoDate(lhs.created_at) ?? .distantPast) > (isoDate(rhs.created_at) ?? .distantPast)
-            }
+    private func crewChatMessages(for crew: WeekCrewItem) -> [CrewChatMessageItem] {
+        crewStore.chatMessagesByCrew[crew.id] ?? []
     }
 
     private func lastPreviewText(for crew: WeekCrewItem) -> String {
-        guard let last = crewMessages(for: crew).first else {
+        guard let last = crewChatMessages(for: crew).last else {
             return "Crew conversation"
         }
 
-        let cleaned = cleanedPreview(last.text)
-        return "\(last.sender_name): \(cleaned)"
+        if last.isSystemMessage {
+            return last.displayText
+        }
+
+        return "\(last.senderName): \(last.displayText)"
     }
 
     private func lastCrewMessageDate(for crew: WeekCrewItem) -> Date? {
-        guard let raw = crewMessages(for: crew).first?.created_at else { return nil }
-        return isoDate(raw)
-    }
-
-    private func unreadCrewCount(for crew: WeekCrewItem) -> Int {
-        crewMessages(for: crew).filter { !$0.is_read }.count
+        crewChatMessages(for: crew).last?.createdAt
     }
 
     private func unreadBadge(_ count: Int) -> some View {
@@ -272,21 +265,5 @@ struct MessagesView: View {
                     .fill(Color.accentColor)
             )
     }
-
-    private func isoDate(_ raw: String?) -> Date? {
-        guard let raw else { return nil }
-
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [
-            .withInternetDateTime,
-            .withFractionalSeconds
-        ]
-
-        if let date = formatter.date(from: raw) {
-            return date
-        }
-
-        let fallback = ISO8601DateFormatter()
-        return fallback.date(from: raw)
-    }
 }
+

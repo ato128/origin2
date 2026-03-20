@@ -15,18 +15,11 @@ struct CrewChatView: View {
     @EnvironmentObject var session: SessionStore
     @AppStorage("appTheme")  var appTheme = AppTheme.gradient.rawValue
 
-    @State  var mentionQuery: String = ""
-    @State  var showMentionPicker = false
     @State  var draftMessage: String = ""
     @State  var showCrewInfo = false
-    @State  var replyingTo: CrewMessageDTO?
-    @State  var reactionTarget: CrewMessageDTO?
-    @State  var pressedMessageID: UUID?
+    @State  var replyingTo: CrewChatMessageItem?
     @State  var showFocusDurationSheet = false
     @State  var customFocusMinutes: Int = 25
-    @State  var optimisticMessages: [OptimisticCrewMessage] = []
-    @State  var typingStopTask: Task<Void, Never>?
-    @State  var lastSentTypingState: Bool = false
 
     @FocusState  var isComposerFocused: Bool
 
@@ -38,15 +31,6 @@ struct CrewChatView: View {
         ZStack(alignment: .top) {
             AppBackground()
 
-            if reactionTarget != nil {
-                Color.black.opacity(0.001)
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        reactionTarget = nil
-                        pressedMessageID = nil
-                    }
-            }
-
             VStack(spacing: 0) {
                 header
 
@@ -56,7 +40,6 @@ struct CrewChatView: View {
                     messagesList
                 }
 
-                typingIndicatorView
                 composerBar
             }
         }
@@ -67,19 +50,14 @@ struct CrewChatView: View {
         .onAppear {
             Task {
                 await loadChatData()
+
+                crewStore.subscribeToCrewMessagesRealtime(
+                    crewID: crew.id,
+                    currentUserID: session.currentUser?.id
+                )
             }
         }
         .onDisappear {
-            Task {
-                if let userID = session.currentUser?.id {
-                    await crewStore.sendTypingEvent(
-                        crewID: crew.id,
-                        userID: userID,
-                        name: currentDisplayName(),
-                        isTyping: false
-                    )
-                }
-            }
             crewStore.unsubscribeCrewChat()
         }
         .sheet(isPresented: $showCrewInfo) {

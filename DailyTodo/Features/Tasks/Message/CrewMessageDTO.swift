@@ -17,6 +17,7 @@ struct CrewMessageDTO: Codable, Identifiable, Equatable {
     let is_read: Bool
     let reaction: String?
     let is_system_message: Bool?
+    let client_id: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -28,5 +29,6 @@ struct CrewMessageDTO: Codable, Identifiable, Equatable {
         case is_read
         case reaction
         case is_system_message
+        case client_id 
     }
 }
