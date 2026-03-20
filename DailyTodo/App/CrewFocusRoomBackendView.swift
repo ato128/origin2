@@ -1,0 +1,617 @@
+//
+//  CrewFocusRoomBackendView.swift
+//  DailyTodo
+//
+//  Created by Atakan Ortaç on 20.03.2026.
+//
+
+import SwiftUI
+
+struct CrewFocusRoomBackendView: View {
+    let crew: WeekCrewItem
+    let sessionDTO: CrewFocusSessionDTO
+
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var crewStore: CrewStore
+    @EnvironmentObject var session: SessionStore
+    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
+
+    private let palette = ThemePalette()
+
+    @State private var localSession: CrewFocusSessionDTO
+    @State private var glowPulse = false
+    @State private var isEnding = false
+    @State private var isJoining = false
+    @State private var isLeaving = false
+    @State private var isTogglingPause = false
+
+    init(crew: WeekCrewItem, sessionDTO: CrewFocusSessionDTO) {
+        self.crew = crew
+        self.sessionDTO = sessionDTO
+        _localSession = State(initialValue: sessionDTO)
+    }
+
+    var participants: [CrewFocusParticipantDTO] {
+        crewStore.focusParticipantsBySession[localSession.id] ?? []
+    }
+
+    var currentUserID: UUID? {
+        session.currentUser?.id
+    }
+
+    var currentUserName: String {
+        if let email = session.currentUser?.email, !email.isEmpty {
+            return email.components(separatedBy: "@").first ?? email
+        }
+        return "You"
+    }
+
+    var isJoined: Bool {
+        if isHost { return true }
+
+        return participants.contains {
+            ($0.user_id != nil && $0.user_id == currentUserID) ||
+            $0.member_name == currentUserName
+        }
+    }
+
+    var isHost: Bool {
+        if let hostUserID = localSession.host_user_id, let currentUserID {
+            return hostUserID == currentUserID
+        }
+        return localSession.host_name == currentUserName
+    }
+
+    var body: some View {
+        ZStack {
+            AppBackground()
+
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                let currentDate = context.date
+
+                ScrollView {
+                    VStack(spacing: 20) {
+                        headerCard
+                        timerCard(currentDate: currentDate)
+                        participantsCard
+                        controlsCard(currentDate: currentDate)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 30)
+                }
+                .onChange(of: remainingSeconds(at: currentDate)) { _, newValue in
+                    guard !isEnding else { return }
+                    guard localSession.is_active, !localSession.is_paused else { return }
+
+                    if newValue <= 0, isHost {
+                        isEnding = true
+
+                        Task {
+                            await finishSessionIfNeeded()
+                        }
+                    }
+                }
+            }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) {
+                glowPulse = true
+            }
+
+            Task {
+                await crewStore.loadActiveFocusSession(for: crew.id)
+
+                if let active = crewStore.activeFocusSessionByCrew[crew.id] {
+                    localSession = active
+                    await crewStore.loadFocusParticipants(sessionID: active.id)
+                }
+            }
+        }
+        .onChange(of: crewStore.activeFocusSessionByCrew[crew.id]) { _, newValue in
+            if let newValue {
+                localSession = newValue
+            } else {
+                dismiss()
+            }
+        }
+    }
+}
+
+private extension CrewFocusRoomBackendView {
+    func remainingSeconds(at date: Date) -> Int {
+        if localSession.is_paused {
+            return max(0, localSession.paused_remaining_seconds ?? 0)
+        }
+
+        guard let startedAt = CrewDateParser.parse(localSession.started_at) else {
+            return localSession.duration_minutes * 60
+        }
+
+        let elapsed = Int(date.timeIntervalSince(startedAt))
+        let total = localSession.duration_minutes * 60
+
+        return max(0, total - elapsed)
+    }
+   
+
+    func progress(at date: Date) -> Double {
+        let total = Double(localSession.duration_minutes * 60)
+        guard total > 0 else { return 0 }
+
+        let elapsed = total - Double(remainingSeconds(at: date))
+        return min(1, max(0, elapsed / total))
+    }
+
+    func mmss(at date: Date) -> String {
+        let remaining = remainingSeconds(at: date)
+        let minutes = remaining / 60
+        let seconds = remaining % 60
+        return String(format: "%02d:%02d", minutes, seconds)
+    }
+
+    func isEndingSoon(at date: Date) -> Bool {
+        remainingSeconds(at: date) <= 600
+    }
+
+    func isCritical(at date: Date) -> Bool {
+        remainingSeconds(at: date) <= 180
+    }
+
+    func focusAccentColor(at date: Date) -> Color {
+        if !localSession.is_active { return .green }
+        if localSession.is_paused { return .orange }
+        if isCritical(at: date) { return .red }
+        if isEndingSoon(at: date) { return .orange }
+        return .blue
+    }
+
+    var headerCard: some View {
+        HStack {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(palette.primaryText)
+                    .frame(width: 44, height: 44)
+                    .background(
+                        Circle()
+                            .fill(palette.cardFill)
+                            .overlay(
+                                Circle()
+                                    .stroke(palette.cardStroke, lineWidth: 1)
+                            )
+                    )
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            Text("Focus Room")
+                .font(.headline)
+                .foregroundStyle(palette.primaryText)
+
+            Spacer()
+
+            Color.clear
+                .frame(width: 44, height: 44)
+        }
+    }
+
+    func timerCard(currentDate: Date) -> some View {
+        let accent = focusAccentColor(at: currentDate)
+
+        return VStack(spacing: 18) {
+            Text(localSession.title)
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundStyle(palette.primaryText)
+                .multilineTextAlignment(.center)
+
+            Text(
+                !localSession.is_active ? "Session completed" :
+                localSession.is_paused ? "Paused" :
+                "Stay locked in"
+            )
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(
+                !localSession.is_active ? .green :
+                localSession.is_paused ? .orange :
+                palette.secondaryText
+            )
+
+            ZStack {
+                Circle()
+                    .stroke(palette.secondaryCardFill, lineWidth: 16)
+                    .frame(width: 220, height: 220)
+
+                Circle()
+                    .trim(from: 0, to: progress(at: currentDate))
+                    .stroke(
+                        accent,
+                        style: StrokeStyle(lineWidth: 16, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: 220, height: 220)
+                    .shadow(color: accent.opacity(glowPulse ? 0.22 : 0.10), radius: 6)
+                    .animation(.linear(duration: 1), value: progress(at: currentDate))
+
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                accent.opacity(glowPulse ? 0.22 : 0.10),
+                                Color.clear
+                            ],
+                            center: .center,
+                            startRadius: 10,
+                            endRadius: 105
+                        )
+                    )
+                    .frame(width: 175, height: 175)
+                    .blur(radius: 5)
+
+                VStack(spacing: 8) {
+                    Image(systemName: !localSession.is_active ? "checkmark.circle.fill" : localSession.is_paused ? "pause.fill" : "timer")
+                        .font(.title2)
+                        .foregroundStyle(accent)
+
+                    if !localSession.is_active || remainingSeconds(at: currentDate) <= 0 {
+                        Text("Done")
+                            .font(.system(size: 42, weight: .bold, design: .rounded))
+                            .foregroundStyle(.green)
+                    } else {
+                        Text(mmss(at: currentDate))
+                            .font(.system(size: 46, weight: .bold, design: .rounded))
+                            .foregroundStyle(palette.primaryText)
+                            .contentTransition(.numericText())
+                            .animation(.easeInOut(duration: 0.18), value: mmss(at: currentDate))
+                    }
+
+                    Text("\(localSession.duration_minutes) min")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(palette.secondaryText)
+                }
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: "person.fill")
+                    .foregroundStyle(accent)
+
+                Text("Host: \(localSession.host_name)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(palette.secondaryText)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(24)
+        .background(
+            ZStack {
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(palette.cardFill)
+
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(accent.opacity(0.28), lineWidth: 1)
+
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                accent.opacity(
+                                    glowPulse
+                                    ? (isCritical(at: currentDate) ? 0.16 : isEndingSoon(at: currentDate) ? 0.13 : 0.10)
+                                    : (isCritical(at: currentDate) ? 0.08 : isEndingSoon(at: currentDate) ? 0.07 : 0.04)
+                                ),
+                                Color.clear
+                            ],
+                            center: .top,
+                            startRadius: 20,
+                            endRadius: 260
+                        )
+                    )
+                    .blur(radius: 9)
+            }
+        )
+        .shadow(
+            color: accent.opacity(
+                glowPulse
+                ? (isCritical(at: currentDate) ? 0.18 : isEndingSoon(at: currentDate) ? 0.14 : 0.10)
+                : (isCritical(at: currentDate) ? 0.10 : isEndingSoon(at: currentDate) ? 0.08 : 0.05)
+            ),
+            radius: 10,
+            y: 4
+        )
+        .compositingGroup()
+    }
+
+    var participantsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Participants")
+                .font(.headline)
+                .foregroundStyle(palette.primaryText)
+
+            if participants.isEmpty {
+                Text("No participants yet")
+                    .font(.subheadline)
+                    .foregroundStyle(palette.secondaryText)
+            } else {
+                ForEach(participants, id: \.id) { participant in
+                    HStack(spacing: 12) {
+                        Circle()
+                            .fill(Color.accentColor.opacity(0.16))
+                            .frame(width: 36, height: 36)
+                            .overlay(
+                                Text(String(participant.member_name.prefix(1)).uppercased())
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(Color.accentColor)
+                            )
+
+                        Text(participant.member_name)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(palette.primaryText)
+
+                        Spacer()
+
+                        if participant.member_name == localSession.host_name {
+                            Text("Host")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(.green)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.green.opacity(0.12))
+                                )
+                        }
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(cardBackground)
+    }
+
+    func controlsCard(currentDate: Date) -> some View {
+        VStack(spacing: 12) {
+            if !isJoined && localSession.is_active {
+                Button {
+                    Task {
+                        await joinSession()
+                    }
+                } label: {
+                    Text(isJoining ? "Joining..." : "Join Session")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(Color.accentColor)
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(isJoining)
+            } else {
+                Button {
+                    Task {
+                        await leaveSession()
+                    }
+                } label: {
+                    Text(isLeaving ? "Leaving..." : "Leave Session")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(palette.primaryText)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(palette.secondaryCardFill)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .stroke(palette.cardStroke, lineWidth: 1)
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(isLeaving)
+            }
+
+            if localSession.is_active && isHost {
+                Button {
+                    Task {
+                        await togglePauseResume(currentDate: currentDate)
+                    }
+                } label: {
+                    Text(localSession.is_paused ? "Resume Session" : "Pause Session")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(localSession.is_paused ? .green : .orange)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(palette.secondaryCardFill)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .stroke(
+                                            (localSession.is_paused ? Color.green : Color.orange).opacity(0.22),
+                                            lineWidth: 1
+                                        )
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(isTogglingPause)
+            }
+
+            if localSession.is_active && isHost {
+                Button {
+                    Task {
+                        await endSession()
+                    }
+                } label: {
+                    Text("End Session")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(palette.secondaryCardFill)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .stroke(Color.red.opacity(0.22), lineWidth: 1)
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(18)
+        .background(cardBackground)
+    }
+
+    var cardBackground: some View {
+        RoundedRectangle(cornerRadius: 24, style: .continuous)
+            .fill(palette.cardFill)
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(palette.cardStroke, lineWidth: 1)
+            )
+    }
+
+    func joinSession() async {
+        guard !isJoining else { return }
+        guard localSession.is_active else { return }
+        guard !isJoined else { return }
+
+        isJoining = true
+        defer { isJoining = false }
+
+        do {
+            try await crewStore.joinCrewFocusSession(
+                sessionID: localSession.id,
+                crewID: crew.id,
+                userID: currentUserID,
+                memberName: currentUserName
+            )
+
+            await crewStore.loadFocusParticipants(sessionID: localSession.id)
+        } catch {
+            print("JOIN FOCUS SESSION ERROR:", error.localizedDescription)
+        }
+    }
+
+    func leaveSession() async {
+        guard !isLeaving else { return }
+        guard isJoined else {
+            dismiss()
+            return
+        }
+
+        isLeaving = true
+        defer { isLeaving = false }
+
+        do {
+            try await crewStore.leaveCrewFocusSession(
+                sessionID: localSession.id,
+                crewID: crew.id,
+                userID: currentUserID,
+                memberName: currentUserName
+            )
+
+            dismiss()
+        } catch {
+            print("LEAVE FOCUS SESSION ERROR:", error.localizedDescription)
+        }
+    }
+
+    func togglePauseResume(currentDate: Date) async {
+        guard !isTogglingPause else { return }
+        guard localSession.is_active else { return }
+        guard isHost else { return }
+
+        isTogglingPause = true
+        defer { isTogglingPause = false }
+
+        do {
+            if localSession.is_paused {
+                try await crewStore.resumeCrewFocusSession(
+                    sessionID: localSession.id,
+                    crewID: crew.id,
+                    hostUserID: currentUserID,
+                    hostName: currentUserName,
+                    durationMinutes: localSession.duration_minutes,
+                    pausedRemainingSeconds: localSession.paused_remaining_seconds ?? 0
+                )
+            } else {
+                try await crewStore.pauseCrewFocusSession(
+                    sessionID: localSession.id,
+                    crewID: crew.id,
+                    hostUserID: currentUserID,
+                    hostName: currentUserName,
+                    pausedRemainingSeconds: remainingSeconds(at: currentDate)
+                )
+            }
+
+            await crewStore.loadActiveFocusSession(for: crew.id)
+
+            if let updated = crewStore.activeFocusSessionByCrew[crew.id] {
+                localSession = updated
+            }
+        } catch {
+            print("TOGGLE PAUSE RESUME ERROR:", error.localizedDescription)
+        }
+    }
+
+    func endSession() async {
+        guard localSession.is_active else { return }
+        guard isHost else { return }
+
+        let completedMinutes: Int
+        if localSession.is_paused {
+            let remaining = localSession.paused_remaining_seconds ?? 0
+            let elapsedSeconds = max(0, localSession.duration_minutes * 60 - remaining)
+            completedMinutes = max(1, elapsedSeconds / 60)
+        } else {
+            completedMinutes = max(1, localSession.duration_minutes - (remainingSeconds(at: Date()) / 60))
+        }
+
+        do {
+            try await crewStore.endCrewFocusSession(
+                sessionID: localSession.id,
+                crewID: crew.id,
+                hostUserID: currentUserID,
+                hostName: currentUserName,
+                completedMinutes: completedMinutes,
+                participantNames: participants.map(\.member_name),
+                taskID: localSession.task_id
+            )
+
+            dismiss()
+        } catch {
+            print("END FOCUS SESSION ERROR:", error.localizedDescription)
+        }
+    }
+
+    func finishSessionIfNeeded() async {
+        guard localSession.is_active else { return }
+        guard isHost else { return }
+
+        do {
+            try await crewStore.endCrewFocusSession(
+                sessionID: localSession.id,
+                crewID: crew.id,
+                hostUserID: currentUserID,
+                hostName: currentUserName,
+                completedMinutes: localSession.duration_minutes,
+                participantNames: participants.map(\.member_name),
+                taskID: localSession.task_id
+            )
+
+            dismiss()
+        } catch {
+            print("AUTO END FOCUS SESSION ERROR:", error.localizedDescription)
+        }
+    }
+}

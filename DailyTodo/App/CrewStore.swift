@@ -34,6 +34,12 @@ final class CrewStore: ObservableObject {
     @Published var crewTypingStatuses: [CrewTypingStatusDTO] = []
 
     @Published var chatMessagesByCrew: [UUID: [CrewChatMessageItem]] = [:]
+    @Published var activeFocusSessionByCrew: [UUID: CrewFocusSessionDTO] = [:]
+    @Published var focusParticipantsBySession: [UUID: [CrewFocusParticipantDTO]] = [:]
+
+    private var activeFocusChannel: RealtimeChannel?
+    private var focusParticipantsChannel: RealtimeChannel?
+    private var subscribedFocusCrewID: UUID?
 
     private var taskChannel: RealtimeChannel?
     private var memberChannel: RealtimeChannel?
@@ -48,8 +54,7 @@ final class CrewStore: ObservableObject {
     // MARK: - Chat Helpers
 
     private func isoDate(_ raw: String?) -> Date {
-        guard let raw else { return Date() }
-        return ISO8601DateFormatter().date(from: raw) ?? Date()
+        CrewDateParser.parse(raw) ?? Date()
     }
 
     private func mapDTOToChatItem(
@@ -293,7 +298,7 @@ final class CrewStore: ObservableObject {
             let payload = ReadPayload(
                 crew_id: crewID,
                 user_id: userID,
-                last_read_at: ISO8601DateFormatter().string(from: Date())
+                last_read_at: CrewDateParser.string(from: Date())
             )
 
             try await SupabaseManager.shared.client
@@ -332,7 +337,7 @@ final class CrewStore: ObservableObject {
             user_id: userID,
             name: name,
             is_typing: isTyping,
-            updated_at: ISO8601DateFormatter().string(from: Date())
+            updated_at: CrewDateParser.string(from: Date())
         )
 
         do {
@@ -378,6 +383,29 @@ final class CrewStore: ObservableObject {
         } catch {
             print("LOAD CREW MESSAGE READS ERROR:", error.localizedDescription)
         }
+    }
+    
+    func completeCrewTaskAfterFocus(taskID: UUID, crewID: UUID) async throws {
+        struct Payload: Encodable {
+            let is_done: Bool
+            let status: String
+        }
+
+        try await SupabaseManager.shared.client
+            .from("crew_tasks")
+            .update(
+                Payload(
+                    is_done: true,
+                    status: "done"
+                )
+            )
+            .eq("id", value: taskID.uuidString)
+            .eq("crew_id", value: crewID.uuidString)
+            .execute()
+
+        await loadTasks(for: crewID)
+        await loadTaskCount(for: crewID)
+        await loadCompletedTaskCount(for: crewID)
     }
 
     func createCrewMessage(
@@ -1050,5 +1078,446 @@ final class CrewStore: ObservableObject {
         let id: UUID
         let crew_id: UUID
         let code: String
+    }
+    func loadActiveFocusSession(for crewID: UUID) async {
+        do {
+            let response = try await SupabaseManager.shared.client
+                .from("crew_focus_sessions")
+                .select()
+                .eq("crew_id", value: crewID.uuidString)
+                .eq("is_active", value: true)
+                .order("created_at", ascending: false)
+                .limit(1)
+                .execute()
+
+            let decoded = try JSONDecoder().decode([CrewFocusSessionDTO].self, from: response.data)
+            activeFocusSessionByCrew[crewID] = decoded.first
+        } catch {
+            print("LOAD ACTIVE FOCUS SESSION ERROR:", error.localizedDescription)
+            activeFocusSessionByCrew[crewID] = nil
+        }
+    }
+    func loadFocusParticipants(sessionID: UUID) async {
+        do {
+            let response = try await SupabaseManager.shared.client
+                .from("crew_focus_participants")
+                .select()
+                .eq("session_id", value: sessionID.uuidString)
+                .eq("is_active", value: true)
+                .order("joined_at", ascending: true)
+                .execute()
+
+            let decoded = try JSONDecoder().decode([CrewFocusParticipantDTO].self, from: response.data)
+            focusParticipantsBySession[sessionID] = decoded
+        } catch {
+            print("LOAD FOCUS PARTICIPANTS ERROR:", error.localizedDescription)
+            focusParticipantsBySession[sessionID] = []
+        }
+    }
+    func startCrewFocusSession(
+        crewID: UUID,
+        hostUserID: UUID?,
+        hostName: String,
+        title: String,
+        taskID: UUID?,
+        taskTitle: String?,
+        durationMinutes: Int
+    ) async throws -> CrewFocusSessionDTO {
+        let startedAt = Date()
+
+        let payload = CreateCrewFocusSessionPayload(
+            crew_id: crewID,
+            host_user_id: hostUserID,
+            host_name: hostName,
+            title: title,
+            task_id: taskID,
+            task_title: taskTitle,
+            duration_minutes: durationMinutes,
+            started_at: CrewDateParser.string(from: startedAt),
+            is_active: true,
+            is_paused: false,
+            paused_remaining_seconds: nil
+        )
+
+        let response = try await SupabaseManager.shared.client
+            .from("crew_focus_sessions")
+            .insert(payload)
+            .select()
+            .single()
+            .execute()
+
+        let session = try JSONDecoder().decode(CrewFocusSessionDTO.self, from: response.data)
+
+        let participantPayload = CreateCrewFocusParticipantPayload(
+            session_id: session.id,
+            crew_id: crewID,
+            user_id: hostUserID,
+            member_name: hostName,
+            joined_at: CrewDateParser.string(from: Date()),
+            is_active: true
+        )
+
+        try await SupabaseManager.shared.client
+            .from("crew_focus_participants")
+            .insert(participantPayload)
+            .execute()
+
+        await loadActiveFocusSession(for: crewID)
+        await loadFocusParticipants(sessionID: session.id)
+
+        try await createCrewMessage(
+            crewID: crewID,
+            senderID: hostUserID,
+            senderName: hostName,
+            text: "started a \(durationMinutes) min shared focus session",
+            isSystemMessage: true
+        )
+
+        await createActivity(
+            crewID: crewID,
+            memberName: hostName,
+            actionText: "started a \(durationMinutes) min shared focus session"
+        )
+
+        return session
+    }
+    func joinCrewFocusSession(
+        sessionID: UUID,
+        crewID: UUID,
+        userID: UUID?,
+        memberName: String
+    ) async throws {
+        struct Payload: Encodable {
+            let session_id: UUID
+            let crew_id: UUID
+            let user_id: UUID?
+            let member_name: String
+            let is_active: Bool
+        }
+
+        let payload = Payload(
+            session_id: sessionID,
+            crew_id: crewID,
+            user_id: userID,
+            member_name: memberName,
+            is_active: true
+        )
+
+        try await SupabaseManager.shared.client
+            .from("crew_focus_participants")
+            .insert(payload)
+            .execute()
+
+        await loadFocusParticipants(sessionID: sessionID)
+
+        try await createCrewMessage(
+            crewID: crewID,
+            senderID: userID,
+            senderName: memberName,
+            text: "joined the shared focus session",
+            isSystemMessage: true
+        )
+    }
+    func leaveCrewFocusSession(
+        sessionID: UUID,
+        crewID: UUID,
+        userID: UUID?,
+        memberName: String
+    ) async throws {
+        struct LeavePayload: Encodable {
+            let is_active: Bool
+            let left_at: String
+        }
+
+        let payload = LeavePayload(
+            is_active: false,
+            left_at: CrewDateParser.string(from: Date())
+            )
+        
+
+        try await SupabaseManager.shared.client
+            .from("crew_focus_participants")
+            .update(payload)
+            .eq("session_id", value: sessionID.uuidString)
+            .eq("crew_id", value: crewID.uuidString)
+            .eq("member_name", value: memberName)
+            .eq("is_active", value: true)
+            .execute()
+
+        await loadFocusParticipants(sessionID: sessionID)
+    }
+    func pauseCrewFocusSession(
+        sessionID: UUID,
+        crewID: UUID,
+        hostUserID: UUID?,
+        hostName: String,
+        pausedRemainingSeconds: Int
+    ) async throws {
+        struct PausePayload: Encodable {
+            let is_paused: Bool
+            let paused_remaining_seconds: Int
+        }
+
+        let payload = PausePayload(
+            is_paused: true,
+            paused_remaining_seconds: pausedRemainingSeconds
+        )
+
+        try await SupabaseManager.shared.client
+            .from("crew_focus_sessions")
+            .update(payload)
+            .eq("id", value: sessionID.uuidString)
+            .execute()
+
+        await loadActiveFocusSession(for: crewID)
+
+        try await createCrewMessage(
+            crewID: crewID,
+            senderID: hostUserID,
+            senderName: hostName,
+            text: "paused the shared focus session",
+            isSystemMessage: true
+        )
+    }
+    func resumeCrewFocusSession(
+        sessionID: UUID,
+        crewID: UUID,
+        hostUserID: UUID?,
+        hostName: String,
+        durationMinutes: Int,
+        pausedRemainingSeconds: Int
+    ) async throws {
+        struct ResumePayload: Encodable {
+            let is_paused: Bool
+            let paused_remaining_seconds: Int?
+            let started_at: String
+        }
+
+        let totalSeconds = durationMinutes * 60
+        let elapsedSeconds = max(0, totalSeconds - pausedRemainingSeconds)
+        let newStartedAt = Date().addingTimeInterval(-TimeInterval(elapsedSeconds))
+
+        let payload = ResumePayload(
+            is_paused: false,
+            paused_remaining_seconds: nil,
+            started_at: CrewDateParser.string(from: newStartedAt)
+        )
+
+        try await SupabaseManager.shared.client
+            .from("crew_focus_sessions")
+            .update(payload)
+            .eq("id", value: sessionID.uuidString)
+            .execute()
+
+        await loadActiveFocusSession(for: crewID)
+
+        try await createCrewMessage(
+            crewID: crewID,
+            senderID: hostUserID,
+            senderName: hostName,
+            text: "resumed the shared focus session",
+            isSystemMessage: true
+        )
+    }
+    func endCrewFocusSession(
+        sessionID: UUID,
+        crewID: UUID,
+        hostUserID: UUID?,
+        hostName: String,
+        completedMinutes: Int,
+        participantNames: [String],
+        taskID: UUID?
+    ) async throws {
+        struct EndPayload: Encodable {
+            let is_active: Bool
+            let is_paused: Bool
+            let paused_remaining_seconds: Int?
+            let ended_at: String
+        }
+
+        let nowString = CrewDateParser.string(from: Date())
+
+        let endPayload = EndPayload(
+            is_active: false,
+            is_paused: false,
+            paused_remaining_seconds: nil,
+            ended_at: nowString
+        )
+
+        // 1) Önce session'ı kesin kapat
+        try await SupabaseManager.shared.client
+            .from("crew_focus_sessions")
+            .update(endPayload)
+            .eq("id", value: sessionID.uuidString)
+            .execute()
+
+        // 2) Önce local state'i yenile
+        await loadActiveFocusSession(for: crewID)
+
+        let endParticipantsPayload = EndCrewFocusParticipantPayload(
+            is_active: false,
+            left_at: nowString
+        )
+
+        // 3) Geri kalanları ayrı ayrı dene
+        do {
+            for participantName in participantNames {
+                let matchingParticipant = focusParticipantsBySession[sessionID]?.first(where: {
+                    $0.member_name == participantName
+                })
+
+                let recordPayload = CreateCrewFocusRecordPayloadV2(
+                    crew_id: crewID,
+                    user_id: matchingParticipant?.user_id,
+                    member_name: participantName,
+                    minutes: max(1, completedMinutes)
+                )
+
+                try await SupabaseManager.shared.client
+                    .from("crew_focus_records")
+                    .insert(recordPayload)
+                    .execute()
+            }
+        } catch {
+            print("END SESSION / FOCUS RECORD ERROR:", error.localizedDescription)
+        }
+
+        do {
+            try await SupabaseManager.shared.client
+                .from("crew_focus_participants")
+                .update(endParticipantsPayload)
+                .eq("session_id", value: sessionID.uuidString)
+                .eq("crew_id", value: crewID.uuidString)
+                .execute()
+        } catch {
+            print("END SESSION / PARTICIPANTS UPDATE ERROR:", error.localizedDescription)
+        }
+
+        if let taskID {
+            do {
+                try await completeCrewTaskAfterFocus(taskID: taskID, crewID: crewID)
+
+                await createActivity(
+                    crewID: crewID,
+                    memberName: hostName,
+                    actionText: "completed the focus task"
+                )
+            } catch {
+                print("END SESSION / COMPLETE TASK ERROR:", error.localizedDescription)
+            }
+        }
+
+        do {
+            try await createCrewMessage(
+                crewID: crewID,
+                senderID: hostUserID,
+                senderName: hostName,
+                text: "ended the shared focus session",
+                isSystemMessage: true
+            )
+        } catch {
+            print("END SESSION / MESSAGE ERROR:", error.localizedDescription)
+        }
+
+        await createActivity(
+            crewID: crewID,
+            memberName: hostName,
+            actionText: "completed a shared focus session"
+        )
+
+        await loadFocusParticipants(sessionID: sessionID)
+        await loadFocusRecords(for: crewID)
+    }
+    
+    struct EndCrewFocusParticipantPayload: Encodable {
+        let is_active: Bool
+        let left_at: String
+    }
+    func subscribeToActiveFocusRealtime(crewID: UUID) {
+        if subscribedFocusCrewID == crewID {
+            return
+        }
+
+        let client = SupabaseManager.shared.client
+
+        activeFocusChannel?.unsubscribe()
+        focusParticipantsChannel?.unsubscribe()
+
+        activeFocusChannel = client.realtime.channel("crew-focus-session-\(crewID.uuidString)")
+        focusParticipantsChannel = client.realtime.channel("crew-focus-participants-\(crewID.uuidString)")
+        subscribedFocusCrewID = crewID
+
+        activeFocusChannel?
+            .on(
+                "postgres_changes",
+                filter: ChannelFilter(
+                    event: "*",
+                    schema: "public",
+                    table: "crew_focus_sessions",
+                    filter: "crew_id=eq.\(crewID.uuidString)"
+                )
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    await self?.loadActiveFocusSession(for: crewID)
+                }
+            }
+
+        focusParticipantsChannel?
+            .on(
+                "postgres_changes",
+                filter: ChannelFilter(
+                    event: "*",
+                    schema: "public",
+                    table: "crew_focus_participants",
+                    filter: "crew_id=eq.\(crewID.uuidString)"
+                )
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    guard let self else { return }
+                    if let session = self.activeFocusSessionByCrew[crewID] {
+                        await self.loadFocusParticipants(sessionID: session.id)
+                    }
+                }
+            }
+
+        activeFocusChannel?.subscribe()
+        focusParticipantsChannel?.subscribe()
+    }
+    func unsubscribeCrewFocusRealtime() {
+        activeFocusChannel?.unsubscribe()
+        focusParticipantsChannel?.unsubscribe()
+
+        activeFocusChannel = nil
+        focusParticipantsChannel = nil
+        subscribedFocusCrewID = nil
+    }
+    struct CreateCrewFocusSessionPayload: Encodable {
+        let crew_id: UUID
+        let host_user_id: UUID?
+        let host_name: String
+        let title: String
+        let task_id: UUID?
+        let task_title: String?
+        let duration_minutes: Int
+        let started_at: String
+        let is_active: Bool
+        let is_paused: Bool
+        let paused_remaining_seconds: Int?
+    }
+
+    struct CreateCrewFocusParticipantPayload: Encodable {
+        let session_id: UUID
+        let crew_id: UUID
+        let user_id: UUID?
+        let member_name: String
+        let joined_at: String
+        let is_active: Bool
+    }
+
+    struct CreateCrewFocusRecordPayloadV2: Encodable {
+        let crew_id: UUID
+        let user_id: UUID?
+        let member_name: String
+        let minutes: Int
     }
 }

@@ -59,9 +59,10 @@ extension CrewChatView {
 
     func currentDisplayName() -> String {
         if let email = session.currentUser?.email, !email.isEmpty {
-            return email
+            let prefix = email.components(separatedBy: "@").first ?? email
+            return prefix
         }
-        return "User"
+        return "You"
     }
 
     func handleTypingChange(_ newValue: String) {

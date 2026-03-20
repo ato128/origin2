@@ -148,6 +148,10 @@
 		6DBE91E12F6C8295001DF813 /* WeekCrewItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE91E02F6C8295001DF813 /* WeekCrewItem.swift */; };
 		6DBE91E52F6C9612001DF813 /* CrewChatView+Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE91E42F6C9612001DF813 /* CrewChatView+Models.swift */; };
 		6DBE91E72F6D6A27001DF813 /* CrewChatMessageItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE91E62F6D6A27001DF813 /* CrewChatMessageItem.swift */; };
+		6DBE91E92F6D888A001DF813 /* CrewFocusSessionDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE91E82F6D888A001DF813 /* CrewFocusSessionDTO.swift */; };
+		6DBE91EB2F6D88A8001DF813 /* CrewFocusParticipantDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE91EA2F6D88A8001DF813 /* CrewFocusParticipantDTO.swift */; };
+		6DBE91ED2F6D8BD3001DF813 /* CrewFocusRoomBackendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE91EC2F6D8BD3001DF813 /* CrewFocusRoomBackendView.swift */; };
+		6DBE91EF2F6D91B7001DF813 /* CrewDateParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE91EE2F6D91B7001DF813 /* CrewDateParser.swift */; };
 		6DC0CA092F5F1AFA00A875ED /* ScheduleAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA082F5F1AFA00A875ED /* ScheduleAttributes.swift */; };
 		6DC0CA0A2F5F1B0300A875ED /* ScheduleAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA082F5F1AFA00A875ED /* ScheduleAttributes.swift */; };
 		6DC0CAAE2F5F7D0000A875ED /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6DC0CA8F2F5F7D0000A875ED /* Assets.xcassets */; };
@@ -357,6 +361,10 @@
 		6DBE91E02F6C8295001DF813 /* WeekCrewItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekCrewItem.swift; sourceTree = "<group>"; };
 		6DBE91E42F6C9612001DF813 /* CrewChatView+Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CrewChatView+Models.swift"; sourceTree = "<group>"; };
 		6DBE91E62F6D6A27001DF813 /* CrewChatMessageItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewChatMessageItem.swift; sourceTree = "<group>"; };
+		6DBE91E82F6D888A001DF813 /* CrewFocusSessionDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewFocusSessionDTO.swift; sourceTree = "<group>"; };
+		6DBE91EA2F6D88A8001DF813 /* CrewFocusParticipantDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewFocusParticipantDTO.swift; sourceTree = "<group>"; };
+		6DBE91EC2F6D8BD3001DF813 /* CrewFocusRoomBackendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewFocusRoomBackendView.swift; sourceTree = "<group>"; };
+		6DBE91EE2F6D91B7001DF813 /* CrewDateParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewDateParser.swift; sourceTree = "<group>"; };
 		6DC0CA082F5F1AFA00A875ED /* ScheduleAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleAttributes.swift; sourceTree = "<group>"; };
 		6DC0CA8F2F5F7D0000A875ED /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6DC0CA902F5F7D0000A875ED /* CreateCrewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateCrewView.swift; sourceTree = "<group>"; };
@@ -802,6 +810,10 @@
 				6DBE91CA2F6C4429001DF813 /* CrewActivityDTO.swift */,
 				6DBE91CC2F6C4446001DF813 /* CrewFocusRecordDTO.swift */,
 				6DBE91D02F6C5760001DF813 /* CrewTaskCommentDTO.swift */,
+				6DBE91E82F6D888A001DF813 /* CrewFocusSessionDTO.swift */,
+				6DBE91EA2F6D88A8001DF813 /* CrewFocusParticipantDTO.swift */,
+				6DBE91EC2F6D8BD3001DF813 /* CrewFocusRoomBackendView.swift */,
+				6DBE91EE2F6D91B7001DF813 /* CrewDateParser.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -1028,6 +1040,7 @@
 				6DBE91B32F6B6645001DF813 /* EditProfileView.swift in Sources */,
 				6D02C9D72F5B4D95008193F3 /* SmartInsights.swift in Sources */,
 				6D5FE3E62F66F3F8007C124D /* View+HideKeyboard.swift in Sources */,
+				6DBE91ED2F6D8BD3001DF813 /* CrewFocusRoomBackendView.swift in Sources */,
 				6D2004A02F6391320022C810 /* JoinFocusSheet.swift in Sources */,
 				6D5FE3D22F66DA54007C124D /* FriendChatInfoView.swift in Sources */,
 				6D215DA52F5602D100F7B9D7 /* MainTabView.swift in Sources */,
@@ -1053,6 +1066,7 @@
 				6DF8FB992F5B918100D548E4 /* HeatmapView.swift in Sources */,
 				6D02C9D32F5B4D1F008193F3 /* StreakEngine.swift in Sources */,
 				6DD2828A2F6979E500B1281A /* TasksScheduleSheet.swift in Sources */,
+				6DBE91EB2F6D88A8001DF813 /* CrewFocusParticipantDTO.swift in Sources */,
 				6D2004DF2F646EB90022C810 /* ScrollOffsetPreference.swift in Sources */,
 				6D5FE4352F67A29E007C124D /* FriendChatView+Helpers.swift in Sources */,
 				6D20049C2F6389460022C810 /* FriendChatView.swift in Sources */,
@@ -1072,6 +1086,7 @@
 				6D5FE4222F679062007C124D /* TodoListView+Crew.swift in Sources */,
 				6D8C3D382F65942800ABF6CA /* ThemedScreen.swift in Sources */,
 				6DC0CAB12F5F7D0000A875ED /* ImportScheduleView.swift in Sources */,
+				6DBE91E92F6D888A001DF813 /* CrewFocusSessionDTO.swift in Sources */,
 				6DBE91CF2F6C4EE2001DF813 /* WeekCrewModels.swift in Sources */,
 				6DBE91C92F6C38C4001DF813 /* BackendEditCrewTaskView.swift in Sources */,
 				6D2004D92F6469B20022C810 /* InsightsRevealStyle.swift in Sources */,
@@ -1106,6 +1121,7 @@
 				6D5FE4192F678DBF007C124D /* FriendChatView+Messages.swift in Sources */,
 				6D2004CF2F6461D70022C810 /* InsightsCardContainer.swift in Sources */,
 				6DBE91A02F6B2F43001DF813 /* SignInView.swift in Sources */,
+				6DBE91EF2F6D91B7001DF813 /* CrewDateParser.swift in Sources */,
 				6DBE919C2F6B2EFD001DF813 /* SessionStore.swift in Sources */,
 				6DC0CABA2F5F7D0000A875ED /* CreateCrewView.swift in Sources */,
 				6D2004D12F6462130022C810 /* ParallaxCardModifier.swift in Sources */,
