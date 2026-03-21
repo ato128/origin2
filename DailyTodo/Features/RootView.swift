@@ -16,31 +16,35 @@ struct RootView: View {
     @State private var importExport: ScheduleExport? = nil
     @State private var showImportSheet: Bool = false
 
-    @StateObject private var session = SessionStore()
-    @StateObject private var crewStore = CrewStore()
+    @EnvironmentObject var session: SessionStore
+    @EnvironmentObject var crewStore: CrewStore
+    @EnvironmentObject var friendStore: FriendStore
 
     var body: some View {
-        if !didFinishOnboarding {
-            OnboardingView()
+        Group {
+            if !session.isSignedIn {
+                AuthView()
 
-        } else if !didFinishPermissionOnboarding {
-            PermissionOnboardingView()
+            } else if !didFinishOnboarding {
+                OnboardingView()
 
-        } else if !didFinishIntroFlow {
-            IntroFlowView()
+            } else if !didFinishPermissionOnboarding {
+                PermissionOnboardingView()
 
-        } else {
-            MainTabView()
-                .environmentObject(session)
-                .environmentObject(crewStore)
-                .onOpenURL { url in
-                    handleIncomingFileURL(url)
-                }
-                .sheet(isPresented: $showImportSheet) {
-                    if let export = importExport {
-                        ImportScheduleView(export: export)
+            } else if !didFinishIntroFlow {
+                IntroFlowView()
+
+            } else {
+                MainTabView()
+                    .onOpenURL { url in
+                        handleIncomingFileURL(url)
                     }
-                }
+                    .sheet(isPresented: $showImportSheet) {
+                        if let export = importExport {
+                            ImportScheduleView(export: export)
+                        }
+                    }
+            }
         }
     }
 

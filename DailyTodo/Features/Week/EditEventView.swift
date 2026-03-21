@@ -11,6 +11,8 @@ import SwiftData
 struct EditEventView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
+    @EnvironmentObject var session: SessionStore
+    @EnvironmentObject var friendStore: FriendStore
 
     private let dayTitles = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
 
@@ -35,11 +37,8 @@ struct EditEventView: View {
     @State private var startTime: Date = Date()
     @State private var endTime: Date = Date()
 
-    // conflict
     @State private var showConflictAlert: Bool = false
     @State private var conflictSummary: String = ""
-
-    // delete confirm
     @State private var showDeleteConfirm: Bool = false
 
     var body: some View {
@@ -55,14 +54,26 @@ struct EditEventView: View {
                 Button("Sil", role: .destructive) {
                     Haptics.impact(.heavy)
 
-                    // ✅ async bildirim kaldırma
-                    Task { await NotificationManager.shared.cancel(for: event) }
+                    Task {
+                        await NotificationManager.shared.cancel(for: event)
+                    }
 
                     context.delete(event)
-                    try? context.save()
-                    WidgetAppSync.refreshFromSwiftData(context: context)
-                    dismiss()
+
+                    do {
+                        try context.save()
+                        WidgetAppSync.refreshFromSwiftData(context: context)
+
+                        Task {
+                            await resyncSharedWeek()
+                        }
+
+                        dismiss()
+                    } catch {
+                        print("Delete error:", error)
+                    }
                 }
+
                 Button("İptal", role: .cancel) { }
             }
             .alert("Çakışma var", isPresented: $showConflictAlert) {
@@ -91,6 +102,7 @@ struct EditEventView: View {
             ToolbarItem(placement: .topBarLeading) {
                 Button("Kapat") { dismiss() }
             }
+
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Kaydet") { trySaveWithConflictCheck() }
                     .disabled(!canSave)
@@ -130,6 +142,7 @@ struct EditEventView: View {
                         Circle()
                             .fill(colorFromHex(c.hex))
                             .frame(width: 12, height: 12)
+
                         Text(c.name)
                     }
                     .tag(c.hex)
@@ -201,8 +214,10 @@ struct EditEventView: View {
     private var durationText: String {
         let d = durationMinute
         if d <= 0 { return "—" }
+
         let h = d / 60
         let m = d % 60
+
         if h == 0 { return "\(m) dk" }
         if m == 0 { return "\(h) saat" }
         return "\(h) saat \(m) dk"
@@ -231,12 +246,14 @@ struct EditEventView: View {
 
         let descriptor = FetchDescriptor<EventItem>(
             predicate: #Predicate { $0.weekday == weekday },
-            sortBy: [SortDescriptor(\.startMinute, order: .forward)]
+            sortBy: [SortDescriptor(\EventItem.startMinute, order: .forward)]
         )
+
         let sameDay = (try? context.fetch(descriptor)) ?? []
 
         let conflicts = sameDay.filter { ev in
             if ev.id == event.id { return false }
+
             let evStart = ev.startMinute
             let evEnd = ev.startMinute + ev.durationMinute
             return max(start, evStart) < min(end, evEnd)
@@ -268,7 +285,6 @@ struct EditEventView: View {
         dismiss()
     }
 
-    // ✅ BURASI DÜZELTİLDİ (reschedule yok -> cancel + schedule)
     private func applyAndSave(title: String, start: Int, dur: Int) {
         event.title = title
         event.weekday = weekday
@@ -282,14 +298,17 @@ struct EditEventView: View {
             try context.save()
             WidgetAppSync.refreshFromSwiftData(context: context)
 
-            // ✅ Kaydettikten sonra bildirimleri güncelle
             Task {
                 await NotificationManager.shared.cancel(for: event)
-                await NotificationManager.shared.schedule(for: event, minutesBefore: 10) // 10 dk önce
-                await NotificationManager.shared.schedule(for: event, minutesBefore: 0)  // başlarken
+                await NotificationManager.shared.schedule(for: event, minutesBefore: 10)
+                await NotificationManager.shared.schedule(for: event, minutesBefore: 0)
+            }
+
+            Task {
+                await resyncSharedWeek()
             }
         } catch {
-            // istersen log/alert
+            print("Edit save error:", error)
         }
     }
 
@@ -297,59 +316,92 @@ struct EditEventView: View {
 
     private func duplicateSameDay() {
         let copy = EventItem(
+            ownerUserID: event.ownerUserID,
             title: event.title,
             weekday: event.weekday,
             startMinute: event.startMinute,
             durationMinute: event.durationMinute,
+            scheduledDate: event.scheduledDate,
             location: event.location,
             notes: event.notes,
             colorHex: event.colorHex
         )
+
         context.insert(copy)
 
         do {
             try context.save()
             WidgetAppSync.refreshFromSwiftData(context: context)
 
-            // ✅ Kopyalanan event için bildirim kur
             Task {
                 await NotificationManager.shared.cancel(for: copy)
                 await NotificationManager.shared.schedule(for: copy, minutesBefore: 10)
                 await NotificationManager.shared.schedule(for: copy, minutesBefore: 0)
             }
 
+            Task {
+                await resyncSharedWeek()
+            }
+
             dismiss()
         } catch {
+            print("Duplicate same day error:", error)
         }
     }
 
     private func duplicateToDay(_ day: Int) {
         let d = max(0, min(6, day))
+
         let copy = EventItem(
+            ownerUserID: event.ownerUserID,
             title: event.title,
             weekday: d,
             startMinute: event.startMinute,
             durationMinute: event.durationMinute,
+            scheduledDate: event.scheduledDate,
             location: event.location,
             notes: event.notes,
             colorHex: event.colorHex
         )
+
         context.insert(copy)
 
         do {
             try context.save()
             WidgetAppSync.refreshFromSwiftData(context: context)
 
-            // ✅ Kopyalanan event için bildirim kur
             Task {
                 await NotificationManager.shared.cancel(for: copy)
                 await NotificationManager.shared.schedule(for: copy, minutesBefore: 10)
                 await NotificationManager.shared.schedule(for: copy, minutesBefore: 0)
             }
 
+            Task {
+                await resyncSharedWeek()
+            }
+
             dismiss()
         } catch {
+            print("Duplicate to day error:", error)
         }
+    }
+
+    // MARK: - Shared week sync
+
+    private func resyncSharedWeek() async {
+        guard let currentUserID = session.currentUser?.id else { return }
+
+        let descriptor = FetchDescriptor<EventItem>(
+            sortBy: [SortDescriptor(\EventItem.startMinute, order: .forward)]
+        )
+
+        let all = (try? context.fetch(descriptor)) ?? []
+        let currentUserEvents = all.filter { $0.ownerUserID == currentUserID.uuidString }
+
+        await friendStore.resyncSharedWeekIfNeeded(
+            for: currentUserID,
+            events: currentUserEvents
+        )
     }
 
     // MARK: - Small helpers

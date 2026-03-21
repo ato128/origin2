@@ -188,7 +188,7 @@ extension WeekView {
         let calendar = Calendar.current
         let targetDate = targetDateForSelectedDay()
 
-        let items = (allEventsAccessible ?? [])
+        let items = (allEventsAccessible )
             .filter { ev in
                 let end = ev.startMinute + ev.durationMinute
 

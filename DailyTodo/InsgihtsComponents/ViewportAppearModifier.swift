@@ -32,8 +32,13 @@ struct ViewportAppearModifier: ViewModifier {
     private func check(frame: CGRect) {
         guard !(triggerOnce && hasTriggered) else { return }
 
-        let screen = UIScreen.main.bounds
-        let activationZone = screen.insetBy(dx: 0, dy: -120)
+      
+        let activationZone = CGRect(
+            x: frame.minX,
+            y: frame.minY - 120,
+            width: frame.width,
+            height: frame.height + 240
+        )
 
         if activationZone.intersects(frame) {
             hasEnteredViewport = true

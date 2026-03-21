@@ -53,12 +53,16 @@ struct SharedWeekView: View {
                 VStack(spacing: 18) {
                     header
                     heroCard
+                    statusCard
                     daySegment
                     pager
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
                 .padding(.bottom, 30)
+            }
+            .refreshable {
+                await refreshSharedWeek()
             }
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -69,22 +73,71 @@ struct SharedWeekView: View {
             now = value
         }
         .task {
+            await refreshSharedWeek()
+
             guard
                 let friendshipID,
                 let currentUserID = session.currentUser?.id,
                 let friendUserID
             else { return }
 
-            await friendStore.loadSharedWeekItems(
+            friendStore.subscribeToSharedWeekItemsRealtime(
                 friendshipID: friendshipID,
                 ownerUserID: friendUserID,
                 viewerUserID: currentUserID
             )
         }
+        .onDisappear {
+            friendStore.unsubscribeSharedWeekItemsRealtime()
+        }
     }
 }
 
 private extension SharedWeekView {
+    func refreshSharedWeek() async {
+        guard
+            let friendshipID,
+            let currentUserID = session.currentUser?.id,
+            let friendUserID
+        else { return }
+
+        await friendStore.loadSharedWeekItems(
+            friendshipID: friendshipID,
+            ownerUserID: friendUserID,
+            viewerUserID: currentUserID
+        )
+    }
+
+    var todayItems: [FriendWeekShareItemDTO] {
+        sharedItemsForDay(todayIndex())
+    }
+
+    var liveItem: FriendWeekShareItemDTO? {
+        todayItems.first { item in
+            let start = item.start_minute
+            let end = item.start_minute + item.duration_minute
+            let nowMinute = currentMinuteOfDay()
+            return nowMinute >= start && nowMinute < end
+        }
+    }
+
+    var nextItem: FriendWeekShareItemDTO? {
+        let nowMinute = currentMinuteOfDay()
+
+        return todayItems
+            .filter { $0.start_minute > nowMinute }
+            .sorted { $0.start_minute < $1.start_minute }
+            .first
+    }
+
+    func minutesUntilStart(_ item: FriendWeekShareItemDTO) -> Int {
+        max(0, item.start_minute - currentMinuteOfDay())
+    }
+
+    func minutesLeft(_ item: FriendWeekShareItemDTO) -> Int {
+        max(0, (item.start_minute + item.duration_minute) - currentMinuteOfDay())
+    }
+
     var header: some View {
         HStack {
             Button {
@@ -130,6 +183,105 @@ private extension SharedWeekView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
         .background(cardBackground)
+    }
+
+    var statusCard: some View {
+        Group {
+            if let liveItem {
+                HStack(spacing: 14) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(Color.green.opacity(0.18))
+                            .frame(width: 64, height: 64)
+
+                        Image(systemName: "bolt.fill")
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(.green)
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 8) {
+                            Text("LIVE NOW")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(.green)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.green.opacity(0.16))
+                                )
+
+                            Text("\(minutesLeft(liveItem)) dk kaldı")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(palette.secondaryText)
+                        }
+
+                        Text(liveItem.title)
+                            .font(.headline)
+                            .foregroundStyle(palette.primaryText)
+
+                        Text("\(dayTitles[todayIndex()]) • \(timeText(for: liveItem))")
+                            .font(.subheadline)
+                            .foregroundStyle(palette.secondaryText)
+                    }
+
+                    Spacer()
+                }
+                .padding(18)
+                .background(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(palette.secondaryCardFill)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .stroke(Color.green.opacity(0.28), lineWidth: 1)
+                        )
+                )
+                .shadow(color: Color.green.opacity(0.18), radius: 16, y: 6)
+
+            } else if let nextItem {
+                HStack(spacing: 14) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(Color.orange.opacity(0.18))
+                            .frame(width: 64, height: 64)
+
+                        Image(systemName: "clock.fill")
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(.orange)
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 8) {
+                            Text("NEXT UP")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(.orange)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.orange.opacity(0.16))
+                                )
+
+                            Text("\(minutesUntilStart(nextItem)) dk sonra")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(palette.secondaryText)
+                        }
+
+                        Text(nextItem.title)
+                            .font(.headline)
+                            .foregroundStyle(palette.primaryText)
+
+                        Text("\(dayTitles[todayIndex()]) • \(timeText(for: nextItem))")
+                            .font(.subheadline)
+                            .foregroundStyle(palette.secondaryText)
+                    }
+
+                    Spacer()
+                }
+                .padding(18)
+                .background(cardBackground)
+            }
+        }
     }
 
     var daySegment: some View {

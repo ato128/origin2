@@ -11,7 +11,7 @@ struct ParallaxCardModifier: ViewModifier {
     func body(content: Content) -> some View {
         GeometryReader { geo in
             let minY = geo.frame(in: .global).minY
-            let screenMid = UIScreen.main.bounds.height * 0.5
+            let screenMid = geo.size.height * 0.5
             let distance = minY - screenMid
             let offset = max(-8, min(8, -distance * 0.02))
 

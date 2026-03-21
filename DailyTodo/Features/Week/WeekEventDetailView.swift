@@ -13,9 +13,12 @@ struct WeekEventDetailView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject var session: SessionStore
+    @EnvironmentObject var friendStore: FriendStore
     
     @Query private var allTasks: [DTTaskItem]
     @Query private var allWorkoutExercises: [WorkoutExerciseItem]
+    @Query(sort: \EventItem.startMinute, order: .forward) private var allEvents: [EventItem]
 
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private let palette = ThemePalette()
@@ -86,6 +89,7 @@ private extension WeekEventDetailView {
             Color.clear.frame(width: 44, height: 44)
         }
     }
+
     var sourceTask: DTTaskItem? {
         guard let sourceTaskUUID = event.sourceTaskUUID else { return nil }
         return allTasks.first(where: { $0.taskUUID == sourceTaskUUID })
@@ -296,8 +300,33 @@ private extension WeekEventDetailView {
             .buttonStyle(.plain)
 
             Button(role: .destructive) {
-                modelContext.delete(event)
-                dismiss()
+                Task {
+                    let deletedEventID = event.id
+
+                    modelContext.delete(event)
+
+                    do {
+                        try modelContext.save()
+
+                        guard let currentUserID = session.currentUser?.id else {
+                            dismiss()
+                            return
+                        }
+
+                        let currentUserEvents = allEvents.filter {
+                            $0.id != deletedEventID && $0.ownerUserID == currentUserID.uuidString
+                        }
+
+                        await friendStore.resyncSharedWeekIfNeeded(
+                            for: currentUserID,
+                            events: currentUserEvents
+                        )
+
+                        dismiss()
+                    } catch {
+                        print("WeekEventDetailView delete error:", error)
+                    }
+                }
             } label: {
                 Text("Delete Event")
                     .font(.headline)

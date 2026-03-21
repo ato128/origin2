@@ -160,7 +160,7 @@ final class LiveActivityScheduler {
             return nil
         }
         
-        let now = Date()
+        
         var bestEvent: EventItem?
         var bestDate: Date?
         

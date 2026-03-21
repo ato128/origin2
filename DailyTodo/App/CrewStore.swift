@@ -4,7 +4,6 @@
 //
 //  Created by Atakan Ortaç on 19.03.2026.
 //
-
 import Foundation
 import Supabase
 import Combine
@@ -38,18 +37,18 @@ final class CrewStore: ObservableObject {
     @Published var focusParticipantsBySession: [UUID: [CrewFocusParticipantDTO]] = [:]
     @Published private(set) var currentUserID: UUID?
 
-    private var activeFocusChannel: RealtimeChannel?
-    private var focusParticipantsChannel: RealtimeChannel?
+    private var activeFocusChannel: RealtimeChannelV2?
+    private var focusParticipantsChannel: RealtimeChannelV2?
     private var subscribedFocusCrewID: UUID?
 
-    private var taskChannel: RealtimeChannel?
-    private var memberChannel: RealtimeChannel?
-    private var activityChannel: RealtimeChannel?
-    private var focusChannel: RealtimeChannel?
-    private var commentChannel: RealtimeChannel?
+    private var taskChannel: RealtimeChannelV2?
+    private var memberChannel: RealtimeChannelV2?
+    private var activityChannel: RealtimeChannelV2?
+    private var focusChannel: RealtimeChannelV2?
+    private var commentChannel: RealtimeChannelV2?
     private var lastTypingStateByCrew: [UUID: Bool] = [:]
-    
-    private var crewMessagesChannel: RealtimeChannel?
+
+    private var crewMessagesChannel: RealtimeChannelV2?
     private var subscribedCrewMessageID: UUID?
     private var hasLoadedCrews = false
     
@@ -457,42 +456,62 @@ final class CrewStore: ObservableObject {
 
         let client = SupabaseManager.shared.client
 
-        crewMessagesChannel?.unsubscribe()
+        Task {
+            await crewMessagesChannel?.unsubscribe()
+        }
 
-        crewMessagesChannel = client.realtime.channel("crew-messages-\(crewID.uuidString)")
+        crewMessagesChannel = client.realtimeV2.channel("crew-messages-\(crewID.uuidString)")
         subscribedCrewMessageID = crewID
 
-        crewMessagesChannel?
-            .on(
-                "postgres_changes",
-                filter: ChannelFilter(
-                    event: "*",
-                    schema: "public",
-                    table: "crew_messages",
-                    filter: "crew_id=eq.\(crewID.uuidString)"
-                )
-            ) { payload in
+        _ =     crewMessagesChannel?.onPostgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "crew_messages",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] action in
+            guard let self else { return }
+            Task { @MainActor in
+                
 
-                let dict = payload.payload
-
-                guard
-                    let record = dict["record"],
-                    let data = try? JSONSerialization.data(withJSONObject: record),
-                    let dto = try? JSONDecoder().decode(CrewMessageDTO.self, from: data)
-                else {
-                    return
-                }
-
-                Task { @MainActor in
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: action.record)
+                    let dto = try JSONDecoder().decode(CrewMessageDTO.self, from: jsonData)
                     self.handleIncomingMessage(dto, currentUserID: currentUserID)
+                } catch {
+                    print("CREW MESSAGE INSERT REALTIME DECODE ERROR:", error.localizedDescription)
                 }
             }
+        }
 
-        crewMessagesChannel?.subscribe()
+        _ =    crewMessagesChannel?.onPostgresChange(
+            UpdateAction.self,
+            schema: "public",
+            table: "crew_messages",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] action in
+            guard let self else { return }
+            Task { @MainActor in
+               
+
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: action.record)
+                    let dto = try JSONDecoder().decode(CrewMessageDTO.self, from: jsonData)
+                    self.handleIncomingMessage(dto, currentUserID: currentUserID)
+                } catch {
+                    print("CREW MESSAGE UPDATE REALTIME DECODE ERROR:", error.localizedDescription)
+                }
+            }
+        }
+
+        Task {
+          try?  await crewMessagesChannel?.subscribeWithError()
+        }
     }
 
     func unsubscribeCrewChat() {
-        crewMessagesChannel?.unsubscribe()
+        Task {
+            await crewMessagesChannel?.unsubscribe()
+        }
         crewMessagesChannel = nil
         subscribedCrewMessageID = nil
     }
@@ -502,109 +521,211 @@ final class CrewStore: ObservableObject {
     func subscribeToCrewRealtime(crewID: UUID) {
         let client = SupabaseManager.shared.client
 
-        commentChannel?.unsubscribe()
-        taskChannel?.unsubscribe()
-        memberChannel?.unsubscribe()
-        activityChannel?.unsubscribe()
-        focusChannel?.unsubscribe()
+        Task {
+            await commentChannel?.unsubscribe()
+            await taskChannel?.unsubscribe()
+            await memberChannel?.unsubscribe()
+            await activityChannel?.unsubscribe()
+            await focusChannel?.unsubscribe()
+        }
 
-        commentChannel = client.realtime.channel("public:crew_task_comments:\(crewID.uuidString)")
-        taskChannel = client.realtime.channel("public:crew_tasks:\(crewID.uuidString)")
-        memberChannel = client.realtime.channel("public:crew_members:\(crewID.uuidString)")
-        activityChannel = client.realtime.channel("public:crew_activities:\(crewID.uuidString)")
-        focusChannel = client.realtime.channel("public:crew_focus_records:\(crewID.uuidString)")
+        commentChannel = client.realtimeV2.channel("crew-task-comments-\(crewID.uuidString)")
+        taskChannel = client.realtimeV2.channel("crew-tasks-\(crewID.uuidString)")
+        memberChannel = client.realtimeV2.channel("crew-members-\(crewID.uuidString)")
+        activityChannel = client.realtimeV2.channel("crew-activities-\(crewID.uuidString)")
+        focusChannel = client.realtimeV2.channel("crew-focus-records-\(crewID.uuidString)")
 
-        commentChannel?
-            .on(
-                "postgres_changes",
-                filter: ChannelFilter(
-                    event: "*",
-                    schema: "public",
-                    table: "crew_task_comments",
-                    filter: "crew_id=eq.\(crewID.uuidString)"
-                )
-            ) { [weak self] _ in
-                Task { @MainActor in
-                    await self?.loadComments(for: crewID)
-                }
+       _ = commentChannel?.onPostgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "crew_task_comments",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.loadComments(for: crewID)
             }
+        }
 
-        taskChannel?
-            .on(
-                "postgres_changes",
-                filter: ChannelFilter(
-                    event: "*",
-                    schema: "public",
-                    table: "crew_tasks",
-                    filter: "crew_id=eq.\(crewID.uuidString)"
-                )
-            ) { [weak self] _ in
-                Task { @MainActor in
-                    await self?.loadTasks(for: crewID)
-                }
+       _ = commentChannel?.onPostgresChange(
+            UpdateAction.self,
+            schema: "public",
+            table: "crew_task_comments",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.loadComments(for: crewID)
             }
+        }
 
-        memberChannel?
-            .on(
-                "postgres_changes",
-                filter: ChannelFilter(
-                    event: "*",
-                    schema: "public",
-                    table: "crew_members",
-                    filter: "crew_id=eq.\(crewID.uuidString)"
-                )
-            ) { [weak self] _ in
-                Task { @MainActor in
-                    guard let self else { return }
-                    await self.loadMembers(for: crewID)
-                    await self.loadMemberProfiles(for: self.crewMembers)
-                    await self.loadMemberCount(for: crewID)
-                }
+      _ =  commentChannel?.onPostgresChange(
+            DeleteAction.self,
+            schema: "public",
+            table: "crew_task_comments",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.loadComments(for: crewID)
             }
+        }
 
-        activityChannel?
-            .on(
-                "postgres_changes",
-                filter: ChannelFilter(
-                    event: "*",
-                    schema: "public",
-                    table: "crew_activities",
-                    filter: "crew_id=eq.\(crewID.uuidString)"
-                )
-            ) { [weak self] _ in
-                Task { @MainActor in
-                    await self?.loadActivities(for: crewID)
-                }
+      _ =  taskChannel?.onPostgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "crew_tasks",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.loadTasks(for: crewID)
             }
+        }
 
-        focusChannel?
-            .on(
-                "postgres_changes",
-                filter: ChannelFilter(
-                    event: "*",
-                    schema: "public",
-                    table: "crew_focus_records",
-                    filter: "crew_id=eq.\(crewID.uuidString)"
-                )
-            ) { [weak self] _ in
-                Task { @MainActor in
-                    await self?.loadFocusRecords(for: crewID)
-                }
+      _ =  taskChannel?.onPostgresChange(
+            UpdateAction.self,
+            schema: "public",
+            table: "crew_tasks",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.loadTasks(for: crewID)
             }
+        }
 
-        commentChannel?.subscribe()
-        taskChannel?.subscribe()
-        memberChannel?.subscribe()
-        activityChannel?.subscribe()
-        focusChannel?.subscribe()
+      _ =  taskChannel?.onPostgresChange(
+            DeleteAction.self,
+            schema: "public",
+            table: "crew_tasks",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.loadTasks(for: crewID)
+            }
+        }
+
+     _ =   memberChannel?.onPostgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "crew_members",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                await self.loadMembers(for: crewID)
+                await self.loadMemberProfiles(for: self.crewMembers)
+                await self.loadMemberCount(for: crewID)
+            }
+        }
+
+     _ =   memberChannel?.onPostgresChange(
+            UpdateAction.self,
+            schema: "public",
+            table: "crew_members",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                await self.loadMembers(for: crewID)
+                await self.loadMemberProfiles(for: self.crewMembers)
+                await self.loadMemberCount(for: crewID)
+            }
+        }
+
+        _ =    memberChannel?.onPostgresChange(
+            DeleteAction.self,
+            schema: "public",
+            table: "crew_members",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                await self.loadMembers(for: crewID)
+                await self.loadMemberProfiles(for: self.crewMembers)
+                await self.loadMemberCount(for: crewID)
+            }
+        }
+
+        _ =     activityChannel?.onPostgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "crew_activities",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.loadActivities(for: crewID)
+            }
+        }
+
+        _ =     activityChannel?.onPostgresChange(
+            UpdateAction.self,
+            schema: "public",
+            table: "crew_activities",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.loadActivities(for: crewID)
+            }
+        }
+
+        _ =     activityChannel?.onPostgresChange(
+            DeleteAction.self,
+            schema: "public",
+            table: "crew_activities",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.loadActivities(for: crewID)
+            }
+        }
+
+        _ =         focusChannel?.onPostgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "crew_focus_records",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.loadFocusRecords(for: crewID)
+            }
+        }
+
+        _ =      focusChannel?.onPostgresChange(
+            UpdateAction.self,
+            schema: "public",
+            table: "crew_focus_records",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.loadFocusRecords(for: crewID)
+            }
+        }
+
+        _ =      focusChannel?.onPostgresChange(
+            DeleteAction.self,
+            schema: "public",
+            table: "crew_focus_records",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.loadFocusRecords(for: crewID)
+            }
+        }
+
+        Task {
+            try? await commentChannel?.subscribeWithError()
+            try? await taskChannel?.subscribeWithError()
+            try? await memberChannel?.subscribeWithError()
+            try? await activityChannel?.subscribeWithError()
+            try? await focusChannel?.subscribeWithError()
+        }
     }
 
     func unsubscribe() {
-        commentChannel?.unsubscribe()
-        taskChannel?.unsubscribe()
-        memberChannel?.unsubscribe()
-        activityChannel?.unsubscribe()
-        focusChannel?.unsubscribe()
+        Task {
+            await commentChannel?.unsubscribe()
+            await taskChannel?.unsubscribe()
+            await memberChannel?.unsubscribe()
+            await activityChannel?.unsubscribe()
+            await focusChannel?.unsubscribe()
+        }
 
         commentChannel = nil
         taskChannel = nil
@@ -1491,52 +1612,100 @@ final class CrewStore: ObservableObject {
 
         let client = SupabaseManager.shared.client
 
-        activeFocusChannel?.unsubscribe()
-        focusParticipantsChannel?.unsubscribe()
+        Task {
+            await activeFocusChannel?.unsubscribe()
+            await focusParticipantsChannel?.unsubscribe()
+        }
 
-        activeFocusChannel = client.realtime.channel("crew-focus-session-\(crewID.uuidString)")
-        focusParticipantsChannel = client.realtime.channel("crew-focus-participants-\(crewID.uuidString)")
+        activeFocusChannel = client.realtimeV2.channel("crew-focus-session-\(crewID.uuidString)")
+        focusParticipantsChannel = client.realtimeV2.channel("crew-focus-participants-\(crewID.uuidString)")
         subscribedFocusCrewID = crewID
 
-        activeFocusChannel?
-            .on(
-                "postgres_changes",
-                filter: ChannelFilter(
-                    event: "*",
-                    schema: "public",
-                    table: "crew_focus_sessions",
-                    filter: "crew_id=eq.\(crewID.uuidString)"
-                )
-            ) { [weak self] _ in
-                Task { @MainActor in
-                    await self?.loadActiveFocusSession(for: crewID)
+       _ = activeFocusChannel?.onPostgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "crew_focus_sessions",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.loadActiveFocusSession(for: crewID)
+            }
+        }
+
+        _ =  activeFocusChannel?.onPostgresChange(
+            UpdateAction.self,
+            schema: "public",
+            table: "crew_focus_sessions",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.loadActiveFocusSession(for: crewID)
+            }
+        }
+
+        _ =     activeFocusChannel?.onPostgresChange(
+            DeleteAction.self,
+            schema: "public",
+            table: "crew_focus_sessions",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.loadActiveFocusSession(for: crewID)
+            }
+        }
+
+        _ =  focusParticipantsChannel?.onPostgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "crew_focus_participants",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                if let session = self.activeFocusSessionByCrew[crewID] {
+                    await self.loadFocusParticipants(sessionID: session.id)
                 }
             }
+        }
 
-        focusParticipantsChannel?
-            .on(
-                "postgres_changes",
-                filter: ChannelFilter(
-                    event: "*",
-                    schema: "public",
-                    table: "crew_focus_participants",
-                    filter: "crew_id=eq.\(crewID.uuidString)"
-                )
-            ) { [weak self] _ in
-                Task { @MainActor in
-                    guard let self else { return }
-                    if let session = self.activeFocusSessionByCrew[crewID] {
-                        await self.loadFocusParticipants(sessionID: session.id)
-                    }
+        _ =   focusParticipantsChannel?.onPostgresChange(
+            UpdateAction.self,
+            schema: "public",
+            table: "crew_focus_participants",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                if let session = self.activeFocusSessionByCrew[crewID] {
+                    await self.loadFocusParticipants(sessionID: session.id)
                 }
             }
+        }
 
-        activeFocusChannel?.subscribe()
-        focusParticipantsChannel?.subscribe()
+        _ =  focusParticipantsChannel?.onPostgresChange(
+            DeleteAction.self,
+            schema: "public",
+            table: "crew_focus_participants",
+            filter: "crew_id=eq.\(crewID.uuidString)"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                if let session = self.activeFocusSessionByCrew[crewID] {
+                    await self.loadFocusParticipants(sessionID: session.id)
+                }
+            }
+        }
+
+        Task {
+          try? await activeFocusChannel?.subscribeWithError()
+           try? await focusParticipantsChannel?.subscribeWithError()
+        }
     }
     func unsubscribeCrewFocusRealtime() {
-        activeFocusChannel?.unsubscribe()
-        focusParticipantsChannel?.unsubscribe()
+        Task {
+            await activeFocusChannel?.unsubscribe()
+            await focusParticipantsChannel?.unsubscribe()
+        }
 
         activeFocusChannel = nil
         focusParticipantsChannel = nil
@@ -1572,4 +1741,3 @@ final class CrewStore: ObservableObject {
         let minutes: Int
     }
 }
-

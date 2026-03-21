@@ -447,23 +447,24 @@ private extension TasksView {
             let generator = UIImpactFeedbackGenerator(style: .light)
             generator.prepare()
             generator.impactOccurred()
-
+            
             recentlyCompletedTaskKey = key
             pendingRemovalTaskKeys.insert(key)
-
+            
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { () -> Void in
-                _ = withAnimation(.easeOut(duration: 0.22)) {
+                withAnimation(.easeOut(duration: 0.22)) {
                     if recentlyCompletedTaskKey == key {
                         recentlyCompletedTaskKey = nil
                     }
                 }
             }
-
+            
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.15) { () -> Void in
-                _ = withAnimation(.spring(response: 0.30, dampingFraction: 0.88)) {
+               _ = withAnimation(.spring(response: 0.30, dampingFraction: 0.88)) {
                     pendingRemovalTaskKeys.remove(key)
                 }
             }
+        
 
         } else {
             store.items[index].completedAt = nil

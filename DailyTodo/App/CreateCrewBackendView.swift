@@ -58,7 +58,7 @@ struct CreateCrewBackendView: View {
         errorMessage = nil
 
         do {
-            try await crewStore.createCrew(
+          _ =  try await crewStore.createCrew(
                 name: name,
                 icon: icon.isEmpty ? "person.3.fill" : icon,
                 colorHex: colorHex.isEmpty ? "#4F8CFF" : colorHex,

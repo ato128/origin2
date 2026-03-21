@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import Supabase
 
 enum CrewTabMode: String, CaseIterable {
     case crews = "Crews"
@@ -19,6 +20,8 @@ struct CrewView: View {
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var friendStore: FriendStore
+    
+    
 
     @State private var showCreateCrewBackend = false
 
@@ -45,8 +48,7 @@ struct CrewView: View {
     @Query(sort: \FriendFocusSession.startedAt, order: .reverse)
     private var focusSessions: [FriendFocusSession]
     
-    @Query(sort: \FriendRequest.createdAt, order: .reverse)
-    private var friendRequests: [FriendRequest]
+    
 
     @State private var crewTabMode: CrewTabMode
     @State private var showJoinFocusSheet = false
@@ -56,6 +58,7 @@ struct CrewView: View {
     @State private var pendingInviteCode = ""
     @State private var didLoad = false
     @State private var didLoadFriends = false
+    @State private var showAddFriendSheet = false
     
    
     
@@ -113,16 +116,20 @@ struct CrewView: View {
                     )
                 }
             }
-            .task {
-                await crewStore.loadCrews()
-                await crewStore.loadStatsForAllCrews()
-                await reloadBackendFriends()
+            .sheet(isPresented: $showAddFriendSheet) {
+                AddFriendSheetView()
+                    .environmentObject(friendStore)
+                    .environmentObject(session)
             }
-            .onChange(of: session.currentUser?.id) { _, _ in
+            .task {
+                guard let currentUserID = session.currentUser?.id else { return }
+                await reloadAllCrewAndFriendData(forceCrews: false)
+            }
+            .onChange(of: session.currentUser?.id) { _, newID in
+                guard let newID else { return }
+                
                 Task {
-                    await crewStore.loadCrews(force: true)
-                    await crewStore.loadStatsForAllCrews()
-                    await reloadBackendFriends()
+                    await reloadAllCrewAndFriendData(forceCrews: true)
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .openCrewInviteFromLink)) { notification in
@@ -262,7 +269,7 @@ private extension CrewView {
                     }
                 } else {
                     Button {
-                        seedMockFriendRequestsIfNeeded()
+                        showAddFriendSheet = true
                     } label: {
                         Image(systemName: "person.badge.plus")
                             .font(.system(size: 18, weight: .bold))
@@ -565,25 +572,6 @@ private extension CrewView {
             }
         }
     }
-    
-    var incomingRequests: [FriendRequest] {
-        guard let currentUserID else { return [] }
-        return friendRequests.filter {
-            $0.ownerUserID == currentUserID &&
-            $0.direction == .incoming &&
-            $0.status == .pending
-        }
-    }
-
-    var sentRequests: [FriendRequest] {
-        guard let currentUserID else { return [] }
-        return friendRequests.filter {
-            $0.ownerUserID == currentUserID &&
-            $0.direction == .sent &&
-            $0.status == .pending
-        }
-    }
-
     var friendsContent: some View {
         VStack(alignment: .leading, spacing: 16) {
             friendsOverviewCard
@@ -616,6 +604,275 @@ private extension CrewView {
                 friendsEmptyHintCard
             }
         }
+    }
+    
+    var incomingRequests: [FriendshipDTO] {
+        guard let currentUserID else { return [] }
+        return friendStore.friendships.filter {
+            $0.status == "pending" && $0.addressee_id == currentUserID
+        }
+    }
+
+    var sentRequests: [FriendshipDTO] {
+        guard let currentUserID else { return [] }
+        return friendStore.friendships.filter {
+            $0.status == "pending" && $0.requester_id == currentUserID
+        }
+    }
+
+    func otherUserID(for friendship: FriendshipDTO) -> UUID? {
+        guard let currentUserID else { return nil }
+        return friendship.requester_id == currentUserID
+            ? friendship.addressee_id
+            : friendship.requester_id
+    }
+
+    func requestDisplayName(for friendship: FriendshipDTO) -> String {
+        guard let otherUserID = otherUserID(for: friendship),
+              let profile = friendStore.profiles[otherUserID]
+        else { return "Unknown user" }
+
+        if let fullName = profile.full_name,
+           !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return fullName
+        }
+
+        if let username = profile.username,
+           !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return username
+        }
+
+        return profile.email ?? "Unknown user"
+    }
+
+    func requestUsername(for friendship: FriendshipDTO) -> String {
+        guard let otherUserID = otherUserID(for: friendship),
+              let profile = friendStore.profiles[otherUserID]
+        else { return "unknown" }
+
+        return profile.username ?? profile.email ?? "unknown"
+    }
+    
+    var incomingRequestsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Incoming Requests")
+                    .font(.headline)
+                    .foregroundStyle(palette.primaryText)
+
+                Spacer()
+
+                Text("\(incomingRequests.count)")
+                    .font(.caption.weight(.bold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(Color.orange.opacity(0.14))
+                    )
+                    .foregroundStyle(.orange)
+            }
+
+            ForEach(incomingRequests) { request in
+                incomingRequestRow(request)
+            }
+        }
+        .padding(18)
+        .background(cardBackground)
+    }
+
+    var sentRequestsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Sent Requests")
+                    .font(.headline)
+                    .foregroundStyle(palette.primaryText)
+
+                Spacer()
+
+                Text("\(sentRequests.count)")
+                    .font(.caption.weight(.bold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(Color.blue.opacity(0.14))
+                    )
+                    .foregroundStyle(.blue)
+            }
+
+            ForEach(sentRequests) { request in
+                sentRequestRow(request)
+            }
+        }
+        .padding(18)
+        .background(cardBackground)
+    }
+    
+    func incomingRequestRow(_ request: FriendshipDTO) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Color.accentColor.opacity(0.16))
+                    .frame(width: 42, height: 42)
+
+                Image(systemName: "person.fill")
+                    .foregroundStyle(Color.accentColor)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(requestDisplayName(for: request))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(palette.primaryText)
+
+                Text("@\(requestUsername(for: request))")
+                    .font(.caption)
+                    .foregroundStyle(palette.secondaryText)
+            }
+
+            Spacer()
+
+            HStack(spacing: 8) {
+                Button {
+                    Task {
+                        await acceptRequest(request)
+                    }
+                } label: {
+                    Text("Accept")
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Color.green.opacity(0.14))
+                        .foregroundStyle(.green)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    Task {
+                        await removePendingRequest(request)
+                    }
+                } label: {
+                    Text("Decline")
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Color.red.opacity(0.14))
+                        .foregroundStyle(.red)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(palette.secondaryCardFill)
+        )
+    }
+
+    func sentRequestRow(_ request: FriendshipDTO) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Color.accentColor.opacity(0.16))
+                    .frame(width: 42, height: 42)
+
+                Image(systemName: "person.fill")
+                    .foregroundStyle(Color.accentColor)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(requestDisplayName(for: request))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(palette.primaryText)
+
+                Text("@\(requestUsername(for: request))")
+                    .font(.caption)
+                    .foregroundStyle(palette.secondaryText)
+            }
+
+            Spacer()
+
+            Button {
+                Task {
+                    await removePendingRequest(request)
+                }
+            } label: {
+                Text("Cancel")
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(Color.orange.opacity(0.14))
+                    .foregroundStyle(.orange)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(palette.secondaryCardFill)
+        )
+    }
+    
+    func acceptRequest(_ request: FriendshipDTO) async {
+        do {
+            try await friendStore.acceptFriendRequest(friendshipID: request.id)
+            await reloadAllCrewAndFriendData(forceCrews: false)
+        } catch {
+            print("ACCEPT FRIEND REQUEST ERROR:", error.localizedDescription)
+        }
+    }
+
+    func removePendingRequest(_ request: FriendshipDTO) async {
+        do {
+            try await SupabaseManager.shared.client
+                .from("friendships")
+                .delete()
+                .eq("id", value: request.id.uuidString)
+                .execute()
+
+            await reloadAllCrewAndFriendData(forceCrews: false)
+        } catch {
+            print("REMOVE PENDING FRIEND REQUEST ERROR:", error.localizedDescription)
+        }
+    }
+
+    func reloadBackendFriends() async {
+        guard let currentUserID = session.currentUser?.id else { return }
+
+        await friendStore.loadAllFriendships(currentUserID: currentUserID)
+
+        let otherUserIDs = friendStore.friendships.compactMap { friendship -> UUID? in
+            if friendship.requester_id == currentUserID {
+                return friendship.addressee_id
+            } else if friendship.addressee_id == currentUserID {
+                return friendship.requester_id
+            } else {
+                return nil
+            }
+        }
+
+        await friendStore.loadProfiles(for: otherUserIDs)
+        await friendStore.loadPresence(for: otherUserIDs)
+        await friendStore.subscribeToPresenceRealtime(for: otherUserIDs)
+
+        friendStore.syncAcceptedFriendsToLocal(
+            currentUserID: currentUserID,
+            modelContext: modelContext
+        )
+    }
+
+    func reloadAllCrewAndFriendData(forceCrews: Bool) async {
+        if forceCrews {
+            await crewStore.loadCrews(force: true)
+        } else {
+            await crewStore.loadCrews()
+        }
+
+        await crewStore.loadStatsForAllCrews()
+        await reloadBackendFriends()
     }
 
     var friendsFocusActivityCard: some View {
@@ -723,9 +980,7 @@ private extension CrewView {
     }
 
     var friendsOverviewCard: some View {
-        let onlineCount = backendFriends.filter(\.isOnline).count
-
-        return VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Friends")
@@ -746,7 +1001,7 @@ private extension CrewView {
 
             HStack(spacing: 10) {
                 statPill(title: "\(backendFriends.count)", subtitle: "Friends")
-                statPill(title: "\(incomingRequests.count)", subtitle: "Requests")
+                statPill(title: "\(incomingRequests.count + sentRequests.count)", subtitle: "Requests")
                 statPill(title: "\(activeFriendFocusCount)", subtitle: "In Focus")
             }
 
@@ -783,33 +1038,7 @@ private extension CrewView {
         .background(cardBackground)
     }
     
-    var incomingRequestsCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("Incoming Requests")
-                    .font(.headline)
-                    .foregroundStyle(palette.primaryText)
-
-                Spacer()
-
-                Text("\(incomingRequests.count)")
-                    .font(.caption.weight(.bold))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule()
-                            .fill(Color.orange.opacity(0.14))
-                    )
-                    .foregroundStyle(.orange)
-            }
-
-            ForEach(incomingRequests) { request in
-                incomingRequestRow(request)
-            }
-        }
-        .padding(18)
-        .background(cardBackground)
-    }
+  
 
     var friendsEmptyStateCard: some View {
         VStack(spacing: 14) {
@@ -833,8 +1062,9 @@ private extension CrewView {
                 .multilineTextAlignment(.center)
 
             Button {
+                showAddFriendSheet = true
             } label: {
-                Text("Waiting for backend friends")
+                Text("Add Your First Friend")
                     .font(.subheadline.weight(.semibold))
                     .padding(.horizontal, 18)
                     .padding(.vertical, 11)
@@ -907,7 +1137,7 @@ private extension CrewView {
     }
 
     var activeFriendFocusCount: Int {
-        focusSessions.filter(\.isActive).count
+        activeFocusSessions.count
     }
 
     var friendsEmptyHintCard: some View {
@@ -929,186 +1159,6 @@ private extension CrewView {
         .padding(20)
         .background(cardBackground)
     }
-    
-    func acceptRequest(_ request: FriendRequest) {
-        request.status = .accepted
-        try? modelContext.save()
-
-        Task {
-            guard let currentUserID = session.currentUser?.id else { return }
-
-            await friendStore.loadAcceptedFriendships(currentUserID: currentUserID)
-
-            let allUserIDs = friendStore.friendships.flatMap { friendship -> [UUID] in
-                [friendship.requester_id, friendship.addressee_id]
-            }
-
-            await friendStore.loadProfiles(for: allUserIDs)
-
-            await MainActor.run {
-                friendStore.syncAcceptedFriendsToLocal(
-                    currentUserID: currentUserID,
-                    modelContext: modelContext
-                )
-            }
-        }
-    }
-    
-    func reloadBackendFriends() async {
-        guard let currentUserID = session.currentUser?.id else { return }
-
-        await friendStore.loadAcceptedFriendships(currentUserID: currentUserID)
-
-        let otherUserIDs = friendStore.friendships.compactMap {
-            $0.requester_id == currentUserID ? $0.addressee_id : $0.requester_id
-        }
-
-        await friendStore.loadProfiles(for: otherUserIDs)
-
-        friendStore.syncAcceptedFriendsToLocal(
-            currentUserID: currentUserID,
-            modelContext: modelContext
-        )
-    }
-
-    func declineRequest(_ request: FriendRequest) {
-        request.status = .declined
-        try? modelContext.save()
-    }
-
-    func cancelRequest(_ request: FriendRequest) {
-        request.status = .cancelled
-        try? modelContext.save()
-    }
-    
-    func sentRequestRow(_ request: FriendRequest) -> some View {
-        HStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(hexColor(request.colorHex).opacity(0.16))
-                    .frame(width: 42, height: 42)
-
-                Image(systemName: request.avatarSymbol)
-                    .foregroundStyle(hexColor(request.colorHex))
-            }
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(request.name)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(palette.primaryText)
-
-                Text("@\(request.username)")
-                    .font(.caption)
-                    .foregroundStyle(palette.secondaryText)
-            }
-
-            Spacer()
-
-            Button {
-                cancelRequest(request)
-            } label: {
-                Text("Cancel")
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .background(Color.orange.opacity(0.14))
-                    .foregroundStyle(.orange)
-                    .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(palette.secondaryCardFill)
-        )
-    }
-    var sentRequestsCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("Sent Requests")
-                    .font(.headline)
-                    .foregroundStyle(palette.primaryText)
-
-                Spacer()
-
-                Text("\(sentRequests.count)")
-                    .font(.caption.weight(.bold))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule()
-                            .fill(Color.blue.opacity(0.14))
-                    )
-                    .foregroundStyle(.blue)
-            }
-
-            ForEach(sentRequests) { request in
-                sentRequestRow(request)
-            }
-        }
-        .padding(18)
-        .background(cardBackground)
-    }
-    
-    func incomingRequestRow(_ request: FriendRequest) -> some View {
-        HStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(hexColor(request.colorHex).opacity(0.16))
-                    .frame(width: 42, height: 42)
-
-                Image(systemName: request.avatarSymbol)
-                    .foregroundStyle(hexColor(request.colorHex))
-            }
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(request.name)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(palette.primaryText)
-
-                Text("@\(request.username)")
-                    .font(.caption)
-                    .foregroundStyle(palette.secondaryText)
-            }
-
-            Spacer()
-
-            HStack(spacing: 8) {
-                Button {
-                    acceptRequest(request)
-                } label: {
-                    Text("Accept")
-                        .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(Color.green.opacity(0.14))
-                        .foregroundStyle(.green)
-                        .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-
-                Button {
-                    declineRequest(request)
-                } label: {
-                    Text("Decline")
-                        .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(Color.red.opacity(0.14))
-                        .foregroundStyle(.red)
-                        .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(palette.secondaryCardFill)
-        )
-    }
-
     func friendRow(_ friend: Friend) -> some View {
         let activeSession = activeFocusSession(for: friend)
 
@@ -1238,136 +1288,6 @@ private extension CrewView {
         let w = Calendar.current.component(.weekday, from: Date())
         return (w + 5) % 7
     }
-    
-    
-
-    func seedMockFriendsIfNeeded() {
-        guard friends.isEmpty else { return }
-
-        let ahmet = Friend(
-            name: "Ahmet",
-            subtitle: "Bugün 3 etkinlik",
-            avatarSymbol: "person.fill",
-            colorHex: "#3B82F6",
-            isOnline: true
-        )
-
-        let selin = Friend(
-            name: "Selin",
-            subtitle: "Yarın sınav haftası",
-            avatarSymbol: "person.fill",
-            colorHex: "#8B5CF6",
-            isOnline: false
-        )
-
-        let atakan = Friend(
-            name: "Atakan",
-            subtitle: "Bu hafta 8 ders",
-            avatarSymbol: "person.fill",
-            colorHex: "#22C55E",
-            isOnline: true
-        )
-
-        modelContext.insert(ahmet)
-        modelContext.insert(selin)
-        modelContext.insert(atakan)
-
-        let focusSession = FriendFocusSession(
-            friendID: ahmet.id,
-            title: "Shared Focus",
-            startedAt: Date(),
-            durationMinute: 25,
-            isActive: true
-        )
-
-        modelContext.insert(focusSession)
-
-        let startMessage = FriendMessage(
-            friendID: ahmet.id,
-            senderName: ahmet.name,
-            text: "\(ahmet.name) started a 25 min shared focus session.",
-            isFromMe: false
-        )
-
-        modelContext.insert(startMessage)
-
-        let sharedItems = [
-            SharedWeekItem(
-                ownerUserID: session.currentUser?.id,
-                friendID: ahmet.id,
-                title: "Math Lecture",
-                weekday: weekdayIndexToday(),
-                startMinute: 9 * 60,
-                durationMinute: 90
-            ),
-            SharedWeekItem(
-                ownerUserID: session.currentUser?.id,
-                friendID: ahmet.id,
-                title: "UI Study Session",
-                weekday: weekdayIndexToday(),
-                startMinute: 13 * 60,
-                durationMinute: 60
-            ),
-            SharedWeekItem(
-                ownerUserID: session.currentUser?.id,
-                friendID: ahmet.id,
-                title: "Physics Lab Prep",
-                weekday: weekdayIndexToday(),
-                startMinute: 18 * 60,
-                durationMinute: 60
-            )
-        ]
-
-        for item in sharedItems {
-            modelContext.insert(item)
-        }
-
-        try? modelContext.save()
-    }
-    
-    func seedMockFriendRequestsIfNeeded() {
-        let existingPending = friendRequests.filter { $0.status == .pending }
-        guard existingPending.isEmpty else {
-            print("Pending requests already exist")
-            return
-        }
-
-        let incoming1 = FriendRequest(
-            name: "Ahmet",
-            username: "ahmetk",
-            avatarSymbol: "person.fill",
-            colorHex: "#3B82F6",
-            direction: .incoming
-        )
-
-        let incoming2 = FriendRequest(
-            name: "Selin",
-            username: "selinnotes",
-            avatarSymbol: "person.fill",
-            colorHex: "#8B5CF6",
-            direction: .incoming
-        )
-
-        let sent1 = FriendRequest(
-            name: "Atakan",
-            username: "atakan12",
-            avatarSymbol: "person.fill",
-            colorHex: "#22C55E",
-            direction: .sent
-        )
-
-        modelContext.insert(incoming1)
-        modelContext.insert(incoming2)
-        modelContext.insert(sent1)
-
-        do {
-            try modelContext.save()
-            print("Sample friend requests added")
-        } catch {
-            print("SAVE FRIEND REQUEST ERROR:", error.localizedDescription)
-        }
-    }
-
     var activeFocusSessions: [FriendFocusSession] {
         guard let currentUserID else { return [] }
         let visibleFriendIDs = Set(backendFriends.map(\.id))

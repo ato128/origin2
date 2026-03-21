@@ -24,10 +24,11 @@ enum PlanAheadMode: String, CaseIterable {
 
 struct WeekView: View {
     
-    @Environment(\.modelContext)  var context
+    @Environment(\.modelContext) var context
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var store: TodoStore
+    @EnvironmentObject var friendStore: FriendStore
    
     
     @Query(sort: \EventItem.startMinute, order: .forward)
@@ -82,8 +83,8 @@ struct WeekView: View {
                 assignedTo: assignedName,
                 createdBy: createdByName,
                 priority: task.priority,
-                status: task.status ?? (task.is_done ? "done" : "todo"),
-                showOnWeek: task.show_on_week ?? false,
+                status:  task.is_done ? "done" : "todo",
+                showOnWeek: task.show_on_week ,
                 scheduledWeekday: task.scheduled_weekday,
                 scheduledStartMinute: task.scheduled_start_minute,
                 scheduledDurationMinute: task.scheduled_duration_minute,
@@ -982,11 +983,34 @@ extension WeekView {
     
     func delete(_ ev: EventItem) {
         context.delete(ev)
-        try? context.save()
-        WidgetAppSync.refreshFromSwiftData(context: context)
-        
-        Task {
-            await NotificationManager.shared.rescheduleAll(events: userScopedEvents.filter { $0.id != ev.id })
+
+        do {
+            try context.save()
+            WidgetAppSync.refreshFromSwiftData(context: context)
+
+            Task {
+                await NotificationManager.shared.rescheduleAll(
+                    events: userScopedEvents.filter { $0.id != ev.id }
+                )
+            }
+
+            Task {
+                guard let currentUserID = session.currentUser?.id else { return }
+
+                let descriptor = FetchDescriptor<EventItem>(
+                    sortBy: [SortDescriptor(\EventItem.startMinute, order: .forward)]
+                )
+
+                let all = (try? context.fetch(descriptor)) ?? []
+                let currentUserEvents = all.filter { $0.ownerUserID == currentUserID.uuidString }
+
+                await friendStore.resyncSharedWeekIfNeeded(
+                    for: currentUserID,
+                    events: currentUserEvents
+                )
+            }
+        } catch {
+            print("WeekView.delete save error:", error)
         }
     }
     
@@ -1163,7 +1187,7 @@ extension WeekView {
             return date
         }()
 
-        let items = allEvents
+        let items = userScopedEvents
             .filter { ev in
                 if let scheduledDate = ev.scheduledDate {
                     return calendar.isDate(scheduledDate, inSameDayAs: targetDate)

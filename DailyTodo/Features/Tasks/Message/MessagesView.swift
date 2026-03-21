@@ -213,7 +213,7 @@ struct MessagesView: View {
 
                 guard let currentUserID = session.currentUser?.id else { return }
 
-                await friendStore.loadAcceptedFriendships(currentUserID: currentUserID)
+                await friendStore.loadAllFriendships(currentUserID: currentUserID)
 
                 let otherUserIDs = friendStore.friendships.compactMap {
                     $0.requester_id == currentUserID ? $0.addressee_id : $0.requester_id

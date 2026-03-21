@@ -18,7 +18,7 @@ struct FriendChatInfoView: View {
 
     @Query(sort: \EventItem.startMinute, order: .forward)
     private var allEvents: [EventItem]
-    
+
     private let palette = ThemePalette()
 
     @State private var showSharedWeek = false
@@ -26,7 +26,6 @@ struct FriendChatInfoView: View {
     @State private var shareMyWeek = false
     @State private var infoMessage: String?
     @State private var isLoadingShareState = true
-   
 
     private var friendshipID: UUID? { friend.backendFriendshipID }
     private var friendUserID: UUID? { friend.backendUserID }
@@ -35,7 +34,7 @@ struct FriendChatInfoView: View {
         guard let friendshipID else { return false }
         return friendStore.incomingWeekSharesByFriendship[friendshipID]?.is_enabled == true
     }
-    
+
     private var currentUserEvents: [EventItem] {
         guard let currentUserID = session.currentUser?.id.uuidString else { return [] }
         return allEvents.filter { $0.ownerUserID == currentUserID }
@@ -73,15 +72,58 @@ struct FriendChatInfoView: View {
                 friendUserID: friendUserID
             )
 
+            let initialShareState =
+                friendStore.outgoingWeekSharesByFriendship[friendshipID]?.is_enabled == true
+
             await MainActor.run {
-                shareMyWeek =
-                    friendStore.outgoingWeekSharesByFriendship[friendshipID]?.is_enabled == true
+                shareMyWeek = initialShareState
                 isLoadingShareState = false
+            }
+
+            if initialShareState {
+                await friendStore.setWeekShareEnabled(
+                    friendshipID: friendshipID,
+                    currentUserID: currentUserID,
+                    friendUserID: friendUserID,
+                    isEnabled: true,
+                    events: currentUserEvents
+                )
+
+                await MainActor.run {
+                    shareMyWeek =
+                        friendStore.outgoingWeekSharesByFriendship[friendshipID]?.is_enabled == true
+                }
+            }
+        }
+        .onChange(of: allEvents.count) { _, _ in
+            guard shareMyWeek else { return }
+            guard !isSavingShare, !isLoadingShareState else { return }
+            guard
+                let friendshipID,
+                let currentUserID = session.currentUser?.id,
+                let friendUserID
+            else { return }
+
+            Task {
+                await friendStore.setWeekShareEnabled(
+                    friendshipID: friendshipID,
+                    currentUserID: currentUserID,
+                    friendUserID: friendUserID,
+                    isEnabled: true,
+                    events: currentUserEvents
+                )
+
+                await MainActor.run {
+                    shareMyWeek =
+                        friendStore.outgoingWeekSharesByFriendship[friendshipID]?.is_enabled == true
+                }
             }
         }
         .sheet(isPresented: $showSharedWeek) {
             NavigationStack {
                 SharedWeekView(friend: friend)
+                    .environmentObject(friendStore)
+                    .environmentObject(session)
             }
         }
         .alert("Info", isPresented: Binding(
@@ -220,10 +262,9 @@ private extension FriendChatInfoView {
                             events: currentUserEvents
                         )
 
-                        
-
                         await MainActor.run {
-                            shareMyWeek = friendStore.outgoingWeekSharesByFriendship[friendshipID]?.is_enabled == true
+                            shareMyWeek =
+                                friendStore.outgoingWeekSharesByFriendship[friendshipID]?.is_enabled == true
                             isSavingShare = false
                         }
                     }

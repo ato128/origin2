@@ -13,6 +13,7 @@ struct AddEventView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @EnvironmentObject var session: SessionStore
+    @EnvironmentObject var friendStore: FriendStore
 
     private let dayTitles = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
 
@@ -264,9 +265,30 @@ struct AddEventView: View {
                 await NotificationManager.shared.schedule(for: ev, minutesBefore: 5)
             }
 
+            Task {
+                guard let currentUserID = session.currentUser?.id else { return }
+
+                let eventsForSync = currentUserEventsFromContext()
+                await friendStore.resyncSharedWeekIfNeeded(
+                    for: currentUserID,
+                    events: eventsForSync
+                )
+            }
+
         } catch {
             print("Save error:", error)
         }
+    }
+
+    private func currentUserEventsFromContext() -> [EventItem] {
+        guard let currentUserID = session.currentUser?.id.uuidString else { return [] }
+
+        let descriptor = FetchDescriptor<EventItem>(
+            sortBy: [SortDescriptor(\EventItem.startMinute, order: .forward)]
+        )
+
+        let all = (try? context.fetch(descriptor)) ?? []
+        return all.filter { $0.ownerUserID == currentUserID }
     }
 
     private func buildScheduledDate(startMinute: Int) -> Date? {
