@@ -24,6 +24,7 @@ final class FriendStore: ObservableObject {
     @Published var weekShareEnabledByUserID: [UUID: Bool] = [:]
     @Published var sharedWeekItemsByFriendship: [UUID: [FriendWeekShareItemDTO]] = [:]
     
+    
     private var friendPresenceChannel: RealtimeChannelV2?
     
     private var friendTypingChannel: RealtimeChannelV2?
@@ -226,7 +227,6 @@ final class FriendStore: ObservableObject {
         }
 
         do {
-            // 1) toggle kaydını upsert et
             let sharePayload = SharePayload(
                 friendship_id: friendshipID,
                 owner_user_id: currentUserID,
@@ -239,7 +239,6 @@ final class FriendStore: ObservableObject {
                 .upsert(sharePayload, onConflict: "friendship_id,owner_user_id,viewer_user_id")
                 .execute()
 
-            // 2) bu owner-viewer için eski paylaşılan itemları sil
             try await SupabaseManager.shared.client
                 .from("friend_week_share_items")
                 .delete()
@@ -248,7 +247,6 @@ final class FriendStore: ObservableObject {
                 .eq("viewer_user_id", value: friendUserID.uuidString)
                 .execute()
 
-            // 3) açıksa eventleri tekrar insert et
             if isEnabled {
                 let validEvents = events.filter { !$0.isCompleted }
 
@@ -281,8 +279,8 @@ final class FriendStore: ObservableObject {
 
             await loadSharedWeekItems(
                 friendshipID: friendshipID,
-                ownerUserID: friendUserID,
-                viewerUserID: currentUserID
+                ownerUserID: currentUserID,
+                viewerUserID: friendUserID
             )
 
         } catch {
@@ -295,7 +293,7 @@ final class FriendStore: ObservableObject {
             let response = try await SupabaseManager.shared.client
                 .from("friend_week_shares")
                 .select()
-                .eq("user_id", value: userID.uuidString)
+                .eq("owner_user_id", value: userID.uuidString)
                 .eq("is_enabled", value: true)
                 .limit(1)
                 .execute()
@@ -324,8 +322,12 @@ final class FriendStore: ObservableObject {
                 .order("start_minute", ascending: true)
                 .execute()
 
+            print("SHARED WEEK ITEMS RAW:", String(data: response.data, encoding: .utf8) ?? "nil")
+
             let decoded = try JSONDecoder().decode([FriendWeekShareItemDTO].self, from: response.data)
             sharedWeekItemsByFriendship[friendshipID] = decoded
+
+            print("SHARED WEEK ITEMS COUNT:", decoded.count)
         } catch {
             print("LOAD SHARED WEEK ITEMS ERROR:", error.localizedDescription)
             sharedWeekItemsByFriendship[friendshipID] = []
