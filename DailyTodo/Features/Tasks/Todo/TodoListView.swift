@@ -13,6 +13,7 @@ import Combine
 struct TodoListView: View {
     @Binding var selectedTab: AppTab
     @EnvironmentObject var store: TodoStore
+    @EnvironmentObject var session: SessionStore
 
     @AppStorage("appTheme") var appTheme = AppTheme.gradient.rawValue
     let palette = ThemePalette()
@@ -63,12 +64,26 @@ struct TodoListView: View {
     var items: [DTTaskItem] {
         store.items
     }
+    
+    var currentUserID: UUID? {
+        session.currentUser?.id
+    }
+
+    var userScopedEvents: [EventItem] {
+        guard let currentUserID else { return [] }
+        return allEvents.filter { $0.ownerUserID == currentUserID }
+    }
+
+    var userScopedCrews: [Crew] {
+        guard let currentUserID else { return [] }
+        return crews.filter { $0.ownerUserID == currentUserID }
+    }
 
     var nextClassInfo: (title: String, timeText: String, status: NextClassStatus)? {
         let today = weekdayIndexToday()
         let nowMinute = currentMinuteOfDay()
 
-        let todayEvents = allEvents
+        let todayEvents = userScopedEvents
             .filter { $0.weekday == today }
             .sorted { $0.startMinute < $1.startMinute }
 
@@ -155,7 +170,7 @@ struct TodoListView: View {
             now = value
         }
         .onAppear {
-            previousTopCrewID = crews
+            previousTopCrewID = userScopedCrews
                 .sorted { $0.totalFocusMinutes > $1.totalFocusMinutes }
                 .first?.id
 
@@ -171,8 +186,8 @@ struct TodoListView: View {
                     .environmentObject(store)
             }
         }
-        .onChange(of: crews.map { "\($0.id.uuidString)-\($0.totalFocusMinutes)" }) { _, _ in
-            let newTopCrewID = crews
+        .onChange(of: userScopedCrews.map { "\($0.id.uuidString)-\($0.totalFocusMinutes)" }) { _, _ in
+            let newTopCrewID = userScopedCrews
                 .sorted { $0.totalFocusMinutes > $1.totalFocusMinutes }
                 .first?.id
 

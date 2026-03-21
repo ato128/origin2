@@ -12,6 +12,8 @@ import SwiftData
 final class DTTaskItem {
     var taskUUID: String
 
+    var ownerUserID: UUID?   // 🔥 EKLENDİ
+
     var title: String
     var isDone: Bool
     var dueDate: Date?
@@ -31,6 +33,7 @@ final class DTTaskItem {
 
     init(
         taskUUID: String = UUID().uuidString,
+        ownerUserID: UUID? = nil,   // 🔥 EKLENDİ
         title: String,
         isDone: Bool = false,
         dueDate: Date? = nil,
@@ -44,6 +47,7 @@ final class DTTaskItem {
         scheduledWeekDurationMinutes: Int? = nil
     ) {
         self.taskUUID = taskUUID
+        self.ownerUserID = ownerUserID   // 🔥 EKLENDİ
         self.title = title
         self.isDone = isDone
         self.dueDate = dueDate

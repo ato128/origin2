@@ -11,6 +11,7 @@ import SwiftData
 @Model
 final class Crew {
     var id: UUID
+    var ownerUserID: UUID?
     var backendCrewID: UUID?
     var name: String
     var icon: String
@@ -23,6 +24,7 @@ final class Crew {
 
     init(
         id: UUID = UUID(),
+        ownerUserID: UUID? = nil,
         backendCrewID: UUID? = nil,
         name: String,
         icon: String = "person.3.fill",
@@ -33,6 +35,7 @@ final class Crew {
         currentStreak: Int = 0
     ) {
         self.id = id
+        self.ownerUserID = ownerUserID
         self.backendCrewID = backendCrewID
         self.name = name
         self.icon = icon

@@ -12,6 +12,7 @@ struct AddEventView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
+    @EnvironmentObject var session: SessionStore
 
     private let dayTitles = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
 
@@ -129,8 +130,6 @@ struct AddEventView: View {
         }
     }
 
-    // MARK: Validation
-
     private var canSave: Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         && durationMinute >= 15
@@ -163,8 +162,6 @@ struct AddEventView: View {
         return max(0, min(1439, h * 60 + m))
     }
 
-    // MARK: Defaults
-
     private func applyDefaultDateIfNeeded() {
         let calendar = Calendar.current
 
@@ -184,20 +181,24 @@ struct AddEventView: View {
         }
     }
 
-    // MARK: Conflict Check
-
     private func trySaveWithConflictCheck() {
-
         let t = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let start = minutesFrom(startTime)
         let end = start + durationMinute
 
         let descriptor = FetchDescriptor<EventItem>(
             predicate: #Predicate { $0.weekday == weekday },
-            sortBy: [SortDescriptor(\.startMinute, order: .forward)]
+            sortBy: [SortDescriptor(\EventItem.startMinute, order: .forward)]
         )
 
-        let sameDay: [EventItem] = (try? context.fetch(descriptor)) ?? []
+        let sameDayAll: [EventItem] = (try? context.fetch(descriptor)) ?? []
+        let sameDay: [EventItem]
+
+        if let currentUserID = session.currentUser?.id {
+            sameDay = sameDayAll.filter { $0.ownerUserID == currentUserID }
+        } else {
+            sameDay = []
+        }
 
         let conflicts = sameDay.filter { ev in
             let evStart = ev.startMinute
@@ -237,12 +238,11 @@ struct AddEventView: View {
         dismiss()
     }
 
-    // MARK: Insert Event
-
     private func insertEvent(title: String, start: Int, dur: Int) {
         let scheduledDate = buildScheduledDate(startMinute: start)
 
         let ev = EventItem(
+            ownerUserID: session.currentUser?.id,
             title: title,
             weekday: weekday,
             startMinute: start,
@@ -297,8 +297,6 @@ struct AddEventView: View {
         )
     }
 
-    // MARK: Helpers
-
     private func intervalsOverlap(
         startA: Int,
         endA: Int,
@@ -316,7 +314,6 @@ struct AddEventView: View {
     }
 
     private func colorFromHex(_ hex: String) -> Color {
-
         var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
         hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
 

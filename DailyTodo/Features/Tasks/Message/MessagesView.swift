@@ -10,6 +10,8 @@ import SwiftData
 
 struct MessagesView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject var friendStore: FriendStore
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var session: SessionStore
 
@@ -18,11 +20,21 @@ struct MessagesView: View {
     @Query(sort: \Friend.createdAt, order: .reverse)
     private var friends: [Friend]
 
-    @Query(sort: \FriendMessage.createdAt, order: .reverse)
-    private var friendMessages: [FriendMessage]
+    
 
     private let replyMarker = "[[reply]]"
     private let bodyMarker = "[[body]]"
+    
+    private var currentUserID: UUID? {
+        session.currentUser?.id
+    }
+
+    private var backendFriends: [Friend] {
+        guard let currentUserID else { return [] }
+        return friends.filter {
+            $0.ownerUserID == currentUserID && $0.backendFriendshipID != nil
+        }
+    }
 
     private var backendCrews: [WeekCrewItem] {
         crewStore.crews.map {
@@ -47,16 +59,18 @@ struct MessagesView: View {
 
                 if selectedTab == 0 {
                     List {
-                        if friends.isEmpty {
+                        if backendFriends.isEmpty  {
                             ContentUnavailableView(
                                 "No Friends Yet",
                                 systemImage: "person.2.slash",
                                 description: Text("Your friend chats will appear here.")
                             )
                         } else {
-                            ForEach(friends) { friend in
+                            ForEach(backendFriends) { friend in
                                 NavigationLink {
                                     FriendChatView(friend: friend)
+                                        .environmentObject(friendStore)
+                                        .environmentObject(session)
                                 } label: {
                                     HStack(spacing: 12) {
                                         Circle()
@@ -196,6 +210,29 @@ struct MessagesView: View {
                         currentUserID: session.currentUser?.id
                     )
                 }
+
+                guard let currentUserID = session.currentUser?.id else { return }
+
+                await friendStore.loadAcceptedFriendships(currentUserID: currentUserID)
+
+                let otherUserIDs = friendStore.friendships.compactMap {
+                    $0.requester_id == currentUserID ? $0.addressee_id : $0.requester_id
+                }
+
+                await friendStore.loadProfiles(for: otherUserIDs)
+                friendStore.syncAcceptedFriendsToLocal(
+                    currentUserID: currentUserID,
+                    modelContext: modelContext
+                )
+
+                for friend in backendFriends {
+                    if let friendshipID = friend.backendFriendshipID {
+                        await friendStore.loadMessages(
+                            for: friendshipID,
+                            currentUserID: currentUserID
+                        )
+                    }
+                }
             }
         }
     }
@@ -213,7 +250,10 @@ struct MessagesView: View {
     }
 
     private func lastPreviewText(for friend: Friend) -> String {
-        guard let last = friendMessages.first(where: { $0.friendID == friend.id }) else {
+        guard
+            let friendshipID = friend.backendFriendshipID,
+            let last = friendStore.friendMessagesByFriendship[friendshipID]?.last
+        else {
             return friend.subtitle
         }
 
@@ -227,11 +267,15 @@ struct MessagesView: View {
     }
 
     private func lastFriendMessageDate(for friend: Friend) -> Date? {
-        friendMessages.first(where: { $0.friendID == friend.id })?.createdAt
+        guard let friendshipID = friend.backendFriendshipID else { return nil }
+        return friendStore.friendMessagesByFriendship[friendshipID]?.last?.createdAt
     }
 
     private func unreadFriendCount(for friend: Friend) -> Int {
-        friendMessages.filter { $0.friendID == friend.id && !$0.isRead && !$0.isFromMe }.count
+        guard let friendshipID = friend.backendFriendshipID else { return 0 }
+
+        let messages = friendStore.friendMessagesByFriendship[friendshipID] ?? []
+        return messages.filter { !$0.isFromMe && $0.seenAt == nil }.count
     }
 
     private func crewChatMessages(for crew: WeekCrewItem) -> [CrewChatMessageItem] {

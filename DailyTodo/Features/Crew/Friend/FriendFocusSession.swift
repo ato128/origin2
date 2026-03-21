@@ -11,6 +11,7 @@ import SwiftData
 @Model
 final class FriendFocusSession {
     var id: UUID
+    var ownerUserID: UUID?
     var friendID: UUID
     var title: String
     var startedAt: Date
@@ -19,6 +20,7 @@ final class FriendFocusSession {
 
     init(
         id: UUID = UUID(),
+        ownerUserID: UUID? = nil,
         friendID: UUID,
         title: String,
         startedAt: Date = Date(),
@@ -26,6 +28,7 @@ final class FriendFocusSession {
         isActive: Bool = true
     ) {
         self.id = id
+        self.ownerUserID = ownerUserID
         self.friendID = friendID
         self.title = title
         self.startedAt = startedAt

@@ -11,6 +11,7 @@ import SwiftData
 @Model
 final class FriendRequest {
     var id: UUID
+    var ownerUserID: UUID?
     var name: String
     var username: String
     var avatarSymbol: String
@@ -21,6 +22,7 @@ final class FriendRequest {
 
     init(
         id: UUID = UUID(),
+        ownerUserID: UUID? = nil,
         name: String,
         username: String,
         avatarSymbol: String = "person.fill",
@@ -30,6 +32,7 @@ final class FriendRequest {
         status: FriendRequestStatus = .pending
     ) {
         self.id = id
+        self.ownerUserID = ownerUserID
         self.name = name
         self.username = username
         self.avatarSymbol = avatarSymbol

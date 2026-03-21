@@ -27,6 +27,7 @@ struct WeekView: View {
     @Environment(\.modelContext)  var context
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var session: SessionStore
+    @EnvironmentObject var store: TodoStore
    
     
     @Query(sort: \EventItem.startMinute, order: .forward)
@@ -121,8 +122,21 @@ struct WeekView: View {
         Dictionary(uniqueKeysWithValues: allCrews.map { ($0.id, $0) })
     }
     
+    var currentUserID: UUID? {
+        session.currentUser?.id
+    }
+
+    var userScopedEvents: [EventItem] {
+        guard let currentUserID else { return [] }
+        return allEvents.filter { $0.ownerUserID == currentUserID }
+    }
+
+    var userScopedTasks: [DTTaskItem] {
+        store.items
+    }
+    
     var allEventsAccessible: [EventItem] {
-        allEvents
+        userScopedEvents
     }
     
     var selectedCrew: WeekCrewItem? {
@@ -134,13 +148,13 @@ struct WeekView: View {
     
     let dayTitles = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
     
-    private var allEventIDs: [UUID] { allEvents.map(\.id) }
+    private var allEventIDs: [UUID] { userScopedEvents.map(\.id) }
     
     var eventsForDay: [EventItem] {
         let calendar = Calendar.current
         let targetDate = targetDateForSelectedDay()
         
-        return allEvents
+        return userScopedEvents
             .filter { ev in
                 guard !ev.isCompleted else { return false }
                 
@@ -429,7 +443,7 @@ struct WeekView: View {
                 }
                 .onReceive(liveTimer) { _ in
                     Task {
-                        await LiveActivityManager.shared.autoSyncIfNeeded(events: allEvents)
+                        await LiveActivityManager.shared.autoSyncIfNeeded(events: userScopedEvents)
                     }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .workoutCompleted)) { notification in
@@ -660,7 +674,7 @@ extension WeekView {
     }
     
     private func markWorkoutTaskDone(taskID: PersistentIdentifier) {
-        guard let task = tasks.first(where: { $0.id == taskID }) else { return }
+        guard let task = userScopedTasks.first(where: { $0.id == taskID }) else { return }
         task.isDone = true
         task.completedAt = Date()
     }
@@ -944,7 +958,7 @@ extension WeekView {
         }
         
         Task {
-            await NotificationManager.shared.rescheduleAll(events: allEvents)
+            await NotificationManager.shared.rescheduleAll(events: userScopedEvents)
         }
     }
     
@@ -971,7 +985,7 @@ extension WeekView {
         WidgetAppSync.refreshFromSwiftData(context: context)
         
         Task {
-            await NotificationManager.shared.rescheduleAll(events: allEvents.filter { $0.id != ev.id })
+            await NotificationManager.shared.rescheduleAll(events: userScopedEvents.filter { $0.id != ev.id })
         }
     }
     

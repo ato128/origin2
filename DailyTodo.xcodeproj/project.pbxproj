@@ -163,6 +163,8 @@
 		6DBE92012F6E1BA7001DF813 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE92002F6E1BA7001DF813 /* AppDelegate.swift */; };
 		6DBE92032F6E1BDE001DF813 /* PushNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE92022F6E1BDE001DF813 /* PushNotificationManager.swift */; };
 		6DBE92052F6E1C8F001DF813 /* PushTokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE92042F6E1C8F001DF813 /* PushTokenStore.swift */; };
+		6DBE92072F6EB064001DF813 /* FriendWeekShareDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE92062F6EB064001DF813 /* FriendWeekShareDTO.swift */; };
+		6DBE92092F6EB0B8001DF813 /* SharedWeekView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE92082F6EB0B8001DF813 /* SharedWeekView.swift */; };
 		6DC0CA092F5F1AFA00A875ED /* ScheduleAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA082F5F1AFA00A875ED /* ScheduleAttributes.swift */; };
 		6DC0CA0A2F5F1B0300A875ED /* ScheduleAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA082F5F1AFA00A875ED /* ScheduleAttributes.swift */; };
 		6DC0CAAE2F5F7D0000A875ED /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6DC0CA8F2F5F7D0000A875ED /* Assets.xcassets */; };
@@ -387,6 +389,8 @@
 		6DBE92002F6E1BA7001DF813 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		6DBE92022F6E1BDE001DF813 /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
 		6DBE92042F6E1C8F001DF813 /* PushTokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushTokenStore.swift; sourceTree = "<group>"; };
+		6DBE92062F6EB064001DF813 /* FriendWeekShareDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendWeekShareDTO.swift; sourceTree = "<group>"; };
+		6DBE92082F6EB0B8001DF813 /* SharedWeekView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedWeekView.swift; sourceTree = "<group>"; };
 		6DC0CA082F5F1AFA00A875ED /* ScheduleAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleAttributes.swift; sourceTree = "<group>"; };
 		6DC0CA8F2F5F7D0000A875ED /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6DC0CA902F5F7D0000A875ED /* CreateCrewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateCrewView.swift; sourceTree = "<group>"; };
@@ -565,6 +569,8 @@
 				6DBE91FA2F6DEE90001DF813 /* FriendChatMessageItem.swift */,
 				6DBE91FC2F6E1129001DF813 /* FriendTypingStatusDTO.swift */,
 				6DBE91FE2F6E1627001DF813 /* FriendPresenceDTO.swift */,
+				6DBE92062F6EB064001DF813 /* FriendWeekShareDTO.swift */,
+				6DBE92082F6EB0B8001DF813 /* SharedWeekView.swift */,
 			);
 			path = Friend;
 			sourceTree = "<group>";
@@ -1127,6 +1133,7 @@
 				6DBE91C92F6C38C4001DF813 /* BackendEditCrewTaskView.swift in Sources */,
 				6D2004D92F6469B20022C810 /* InsightsRevealStyle.swift in Sources */,
 				6D2004D32F6463720022C810 /* ShimmerModifier.swift in Sources */,
+				6DBE92072F6EB064001DF813 /* FriendWeekShareDTO.swift in Sources */,
 				6D2004BF2F6450860022C810 /* FocusInsightsCard.swift in Sources */,
 				6DC0CAB22F5F7D0000A875ED /* TodoListView.swift in Sources */,
 				6DBE91FB2F6DEE90001DF813 /* FriendChatMessageItem.swift in Sources */,
@@ -1215,6 +1222,7 @@
 				6DBE91F52F6DDEA4001DF813 /* FriendStore.swift in Sources */,
 				6D5FE3FE2F6787D7007C124D /* CrewChatView+Messages.swift in Sources */,
 				6D02C9D52F5B4D63008193F3 /* FocusTimerView.swift in Sources */,
+				6DBE92092F6EB0B8001DF813 /* SharedWeekView.swift in Sources */,
 				6D775B852F5F81CF0009D660 /* Color+Hex.swift in Sources */,
 				6D2004882F6336A20022C810 /* EditCrewTaskView.swift in Sources */,
 				6D02C9D12F5B4718008193F3 /* InsightsView.swift in Sources */,

@@ -16,9 +16,17 @@ final class TodoStore: ObservableObject {
     private let context: ModelContext
 
     @Published private(set) var items: [DTTaskItem] = []
+    @Published private(set) var currentUserID: UUID?
 
     init(context: ModelContext) {
         self.context = context
+        reload()
+    }
+
+    // MARK: - Session Scope
+
+    func setCurrentUser(_ userID: UUID?) {
+        currentUserID = userID
         reload()
     }
 
@@ -29,7 +37,14 @@ final class TodoStore: ObservableObject {
             let descriptor = FetchDescriptor<DTTaskItem>(
                 sortBy: [SortDescriptor(\DTTaskItem.createdAt, order: .reverse)]
             )
-            items = try context.fetch(descriptor)
+
+            let allItems = try context.fetch(descriptor)
+
+            if let currentUserID {
+                items = allItems.filter { $0.ownerUserID == currentUserID }
+            } else {
+                items = []
+            }
         } catch {
             print("❌ TodoStore.reload fetch failed:", error)
             items = []
@@ -62,8 +77,13 @@ final class TodoStore: ObservableObject {
     ) {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        guard let currentUserID else {
+            print("❌ TodoStore.add blocked: currentUserID nil")
+            return
+        }
 
         let newItem = DTTaskItem(
+            ownerUserID: currentUserID,
             title: trimmed,
             isDone: false,
             dueDate: dueDate,
@@ -78,6 +98,7 @@ final class TodoStore: ObservableObject {
     // MARK: - Update
 
     func toggleDone(_ item: DTTaskItem) {
+        guard item.ownerUserID == currentUserID else { return }
         item.isDone.toggle()
         item.completedAt = item.isDone ? Date() : nil
         saveAndReload()
@@ -89,6 +110,7 @@ final class TodoStore: ObservableObject {
         dueDate: Date?
     ) {
         guard let target = items.first(where: { $0.persistentModelID == itemID }) else { return }
+        guard target.ownerUserID == currentUserID else { return }
 
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -101,6 +123,7 @@ final class TodoStore: ObservableObject {
     // MARK: - Delete
 
     func delete(_ item: DTTaskItem) {
+        guard item.ownerUserID == currentUserID else { return }
         context.delete(item)
         saveAndReload()
     }

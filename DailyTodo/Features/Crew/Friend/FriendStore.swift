@@ -19,6 +19,8 @@ final class FriendStore: ObservableObject {
     @Published var typingStatusByFriendship: [UUID: Bool] = [:]
     @Published var typingUsers: [UUID: String] = [:]
     @Published var presenceByUserID: [UUID: FriendPresenceDTO] = [:]
+    @Published var incomingWeekSharesByFriendship: [UUID: FriendWeekShareDTO] = [:]
+    @Published var outgoingWeekSharesByFriendship: [UUID: FriendWeekShareDTO] = [:]
 
     private var friendPresenceChannel: RealtimeChannelV2?
 
@@ -143,6 +145,88 @@ final class FriendStore: ObservableObject {
             .eq("id", value: friendshipID.uuidString)
             .execute()
     }
+    
+    // MARK: - Friend Week Share
+
+    func loadWeekShareStatus(
+        friendshipID: UUID,
+        currentUserID: UUID,
+        friendUserID: UUID
+    ) async {
+        do {
+            let response = try await SupabaseManager.shared.client
+                .from("friend_week_shares")
+                .select()
+                .eq("friendship_id", value: friendshipID.uuidString)
+                .or("owner_user_id.eq.\(currentUserID.uuidString),owner_user_id.eq.\(friendUserID.uuidString)")
+                .execute()
+
+            let decoded = try JSONDecoder().decode([FriendWeekShareDTO].self, from: response.data)
+
+            var incoming: FriendWeekShareDTO?
+            var outgoing: FriendWeekShareDTO?
+
+            for item in decoded {
+                if item.owner_user_id == currentUserID {
+                    outgoing = item
+                } else if item.owner_user_id == friendUserID {
+                    incoming = item
+                }
+            }
+
+            if let incoming {
+                incomingWeekSharesByFriendship[friendshipID] = incoming
+            } else {
+                incomingWeekSharesByFriendship.removeValue(forKey: friendshipID)
+            }
+
+            if let outgoing {
+                outgoingWeekSharesByFriendship[friendshipID] = outgoing
+            } else {
+                outgoingWeekSharesByFriendship.removeValue(forKey: friendshipID)
+            }
+        } catch {
+            print("LOAD WEEK SHARE STATUS ERROR:", error.localizedDescription)
+        }
+    }
+
+    func setWeekShareEnabled(
+        friendshipID: UUID,
+        currentUserID: UUID,
+        friendUserID: UUID,
+        isEnabled: Bool
+    ) async {
+        struct Payload: Encodable {
+            let friendship_id: UUID
+            let owner_user_id: UUID
+            let viewer_user_id: UUID
+            let is_enabled: Bool
+            let updated_at: String
+        }
+
+        let payload = Payload(
+            friendship_id: friendshipID,
+            owner_user_id: currentUserID,
+            viewer_user_id: friendUserID,
+            is_enabled: isEnabled,
+            updated_at: ISO8601DateFormatter().string(from: Date())
+        )
+
+        do {
+            try await SupabaseManager.shared.client
+                .from("friend_week_shares")
+                .upsert(payload)
+                .execute()
+
+            await loadWeekShareStatus(
+                friendshipID: friendshipID,
+                currentUserID: currentUserID,
+                friendUserID: friendUserID
+            )
+        } catch {
+            print("SET WEEK SHARE ENABLED ERROR:", error.localizedDescription)
+        }
+    }
 
     // MARK: - Local Sync
 
@@ -185,8 +269,10 @@ final class FriendStore: ObservableObject {
                 existing.name = displayName
                 existing.subtitle = "Friend"
                 existing.isOnline = true
+                existing.ownerUserID = currentUserID
             } else {
                 let newFriend = Friend(
+                    ownerUserID: currentUserID,
                     backendFriendshipID: friendship.id,
                     backendUserID: otherUserID,
                     name: displayName,

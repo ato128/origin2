@@ -11,6 +11,8 @@ import SwiftData
 @Model
 final class EventItem {
     var id: UUID
+    var ownerUserID: UUID?
+
     var title: String
 
     /// 0=Pzt, 1=Sal, 2=Çar, 3=Per, 4=Cum, 5=Cmt, 6=Paz
@@ -32,14 +34,11 @@ final class EventItem {
     var colorHex: String
     
     var sourceTaskUUID: String?
-
     var createdAt: Date
-    
     var isCompleted: Bool
-    
-    
 
     init(
+        ownerUserID: UUID? = nil,
         title: String,
         weekday: Int,
         startMinute: Int,
@@ -53,6 +52,7 @@ final class EventItem {
         isCompleted: Bool = false
     ) {
         self.id = UUID()
+        self.ownerUserID = ownerUserID
         self.title = title
         self.weekday = weekday
         self.startMinute = max(0, min(1439, startMinute))

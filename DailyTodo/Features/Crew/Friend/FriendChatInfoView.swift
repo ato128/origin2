@@ -11,9 +11,24 @@ import SwiftData
 struct FriendChatInfoView: View {
     @Bindable var friend: Friend
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var friendStore: FriendStore
+    @EnvironmentObject var session: SessionStore
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
 
     private let palette = ThemePalette()
+
+    @State private var showSharedWeek = false
+    @State private var isSavingShare = false
+    @State private var shareMyWeek = false
+    @State private var infoMessage: String?
+
+    private var friendshipID: UUID? { friend.backendFriendshipID }
+    private var friendUserID: UUID? { friend.backendUserID }
+
+    private var canOpenSharedWeek: Bool {
+        guard let friendshipID else { return false }
+        return friendStore.incomingWeekSharesByFriendship[friendshipID]?.is_enabled == true
+    }
 
     var body: some View {
         ZStack {
@@ -32,6 +47,57 @@ struct FriendChatInfoView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .task {
+            guard
+                let friendshipID,
+                let currentUserID = session.currentUser?.id,
+                let friendUserID
+            else { return }
+
+            await friendStore.loadWeekShareStatus(
+                friendshipID: friendshipID,
+                currentUserID: currentUserID,
+                friendUserID: friendUserID
+            )
+
+            shareMyWeek = friendStore.outgoingWeekSharesByFriendship[friendshipID]?.is_enabled == true
+        }
+        .onChange(of: shareMyWeek) { _, newValue in
+            guard
+                let friendshipID,
+                let currentUserID = session.currentUser?.id,
+                let friendUserID
+            else { return }
+
+            if isSavingShare { return }
+
+            isSavingShare = true
+            Task {
+                await friendStore.setWeekShareEnabled(
+                    friendshipID: friendshipID,
+                    currentUserID: currentUserID,
+                    friendUserID: friendUserID,
+                    isEnabled: newValue
+                )
+
+                await MainActor.run {
+                    isSavingShare = false
+                }
+            }
+        }
+        .sheet(isPresented: $showSharedWeek) {
+            NavigationStack {
+                SharedWeekView(friend: friend)
+            }
+        }
+        .alert("Info", isPresented: Binding(
+            get: { infoMessage != nil },
+            set: { if !$0 { infoMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(infoMessage ?? "")
+        }
     }
 }
 
@@ -110,11 +176,20 @@ private extension FriendChatInfoView {
 
     var actionsCard: some View {
         VStack(spacing: 12) {
-            actionRow(
-                title: "Open Shared Week",
-                subtitle: "See weekly plan together",
-                icon: "calendar"
-            )
+            Button {
+                if canOpenSharedWeek {
+                    showSharedWeek = true
+                } else {
+                    infoMessage = "\(friend.name) henüz haftasını seninle paylaşmadı."
+                }
+            } label: {
+                actionRow(
+                    title: "Open Shared Week",
+                    subtitle: canOpenSharedWeek ? "See weekly plan together" : "Waiting for friend to share",
+                    icon: "calendar"
+                )
+            }
+            .buttonStyle(.plain)
 
             actionRow(
                 title: "Start Focus Together",
@@ -128,6 +203,23 @@ private extension FriendChatInfoView {
 
     var settingsCard: some View {
         VStack(spacing: 0) {
+            Toggle(isOn: $shareMyWeek) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Share My Week")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(palette.primaryText)
+
+                    Text("Let this friend view your weekly plan")
+                        .font(.caption)
+                        .foregroundStyle(palette.secondaryText)
+                }
+            }
+            .tint(Color.accentColor)
+            .padding(.vertical, 14)
+
+            Divider()
+                .overlay(palette.cardStroke)
+
             Toggle(isOn: $friend.isMuted) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Mute Notifications")

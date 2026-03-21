@@ -20,6 +20,8 @@ enum AppTab: Hashable {
 
 struct MainTabView: View {
     @EnvironmentObject var store: TodoStore
+    @EnvironmentObject var session: SessionStore
+    @EnvironmentObject var crewStore: CrewStore
     @State private var tab: AppTab = .tasks
 
     var body: some View {
@@ -55,6 +57,16 @@ struct MainTabView: View {
             }
             .tabItem { Label("Settings", systemImage: "gearshape") }
             .tag(AppTab.settings)
+        }
+        .onAppear {
+            store.setCurrentUser(session.currentUser?.id)
+            crewStore.setCurrentUser(session.currentUser?.id)
+            crewStore.resetForUserChange()
+        }
+        .onChange(of: session.currentUser?.id) { _, newUserID in
+            store.setCurrentUser(newUserID)
+            crewStore.setCurrentUser(newUserID)
+            crewStore.resetForUserChange()
         }
         .onReceive(NotificationCenter.default.publisher(for: .openWeekFromWidget)) { _ in
             tab = .week

@@ -11,6 +11,7 @@ import SwiftData
 @Model
 final class SharedWeekItem {
     var id: UUID
+    var ownerUserID: UUID?
     var friendID: UUID
     var title: String
     var details: String
@@ -21,6 +22,7 @@ final class SharedWeekItem {
 
     init(
         id: UUID = UUID(),
+        ownerUserID: UUID? = nil,
         friendID: UUID,
         title: String,
         details: String = "",
@@ -30,6 +32,7 @@ final class SharedWeekItem {
         createdAt: Date = Date()
     ) {
         self.id = id
+        self.ownerUserID = ownerUserID
         self.friendID = friendID
         self.title = title
         self.details = details

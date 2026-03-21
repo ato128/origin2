@@ -36,6 +36,7 @@ final class CrewStore: ObservableObject {
     @Published var chatMessagesByCrew: [UUID: [CrewChatMessageItem]] = [:]
     @Published var activeFocusSessionByCrew: [UUID: CrewFocusSessionDTO] = [:]
     @Published var focusParticipantsBySession: [UUID: [CrewFocusParticipantDTO]] = [:]
+    @Published private(set) var currentUserID: UUID?
 
     private var activeFocusChannel: RealtimeChannel?
     private var focusParticipantsChannel: RealtimeChannel?
@@ -51,6 +52,10 @@ final class CrewStore: ObservableObject {
     private var crewMessagesChannel: RealtimeChannel?
     private var subscribedCrewMessageID: UUID?
     private var hasLoadedCrews = false
+    
+    func setCurrentUser(_ userID: UUID?) {
+        currentUserID = userID
+    }
 
     // MARK: - Chat Helpers
 
@@ -611,6 +616,11 @@ final class CrewStore: ObservableObject {
     // MARK: - Existing Loads / Actions
 
     func loadCrews(force: Bool = false) async {
+        guard let currentUserID else {
+            crews = []
+            return
+        }
+
         if hasLoadedCrews && !force {
             return
         }
@@ -619,9 +629,30 @@ final class CrewStore: ObservableObject {
         defer { isLoading = false }
 
         do {
+            // Önce kullanıcının üye olduğu crew id'lerini al
+            let memberResponse = try await SupabaseManager.shared.client
+                .from("crew_members")
+                .select("crew_id")
+                .eq("user_id", value: currentUserID.uuidString)
+                .execute()
+
+            struct CrewMemberCrewIDDTO: Codable {
+                let crew_id: UUID
+            }
+
+            let memberDecoded = try JSONDecoder().decode([CrewMemberCrewIDDTO].self, from: memberResponse.data)
+            let crewIDs = memberDecoded.map(\.crew_id.uuidString)
+
+            guard !crewIDs.isEmpty else {
+                crews = []
+                hasLoadedCrews = true
+                return
+            }
+
             let response = try await SupabaseManager.shared.client
                 .from("crews")
                 .select()
+                .in("id", values: crewIDs)
                 .order("created_at", ascending: false)
                 .execute()
 
@@ -630,7 +661,31 @@ final class CrewStore: ObservableObject {
             hasLoadedCrews = true
         } catch {
             print("LOAD CREWS ERROR:", error.localizedDescription)
+            crews = []
         }
+    }
+    
+    func resetForUserChange() {
+        crews = []
+        crewMembers = []
+        memberProfiles = []
+        crewTasks = []
+        memberCountByCrew = [:]
+        taskCountByCrew = [:]
+        completedTaskCountByCrew = [:]
+        crewActivities = []
+        crewFocusRecords = []
+        crewTaskComments = []
+        crewMessageReads = []
+        crewTypingStatuses = []
+        chatMessagesByCrew = [:]
+        activeFocusSessionByCrew = [:]
+        focusParticipantsBySession = [:]
+        hasLoadedCrews = false
+
+        unsubscribe()
+        unsubscribeCrewChat()
+        unsubscribeCrewFocusRealtime()
     }
 
     func loadMembers(for crewID: UUID) async {

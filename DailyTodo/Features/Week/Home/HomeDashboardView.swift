@@ -81,13 +81,13 @@ struct HomeDashboardView: View {
     var smartSuggestions: [SmartTaskSuggestion] {
         guard smartEngineEnabled else { return [] }
         return SmartTaskEngine.suggestions(
-            tasks: allTasks,
-            events: allEvents
+            tasks: userScopedTasks,
+            events: userScopedEvents
         )
     }
 
     var overdueTaskCount: Int {
-        allTasks.filter { task in
+        userScopedTasks.filter { task in
             !task.isDone && store.isOverdue(task)
         }.count
     }
@@ -95,10 +95,29 @@ struct HomeDashboardView: View {
     var allTasks: [DTTaskItem] {
         store.items
     }
+    
+    var currentUserID: UUID? {
+        session.currentUser?.id
+    }
+
+    var userScopedEvents: [EventItem] {
+        guard let currentUserID else { return [] }
+        return allEvents.filter { $0.ownerUserID == currentUserID }
+    }
+
+    var userScopedFriends: [Friend] {
+        guard let currentUserID else { return [] }
+        return friends.filter { $0.ownerUserID == currentUserID }
+    }
+
+    var userScopedTasks: [DTTaskItem] {
+        guard let currentUserID else { return [] }
+        return allTasks.filter { $0.ownerUserID == currentUserID }
+    }
 
     var todayTasks: [DTTaskItem] {
         let cal = Calendar.current
-        return allTasks
+        return userScopedTasks
             .filter { task in
                 guard !task.isDone else { return false }
                 guard let due = task.dueDate else { return false }
@@ -111,7 +130,7 @@ struct HomeDashboardView: View {
 
     var completedTodayCount: Int {
         let cal = Calendar.current
-        return allTasks.filter { task in
+        return userScopedTasks.filter { task in
             guard let completedAt = task.completedAt else { return false }
             return cal.isDateInToday(completedAt)
         }.count
@@ -122,12 +141,12 @@ struct HomeDashboardView: View {
     }
 
     var streakCount: Int {
-        StreakEngine.currentStreak(tasks: allTasks)
+        return StreakEngine.currentStreak(tasks: userScopedTasks)
     }
 
     var focusTask: DTTaskItem? {
         let now = Date()
-        let active = allTasks.filter { !$0.isDone }
+        let active = userScopedTasks.filter { !$0.isDone }
 
         var nearestUpcoming: DTTaskItem?
         var nearestUpcomingDate: Date?
@@ -256,7 +275,7 @@ struct HomeDashboardView: View {
     }
 
     func completeLinkedWeekEvent(for task: DTTaskItem) {
-        if let matchedEvent = allEvents.first(where: { $0.sourceTaskUUID == task.taskUUID }) {
+        if let matchedEvent = userScopedEvents.first(where: { $0.sourceTaskUUID == task.taskUUID }) {
             matchedEvent.isCompleted = true
 
             do {
@@ -397,7 +416,7 @@ struct HomeDashboardView: View {
         guard let latestMessage = allFriendMessages.max(by: { $0.createdAt < $1.createdAt }) else {
             return nil
         }
-        return friends.first(where: { $0.id == latestMessage.friendID })
+        return userScopedFriends.first(where: { $0.id == latestMessage.friendID })
     }
 
     var nextEvent: EventItem? {
@@ -407,7 +426,7 @@ struct HomeDashboardView: View {
         var liveEvent: EventItem?
         var upcomingEvent: EventItem?
 
-        for event in allEvents where event.weekday == today {
+        for event in userScopedEvents where event.weekday == today {
             let start = event.startMinute
             let end = event.startMinute + event.durationMinute
 

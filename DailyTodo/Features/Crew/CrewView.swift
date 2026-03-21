@@ -31,8 +31,15 @@ struct CrewView: View {
     @Query(sort: \Friend.createdAt, order: .reverse)
     private var friends: [Friend]
     
+    var currentUserID: UUID? {
+        session.currentUser?.id
+    }
+    
     var backendFriends: [Friend] {
-        friends.filter { $0.backendFriendshipID != nil }
+        guard let currentUserID else { return [] }
+        return friends.filter {
+            $0.ownerUserID == currentUserID && $0.backendFriendshipID != nil
+        }
     }
 
     @Query(sort: \FriendFocusSession.startedAt, order: .reverse)
@@ -107,42 +114,16 @@ struct CrewView: View {
                 }
             }
             .task {
-                if didLoadFriends { return }
-                didLoadFriends = true
-
                 await crewStore.loadCrews()
                 await crewStore.loadStatsForAllCrews()
-
-                guard let currentUserID = session.currentUser?.id else { return }
-
-                print("CURRENT USER ID:", currentUserID)
-                print("LOADING ACCEPTED FRIENDSHIPS START")
-
-                await friendStore.loadAcceptedFriendships(currentUserID: currentUserID)
-
-                print("FRIENDSHIPS COUNT:", friendStore.friendships.count)
-
-                let otherUserIDs = friendStore.friendships.compactMap {
-                    $0.requester_id == currentUserID ? $0.addressee_id : $0.requester_id
+                await reloadBackendFriends()
+            }
+            .onChange(of: session.currentUser?.id) { _, _ in
+                Task {
+                    await crewStore.loadCrews(force: true)
+                    await crewStore.loadStatsForAllCrews()
+                    await reloadBackendFriends()
                 }
-
-                print("OTHER USER IDS:", otherUserIDs)
-
-                await friendStore.loadProfiles(for: otherUserIDs)
-
-                friendStore.syncAcceptedFriendsToLocal(
-                    currentUserID: currentUserID,
-                    modelContext: modelContext
-                )
-
-                let descriptor = FetchDescriptor<Friend>()
-                let localFriends = (try? modelContext.fetch(descriptor)) ?? []
-                print("LOCAL FRIEND COUNT AFTER SYNC:", localFriends.count)
-                for item in localFriends {
-                    print("LOCAL FRIEND:", item.name, item.backendFriendshipID as Any)
-                }
-
-                print("LOADING ACCEPTED FRIENDSHIPS DONE")
             }
             .onReceive(NotificationCenter.default.publisher(for: .openCrewInviteFromLink)) { notification in
                 if let code = notification.object as? String {
@@ -586,11 +567,21 @@ private extension CrewView {
     }
     
     var incomingRequests: [FriendRequest] {
-        friendRequests.filter { $0.direction == .incoming && $0.status == .pending }
+        guard let currentUserID else { return [] }
+        return friendRequests.filter {
+            $0.ownerUserID == currentUserID &&
+            $0.direction == .incoming &&
+            $0.status == .pending
+        }
     }
 
     var sentRequests: [FriendRequest] {
-        friendRequests.filter { $0.direction == .sent && $0.status == .pending }
+        guard let currentUserID else { return [] }
+        return friendRequests.filter {
+            $0.ownerUserID == currentUserID &&
+            $0.direction == .sent &&
+            $0.status == .pending
+        }
     }
 
     var friendsContent: some View {
@@ -962,6 +953,23 @@ private extension CrewView {
             }
         }
     }
+    
+    func reloadBackendFriends() async {
+        guard let currentUserID = session.currentUser?.id else { return }
+
+        await friendStore.loadAcceptedFriendships(currentUserID: currentUserID)
+
+        let otherUserIDs = friendStore.friendships.compactMap {
+            $0.requester_id == currentUserID ? $0.addressee_id : $0.requester_id
+        }
+
+        await friendStore.loadProfiles(for: otherUserIDs)
+
+        friendStore.syncAcceptedFriendsToLocal(
+            currentUserID: currentUserID,
+            modelContext: modelContext
+        )
+    }
 
     func declineRequest(_ request: FriendRequest) {
         request.status = .declined
@@ -1285,6 +1293,7 @@ private extension CrewView {
 
         let sharedItems = [
             SharedWeekItem(
+                ownerUserID: session.currentUser?.id,
                 friendID: ahmet.id,
                 title: "Math Lecture",
                 weekday: weekdayIndexToday(),
@@ -1292,6 +1301,7 @@ private extension CrewView {
                 durationMinute: 90
             ),
             SharedWeekItem(
+                ownerUserID: session.currentUser?.id,
                 friendID: ahmet.id,
                 title: "UI Study Session",
                 weekday: weekdayIndexToday(),
@@ -1299,6 +1309,7 @@ private extension CrewView {
                 durationMinute: 60
             ),
             SharedWeekItem(
+                ownerUserID: session.currentUser?.id,
                 friendID: ahmet.id,
                 title: "Physics Lab Prep",
                 weekday: weekdayIndexToday(),
@@ -1358,11 +1369,17 @@ private extension CrewView {
     }
 
     var activeFocusSessions: [FriendFocusSession] {
-        focusSessions.filter(\.isActive)
+        guard let currentUserID else { return [] }
+        let visibleFriendIDs = Set(backendFriends.map(\.id))
+        return focusSessions.filter {
+            $0.ownerUserID == currentUserID &&
+            $0.isActive &&
+            visibleFriendIDs.contains($0.friendID)
+        }
     }
 
     func friendForFocusSession(_ session: FriendFocusSession) -> Friend? {
-        friends.first(where: { $0.id == session.friendID })
+        backendFriends.first(where: { $0.id == session.friendID })
     }
 
     func focusMinutesLeft(for session: FriendFocusSession) -> Int {

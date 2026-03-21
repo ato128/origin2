@@ -19,9 +19,6 @@ struct FriendDetailView: View {
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private let palette = ThemePalette()
 
-    @Query(sort: \FriendMessage.createdAt, order: .forward)
-    private var allMessages: [FriendMessage]
-
     @Query(sort: \SharedWeekItem.createdAt, order: .forward)
     private var allSharedItems: [SharedWeekItem]
 
@@ -34,12 +31,30 @@ struct FriendDetailView: View {
     @State private var showSchedule = false
     @State private var showMessagesCard = false
     @State private var showActionsCard = false
-
-    private var messages: [FriendMessage] {
-        allMessages.filter { $0.friendID == friend.id }
+    
+    private var friendshipID: UUID? {
+        friend.backendFriendshipID
     }
 
+    private var backendMessages: [FriendChatMessageItem] {
+        guard let friendshipID else { return [] }
+        return friendStore.friendMessagesByFriendship[friendshipID] ?? []
+    }
+
+    private var isBackendFriend: Bool {
+        friend.backendFriendshipID != nil
+    }
+
+    private var messages: [FriendChatMessageItem] {
+        if isBackendFriend {
+            return backendMessages
+        } else {
+            return []
+        }
+    }
     private var todaySchedule: [SharedWeekItem] {
+        guard !isBackendFriend else { return [] }
+
         let today = weekdayIndexToday()
         return allSharedItems
             .filter { $0.friendID == friend.id && $0.weekday == today }
@@ -51,8 +66,12 @@ struct FriendDetailView: View {
     }
 
     private var activeFocusSession: FriendFocusSession? {
-        allFocusSessions.first { $0.friendID == friend.id && $0.isActive }
+        guard !isBackendFriend else { return nil }
+
+        return allFocusSessions.first { $0.friendID == friend.id && $0.isActive }
     }
+    
+    
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -131,7 +150,7 @@ struct FriendDetailView: View {
             }
         }
         .onAppear {
-            seedFriendDetailIfNeeded()
+            
 
             showHero = false
             showSchedule = false
@@ -161,6 +180,24 @@ struct FriendDetailView: View {
                     showActionsCard = true
                 }
             }
+        }
+        .task {
+            guard let friendshipID else { return }
+
+            await friendStore.loadMessages(
+                for: friendshipID,
+                currentUserID: session.currentUser?.id
+            )
+
+            await friendStore.markMessagesSeen(
+                friendshipID: friendshipID,
+                currentUserID: session.currentUser?.id
+            )
+
+            friendStore.subscribeToFriendMessagesRealtime(
+                friendshipID: friendshipID,
+                currentUserID: session.currentUser?.id
+            )
         }
         .sheet(isPresented: $showSharedFocusSheet) {
             FocusSessionView(
@@ -260,12 +297,19 @@ private extension FriendDetailView {
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(friend.name)
+                    
                         .font(.system(size: 28, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
 
                     Text(friend.subtitle)
                         .font(.subheadline)
                         .foregroundStyle(palette.secondaryText)
+
+                    if isBackendFriend {
+                        Text("Connected via server")
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                    }
 
                     HStack(spacing: 8) {
                         Circle()
@@ -379,7 +423,7 @@ private extension FriendDetailView {
             }
 
             if messages.isEmpty {
-                Text("No messages yet.")
+                Text(isBackendFriend ? "No backend messages yet." : "No messages yet.")
                     .font(.subheadline)
                     .foregroundStyle(palette.secondaryText)
             } else {
@@ -419,10 +463,16 @@ private extension FriendDetailView {
 
             HStack(spacing: 12) {
                 NavigationLink {
-                    FriendChatView(friend: friend)
-                        .environmentObject(friendStore)
-                        .environmentObject(session)
-                } label: {
+                    if isBackendFriend {
+                        FriendChatView(friend: friend)
+                            .environmentObject(friendStore)
+                            .environmentObject(session)
+                    } else {
+                        FriendChatView(friend: friend)
+                            .environmentObject(friendStore)
+                            .environmentObject(session)
+                    }
+                }label: {
                     actionTile(
                         title: "Message",
                         systemImage: "message.fill"
@@ -434,8 +484,9 @@ private extension FriendDetailView {
                     title: activeFocusSession == nil ? "Start Focus" : "Stop Focus",
                     systemImage: activeFocusSession == nil ? "stopwatch.fill" : "stop.circle.fill"
                 ) {
-                    if activeFocusSession == nil {
-                        startSharedFocusAndJoin()
+                    if isBackendFriend {
+                        print("🚫 Backend friend focus not implemented yet")
+                        return
                     } else {
                         stopSharedFocus()
                     }
@@ -482,7 +533,8 @@ private extension FriendDetailView {
     }
 
     func startSharedFocusAndJoin() {
-        let session = FriendFocusSession(
+        let focusSession = FriendFocusSession(
+            ownerUserID: session.currentUser?.id,
             friendID: friend.id,
             title: "Shared Focus",
             startedAt: Date(),
@@ -504,7 +556,7 @@ private extension FriendDetailView {
             isFromMe: true
         )
 
-        modelContext.insert(session)
+        modelContext.insert(focusSession)
         modelContext.insert(startMessage)
         modelContext.insert(joinMessage)
 
@@ -563,37 +615,7 @@ private extension FriendDetailView {
         .buttonStyle(.plain)
     }
 
-    func seedFriendDetailIfNeeded() {
-        let existingShared = allSharedItems.filter { $0.friendID == friend.id }
-        if existingShared.isEmpty {
-            let today = weekdayIndexToday()
-
-            let sample = [
-                SharedWeekItem(friendID: friend.id, title: "Math Lecture", weekday: today, startMinute: 9 * 60, durationMinute: 90),
-                SharedWeekItem(friendID: friend.id, title: "UI Study Session", weekday: today, startMinute: 13 * 60, durationMinute: 60),
-                SharedWeekItem(friendID: friend.id, title: "Physics Lab Prep", weekday: today, startMinute: 18 * 60, durationMinute: 60)
-            ]
-
-            for item in sample {
-                modelContext.insert(item)
-            }
-        }
-
-        let existingMessages = allMessages.filter { $0.friendID == friend.id }
-        if existingMessages.isEmpty {
-            let sampleMessages = [
-                FriendMessage(friendID: friend.id, senderName: friend.name, text: "Hey, are you free after class?", isFromMe: false),
-                FriendMessage(friendID: friend.id, senderName: "Me", text: "Yes, probably after 5.", isFromMe: true),
-                FriendMessage(friendID: friend.id, senderName: friend.name, text: "Nice, let's plan study time.", isFromMe: false)
-            ]
-
-            for item in sampleMessages {
-                modelContext.insert(item)
-            }
-        }
-
-        try? modelContext.save()
-    }
+    
 
     func weekdayIndexToday() -> Int {
         let w = Calendar.current.component(.weekday, from: Date())
