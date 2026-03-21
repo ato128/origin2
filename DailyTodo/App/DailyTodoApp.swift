@@ -19,6 +19,7 @@ struct DailyTodoApp: App {
     @StateObject private var session = SessionStore()
     @StateObject private var crewStore = CrewStore()
     @StateObject private var friendStore = FriendStore()
+    @StateObject private var todoStore: TodoStore
 
     init() {
         do {
@@ -44,6 +45,12 @@ struct DailyTodoApp: App {
                 CrewFocusRecord.self,
                 FriendRequest.self
             )
+
+            let context = ModelContext(container)
+            _todoStore = StateObject(
+                wrappedValue: TodoStore(context: context)
+            )
+
         } catch {
             fatalError("SwiftData container oluşturulamadı: \(error)")
         }
@@ -53,9 +60,7 @@ struct DailyTodoApp: App {
         WindowGroup {
             RootView()
                 .modelContainer(container)
-                .environmentObject(
-                    TodoStore(context: ModelContext(container))
-                )
+                .environmentObject(todoStore)
                 .environmentObject(session)
                 .environmentObject(crewStore)
                 .environmentObject(friendStore)
@@ -65,8 +70,13 @@ struct DailyTodoApp: App {
 
                     LiveActivityScheduler.shared.registerBGTask()
                     LiveActivityScheduler.shared.startForegroundLoop(container: container)
-                    
+
                     PushNotificationManager.requestPermission()
+
+                    todoStore.setCurrentUserID(session.currentUser?.id.uuidString)
+                }
+                .onChange(of: session.currentUser?.id) { _, newID in
+                    todoStore.setCurrentUserID(newID?.uuidString)
                 }
                 .onChange(of: scenePhase) { _, newPhase in
                     if newPhase == .active {
@@ -123,5 +133,3 @@ extension Notification.Name {
     static let openWeekFromWidget = Notification.Name("openWeekFromWidget")
     static let openCrewInviteFromLink = Notification.Name("openCrewInviteFromLink")
 }
-
-

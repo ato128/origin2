@@ -11,7 +11,7 @@ import SwiftData
 @Model
 final class EventItem {
     var id: UUID
-    var ownerUserID: UUID?
+    var ownerUserID: String?
 
     var title: String
 
@@ -38,7 +38,7 @@ final class EventItem {
     var isCompleted: Bool
 
     init(
-        ownerUserID: UUID? = nil,
+        ownerUserID: String? = nil,
         title: String,
         weekday: Int,
         startMinute: Int,

@@ -11,9 +11,34 @@ struct SharedWeekView: View {
     let friend: Friend
 
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var friendStore: FriendStore
+    @EnvironmentObject var session: SessionStore
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
 
     private let palette = ThemePalette()
+    private let dayTitles = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
+
+    @State private var selectedDay: Int = 0
+
+    private var friendUserID: UUID? {
+        friend.backendUserID
+    }
+
+    private var isSharedEnabled: Bool {
+        guard let friendUserID else { return false }
+        return friendStore.weekShareEnabledByUserID[friendUserID] ?? false
+    }
+
+    private var sharedItems: [FriendWeekShareDTO] {
+        guard let friendUserID else { return [] }
+        return friendStore.sharedWeekItemsByUserID[friendUserID] ?? []
+    }
+
+    private var selectedDayItems: [FriendWeekShareDTO] {
+        sharedItems
+            .filter { $0.weekday == selectedDay }
+            .sorted { $0.start_minute < $1.start_minute }
+    }
 
     var body: some View {
         ZStack {
@@ -28,14 +53,28 @@ struct SharedWeekView: View {
                             .font(.system(size: 28, weight: .bold, design: .rounded))
                             .foregroundStyle(palette.primaryText)
 
-                        Text("Backend bağlantısı hazır. Bir sonraki adımda burada arkadaşının gerçek haftalık planını göstereceğiz.")
-                            .font(.subheadline)
-                            .foregroundStyle(palette.secondaryText)
+                        if isSharedEnabled {
+                            Text("Haftalık planını seninle paylaştı.")
+                                .font(.subheadline)
+                                .foregroundStyle(.green)
+                        } else {
+                            Text("\(friend.name) henüz haftasını seninle paylaşmadı.")
+                                .font(.subheadline)
+                                .foregroundStyle(palette.secondaryText)
+                        }
 
-                        VStack(spacing: 12) {
-                            sampleRow(title: "Math Lecture", time: "09:00 – 10:30")
-                            sampleRow(title: "UI Study Session", time: "13:00 – 14:00")
-                            sampleRow(title: "Physics Lab Prep", time: "18:00 – 19:00")
+                        dayPicker
+
+                        if !isSharedEnabled {
+                            emptyShareState
+                        } else if selectedDayItems.isEmpty {
+                            emptyDayState
+                        } else {
+                            VStack(spacing: 12) {
+                                ForEach(selectedDayItems) { item in
+                                    sharedRow(item: item)
+                                }
+                            }
                         }
                     }
                     .padding(20)
@@ -47,6 +86,14 @@ struct SharedWeekView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .task {
+            selectedDay = weekdayIndexToday()
+
+            guard let friendUserID else { return }
+
+            await friendStore.loadWeekShareState(for: friendUserID)
+            await friendStore.loadSharedWeekItems(for: friendUserID)
+        }
     }
 
     var header: some View {
@@ -80,7 +127,70 @@ struct SharedWeekView: View {
         }
     }
 
-    func sampleRow(title: String, time: String) -> some View {
+    var dayPicker: some View {
+        HStack(spacing: 8) {
+            ForEach(0..<7, id: \.self) { day in
+                let selected = selectedDay == day
+
+                Button {
+                    withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                        selectedDay = day
+                    }
+                } label: {
+                    Text(dayTitles[day])
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(selected ? .white : palette.secondaryText)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule()
+                                .fill(selected ? Color.accentColor : palette.secondaryCardFill)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    var emptyShareState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "calendar.badge.exclamationmark")
+                .font(.system(size: 28))
+                .foregroundStyle(palette.secondaryText)
+
+            Text("Paylaşılan hafta görünmüyor")
+                .font(.headline)
+                .foregroundStyle(palette.primaryText)
+
+            Text("Arkadaşın Share My Week ayarını açtığında burada gerçek planı göreceksin.")
+                .font(.subheadline)
+                .foregroundStyle(palette.secondaryText)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+    }
+
+    var emptyDayState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "calendar")
+                .font(.system(size: 28))
+                .foregroundStyle(palette.secondaryText)
+
+            Text("Bu gün için plan yok")
+                .font(.headline)
+                .foregroundStyle(palette.primaryText)
+
+            Text("\(friend.name) bu gün için bir etkinlik paylaşmamış.")
+                .font(.subheadline)
+                .foregroundStyle(palette.secondaryText)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+    }
+
+    func sharedRow(item: FriendWeekShareDTO) -> some View {
         HStack(spacing: 12) {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.accentColor.opacity(0.14))
@@ -91,13 +201,21 @@ struct SharedWeekView: View {
                 }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
+                Text(item.title)
                     .font(.headline)
                     .foregroundStyle(palette.primaryText)
 
-                Text(time)
+                Text("\(hm(item.start_minute)) – \(hm(item.start_minute + item.duration_minute))")
                     .font(.subheadline)
                     .foregroundStyle(palette.secondaryText)
+
+                if let details = item.details,
+                   !details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text(details)
+                        .font(.caption)
+                        .foregroundStyle(palette.secondaryText)
+                        .lineLimit(2)
+                }
             }
 
             Spacer()
@@ -107,6 +225,18 @@ struct SharedWeekView: View {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(palette.secondaryCardFill)
         )
+    }
+
+    func weekdayIndexToday() -> Int {
+        let w = Calendar.current.component(.weekday, from: Date())
+        return (w + 5) % 7
+    }
+
+    func hm(_ minute: Int) -> String {
+        let m = max(0, min(1439, minute))
+        let h = m / 60
+        let mm = m % 60
+        return String(format: "%02d:%02d", h, mm)
     }
 
     var cardBackground: some View {

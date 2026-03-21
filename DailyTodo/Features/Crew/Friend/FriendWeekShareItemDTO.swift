@@ -1,22 +1,22 @@
 //
-//  FriendWeekShareDTO.swift
+//  FriendWeekShareItemDTO.swift
 //  DailyTodo
 //
 //  Created by Atakan Ortaç on 21.03.2026.
 //
 
+
 import Foundation
 
-struct FriendWeekShareDTO: Codable, Identifiable {
+struct FriendWeekShareItemDTO: Codable, Identifiable, Hashable {
     let id: UUID
     let friendship_id: UUID
-    let user_id: UUID
-    let friend_user_id: UUID
+    let owner_user_id: UUID
+    let viewer_user_id: UUID
     let title: String
     let details: String?
     let weekday: Int
     let start_minute: Int
     let duration_minute: Int
-    let is_enabled: Bool?
     let created_at: String?
 }

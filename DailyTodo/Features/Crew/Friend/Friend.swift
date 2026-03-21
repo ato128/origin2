@@ -11,7 +11,7 @@ import SwiftData
 @Model
 final class Friend {
     var id: UUID
-    var ownerUserID: UUID?
+    var ownerUserID: String?
     var backendFriendshipID: UUID?
     var backendUserID: UUID?
 
@@ -25,7 +25,7 @@ final class Friend {
 
     init(
         id: UUID = UUID(),
-        ownerUserID: UUID? = nil,
+        ownerUserID: String? = nil,
         backendFriendshipID: UUID? = nil,
         backendUserID: UUID? = nil,
         name: String,

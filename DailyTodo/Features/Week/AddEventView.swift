@@ -195,7 +195,7 @@ struct AddEventView: View {
         let sameDay: [EventItem]
 
         if let currentUserID = session.currentUser?.id {
-            sameDay = sameDayAll.filter { $0.ownerUserID == currentUserID }
+            sameDay = sameDayAll.filter { $0.ownerUserID == currentUserID.uuidString }
         } else {
             sameDay = []
         }
@@ -242,7 +242,7 @@ struct AddEventView: View {
         let scheduledDate = buildScheduledDate(startMinute: start)
 
         let ev = EventItem(
-            ownerUserID: session.currentUser?.id,
+            ownerUserID: session.currentUser?.id.uuidString,
             title: title,
             weekday: weekday,
             startMinute: start,
@@ -275,25 +275,30 @@ struct AddEventView: View {
         let minute = startMinute % 60
 
         if let defaultDate {
+            let startOfSelectedDay = calendar.startOfDay(for: defaultDate)
             return calendar.date(
                 bySettingHour: hour,
                 minute: minute,
                 second: 0,
-                of: defaultDate
+                of: startOfSelectedDay
             )
         }
 
-        guard let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: Date())?.start,
-              let targetDate = calendar.date(byAdding: .day, value: weekday, to: startOfWeek)
-        else {
+        let today = Date()
+        let todayWeekday = (calendar.component(.weekday, from: today) + 5) % 7
+        let diff = weekday - todayWeekday
+
+        guard let targetDate = calendar.date(byAdding: .day, value: diff, to: today) else {
             return nil
         }
+
+        let startOfTargetDay = calendar.startOfDay(for: targetDate)
 
         return calendar.date(
             bySettingHour: hour,
             minute: minute,
             second: 0,
-            of: targetDate
+            of: startOfTargetDay
         )
     }
 

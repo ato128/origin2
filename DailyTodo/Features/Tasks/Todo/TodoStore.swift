@@ -16,19 +16,20 @@ final class TodoStore: ObservableObject {
     private let context: ModelContext
 
     @Published private(set) var items: [DTTaskItem] = []
-    @Published private(set) var currentUserID: UUID?
+    @Published private(set) var currentUserID: String?
 
-    init(context: ModelContext) {
+    init(context: ModelContext, currentUserID: String? = nil) {
         self.context = context
+        self.currentUserID = currentUserID
         reload()
     }
 
-    // MARK: - Session Scope
-
-    func setCurrentUser(_ userID: UUID?) {
+    func setCurrentUserID(_ userID: String?) {
         currentUserID = userID
         reload()
     }
+
+    
 
     // MARK: - Read
 
@@ -38,12 +39,12 @@ final class TodoStore: ObservableObject {
                 sortBy: [SortDescriptor(\DTTaskItem.createdAt, order: .reverse)]
             )
 
-            let allItems = try context.fetch(descriptor)
+            let fetched = try context.fetch(descriptor)
 
             if let currentUserID {
-                items = allItems.filter { $0.ownerUserID == currentUserID }
+                items = fetched.filter { $0.ownerUserID == currentUserID }
             } else {
-                items = []
+                items = fetched
             }
         } catch {
             print("❌ TodoStore.reload fetch failed:", error)
@@ -59,6 +60,7 @@ final class TodoStore: ObservableObject {
         } catch {
             print("❌ TodoStore.save failed:", error)
         }
+
         reload()
         objectWillChange.send()
     }
@@ -77,6 +79,7 @@ final class TodoStore: ObservableObject {
     ) {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+
         guard let currentUserID else {
             print("❌ TodoStore.add blocked: currentUserID nil")
             return

@@ -96,8 +96,8 @@ struct HomeDashboardView: View {
         store.items
     }
     
-    var currentUserID: UUID? {
-        session.currentUser?.id
+    var currentUserID: String? {
+        session.currentUser?.id.uuidString
     }
 
     var userScopedEvents: [EventItem] {

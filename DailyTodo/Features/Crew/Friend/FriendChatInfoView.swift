@@ -13,14 +13,20 @@ struct FriendChatInfoView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var friendStore: FriendStore
     @EnvironmentObject var session: SessionStore
+    @Environment(\.modelContext) private var modelContext
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
 
+    @Query(sort: \EventItem.startMinute, order: .forward)
+    private var allEvents: [EventItem]
+    
     private let palette = ThemePalette()
 
     @State private var showSharedWeek = false
     @State private var isSavingShare = false
     @State private var shareMyWeek = false
     @State private var infoMessage: String?
+    @State private var isLoadingShareState = true
+   
 
     private var friendshipID: UUID? { friend.backendFriendshipID }
     private var friendUserID: UUID? { friend.backendUserID }
@@ -54,35 +60,17 @@ struct FriendChatInfoView: View {
                 let friendUserID
             else { return }
 
+            isLoadingShareState = true
+
             await friendStore.loadWeekShareStatus(
                 friendshipID: friendshipID,
                 currentUserID: currentUserID,
                 friendUserID: friendUserID
             )
 
-            shareMyWeek = friendStore.outgoingWeekSharesByFriendship[friendshipID]?.is_enabled == true
-        }
-        .onChange(of: shareMyWeek) { _, newValue in
-            guard
-                let friendshipID,
-                let currentUserID = session.currentUser?.id,
-                let friendUserID
-            else { return }
-
-            if isSavingShare { return }
-
-            isSavingShare = true
-            Task {
-                await friendStore.setWeekShareEnabled(
-                    friendshipID: friendshipID,
-                    currentUserID: currentUserID,
-                    friendUserID: friendUserID,
-                    isEnabled: newValue
-                )
-
-                await MainActor.run {
-                    isSavingShare = false
-                }
+            await MainActor.run {
+                shareMyWeek = friendStore.outgoingWeekSharesByFriendship[friendshipID]?.is_enabled == true
+                isLoadingShareState = false
             }
         }
         .sheet(isPresented: $showSharedWeek) {
@@ -203,7 +191,42 @@ private extension FriendChatInfoView {
 
     var settingsCard: some View {
         VStack(spacing: 0) {
-            Toggle(isOn: $shareMyWeek) {
+            Toggle(isOn: Binding(
+                get: { shareMyWeek },
+                set: { newValue in
+                    guard
+                        let friendshipID,
+                        let currentUserID = session.currentUser?.id,
+                        let friendUserID
+                    else { return }
+
+                    if isSavingShare || isLoadingShareState { return }
+
+                    shareMyWeek = newValue
+                    isSavingShare = true
+
+                    Task {
+                        await friendStore.setWeekShareEnabled(
+                            friendshipID: friendshipID,
+                            currentUserID: currentUserID,
+                            friendUserID: friendUserID,
+                            isEnabled: newValue,
+                            events: allEvents
+                        )
+
+                        await friendStore.loadWeekShareStatus(
+                            friendshipID: friendshipID,
+                            currentUserID: currentUserID,
+                            friendUserID: friendUserID
+                        )
+
+                        await MainActor.run {
+                            shareMyWeek = friendStore.outgoingWeekSharesByFriendship[friendshipID]?.is_enabled == true
+                            isSavingShare = false
+                        }
+                    }
+                }
+            )) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Share My Week")
                         .font(.subheadline.weight(.semibold))

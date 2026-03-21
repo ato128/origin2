@@ -128,7 +128,7 @@ struct WeekView: View {
 
     var userScopedEvents: [EventItem] {
         guard let currentUserID else { return [] }
-        return allEvents.filter { $0.ownerUserID == currentUserID }
+        return allEvents.filter { $0.ownerUserID == currentUserID.uuidString }
     }
 
     var userScopedTasks: [DTTaskItem] {
@@ -618,6 +618,7 @@ extension WeekView {
                         showCrewPickerSheet = true
                     }
                 } else {
+                    planAheadDate = targetDateForSelectedDay()
                     showingAdd = true
                 }
             } label: {

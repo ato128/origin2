@@ -19,6 +19,7 @@ enum AppTab: Hashable {
 }
 
 struct MainTabView: View {
+    
     @EnvironmentObject var store: TodoStore
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var crewStore: CrewStore
@@ -59,12 +60,16 @@ struct MainTabView: View {
             .tag(AppTab.settings)
         }
         .onAppear {
-            store.setCurrentUser(session.currentUser?.id)
+            print("MAIN TAB CURRENT USER:", session.currentUser?.id.uuidString ?? "nil")
+
+            store.setCurrentUserID(session.currentUser?.id.uuidString)
             crewStore.setCurrentUser(session.currentUser?.id)
             crewStore.resetForUserChange()
         }
         .onChange(of: session.currentUser?.id) { _, newUserID in
-            store.setCurrentUser(newUserID)
+            print("MAIN TAB USER CHANGED:", newUserID?.uuidString ?? "nil")
+
+            store.setCurrentUserID(newUserID?.uuidString)
             crewStore.setCurrentUser(newUserID)
             crewStore.resetForUserChange()
         }

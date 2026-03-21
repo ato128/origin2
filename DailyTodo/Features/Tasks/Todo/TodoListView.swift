@@ -71,7 +71,7 @@ struct TodoListView: View {
 
     var userScopedEvents: [EventItem] {
         guard let currentUserID else { return [] }
-        return allEvents.filter { $0.ownerUserID == currentUserID }
+        return allEvents.filter { $0.ownerUserID == currentUserID.uuidString }
     }
 
     var userScopedCrews: [Crew] {

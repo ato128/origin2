@@ -38,7 +38,7 @@ struct CrewView: View {
     var backendFriends: [Friend] {
         guard let currentUserID else { return [] }
         return friends.filter {
-            $0.ownerUserID == currentUserID && $0.backendFriendshipID != nil
+            $0.ownerUserID == currentUserID.uuidString && $0.backendFriendshipID != nil
         }
     }
 
