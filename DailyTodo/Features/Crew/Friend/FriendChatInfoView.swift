@@ -35,6 +35,11 @@ struct FriendChatInfoView: View {
         guard let friendshipID else { return false }
         return friendStore.incomingWeekSharesByFriendship[friendshipID]?.is_enabled == true
     }
+    
+    private var currentUserEvents: [EventItem] {
+        guard let currentUserID = session.currentUser?.id.uuidString else { return [] }
+        return allEvents.filter { $0.ownerUserID == currentUserID }
+    }
 
     var body: some View {
         ZStack {
@@ -69,7 +74,8 @@ struct FriendChatInfoView: View {
             )
 
             await MainActor.run {
-                shareMyWeek = friendStore.outgoingWeekSharesByFriendship[friendshipID]?.is_enabled == true
+                shareMyWeek =
+                    friendStore.outgoingWeekSharesByFriendship[friendshipID]?.is_enabled == true
                 isLoadingShareState = false
             }
         }
@@ -211,14 +217,10 @@ private extension FriendChatInfoView {
                             currentUserID: currentUserID,
                             friendUserID: friendUserID,
                             isEnabled: newValue,
-                            events: allEvents
+                            events: currentUserEvents
                         )
 
-                        await friendStore.loadWeekShareStatus(
-                            friendshipID: friendshipID,
-                            currentUserID: currentUserID,
-                            friendUserID: friendUserID
-                        )
+                        
 
                         await MainActor.run {
                             shareMyWeek = friendStore.outgoingWeekSharesByFriendship[friendshipID]?.is_enabled == true

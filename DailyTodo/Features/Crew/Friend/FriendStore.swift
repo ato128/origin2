@@ -22,7 +22,7 @@ final class FriendStore: ObservableObject {
     @Published var incomingWeekSharesByFriendship: [UUID: FriendWeekShareDTO] = [:]
     @Published var outgoingWeekSharesByFriendship: [UUID: FriendWeekShareDTO] = [:]
     @Published var weekShareEnabledByUserID: [UUID: Bool] = [:]
-    @Published var sharedWeekItemsByUserID: [UUID: [FriendWeekShareDTO]] = [:]
+    @Published var sharedWeekItemsByFriendship: [UUID: [FriendWeekShareItemDTO]] = [:]
     
     private var friendPresenceChannel: RealtimeChannelV2?
     
@@ -160,50 +160,61 @@ final class FriendStore: ObservableObject {
                 .from("friend_week_shares")
                 .select()
                 .eq("friendship_id", value: friendshipID.uuidString)
-                .or("user_id.eq.\(currentUserID.uuidString),user_id.eq.\(friendUserID.uuidString)")
+                .or(
+                    "and(owner_user_id.eq.\(currentUserID.uuidString),viewer_user_id.eq.\(friendUserID.uuidString)),and(owner_user_id.eq.\(friendUserID.uuidString),viewer_user_id.eq.\(currentUserID.uuidString))"
+                )
                 .execute()
-            
+            print("WEEK SHARE RAW:", String(data: response.data, encoding: .utf8) ?? "nil")
+
             let decoded = try JSONDecoder().decode([FriendWeekShareDTO].self, from: response.data)
-            
-            let outgoingEnabled = decoded.contains {
-                $0.user_id == currentUserID && ($0.is_enabled ?? false)
-            }
-            
-            let incomingEnabled = decoded.contains {
-                $0.user_id == friendUserID && ($0.is_enabled ?? false)
-            }
-            
-            if outgoingEnabled {
-                outgoingWeekSharesByFriendship[friendshipID] = decoded.first {
-                    $0.user_id == currentUserID && ($0.is_enabled ?? false)
+
+            var outgoing: FriendWeekShareDTO?
+            var incoming: FriendWeekShareDTO?
+
+            for item in decoded {
+                if item.owner_user_id == currentUserID &&
+                    item.viewer_user_id == friendUserID {
+                    outgoing = item
                 }
+
+                if item.owner_user_id == friendUserID &&
+                    item.viewer_user_id == currentUserID {
+                    incoming = item
+                }
+            }
+
+            if let outgoing {
+                outgoingWeekSharesByFriendship[friendshipID] = outgoing
             } else {
                 outgoingWeekSharesByFriendship.removeValue(forKey: friendshipID)
             }
-            
-            if incomingEnabled {
-                incomingWeekSharesByFriendship[friendshipID] = decoded.first {
-                    $0.user_id == friendUserID && ($0.is_enabled ?? false)
-                }
+
+            if let incoming {
+                incomingWeekSharesByFriendship[friendshipID] = incoming
             } else {
                 incomingWeekSharesByFriendship.removeValue(forKey: friendshipID)
             }
-            
+
         } catch {
             print("LOAD WEEK SHARE STATUS ERROR:", error.localizedDescription)
         }
     }
     
     func setWeekShareEnabled(
-    friendshipID: UUID,
-    currentUserID: UUID,
-    friendUserID: UUID,
-    isEnabled: Bool,
-    events: [EventItem]
-        
+        friendshipID: UUID,
+        currentUserID: UUID,
+        friendUserID: UUID,
+        isEnabled: Bool,
+        events: [EventItem]
     ) async {
-        print("SET WEEK SHARE ->", isEnabled, friendshipID.uuidString)
-        struct Payload: Encodable {
+        struct SharePayload: Encodable {
+            let friendship_id: UUID
+            let owner_user_id: UUID
+            let viewer_user_id: UUID
+            let is_enabled: Bool
+        }
+
+        struct ItemPayload: Encodable {
             let friendship_id: UUID
             let owner_user_id: UUID
             let viewer_user_id: UUID
@@ -212,24 +223,37 @@ final class FriendStore: ObservableObject {
             let weekday: Int
             let start_minute: Int
             let duration_minute: Int
-            let is_enabled: Bool
         }
 
         do {
-            // Önce bu friendship + current user kayıtlarını temizle
+            // 1) toggle kaydını upsert et
+            let sharePayload = SharePayload(
+                friendship_id: friendshipID,
+                owner_user_id: currentUserID,
+                viewer_user_id: friendUserID,
+                is_enabled: isEnabled
+            )
+
             try await SupabaseManager.shared.client
                 .from("friend_week_shares")
+                .upsert(sharePayload, onConflict: "friendship_id,owner_user_id,viewer_user_id")
+                .execute()
+
+            // 2) bu owner-viewer için eski paylaşılan itemları sil
+            try await SupabaseManager.shared.client
+                .from("friend_week_share_items")
                 .delete()
                 .eq("friendship_id", value: friendshipID.uuidString)
                 .eq("owner_user_id", value: currentUserID.uuidString)
                 .eq("viewer_user_id", value: friendUserID.uuidString)
                 .execute()
 
+            // 3) açıksa eventleri tekrar insert et
             if isEnabled {
                 let validEvents = events.filter { !$0.isCompleted }
 
                 let payloads = validEvents.map { event in
-                    Payload(
+                    ItemPayload(
                         friendship_id: friendshipID,
                         owner_user_id: currentUserID,
                         viewer_user_id: friendUserID,
@@ -237,14 +261,13 @@ final class FriendStore: ObservableObject {
                         details: event.notes,
                         weekday: event.weekday,
                         start_minute: event.startMinute,
-                        duration_minute: event.durationMinute,
-                        is_enabled: true
+                        duration_minute: event.durationMinute
                     )
                 }
 
                 if !payloads.isEmpty {
                     try await SupabaseManager.shared.client
-                        .from("friend_week_shares")
+                        .from("friend_week_share_items")
                         .insert(payloads)
                         .execute()
                 }
@@ -256,8 +279,11 @@ final class FriendStore: ObservableObject {
                 friendUserID: friendUserID
             )
 
-            await loadWeekShareState(for: currentUserID)
-            await loadSharedWeekItems(for: currentUserID)
+            await loadSharedWeekItems(
+                friendshipID: friendshipID,
+                ownerUserID: friendUserID,
+                viewerUserID: currentUserID
+            )
 
         } catch {
             print("SET WEEK SHARE ENABLED ERROR:", error.localizedDescription)
@@ -282,22 +308,27 @@ final class FriendStore: ObservableObject {
         }
     }
 
-    func loadSharedWeekItems(for userID: UUID) async {
+    func loadSharedWeekItems(
+        friendshipID: UUID,
+        ownerUserID: UUID,
+        viewerUserID: UUID
+    ) async {
         do {
             let response = try await SupabaseManager.shared.client
-                .from("friend_week_shares")
+                .from("friend_week_share_items")
                 .select()
-                .eq("user_id", value: userID.uuidString)
-                .eq("is_enabled", value: true)
+                .eq("friendship_id", value: friendshipID.uuidString)
+                .eq("owner_user_id", value: ownerUserID.uuidString)
+                .eq("viewer_user_id", value: viewerUserID.uuidString)
                 .order("weekday", ascending: true)
                 .order("start_minute", ascending: true)
                 .execute()
 
-            let decoded = try JSONDecoder().decode([FriendWeekShareDTO].self, from: response.data)
-            sharedWeekItemsByUserID[userID] = decoded
+            let decoded = try JSONDecoder().decode([FriendWeekShareItemDTO].self, from: response.data)
+            sharedWeekItemsByFriendship[friendshipID] = decoded
         } catch {
             print("LOAD SHARED WEEK ITEMS ERROR:", error.localizedDescription)
-            sharedWeekItemsByUserID[userID] = []
+            sharedWeekItemsByFriendship[friendshipID] = []
         }
     }
 
