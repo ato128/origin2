@@ -21,4 +21,5 @@ struct FriendChatMessageItem: Identifiable, Equatable {
     let isFromMe: Bool
     let isPending: Bool
     let isFailed: Bool
+    let seenAt: Date?
 }

@@ -17,4 +17,5 @@ struct FriendMessageDTO: Codable, Identifiable {
     let reaction: String?
     let is_system_message: Bool?
     let client_id: String?
+    let seen_at: String?
 }

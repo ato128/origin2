@@ -8,9 +8,11 @@
 import SwiftUI
 import SwiftData
 import WidgetKit
+import UserNotifications
 
 @main
 struct DailyTodoApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.scenePhase) private var scenePhase
     private let container: ModelContainer
 
@@ -63,6 +65,8 @@ struct DailyTodoApp: App {
 
                     LiveActivityScheduler.shared.registerBGTask()
                     LiveActivityScheduler.shared.startForegroundLoop(container: container)
+                    
+                    PushNotificationManager.requestPermission()
                 }
                 .onChange(of: scenePhase) { _, newPhase in
                     if newPhase == .active {

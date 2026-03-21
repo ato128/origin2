@@ -30,6 +30,10 @@ struct CrewView: View {
 
     @Query(sort: \Friend.createdAt, order: .reverse)
     private var friends: [Friend]
+    
+    var backendFriends: [Friend] {
+        friends.filter { $0.backendFriendshipID != nil }
+    }
 
     @Query(sort: \FriendFocusSession.startedAt, order: .reverse)
     private var focusSessions: [FriendFocusSession]
@@ -43,6 +47,8 @@ struct CrewView: View {
     @State private var pulseLiveIndicator = false
     @State private var showJoinCrewSheet = false
     @State private var pendingInviteCode = ""
+    @State private var didLoad = false
+    @State private var didLoadFriends = false
     
    
     
@@ -101,30 +107,42 @@ struct CrewView: View {
                 }
             }
             .task {
+                if didLoadFriends { return }
+                didLoadFriends = true
+
                 await crewStore.loadCrews()
                 await crewStore.loadStatsForAllCrews()
 
                 guard let currentUserID = session.currentUser?.id else { return }
 
-                // ✅ Backend friendships çek
+                print("CURRENT USER ID:", currentUserID)
+                print("LOADING ACCEPTED FRIENDSHIPS START")
+
                 await friendStore.loadAcceptedFriendships(currentUserID: currentUserID)
 
-                // ✅ karşı taraf userID'leri bul
-                let otherUserIDs = friendStore.friendships.map {
+                print("FRIENDSHIPS COUNT:", friendStore.friendships.count)
+
+                let otherUserIDs = friendStore.friendships.compactMap {
                     $0.requester_id == currentUserID ? $0.addressee_id : $0.requester_id
                 }
 
-                // ✅ profilleri çek
+                print("OTHER USER IDS:", otherUserIDs)
+
                 await friendStore.loadProfiles(for: otherUserIDs)
 
-                // 🔥 KRİTİK: modelContext oluştur
-               
-
-                // ✅ local'e yaz
                 friendStore.syncAcceptedFriendsToLocal(
                     currentUserID: currentUserID,
                     modelContext: modelContext
                 )
+
+                let descriptor = FetchDescriptor<Friend>()
+                let localFriends = (try? modelContext.fetch(descriptor)) ?? []
+                print("LOCAL FRIEND COUNT AFTER SYNC:", localFriends.count)
+                for item in localFriends {
+                    print("LOCAL FRIEND:", item.name, item.backendFriendshipID as Any)
+                }
+
+                print("LOADING ACCEPTED FRIENDSHIPS DONE")
             }
             .onReceive(NotificationCenter.default.publisher(for: .openCrewInviteFromLink)) { notification in
                 if let code = notification.object as? String {
@@ -591,7 +609,7 @@ private extension CrewView {
                 friendsFocusActivityCard
             }
 
-            if friends.isEmpty && incomingRequests.isEmpty && sentRequests.isEmpty {
+            if backendFriends.isEmpty {
                 friendsEmptyStateCard
             } else {
                 VStack(alignment: .leading, spacing: 14) {
@@ -599,7 +617,7 @@ private extension CrewView {
                         .font(.headline)
                         .foregroundStyle(palette.primaryText)
 
-                    ForEach(friends) { friend in
+                    ForEach(backendFriends) { friend in
                         friendRow(friend)
                     }
                 }
@@ -714,7 +732,7 @@ private extension CrewView {
     }
 
     var friendsOverviewCard: some View {
-        let onlineCount = friends.filter(\.isOnline).count
+        let onlineCount = backendFriends.filter(\.isOnline).count
 
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
@@ -736,7 +754,7 @@ private extension CrewView {
             }
 
             HStack(spacing: 10) {
-                statPill(title: "\(friends.count)", subtitle: "Friends")
+                statPill(title: "\(backendFriends.count)", subtitle: "Friends")
                 statPill(title: "\(incomingRequests.count)", subtitle: "Requests")
                 statPill(title: "\(activeFriendFocusCount)", subtitle: "In Focus")
             }
@@ -824,10 +842,8 @@ private extension CrewView {
                 .multilineTextAlignment(.center)
 
             Button {
-                print("ADD SAMPLE REQUESTS TAPPED")
-                seedMockFriendRequestsIfNeeded()
             } label: {
-                Text("Add Sample Requests")
+                Text("Waiting for backend friends")
                     .font(.subheadline.weight(.semibold))
                     .padding(.horizontal, 18)
                     .padding(.vertical, 11)

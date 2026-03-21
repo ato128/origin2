@@ -16,6 +16,19 @@ final class FriendStore: ObservableObject {
     @Published var profiles: [UUID: FriendProfileDTO] = [:]
     @Published var isLoading = false
     @Published var friendMessagesByFriendship: [UUID: [FriendChatMessageItem]] = [:]
+    @Published var typingStatusByFriendship: [UUID: Bool] = [:]
+    @Published var typingUsers: [UUID: String] = [:]
+    @Published var presenceByUserID: [UUID: FriendPresenceDTO] = [:]
+
+    private var friendPresenceChannel: RealtimeChannelV2?
+
+    private var friendTypingChannel: RealtimeChannelV2?
+    private var typingResetTask: Task<Void, Never>?
+
+    private var friendMessagesChannel: RealtimeChannelV2?
+    private var subscribedFriendshipID: UUID?
+
+    // MARK: - Friendships
 
     func loadAcceptedFriendships(currentUserID: UUID) async {
         isLoading = true
@@ -52,28 +65,51 @@ final class FriendStore: ObservableObject {
         }
     }
 
+    // MARK: - Profiles
+
     func loadProfiles(for userIDs: [UUID]) async {
         let uniqueIDs = Array(Set(userIDs))
         guard !uniqueIDs.isEmpty else { return }
 
         do {
+            print("LOADING PROFILES FOR:", uniqueIDs)
+
             let response = try await SupabaseManager.shared.client
                 .from("profiles")
                 .select()
                 .in("id", values: uniqueIDs.map(\.uuidString))
                 .execute()
 
+            print("RAW PROFILE RESPONSE:", String(data: response.data, encoding: .utf8) ?? "nil")
+
             let decoded = try JSONDecoder().decode([FriendProfileDTO].self, from: response.data)
+            print("DECODED PROFILES COUNT:", decoded.count)
 
             var dict: [UUID: FriendProfileDTO] = [:]
             for item in decoded {
                 dict[item.id] = item
             }
+
             profiles = dict
+            print("PROFILES DICTIONARY FINAL:", profiles)
         } catch {
             print("LOAD FRIEND PROFILES ERROR:", error.localizedDescription)
         }
     }
+
+    func findUserByUsername(_ username: String) async throws -> FriendProfileDTO {
+        let clean = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        let response = try await SupabaseManager.shared.client
+            .from("profiles")
+            .select()
+            .eq("username", value: clean)
+            .single()
+            .execute()
+
+        return try JSONDecoder().decode(FriendProfileDTO.self, from: response.data)
+    }
+
     func sendFriendRequest(
         to targetUserID: UUID,
         currentUserID: UUID
@@ -95,24 +131,31 @@ final class FriendStore: ObservableObject {
             .insert(payload)
             .execute()
     }
-    func findUserByUsername(_ username: String) async throws -> FriendProfileDTO {
-        let clean = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
-        let response = try await SupabaseManager.shared.client
-            .from("profiles")
-            .select()
-            .eq("username", value: clean)
-            .single()
+    func acceptFriendRequest(friendshipID: UUID) async throws {
+        struct Payload: Encodable {
+            let status: String
+        }
+
+        try await SupabaseManager.shared.client
+            .from("friendships")
+            .update(Payload(status: "accepted"))
+            .eq("id", value: friendshipID.uuidString)
             .execute()
-
-        return try JSONDecoder().decode(FriendProfileDTO.self, from: response.data)
     }
+
+    // MARK: - Local Sync
 
     func syncAcceptedFriendsToLocal(
         currentUserID: UUID,
         modelContext: ModelContext
     ) {
         for friendship in friendships where friendship.status == "accepted" {
+            print("SYNCING FRIENDSHIP:", friendship.id)
+            print("STATUS:", friendship.status)
+            print("REQUESTER:", friendship.requester_id)
+            print("ADDRESSEE:", friendship.addressee_id)
+
             let otherUserID =
                 friendship.requester_id == currentUserID
                 ? friendship.addressee_id
@@ -163,6 +206,177 @@ final class FriendStore: ObservableObject {
         }
     }
 
+    // MARK: - Messages
+
+    private func mapDTOToFriendItem(
+        _ dto: FriendMessageDTO,
+        currentUserID: UUID?
+    ) -> FriendChatMessageItem {
+        FriendChatMessageItem(
+            id: dto.id,
+            serverID: dto.id,
+            clientID: dto.client_id,
+            friendshipID: dto.friendship_id,
+            senderID: dto.sender_id,
+            senderName: dto.sender_name,
+            text: dto.text,
+            createdAt: CrewDateParser.parse(dto.created_at) ?? Date(),
+            reaction: dto.reaction,
+            isSystemMessage: dto.is_system_message ?? false,
+            isFromMe: dto.sender_id == currentUserID,
+            isPending: false,
+            isFailed: false,
+            seenAt: dto.seen_at.flatMap { CrewDateParser.parse($0) }
+        )
+    }
+    func userDidType(
+        friendshipID: UUID,
+        currentUserID: UUID?,
+        currentUserName: String
+    ) {
+        typingResetTask?.cancel()
+
+        Task {
+            await setTyping(
+                friendshipID: friendshipID,
+                currentUserID: currentUserID,
+                currentUserName: currentUserName,
+                isTyping: true
+            )
+        }
+
+        typingResetTask = Task {
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+
+            await setTyping(
+                friendshipID: friendshipID,
+                currentUserID: currentUserID,
+                currentUserName: currentUserName,
+                isTyping: false
+            )
+        }
+    }
+    
+    func unsubscribeTypingRealtime() {
+        Task {
+            await friendTypingChannel?.unsubscribe()
+        }
+        friendTypingChannel = nil
+    }
+    
+    func subscribeToTypingRealtime(
+        friendshipID: UUID,
+        currentUserID: UUID?
+    ) {
+        Task {
+            await friendTypingChannel?.unsubscribe()
+        }
+        friendTypingChannel = nil
+
+        let channel = SupabaseManager.shared.client
+            .realtimeV2
+            .channel("friend-typing-\(friendshipID.uuidString)")
+
+        channel.onPostgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "friend_typing_status",
+            filter: "friendship_id=eq.\(friendshipID.uuidString)"
+        ) { [weak self] action in
+            Task { @MainActor in
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: action.record)
+                    let dto = try JSONDecoder().decode(FriendTypingStatusDTO.self, from: jsonData)
+
+                    guard dto.user_id != currentUserID else { return }
+                    self?.typingStatusByFriendship[friendshipID] = dto.is_typing
+                } catch {
+                    print("TYPING INSERT DECODE ERROR:", error.localizedDescription)
+                }
+            }
+        }
+
+        channel.onPostgresChange(
+            UpdateAction.self,
+            schema: "public",
+            table: "friend_typing_status",
+            filter: "friendship_id=eq.\(friendshipID.uuidString)"
+        ) { [weak self] action in
+            Task { @MainActor in
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: action.record)
+                    let dto = try JSONDecoder().decode(FriendTypingStatusDTO.self, from: jsonData)
+
+                    guard dto.user_id != currentUserID else { return }
+                    self?.typingStatusByFriendship[friendshipID] = dto.is_typing
+                } catch {
+                    print("TYPING UPDATE DECODE ERROR:", error.localizedDescription)
+                }
+            }
+        }
+
+        Task {
+            await channel.subscribe()
+        }
+
+        friendTypingChannel = channel
+    }
+    
+    func setTyping(
+        friendshipID: UUID,
+        currentUserID: UUID?,
+        currentUserName: String,
+        isTyping: Bool
+    ) async {
+        guard let currentUserID else { return }
+
+        struct Payload: Encodable {
+            let friendship_id: UUID
+            let user_id: UUID
+            let user_name: String
+            let is_typing: Bool
+            let updated_at: String
+        }
+
+        let payload = Payload(
+            friendship_id: friendshipID,
+            user_id: currentUserID,
+            user_name: currentUserName,
+            is_typing: isTyping,
+            updated_at: ISO8601DateFormatter().string(from: Date())
+        )
+
+        do {
+            try await SupabaseManager.shared.client
+                .from("friend_typing_status")
+                .upsert(payload)
+                .execute()
+        } catch {
+            print("SET TYPING ERROR:", error.localizedDescription)
+        }
+    }
+    
+    private func appendFriendMessage(
+        _ item: FriendChatMessageItem,
+        friendshipID: UUID
+    ) {
+        var items = friendMessagesByFriendship[friendshipID] ?? []
+
+        if let existingIndex = items.firstIndex(where: { $0.serverID == item.serverID }) {
+            items[existingIndex] = item
+        } else if let clientID = item.clientID,
+                  let pendingIndex = items.firstIndex(where: {
+                      $0.serverID == nil && $0.clientID == clientID
+                  }) {
+            items[pendingIndex] = item
+        } else {
+            items.append(item)
+        }
+
+        items.sort { $0.createdAt < $1.createdAt }
+        friendMessagesByFriendship[friendshipID] = Array(items.suffix(100))
+    }
+
     func loadMessages(
         for friendshipID: UUID,
         currentUserID: UUID?
@@ -173,26 +387,13 @@ final class FriendStore: ObservableObject {
                 .select()
                 .eq("friendship_id", value: friendshipID.uuidString)
                 .order("created_at", ascending: true)
+                .limit(100)
                 .execute()
 
             let decoded = try JSONDecoder().decode([FriendMessageDTO].self, from: response.data)
 
-            let items = decoded.map { dto in
-                FriendChatMessageItem(
-                    id: dto.id,
-                    serverID: dto.id,
-                    clientID: dto.client_id,
-                    friendshipID: dto.friendship_id,
-                    senderID: dto.sender_id,
-                    senderName: dto.sender_name,
-                    text: dto.text,
-                    createdAt: CrewDateParser.parse(dto.created_at) ?? Date(),
-                    reaction: dto.reaction,
-                    isSystemMessage: dto.is_system_message ?? false,
-                    isFromMe: dto.sender_id == currentUserID,
-                    isPending: false,
-                    isFailed: false
-                )
+            let items = decoded.map {
+                mapDTOToFriendItem($0, currentUserID: currentUserID)
             }
 
             friendMessagesByFriendship[friendshipID] = items
@@ -224,7 +425,8 @@ final class FriendStore: ObservableObject {
             isSystemMessage: false,
             isFromMe: true,
             isPending: true,
-            isFailed: false
+            isFailed: false,
+            seenAt: nil
         )
 
         var current = friendMessagesByFriendship[friendshipID] ?? []
@@ -258,10 +460,8 @@ final class FriendStore: ObservableObject {
                 .insert(payload)
                 .execute()
 
-            await loadMessages(
-                for: friendshipID,
-                currentUserID: senderID
-            )
+            // Realtime gelmezse fallback
+            await loadMessages(for: friendshipID, currentUserID: senderID)
         } catch {
             print("SEND FRIEND MESSAGE ERROR:", error.localizedDescription)
 
@@ -281,10 +481,227 @@ final class FriendStore: ObservableObject {
                     isSystemMessage: old.isSystemMessage,
                     isFromMe: old.isFromMe,
                     isPending: false,
-                    isFailed: true
+                    isFailed: true,
+                    seenAt: old.seenAt
                 )
             }
             friendMessagesByFriendship[friendshipID] = failed
         }
+    }
+    
+    func markMessagesSeen(
+        friendshipID: UUID,
+        currentUserID: UUID?
+    ) async {
+        guard let currentUserID else { return }
+
+        do {
+            try await SupabaseManager.shared.client
+                .from("friend_messages")
+                .update(["seen_at": ISO8601DateFormatter().string(from: Date())])
+                .eq("friendship_id", value: friendshipID.uuidString)
+                .neq("sender_id", value: currentUserID.uuidString)
+                .is("seen_at", value: nil)
+                .execute()
+
+            await loadMessages(for: friendshipID, currentUserID: currentUserID)
+        } catch {
+            print("MARK MESSAGES SEEN ERROR:", error.localizedDescription)
+        }
+    }
+    
+    func unsubscribePresenceRealtime() {
+        Task {
+            await friendPresenceChannel?.unsubscribe()
+        }
+        friendPresenceChannel = nil
+    }
+    
+    func subscribeToPresenceRealtime(for userIDs: [UUID]) {
+        Task {
+            await friendPresenceChannel?.unsubscribe()
+        }
+        friendPresenceChannel = nil
+
+        let channel = SupabaseManager.shared.client
+            .realtimeV2
+            .channel("friend-presence")
+
+        channel.onPostgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "friend_presence"
+        ) { [weak self] action in
+            Task { @MainActor in
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: action.record)
+                    let dto = try JSONDecoder().decode(FriendPresenceDTO.self, from: jsonData)
+                    self?.presenceByUserID[dto.user_id] = dto
+                } catch {
+                    print("PRESENCE INSERT DECODE ERROR:", error.localizedDescription)
+                }
+            }
+        }
+
+        channel.onPostgresChange(
+            UpdateAction.self,
+            schema: "public",
+            table: "friend_presence"
+        ) { [weak self] action in
+            Task { @MainActor in
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: action.record)
+                    let dto = try JSONDecoder().decode(FriendPresenceDTO.self, from: jsonData)
+                    self?.presenceByUserID[dto.user_id] = dto
+                } catch {
+                    print("PRESENCE UPDATE DECODE ERROR:", error.localizedDescription)
+                }
+            }
+        }
+
+        Task {
+            await channel.subscribe()
+        }
+
+        friendPresenceChannel = channel
+    }
+    
+    func loadPresence(for userIDs: [UUID]) async {
+        let uniqueIDs = Array(Set(userIDs))
+        guard !uniqueIDs.isEmpty else { return }
+
+        do {
+            let response = try await SupabaseManager.shared.client
+                .from("friend_presence")
+                .select()
+                .in("user_id", values: uniqueIDs.map(\.uuidString))
+                .execute()
+
+            let decoded = try JSONDecoder().decode([FriendPresenceDTO].self, from: response.data)
+
+            var dict: [UUID: FriendPresenceDTO] = [:]
+            for item in decoded {
+                dict[item.user_id] = item
+            }
+            presenceByUserID = dict
+        } catch {
+            print("LOAD PRESENCE ERROR:", error.localizedDescription)
+        }
+    }
+    
+    func setPresence(
+        currentUserID: UUID?,
+        isOnline: Bool
+    ) async {
+        guard let currentUserID else { return }
+
+        struct Payload: Encodable {
+            let user_id: UUID
+            let is_online: Bool
+            let last_seen_at: String
+            let updated_at: String
+        }
+
+        let now = ISO8601DateFormatter().string(from: Date())
+
+        let payload = Payload(
+            user_id: currentUserID,
+            is_online: isOnline,
+            last_seen_at: now,
+            updated_at: now
+        )
+
+        do {
+            try await SupabaseManager.shared.client
+                .from("friend_presence")
+                .upsert(payload)
+                .execute()
+        } catch {
+            print("SET PRESENCE ERROR:", error.localizedDescription)
+        }
+    }
+
+    // MARK: - Realtime
+
+    func subscribeToFriendMessagesRealtime(
+        friendshipID: UUID,
+        currentUserID: UUID?
+    ) {
+        
+
+        let currentUserIDCopy = currentUserID
+
+        Task {
+            await friendMessagesChannel?.unsubscribe()
+        }
+        friendMessagesChannel = nil
+
+        let client = SupabaseManager.shared.client
+        let channel = client.realtimeV2.channel("friend-messages-\(friendshipID.uuidString)")
+
+        channel.onPostgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "friend_messages",
+            filter: "friendship_id=eq.\(friendshipID.uuidString)"
+        ) { [weak self] action in
+            Task { @MainActor in
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: action.record)
+                    let dto = try JSONDecoder().decode(FriendMessageDTO.self, from: jsonData)
+
+                    guard let self else { return }
+                    let item = self.mapDTOToFriendItem(dto, currentUserID: currentUserIDCopy)
+                    self.appendFriendMessage(item, friendshipID: friendshipID)
+                    if dto.sender_id != currentUserIDCopy {
+                        Task {
+                            await self.markMessagesSeen(
+                                friendshipID: friendshipID,
+                                currentUserID: currentUserIDCopy
+                            )
+                        }
+                    }
+                } catch {
+                    print("REALTIME DECODE ERROR:", error.localizedDescription)
+                }
+            }
+        }
+        channel.onPostgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "friend_typing_status"
+        ) { [weak self] action in
+            Task { @MainActor in
+                guard let self else { return }
+
+                if let userIDString = action.record["user_id"] as? String,
+                   let userID = UUID(uuidString: userIDString),
+                   let name = action.record["user_name"] as? String {
+
+                    self.typingUsers[userID] = name
+
+                    // 2 saniye sonra sil
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        self.typingUsers.removeValue(forKey: userID)
+                    }
+                }
+            }
+        }
+
+        Task {
+            await channel.subscribe()
+        }
+
+        friendMessagesChannel = channel
+        subscribedFriendshipID = friendshipID
+    }
+    
+
+    func unsubscribeFriendMessagesRealtime() {
+        Task {
+            await friendMessagesChannel?.unsubscribe()
+        }
+        friendMessagesChannel = nil
+        subscribedFriendshipID = nil
     }
 }

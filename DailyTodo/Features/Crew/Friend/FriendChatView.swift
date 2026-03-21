@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-
 struct FriendChatView: View {
     let friend: Friend
 
@@ -37,9 +36,6 @@ struct FriendChatView: View {
 
             VStack(spacing: 0) {
                 customHeader
-                
-              
-                .padding()
 
                 if messages.isEmpty {
                     emptyState
@@ -55,18 +51,69 @@ struct FriendChatView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .task {
-            print("CHAT FRIEND NAME:", friend.name)
-            print("CHAT FRIENDSHIP ID:", friendshipID as Any)
+            guard let friendshipID else { return }
 
-            if let id = friendshipID {
-                await friendStore.loadMessages(
-                    for: id,
-                    currentUserID: session.currentUser?.id
-                )
+            await friendStore.loadMessages(
+                for: friendshipID,
+                currentUserID: session.currentUser?.id
+            )
+            let pushStore = PushTokenStore()
+            await pushStore.saveCurrentToken(currentUserID: session.currentUser?.id)
+
+            await friendStore.markMessagesSeen(
+                friendshipID: friendshipID,
+                currentUserID: session.currentUser?.id
+            )
+
+            friendStore.subscribeToFriendMessagesRealtime(
+                friendshipID: friendshipID,
+                currentUserID: session.currentUser?.id
+            )
+
+            friendStore.subscribeToTypingRealtime(
+                friendshipID: friendshipID,
+                currentUserID: session.currentUser?.id
+            )
+
+            if let friendUserID = friend.backendUserID {
+                await friendStore.loadPresence(for: [friendUserID])
+                friendStore.subscribeToPresenceRealtime(for: [friendUserID])
             }
+
+            await friendStore.setPresence(
+                currentUserID: session.currentUser?.id,
+                isOnline: true
+            )
         }
         .onDisappear {
-            
+            friendStore.unsubscribeFriendMessagesRealtime()
+            friendStore.unsubscribeTypingRealtime()
+            friendStore.unsubscribePresenceRealtime()
+
+            Task {
+                await friendStore.setPresence(
+                    currentUserID: session.currentUser?.id,
+                    isOnline: false
+                )
+            }
+
+            if let friendshipID {
+                let senderName: String
+                if let email = session.currentUser?.email, !email.isEmpty {
+                    senderName = email.components(separatedBy: "@").first ?? email
+                } else {
+                    senderName = "You"
+                }
+
+                Task {
+                    await friendStore.setTyping(
+                        friendshipID: friendshipID,
+                        currentUserID: session.currentUser?.id,
+                        currentUserName: senderName,
+                        isTyping: false
+                    )
+                }
+            }
         }
         .sheet(isPresented: $showFriendInfo) {
             NavigationStack {
@@ -137,10 +184,22 @@ private extension FriendChatView {
                         .font(.headline)
                         .foregroundStyle(palette.primaryText)
 
-                    Text("Direct Chat")
-                        .font(.caption2)
-                        .foregroundStyle(palette.secondaryText)
+                    if headerStatusText.contains("yazıyor") {
+                        HStack(spacing: 6) {
+                            Text(headerStatusText)
+                                .font(.caption)
+                                .foregroundStyle(.green)
+
+                            TypingDotsView()
+                                .foregroundStyle(.green)
+                        }
+                    } else {
+                        Text(headerStatusText)
+                            .font(.caption)
+                            .foregroundStyle(palette.secondaryText)
+                    }
                 }
+                .animation(.easeInOut(duration: 0.2), value: headerStatusText)
             }
             .buttonStyle(.plain)
 
@@ -151,6 +210,33 @@ private extension FriendChatView {
         .padding(.horizontal, 16)
         .padding(.top, 8)
         .padding(.bottom, 10)
+    }
+
+    private var friendPresence: FriendPresenceDTO? {
+        guard let userID = friend.backendUserID else { return nil }
+        return friendStore.presenceByUserID[userID]
+    }
+
+    private var headerStatusText: String {
+        if let friendshipID,
+           friendStore.typingStatusByFriendship[friendshipID] == true {
+            return "\(friend.name) yazıyor..."
+        }
+
+        guard let friendPresence else { return "Direct Chat" }
+
+        if friendPresence.is_online {
+            return "Online"
+        } else {
+            let date = CrewDateParser.parse(friendPresence.last_seen_at) ?? Date()
+            return "Last seen \(relativeLastSeen(date))"
+        }
+    }
+
+    func relativeLastSeen(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .short
+        return formatter.localizedString(for: date, relativeTo: Date())
     }
 
     var emptyState: some View {
@@ -186,24 +272,52 @@ private extension FriendChatView {
             ScrollView {
                 LazyVStack(spacing: 10) {
                     ForEach(messages) { message in
-                        HStack {
-                            if message.isFromMe { Spacer(minLength: 40) }
+                        VStack(alignment: message.isFromMe ? .trailing : .leading, spacing: 4) {
+                            HStack {
+                                if message.isFromMe { Spacer(minLength: 40) }
 
-                            Text(message.text)
-                                .font(.subheadline)
-                                .foregroundStyle(message.isFromMe ? .white : palette.primaryText)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .fill(
-                                            message.isFromMe
-                                            ? Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.90 : 0.24)
-                                            : palette.secondaryCardFill
-                                        )
+                                Text(message.text)
+                                    .font(.subheadline)
+                                    .foregroundStyle(message.isFromMe ? .white : palette.primaryText)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 12)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                            .fill(
+                                                message.isFromMe
+                                                ? Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.90 : 0.24)
+                                                : palette.secondaryCardFill
+                                            )
+                                    )
+
+                                if !message.isFromMe { Spacer(minLength: 40) }
+                            }
+
+                            if message.isFromMe {
+                                HStack(spacing: 4) {
+                                    Image(systemName:
+                                        message.isPending
+                                        ? "clock"
+                                        : (message.seenAt == nil
+                                           ? "checkmark"
+                                           : "checkmark.circle.fill")
+                                    )
+                                    .font(.caption2)
+
+                                    Text(
+                                        message.isPending
+                                        ? "Sending"
+                                        : (message.seenAt == nil ? "Sent" : "Seen")
+                                    )
+                                    .font(.caption2)
+                                }
+                                .foregroundStyle(
+                                    message.seenAt == nil
+                                    ? palette.secondaryText
+                                    : Color.blue
                                 )
-
-                            if !message.isFromMe { Spacer(minLength: 40) }
+                                .padding(.horizontal, 6)
+                            }
                         }
                         .id(message.id)
                     }
@@ -224,6 +338,32 @@ private extension FriendChatView {
     var composerBar: some View {
         HStack(spacing: 10) {
             TextField("Message...", text: $draftMessage)
+                .focused($isComposerFocused)
+                .onChange(of: draftMessage) { _, newValue in
+                    guard let friendshipID else { return }
+
+                    let clean = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let isTyping = !clean.isEmpty
+
+                    let senderName: String
+                    if let email = session.currentUser?.email, !email.isEmpty {
+                        senderName = email.components(separatedBy: "@").first ?? email
+                    } else {
+                        senderName = "You"
+                    }
+
+                    // 🔥 debounce
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        Task{
+                            await friendStore.setTyping(
+                                friendshipID: friendshipID,
+                                currentUserID: session.currentUser?.id,
+                                currentUserName: senderName,
+                                isTyping: isTyping
+                            )
+                        }
+                    }
+                }
                 .textFieldStyle(.plain)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
@@ -235,7 +375,6 @@ private extension FriendChatView {
                                 .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
                         )
                 )
-                .focused($isComposerFocused)
 
             Button {
                 sendMessage()
@@ -272,10 +411,12 @@ private extension FriendChatView {
             return
         }
 
-        let senderName =
-            session.currentUser?.email.components(separatedBy: "@").first ??
-            session.currentUser?.email ??
-            "You"
+        let senderName: String
+        if let email = session.currentUser?.email, !email.isEmpty {
+            senderName = email.components(separatedBy: "@").first ?? email
+        } else {
+            senderName = "You"
+        }
 
         draftMessage = ""
 
@@ -297,4 +438,29 @@ private extension FriendChatView {
             }
         }
     }
+    private struct TypingDotsView: View {
+        @State private var phase = 0
+
+        var body: some View {
+            HStack(spacing: 4) {
+                Circle()
+                    .frame(width: 5, height: 5)
+                    .opacity(phase == 0 ? 1 : 0.3)
+
+                Circle()
+                    .frame(width: 5, height: 5)
+                    .opacity(phase == 1 ? 1 : 0.3)
+
+                Circle()
+                    .frame(width: 5, height: 5)
+                    .opacity(phase == 2 ? 1 : 0.3)
+            }
+            .onAppear {
+                Timer.scheduledTimer(withTimeInterval: 0.35, repeats: true) { _ in
+                    phase = (phase + 1) % 3
+                }
+            }
+        }
+    }
 }
+
