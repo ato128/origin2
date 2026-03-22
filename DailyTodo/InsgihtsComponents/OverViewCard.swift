@@ -16,6 +16,7 @@ struct OverviewCard: View {
     @State private var isVisible = false
     @State private var animatedProgress: Double = 0
     @State private var flamePulse = false
+    @State private var emberDrift = false
 
     private var hasStarted: Bool {
         data.progress > 0 || !data.completedText.contains("0")
@@ -58,9 +59,37 @@ struct OverviewCard: View {
                             radius: hasStrongStreak && flamePulse ? 14 : 6
                         )
 
+                    if hasStrongStreak {
+                        Circle()
+                            .fill(Color.orange.opacity(0.20))
+                            .frame(width: 10, height: 10)
+                            .blur(radius: 2)
+                            .offset(x: emberDrift ? 8 : 3, y: emberDrift ? -16 : -8)
+                            .opacity(emberDrift ? 0.0 : 0.9)
+
+                        Circle()
+                            .fill(Color.yellow.opacity(0.18))
+                            .frame(width: 7, height: 7)
+                            .blur(radius: 2)
+                            .offset(x: emberDrift ? -6 : -2, y: emberDrift ? -18 : -10)
+                            .opacity(emberDrift ? 0.0 : 0.8)
+                    }
+
                     Image(systemName: "flame.fill")
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(flameColor)
+                        .foregroundStyle(
+                            hasStrongStreak
+                            ? LinearGradient(
+                                colors: [.yellow, .orange, .red],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            : LinearGradient(
+                                colors: [flameColor, flameColor],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
                         .scaleEffect(hasStrongStreak && flamePulse ? 1.08 : 1.0)
                 }
 
@@ -196,11 +225,19 @@ struct OverviewCard: View {
 
             if hasStrongStreak {
                 flamePulse = true
+                emberDrift = false
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) {
+                        emberDrift = true
+                    }
+                }
             }
         }
         .onAppear {
             if hasStrongStreak {
                 flamePulse = true
+                emberDrift = true
             }
         }
         .animation(
@@ -208,6 +245,12 @@ struct OverviewCard: View {
             ? .easeInOut(duration: 1.0).repeatForever(autoreverses: true)
             : .default,
             value: flamePulse
+        )
+        .animation(
+            hasStrongStreak
+            ? .easeOut(duration: 1.4).repeatForever(autoreverses: false)
+            : .default,
+            value: emberDrift
         )
     }
 
