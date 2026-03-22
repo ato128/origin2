@@ -7,6 +7,7 @@
 import Foundation
 import Supabase
 import Combine
+import SwiftUI
 
 
 struct CreateFocusRecordPayload: Encodable {
@@ -69,6 +70,31 @@ final class CrewStore: ObservableObject {
         await loadMemberCount(for: crewID)
         await loadTaskCount(for: crewID)
         await loadCompletedTaskCount(for: crewID)
+    }
+    
+    func removeMember(_ member: CrewMemberDTO, from crewID: UUID) async throws {
+        let oldMembers = crewMembers
+
+        // optimistic local remove
+        crewMembers.removeAll { $0.id == member.id }
+
+        do {
+            try await SupabaseManager.shared.client
+                .from("crew_members")
+                .delete()
+                .eq("id", value: member.id.uuidString)
+                .eq("crew_id", value: crewID.uuidString)
+                .execute()
+
+            await loadMembers(for: crewID)
+            await loadMemberProfiles(for: crewMembers)
+            await refreshCrewStats(for: crewID)
+
+        } catch {
+            crewMembers = oldMembers
+            print("REMOVE MEMBER ERROR:", error.localizedDescription)
+            throw error
+        }
     }
 
     // MARK: - Chat Helpers
@@ -655,13 +681,12 @@ final class CrewStore: ObservableObject {
         ) { [weak self] action in
             guard let self else { return }
             Task { @MainActor in
-                do {
-                    let jsonData = try JSONSerialization.data(withJSONObject: action.oldRecord)
-                    let dto = try JSONDecoder().decode(CrewTaskDTO.self, from: jsonData)
-                    self.removeLocalTask(taskID: dto.id)
+                if let idString = action.oldRecord["id"] as? String,
+                   let taskID = UUID(uuidString: idString) {
+                    self.removeLocalTask(taskID: taskID)
                     await self.refreshCrewStats(for: crewID)
-                } catch {
-                    print("CREW TASK DELETE REALTIME DECODE ERROR:", error.localizedDescription)
+                } else {
+                    print("CREW TASK DELETE REALTIME: task id not found in oldRecord")
                     await self.loadTasks(for: crewID)
                 }
             }
@@ -1344,13 +1369,15 @@ final class CrewStore: ObservableObject {
         let newIsDone = !oldTask.is_done
         let newStatus = newIsDone ? "done" : "todo"
 
-        // 1) Optimistic local update
-        crewTasks[index].is_done = newIsDone
-        crewTasks[index].status = newStatus
-
         struct ToggleTaskPayload: Encodable {
             let is_done: Bool
             let status: String
+        }
+
+        // 1) Animasyonlu optimistic local update
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
+            crewTasks[index].is_done = newIsDone
+            crewTasks[index].status = newStatus
         }
 
         do {
@@ -1379,7 +1406,10 @@ final class CrewStore: ObservableObject {
             await refreshCrewStats(for: task.crew_id)
 
         } catch {
-            crewTasks[index] = oldTask
+            // 2) Hata olursa animasyonlu rollback
+            withAnimation(.spring(response: 0.30, dampingFraction: 0.90)) {
+                crewTasks[index] = oldTask
+            }
             print("TOGGLE ERROR:", error.localizedDescription)
         }
     }
@@ -1517,7 +1547,7 @@ final class CrewStore: ObservableObject {
             .eq("id", value: taskID.uuidString)
             .execute()
 
-        crewTasks.removeAll { $0.id == taskID }
+        removeLocalTask(taskID: taskID)
 
         await createActivity(
             crewID: crewID,
@@ -1525,7 +1555,6 @@ final class CrewStore: ObservableObject {
             actionText: "deleted task \(title ?? "")"
         )
 
-        await loadActivities(for: crewID)
         await refreshCrewStats(for: crewID)
     }
 

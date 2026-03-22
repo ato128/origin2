@@ -16,7 +16,8 @@ extension WeekView {
         return allCrewTasks
             .filter { task in
                 guard task.showOnWeek else { return false }
-                guard selectedCrewID == nil || task.crewID == selectedCrewID else { return false }
+                guard let selectedCrewID else { return false }
+                guard task.crewID == selectedCrewID else { return false }
 
                 if let scheduledDate = task.scheduledDate {
                     return calendar.isDate(scheduledDate, inSameDayAs: targetDate)
@@ -68,20 +69,22 @@ extension WeekView {
     
     func toggleCrewTaskDone(_ task: WeekCrewTaskItem) {
         guard let dto = crewStore.crewTasks.first(where: { $0.id == task.id }) else { return }
-        
+
         let willBeDone = !dto.is_done
-        
+
         Task {
             await crewStore.toggleTask(dto)
-            
-            if willBeDone {
-                Haptics.notify(.success)
-            } else {
-                Haptics.impact(.light)
+
+            await MainActor.run {
+                if willBeDone {
+                    Haptics.notify(.success)
+                } else {
+                    Haptics.impact(.light)
+                }
             }
         }
     }
-    
+
     func deleteCrewTask(_ task: WeekCrewTaskItem) {
         Task {
             do {
@@ -90,7 +93,10 @@ extension WeekView {
                     crewID: task.crewID,
                     title: task.title
                 )
-                Haptics.impact(.heavy)
+
+                await MainActor.run {
+                    Haptics.impact(.heavy)
+                }
             } catch {
                 print("DELETE CREW TASK ERROR:", error.localizedDescription)
             }

@@ -33,8 +33,6 @@ struct BackendCrewTaskDetailView: View {
                     headerCard
                     quickActionsCard
                     assignmentCard
-                    backendInfoCard
-                    discussionPlaceholderCard
                 }
                 .padding(16)
                 .padding(.bottom, 28)
@@ -150,6 +148,24 @@ private extension BackendCrewTaskDetailView {
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
+        .contextMenu {
+            Button(role: .destructive) {
+                Task {
+                    do {
+                        try await crewStore.deleteTask(
+                            taskID: currentTask.id,
+                            crewID: crew.id,
+                            title: currentTask.title
+                        )
+                        dismiss()
+                    } catch {
+                        print("DELETE TASK ERROR:", error.localizedDescription)
+                    }
+                }
+            } label: {
+                Label("Delete Task", systemImage: "trash")
+            }
+        }
     }
 
     func priorityColor(_ value: String) -> Color {
@@ -259,46 +275,6 @@ private extension BackendCrewTaskDetailView {
                 value: creatorProfile.map(displayName(for:)) ?? "Unknown",
                 tint: palette.secondaryText
             )
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
-    }
-
-    var backendInfoCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Backend Info")
-                .font(.headline)
-                .foregroundStyle(palette.primaryText)
-
-            infoRow(
-                icon: "number",
-                title: "Task ID",
-                value: currentTask.id.uuidString,
-                tint: palette.secondaryText
-            )
-
-            infoRow(
-                icon: "calendar",
-                title: "Created At",
-                value: currentTask.created_at ?? "Unknown",
-                tint: palette.secondaryText
-            )
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
-    }
-
-    var discussionPlaceholderCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Discussion")
-                .font(.headline)
-                .foregroundStyle(palette.primaryText)
-
-            Text("Comments, polls, and reactions will be added after backend support is ready.")
-                .font(.subheadline)
-                .foregroundStyle(palette.secondaryText)
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)

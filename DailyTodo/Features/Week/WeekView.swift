@@ -83,7 +83,7 @@ struct WeekView: View {
                 assignedTo: assignedName,
                 createdBy: createdByName,
                 priority: task.priority,
-                status:  task.is_done ? "done" : "todo",
+                status: task.is_done ? "done" : task.status,
                 showOnWeek: task.show_on_week ,
                 scheduledWeekday: task.scheduled_weekday,
                 scheduledStartMinute: task.scheduled_start_minute,
@@ -141,7 +141,7 @@ struct WeekView: View {
     }
     
     var selectedCrew: WeekCrewItem? {
-        guard let selectedCrewID else { return allCrews.first }
+        guard let selectedCrewID else { return nil }
         return allCrews.first(where: { $0.id == selectedCrewID })
     }
     
@@ -413,6 +413,10 @@ struct WeekView: View {
                     commentPulse = true
                 }
                 .task {
+                    if let userID = session.currentUser?.id {
+                        crewStore.setCurrentUser(userID)
+                    }
+
                     await crewStore.loadCrews()
 
                     if selectedCrewID == nil {

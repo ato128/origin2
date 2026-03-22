@@ -28,6 +28,16 @@ struct BackendEditCrewTaskView: View {
     @State private var isSaving = false
     @State private var errorMessage: String?
 
+    @State private var originalTitle: String
+    @State private var originalDetails: String
+    @State private var originalAssignedAssigneeID: UUID?
+    @State private var originalPriority: String
+    @State private var originalStatus: String
+    @State private var originalShowOnWeek: Bool
+    @State private var originalPlannedDate: Date
+    @State private var originalDurationMinute: Int
+    @State private var originalIsDone: Bool
+
     private let priorityOptions = ["low", "medium", "high", "urgent"]
     private let statusOptions = ["todo", "inProgress", "review", "done"]
 
@@ -35,15 +45,35 @@ struct BackendEditCrewTaskView: View {
         self.crew = crew
         self.task = task
 
-        _title = State(initialValue: task.title)
-        _details = State(initialValue: task.details ?? "")
-        _selectedAssigneeID = State(initialValue: task.assigned_to)
-        _priority = State(initialValue: task.priority)
-        _status = State(initialValue: task.status)
-        _showOnWeek = State(initialValue: task.show_on_week)
-        _plannedDate = State(initialValue: Self.makeInitialDate(from: task))
-        _durationMinute = State(initialValue: task.scheduled_duration_minute ?? 60)
-        _isDone = State(initialValue: task.is_done)
+        let initialTitle = task.title
+        let initialDetails = task.details ?? ""
+        let initialAssignedTo = task.assigned_to
+        let initialPriority = task.priority
+        let initialStatus = task.status
+        let initialShowOnWeek = task.show_on_week
+        let initialPlannedDate = Self.makeInitialDate(from: task)
+        let initialDuration = task.scheduled_duration_minute ?? 60
+        let initialIsDone = task.is_done
+
+        _title = State(initialValue: initialTitle)
+        _details = State(initialValue: initialDetails)
+        _selectedAssigneeID = State(initialValue: initialAssignedTo)
+        _priority = State(initialValue: initialPriority)
+        _status = State(initialValue: initialStatus)
+        _showOnWeek = State(initialValue: initialShowOnWeek)
+        _plannedDate = State(initialValue: initialPlannedDate)
+        _durationMinute = State(initialValue: initialDuration)
+        _isDone = State(initialValue: initialIsDone)
+
+        _originalTitle = State(initialValue: initialTitle)
+        _originalDetails = State(initialValue: initialDetails)
+        _originalAssignedAssigneeID = State(initialValue: initialAssignedTo)
+        _originalPriority = State(initialValue: initialPriority)
+        _originalStatus = State(initialValue: initialStatus)
+        _originalShowOnWeek = State(initialValue: initialShowOnWeek)
+        _originalPlannedDate = State(initialValue: initialPlannedDate)
+        _originalDurationMinute = State(initialValue: initialDuration)
+        _originalIsDone = State(initialValue: initialIsDone)
     }
 
     var body: some View {
@@ -60,7 +90,7 @@ struct BackendEditCrewTaskView: View {
                     Picker("Assigned member", selection: $selectedAssigneeID) {
                         Text("Unassigned").tag(UUID?.none)
 
-                        ForEach(crewStore.crewMembers) { member in
+                        ForEach(filteredCrewMembers) { member in
                             Text(displayName(for: member))
                                 .tag(Optional(member.user_id))
                         }
@@ -81,6 +111,13 @@ struct BackendEditCrewTaskView: View {
                     }
 
                     Toggle("Completed", isOn: $isDone)
+                        .onChange(of: isDone) { _, newValue in
+                            if newValue {
+                                status = "done"
+                            } else if status == "done" {
+                                status = "todo"
+                            }
+                        }
                 }
 
                 Section("Week Planning") {
@@ -103,37 +140,6 @@ struct BackendEditCrewTaskView: View {
                             .foregroundStyle(.red)
                     }
                 }
-
-                Section {
-                    Button {
-                        Task {
-                            await saveTask()
-                        }
-                    } label: {
-                        if isSaving {
-                            ProgressView()
-                                .frame(maxWidth: .infinity)
-                        } else {
-                            Text("Save Changes")
-                                .frame(maxWidth: .infinity)
-                        }
-                    }
-                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
-
-                    Button(isDone ? "Mark as Todo" : "Mark as Completed") {
-                        isDone.toggle()
-                        status = isDone ? "done" : "todo"
-                    }
-                    .foregroundStyle(.blue)
-                    .disabled(isSaving)
-
-                    Button("Delete Task", role: .destructive) {
-                        Task {
-                            await deleteTask()
-                        }
-                    }
-                    .disabled(isSaving)
-                }
             }
             .navigationTitle("Edit Task")
             .navigationBarTitleDisplayMode(.inline)
@@ -143,8 +149,59 @@ struct BackendEditCrewTaskView: View {
                         dismiss()
                     }
                 }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task {
+                            await saveTask()
+                        }
+                    } label: {
+                        if isSaving {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 17, weight: .bold))
+                        }
+                    }
+                    .disabled(!hasChanges || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
+                    .opacity((!hasChanges || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving) ? 0.45 : 1)
+                }
             }
         }
+    }
+
+    private var filteredCrewMembers: [CrewMemberDTO] {
+        crewStore.crewMembers.filter { $0.crew_id == crew.id }
+    }
+
+    private var hasChanges: Bool {
+        let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanDetails = details.trimmingCharacters(in: .whitespacesAndNewlines)
+        let originalCleanTitle = originalTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let originalCleanDetails = originalDetails.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let plannedDateChanged: Bool = {
+            guard showOnWeek || originalShowOnWeek else { return false }
+            return abs(plannedDate.timeIntervalSince(originalPlannedDate)) > 60
+        }()
+
+        return cleanTitle != originalCleanTitle ||
+        cleanDetails != originalCleanDetails ||
+        selectedAssigneeID != originalAssignedAssigneeID ||
+        priority != originalPriority ||
+        resolvedStatusForSave != originalResolvedStatus ||
+        showOnWeek != originalShowOnWeek ||
+        (showOnWeek && durationMinute != originalDurationMinute) ||
+        plannedDateChanged ||
+        isDone != originalIsDone
+    }
+
+    private var resolvedStatusForSave: String {
+        isDone ? "done" : status
+    }
+
+    private var originalResolvedStatus: String {
+        originalIsDone ? "done" : originalStatus
     }
 
     @MainActor
@@ -155,7 +212,6 @@ struct BackendEditCrewTaskView: View {
         isSaving = true
         errorMessage = nil
 
-        let resolvedStatus = isDone ? "done" : status
         let schedule = makeSchedule()
 
         do {
@@ -166,28 +222,13 @@ struct BackendEditCrewTaskView: View {
                 isDone: isDone,
                 details: details.trimmingCharacters(in: .whitespacesAndNewlines),
                 priority: priority,
-                status: resolvedStatus,
+                status: resolvedStatusForSave,
                 showOnWeek: showOnWeek,
                 scheduledWeekday: schedule.weekday,
                 scheduledStartMinute: schedule.startMinute,
                 scheduledDurationMinute: showOnWeek ? durationMinute : nil
             )
-            await crewStore.loadTasks(for: crew.id)
-            dismiss()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
 
-        isSaving = false
-    }
-
-    @MainActor
-    private func deleteTask() async {
-        isSaving = true
-        errorMessage = nil
-
-        do {
-            try await crewStore.deleteTask(taskID: task.id, crewID: crew.id)
             dismiss()
         } catch {
             errorMessage = error.localizedDescription

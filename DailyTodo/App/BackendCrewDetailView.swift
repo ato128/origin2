@@ -5,6 +5,9 @@
 //  Created by Atakan Ortaç on 19.03.2026.
 //
 
+import SwiftUI
+import UIKit
+
 struct BackendCrewDetailView: View {
     let crew: CrewDTO
 
@@ -18,6 +21,7 @@ struct BackendCrewDetailView: View {
     @State private var showAddMember = false
     @State private var showCreateTask = false
     @State private var showInviteSheet = false
+    @State private var selectedTask: CrewTaskDTO?
 
     @State private var inviteCode = ""
     @State private var errorMessage: String?
@@ -30,6 +34,9 @@ struct BackendCrewDetailView: View {
     @State private var showActivitySection = false
     @State private var showShareSheet = false
     @State private var didInitialLoad = false
+    @State private var memberToRemove: CrewMemberDTO?
+    @State private var showRemoveMemberConfirm = false
+    @State private var inviteCopied = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -38,7 +45,9 @@ struct BackendCrewDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     Color.clear.frame(height: 76)
+
                     customHeader
+
                     heroCard(
                         memberCount: crewMembers.count,
                         totalTasks: sortedCrewTasks.count,
@@ -99,11 +108,16 @@ struct BackendCrewDetailView: View {
         .task {
             guard !didInitialLoad else { return }
             didInitialLoad = true
+
             await loadCrewDetail()
             playEntranceAnimations()
         }
         .onAppear {
             crewStore.subscribeToCrewRealtime(crewID: crew.id)
+
+            Task {
+                await loadCrewDetail()
+            }
         }
         .onDisappear {
             crewStore.unsubscribe()
@@ -111,44 +125,61 @@ struct BackendCrewDetailView: View {
         .refreshable {
             await loadCrewDetail()
         }
-        .sheet(isPresented: $showAddMember, onDismiss: {
-            Task {
-                await crewStore.loadMembers(for: crew.id)
-                await crewStore.loadMemberProfiles(for: crewStore.crewMembers)
-            }
-        }) {
+        .sheet(isPresented: $showAddMember) {
             AddCrewMemberView(crewID: crew.id)
                 .environmentObject(crewStore)
         }
-        .sheet(isPresented: $showCreateTask, onDismiss: {
-        }) {
+        .sheet(isPresented: $showCreateTask) {
             BackendCreateCrewTaskSheet(
                 crew: crew,
-                members: crewStore.crewMembers,
+                members: crewStore.crewMembers.filter { $0.crew_id == crew.id },
                 memberProfiles: crewStore.memberProfiles
             )
             .environmentObject(crewStore)
             .environmentObject(session)
+        }
+        .sheet(item: $selectedTask) { task in
+            BackendCrewTaskDetailView(task: task, crew: crew)
+                .environmentObject(crewStore)
+                .environmentObject(session)
         }
         .sheet(isPresented: $showShareSheet) {
             ShareSheet(items: [
                 "Join my crew on DailyTodo 🚀\nOpen the app and enter this code: \(inviteCode)"
             ])
         }
-        .sheet(isPresented: $showInviteSheet) {
-            VStack(spacing: 20) {
+        .sheet(isPresented: $showInviteSheet, onDismiss: {
+            inviteCopied = false
+        }) {
+            VStack(spacing: 24) {
                 Text("Invite Code")
                     .font(.headline)
+                    .foregroundStyle(palette.primaryText)
 
                 Text(inviteCode)
-                    .font(.largeTitle.bold())
+                    .font(.system(size: 38, weight: .bold, design: .rounded))
+                    .foregroundStyle(palette.primaryText)
+                    .textSelection(.enabled)
 
-                Button("Copy") {
+                Button {
                     UIPasteboard.general.string = inviteCode
+                    inviteCopied = true
+                } label: {
+                    Text(inviteCopied ? "Copied" : "Copy")
+                        .font(.headline)
+                        .foregroundStyle(.blue)
+                }
+
+                if inviteCopied {
+                    Text("Code copied successfully")
+                        .font(.caption)
+                        .foregroundStyle(palette.secondaryText)
+                        .transition(.opacity)
                 }
             }
-            .padding()
+            .padding(28)
             .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
         }
         .alert(
             "Error",
@@ -163,6 +194,36 @@ struct BackendCrewDetailView: View {
         } message: {
             Text(errorMessage ?? "Unknown error")
         }
+        .confirmationDialog(
+            "Remove Member",
+            isPresented: $showRemoveMemberConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Remove from Crew", role: .destructive) {
+                guard let member = memberToRemove else { return }
+
+                guard member.role.lowercased() != "owner" else {
+                    errorMessage = "Owner cannot be removed from the crew."
+                    return
+                }
+
+                Task {
+                    do {
+                        try await crewStore.removeMember(member, from: crew.id)
+                        memberToRemove = nil
+                    } catch {
+                        errorMessage = error.localizedDescription
+                    }
+                }
+            }
+
+            Button("Cancel", role: .cancel) {
+                memberToRemove = nil
+            }
+        } message: {
+            Text("This member will be removed from the crew.")
+        }
+        
     }
 
     @MainActor
@@ -174,8 +235,6 @@ struct BackendCrewDetailView: View {
         await crewStore.loadFocusRecords(for: crew.id)
     }
 }
-
-
 
 extension BackendCrewDetailView {
 
@@ -208,20 +267,22 @@ extension BackendCrewDetailView {
             }
         }
     }
-    
+
     var crewMembers: [CrewMemberDTO] {
-        crewStore.crewMembers
+        crewStore.crewMembers.filter { $0.crew_id == crew.id }
     }
-    
+
     private static let backendISOFormatter = ISO8601DateFormatter()
 
     var sortedCrewTasks: [CrewTaskDTO] {
-        crewStore.crewTasks.sorted {
-            if $0.is_done != $1.is_done {
-                return !$0.is_done && $1.is_done
+        crewStore.crewTasks
+            .filter { $0.crew_id == crew.id }
+            .sorted {
+                if $0.is_done != $1.is_done {
+                    return !$0.is_done && $1.is_done
+                }
+                return $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
             }
-            return $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
-        }
     }
 
     var completedTasksCount: Int {
@@ -235,7 +296,7 @@ extension BackendCrewDetailView {
     var crewProgressValue: Double {
         sortedCrewTasks.isEmpty ? 0 : Double(completedTasksCount) / Double(sortedCrewTasks.count)
     }
-    
+
     var totalFocusMinutes: Int {
         crewStore.crewFocusRecords
             .filter { $0.crew_id == crew.id }
@@ -274,7 +335,7 @@ extension BackendCrewDetailView {
 
         return "\(streak)"
     }
-    
+
     var todayLeaderboard: [(name: String, minutes: Int)] {
         let todayPrefix = Self.backendISOFormatter.string(from: Date()).prefix(10)
 
@@ -424,6 +485,7 @@ extension BackendCrewDetailView {
         .padding(18)
         .background(cardBackground)
     }
+
     func focusTimeText(_ minutes: Int) -> String {
         let hours = minutes / 60
         let mins = minutes % 60
@@ -499,7 +561,7 @@ extension BackendCrewDetailView {
     }
 
     var backendActivitySection: some View {
-        let items = Array(crewStore.crewActivities.prefix(5))
+        let items = Array(crewStore.crewActivities.filter { $0.crew_id == crew.id }.prefix(5))
 
         return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -723,6 +785,7 @@ extension BackendCrewDetailView {
                 )
         )
     }
+
     var memberProfilesByID: [UUID: ProfileDTO] {
         Dictionary(uniqueKeysWithValues: crewStore.memberProfiles.map { ($0.id, $0) })
     }
@@ -844,6 +907,16 @@ extension BackendCrewDetailView {
                                     .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
                             )
                     )
+                    .contextMenu {
+                        if member.role.lowercased() != "owner" {
+                            Button(role: .destructive) {
+                                memberToRemove = member
+                                showRemoveMemberConfirm = true
+                            } label: {
+                                Label("Remove from Crew", systemImage: "person.crop.circle.badge.minus")
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -885,28 +958,41 @@ extension BackendCrewDetailView {
             } else {
                 LazyVStack(spacing: 12) {
                     ForEach(crewTasks) { task in
-                        NavigationLink {
-                            BackendCrewTaskDetailView(task: task, crew: crew)
-                                .environmentObject(crewStore)
-                                .environmentObject(session)
-                        } label: {
-                            taskCardView(task)
-                        }
-                        .buttonStyle(.plain)
-                        .contextMenu {
-                            Button {
-                                Task {
-                                    await crewStore.toggleTask(task)
-                                }
-                            } label: {
-                                Label(
-                                    task.is_done ? "Reopen Task" : "Mark as Done",
-                                    systemImage: task.is_done
-                                        ? "arrow.uturn.backward.circle"
-                                        : "checkmark.circle"
-                                )
+                        taskCardView(task)
+                            .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                            .onTapGesture {
+                                selectedTask = task
                             }
-                        }
+                            .contextMenu {
+                                Button {
+                                    Task {
+                                        await crewStore.toggleTask(task)
+                                    }
+                                } label: {
+                                    Label(
+                                        task.is_done ? "Reopen Task" : "Mark as Done",
+                                        systemImage: task.is_done
+                                            ? "arrow.uturn.backward.circle"
+                                            : "checkmark.circle"
+                                    )
+                                }
+
+                                Button(role: .destructive) {
+                                    Task {
+                                        do {
+                                            try await crewStore.deleteTask(
+                                                taskID: task.id,
+                                                crewID: task.crew_id,
+                                                title: task.title
+                                            )
+                                        } catch {
+                                            print("DELETE TASK ERROR:", error.localizedDescription)
+                                        }
+                                    }
+                                } label: {
+                                    Label("Delete Task", systemImage: "trash")
+                                }
+                            }
                     }
                 }
             }
@@ -991,7 +1077,7 @@ extension BackendCrewDetailView {
                 .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
         )
     }
-    
+
     func priorityColor(_ value: String) -> Color {
         switch value {
         case "low": return .gray
@@ -1086,24 +1172,6 @@ extension BackendCrewDetailView {
         .background(cardBackground)
     }
 
-    var activityPlaceholderSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("Activity")
-                    .font(.headline)
-                    .foregroundStyle(palette.primaryText)
-
-                Spacer()
-            }
-
-            Text("Comments, polls and activity feed will be added after backend support is ready.")
-                .font(.subheadline)
-                .foregroundStyle(palette.secondaryText)
-        }
-        .padding(18)
-        .background(cardBackground)
-    }
-
     func taskPill(text: String, tint: Color) -> some View {
         Text(text)
             .font(.caption2.weight(.semibold))
@@ -1130,8 +1198,6 @@ extension BackendCrewDetailView {
         let profile = memberProfilesByID[assignedID]
         return memberName(from: profile)
     }
-    
-    
 
     func infoPill(text: String, tint: Color) -> some View {
         Text(text)
@@ -1240,198 +1306,3 @@ extension BackendCrewDetailView {
         }
     }
 }
-
-import SwiftUI
-
-struct BackendCreateCrewTaskSheet: View {
-    let crew: CrewDTO
-    let members: [CrewMemberDTO]
-    let memberProfiles: [ProfileDTO]
-
-    @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var crewStore: CrewStore
-    @EnvironmentObject var session: SessionStore
-
-    @State private var title = ""
-    @State private var details = ""
-    @State private var selectedAssigneeID: UUID?
-    @State private var priority = "medium"
-    @State private var status = "todo"
-    @State private var showOnWeek = false
-    @State private var plannedDate = Date()
-    @State private var durationMinute = 60
-    @State private var errorMessage: String?
-    @State private var isSaving = false
-
-    private let priorityOptions = ["low", "medium", "high", "urgent"]
-    private let statusOptions = ["todo", "inProgress", "review", "done"]
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Task") {
-                    TextField("Task title", text: $title)
-
-                    TextField("Details", text: $details, axis: .vertical)
-                        .lineLimit(3...6)
-                }
-
-                Section("Assignment") {
-                    Picker("Member", selection: $selectedAssigneeID) {
-                        Text("Unassigned").tag(UUID?.none)
-
-                        ForEach(members) { member in
-                            Text(displayName(for: member))
-                                .tag(Optional(member.user_id))
-                        }
-                    }
-                }
-
-                Section("Priority & Status") {
-                    Picker("Priority", selection: $priority) {
-                        ForEach(priorityOptions, id: \.self) { item in
-                            Text(priorityLabel(item)).tag(item)
-                        }
-                    }
-
-                    Picker("Status", selection: $status) {
-                        ForEach(statusOptions, id: \.self) { item in
-                            Text(statusLabel(item)).tag(item)
-                        }
-                    }
-                }
-
-                Section("Week Planning") {
-                    Toggle("Show on Week page", isOn: $showOnWeek)
-
-                    if showOnWeek {
-                        DatePicker(
-                            "Date & Time",
-                            selection: $plannedDate,
-                            displayedComponents: [.date, .hourAndMinute]
-                        )
-
-                        Stepper("Duration: \(durationMinute) min", value: $durationMinute, in: 15...240, step: 15)
-                    }
-                }
-
-                if let errorMessage {
-                    Section {
-                        Text(errorMessage)
-                            .foregroundStyle(.red)
-                    }
-                }
-            }
-            .navigationTitle("New Task")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Task {
-                            await saveTask()
-                        }
-                    } label: {
-                        if isSaving {
-                            ProgressView()
-                        } else {
-                            Text("Save")
-                        }
-                    }
-                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
-                }
-            }
-        }
-    }
-
-    @MainActor
-    private func saveTask() async {
-        let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanTitle.isEmpty else { return }
-        guard let user = session.currentUser else {
-            errorMessage = "User session not found."
-            return
-        }
-
-        isSaving = true
-        errorMessage = nil
-
-        let schedule = makeSchedule()
-
-        do {
-            try await crewStore.createTask(
-                title: cleanTitle,
-                crewID: crew.id,
-                userID: user.id,
-                assignedTo: selectedAssigneeID,
-                details: details.trimmingCharacters(in: .whitespacesAndNewlines),
-                priority: priority,
-                status: status,
-                showOnWeek: showOnWeek,
-                scheduledWeekday: schedule.weekday,
-                scheduledStartMinute: schedule.startMinute,
-                scheduledDurationMinute: showOnWeek ? durationMinute : nil
-            )
-            dismiss()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-
-        isSaving = false
-    }
-
-    private func makeSchedule() -> (weekday: Int?, startMinute: Int?) {
-        guard showOnWeek else { return (nil, nil) }
-
-        let cal = Calendar.current
-        let comps = cal.dateComponents([.weekday, .hour, .minute], from: plannedDate)
-
-        let systemWeekday = comps.weekday ?? 2
-        let convertedWeekday = (systemWeekday + 5) % 7
-        let startMinute = ((comps.hour ?? 0) * 60) + (comps.minute ?? 0)
-
-        return (convertedWeekday, startMinute)
-    }
-
-    private func displayName(for member: CrewMemberDTO) -> String {
-        guard let profile = memberProfiles.first(where: { $0.id == member.user_id }) else {
-            return "Unknown user"
-        }
-
-        if let fullName = profile.full_name, !fullName.isEmpty {
-            return fullName
-        }
-
-        if let username = profile.username, !username.isEmpty {
-            return username
-        }
-
-        return profile.email ?? "Unkown user"
-    }
-
-    private func priorityLabel(_ raw: String) -> String {
-        switch raw {
-        case "low": return "Low"
-        case "medium": return "Medium"
-        case "high": return "High"
-        case "urgent": return "Urgent"
-        default: return raw.capitalized
-        }
-    }
-
-    private func statusLabel(_ raw: String) -> String {
-        switch raw {
-        case "todo": return "Todo"
-        case "inProgress": return "In Progress"
-        case "review": return "Review"
-        case "done": return "Done"
-        default: return raw.capitalized
-        }
-    }
-}
-

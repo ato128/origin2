@@ -251,69 +251,6 @@ extension WeekView {
     var crewProjectSelector: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
-
-                let allSelected = selectedCrewID == nil
-
-                Button {
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
-                        selectedCrewID = nil
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        ZStack {
-                            Circle()
-                                .fill(allSelected ? palette.primaryText.opacity(0.12) : palette.secondaryCardFill)
-                                .frame(width: 24, height: 24)
-
-                            Image(systemName: "square.grid.2x2.fill")
-                                .font(.caption.bold())
-                        }
-
-                        Text("All")
-                            .lineLimit(1)
-                    }
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 11)
-                    .padding(.vertical, 7)
-                    .background(
-                        Capsule()
-                            .fill(
-                                allSelected
-                                ? LinearGradient(
-                                    colors: [
-                                        palette.primaryText.opacity(0.14),
-                                        palette.primaryText.opacity(0.08)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                                : LinearGradient(
-                                    colors: [
-                                        palette.secondaryCardFill,
-                                        palette.secondaryCardFill.opacity(0.92)
-                                    ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            )
-                    )
-                    .overlay(
-                        Capsule()
-                            .stroke(
-                                allSelected
-                                ? palette.primaryText.opacity(0.18)
-                                : palette.cardStroke,
-                                lineWidth: 1
-                            )
-                    )
-                    .foregroundStyle(palette.primaryText)
-                    .shadow(
-                        color: allSelected ? palette.primaryText.opacity(0.06) : .clear,
-                        radius: 10
-                    )
-                }
-                .buttonStyle(.plain)
-
                 ForEach(allCrews, id: \.id) { crew in
                     let isSelected = selectedCrewID == crew.id
                     let tint = hexColor(crew.colorHex)
@@ -495,6 +432,8 @@ extension WeekView {
                                         showCompletedCrewTasks.toggle()
                                     }
                                 }
+                                
+                                .animation(.spring(response: 0.38, dampingFraction: 0.86), value: allCrewTasksForSelectedDay.map { "\($0.id.uuidString)-\($0.isDone)" })
 
                                 if showCompletedCrewTasks {
                                     LazyVStack(spacing: 12) {
@@ -565,12 +504,12 @@ extension WeekView {
     }
 
     var crewSummaryTitle: String {
-        selectedCrew.map { "Today in \($0.name)" } ?? "Today in Crew"
+        selectedCrew.map { "Today in \($0.name)" } ?? "Select a Crew"
     }
 
     var crewSummaryTaskCountText: String {
         let count = allCrewTasksForSelectedDay.filter { !$0.isDone }.count
-        return "\(count) Görev"
+        return "\(count) Tasks"
     }
 
     func enhancedPremiumTimelineCard(
@@ -660,13 +599,19 @@ extension WeekView {
                 .delay(Double(index) * 0.04),
             value: didAnimateCrewCards
         )
+        .transition(
+            .asymmetric(
+                insertion: .move(edge: .top).combined(with: .opacity),
+                removal: .opacity.combined(with: .scale(scale: 0.98))
+            )
+        )
         .contextMenu {
             Button {
                 selectedTaskForEdit = task
             } label: {
                 Label("Edit", systemImage: "pencil")
             }
-            
+
             Button {
                 toggleCrewTaskDone(task)
             } label: {
