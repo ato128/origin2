@@ -122,14 +122,26 @@ struct CrewView: View {
                     .environmentObject(session)
             }
             .task {
-                guard let currentUserID = session.currentUser?.id else { return }
-                await reloadAllCrewAndFriendData(forceCrews: false)
+                guard !didLoad else { return }
+                guard let userID = session.currentUser?.id else { return }
+
+                await initialLoadIfNeeded()
+                crewStore.subscribeToCrewsListRealtime(for: userID)
+
+                didLoad = true
             }
-            .onChange(of: session.currentUser?.id) { _, newID in
-                guard let newID else { return }
-                
+            .onChange(of: session.currentUser?.id) { newID in
                 Task {
+                    if newID == nil {
+                        crewStore.resetForUserChange()
+                        didLoad = false
+                        return
+                    }
+
+                    crewStore.resetForUserChange()
+                    didLoad = false
                     await reloadAllCrewAndFriendData(forceCrews: true)
+                    crewStore.subscribeToCrewsListRealtime(for: newID!)
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .openCrewInviteFromLink)) { notification in
@@ -517,6 +529,17 @@ private extension CrewView {
             y: 6
         )
     }
+    
+    func initialLoadIfNeeded() async {
+        guard session.currentUser?.id != nil else { return }
+
+        await crewStore.loadCrews(force: true)
+        await crewStore.loadStatsForAllCrews()
+
+        if friendStore.shouldRefreshFriends() {
+            await reloadBackendFriends(force: false)
+        }
+    }
 
     func backendAvatarStack(memberCount: Int, tint: Color) -> some View {
         HStack(spacing: -10) {
@@ -819,7 +842,7 @@ private extension CrewView {
     func acceptRequest(_ request: FriendshipDTO) async {
         do {
             try await friendStore.acceptFriendRequest(friendshipID: request.id)
-            await reloadAllCrewAndFriendData(forceCrews: false)
+            await reloadBackendFriends(force: true)
         } catch {
             print("ACCEPT FRIEND REQUEST ERROR:", error.localizedDescription)
         }
@@ -833,14 +856,24 @@ private extension CrewView {
                 .eq("id", value: request.id.uuidString)
                 .execute()
 
-            await reloadAllCrewAndFriendData(forceCrews: false)
+            await reloadBackendFriends(force: true)
         } catch {
             print("REMOVE PENDING FRIEND REQUEST ERROR:", error.localizedDescription)
         }
     }
+    func resolvedOnlineState(for friend: Friend) -> Bool {
+        guard let backendUserID = friend.backendUserID,
+              let presence = friendStore.presenceByUserID[backendUserID] else {
+            return friend.isOnline
+        }
 
-    func reloadBackendFriends() async {
+        return presence.is_online
+    }
+
+    func reloadBackendFriends(force: Bool) async {
         guard let currentUserID = session.currentUser?.id else { return }
+
+        guard friendStore.shouldRefreshFriends(force: force) else { return }
 
         await friendStore.loadAllFriendships(currentUserID: currentUserID)
 
@@ -856,23 +889,24 @@ private extension CrewView {
 
         await friendStore.loadProfiles(for: otherUserIDs)
         await friendStore.loadPresence(for: otherUserIDs)
-        await friendStore.subscribeToPresenceRealtime(for: otherUserIDs)
 
         friendStore.syncAcceptedFriendsToLocal(
             currentUserID: currentUserID,
             modelContext: modelContext
         )
+
+        friendStore.markFriendsCacheRefreshed()
     }
 
     func reloadAllCrewAndFriendData(forceCrews: Bool) async {
         if forceCrews {
             await crewStore.loadCrews(force: true)
-        } else {
+        } else if crewStore.crews.isEmpty {
             await crewStore.loadCrews()
         }
 
         await crewStore.loadStatsForAllCrews()
-        await reloadBackendFriends()
+        await reloadBackendFriends(force: forceCrews)
     }
 
     var friendsFocusActivityCard: some View {
@@ -1161,6 +1195,7 @@ private extension CrewView {
     }
     func friendRow(_ friend: Friend) -> some View {
         let activeSession = activeFocusSession(for: friend)
+        let isOnline = resolvedOnlineState(for: friend)
 
         return NavigationLink {
             FriendDetailView(friend: friend)
@@ -1226,10 +1261,10 @@ private extension CrewView {
                     HStack(spacing: 6) {
                         ZStack {
                             Circle()
-                                .fill(friend.isOnline ? Color.green : Color.gray.opacity(0.5))
+                                .fill(isOnline ? Color.green : Color.gray.opacity(0.5))
                                 .frame(width: 8, height: 8)
 
-                            if friend.isOnline {
+                            if isOnline {
                                 Circle()
                                     .stroke(Color.green.opacity(0.35), lineWidth: 1.5)
                                     .frame(width: 16, height: 16)
@@ -1242,7 +1277,7 @@ private extension CrewView {
                             }
                         }
 
-                        Text(friend.isOnline ? "Online" : "Offline")
+                        Text(isOnline ? "Online" : "Offline")
                             .font(.caption2)
                             .foregroundStyle(palette.secondaryText)
                     }

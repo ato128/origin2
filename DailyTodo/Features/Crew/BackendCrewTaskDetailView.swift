@@ -13,11 +13,15 @@ struct BackendCrewTaskDetailView: View {
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var session: SessionStore
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var showEditSheet = false
 
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private var palette: ThemePalette { ThemePalette() }
+
+    var currentTask: CrewTaskDTO {
+        crewStore.crewTasks.first(where: { $0.id == task.id }) ?? task
+    }
 
     var body: some View {
         ZStack {
@@ -37,9 +41,13 @@ struct BackendCrewTaskDetailView: View {
             }
         }
         .sheet(isPresented: $showEditSheet) {
-            BackendEditCrewTaskView(crew: crew, task: task)
+            BackendEditCrewTaskView(crew: crew, task: currentTask)
                 .environmentObject(crewStore)
                 .environmentObject(session)
+        }
+        .task {
+            await crewStore.loadTasks(for: crew.id)
+            await crewStore.loadMemberProfiles(for: crewStore.crewMembers)
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
@@ -115,35 +123,35 @@ private extension BackendCrewTaskDetailView {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(task.title)
+                    Text(currentTask.title)
                         .font(.title3.bold())
                         .foregroundStyle(palette.primaryText)
 
                     HStack(spacing: 8) {
                         badge(
-                            text: priorityLabel(task.priority),
-                            tint: priorityColor(task.priority)
+                            text: priorityLabel(currentTask.priority),
+                            tint: priorityColor(currentTask.priority)
                         )
 
                         badge(
-                            text: statusTitle(task.status),
-                            tint: statusColor(task.status)
+                            text: statusTitle(currentTask.status),
+                            tint: statusColor(currentTask.status)
                         )
                     }
                 }
 
                 Spacer()
 
-                Image(systemName: task.is_done ? "checkmark.circle.fill" : "circle")
+                Image(systemName: currentTask.is_done ? "checkmark.circle.fill" : "circle")
                     .font(.title2)
-                    .foregroundStyle(task.is_done ? .green : .orange)
+                    .foregroundStyle(currentTask.is_done ? .green : .orange)
             }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
     }
-    
+
     func priorityColor(_ value: String) -> Color {
         switch value {
         case "low": return .gray
@@ -190,26 +198,24 @@ private extension BackendCrewTaskDetailView {
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
-            // ✅ MARK DONE
             Button {
                 Task {
-                    await crewStore.toggleTask(task)
+                    await crewStore.toggleTask(currentTask)
                 }
             } label: {
                 HStack {
-                    Image(systemName: task.is_done ? "arrow.uturn.backward.circle.fill" : "checkmark.circle.fill")
-                    Text(task.is_done ? "Reopen Task" : "Mark Done")
+                    Image(systemName: currentTask.is_done ? "arrow.uturn.backward.circle.fill" : "checkmark.circle.fill")
+                    Text(currentTask.is_done ? "Reopen Task" : "Mark Done")
                 }
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .background(task.is_done ? Color.orange.opacity(0.15) : Color.green.opacity(0.15))
-                .foregroundStyle(task.is_done ? .orange : .green)
+                .background(currentTask.is_done ? Color.orange.opacity(0.15) : Color.green.opacity(0.15))
+                .foregroundStyle(currentTask.is_done ? .orange : .green)
                 .clipShape(Capsule())
             }
             .buttonStyle(.plain)
 
-            // ✅ BURAYA EKLİYORSUN
             Button {
                 showEditSheet = true
             } label: {
@@ -226,11 +232,14 @@ private extension BackendCrewTaskDetailView {
             }
             .buttonStyle(.plain)
         }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBackground)
     }
 
     var assignmentCard: some View {
-        let assignedProfile = crewStore.memberProfiles.first(where: { $0.id == task.assigned_to })
-        let creatorProfile = crewStore.memberProfiles.first(where: { $0.id == task.created_by })
+        let assignedProfile = crewStore.memberProfiles.first(where: { $0.id == currentTask.assigned_to })
+        let creatorProfile = crewStore.memberProfiles.first(where: { $0.id == currentTask.created_by })
 
         return VStack(alignment: .leading, spacing: 12) {
             Text("Assignment")
@@ -265,14 +274,14 @@ private extension BackendCrewTaskDetailView {
             infoRow(
                 icon: "number",
                 title: "Task ID",
-                value: task.id.uuidString,
+                value: currentTask.id.uuidString,
                 tint: palette.secondaryText
             )
 
             infoRow(
                 icon: "calendar",
                 title: "Created At",
-                value: task.created_at ?? "Unknown",
+                value: currentTask.created_at ?? "Unknown",
                 tint: palette.secondaryText
             )
         }
@@ -335,7 +344,7 @@ private extension BackendCrewTaskDetailView {
             return username
         }
 
-        return profile.email ?? "Unkown user"
+        return profile.email ?? "Unknown user"
     }
 
     var cardBackground: some View {
@@ -345,10 +354,5 @@ private extension BackendCrewTaskDetailView {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(palette.cardStroke, lineWidth: 1)
             )
-    }
-    var totalFocusMinutes: Int {
-        crewStore.crewFocusRecords
-            .filter { $0.crew_id == crew.id }
-            .reduce(0) { $0 + $1.minutes }
     }
 }

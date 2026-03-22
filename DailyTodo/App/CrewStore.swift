@@ -51,9 +51,24 @@ final class CrewStore: ObservableObject {
     private var crewMessagesChannel: RealtimeChannelV2?
     private var subscribedCrewMessageID: UUID?
     private var hasLoadedCrews = false
+    private var crewsListChannel: RealtimeChannelV2?
+    private var crewsMemberListChannel: RealtimeChannelV2?
+    private var subscribedCrewsListUserID: UUID?
+    
+    
+   
+    private var crewsStatsTaskChannel: RealtimeChannelV2?
+    private var crewsStatsMemberChannel: RealtimeChannelV2?
+    
+    private var subscribedCrewRealtimeID: UUID?
     
     func setCurrentUser(_ userID: UUID?) {
         currentUserID = userID
+    }
+    private func refreshCrewStats(for crewID: UUID) async {
+        await loadMemberCount(for: crewID)
+        await loadTaskCount(for: crewID)
+        await loadCompletedTaskCount(for: crewID)
     }
 
     // MARK: - Chat Helpers
@@ -460,6 +475,7 @@ final class CrewStore: ObservableObject {
             await crewMessagesChannel?.unsubscribe()
         }
 
+        crewMessagesChannel = nil
         crewMessagesChannel = client.realtimeV2.channel("crew-messages-\(crewID.uuidString)")
         subscribedCrewMessageID = crewID
 
@@ -518,7 +534,23 @@ final class CrewStore: ObservableObject {
 
     // MARK: - General Crew Realtime
 
+    private func upsertLocalTask(_ task: CrewTaskDTO) {
+        if let index = crewTasks.firstIndex(where: { $0.id == task.id }) {
+            crewTasks[index] = task
+        } else {
+            crewTasks.insert(task, at: 0)
+        }
+    }
+
+    private func removeLocalTask(taskID: UUID) {
+        crewTasks.removeAll { $0.id == taskID }
+    }
+    
     func subscribeToCrewRealtime(crewID: UUID) {
+        if subscribedCrewRealtimeID == crewID {
+            return
+        }
+
         let client = SupabaseManager.shared.client
 
         Task {
@@ -529,11 +561,18 @@ final class CrewStore: ObservableObject {
             await focusChannel?.unsubscribe()
         }
 
+        commentChannel = nil
+        taskChannel = nil
+        memberChannel = nil
+        activityChannel = nil
+        focusChannel = nil
+
         commentChannel = client.realtimeV2.channel("crew-task-comments-\(crewID.uuidString)")
         taskChannel = client.realtimeV2.channel("crew-tasks-\(crewID.uuidString)")
         memberChannel = client.realtimeV2.channel("crew-members-\(crewID.uuidString)")
         activityChannel = client.realtimeV2.channel("crew-activities-\(crewID.uuidString)")
         focusChannel = client.realtimeV2.channel("crew-focus-records-\(crewID.uuidString)")
+        subscribedCrewRealtimeID = crewID
 
        _ = commentChannel?.onPostgresChange(
             InsertAction.self,
@@ -568,36 +607,63 @@ final class CrewStore: ObservableObject {
             }
         }
 
-      _ =  taskChannel?.onPostgresChange(
+        _ = taskChannel?.onPostgresChange(
             InsertAction.self,
             schema: "public",
             table: "crew_tasks",
             filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] _ in
+        ) { [weak self] action in
+            guard let self else { return }
             Task { @MainActor in
-                await self?.loadTasks(for: crewID)
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: action.record)
+                    let dto = try JSONDecoder().decode(CrewTaskDTO.self, from: jsonData)
+                    self.upsertLocalTask(dto)
+                    await self.refreshCrewStats(for: crewID)
+                } catch {
+                    print("CREW TASK INSERT REALTIME DECODE ERROR:", error.localizedDescription)
+                    await self.loadTasks(for: crewID)
+                }
             }
         }
 
-      _ =  taskChannel?.onPostgresChange(
+        _ = taskChannel?.onPostgresChange(
             UpdateAction.self,
             schema: "public",
             table: "crew_tasks",
             filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] _ in
+        ) { [weak self] action in
+            guard let self else { return }
             Task { @MainActor in
-                await self?.loadTasks(for: crewID)
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: action.record)
+                    let dto = try JSONDecoder().decode(CrewTaskDTO.self, from: jsonData)
+                    self.upsertLocalTask(dto)
+                    await self.refreshCrewStats(for: crewID)
+                } catch {
+                    print("CREW TASK UPDATE REALTIME DECODE ERROR:", error.localizedDescription)
+                    await self.loadTasks(for: crewID)
+                }
             }
         }
 
-      _ =  taskChannel?.onPostgresChange(
+        _ = taskChannel?.onPostgresChange(
             DeleteAction.self,
             schema: "public",
             table: "crew_tasks",
             filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] _ in
+        ) { [weak self] action in
+            guard let self else { return }
             Task { @MainActor in
-                await self?.loadTasks(for: crewID)
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: action.oldRecord)
+                    let dto = try JSONDecoder().decode(CrewTaskDTO.self, from: jsonData)
+                    self.removeLocalTask(taskID: dto.id)
+                    await self.refreshCrewStats(for: crewID)
+                } catch {
+                    print("CREW TASK DELETE REALTIME DECODE ERROR:", error.localizedDescription)
+                    await self.loadTasks(for: crewID)
+                }
             }
         }
 
@@ -732,6 +798,7 @@ final class CrewStore: ObservableObject {
         memberChannel = nil
         activityChannel = nil
         focusChannel = nil
+        subscribedCrewRealtimeID = nil
     }
 
     // MARK: - Existing Loads / Actions
@@ -785,6 +852,263 @@ final class CrewStore: ObservableObject {
             crews = []
         }
     }
+    func subscribeToCrewsListRealtime(for userID: UUID) {
+        if subscribedCrewsListUserID == userID {
+            return
+        }
+
+        let client = SupabaseManager.shared.client
+
+        Task {
+            await crewsListChannel?.unsubscribe()
+            await crewsMemberListChannel?.unsubscribe()
+            await crewsStatsTaskChannel?.unsubscribe()
+            await crewsStatsMemberChannel?.unsubscribe()
+        }
+
+        crewsListChannel = nil
+        crewsMemberListChannel = nil
+        crewsStatsTaskChannel = nil
+        crewsStatsMemberChannel = nil
+
+        crewsListChannel = client.realtimeV2.channel("crews-list-\(userID.uuidString)")
+        crewsMemberListChannel = client.realtimeV2.channel("crew-members-list-\(userID.uuidString)")
+        crewsStatsTaskChannel = client.realtimeV2.channel("crews-stats-tasks-\(userID.uuidString)")
+        crewsStatsMemberChannel = client.realtimeV2.channel("crews-stats-members-\(userID.uuidString)")
+        subscribedCrewsListUserID = userID
+
+        _ = crewsListChannel?.onPostgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "crews"
+        ) { [weak self] action in
+            guard let self else { return }
+            Task { @MainActor in
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: action.record)
+                    let dto = try JSONDecoder().decode(CrewDTO.self, from: jsonData)
+
+                    if dto.owner_id == userID {
+                        self.upsertLocalCrew(dto)
+                        await self.refreshCrewStats(for: dto.id)
+                    } else {
+                        await self.loadCrews(force: true)
+                        await self.loadStatsForAllCrews()
+                    }
+                } catch {
+                    print("CREWS LIST INSERT REALTIME ERROR:", error.localizedDescription)
+                }
+            }
+        }
+
+        _ = crewsListChannel?.onPostgresChange(
+            UpdateAction.self,
+            schema: "public",
+            table: "crews"
+        ) { [weak self] action in
+            guard let self else { return }
+            Task { @MainActor in
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: action.record)
+                    let dto = try JSONDecoder().decode(CrewDTO.self, from: jsonData)
+
+                    if self.crews.contains(where: { $0.id == dto.id }) || dto.owner_id == userID {
+                        self.upsertLocalCrew(dto)
+                    }
+                } catch {
+                    print("CREWS LIST UPDATE REALTIME ERROR:", error.localizedDescription)
+                }
+            }
+        }
+
+        _ = crewsListChannel?.onPostgresChange(
+            DeleteAction.self,
+            schema: "public",
+            table: "crews"
+        ) { [weak self] action in
+            guard let self else { return }
+            Task { @MainActor in
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: action.oldRecord)
+                    let dto = try JSONDecoder().decode(CrewDTO.self, from: jsonData)
+                    self.removeLocalCrew(id: dto.id)
+                } catch {
+                    print("CREWS LIST DELETE REALTIME ERROR:", error.localizedDescription)
+                }
+            }
+        }
+
+        _ = crewsMemberListChannel?.onPostgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "crew_members",
+            filter: "user_id=eq.\(userID.uuidString)"
+        ) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor in
+                await self.loadCrews(force: true)
+                await self.loadStatsForAllCrews()
+            }
+        }
+
+        _ = crewsMemberListChannel?.onPostgresChange(
+            DeleteAction.self,
+            schema: "public",
+            table: "crew_members",
+            filter: "user_id=eq.\(userID.uuidString)"
+        ) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor in
+                await self.loadCrews(force: true)
+                await self.loadStatsForAllCrews()
+            }
+        }
+
+        _ = crewsStatsTaskChannel?.onPostgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "crew_tasks"
+        ) { [weak self] action in
+            guard let self else { return }
+            Task { @MainActor in
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: action.record)
+                    let dto = try JSONDecoder().decode(CrewTaskDTO.self, from: jsonData)
+                    await self.refreshStatsIfNeeded(for: dto.crew_id)
+                } catch {
+                    print("CREWS STATS TASK INSERT ERROR:", error.localizedDescription)
+                }
+            }
+        }
+
+        _ = crewsStatsTaskChannel?.onPostgresChange(
+            UpdateAction.self,
+            schema: "public",
+            table: "crew_tasks"
+        ) { [weak self] action in
+            guard let self else { return }
+            Task { @MainActor in
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: action.record)
+                    let dto = try JSONDecoder().decode(CrewTaskDTO.self, from: jsonData)
+                    await self.refreshStatsIfNeeded(for: dto.crew_id)
+                } catch {
+                    print("CREWS STATS TASK UPDATE ERROR:", error.localizedDescription)
+                }
+            }
+        }
+
+        _ = crewsStatsTaskChannel?.onPostgresChange(
+            DeleteAction.self,
+            schema: "public",
+            table: "crew_tasks"
+        ) { [weak self] action in
+            guard let self else { return }
+            Task { @MainActor in
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: action.oldRecord)
+                    let dto = try JSONDecoder().decode(CrewTaskDTO.self, from: jsonData)
+                    await self.refreshStatsIfNeeded(for: dto.crew_id)
+                } catch {
+                    print("CREWS STATS TASK DELETE ERROR:", error.localizedDescription)
+                }
+            }
+        }
+
+        _ = crewsStatsMemberChannel?.onPostgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "crew_members"
+        ) { [weak self] action in
+            guard let self else { return }
+            Task { @MainActor in
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: action.record)
+                    let dto = try JSONDecoder().decode(CrewMemberDTO.self, from: jsonData)
+                    await self.refreshStatsIfNeeded(for: dto.crew_id)
+                } catch {
+                    print("CREWS STATS MEMBER INSERT ERROR:", error.localizedDescription)
+                }
+            }
+        }
+
+        _ = crewsStatsMemberChannel?.onPostgresChange(
+            UpdateAction.self,
+            schema: "public",
+            table: "crew_members"
+        ) { [weak self] action in
+            guard let self else { return }
+            Task { @MainActor in
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: action.record)
+                    let dto = try JSONDecoder().decode(CrewMemberDTO.self, from: jsonData)
+                    await self.refreshStatsIfNeeded(for: dto.crew_id)
+                } catch {
+                    print("CREWS STATS MEMBER UPDATE ERROR:", error.localizedDescription)
+                }
+            }
+        }
+
+        _ = crewsStatsMemberChannel?.onPostgresChange(
+            DeleteAction.self,
+            schema: "public",
+            table: "crew_members"
+        ) { [weak self] action in
+            guard let self else { return }
+            Task { @MainActor in
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: action.oldRecord)
+                    let dto = try JSONDecoder().decode(CrewMemberDTO.self, from: jsonData)
+                    await self.refreshStatsIfNeeded(for: dto.crew_id)
+                } catch {
+                    print("CREWS STATS MEMBER DELETE ERROR:", error.localizedDescription)
+                }
+            }
+        }
+
+        Task {
+            try? await crewsListChannel?.subscribeWithError()
+            try? await crewsMemberListChannel?.subscribeWithError()
+            try? await crewsStatsTaskChannel?.subscribeWithError()
+            try? await crewsStatsMemberChannel?.subscribeWithError()
+        }
+    }
+    
+    
+    func unsubscribeCrewsListRealtime() {
+        Task {
+            await crewsListChannel?.unsubscribe()
+            await crewsMemberListChannel?.unsubscribe()
+            await crewsStatsTaskChannel?.unsubscribe()
+            await crewsStatsMemberChannel?.unsubscribe()
+        }
+
+        crewsListChannel = nil
+        crewsMemberListChannel = nil
+        crewsStatsTaskChannel = nil
+        crewsStatsMemberChannel = nil
+        subscribedCrewsListUserID = nil
+    }
+    
+    private func upsertLocalCrew(_ crew: CrewDTO) {
+        if let index = crews.firstIndex(where: { $0.id == crew.id }) {
+            crews[index] = crew
+        } else {
+            crews.insert(crew, at: 0)
+        }
+    }
+
+    private func removeLocalCrew(id: UUID) {
+        crews.removeAll { $0.id == id }
+        memberCountByCrew[id] = nil
+        taskCountByCrew[id] = nil
+        completedTaskCountByCrew[id] = nil
+    }
+    
+    private func refreshStatsIfNeeded(for crewID: UUID) async {
+        guard crews.contains(where: { $0.id == crewID }) else { return }
+        await refreshCrewStats(for: crewID)
+    }
     
     func resetForUserChange() {
         crews = []
@@ -807,6 +1131,7 @@ final class CrewStore: ObservableObject {
         unsubscribe()
         unsubscribeCrewChat()
         unsubscribeCrewFocusRealtime()
+        unsubscribeCrewsListRealtime()
     }
 
     func loadMembers(for crewID: UUID) async {
@@ -1006,14 +1331,37 @@ final class CrewStore: ObservableObject {
             print("CREATE FOCUS RECORD ERROR:", error.localizedDescription)
         }
     }
+    
+    private func updateLocalTask(_ taskID: UUID, mutate: (inout CrewTaskDTO) -> Void) {
+        guard let index = crewTasks.firstIndex(where: { $0.id == taskID }) else { return }
+        mutate(&crewTasks[index])
+    }
 
     func toggleTask(_ task: CrewTaskDTO) async {
+        guard let index = crewTasks.firstIndex(where: { $0.id == task.id }) else { return }
+
+        let oldTask = crewTasks[index]
+        let newIsDone = !oldTask.is_done
+        let newStatus = newIsDone ? "done" : "todo"
+
+        // 1) Optimistic local update
+        crewTasks[index].is_done = newIsDone
+        crewTasks[index].status = newStatus
+
+        struct ToggleTaskPayload: Encodable {
+            let is_done: Bool
+            let status: String
+        }
+
         do {
             try await SupabaseManager.shared.client
                 .from("crew_tasks")
-                .update([
-                    "is_done": !task.is_done
-                ])
+                .update(
+                    ToggleTaskPayload(
+                        is_done: newIsDone,
+                        status: newStatus
+                    )
+                )
                 .eq("id", value: task.id.uuidString)
                 .execute()
 
@@ -1023,13 +1371,18 @@ final class CrewStore: ObservableObject {
             await createActivity(
                 crewID: task.crew_id,
                 memberName: actorName,
-                actionText: !task.is_done ? "completed task \(task.title)" : "reopened task \(task.title)"
+                actionText: newIsDone
+                    ? "completed task \(task.title)"
+                    : "reopened task \(task.title)"
             )
+
+            await refreshCrewStats(for: task.crew_id)
+
         } catch {
+            crewTasks[index] = oldTask
             print("TOGGLE ERROR:", error.localizedDescription)
         }
     }
-
     func createTask(
         title: String,
         crewID: UUID,
@@ -1073,10 +1426,15 @@ final class CrewStore: ObservableObject {
             scheduled_duration_minute: scheduledDurationMinute
         )
 
-        try await SupabaseManager.shared.client
+        let response = try await SupabaseManager.shared.client
             .from("crew_tasks")
             .insert(payload)
+            .select()
+            .single()
             .execute()
+
+        let createdTask = try JSONDecoder().decode(CrewTaskDTO.self, from: response.data)
+        upsertLocalTask(createdTask)
 
         let profile = memberProfiles.first(where: { $0.id == userID })
         let actorName = profile?.full_name ?? profile?.username ?? "You"
@@ -1087,9 +1445,8 @@ final class CrewStore: ObservableObject {
             actionText: "created task \(clean)"
         )
 
-        
+        await refreshCrewStats(for: crewID)
     }
-
     func updateTask(
         taskID: UUID,
         title: String,
@@ -1134,6 +1491,23 @@ final class CrewStore: ObservableObject {
             )
             .eq("id", value: taskID.uuidString)
             .execute()
+
+        updateLocalTask(taskID) { task in
+            task.title = title
+            task.assigned_to = assignedTo
+            task.is_done = isDone
+            task.details = details
+            task.priority = priority
+            task.status = status
+            task.show_on_week = showOnWeek
+            task.scheduled_weekday = scheduledWeekday
+            task.scheduled_start_minute = scheduledStartMinute
+            task.scheduled_duration_minute = scheduledDurationMinute
+        }
+
+        if let crewID = crewTasks.first(where: { $0.id == taskID })?.crew_id {
+            await refreshCrewStats(for: crewID)
+        }
     }
 
     func deleteTask(taskID: UUID, crewID: UUID, title: String? = nil) async throws {
@@ -1143,42 +1517,86 @@ final class CrewStore: ObservableObject {
             .eq("id", value: taskID.uuidString)
             .execute()
 
+        crewTasks.removeAll { $0.id == taskID }
+
         await createActivity(
             crewID: crewID,
             memberName: "You",
             actionText: "deleted task \(title ?? "")"
         )
 
-       
+        await loadActivities(for: crewID)
+        await refreshCrewStats(for: crewID)
     }
 
     func addMember(by username: String, to crewID: UUID) async throws {
         let cleanUsername = username
             .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
 
-        let userResponse = try await SupabaseManager.shared.client
-            .from("profiles")
-            .select()
-            .eq("username", value: cleanUsername)
-            .single()
-            .execute()
+        guard !cleanUsername.isEmpty else {
+            throw NSError(
+                domain: "CrewStore",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Username boş olamaz."]
+            )
+        }
 
-        let profile = try JSONDecoder().decode(ProfileDTO.self, from: userResponse.data)
+        do {
+            // 1) Username ile kullanıcıyı bul
+            let userResponse = try await SupabaseManager.shared.client
+                .from("profiles")
+                .select("id, email, username, full_name")
+                .eq("username", value: cleanUsername)
+                .execute()
 
-        try await SupabaseManager.shared.client
-            .from("crew_members")
-            .insert([
-                "crew_id": crewID.uuidString,
-                "user_id": profile.id.uuidString,
-                "role": "member"
-            ])
-            .execute()
+            let profiles = try JSONDecoder().decode([ProfileDTO].self, from: userResponse.data)
 
-        await loadMembers(for: crewID)
-        await loadMemberProfiles(for: crewMembers)
+            guard let profile = profiles.first else {
+                throw NSError(
+                    domain: "CrewStore",
+                    code: 2,
+                    userInfo: [NSLocalizedDescriptionKey: "Bu username ile kullanıcı bulunamadı."]
+                )
+            }
+
+            // 2) Zaten crew içinde mi kontrol et
+            let existingResponse = try await SupabaseManager.shared.client
+                .from("crew_members")
+                .select()
+                .eq("crew_id", value: crewID.uuidString)
+                .eq("user_id", value: profile.id.uuidString)
+                .execute()
+
+            let existingMembers = try JSONDecoder().decode([CrewMemberDTO].self, from: existingResponse.data)
+
+            if !existingMembers.isEmpty {
+                throw NSError(
+                    domain: "CrewStore",
+                    code: 3,
+                    userInfo: [NSLocalizedDescriptionKey: "Bu kullanıcı zaten crew içinde."]
+                )
+            }
+
+            // 3) Üyeyi ekle
+            try await SupabaseManager.shared.client
+                .from("crew_members")
+                .insert([
+                    "crew_id": crewID.uuidString,
+                    "user_id": profile.id.uuidString,
+                    "role": "member"
+                ])
+                .execute()
+
+            // 4) Refresh
+            await loadMembers(for: crewID)
+            await loadMemberProfiles(for: crewMembers)
+            await refreshCrewStats(for: crewID)
+
+        } catch {
+            print("ADD MEMBER ERROR:", error.localizedDescription)
+            throw error
+        }
     }
-
     func createCrew(name: String, icon: String, colorHex: String, ownerID: UUID) async throws -> CrewDTO {
         let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -1206,6 +1624,8 @@ final class CrewStore: ObservableObject {
             .execute()
 
         await loadCrews(force: true)
+        await refreshCrewStats(for: createdCrew.id)
+
         return createdCrew
     }
 
@@ -1229,6 +1649,7 @@ final class CrewStore: ObservableObject {
             .execute()
 
         await loadCrews(force: true)
+        await refreshCrewStats(for: invite.crew_id)
     }
 
     func createInvite(for crewID: UUID, userID: UUID) async throws -> String {
@@ -1616,6 +2037,9 @@ final class CrewStore: ObservableObject {
             await activeFocusChannel?.unsubscribe()
             await focusParticipantsChannel?.unsubscribe()
         }
+
+        activeFocusChannel = nil
+        focusParticipantsChannel = nil
 
         activeFocusChannel = client.realtimeV2.channel("crew-focus-session-\(crewID.uuidString)")
         focusParticipantsChannel = client.realtimeV2.channel("crew-focus-participants-\(crewID.uuidString)")

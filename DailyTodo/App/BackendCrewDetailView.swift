@@ -5,9 +5,6 @@
 //  Created by Atakan Ortaç on 19.03.2026.
 //
 
-import SwiftUI
-import UIKit
-
 struct BackendCrewDetailView: View {
     let crew: CrewDTO
 
@@ -33,20 +30,15 @@ struct BackendCrewDetailView: View {
     @State private var showActivitySection = false
     @State private var showShareSheet = false
     @State private var didInitialLoad = false
-    
 
     var body: some View {
-        
-
         ZStack(alignment: .top) {
             ambientBackground
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     Color.clear.frame(height: 76)
-
                     customHeader
-
                     heroCard(
                         memberCount: crewMembers.count,
                         totalTasks: sortedCrewTasks.count,
@@ -64,7 +56,7 @@ struct BackendCrewDetailView: View {
                     .offset(y: showStatsRow ? 0 : 18)
                     .opacity(showStatsRow ? 1 : 0)
                     .scaleEffect(showStatsRow ? 1 : 0.985)
-                    
+
                     leaderboardCard
                         .offset(y: showStatsRow ? 0 : 18)
                         .opacity(showStatsRow ? 1 : 0)
@@ -107,12 +99,7 @@ struct BackendCrewDetailView: View {
         .task {
             guard !didInitialLoad else { return }
             didInitialLoad = true
-
-            await crewStore.loadMembers(for: crew.id)
-            await crewStore.loadMemberProfiles(for: crewStore.crewMembers)
-            await crewStore.loadTasks(for: crew.id)
-            await crewStore.loadActivities(for: crew.id)
-            await crewStore.loadFocusRecords(for: crew.id)
+            await loadCrewDetail()
             playEntranceAnimations()
         }
         .onAppear {
@@ -122,17 +109,19 @@ struct BackendCrewDetailView: View {
             crewStore.unsubscribe()
         }
         .refreshable {
-            await crewStore.loadMembers(for: crew.id)
-            await crewStore.loadMemberProfiles(for: crewStore.crewMembers)
-            await crewStore.loadTasks(for: crew.id)
-            await crewStore.loadActivities(for: crew.id)
-            await crewStore.loadFocusRecords(for: crew.id)
+            await loadCrewDetail()
         }
-        .sheet(isPresented: $showAddMember) {
+        .sheet(isPresented: $showAddMember, onDismiss: {
+            Task {
+                await crewStore.loadMembers(for: crew.id)
+                await crewStore.loadMemberProfiles(for: crewStore.crewMembers)
+            }
+        }) {
             AddCrewMemberView(crewID: crew.id)
                 .environmentObject(crewStore)
         }
-        .sheet(isPresented: $showCreateTask) {
+        .sheet(isPresented: $showCreateTask, onDismiss: {
+        }) {
             BackendCreateCrewTaskSheet(
                 crew: crew,
                 members: crewStore.crewMembers,
@@ -174,6 +163,15 @@ struct BackendCrewDetailView: View {
         } message: {
             Text(errorMessage ?? "Unknown error")
         }
+    }
+
+    @MainActor
+    private func loadCrewDetail() async {
+        await crewStore.loadMembers(for: crew.id)
+        await crewStore.loadMemberProfiles(for: crewStore.crewMembers)
+        await crewStore.loadTasks(for: crew.id)
+        await crewStore.loadActivities(for: crew.id)
+        await crewStore.loadFocusRecords(for: crew.id)
     }
 }
 
@@ -895,6 +893,20 @@ extension BackendCrewDetailView {
                             taskCardView(task)
                         }
                         .buttonStyle(.plain)
+                        .contextMenu {
+                            Button {
+                                Task {
+                                    await crewStore.toggleTask(task)
+                                }
+                            } label: {
+                                Label(
+                                    task.is_done ? "Reopen Task" : "Mark as Done",
+                                    systemImage: task.is_done
+                                        ? "arrow.uturn.backward.circle"
+                                        : "checkmark.circle"
+                                )
+                            }
+                        }
                     }
                 }
             }

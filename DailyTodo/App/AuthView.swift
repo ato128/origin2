@@ -9,8 +9,8 @@ import SwiftUI
 
 struct AuthView: View {
     @EnvironmentObject var session: SessionStore
-
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
+
     private let palette = ThemePalette()
 
     @State private var isLogin = true
@@ -21,78 +21,154 @@ struct AuthView: View {
     @State private var password = ""
 
     @State private var errorMessage: String?
-    @FocusState private var focusedField: Field?
+    @State private var didAnimateIn = false
 
-    private enum Field {
-        case fullName
-        case username
-        case email
-        case password
+    private var cleanFullName: String {
+        fullName.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var cleanUsername: String {
+        username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var cleanEmail: String {
+        email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var cleanPassword: String {
+        password.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var formIsValid: Bool {
+        if isLogin {
+            return !cleanEmail.isEmpty && !cleanPassword.isEmpty
+        } else {
+            return !cleanFullName.isEmpty &&
+                   !cleanUsername.isEmpty &&
+                   !cleanEmail.isEmpty &&
+                   !cleanPassword.isEmpty
+        }
     }
 
     var body: some View {
         NavigationStack {
             ZStack {
-                AppBackground()
+                authBackground
 
-                if appTheme == AppTheme.gradient.rawValue {
-                    LinearGradient(
-                        colors: [
-                            Color.purple.opacity(0.18),
-                            Color.blue.opacity(0.10),
-                            Color.clear
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    .ignoresSafeArea()
-                }
-
-                ScrollView {
-                    VStack(spacing: 22) {
-                        Spacer(minLength: 30)
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 24) {
+                        Spacer(minLength: 36)
 
                         headerSection
-                        modePicker
-                        formCard
-                        actionButton
+                            .opacity(didAnimateIn ? 1 : 0)
+                            .offset(y: didAnimateIn ? 0 : 18)
 
-                        Spacer(minLength: 40)
+                        modePicker
+                            .opacity(didAnimateIn ? 1 : 0)
+                            .offset(y: didAnimateIn ? 0 : 22)
+
+                        formCard
+                            .opacity(didAnimateIn ? 1 : 0)
+                            .offset(y: didAnimateIn ? 0 : 26)
+
+                        actionButton
+                            .opacity(didAnimateIn ? 1 : 0)
+                            .offset(y: didAnimateIn ? 0 : 30)
+
+                        Spacer(minLength: 30)
                     }
                     .padding(.horizontal, 20)
-                    .padding(.vertical, 24)
+                    .padding(.bottom, 30)
                 }
-                .scrollIndicators(.hidden)
             }
             .navigationBarHidden(true)
+            .onAppear {
+                guard !didAnimateIn else { return }
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
+                    didAnimateIn = true
+                }
+            }
         }
     }
 }
 
+// MARK: - UI
+
 private extension AuthView {
+
+    var authBackground: some View {
+        ZStack {
+            AppBackground()
+
+            if appTheme == AppTheme.gradient.rawValue {
+                RadialGradient(
+                    colors: [
+                        Color.purple.opacity(0.22),
+                        Color.clear
+                    ],
+                    center: .topLeading,
+                    startRadius: 40,
+                    endRadius: 320
+                )
+                .ignoresSafeArea()
+
+                RadialGradient(
+                    colors: [
+                        Color.blue.opacity(0.18),
+                        Color.clear
+                    ],
+                    center: .topTrailing,
+                    startRadius: 70,
+                    endRadius: 380
+                )
+                .ignoresSafeArea()
+
+                LinearGradient(
+                    colors: [
+                        Color.blue.opacity(0.06),
+                        Color.clear,
+                        Color.black.opacity(0.10)
+                    ],
+                    startPoint: .topTrailing,
+                    endPoint: .bottomLeading
+                )
+                .ignoresSafeArea()
+            }
+        }
+    }
+
     var headerSection: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 16) {
             ZStack {
                 Circle()
                     .fill(Color.accentColor.opacity(0.14))
-                    .frame(width: 84, height: 84)
+                    .frame(width: 112, height: 112)
+
+                Circle()
+                    .fill(Color.white.opacity(0.04))
+                    .frame(width: 86, height: 86)
 
                 Image(systemName: "checklist")
-                    .font(.system(size: 34, weight: .bold))
+                    .font(.system(size: 40, weight: .semibold))
                     .foregroundStyle(Color.accentColor)
             }
 
-            Text("DailyTodo")
-                .font(.system(size: 34, weight: .black, design: .rounded))
-                .foregroundStyle(palette.primaryText)
+            VStack(spacing: 10) {
+                Text("DailyTodo")
+                    .font(.system(size: 38, weight: .black, design: .rounded))
+                    .foregroundStyle(palette.primaryText)
 
-            Text(isLogin
-                 ? "Sign in and continue planning your day."
-                 : "Create your account and start building your routine.")
-                .font(.subheadline)
+                Text(
+                    isLogin
+                    ? "Sign in and continue planning your day."
+                    : "Create your account and start building your routine."
+                )
+                .font(.title3.weight(.medium))
                 .foregroundStyle(palette.secondaryText)
                 .multilineTextAlignment(.center)
+            }
         }
+        .padding(.top, 34)
     }
 
     var modePicker: some View {
@@ -113,10 +189,10 @@ private extension AuthView {
         }
         .padding(6)
         .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(palette.cardFill)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
                         .stroke(palette.cardStroke, lineWidth: 1)
                 )
         )
@@ -125,20 +201,34 @@ private extension AuthView {
     func authModeButton(title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.subheadline.weight(.semibold))
+                .font(.headline.weight(.semibold))
                 .foregroundStyle(selected ? palette.primaryText : palette.secondaryText)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
+                .padding(.vertical, 15)
                 .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .fill(
                             selected
-                            ? Color.accentColor.opacity(0.18)
-                            : palette.secondaryCardFill
+                            ? LinearGradient(
+                                colors: [
+                                    Color.accentColor.opacity(0.24),
+                                    Color.accentColor.opacity(0.14)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                            : LinearGradient(
+                                colors: [
+                                    palette.secondaryCardFill,
+                                    palette.secondaryCardFill.opacity(0.75)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
                         )
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .stroke(
                             selected ? Color.accentColor.opacity(0.32) : palette.cardStroke,
                             lineWidth: 1
@@ -149,105 +239,90 @@ private extension AuthView {
     }
 
     var formCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 18) {
             if !isLogin {
-                inputField(
+                authField(
                     title: "Full Name",
                     placeholder: "Your name",
                     text: $fullName,
-                    field: .fullName,
-                    submitLabel: .next,
-                    isSecure: false
-                ) {
-                    focusedField = .username
-                }
+                    autocap: .words
+                )
 
-                inputField(
+                authField(
                     title: "Username",
                     placeholder: "yourusername",
                     text: $username,
-                    field: .username,
-                    submitLabel: .next,
-                    isSecure: false
-                ) {
-                    focusedField = .email
-                }
+                    autocap: .never
+                )
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
             }
 
-            inputField(
+            authField(
                 title: "Email",
                 placeholder: "you@example.com",
                 text: $email,
-                field: .email,
-                submitLabel: .next,
-                isSecure: false
-            ) {
-                focusedField = .password
-            }
+                autocap: .never
+            )
+            .keyboardType(.emailAddress)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
 
-            inputField(
-                title: "Password",
-                placeholder: "Password",
-                text: $password,
-                field: .password,
-                submitLabel: .go,
-                isSecure: true
-            ) {
-                Task {
-                    await handleAuth()
-                }
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Password")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(palette.primaryText)
+
+                SecureField("Password", text: $password)
+                    .textContentType(.password)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 18)
+                    .background(
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .fill(palette.secondaryCardFill)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                    .stroke(palette.cardStroke, lineWidth: 1)
+                            )
+                    )
+                    .foregroundStyle(palette.primaryText)
             }
 
             if let errorMessage {
                 Text(errorMessage)
-                    .font(.caption)
+                    .font(.footnote.weight(.medium))
                     .foregroundStyle(.red)
                     .padding(.top, 2)
             }
         }
-        .padding(18)
+        .padding(20)
         .background(cardBackground)
     }
 
-    private func inputField(
+    func authField(
         title: String,
         placeholder: String,
         text: Binding<String>,
-        field: Field,
-        submitLabel: SubmitLabel,
-        isSecure: Bool,
-        onSubmit: @escaping () -> Void
+        autocap: TextInputAutocapitalization
     ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(.subheadline.weight(.semibold))
+                .font(.title3.weight(.bold))
                 .foregroundStyle(palette.primaryText)
 
-            Group {
-                if isSecure {
-                    SecureField(placeholder, text: text)
-                } else {
-                    TextField(placeholder, text: text)
-                        .textInputAutocapitalization(
-                            field == .email || field == .username ? .never : .words
+            TextField(placeholder, text: text)
+                .textInputAutocapitalization(autocap)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 18)
+                .background(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(palette.secondaryCardFill)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .stroke(palette.cardStroke, lineWidth: 1)
                         )
-                        .autocorrectionDisabled(field == .email || field == .username)
-                }
-            }
-            .focused($focusedField, equals: field)
-            .submitLabel(submitLabel)
-            .onSubmit(onSubmit)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 14)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(palette.secondaryCardFill)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(palette.cardStroke, lineWidth: 1)
-                    )
-            )
-            .foregroundStyle(palette.primaryText)
+                )
+                .foregroundStyle(palette.primaryText)
         }
     }
 
@@ -257,103 +332,66 @@ private extension AuthView {
                 await handleAuth()
             }
         } label: {
-            HStack {
+            HStack(spacing: 10) {
                 if session.isLoading {
                     ProgressView()
                         .tint(.white)
                 } else {
                     Image(systemName: isLogin ? "arrow.right.circle.fill" : "person.badge.plus")
-                    Text(isLogin ? "Login" : "Create Account")
                 }
+
+                Text(isLogin ? "Login" : "Create Account")
+                    .font(.headline.weight(.bold))
             }
-            .font(.headline)
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
+            .padding(.vertical, 18)
             .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.accentColor)
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: formIsValid
+                            ? [Color.blue.opacity(0.92), Color.purple.opacity(0.92)]
+                            : [Color.blue.opacity(0.45), Color.blue.opacity(0.35)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
             )
+            .scaleEffect(session.isLoading ? 0.985 : 1)
         }
         .buttonStyle(.plain)
-        .disabled(session.isLoading || !canSubmit)
-        .opacity(session.isLoading || !canSubmit ? 0.7 : 1)
-    }
-
-    var canSubmit: Bool {
-        let cleanEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
-        let cleanPassword = password.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        if isLogin {
-            return !cleanEmail.isEmpty && !cleanPassword.isEmpty
-        } else {
-            let cleanFullName = fullName.trimmingCharacters(in: .whitespacesAndNewlines)
-            let cleanUsername = username.trimmingCharacters(in: .whitespacesAndNewlines)
-            return !cleanFullName.isEmpty && !cleanUsername.isEmpty && !cleanEmail.isEmpty && !cleanPassword.isEmpty
-        }
+        .disabled(!formIsValid || session.isLoading)
     }
 
     var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
+        RoundedRectangle(cornerRadius: 30, style: .continuous)
             .fill(palette.cardFill)
             .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .stroke(palette.cardStroke, lineWidth: 1)
             )
     }
+}
 
-    func validateInputs() -> String? {
-        let cleanEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
-        let cleanPassword = password.trimmingCharacters(in: .whitespacesAndNewlines)
+// MARK: - Logic
 
-        if cleanEmail.isEmpty {
-            return "Email is required."
-        }
-
-        if !cleanEmail.contains("@") {
-            return "Please enter a valid email."
-        }
-
-        if cleanPassword.count < 6 {
-            return "Password must be at least 6 characters."
-        }
-
-        if !isLogin {
-            let cleanFullName = fullName.trimmingCharacters(in: .whitespacesAndNewlines)
-            let cleanUsername = username.trimmingCharacters(in: .whitespacesAndNewlines)
-
-            if cleanFullName.isEmpty {
-                return "Full name is required."
-            }
-
-            if cleanUsername.count < 3 {
-                return "Username must be at least 3 characters."
-            }
-        }
-
-        return nil
-    }
-
+private extension AuthView {
     func handleAuth() async {
         errorMessage = nil
-
-        if let validationError = validateInputs() {
-            errorMessage = validationError
-            return
-        }
 
         do {
             if isLogin {
                 try await session.signIn(
-                    email: email,
-                    password: password
+                    email: cleanEmail,
+                    password: cleanPassword
                 )
             } else {
                 try await session.signUp(
-                    fullName: fullName,
-                    email: email,
-                    username: username,
-                    password: password
+                    fullName: cleanFullName,
+                    email: cleanEmail,
+                    username: cleanUsername,
+                    password: cleanPassword
                 )
             }
         } catch {

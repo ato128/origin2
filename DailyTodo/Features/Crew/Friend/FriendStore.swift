@@ -23,6 +23,8 @@ final class FriendStore: ObservableObject {
     @Published var outgoingWeekSharesByFriendship: [UUID: FriendWeekShareDTO] = [:]
     @Published var weekShareEnabledByUserID: [UUID: Bool] = [:]
     @Published var sharedWeekItemsByFriendship: [UUID: [FriendWeekShareItemDTO]] = [:]
+    @Published var hasLoadedInitialFriends = false
+    @Published var lastFriendsRefreshAt: Date? = nil
     
     private var sharedWeekItemsChannel: RealtimeChannelV2?
     private var subscribedSharedWeekFriendshipID: UUID?
@@ -323,6 +325,23 @@ final class FriendStore: ObservableObject {
             print("LOAD SHARED WEEK ITEMS ERROR:", error.localizedDescription)
             sharedWeekItemsByFriendship[friendshipID] = []
         }
+    }
+    
+    func shouldRefreshFriends(force: Bool = false) -> Bool {
+        if force { return true }
+        if !hasLoadedInitialFriends { return true }
+
+        guard let lastFriendsRefreshAt else { return true }
+        return Date().timeIntervalSince(lastFriendsRefreshAt) > 60
+    }
+    
+    func markFriendsCacheRefreshed() {
+        hasLoadedInitialFriends = true
+        lastFriendsRefreshAt = Date()
+    }
+    func resetFriendsCache() {
+        hasLoadedInitialFriends = false
+        lastFriendsRefreshAt = nil
     }
 
     // MARK: - Local Sync

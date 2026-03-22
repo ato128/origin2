@@ -19,9 +19,9 @@ struct AddCrewMemberView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
-
                 TextField("Username", text: $username)
                     .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
                     .padding()
                     .background(Color(.systemGray6))
                     .cornerRadius(12)
@@ -30,6 +30,7 @@ struct AddCrewMemberView: View {
                     Text(errorMessage)
                         .foregroundStyle(.red)
                         .font(.caption)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 Button {
@@ -37,17 +38,22 @@ struct AddCrewMemberView: View {
                         await addMember()
                     }
                 } label: {
-                    if isLoading {
-                        ProgressView()
-                    } else {
-                        Text("Add Member")
-                            .frame(maxWidth: .infinity)
+                    Group {
+                        if isLoading {
+                            ProgressView()
+                                .tint(.white)
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Text("Add Member")
+                                .frame(maxWidth: .infinity)
+                        }
                     }
+                    .padding()
+                    .background(Color.accentColor)
+                    .foregroundStyle(.white)
+                    .cornerRadius(12)
                 }
-                .padding()
-                .background(Color.accentColor)
-                .foregroundStyle(.white)
-                .cornerRadius(12)
+                .disabled(isLoading || username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
                 Spacer()
             }
@@ -57,19 +63,22 @@ struct AddCrewMemberView: View {
         }
     }
 
+    @MainActor
     func addMember() async {
-        guard !username.isEmpty else { return }
+        let clean = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return }
 
         isLoading = true
         errorMessage = nil
 
-        do {
-            try await crewStore.addMember(by: username, to: crewID)
-            dismiss()
-        } catch {
-            errorMessage = "User not found or already in crew"
-        }
+        defer { isLoading = false }
 
-        isLoading = false
+        do {
+                    try await crewStore.addMember(by: username, to: crewID)
+                    dismiss()
+                } catch {
+                    print("ADD MEMBER VIEW ERROR:", error.localizedDescription)
+                    errorMessage = error.localizedDescription
+                }
     }
 }

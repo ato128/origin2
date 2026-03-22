@@ -4,35 +4,9 @@
 <dict>
 	<key>Application supports opening documents in place</key>
 	<true/>
-    <key>LSSupportsOpeningDocumentsInPlace</key>
-    <true/>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.atakan.DailyTodo.liveactivity.refresh</string>
-	</array>
-	<key>CFBundleDocumentTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeExtensions</key>
-			<string>json</string>
-			<key>CFBundleTypeName</key>
-			<string>DailyTodo Schedule</string>
-			<key>LSHandlerRank</key>
-			<string>Owner</string>
-			<key>LSItemContentTypes</key>
-			<array>
-				<string>public.json</string>
-			</array>
-		</dict>
-		<dict>
-			<key>CFBundleTypeName</key>
-			<string></string>
-			<key>LSHandlerRank</key>
-			<string>Default</string>
-			<key>LSItemContentTypes</key>
-			<array/>
-		</dict>
-		<dict/>
 	</array>
 	<key>CFBundleURLTypes</key>
 	<array>

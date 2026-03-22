@@ -7,20 +7,20 @@
 
 import Foundation
 
-struct CrewTaskDTO: Codable, Identifiable {
+struct CrewTaskDTO: Codable, Identifiable, Equatable {
     let id: UUID
     let crew_id: UUID
     let created_by: UUID
-    let title: String
-    let is_done: Bool
-    let assigned_to: UUID?
+    var title: String
+    var is_done: Bool
+    var assigned_to: UUID?
     let created_at: String?
 
-    let details: String?
-    let priority: String
-    let status: String
-    let show_on_week: Bool
-    let scheduled_weekday: Int?
-    let scheduled_start_minute: Int?
-    let scheduled_duration_minute: Int?
+    var details: String?
+    var priority: String
+    var status: String
+    var show_on_week: Bool
+    var scheduled_weekday: Int?
+    var scheduled_start_minute: Int?
+    var scheduled_duration_minute: Int?
 }
