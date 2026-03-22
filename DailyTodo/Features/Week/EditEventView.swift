@@ -236,6 +236,28 @@ struct EditEventView: View {
         let mm = m % 60
         return Calendar.current.date(bySettingHour: h, minute: mm, second: 0, of: Date()) ?? Date()
     }
+    
+    private func buildScheduledDate(for weekday: Int, startMinute: Int) -> Date? {
+        let calendar = Calendar.current
+        let hour = startMinute / 60
+        let minute = startMinute % 60
+
+        let today = Date()
+        let startOfToday = calendar.startOfDay(for: today)
+        let todayWeekday = (calendar.component(.weekday, from: today) + 5) % 7
+        let diff = weekday - todayWeekday
+
+        guard let targetDate = calendar.date(byAdding: .day, value: diff, to: startOfToday) else {
+            return nil
+        }
+
+        return calendar.date(
+            bySettingHour: hour,
+            minute: minute,
+            second: 0,
+            of: targetDate
+        )
+    }
 
     // MARK: - Conflict Check
 
@@ -290,6 +312,7 @@ struct EditEventView: View {
         event.weekday = weekday
         event.startMinute = start
         event.durationMinute = dur
+        event.scheduledDate = rebuiltScheduledDate(weekday: weekday, startMinute: start)
         event.location = location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : location
         event.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notes
         event.colorHex = selectedColorHex
@@ -321,7 +344,7 @@ struct EditEventView: View {
             weekday: event.weekday,
             startMinute: event.startMinute,
             durationMinute: event.durationMinute,
-            scheduledDate: event.scheduledDate,
+            scheduledDate: buildScheduledDate(for: event.weekday, startMinute: event.startMinute),
             location: event.location,
             notes: event.notes,
             colorHex: event.colorHex
@@ -358,7 +381,7 @@ struct EditEventView: View {
             weekday: d,
             startMinute: event.startMinute,
             durationMinute: event.durationMinute,
-            scheduledDate: event.scheduledDate,
+            scheduledDate: rebuiltScheduledDate(weekday: d, startMinute: event.startMinute),
             location: event.location,
             notes: event.notes,
             colorHex: event.colorHex
@@ -426,5 +449,26 @@ struct EditEventView: View {
         let b = Double(rgb & 0x0000FF) / 255.0
 
         return Color(red: r, green: g, blue: b)
+    }
+    private func rebuiltScheduledDate(weekday: Int, startMinute: Int) -> Date? {
+        let calendar = Calendar.current
+        let safeWeekday = max(0, min(6, weekday))
+        let mondayOffset = (calendar.component(.weekday, from: Date()) + 5) % 7
+        let startOfToday = calendar.startOfDay(for: Date())
+        let mondayStart = calendar.date(byAdding: .day, value: -mondayOffset, to: startOfToday) ?? startOfToday
+
+        guard let targetDay = calendar.date(byAdding: .day, value: safeWeekday, to: mondayStart) else {
+            return nil
+        }
+
+        let hour = startMinute / 60
+        let minute = startMinute % 60
+
+        return calendar.date(
+            bySettingHour: hour,
+            minute: minute,
+            second: 0,
+            of: targetDay
+        )
     }
 }

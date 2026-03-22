@@ -15,14 +15,64 @@ struct OverviewCard: View {
 
     @State private var isVisible = false
     @State private var animatedProgress: Double = 0
+    @State private var flamePulse = false
+
+    private var hasStarted: Bool {
+        data.progress > 0 || !data.completedText.contains("0")
+    }
+
+    private var hasStrongStreak: Bool {
+        let lower = data.streakText.lowercased()
+        return !lower.contains("0")
+    }
+
+    private var headerTitle: String {
+        hasStrongStreak ? "Streak" : "Getting Started"
+    }
+
+    private var headerStatusText: String {
+        hasStrongStreak ? "Keep the fire alive" : "Start your streak"
+    }
+
+    private var flameColor: Color {
+        hasStrongStreak ? .orange : .gray.opacity(0.85)
+    }
+
+    private var glowOpacity: Double {
+        hasStrongStreak ? 0.30 : 0.12
+    }
+
+    private var fallbackMessage: String {
+        "İlk görevi tamamlayınca serin başlayacak. Küçük bir adım yeterli."
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .center, spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(flameColor.opacity(hasStrongStreak ? 0.16 : 0.10))
+                        .frame(width: 42, height: 42)
+                        .shadow(
+                            color: flameColor.opacity(glowOpacity),
+                            radius: hasStrongStreak && flamePulse ? 14 : 6
+                        )
 
-            HStack {
-                Text("Overview")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(palette.primaryText)
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(flameColor)
+                        .scaleEffect(hasStrongStreak && flamePulse ? 1.08 : 1.0)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(headerTitle)
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
+
+                    Text(headerStatusText)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(palette.secondaryText)
+                }
 
                 Spacer()
 
@@ -30,20 +80,25 @@ struct OverviewCard: View {
                     .font(.system(size: 12, weight: .semibold))
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Color.orange.opacity(0.15))
-                    .foregroundStyle(Color.orange)
-                    .clipShape(Capsule())
+                    .background(
+                        Capsule()
+                            .fill(
+                                hasStrongStreak
+                                ? Color.orange.opacity(0.16)
+                                : palette.secondaryCardFill
+                            )
+                    )
+                    .foregroundStyle(hasStrongStreak ? Color.orange : palette.secondaryText)
             }
 
             HStack(alignment: .lastTextBaseline, spacing: 8) {
-
                 CountUpText(
                     value: data.progress * 100,
                     duration: 0.9,
                     trigger: isVisible,
                     formatter: { "%\(Int($0))" }
                 )
-                .font(.system(size: 36, weight: .bold, design: .rounded))
+                .font(.system(size: 38, weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
 
                 Text("tamamlanma")
@@ -53,24 +108,25 @@ struct OverviewCard: View {
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-
                     Capsule()
                         .fill(palette.secondaryCardFill)
-                        .frame(height: 8)
+                        .frame(height: 9)
 
                     Capsule()
                         .fill(
                             LinearGradient(
-                                colors: [
-                                    Color.accentColor.opacity(0.95),
-                                    Color.accentColor
-                                ],
+                                colors: hasStrongStreak
+                                ? [Color.orange.opacity(0.95), Color.accentColor]
+                                : [Color.accentColor.opacity(0.85), Color.accentColor],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
                         )
-                        .frame(width: max(20, geo.size.width * animatedProgress), height: 8)
-                        .shadow(color: Color.accentColor.opacity(0.20), radius: 8)
+                        .frame(width: max(animatedProgress > 0.001 ? 20 : 0, geo.size.width * animatedProgress), height: 9)
+                        .shadow(
+                            color: (hasStrongStreak ? Color.orange : Color.accentColor).opacity(0.22),
+                            radius: 8
+                        )
                         .overlay(alignment: .trailing) {
                             Circle()
                                 .fill(
@@ -84,16 +140,49 @@ struct OverviewCard: View {
                         }
                 }
             }
-            .frame(height: 8)
+            .frame(height: 9)
 
             HStack(spacing: 10) {
-                pill(text: data.streakText, icon: "flame.fill")
-                pill(text: data.completedText, icon: "checkmark.circle.fill")
+                pill(
+                    text: data.streakText,
+                    icon: "flame.fill",
+                    tint: hasStrongStreak ? .orange : palette.secondaryText
+                )
+
+                pill(
+                    text: data.completedText,
+                    icon: "checkmark.circle.fill",
+                    tint: .green
+                )
             }
 
-            Text(data.subtitle)
-                .font(.system(size: 14))
-                .foregroundStyle(palette.secondaryText)
+            if hasStarted {
+                Text(data.subtitle)
+                    .font(.system(size: 14))
+                    .foregroundStyle(palette.secondaryText)
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(fallbackMessage)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(palette.secondaryText)
+
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkles")
+                            .foregroundStyle(Color.accentColor)
+
+                        Text("Task ekleyerek streak başlatabilirsin")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 9)
+                    .background(
+                        Capsule()
+                            .fill(Color.accentColor.opacity(0.14))
+                    )
+                }
+                .padding(.top, 2)
+            }
         }
         .padding(18)
         .background(cardBackground)
@@ -104,20 +193,41 @@ struct OverviewCard: View {
             withAnimation(.spring(response: 0.9, dampingFraction: 0.85)) {
                 animatedProgress = data.progress
             }
+
+            if hasStrongStreak {
+                flamePulse = true
+            }
         }
+        .onAppear {
+            if hasStrongStreak {
+                flamePulse = true
+            }
+        }
+        .animation(
+            hasStrongStreak
+            ? .easeInOut(duration: 1.0).repeatForever(autoreverses: true)
+            : .default,
+            value: flamePulse
+        )
     }
 
-    func pill(text: String, icon: String) -> some View {
+    func pill(text: String, icon: String, tint: Color) -> some View {
         HStack(spacing: 6) {
             Image(systemName: icon)
             Text(text)
         }
         .font(.system(size: 12, weight: .semibold))
-        .foregroundStyle(palette.secondaryText)
+        .foregroundStyle(tint)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(palette.secondaryCardFill)
-        .clipShape(Capsule())
+        .background(
+            Capsule()
+                .fill(palette.secondaryCardFill)
+        )
+        .overlay(
+            Capsule()
+                .stroke(tint.opacity(0.12), lineWidth: 1)
+        )
     }
 
     var cardBackground: some View {

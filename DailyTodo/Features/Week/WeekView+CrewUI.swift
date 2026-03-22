@@ -13,6 +13,9 @@ extension WeekView {
     var allCrewTasksForSelectedDay: [WeekCrewTaskItem] {
         crewTasks(for: selectedDay)
     }
+    var hasVisibleEventsForSelectedDay: Bool {
+        !eventsForDay.isEmpty || !completedEvents.isEmpty
+    }
     
     @ViewBuilder
     func personalWeekList(proxy: ScrollViewProxy) -> some View {
@@ -34,10 +37,10 @@ extension WeekView {
                     personalDayPickerSection
                     summarySection
 
-                    if eventsForDay.isEmpty {
-                        emptySection
-                    } else {
+                    if hasVisibleEventsForSelectedDay {
                         eventsSection
+                    } else {
+                        emptySection
                     }
 
                     Spacer(minLength: 104)

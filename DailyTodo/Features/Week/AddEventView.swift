@@ -296,31 +296,20 @@ struct AddEventView: View {
         let hour = startMinute / 60
         let minute = startMinute % 60
 
-        if let defaultDate {
-            let startOfSelectedDay = calendar.startOfDay(for: defaultDate)
-            return calendar.date(
-                bySettingHour: hour,
-                minute: minute,
-                second: 0,
-                of: startOfSelectedDay
-            )
-        }
-
         let today = Date()
+        let startOfToday = calendar.startOfDay(for: today)
         let todayWeekday = (calendar.component(.weekday, from: today) + 5) % 7
         let diff = weekday - todayWeekday
 
-        guard let targetDate = calendar.date(byAdding: .day, value: diff, to: today) else {
+        guard let targetDate = calendar.date(byAdding: .day, value: diff, to: startOfToday) else {
             return nil
         }
-
-        let startOfTargetDay = calendar.startOfDay(for: targetDate)
 
         return calendar.date(
             bySettingHour: hour,
             minute: minute,
             second: 0,
-            of: startOfTargetDay
+            of: targetDate
         )
     }
 

@@ -18,6 +18,7 @@ struct TaskDetailView: View {
     @Query private var allEvents: [EventItem]
     
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var session: SessionStore
     
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private let palette = ThemePalette()
@@ -525,22 +526,40 @@ private extension TaskDetailView {
     }
     
     func addTaskToWeek() {
+        guard let user = session.currentUser else { return }
+        let currentUserID = user.id.uuidString
+        
+
         let selectedDate = task.scheduledWeekDate ?? Date()
+
+        let existing = allEvents.first {
+            $0.sourceTaskUUID == task.taskUUID &&
+            Calendar.current.isDate($0.scheduledDate ?? .distantPast, inSameDayAs: selectedDate)
+        }
+
+        if existing != nil {
+            return
+        }
+
         let calendar = Calendar.current
 
-        let weekdayFromCalendar = calendar.component(.weekday, from: selectedDate)
+        let weekdayFromCalendar =
+            calendar.component(.weekday, from: selectedDate)
+
         let mappedWeekday = (weekdayFromCalendar + 5) % 7
 
         let hour = calendar.component(.hour, from: selectedDate)
         let minute = calendar.component(.minute, from: selectedDate)
+
         let startMinute = hour * 60 + minute
 
-        let duration = task.scheduledWeekDurationMinutes ?? task.workoutDurationMinutes ?? 60
+        let duration = task.scheduledWeekDurationMinutes
+            ?? task.workoutDurationMinutes
+            ?? 60
 
         let event = EventItem(
-            title: task.taskType == "workout"
-                ? "\(task.title) • \(task.workoutDay ?? "Workout")"
-                : task.title,
+            ownerUserID: currentUserID,
+            title: task.title,
             weekday: mappedWeekday,
             startMinute: startMinute,
             durationMinute: duration,
@@ -549,11 +568,11 @@ private extension TaskDetailView {
             notes: task.notes.isEmpty ? nil : task.notes,
             colorHex: task.taskType == "workout" ? "#22C55E" : "#3B82F6",
             sourceTaskUUID: task.taskUUID
-            
         )
-        
 
         modelContext.insert(event)
+
+        try? modelContext.save()
     }
     
     func historyItems(for exercise: WorkoutExerciseItem) -> [WorkoutExerciseHistoryItem] {

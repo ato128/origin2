@@ -1081,16 +1081,19 @@ extension WeekView {
     }
     
     func targetDateForSelectedDay() -> Date {
+        targetDateFor(day: selectedDay)
+    }
+
+
+    func mondayStartOfCurrentWeek() -> Date {
         let calendar = Calendar.current
         let today = Date()
 
-        guard let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: today)?.start,
-              let targetDate = calendar.date(byAdding: .day, value: selectedDay, to: startOfWeek)
-        else {
-            return today
-        }
+        let weekday = calendar.component(.weekday, from: today)
+        let mondayOffset = (weekday + 5) % 7
 
-        return targetDate
+        let startOfToday = calendar.startOfDay(for: today)
+        return calendar.date(byAdding: .day, value: -mondayOffset, to: startOfToday) ?? startOfToday
     }
     
     func shareWeek() {
@@ -1182,14 +1185,7 @@ extension WeekView {
         let calendar = Calendar.current
         let today = Date()
 
-        let targetDate: Date = {
-            guard let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: today)?.start,
-                  let date = calendar.date(byAdding: .day, value: d, to: startOfWeek)
-            else {
-                return today
-            }
-            return date
-        }()
+        let targetDate = targetDateFor(day: d)
 
         let items = userScopedEvents
             .filter { ev in

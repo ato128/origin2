@@ -107,6 +107,8 @@ extension WeekView {
         }
         .padding(.horizontal, 16)
     }
+    
+    
     var summarySection: some View {
         daySummaryCard
         
@@ -118,8 +120,8 @@ extension WeekView {
 
     var emptySection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Image(systemName: "calendar.badge.plus")
+            HStack(spacing: 10) {
+                Image(systemName: "calendar.badge.exclamationmark")
                     .font(.title3)
                     .foregroundStyle(Color.accentColor)
 
@@ -130,21 +132,25 @@ extension WeekView {
                 Spacer()
             }
 
-            Text("Bu güne henüz ders eklenmemiş. Sağ üstteki + ile hızlıca yeni ders oluşturabilirsin.")
+            Text("Bu güne henüz ders eklenmemiş. Yeni ders eklemek için sağ üstteki + butonunu kullanabilirsin.")
                 .font(.subheadline)
                 .foregroundStyle(palette.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
 
-            Button {
-                Haptics.impact(.medium)
-                showingAdd = true
-            } label: {
-                Label("Ders ekle", systemImage: "plus")
+            HStack(spacing: 8) {
+                Image(systemName: "plus.circle.fill")
+                    .foregroundStyle(Color.accentColor)
+
+                Text("Sağ üstteki + ile ders ekle")
                     .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(Capsule().fill(Color.accentColor.opacity(0.16)))
                     .foregroundStyle(Color.accentColor)
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(
+                Capsule()
+                    .fill(Color.accentColor.opacity(0.14))
+            )
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -391,8 +397,39 @@ extension WeekView {
     
     func markEventCompleted(_ event: EventItem) {
         event.isCompleted = true
-        try? context.save()
-        Haptics.impact(.medium)
+
+        do {
+            try context.save()
+            Haptics.impact(.medium)
+
+            // Widget refresh
+            WidgetAppSync.refreshFromSwiftData(context: context)
+
+            // Notification yeniden planla
+            Task {
+                await NotificationManager.shared.rescheduleAll(events: allEventsAccessible)
+            }
+
+            // Shared week sync (friends / crew)
+            Task {
+                guard let currentUserID = session.currentUser?.id else { return }
+
+                let descriptor = FetchDescriptor<EventItem>(
+                    sortBy: [SortDescriptor(\EventItem.startMinute, order: .forward)]
+                )
+
+                let all = (try? context.fetch(descriptor)) ?? []
+                let currentUserEvents = all.filter { $0.ownerUserID == currentUserID.uuidString }
+
+                await friendStore.resyncSharedWeekIfNeeded(
+                    for: currentUserID,
+                    events: currentUserEvents
+                )
+            }
+
+        } catch {
+            print("❌ markEventCompleted error:", error)
+        }
     }
     
     func sourceTask(for event: EventItem) -> DTTaskItem? {

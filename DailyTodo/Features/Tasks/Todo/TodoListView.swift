@@ -80,16 +80,27 @@ struct TodoListView: View {
     }
 
     var nextClassInfo: (title: String, timeText: String, status: NextClassStatus)? {
-        let today = weekdayIndexToday()
+        let calendar = Calendar.current
+        let todayDate = Date()
+        let todayWeekday = weekdayIndexToday()
         let nowMinute = currentMinuteOfDay()
 
         let todayEvents = userScopedEvents
-            .filter { $0.weekday == today }
+            .filter { event in
+                guard !event.isCompleted else { return false }
+
+                if let scheduledDate = event.scheduledDate {
+                    return calendar.isDate(scheduledDate, inSameDayAs: todayDate)
+                } else {
+                    return event.weekday == todayWeekday
+                }
+            }
             .sorted { $0.startMinute < $1.startMinute }
 
-        if let live = todayEvents.first(where: {
-            nowMinute >= $0.startMinute &&
-            nowMinute < ($0.startMinute + $0.durationMinute)
+        if let live = todayEvents.first(where: { event in
+            let start = event.startMinute
+            let end = event.startMinute + event.durationMinute
+            return nowMinute >= start && nowMinute < end
         }) {
             let endMinute = live.startMinute + live.durationMinute
             let remain = max(0, endMinute - nowMinute)
@@ -103,7 +114,6 @@ struct TodoListView: View {
 
         return nil
     }
-
     var todayTasks: [DTTaskItem] {
         let calendar = Calendar.current
 

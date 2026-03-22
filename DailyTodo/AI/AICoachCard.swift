@@ -19,38 +19,41 @@ struct AICoachCard: View {
     @State private var pulse = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
                 ZStack {
                     Circle()
                         .fill(Color.accentColor.opacity(0.12))
-                        .frame(width: 36, height: 36)
-                        .scaleEffect(pulse ? 1.08 : 0.96)
+                        .frame(width: 40, height: 40)
+                        .scaleEffect(pulse ? 1.05 : 0.96)
 
                     Image(systemName: "brain.head.profile")
-                        .font(.system(size: 16, weight: .bold))
+                        .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(Color.accentColor)
                 }
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text("Behavior Analysis")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(palette.secondaryText)
 
                     Text(data.title)
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Spacer()
+                Spacer(minLength: 0)
             }
 
             Text(data.message)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(palette.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
+                .lineSpacing(2)
 
-            if let buttonTitle = data.buttonTitle {
+            if let buttonTitle = data.buttonTitle, !buttonTitle.isEmpty {
                 Button {
                     withAnimation(.spring(response: 0.24, dampingFraction: 0.72)) {
                         pressed = true
@@ -69,6 +72,7 @@ struct AICoachCard: View {
 
                         Text(buttonTitle)
                             .font(.system(size: 15, weight: .semibold))
+                            .lineLimit(1)
                     }
                     .padding(.horizontal, 18)
                     .padding(.vertical, 11)
@@ -77,11 +81,11 @@ struct AICoachCard: View {
                             .fill(Color.accentColor)
                     )
                     .foregroundStyle(.white)
-                    .clipShape(Capsule())
-                    .scaleEffect(pressed ? 0.96 : 1.0)
-                    .shadow(color: Color.accentColor.opacity(0.20), radius: 10, y: 5)
+                    .scaleEffect(pressed ? 0.97 : 1.0)
+                    .shadow(color: Color.accentColor.opacity(0.18), radius: 8, y: 4)
                 }
                 .buttonStyle(.plain)
+                .padding(.top, 2)
             }
         }
         .padding(18)
@@ -95,7 +99,7 @@ struct AICoachCard: View {
         .onChange(of: isVisible) { _, newValue in
             guard newValue else { return }
             pulse = false
-            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
+            withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) {
                 pulse = true
             }
         }

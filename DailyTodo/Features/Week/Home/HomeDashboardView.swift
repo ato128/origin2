@@ -420,28 +420,34 @@ struct HomeDashboardView: View {
     }
 
     var nextEvent: EventItem? {
-        let today = weekdayIndexToday()
+        let calendar = Calendar.current
+        let today = Date()
+        let todayWeekday = weekdayIndexToday()
         let now = currentMinuteOfDay()
 
-        var liveEvent: EventItem?
-        var upcomingEvent: EventItem?
+        let todaysEvents = userScopedEvents
+            .filter { event in
+                guard !event.isCompleted else { return false }
 
-        for event in userScopedEvents where event.weekday == today {
-            let start = event.startMinute
-            let end = event.startMinute + event.durationMinute
-
-            if now >= start && now < end {
-                if liveEvent == nil || start < liveEvent!.startMinute {
-                    liveEvent = event
-                }
-            } else if start > now {
-                if upcomingEvent == nil || start < upcomingEvent!.startMinute {
-                    upcomingEvent = event
+                if let scheduledDate = event.scheduledDate {
+                    return calendar.isDate(scheduledDate, inSameDayAs: today)
+                } else {
+                    return event.weekday == todayWeekday
                 }
             }
+            .sorted { lhs, rhs in
+                lhs.startMinute < rhs.startMinute
+            }
+
+        if let live = todaysEvents.first(where: { event in
+            let start = event.startMinute
+            let end = event.startMinute + event.durationMinute
+            return now >= start && now < end
+        }) {
+            return live
         }
 
-        return liveEvent ?? upcomingEvent
+        return todaysEvents.first(where: { $0.startMinute > now })
     }
 
     var nextEventStatusText: String {
@@ -717,6 +723,7 @@ struct HomeDashboardView: View {
             .onReceive(dashboardTimer) { value in
                 crewFocusNow = value
                 syncActiveFocusCountdown()
+                selectedDay = weekdayIndexToday()
             }
         }
     }

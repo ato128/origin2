@@ -290,14 +290,9 @@ extension WeekView {
     
     func targetDateFor(day: Int) -> Date {
         let calendar = Calendar.current
-        let today = Date()
+        let mondayStart = mondayStartOfCurrentWeek()
+        let safeDay = max(0, min(6, day))
 
-        guard let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: today)?.start,
-              let targetDate = calendar.date(byAdding: .day, value: day, to: startOfWeek)
-        else {
-            return today
-        }
-
-        return targetDate
+        return calendar.date(byAdding: .day, value: safeDay, to: mondayStart) ?? mondayStart
     }
 }

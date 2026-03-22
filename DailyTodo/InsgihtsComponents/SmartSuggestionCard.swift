@@ -19,40 +19,42 @@ struct SmartSuggestionCard: View {
     @State private var glowPulse = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
                 ZStack {
                     Circle()
                         .fill(Color.accentColor.opacity(0.12))
-                        .frame(width: 34, height: 34)
-                        .scaleEffect(glowPulse ? 1.08 : 0.96)
+                        .frame(width: 40, height: 40)
+                        .scaleEffect(glowPulse ? 1.05 : 0.96)
 
                     Image(systemName: "sparkles")
-                        .font(.system(size: 15, weight: .bold))
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(Color.accentColor)
-                        .scaleEffect(glowPulse ? 1.04 : 1.0)
+                        .scaleEffect(glowPulse ? 1.03 : 1.0)
                 }
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text("Insight for today")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(palette.secondaryText)
 
                     Text(data.title)
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Spacer()
+                Spacer(minLength: 0)
             }
 
             Text(data.message)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(palette.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
+                .lineSpacing(2)
 
-            if let buttonTitle = data.buttonTitle {
+            if let buttonTitle = data.buttonTitle, !buttonTitle.isEmpty {
                 Button {
                     withAnimation(.spring(response: 0.24, dampingFraction: 0.72)) {
                         pressed = true
@@ -71,35 +73,35 @@ struct SmartSuggestionCard: View {
 
                         Text(buttonTitle)
                             .font(.system(size: 15, weight: .semibold))
+                            .lineLimit(1)
                     }
                     .padding(.horizontal, 18)
                     .padding(.vertical, 11)
                     .background(
-                        ZStack {
-                            Capsule()
-                                .fill(Color.accentColor)
-
-                            Capsule()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            appTheme == AppTheme.light.rawValue
-                                            ? Color.black.opacity(0.06)
-                                            : Color.white.opacity(0.14),
-                                            Color.clear
-                                        ],
-                                        startPoint: .top,
-                                        endPoint: .bottom
+                        Capsule()
+                            .fill(Color.accentColor)
+                            .overlay(
+                                Capsule()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [
+                                                appTheme == AppTheme.light.rawValue
+                                                ? Color.black.opacity(0.05)
+                                                : Color.white.opacity(0.12),
+                                                Color.clear
+                                            ],
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        )
                                     )
-                                )
-                        }
+                            )
                     )
                     .foregroundStyle(.white)
-                    .clipShape(Capsule())
-                    .scaleEffect(pressed ? 0.96 : 1.0)
-                    .shadow(color: Color.accentColor.opacity(0.20), radius: 10, y: 5)
+                    .scaleEffect(pressed ? 0.97 : 1.0)
+                    .shadow(color: Color.accentColor.opacity(0.16), radius: 8, y: 4)
                 }
                 .buttonStyle(.plain)
+                .padding(.top, 2)
             }
         }
         .padding(18)
@@ -108,14 +110,7 @@ struct SmartSuggestionCard: View {
         .overlay(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(
-                    LinearGradient(
-                        colors: [
-                            Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.10 : 0.14),
-                            Color.clear
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
+                    Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.10 : 0.14),
                     lineWidth: 1
                 )
         )
@@ -127,7 +122,7 @@ struct SmartSuggestionCard: View {
         .onChange(of: isVisible) { _, newValue in
             guard newValue else { return }
             glowPulse = false
-            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
+            withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) {
                 glowPulse = true
             }
         }
@@ -152,11 +147,6 @@ struct SmartSuggestionCard: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .stroke(palette.cardStroke, lineWidth: 1)
-            )
-            .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.03 : 0.05))
-                    .blur(radius: 18)
             )
     }
 }
