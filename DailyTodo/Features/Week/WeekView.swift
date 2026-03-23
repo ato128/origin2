@@ -107,17 +107,7 @@ struct WeekView: View {
         }
     }
 
-    var allCrewComments: [WeekCrewCommentItem] {
-        crewStore.crewTaskComments.map {
-            WeekCrewCommentItem(
-                id: $0.id,
-                taskID: $0.task_id,
-                authorName: $0.author_name,
-                message: $0.message,
-                createdAt: isoDate($0.created_at) ?? Date()
-            )
-        }
-    }
+    
     
     var crewMap: [UUID: WeekCrewItem] {
         Dictionary(uniqueKeysWithValues: allCrews.map { ($0.id, $0) })
@@ -544,7 +534,6 @@ extension WeekView {
         await crewStore.loadMemberProfiles(for: crewStore.crewMembers)
         await crewStore.loadTasks(for: crewID)
         await crewStore.loadActivities(for: crewID)
-        await crewStore.loadComments(for: crewID)
         crewStore.subscribeToCrewRealtime(crewID: crewID)
     }
     

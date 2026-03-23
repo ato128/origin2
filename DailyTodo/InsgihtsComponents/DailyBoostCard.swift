@@ -42,9 +42,8 @@ struct DailyBoostCard: View {
                                     LinearGradient(
                                         colors: [
                                             appTheme == AppTheme.light.rawValue
-                                            ? Color.black.opacity(0.06)
-                                            : Color.white.opacity(0.14),
-                                            Color.clear
+                                                ? Color.black.opacity(0.06)
+                                                : Color.white.opacity(0.14)
                                         ],
                                         startPoint: .top,
                                         endPoint: .bottom

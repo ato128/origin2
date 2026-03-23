@@ -100,47 +100,76 @@ final class LiveActivityScheduler {
             self.handleBGTask(task: task)
         }
     }
-    
+
     private func handleBGTask(task: BGAppRefreshTask) {
         task.expirationHandler = {
             task.setTaskCompleted(success: false)
         }
-        
+
         Task { @MainActor in
-            let container = try? ModelContainer(
-                for: DTTaskItem.self,
-                EventItem.self,
-                FocusSessionRecord.self
-            )
-            
-            guard let container else {
+            let appGroupID = "group.Atakan.dailytoDO"
+
+            guard let groupURL = FileManager.default.containerURL(
+                forSecurityApplicationGroupIdentifier: appGroupID
+            ) else {
+                print("❌ App Group container bulunamadı")
                 task.setTaskCompleted(success: false)
                 return
             }
-            
-            let context = ModelContext(container)
-            
-            self.tick(context: context)
-            self.scheduleBGTaskForNextEvent(context: context)
-            
-            task.setTaskCompleted(success: true)
+
+            let supportURL = groupURL.appendingPathComponent("Library/Application Support")
+
+            try? FileManager.default.createDirectory(
+                at: supportURL,
+                withIntermediateDirectories: true
+            )
+
+            let storeURL = supportURL.appendingPathComponent("default.store")
+
+            let schema = Schema([
+                DTTaskItem.self,
+                EventItem.self,
+                FocusSessionRecord.self
+            ])
+
+            let configuration = ModelConfiguration(
+                schema: schema,
+                url: storeURL
+            )
+
+            do {
+                let container = try ModelContainer(
+                    for: schema,
+                    configurations: [configuration]
+                )
+
+                let context = ModelContext(container)
+
+                self.tick(context: context)
+                self.scheduleBGTaskForNextEvent(context: context)
+
+                task.setTaskCompleted(success: true)
+            } catch {
+                print("❌ BG ModelContainer error:", error.localizedDescription)
+                task.setTaskCompleted(success: false)
+            }
         }
     }
-    
+
     private func scheduleBGTaskForNextEvent(context: ModelContext) {
         BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: taskID)
-        
+
         guard let next = nextEventFromSwiftData(context: context) else {
             print("❌ BG schedule: next event yok")
             return
         }
-        
+
         let startDate = dateForNextOccurrence(of: next, at: next.startMinute)
         let fire = startDate.addingTimeInterval(-10 * 60)
-        
+
         let req = BGAppRefreshTaskRequest(identifier: taskID)
         req.earliestBeginDate = fire
-        
+
         do {
             try BGTaskScheduler.shared.submit(req)
             print("🟢 BG task scheduled for:", fire)

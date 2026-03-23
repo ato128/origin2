@@ -285,7 +285,7 @@ private extension FriendChatView {
                                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                                             .fill(
                                                 message.isFromMe
-                                                ? Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.90 : 0.24)
+                                                ? Color.accentColor.opacity(palette.primaryText == .black ? 0.90 : 0.24)
                                                 : palette.secondaryCardFill
                                             )
                                     )

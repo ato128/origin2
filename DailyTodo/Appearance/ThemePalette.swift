@@ -10,11 +10,11 @@ import SwiftUI
 struct ThemePalette {
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
 
-    private var isLight: Bool {
+     var isLight: Bool {
         appTheme == AppTheme.light.rawValue
     }
 
-    private var isGradient: Bool {
+     var isGradient: Bool {
         appTheme == AppTheme.gradient.rawValue
     }
 

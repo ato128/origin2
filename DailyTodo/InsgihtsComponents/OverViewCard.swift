@@ -159,7 +159,7 @@ struct OverviewCard: View {
                         .overlay(alignment: .trailing) {
                             Circle()
                                 .fill(
-                                    appTheme == AppTheme.light.rawValue
+                                    palette.isLight
                                     ? Color.black.opacity(0.10)
                                     : Color.white.opacity(0.22)
                                 )

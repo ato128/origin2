@@ -68,7 +68,7 @@ struct EventRow: View {
     private var minutesUntilStart: Int { max(0, start - nowMinute) }
 
     private var isLightTheme: Bool {
-        appTheme == AppTheme.light.rawValue
+        palette.isLight
     }
 
     private func hm(_ minute: Int) -> String {

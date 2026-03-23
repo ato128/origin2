@@ -11,15 +11,7 @@ extension WeekView {
         crewMap[task.crewID]?.name
     }
 
-    func commentPreviewItems(for task: WeekCrewTaskItem) -> [CrewTaskCommentPreviewItem] {
-        previewCommentsForTask(task).map {
-            CrewTaskCommentPreviewItem(
-                id: $0.id,
-                authorName: $0.authorName,
-                message: $0.message
-            )
-        }
-    }
+    
 
     func taskTimeText(_ task: WeekCrewTaskItem) -> String? {
         guard let start = task.scheduledStartMinute else { return nil }

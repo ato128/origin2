@@ -35,10 +35,3 @@ struct WeekCrewActivityItem: Identifiable, Hashable {
     let createdAt: Date
 }
 
-struct WeekCrewCommentItem: Identifiable, Hashable {
-    let id: UUID
-    let taskID: UUID
-    let authorName: String
-    let message: String
-    let createdAt: Date
-}

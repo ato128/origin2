@@ -8,6 +8,8 @@
 import SwiftUI
 
 extension TodoListView {
+    
+    
     var tasksAmbientBackground: some View {
         AppBackground()
     }
@@ -17,55 +19,6 @@ extension TodoListView {
             !task.isDone && store.isOverdue(task)
         }.count
     }
-
-    var topSegment: some View {
-        HStack(spacing: 8) {
-            ForEach(HomeSection.allCases) { section in
-                let isSelected = homeSection == section
-
-                Button {
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
-                        homeSection = section
-                    }
-                } label: {
-                    Text(section.rawValue)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(isSelected ? palette.primaryText : palette.secondaryText)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(
-                                    isSelected
-                                    ? Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.14 : 0.18)
-                                    : palette.secondaryCardFill
-                                )
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(
-                                    isSelected
-                                    ? Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.22 : 0.30)
-                                    : palette.cardStroke.opacity(0.8),
-                                    lineWidth: 1
-                                )
-                        )
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 7)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(palette.cardFill)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(palette.cardStroke, lineWidth: 1)
-                )
-        )
-    }
-
     var tasksHeader: some View {
         HStack(alignment: .center, spacing: 12) {
             Text("Home")
@@ -146,7 +99,7 @@ extension TodoListView {
                 }
                 .buttonStyle(.plain)
 
-                if homeSection == .personal, let next = nextClassInfo {
+                if let next = nextClassInfo {
                     Button {
                         withAnimation(.easeInOut) {
                             selectedTab = .week
@@ -156,7 +109,7 @@ extension TodoListView {
                         LiveBadgeView(
                             next: next,
                             palette: palette,
-                            appTheme: appTheme
+                           
                         )
                     }
                     .buttonStyle(.plain)
@@ -183,7 +136,7 @@ extension TodoListView {
     struct LiveBadgeView: View {
         let next: (title: String, timeText: String, status: TodoListView.NextClassStatus)
         let palette: ThemePalette
-        let appTheme: String
+        
 
         var body: some View {
             let isLive = next.status == .live

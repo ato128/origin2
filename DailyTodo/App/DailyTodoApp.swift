@@ -23,8 +23,25 @@ struct DailyTodoApp: App {
 
     init() {
         do {
-            container = try ModelContainer(
-                for: DTTaskItem.self,
+            let appGroupID = "group.Atakan.dailytoDO"
+
+            guard let groupURL = FileManager.default.containerURL(
+                forSecurityApplicationGroupIdentifier: appGroupID
+            ) else {
+                fatalError("App Group container bulunamadı")
+            }
+
+            let supportURL = groupURL.appendingPathComponent("Library/Application Support")
+
+            try FileManager.default.createDirectory(
+                at: supportURL,
+                withIntermediateDirectories: true
+            )
+
+            let storeURL = supportURL.appendingPathComponent("default.store")
+
+            let schema = Schema([
+                DTTaskItem.self,
                 WorkoutExerciseItem.self,
                 WorkoutExerciseHistoryItem.self,
                 EventItem.self,
@@ -44,6 +61,16 @@ struct DailyTodoApp: App {
                 CrewFocusSession.self,
                 CrewFocusRecord.self,
                 FriendRequest.self
+            ])
+
+            let configuration = ModelConfiguration(
+                schema: schema,
+                url: storeURL
+            )
+
+            container = try ModelContainer(
+                for: schema,
+                configurations: [configuration]
             )
 
             let context = ModelContext(container)

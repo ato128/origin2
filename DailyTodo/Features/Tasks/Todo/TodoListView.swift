@@ -16,7 +16,11 @@ struct TodoListView: View {
     @EnvironmentObject var session: SessionStore
 
     @AppStorage("appTheme") var appTheme = AppTheme.gradient.rawValue
-    let palette = ThemePalette()
+    
+    var palette: ThemePalette {
+        ThemePalette()
+    }
+   
 
     @Query(sort: \EventItem.startMinute, order: .forward)
     var allEvents: [EventItem]
@@ -33,12 +37,7 @@ struct TodoListView: View {
     @Query var friendMessages: [FriendMessage]
     @Query var crewMessages: [CrewMessage]
 
-    enum HomeSection: String, CaseIterable, Identifiable {
-        case personal = "Personal"
-        case crew = "Crew"
-
-        var id: String { rawValue }
-    }
+    
 
     enum NextClassStatus {
         case live
@@ -48,7 +47,6 @@ struct TodoListView: View {
     @State var showLeaderboardPodium = false
     @State var previousTopCrewID: UUID?
     @State var showingAdd: Bool = false
-    @State var homeSection: HomeSection = .personal
     @State var showMessages = false
     @State var now = Date()
     @State var showTasksShortcut = false
@@ -137,28 +135,20 @@ struct TodoListView: View {
                     Color.clear.frame(height: 76)
 
                     tasksHeader
-                    topSegment
 
-                    if homeSection == .personal {
-                        HomeDashboardView(
-                            onAddTask: {
-                                showingAdd = true
-                                haptic(.medium)
-                            },
-                            onOpenWeek: {
-                                selectedTab = .week
-                            },
-                            onOpenInsights: {
-                                selectedTab = .insights
-                            }
-                        )
-                        .environmentObject(store)
-                    } else {
-                        crewOverviewCard
-                        crewListCard
-                        crewActivityCard
-                        socialQuickActionsCard
-                    }
+                    HomeDashboardView(
+                        onAddTask: {
+                            showingAdd = true
+                            haptic(.medium)
+                        },
+                        onOpenWeek: {
+                            selectedTab = .week
+                        },
+                        onOpenInsights: {
+                            selectedTab = .insights
+                        }
+                    )
+                    .environmentObject(store)
 
                     Spacer(minLength: 100)
                 }

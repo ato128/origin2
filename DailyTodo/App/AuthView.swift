@@ -4,398 +4,274 @@
 //
 //  Created by Atakan Ortaç on 18.03.2026.
 //
-
 import SwiftUI
 
 struct AuthView: View {
     @EnvironmentObject var session: SessionStore
-    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
-
-    private let palette = ThemePalette()
-
-    @State private var isLogin = true
-
-    @State private var fullName = ""
-    @State private var username = ""
-    @State private var email = ""
-    @State private var password = ""
-
-    @State private var errorMessage: String?
-    @State private var didAnimateIn = false
-
-    private var cleanFullName: String {
-        fullName.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private var cleanUsername: String {
-        username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    }
-
-    private var cleanEmail: String {
-        email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    }
-
-    private var cleanPassword: String {
-        password.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private var formIsValid: Bool {
-        if isLogin {
-            return !cleanEmail.isEmpty && !cleanPassword.isEmpty
-        } else {
-            return !cleanFullName.isEmpty &&
-                   !cleanUsername.isEmpty &&
-                   !cleanEmail.isEmpty &&
-                   !cleanPassword.isEmpty
-        }
-    }
+    @State private var activeSheet: AuthSheet?
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                authBackground
+        ZStack {
+            authBackground
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 24) {
-                        Spacer(minLength: 36)
+            VStack(spacing: 0) {
+                Spacer(minLength: 40)
 
-                        headerSection
-                            .opacity(didAnimateIn ? 1 : 0)
-                            .offset(y: didAnimateIn ? 0 : 18)
+                heroSection
 
-                        modePicker
-                            .opacity(didAnimateIn ? 1 : 0)
-                            .offset(y: didAnimateIn ? 0 : 22)
+                Spacer(minLength: 28)
 
-                        formCard
-                            .opacity(didAnimateIn ? 1 : 0)
-                            .offset(y: didAnimateIn ? 0 : 26)
+                actionSection
 
-                        actionButton
-                            .opacity(didAnimateIn ? 1 : 0)
-                            .offset(y: didAnimateIn ? 0 : 30)
+                Spacer(minLength: 32)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
+        }
+        .sheet(item: $activeSheet) { sheet in
+            NavigationStack {
+                switch sheet {
+                case .login:
+                    AuthFormSheetView(mode: .login)
+                        .environmentObject(session)
 
-                        Spacer(minLength: 30)
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 30)
+                case .signup:
+                    AuthFormSheetView(mode: .signup)
+                        .environmentObject(session)
                 }
             }
-            .navigationBarHidden(true)
-            .onAppear {
-                guard !didAnimateIn else { return }
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
-                    didAnimateIn = true
-                }
-            }
+            .presentationDetents([.fraction(0.68), .large])
+            .presentationDragIndicator(.visible)
+            .presentationCornerRadius(28)
         }
     }
 }
 
-// MARK: - UI
-
+// MARK: - Sections
 private extension AuthView {
-
-    var authBackground: some View {
-        ZStack {
-            AppBackground()
-
-            if appTheme == AppTheme.gradient.rawValue {
-                RadialGradient(
-                    colors: [
-                        Color.purple.opacity(0.22),
-                        Color.clear
-                    ],
-                    center: .topLeading,
-                    startRadius: 40,
-                    endRadius: 320
-                )
-                .ignoresSafeArea()
-
-                RadialGradient(
-                    colors: [
-                        Color.blue.opacity(0.18),
-                        Color.clear
-                    ],
-                    center: .topTrailing,
-                    startRadius: 70,
-                    endRadius: 380
-                )
-                .ignoresSafeArea()
-
-                LinearGradient(
-                    colors: [
-                        Color.blue.opacity(0.06),
-                        Color.clear,
-                        Color.black.opacity(0.10)
-                    ],
-                    startPoint: .topTrailing,
-                    endPoint: .bottomLeading
-                )
-                .ignoresSafeArea()
-            }
-        }
-    }
-
-    var headerSection: some View {
-        VStack(spacing: 16) {
+    var heroSection: some View {
+        VStack(spacing: 18) {
             ZStack {
                 Circle()
-                    .fill(Color.accentColor.opacity(0.14))
-                    .frame(width: 112, height: 112)
+                    .fill(Color.accentColor.opacity(0.16))
+                    .frame(width: 132, height: 132)
+                    .blur(radius: 2)
 
                 Circle()
                     .fill(Color.white.opacity(0.04))
-                    .frame(width: 86, height: 86)
+                    .frame(width: 108, height: 108)
 
-                Image(systemName: "checklist")
-                    .font(.system(size: 40, weight: .semibold))
+                Image(systemName: "checklist.checked")
+                    .font(.system(size: 44, weight: .bold))
                     .foregroundStyle(Color.accentColor)
             }
 
             VStack(spacing: 10) {
                 Text("DailyTodo")
-                    .font(.system(size: 38, weight: .black, design: .rounded))
-                    .foregroundStyle(palette.primaryText)
+                    .font(.system(size: 42, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
 
-                Text(
-                    isLogin
-                    ? "Sign in and continue planning your day."
-                    : "Create your account and start building your routine."
-                )
-                .font(.title3.weight(.medium))
-                .foregroundStyle(palette.secondaryText)
-                .multilineTextAlignment(.center)
+                Text("Plan smarter, stay focused, and keep your day under control.")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.72))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 8)
             }
+
+            HStack(spacing: 10) {
+                authFeaturePill(icon: "sparkles", text: "Premium flow")
+                authFeaturePill(icon: "timer", text: "Focus ready")
+                authFeaturePill(icon: "chart.bar.fill", text: "Insights")
+            }
+            .padding(.top, 4)
         }
-        .padding(.top, 34)
     }
 
-    var modePicker: some View {
-        HStack(spacing: 10) {
-            authModeButton(title: "Login", selected: isLogin) {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
-                    isLogin = true
-                    errorMessage = nil
+    var actionSection: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 14) {
+                premiumActionButton(
+                    title: "Login",
+                    subtitle: "Continue with your account",
+                    systemImage: "arrow.right.circle.fill",
+                    highlighted: true
+                ) {
+                    activeSheet = .login
+                }
+
+                premiumActionButton(
+                    title: "Sign Up",
+                    subtitle: "Create a new account",
+                    systemImage: "person.crop.circle.badge.plus",
+                    highlighted: false
+                ) {
+                    activeSheet = .signup
                 }
             }
 
-            authModeButton(title: "Sign Up", selected: !isLogin) {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
-                    isLogin = false
-                    errorMessage = nil
-                }
-            }
+            Text("By continuing, you agree to the app experience and account flow.")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Color.white.opacity(0.42))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 16)
         }
-        .padding(6)
+    }
+
+    var authBackground: some View {
+        ZStack {
+            Color.black
+                .ignoresSafeArea()
+
+            RadialGradient(
+                colors: [
+                    Color.purple.opacity(0.28),
+                    Color.clear
+                ],
+                center: .topLeading,
+                startRadius: 0,
+                endRadius: 360
+            )
+            .ignoresSafeArea()
+
+            RadialGradient(
+                colors: [
+                    Color.blue.opacity(0.24),
+                    Color.clear
+                ],
+                center: .topTrailing,
+                startRadius: 20,
+                endRadius: 420
+            )
+            .ignoresSafeArea()
+
+            RadialGradient(
+                colors: [
+                    Color.accentColor.opacity(0.12),
+                    Color.clear
+                ],
+                center: .bottom,
+                startRadius: 40,
+                endRadius: 360
+            )
+            .ignoresSafeArea()
+
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(0.02),
+                    Color.clear,
+                    Color.white.opacity(0.01)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .blendMode(.screen)
+            .ignoresSafeArea()
+        }
+    }
+
+    func authFeaturePill(icon: String, text: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .bold))
+
+            Text(text)
+                .font(.system(size: 12, weight: .semibold))
+        }
+        .foregroundStyle(Color.white.opacity(0.9))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(palette.cardFill)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(palette.cardStroke, lineWidth: 1)
-                )
+            Capsule()
+                .fill(Color.white.opacity(0.06))
+        )
+        .overlay(
+            Capsule()
+                .stroke(Color.white.opacity(0.07), lineWidth: 1)
         )
     }
 
-    func authModeButton(title: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(selected ? palette.primaryText : palette.secondaryText)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 15)
-                .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(
-                            selected
-                            ? LinearGradient(
-                                colors: [
-                                    Color.accentColor.opacity(0.24),
-                                    Color.accentColor.opacity(0.14)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                            : LinearGradient(
-                                colors: [
-                                    palette.secondaryCardFill,
-                                    palette.secondaryCardFill.opacity(0.75)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(
-                            selected ? Color.accentColor.opacity(0.32) : palette.cardStroke,
-                            lineWidth: 1
-                        )
-                )
-        }
-        .buttonStyle(.plain)
-    }
-
-    var formCard: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            if !isLogin {
-                authField(
-                    title: "Full Name",
-                    placeholder: "Your name",
-                    text: $fullName,
-                    autocap: .words
-                )
-
-                authField(
-                    title: "Username",
-                    placeholder: "yourusername",
-                    text: $username,
-                    autocap: .never
-                )
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-            }
-
-            authField(
-                title: "Email",
-                placeholder: "you@example.com",
-                text: $email,
-                autocap: .never
-            )
-            .keyboardType(.emailAddress)
-            .textInputAutocapitalization(.never)
-            .autocorrectionDisabled()
-
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Password")
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(palette.primaryText)
-
-                SecureField("Password", text: $password)
-                    .textContentType(.password)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 18)
-                    .background(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .fill(palette.secondaryCardFill)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                    .stroke(palette.cardStroke, lineWidth: 1)
-                            )
-                    )
-                    .foregroundStyle(palette.primaryText)
-            }
-
-            if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(.red)
-                    .padding(.top, 2)
-            }
-        }
-        .padding(20)
-        .background(cardBackground)
-    }
-
-    func authField(
+    func premiumActionButton(
         title: String,
-        placeholder: String,
-        text: Binding<String>,
-        autocap: TextInputAutocapitalization
+        subtitle: String,
+        systemImage: String,
+        highlighted: Bool,
+        action: @escaping () -> Void
     ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.title3.weight(.bold))
-                .foregroundStyle(palette.primaryText)
+        Button(action: action) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(highlighted ? Color.white.opacity(0.16) : Color.accentColor.opacity(0.12))
+                        .frame(width: 52, height: 52)
 
-            TextField(placeholder, text: text)
-                .textInputAutocapitalization(autocap)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 18)
-                .background(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(palette.secondaryCardFill)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .stroke(palette.cardStroke, lineWidth: 1)
-                        )
-                )
-                .foregroundStyle(palette.primaryText)
-        }
-    }
-
-    var actionButton: some View {
-        Button {
-            Task {
-                await handleAuth()
-            }
-        } label: {
-            HStack(spacing: 10) {
-                if session.isLoading {
-                    ProgressView()
-                        .tint(.white)
-                } else {
-                    Image(systemName: isLogin ? "arrow.right.circle.fill" : "person.badge.plus")
+                    Image(systemName: systemImage)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(highlighted ? .white : Color.accentColor)
                 }
 
-                Text(isLogin ? "Login" : "Create Account")
-                    .font(.headline.weight(.bold))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+
+                    Text(subtitle)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(Color.white.opacity(0.68))
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Color.white.opacity(0.7))
             }
-            .foregroundStyle(.white)
+            .padding(18)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 18)
             .background(
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
                     .fill(
-                        LinearGradient(
-                            colors: formIsValid
-                            ? [Color.blue.opacity(0.92), Color.purple.opacity(0.92)]
-                            : [Color.blue.opacity(0.45), Color.blue.opacity(0.35)],
-                            startPoint: .leading,
-                            endPoint: .trailing
+                        highlighted
+                        ? AnyShapeStyle(
+                            LinearGradient(
+                                colors: [
+                                    Color.blue.opacity(0.95),
+                                    Color.purple.opacity(0.95)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
                         )
+                        : AnyShapeStyle(Color.white.opacity(0.05))
                     )
             )
-            .scaleEffect(session.isLoading ? 0.985 : 1)
+            .overlay(
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .stroke(
+                        highlighted
+                        ? Color.white.opacity(0.08)
+                        : Color.white.opacity(0.06),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(
+                color: highlighted ? Color.accentColor.opacity(0.22) : .clear,
+                radius: highlighted ? 16 : 0,
+                y: 8
+            )
         }
         .buttonStyle(.plain)
-        .disabled(!formIsValid || session.isLoading)
-    }
-
-    var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 30, style: .continuous)
-            .fill(palette.cardFill)
-            .overlay(
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .stroke(palette.cardStroke, lineWidth: 1)
-            )
     }
 }
 
-// MARK: - Logic
+// MARK: - Sheet Type
+enum AuthSheet: Identifiable {
+    case login
+    case signup
 
-private extension AuthView {
-    func handleAuth() async {
-        errorMessage = nil
-
-        do {
-            if isLogin {
-                try await session.signIn(
-                    email: cleanEmail,
-                    password: cleanPassword
-                )
-            } else {
-                try await session.signUp(
-                    fullName: cleanFullName,
-                    email: cleanEmail,
-                    username: cleanUsername,
-                    password: cleanPassword
-                )
-            }
-        } catch {
-            errorMessage = error.localizedDescription
+    var id: String {
+        switch self {
+        case .login: return "login"
+        case .signup: return "signup"
         }
     }
 }

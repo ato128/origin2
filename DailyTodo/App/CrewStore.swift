@@ -29,7 +29,6 @@ final class CrewStore: ObservableObject {
     @Published var completedTaskCountByCrew: [UUID: Int] = [:]
     @Published var crewActivities: [CrewActivityDTO] = []
     @Published var crewFocusRecords: [CrewFocusRecordDTO] = []
-    @Published var crewTaskComments: [CrewTaskCommentDTO] = []
     @Published var crewMessageReads: [CrewMessageReadDTO] = []
     @Published var crewTypingStatuses: [CrewTypingStatusDTO] = []
 
@@ -46,7 +45,6 @@ final class CrewStore: ObservableObject {
     private var memberChannel: RealtimeChannelV2?
     private var activityChannel: RealtimeChannelV2?
     private var focusChannel: RealtimeChannelV2?
-    private var commentChannel: RealtimeChannelV2?
     private var lastTypingStateByCrew: [UUID: Bool] = [:]
 
     private var crewMessagesChannel: RealtimeChannelV2?
@@ -93,6 +91,155 @@ final class CrewStore: ObservableObject {
         } catch {
             crewMembers = oldMembers
             print("REMOVE MEMBER ERROR:", error.localizedDescription)
+            throw error
+        }
+    }
+    func deleteCrew(
+        crewID: UUID,
+        currentUserID: UUID
+    ) async throws {
+        guard let crew = crews.first(where: { $0.id == crewID }) else {
+            throw NSError(
+                domain: "CrewStore",
+                code: 404,
+                userInfo: [NSLocalizedDescriptionKey: "Crew not found."]
+            )
+        }
+
+        guard crew.owner_id == currentUserID else {
+            throw NSError(
+                domain: "CrewStore",
+                code: 403,
+                userInfo: [NSLocalizedDescriptionKey: "Only the crew owner can delete this crew."]
+            )
+        }
+
+        let oldCrews = crews
+        let oldMembers = crewMembers
+        let oldTasks = crewTasks
+        let oldActivities = crewActivities
+        let oldFocusRecords = crewFocusRecords
+        let oldMessageReads = crewMessageReads
+        let oldTypingStatuses = crewTypingStatuses
+        let oldChatMessagesByCrew = chatMessagesByCrew
+        let oldActiveFocusSessionByCrew = activeFocusSessionByCrew
+        let oldFocusParticipantsBySession = focusParticipantsBySession
+        let oldMemberCountByCrew = memberCountByCrew
+        let oldTaskCountByCrew = taskCountByCrew
+        let oldCompletedTaskCountByCrew = completedTaskCountByCrew
+
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+            crews.removeAll { $0.id == crewID }
+            crewMembers.removeAll { $0.crew_id == crewID }
+            crewTasks.removeAll { $0.crew_id == crewID }
+            crewActivities.removeAll { $0.crew_id == crewID }
+            crewFocusRecords.removeAll { $0.crew_id == crewID }
+            crewMessageReads.removeAll { $0.crew_id == crewID }
+            crewTypingStatuses.removeAll { $0.crew_id == crewID }
+            chatMessagesByCrew.removeValue(forKey: crewID)
+            activeFocusSessionByCrew.removeValue(forKey: crewID)
+            memberCountByCrew.removeValue(forKey: crewID)
+            taskCountByCrew.removeValue(forKey: crewID)
+            completedTaskCountByCrew.removeValue(forKey: crewID)
+        }
+
+        do {
+            if subscribedCrewRealtimeID == crewID {
+                unsubscribe()
+            }
+
+            if subscribedCrewMessageID == crewID {
+                unsubscribeCrewChat()
+            }
+
+            if subscribedFocusCrewID == crewID {
+                unsubscribeCrewFocusRealtime()
+            }
+
+            try await SupabaseManager.shared.client
+                .from("crew_focus_participants")
+                .delete()
+                .eq("crew_id", value: crewID.uuidString)
+                .execute()
+
+            try await SupabaseManager.shared.client
+                .from("crew_focus_sessions")
+                .delete()
+                .eq("crew_id", value: crewID.uuidString)
+                .execute()
+
+            try await SupabaseManager.shared.client
+                .from("crew_messages")
+                .delete()
+                .eq("crew_id", value: crewID.uuidString)
+                .execute()
+
+            try await SupabaseManager.shared.client
+                .from("crew_message_reads")
+                .delete()
+                .eq("crew_id", value: crewID.uuidString)
+                .execute()
+
+            try await SupabaseManager.shared.client
+                .from("crew_typing_status")
+                .delete()
+                .eq("crew_id", value: crewID.uuidString)
+                .execute()
+
+            try await SupabaseManager.shared.client
+                .from("crew_tasks")
+                .delete()
+                .eq("crew_id", value: crewID.uuidString)
+                .execute()
+
+            try await SupabaseManager.shared.client
+                .from("crew_activities")
+                .delete()
+                .eq("crew_id", value: crewID.uuidString)
+                .execute()
+
+            try await SupabaseManager.shared.client
+                .from("crew_focus_records")
+                .delete()
+                .eq("crew_id", value: crewID.uuidString)
+                .execute()
+
+            try await SupabaseManager.shared.client
+                .from("crew_invites")
+                .delete()
+                .eq("crew_id", value: crewID.uuidString)
+                .execute()
+
+            try await SupabaseManager.shared.client
+                .from("crew_members")
+                .delete()
+                .eq("crew_id", value: crewID.uuidString)
+                .execute()
+
+            try await SupabaseManager.shared.client
+                .from("crews")
+                .delete()
+                .eq("id", value: crewID.uuidString)
+                .eq("owner_id", value: currentUserID.uuidString)
+                .execute()
+
+            print("✅ CREW DELETED:", crewID.uuidString)
+        } catch {
+            crews = oldCrews
+            crewMembers = oldMembers
+            crewTasks = oldTasks
+            crewActivities = oldActivities
+            crewFocusRecords = oldFocusRecords
+            crewMessageReads = oldMessageReads
+            crewTypingStatuses = oldTypingStatuses
+            chatMessagesByCrew = oldChatMessagesByCrew
+            activeFocusSessionByCrew = oldActiveFocusSessionByCrew
+            focusParticipantsBySession = oldFocusParticipantsBySession
+            memberCountByCrew = oldMemberCountByCrew
+            taskCountByCrew = oldTaskCountByCrew
+            completedTaskCountByCrew = oldCompletedTaskCountByCrew
+
+            print("DELETE CREW ERROR:", error.localizedDescription)
             throw error
         }
     }
@@ -578,60 +725,25 @@ final class CrewStore: ObservableObject {
         }
 
         let client = SupabaseManager.shared.client
-
         Task {
-            await commentChannel?.unsubscribe()
             await taskChannel?.unsubscribe()
             await memberChannel?.unsubscribe()
             await activityChannel?.unsubscribe()
             await focusChannel?.unsubscribe()
         }
 
-        commentChannel = nil
         taskChannel = nil
         memberChannel = nil
         activityChannel = nil
         focusChannel = nil
 
-        commentChannel = client.realtimeV2.channel("crew-task-comments-\(crewID.uuidString)")
         taskChannel = client.realtimeV2.channel("crew-tasks-\(crewID.uuidString)")
         memberChannel = client.realtimeV2.channel("crew-members-\(crewID.uuidString)")
         activityChannel = client.realtimeV2.channel("crew-activities-\(crewID.uuidString)")
         focusChannel = client.realtimeV2.channel("crew-focus-records-\(crewID.uuidString)")
         subscribedCrewRealtimeID = crewID
 
-       _ = commentChannel?.onPostgresChange(
-            InsertAction.self,
-            schema: "public",
-            table: "crew_task_comments",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] _ in
-            Task { @MainActor in
-                await self?.loadComments(for: crewID)
-            }
-        }
-
-       _ = commentChannel?.onPostgresChange(
-            UpdateAction.self,
-            schema: "public",
-            table: "crew_task_comments",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] _ in
-            Task { @MainActor in
-                await self?.loadComments(for: crewID)
-            }
-        }
-
-      _ =  commentChannel?.onPostgresChange(
-            DeleteAction.self,
-            schema: "public",
-            table: "crew_task_comments",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] _ in
-            Task { @MainActor in
-                await self?.loadComments(for: crewID)
-            }
-        }
+    
 
         _ = taskChannel?.onPostgresChange(
             InsertAction.self,
@@ -801,7 +913,7 @@ final class CrewStore: ObservableObject {
         }
 
         Task {
-            try? await commentChannel?.subscribeWithError()
+            
             try? await taskChannel?.subscribeWithError()
             try? await memberChannel?.subscribeWithError()
             try? await activityChannel?.subscribeWithError()
@@ -811,14 +923,14 @@ final class CrewStore: ObservableObject {
 
     func unsubscribe() {
         Task {
-            await commentChannel?.unsubscribe()
+            
             await taskChannel?.unsubscribe()
             await memberChannel?.unsubscribe()
             await activityChannel?.unsubscribe()
             await focusChannel?.unsubscribe()
         }
 
-        commentChannel = nil
+        
         taskChannel = nil
         memberChannel = nil
         activityChannel = nil
@@ -1145,7 +1257,6 @@ final class CrewStore: ObservableObject {
         completedTaskCountByCrew = [:]
         crewActivities = []
         crewFocusRecords = []
-        crewTaskComments = []
         crewMessageReads = []
         crewTypingStatuses = []
         chatMessagesByCrew = [:]
@@ -1225,23 +1336,6 @@ final class CrewStore: ObservableObject {
             crewActivities = decoded
         } catch {
             print("LOAD ACTIVITIES ERROR:", error.localizedDescription)
-        }
-    }
-
-    func loadComments(for crewID: UUID) async {
-        do {
-            let response = try await SupabaseManager.shared.client
-                .from("crew_task_comments")
-                .select()
-                .eq("crew_id", value: crewID.uuidString)
-                .order("created_at", ascending: false)
-                .execute()
-
-            let decoded = try JSONDecoder().decode([CrewTaskCommentDTO].self, from: response.data)
-            crewTaskComments = decoded
-        } catch {
-            print("LOAD COMMENTS ERROR:", error.localizedDescription)
-            crewTaskComments = []
         }
     }
 

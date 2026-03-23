@@ -542,9 +542,6 @@ extension WeekView {
             isLate: isLate,
             lateText: lateText,
             crewPulse: crewPulse,
-            commentPulse: commentPulse,
-            commentCount: commentsForTask(task).count,
-            commentPreview: commentPreviewItems(for: task),
             minutesLeft: taskMinutesLeft(task),
             progress: taskProgress(task),
             parallaxOffset: parallaxOffset,
@@ -624,17 +621,6 @@ extension WeekView {
                     ? "arrow.uturn.backward.circle.fill"
                     : "checkmark.circle.fill"
                 )
-            }
-
-            if !commentsForTask(task).isEmpty {
-                Button {
-                    if let crew = crewMap[task.crewID] {
-                        selectedCrewTask = task
-                        selectedCrewForDetail = crew
-                    }
-                } label: {
-                    Label("Open Task & Comments", systemImage: "text.bubble.fill")
-                }
             }
 
             Button(role: .destructive) {

@@ -37,6 +37,8 @@ struct BackendCrewDetailView: View {
     @State private var memberToRemove: CrewMemberDTO?
     @State private var showRemoveMemberConfirm = false
     @State private var inviteCopied = false
+    @State private var showDeleteCrewConfirm = false
+    @State private var isDeletingCrew = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -223,7 +225,35 @@ struct BackendCrewDetailView: View {
         } message: {
             Text("This member will be removed from the crew.")
         }
-        
+        .confirmationDialog(
+            "Delete Crew",
+            isPresented: $showDeleteCrewConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Crew", role: .destructive) {
+                Task {
+                    guard let currentUserID = session.currentUser?.id else { return }
+
+                    isDeletingCrew = true
+
+                    do {
+                        try await crewStore.deleteCrew(
+                            crewID: crew.id,
+                            currentUserID: currentUserID
+                        )
+                        dismiss()
+                    } catch {
+                        errorMessage = error.localizedDescription
+                    }
+
+                    isDeletingCrew = false
+                }
+            }
+
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This crew, its tasks, members, activity and related records will be removed.")
+        }
     }
 
     @MainActor
@@ -644,7 +674,34 @@ extension BackendCrewDetailView {
 
             Spacer()
 
-            Color.clear.frame(width: 56, height: 56)
+            Menu {
+                Button(role: .destructive) {
+                    showDeleteCrewConfirm = true
+                } label: {
+                    Label("Delete Crew", systemImage: "trash")
+                }
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(palette.cardFill)
+                        .overlay(
+                            Circle()
+                                .stroke(palette.cardStroke, lineWidth: 1)
+                        )
+
+                    if isDeletingCrew {
+                        ProgressView()
+                            .tint(palette.primaryText)
+                    } else {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(palette.primaryText)
+                    }
+                }
+                .frame(width: 56, height: 56)
+                .shadow(color: palette.shadowColor, radius: 10, y: 4)
+            }
+            .disabled(isDeletingCrew)
         }
     }
 

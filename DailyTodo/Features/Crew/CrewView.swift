@@ -20,6 +20,7 @@ struct CrewView: View {
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var friendStore: FriendStore
+    @Environment(\.scenePhase) private var scenePhase
     
     
 
@@ -59,6 +60,9 @@ struct CrewView: View {
     @State private var didLoad = false
     @State private var didLoadFriends = false
     @State private var showAddFriendSheet = false
+    @State private var selectedFriendForMenu: Friend?
+    @State private var showRemoveFriendConfirm = false
+    @State private var isRemovingFriend = false
     
    
     
@@ -144,11 +148,47 @@ struct CrewView: View {
                     crewStore.subscribeToCrewsListRealtime(for: newID!)
                 }
             }
+            .onChange(of: scenePhase) { _, newPhase in
+                guard newPhase == .active else { return }
+
+                Task {
+                    await reloadBackendFriends(force: false)
+                }
+            }
             .onReceive(NotificationCenter.default.publisher(for: .openCrewInviteFromLink)) { notification in
                 if let code = notification.object as? String {
                     pendingInviteCode = code
                     showJoinCrewSheet = true
                 }
+            }
+            .alert("Arkadaşlıktan çıkarılsın mı?", isPresented: $showRemoveFriendConfirm) {
+                Button("Vazgeç", role: .cancel) { }
+
+                Button("Çıkar", role: .destructive) {
+                    Task {
+                        guard let friend = selectedFriendForMenu,
+                              let friendshipID = friend.backendFriendshipID,
+                              let currentUserID = session.currentUser?.id else { return }
+
+                        isRemovingFriend = true
+
+                        do {
+                            try await friendStore.removeFriendship(
+                                friendshipID: friendshipID,
+                                currentUserID: currentUserID,
+                                modelContext: modelContext
+                            )
+
+                            selectedFriendForMenu = nil
+                        } catch {
+                            print("REMOVE FRIEND FROM CREW VIEW ERROR:", error.localizedDescription)
+                        }
+
+                        isRemovingFriend = false
+                    }
+                }
+            } message: {
+                Text("Bu kişi arkadaş listesinden kaldırılacak.")
             }
         }
     }
@@ -536,9 +576,7 @@ private extension CrewView {
         await crewStore.loadCrews(force: true)
         await crewStore.loadStatsForAllCrews()
 
-        if friendStore.shouldRefreshFriends() {
-            await reloadBackendFriends(force: false)
-        }
+        await reloadBackendFriends(force: false)
     }
 
     func backendAvatarStack(memberCount: Int, tint: Color) -> some View {
@@ -873,7 +911,18 @@ private extension CrewView {
     func reloadBackendFriends(force: Bool) async {
         guard let currentUserID = session.currentUser?.id else { return }
 
-        guard friendStore.shouldRefreshFriends(force: force) else { return }
+        if friendStore.isRefreshingFriends { return }
+
+        if !force {
+            if !friendStore.shouldRefreshFriends(force: false) { return }
+            if !friendStore.shouldDoForegroundRefresh() { return }
+        }
+
+        friendStore.isRefreshingFriends = true
+        defer {
+            friendStore.isRefreshingFriends = false
+            friendStore.markForegroundRefreshDone()
+        }
 
         await friendStore.loadAllFriendships(currentUserID: currentUserID)
 
@@ -1233,49 +1282,19 @@ private extension CrewView {
 
                 if activeSession != nil {
                     HStack(spacing: 6) {
-                        ZStack {
-                            Circle()
-                                .fill(.green)
-                                .frame(width: 8, height: 8)
-
-                            Circle()
-                                .stroke(Color.green.opacity(0.45), lineWidth: 1.5)
-                                .frame(width: 16, height: 16)
-                                .scaleEffect(pulseLiveIndicator ? 1.25 : 0.85)
-                                .opacity(pulseLiveIndicator ? 0.0 : 0.9)
-                                .animation(
-                                    .easeOut(duration: 1.2).repeatForever(autoreverses: false),
-                                    value: pulseLiveIndicator
-                                )
-                        }
+                        Circle()
+                            .fill(.green)
+                            .frame(width: 8, height: 8)
 
                         Text("Live")
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.green)
-
-                        Text("Focusing")
-                            .font(.caption2)
-                            .foregroundStyle(palette.secondaryText)
                     }
                 } else {
                     HStack(spacing: 6) {
-                        ZStack {
-                            Circle()
-                                .fill(isOnline ? Color.green : Color.gray.opacity(0.5))
-                                .frame(width: 8, height: 8)
-
-                            if isOnline {
-                                Circle()
-                                    .stroke(Color.green.opacity(0.35), lineWidth: 1.5)
-                                    .frame(width: 16, height: 16)
-                                    .scaleEffect(pulseLiveIndicator ? 1.18 : 0.88)
-                                    .opacity(pulseLiveIndicator ? 0.0 : 0.85)
-                                    .animation(
-                                        .easeOut(duration: 1.2).repeatForever(autoreverses: false),
-                                        value: pulseLiveIndicator
-                                    )
-                            }
-                        }
+                        Circle()
+                            .fill(isOnline ? Color.green : Color.gray.opacity(0.5))
+                            .frame(width: 8, height: 8)
 
                         Text(isOnline ? "Online" : "Offline")
                             .font(.caption2)
@@ -1298,6 +1317,49 @@ private extension CrewView {
             )
         }
         .buttonStyle(.plain)
+        .simultaneousGesture(
+            LongPressGesture(minimumDuration: 0.35)
+                .onEnded { _ in
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                }
+        )
+        .contextMenu {
+            NavigationLink {
+                FriendChatView(friend: friend)
+                    .environmentObject(friendStore)
+                    .environmentObject(session)
+            } label: {
+                Label("Chat", systemImage: "message.fill")
+            }
+
+            Button(role: .destructive) {
+                UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+
+                Task {
+                    guard let friendshipID = friend.backendFriendshipID,
+                          let currentUserID = session.currentUser?.id else { return }
+
+                    do {
+                        try await friendStore.removeFriendship(
+                            friendshipID: friendshipID,
+                            currentUserID: currentUserID,
+                            modelContext: modelContext
+                        )
+                    } catch {
+                        print("LONG PRESS REMOVE FRIEND ERROR:", error.localizedDescription)
+                    }
+                }
+            } label: {
+                Label("Arkadaşlıktan Çıkar", systemImage: "person.crop.circle.badge.xmark")
+            }
+            .simultaneousGesture(
+                LongPressGesture(minimumDuration: 0.5)
+                    .onEnded { _ in
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        print("LONG PRESS OK")
+                    }
+            )
+        }
     }
 
     func activeFocusSession(for friend: Friend) -> FriendFocusSession? {

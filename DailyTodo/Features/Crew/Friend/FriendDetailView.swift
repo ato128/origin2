@@ -25,13 +25,13 @@ struct FriendDetailView: View {
     @Query(sort: \FriendFocusSession.startedAt, order: .reverse)
     private var allFocusSessions: [FriendFocusSession]
 
-    @State private var showCopied = false
-    @State private var showSharedFocusSheet = false
     @State private var showHero = false
     @State private var showSchedule = false
     @State private var showMessagesCard = false
     @State private var showActionsCard = false
-    
+    @State private var showRemoveFriendAlert = false
+    @State private var isRemovingFriend = false
+
     private var friendshipID: UUID? {
         friend.backendFriendshipID
     }
@@ -52,6 +52,7 @@ struct FriendDetailView: View {
             return []
         }
     }
+
     private var todaySchedule: [SharedWeekItem] {
         guard !isBackendFriend else { return [] }
 
@@ -67,11 +68,8 @@ struct FriendDetailView: View {
 
     private var activeFocusSession: FriendFocusSession? {
         guard !isBackendFriend else { return nil }
-
         return allFocusSessions.first { $0.friendID == friend.id && $0.isActive }
     }
-    
-    
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -82,25 +80,6 @@ struct FriendDetailView: View {
                     Color.clear.frame(height: 76)
 
                     customHeader
-                    Button("➕ Test Friend Request") {
-                        Task {
-                            guard let currentUserID = session.currentUser?.id else { return }
-
-                            do {
-                                let target = try await friendStore.findUserByUsername("berill")
-
-                                try await friendStore.sendFriendRequest(
-                                    to: target.id,
-                                    currentUserID: currentUserID
-                                )
-
-                                print("✅ REQUEST SENT")
-                            } catch {
-                                print("❌ REQUEST ERROR:", error.localizedDescription)
-                            }
-                        }
-                    }
-                    .padding()
 
                     heroCard
                         .offset(y: showHero ? 0 : 18)
@@ -131,27 +110,7 @@ struct FriendDetailView: View {
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
-        .overlay(alignment: .bottom) {
-            if showCopied {
-                Text("Copied")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(palette.primaryText)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(palette.cardFill)
-                    .clipShape(Capsule())
-                    .overlay(
-                        Capsule()
-                            .stroke(palette.cardStroke, lineWidth: 1)
-                    )
-                    .shadow(color: palette.shadowColor, radius: 8)
-                    .padding(.bottom, 24)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-        }
         .onAppear {
-            
-
             showHero = false
             showSchedule = false
             showMessagesCard = false
@@ -199,20 +158,32 @@ struct FriendDetailView: View {
                 currentUserID: session.currentUser?.id
             )
         }
-        .sheet(isPresented: $showSharedFocusSheet) {
-            FocusSessionView(
-                taskID: nil, // 👈 EKLE
+        .alert("Arkadaşlıktan çıkarılsın mı?", isPresented: $showRemoveFriendAlert) {
+            Button("Vazgeç", role: .cancel) { }
 
-                taskTitle: "Focus with \(friend.name)",
+            Button("Çıkar", role: .destructive) {
+                Task {
+                    guard let friendshipID = friendshipID,
+                          let currentUserID = session.currentUser?.id else { return }
 
-                onStartFocus: { _, _ in },
+                    isRemovingFriend = true
 
-                onTick: { _ in },
+                    do {
+                        try await friendStore.removeFriendship(
+                            friendshipID: friendshipID,
+                            currentUserID: currentUserID,
+                            modelContext: modelContext
+                        )
+                        dismiss()
+                    } catch {
+                        print("REMOVE FRIEND ALERT ACTION ERROR:", error.localizedDescription)
+                    }
 
-                onFinishFocus: { _, _, _, _, _, _ in },
-
-                workoutExercises: nil
-            )
+                    isRemovingFriend = false
+                }
+            }
+        } message: {
+            Text("Bu kişi arkadaş listesinden kaldırılacak ve ortak mesaj/veri bağlantısı silinecek.")
         }
     }
 }
@@ -278,7 +249,42 @@ private extension FriendDetailView {
 
             Spacer()
 
-            Color.clear.frame(width: 56, height: 56)
+            Menu {
+                NavigationLink {
+                    FriendChatView(friend: friend)
+                        .environmentObject(friendStore)
+                        .environmentObject(session)
+                } label: {
+                    Label("Chat", systemImage: "message.fill")
+                }
+
+                Button(role: .destructive) {
+                    showRemoveFriendAlert = true
+                } label: {
+                    Label("Arkadaşlıktan Çıkar", systemImage: "person.crop.circle.badge.xmark")
+                }
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(palette.cardFill)
+                        .overlay(
+                            Circle()
+                                .stroke(palette.cardStroke, lineWidth: 1)
+                        )
+
+                    if isRemovingFriend {
+                        ProgressView()
+                            .tint(palette.primaryText)
+                    } else {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(palette.primaryText)
+                    }
+                }
+                .frame(width: 56, height: 56)
+                .shadow(color: palette.shadowColor, radius: 10, y: 4)
+            }
+            .disabled(isRemovingFriend)
         }
     }
 
@@ -297,7 +303,6 @@ private extension FriendDetailView {
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(friend.name)
-                    
                         .font(.system(size: 28, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
 
@@ -463,45 +468,16 @@ private extension FriendDetailView {
 
             HStack(spacing: 12) {
                 NavigationLink {
-                    if isBackendFriend {
-                        FriendChatView(friend: friend)
-                            .environmentObject(friendStore)
-                            .environmentObject(session)
-                    } else {
-                        FriendChatView(friend: friend)
-                            .environmentObject(friendStore)
-                            .environmentObject(session)
-                    }
-                }label: {
+                    FriendChatView(friend: friend)
+                        .environmentObject(friendStore)
+                        .environmentObject(session)
+                } label: {
                     actionTile(
                         title: "Message",
                         systemImage: "message.fill"
                     )
                 }
                 .buttonStyle(.plain)
-
-                actionButton(
-                    title: activeFocusSession == nil ? "Start Focus" : "Stop Focus",
-                    systemImage: activeFocusSession == nil ? "stopwatch.fill" : "stop.circle.fill"
-                ) {
-                    if isBackendFriend {
-                        print("🚫 Backend friend focus not implemented yet")
-                        return
-                    } else {
-                        stopSharedFocus()
-                    }
-                }
-
-                actionButton(
-                    title: "Share My Week",
-                    systemImage: "square.and.arrow.up.fill"
-                ) {
-                    UIPasteboard.general.string = "Check out my week on DailyTodo"
-                    withAnimation { showCopied = true }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                        withAnimation { showCopied = false }
-                    }
-                }
             }
         }
         .padding(18)
@@ -532,59 +508,6 @@ private extension FriendDetailView {
         )
     }
 
-    func startSharedFocusAndJoin() {
-        let focusSession = FriendFocusSession(
-            ownerUserID: session.currentUser?.id,
-            friendID: friend.id,
-            title: "Shared Focus",
-            startedAt: Date(),
-            durationMinute: 25,
-            isActive: true
-        )
-
-        let startMessage = FriendMessage(
-            friendID: friend.id,
-            senderName: friend.name,
-            text: "\(friend.name) started a 25 min shared focus session.",
-            isFromMe: false
-        )
-
-        let joinMessage = FriendMessage(
-            friendID: friend.id,
-            senderName: "Me",
-            text: "I joined \(friend.name)’s shared focus session.",
-            isFromMe: true
-        )
-
-        modelContext.insert(focusSession)
-        modelContext.insert(startMessage)
-        modelContext.insert(joinMessage)
-
-        try? modelContext.save()
-
-        UserDefaults.standard.set("shared", forKey: "focus_mode")
-        UserDefaults.standard.set(friend.name, forKey: "focus_friend_name")
-        UserDefaults.standard.set(friend.id.uuidString, forKey: "focus_friend_id")
-
-        showSharedFocusSheet = true
-    }
-
-    func stopSharedFocus() {
-        guard let active = activeFocusSession else { return }
-
-        active.isActive = false
-
-        let stopMessage = FriendMessage(
-            friendID: friend.id,
-            senderName: friend.name,
-            text: "\(friend.name) ended the shared focus session.",
-            isFromMe: false
-        )
-
-        modelContext.insert(stopMessage)
-        try? modelContext.save()
-    }
-
     func statPill(title: String, subtitle: String) -> some View {
         VStack(spacing: 4) {
             Text(title)
@@ -607,15 +530,6 @@ private extension FriendDetailView {
                 )
         )
     }
-
-    func actionButton(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            actionTile(title: title, systemImage: systemImage)
-        }
-        .buttonStyle(.plain)
-    }
-
-    
 
     func weekdayIndexToday() -> Int {
         let w = Calendar.current.component(.weekday, from: Date())

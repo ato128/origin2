@@ -7,12 +7,6 @@
 
 import SwiftUI
 
-struct CrewTaskCommentPreviewItem: Identifiable {
-    let id: UUID
-    let authorName: String
-    let message: String
-}
-
 struct CrewTaskCard: View {
     let title: String
     let crewName: String?
@@ -26,9 +20,6 @@ struct CrewTaskCard: View {
     let isLate: Bool
     let lateText: String?
     let crewPulse: Bool
-    let commentPulse: Bool
-    let commentCount: Int
-    let commentPreview: [CrewTaskCommentPreviewItem]
     let minutesLeft: Int
     let progress: Double
     let parallaxOffset: CGFloat
@@ -44,7 +35,7 @@ struct CrewTaskCard: View {
     }
 
     private var isLightTheme: Bool {
-        appTheme == AppTheme.light.rawValue
+        palette.primaryText == .black
     }
 
     var body: some View {
@@ -174,31 +165,6 @@ struct CrewTaskCard: View {
 
                     Spacer()
 
-                    if commentCount > 0 {
-                        HStack(spacing: 6) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.blue)
-                                    .frame(width: 8, height: 8)
-                                    .scaleEffect(commentPulse ? 1.18 : 1.0)
-                                    .shadow(color: Color.blue.opacity(commentPulse ? 0.35 : 0.12), radius: commentPulse ? 8 : 3)
-                            }
-
-                            HStack(spacing: 5) {
-                                Image(systemName: "text.bubble.fill")
-                                Text("\(commentCount)")
-                                    .monospacedDigit()
-                            }
-                            .font(.caption2.weight(.bold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 5)
-                            .background(Color.blue.opacity(0.14))
-                            .foregroundStyle(.blue)
-                            .clipShape(Capsule())
-                        }
-                        .animation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true), value: commentPulse)
-                    }
-
                     if isLate {
                         HStack(spacing: 6) {
                             Text("LATE")
@@ -248,48 +214,6 @@ struct CrewTaskCard: View {
                             .clipShape(Capsule())
                     }
                 }
-
-                if !commentPreview.isEmpty {
-                    VStack(alignment: .leading, spacing: 10) {
-                        ForEach(commentPreview) { comment in
-                            HStack(alignment: .top, spacing: 8) {
-                                ZStack {
-                                    Circle()
-                                        .fill(palette.secondaryCardFill)
-                                        .frame(width: 28, height: 28)
-
-                                    Text(String(comment.authorName.prefix(1)).uppercased())
-                                        .font(.caption2.weight(.bold))
-                                        .foregroundStyle(palette.primaryText)
-                                }
-
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(comment.authorName)
-                                        .font(.caption2.weight(.bold))
-                                        .foregroundStyle(palette.primaryText)
-
-                                    Text(comment.message)
-                                        .font(.caption2)
-                                        .foregroundStyle(palette.secondaryText)
-                                        .lineLimit(1)
-                                }
-
-                                Spacer()
-                            }
-                        }
-                    }
-                    .padding(.top, 4)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(palette.secondaryCardFill)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(palette.cardStroke, lineWidth: 1)
-                    )
-                }
             }
             .padding(16)
             .background(
@@ -311,16 +235,8 @@ struct CrewTaskCard: View {
         .offset(y: parallaxOffset)
         .opacity(done ? 0.82 : 1.0)
         .shadow(
-            color: isLate
-                ? Color.red.opacity(latePulse ? 0.26 : 0.12)
-                : (
-                    commentCount > 0
-                    ? effectiveTint.opacity(commentPulse ? 0.16 : 0.06)
-                    : .clear
-                ),
-            radius: isLate
-                ? (latePulse ? 16 : 8)
-                : (commentCount > 0 ? (commentPulse ? 12 : 5) : 0)
+            color: isLate ? Color.red.opacity(latePulse ? 0.26 : 0.12) : .clear,
+            radius: isLate ? (latePulse ? 16 : 8) : 0
         )
         .scaleEffect(
             isLate
@@ -328,7 +244,6 @@ struct CrewTaskCard: View {
                 : (active && crewPulse ? 1.008 : 1.0)
         )
         .animation(active ? .easeInOut(duration: 0.9).repeatForever(autoreverses: true) : .default, value: crewPulse)
-        .animation(commentCount > 0 ? .easeInOut(duration: 1.1).repeatForever(autoreverses: true) : .default, value: commentPulse)
         .animation(isLate ? .easeInOut(duration: 1.4).repeatForever(autoreverses: true) : .default, value: latePulse)
         .animation(.easeInOut(duration: 0.2), value: done)
         .onAppear {

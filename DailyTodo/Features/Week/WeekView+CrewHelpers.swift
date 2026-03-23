@@ -30,24 +30,14 @@ extension WeekView {
             }
     }
     
-    func commentsForTask(_ task: WeekCrewTaskItem) -> [WeekCrewCommentItem] {
-        allCrewComments
-            .filter { $0.taskID == task.id }
-            .sorted { $0.createdAt > $1.createdAt }
-    }
-    
-    func previewCommentsForTask(_ task: WeekCrewTaskItem) -> [WeekCrewCommentItem] {
-        Array(commentsForTask(task).prefix(2))
-    }
+   
     
     func initialLetter(_ name: String) -> String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         return String(trimmed.prefix(1)).uppercased()
     }
     
-    func hasComments(_ task: WeekCrewTaskItem) -> Bool {
-        !commentsForTask(task).isEmpty
-    }
+   
     
     func hasCrewTasks(on day: Int) -> Bool {
         !crewTasks(for: day).isEmpty
