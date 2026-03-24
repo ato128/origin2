@@ -117,26 +117,40 @@ struct CrewFocusRoomBackendView: View {
             didInitialLoad = true
 
             Task {
-                await crewStore.loadActiveFocusSession(for: crew.id)
+                            await crewStore.loadActiveFocusSession(for: crew.id)
 
-                if let active = crewStore.activeFocusSessionByCrew[crew.id] {
-                    localSession = active
-                    await crewStore.loadFocusParticipants(sessionID: active.id)
-                    localParticipants = crewStore.focusParticipantsBySession[active.id] ?? []
-                }
-            }
+                            if let active = crewStore.activeFocusSessionByCrew[crew.id] {
+                                localSession = active
+                                await crewStore.loadFocusParticipants(sessionID: active.id)
+                                localParticipants = crewStore.focusParticipantsBySession[active.id] ?? []
+                                await syncCrewLiveActivity()
+                            } else {
+                                await endCrewLiveActivityIfNeeded()
+                            }
+                        }
         }
         .onChange(of: crewStore.activeFocusSessionByCrew[crew.id]) { _, newValue in
-            if let newValue {
-                localSession = newValue
-                localParticipants = crewStore.focusParticipantsBySession[newValue.id] ?? localParticipants
-            } else {
-                dismiss()
-            }
-        }
+                    if let newValue {
+                        localSession = newValue
+                        localParticipants = crewStore.focusParticipantsBySession[newValue.id] ?? localParticipants
+
+                        Task {
+                            await syncCrewLiveActivity()
+                        }
+                    } else {
+                        Task {
+                            await endCrewLiveActivityIfNeeded()
+                        }
+                        dismiss()
+                    }
+                }
         .onChange(of: crewStore.focusParticipantsBySession[localSession.id]) { _, newValue in
-            localParticipants = newValue ?? []
-        }
+                    localParticipants = newValue ?? []
+
+                    Task {
+                        await syncCrewLiveActivity()
+                    }
+                }
     }
 }
 
@@ -514,6 +528,9 @@ private extension CrewFocusRoomBackendView {
             )
 
             await crewStore.loadFocusParticipants(sessionID: localSession.id)
+            await crewStore.loadFocusParticipants(sessionID: localSession.id)
+                        localParticipants = crewStore.focusParticipantsBySession[localSession.id] ?? localParticipants
+                        await syncCrewLiveActivity()
         } catch {
             print("JOIN FOCUS SESSION ERROR:", error.localizedDescription)
         }
@@ -531,13 +548,14 @@ private extension CrewFocusRoomBackendView {
 
         do {
             try await crewStore.leaveCrewFocusSession(
-                sessionID: localSession.id,
-                crewID: crew.id,
-                userID: currentUserID,
-                memberName: currentUserName
-            )
+                            sessionID: localSession.id,
+                            crewID: crew.id,
+                            userID: currentUserID,
+                            memberName: currentUserName
+                        )
 
-            dismiss()
+                        await endCrewLiveActivityIfNeeded()
+                        dismiss()
         } catch {
             print("LEAVE FOCUS SESSION ERROR:", error.localizedDescription)
         }
@@ -573,9 +591,12 @@ private extension CrewFocusRoomBackendView {
 
             await crewStore.loadActiveFocusSession(for: crew.id)
 
-            if let updated = crewStore.activeFocusSessionByCrew[crew.id] {
-                localSession = updated
-            }
+                        if let updated = crewStore.activeFocusSessionByCrew[crew.id] {
+                            localSession = updated
+                            await syncCrewLiveActivity()
+                        } else {
+                            await endCrewLiveActivityIfNeeded()
+                        }
         } catch {
             print("TOGGLE PAUSE RESUME ERROR:", error.localizedDescription)
         }
@@ -596,16 +617,17 @@ private extension CrewFocusRoomBackendView {
 
         do {
             try await crewStore.endCrewFocusSession(
-                sessionID: localSession.id,
-                crewID: crew.id,
-                hostUserID: currentUserID,
-                hostName: currentUserName,
-                completedMinutes: completedMinutes,
-                participantNames: participants.map(\.member_name),
-                taskID: localSession.task_id
-            )
+                            sessionID: localSession.id,
+                            crewID: crew.id,
+                            hostUserID: currentUserID,
+                            hostName: currentUserName,
+                            completedMinutes: completedMinutes,
+                            participantNames: participants.map(\.member_name),
+                            taskID: localSession.task_id
+                        )
 
-            dismiss()
+                        await endCrewLiveActivityIfNeeded()
+                        dismiss()
         } catch {
             print("END FOCUS SESSION ERROR:", error.localizedDescription)
         }
@@ -617,18 +639,68 @@ private extension CrewFocusRoomBackendView {
 
         do {
             try await crewStore.endCrewFocusSession(
-                sessionID: localSession.id,
-                crewID: crew.id,
-                hostUserID: currentUserID,
-                hostName: currentUserName,
-                completedMinutes: localSession.duration_minutes,
-                participantNames: participants.map(\.member_name),
-                taskID: localSession.task_id
-            )
+                            sessionID: localSession.id,
+                            crewID: crew.id,
+                            hostUserID: currentUserID,
+                            hostName: currentUserName,
+                            completedMinutes: localSession.duration_minutes,
+                            participantNames: participants.map(\.member_name),
+                            taskID: localSession.task_id
+                        )
 
-            dismiss()
+                        await endCrewLiveActivityIfNeeded()
+                        dismiss()
         } catch {
             print("AUTO END FOCUS SESSION ERROR:", error.localizedDescription)
         }
     }
+    func liveSubtitleText() -> String {
+            "\(localSession.host_name) ile focus"
+        }
+
+        func liveStartDate() -> Date {
+            CrewDateParser.parse(localSession.started_at) ?? Date()
+        }
+
+        func liveEndDate() -> Date {
+            if localSession.is_paused {
+                let remaining = max(0, localSession.paused_remaining_seconds ?? 0)
+                return Date().addingTimeInterval(TimeInterval(remaining))
+            }
+
+            let startedAt = liveStartDate()
+            return startedAt.addingTimeInterval(TimeInterval(localSession.duration_minutes * 60))
+        }
+
+        func syncCrewLiveActivity() async {
+            guard isJoined || isHost else {
+                await FocusLiveActivityManager.shared.end()
+                return
+            }
+
+            guard localSession.is_active else {
+                await FocusLiveActivityManager.shared.end()
+                return
+            }
+
+            await FocusLiveActivityManager.shared.startOrUpdate(
+                title: localSession.title,
+                subtitle: liveSubtitleText(),
+                modeRaw: "crew",
+                startDate: liveStartDate(),
+                endDate: liveEndDate(),
+                isPaused: localSession.is_paused,
+                isResting: false,
+                pausedRemainingSeconds: localSession.is_paused
+                    ? remainingSeconds(at: Date())
+                    : nil,
+                pausedProgress: localSession.is_paused
+                    ? progress(forRemaining: remainingSeconds(at: Date()))
+                    : nil
+            )
+        }
+
+        func endCrewLiveActivityIfNeeded() async {
+            await FocusLiveActivityManager.shared.end()
+        }
 }

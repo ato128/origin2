@@ -307,9 +307,26 @@ struct FocusSessionView: View {
                     syncTimerFromSavedState()
                     breathing = true
 
-                    // 🔥 workout ise home card için state pushla
                     if isWorkoutMode {
                         saveWorkoutLiveState()
+                    }
+
+                    if isRunning,
+                       let startedAt = sessionStartedAt,
+                       let endDate {
+                        Task {
+                            await FocusLiveActivityManager.shared.update(
+                                title: resolvedTaskTitle,
+                                subtitle: focusLiveSubtitle(),
+                                modeRaw: focusLiveModeRaw(),
+                                startDate: startedAt,
+                                endDate: endDate,
+                                isPaused: false,
+                                isResting: isRestPhase,
+                                pausedRemainingSeconds: nil,
+                                pausedProgress: nil
+                            )
+                        }
                     }
                 }
                 .onChange(of: scenePhase) { _, newPhase in
@@ -388,6 +405,17 @@ private extension FocusSessionView {
                 )
         )
         .shadow(color: Color.orange.opacity(0.18), radius: 16, y: 8)
+    }
+    func currentLiveProgressSnapshot() -> Double {
+        guard totalSeconds > 0 else { return 0 }
+
+        if let endDate, isRunning {
+            let remaining = max(0, endDate.timeIntervalSinceNow)
+            let elapsed = Double(totalSeconds) - remaining
+            return min(1, max(0, elapsed / Double(totalSeconds)))
+        } else {
+            return min(1, max(0, Double(totalSeconds - remainingSeconds) / Double(totalSeconds)))
+        }
     }
 
     var statusPill: some View {
@@ -555,6 +583,23 @@ private extension FocusSessionView {
                 gen.prepare()
                 gen.notificationOccurred(.success)
 
+                if let startedAt = sessionStartedAt {
+                    let nextEnd = Date().addingTimeInterval(TimeInterval(remainingSeconds))
+                    Task {
+                        await FocusLiveActivityManager.shared.update(
+                            title: resolvedTaskTitle,
+                            subtitle: focusLiveSubtitle(),
+                            modeRaw: focusLiveModeRaw(),
+                            startDate: startedAt,
+                            endDate: nextEnd,
+                            isPaused: true,
+                            isResting: false,
+                            pausedRemainingSeconds: remainingSeconds,
+                            pausedProgress: currentLiveProgressSnapshot()
+                        )
+                    }
+                }
+
                 return
             }
 
@@ -590,6 +635,11 @@ private extension FocusSessionView {
 
             clearSharedFocusState()
             clearSavedTimer()
+
+            Task {
+                await FocusLiveActivityManager.shared.end()
+            }
+
             return
         }
 
@@ -603,6 +653,22 @@ private extension FocusSessionView {
             hasStartedSession = true
             sessionStartedAt = Date()
             onStartFocus(resolvedTaskTitle, totalSeconds)
+
+            if let startedAt = sessionStartedAt {
+                let liveEndDate = Date().addingTimeInterval(TimeInterval(remainingSeconds))
+
+                Task {
+                    await FocusLiveActivityManager.shared.start(
+                        title: resolvedTaskTitle,
+                        subtitle: focusLiveSubtitle(),
+                        modeRaw: focusLiveModeRaw(),
+                        startDate: startedAt,
+                        endDate: liveEndDate,
+                        isPaused: false,
+                        isResting: isRestPhase
+                    )
+                }
+            }
         }
 
         if isRunning {
@@ -611,6 +677,23 @@ private extension FocusSessionView {
             if let endDate {
                 let remaining = max(0, Int(endDate.timeIntervalSinceNow.rounded(.down)))
                 remainingSeconds = remaining
+                let frozenProgress = currentLiveProgressSnapshot()
+
+                Task {
+                    guard let startedAt = sessionStartedAt else { return }
+
+                    await FocusLiveActivityManager.shared.update(
+                        title: resolvedTaskTitle,
+                        subtitle: focusLiveSubtitle(),
+                        modeRaw: focusLiveModeRaw(),
+                        startDate: startedAt,
+                        endDate: endDate,
+                        isPaused: true,
+                        isResting: isRestPhase,
+                        pausedRemainingSeconds: remaining,
+                        pausedProgress: frozenProgress
+                    )
+                }
             }
 
             clearSavedTimer()
@@ -621,6 +704,23 @@ private extension FocusSessionView {
             saveTimer()
             isRunning = true
             onTick(remainingSeconds)
+
+            Task {
+                guard let startedAt = sessionStartedAt,
+                      let endDate else { return }
+
+                await FocusLiveActivityManager.shared.update(
+                    title: resolvedTaskTitle,
+                    subtitle: focusLiveSubtitle(),
+                    modeRaw: focusLiveModeRaw(),
+                    startDate: startedAt,
+                    endDate: endDate,
+                    isPaused: false,
+                    isResting: isRestPhase,
+                    pausedRemainingSeconds: nil,
+                    pausedProgress: nil
+                )
+            }
         }
     }
 
@@ -678,6 +778,21 @@ private extension FocusSessionView {
         gen.impactOccurred()
 
         saveWorkoutLiveState()
+
+        Task {
+            let start = Date()
+            let end = start.addingTimeInterval(TimeInterval(seconds))
+
+            await FocusLiveActivityManager.shared.update(
+                title: resolvedTaskTitle,
+                subtitle: focusLiveSubtitle(),
+                modeRaw: focusLiveModeRaw(),
+                startDate: start,
+                endDate: end,
+                isPaused: false,
+                isResting: true
+            )
+        }
     }
 
     func finishWorkout() {
@@ -722,6 +837,11 @@ private extension FocusSessionView {
             name: .workoutCompleted,
             object: taskID
         )
+
+        Task {
+            await FocusLiveActivityManager.shared.end()
+        }
+
         clearWorkoutLiveState()
     }
 
@@ -740,6 +860,10 @@ private extension FocusSessionView {
         saveDurationState()
         clearSavedTimer()
         onTick(remainingSeconds)
+        
+        Task {
+            await FocusLiveActivityManager.shared.end()
+        }
     }
 
     func resetTimer() {
@@ -756,6 +880,10 @@ private extension FocusSessionView {
         clearSharedFocusState()
         clearWorkoutLiveState()
         onTick(remainingSeconds)
+
+        Task {
+            await FocusLiveActivityManager.shared.end()
+        }
     }
 
     func finishAndDismiss() {
@@ -789,9 +917,13 @@ private extension FocusSessionView {
             totalSeconds,
             completedSeconds,
             isCompleted
-            
         )
+
         clearWorkoutLiveState()
+
+        Task {
+            await FocusLiveActivityManager.shared.end()
+        }
 
         dismiss()
     }
@@ -848,26 +980,39 @@ private extension FocusSessionView {
         let savedEnd = Date(timeIntervalSince1970: timestamp)
         let remaining = Int(savedEnd.timeIntervalSinceNow.rounded(.down))
 
-        if remaining > 0 {
-            endDate = savedEnd
-
-            if remainingSeconds != remaining {
-                remainingSeconds = remaining
-            }
-
-            if !isRunning {
-                isRunning = true
-            }
-
-            if !hasStartedSession {
-                hasStartedSession = true
-                sessionStartedAt = Date()
-                onStartFocus(resolvedTaskTitle, totalSeconds)
-            }
-
-            onTick(remainingSeconds)
-        } else {
+        guard remaining > 0 else {
             clearSavedTimer()
+            return
+        }
+
+        endDate = savedEnd
+        remainingSeconds = remaining
+        isRunning = true
+
+        if !hasStartedSession {
+            hasStartedSession = true
+            if sessionStartedAt == nil {
+                sessionStartedAt = Date().addingTimeInterval(-TimeInterval(totalSeconds - remaining))
+            }
+            onStartFocus(resolvedTaskTitle, totalSeconds)
+        }
+
+        onTick(remainingSeconds)
+
+        if let startedAt = sessionStartedAt {
+            Task {
+                await FocusLiveActivityManager.shared.update(
+                    title: resolvedTaskTitle,
+                    subtitle: focusLiveSubtitle(),
+                    modeRaw: focusLiveModeRaw(),
+                    startDate: startedAt,
+                    endDate: savedEnd,
+                    isPaused: false,
+                    isResting: isRestPhase,
+                    pausedRemainingSeconds: nil,
+                    pausedProgress: nil
+                )
+            }
         }
     }
 
@@ -903,4 +1048,31 @@ private extension FocusSessionView {
                 object: nil
             )
         }
+    func focusLiveModeRaw() -> String {
+        if UserDefaults.standard.string(forKey: Keys.focusMode) == "shared" {
+            return "crew"
+        }
+        return isWorkoutMode ? "workout" : "standard"
+    }
+
+    func focusLiveSubtitle() -> String {
+        if isWorkoutMode {
+            if isRestPhase {
+                return "Rest"
+            }
+            if let exercise = currentExercise {
+                return "Set \(currentSet)/\(exercise.sets) • \(exercise.name)"
+            }
+            return "Workout"
+        }
+
+        if UserDefaults.standard.string(forKey: Keys.focusMode) == "shared" {
+            if let name = UserDefaults.standard.string(forKey: Keys.focusFriendName), !name.isEmpty {
+                return "\(name) ile focus"
+            }
+            return "Crew session"
+        }
+
+        return "Deep work"
+    }
 }
