@@ -5,18 +5,21 @@
 //  Created by Atakan Ortaç on 13.03.2026.
 //
 
+
 import Foundation
 
 struct InsightsViewModel {
     let tasks: [DTTaskItem]
     let focusSessions: [FocusSessionRecord]
     let events: [EventItem]
+    let userID: String?
 
     private let calendar = Calendar.current
     private let dayLabels = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
-    
-    private let lastSuggestionKey = "lastSmartSuggestionIndex"
 
+    private var lastSuggestionKey: String {
+        "lastSmartSuggestionIndex_\(userID ?? "guest")"
+    }
     private var completedTasks: [DTTaskItem] {
         tasks.filter(\.isDone)
     }

@@ -9,6 +9,8 @@ import SwiftUI
 import SwiftData
 
 struct InsightsView: View {
+    @EnvironmentObject var session: SessionStore
+    
     @AppStorage("smartEngineEnabled") private var smartEngineEnabled: Bool = true
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private let palette = ThemePalette()
@@ -29,13 +31,33 @@ struct InsightsView: View {
     @Query(sort: \EventItem.startMinute, order: .forward)
     private var events: [EventItem]
 
-    private var vm: InsightsViewModel {
-        InsightsViewModel(
-            tasks: tasks,
-            focusSessions: focusSessions,
-            events: events
-        )
-    }
+    private var currentUserIDString: String? {
+            session.currentUser?.id.uuidString
+        }
+
+        private var filteredTasks: [DTTaskItem] {
+            guard let currentUserIDString else { return [] }
+            return tasks.filter { $0.ownerUserID == currentUserIDString }
+        }
+
+        private var filteredFocusSessions: [FocusSessionRecord] {
+            guard let currentUserIDString else { return [] }
+            return focusSessions.filter { $0.ownerUserID == currentUserIDString }
+        }
+
+        private var filteredEvents: [EventItem] {
+            guard let currentUserIDString else { return [] }
+            return events.filter { $0.ownerUserID == currentUserIDString }
+        }
+
+        private var vm: InsightsViewModel {
+            InsightsViewModel(
+                tasks: filteredTasks,
+                focusSessions: filteredFocusSessions,
+                events: filteredEvents,
+                userID: currentUserIDString
+            )
+        }
 
     private var collapseProgress: CGFloat {
         let progress = (-scrollOffset - 20) / 70

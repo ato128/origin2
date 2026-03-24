@@ -23,6 +23,7 @@ struct FocusSessionView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject var session: SessionStore
 
     @State private var selectedMinutes: Int = 25
     @State private var totalSeconds: Int = 25 * 60
@@ -871,33 +872,35 @@ private extension FocusSessionView {
     }
 
     func saveFocusRecord(
-        endedAt: Date,
-        completedSeconds: Int,
-        isCompleted: Bool
-    ) {
-        let startedAt = sessionStartedAt ?? endedAt
+            endedAt: Date,
+            completedSeconds: Int,
+            isCompleted: Bool
+        ) {
+            let startedAt = sessionStartedAt ?? endedAt
+            let currentUserIDString = session.currentUser?.id.uuidString
 
-        let record = FocusSessionRecord(
-            title: resolvedTaskTitle,
-            startedAt: startedAt,
-            endedAt: endedAt,
-            totalSeconds: totalSeconds,
-            completedSeconds: completedSeconds,
-            isCompleted: isCompleted
-        )
+            let record = FocusSessionRecord(
+                ownerUserID: currentUserIDString,
+                title: resolvedTaskTitle,
+                startedAt: startedAt,
+                endedAt: endedAt,
+                totalSeconds: totalSeconds,
+                completedSeconds: completedSeconds,
+                isCompleted: isCompleted
+            )
 
-        modelContext.insert(record)
+            modelContext.insert(record)
 
-        do {
-            try modelContext.save()
-            print("✅ Focus saved directly from FocusSessionView:", record.completedSeconds)
-        } catch {
-            print("❌ Focus save error:", error)
+            do {
+                try modelContext.save()
+                print("✅ Focus saved directly from FocusSessionView:", record.completedSeconds)
+            } catch {
+                print("❌ Focus save error:", error)
+            }
+
+            NotificationCenter.default.post(
+                name: .focusSessionCompleted,
+                object: nil
+            )
         }
-
-        NotificationCenter.default.post(
-            name: .focusSessionCompleted,
-            object: nil
-        )
-    }
 }

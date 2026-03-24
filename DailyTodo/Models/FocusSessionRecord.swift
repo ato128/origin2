@@ -11,6 +11,8 @@ import SwiftData
 @Model
 final class FocusSessionRecord {
     var id: UUID
+    var ownerUserID: String?
+
     var title: String
     var startedAt: Date
     var endedAt: Date
@@ -20,6 +22,7 @@ final class FocusSessionRecord {
 
     init(
         id: UUID = UUID(),
+        ownerUserID: String? = nil,
         title: String,
         startedAt: Date,
         endedAt: Date,
@@ -28,6 +31,7 @@ final class FocusSessionRecord {
         isCompleted: Bool
     ) {
         self.id = id
+        self.ownerUserID = ownerUserID
         self.title = title
         self.startedAt = startedAt
         self.endedAt = endedAt
