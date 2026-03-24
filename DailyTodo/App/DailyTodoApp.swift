@@ -14,7 +14,9 @@ import UserNotifications
 struct DailyTodoApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.scenePhase) private var scenePhase
+
     private let container: ModelContainer
+    private let appGroupID = "group.Atakan.dailytoDO"
 
     @StateObject private var session = SessionStore()
     @StateObject private var crewStore = CrewStore()
@@ -23,8 +25,6 @@ struct DailyTodoApp: App {
 
     init() {
         do {
-            let appGroupID = "group.Atakan.dailytoDO"
-
             guard let groupURL = FileManager.default.containerURL(
                 forSecurityApplicationGroupIdentifier: appGroupID
             ) else {
@@ -50,9 +50,6 @@ struct DailyTodoApp: App {
                 CrewMember.self,
                 CrewTask.self,
                 CrewActivity.self,
-                CrewTaskComment.self,
-                CrewTaskPoll.self,
-                CrewTaskReaction.self,
                 Friend.self,
                 FriendMessage.self,
                 SharedWeekItem.self,
@@ -93,6 +90,7 @@ struct DailyTodoApp: App {
                 .environmentObject(friendStore)
                 .onAppear {
                     let context = ModelContext(container)
+
                     WidgetAppSync.refreshFromSwiftData(context: context)
 
                     LiveActivityScheduler.shared.registerBGTask()
@@ -100,49 +98,78 @@ struct DailyTodoApp: App {
 
                     PushNotificationManager.requestPermission()
 
-                    todoStore.setCurrentUserID(session.currentUser?.id.uuidString)
+                    let currentUserID = session.currentUser?.id.uuidString
+                    todoStore.setCurrentUserID(currentUserID)
+                    LiveActivityScheduler.shared.setCurrentUserID(currentUserID)
                 }
                 .onChange(of: session.currentUser?.id) { _, newID in
-                    todoStore.setCurrentUserID(newID?.uuidString)
+                    let userIDString = newID?.uuidString
+
+                    todoStore.setCurrentUserID(userIDString)
+                    LiveActivityScheduler.shared.setCurrentUserID(userIDString)
+
+                    let context = ModelContext(container)
+                    WidgetAppSync.refreshFromSwiftData(context: context)
+
+                    Task { @MainActor in
+                        LiveActivityScheduler.shared.rescheduleBackgroundTask(container: container)
+                    }
                 }
                 .onChange(of: scenePhase) { _, newPhase in
                     if newPhase == .active {
-                        LiveActivityScheduler.shared
-                            .startForegroundLoop(container: container)
+                        LiveActivityScheduler.shared.startForegroundLoop(container: container)
+
+                        let context = ModelContext(container)
+                        WidgetAppSync.refreshFromSwiftData(context: context)
 
                     } else if newPhase == .background {
-                        LiveActivityScheduler.shared
-                            .stopForegroundLoop()
-
-                        LiveActivityScheduler.shared
-                            .rescheduleBackgroundTask(container: container)
+                        LiveActivityScheduler.shared.stopForegroundLoop()
+                        LiveActivityScheduler.shared.rescheduleBackgroundTask(container: container)
                     }
                 }
                 .onOpenURL { url in
-                    if url.absoluteString == "dailytodo://live/stop" {
-                        Task {
-                            await LiveActivityManager.shared.end()
-                        }
-                        return
-                    }
-
-                    if url.absoluteString == "dailytodo://week" {
-                        NotificationCenter.default.post(
-                            name: .openWeekFromWidget,
-                            object: nil
-                        )
-                        return
-                    }
-
-                    handleIncomingInviteURL(url)
+                    handleIncomingURL(url)
                 }
         }
     }
 
-    private func handleIncomingInviteURL(_ url: URL) {
-        guard url.scheme == "dailytodo" else { return }
-        guard url.host == "join-crew" else { return }
+    // MARK: - URL Handling
 
+    private func handleIncomingURL(_ url: URL) {
+        guard url.scheme == "dailytodo" else { return }
+
+        if url.host == "live" {
+            handleLiveActivityURL(url)
+            return
+        }
+
+        if url.host == "week" {
+            NotificationCenter.default.post(
+                name: .openWeekFromWidget,
+                object: nil
+            )
+            return
+        }
+
+        if url.host == "join-crew" {
+            handleIncomingInviteURL(url)
+            return
+        }
+    }
+
+    private func handleLiveActivityURL(_ url: URL) {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
+
+        let action = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+
+        if action == "stop" {
+            Task {
+                await LiveActivityManager.shared.end()
+            }
+        }
+    }
+
+    private func handleIncomingInviteURL(_ url: URL) {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let code = components.queryItems?.first(where: { $0.name == "code" })?.value,
               !code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {

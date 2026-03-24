@@ -30,7 +30,7 @@ struct ScheduleLiveActivityWidget: Widget {
                                 .frame(width: 22, height: 22)
                                 .shadow(color: accent.opacity(0.20), radius: 4)
 
-                            Image(systemName: "books.vertical.fill")
+                            Image(systemName: liveIconName(now: now, start: start, end: end))
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(accent)
                         }
@@ -73,19 +73,19 @@ struct ScheduleLiveActivityWidget: Widget {
                             Text(remainingText(from: now, start: start, end: end))
                                 .font(.system(size: 28, weight: .bold, design: .rounded))
                                 .monospacedDigit()
-                            
+
                             Spacer()
-                            
+
                             Text(statusLabel(now: now, start: start, end: end))
                                 .font(.caption.weight(.medium))
                                 .foregroundStyle(.secondary)
                         }
-                        
+
                         ZStack(alignment: .leading) {
                             Capsule()
                                 .fill(Color.white.opacity(0.10))
                                 .frame(height: 6)
-                            
+
                             GeometryReader { proxy in
                                 Capsule()
                                     .fill(
@@ -111,16 +111,15 @@ struct ScheduleLiveActivityWidget: Widget {
                     .background(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
                             .fill(accent.opacity(0.04))
-                )
-                
-                 }
+                    )
+                }
             } compactLeading: {
                 ZStack {
                     Circle()
                         .fill(accent.opacity(0.18))
                         .frame(width: 22, height: 22)
 
-                    Image(systemName: "books.vertical.fill")
+                    Image(systemName: liveIconName(now: now, start: start, end: end))
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(accent)
                 }
@@ -135,7 +134,7 @@ struct ScheduleLiveActivityWidget: Widget {
                         .fill(accent.opacity(0.18))
                         .frame(width: 22, height: 22)
 
-                    Image(systemName: "books.vertical.fill")
+                    Image(systemName: liveIconName(now: now, start: start, end: end))
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(accent)
                 }
@@ -149,6 +148,9 @@ private struct PremiumLiveActivityLockScreenView: View {
 
     var body: some View {
         let accent = liveAccentColor(for: context)
+        let now = Date()
+        let start = context.state.startDate
+        let end = context.state.endDate
 
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
@@ -166,7 +168,7 @@ private struct PremiumLiveActivityLockScreenView: View {
                         )
                         .frame(width: 42, height: 42)
 
-                    Image(systemName: "books.vertical.fill")
+                    Image(systemName: liveIconName(now: now, start: start, end: end))
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(accent)
                 }
@@ -176,7 +178,7 @@ private struct PremiumLiveActivityLockScreenView: View {
                         .font(.headline.weight(.semibold))
                         .lineLimit(1)
 
-                    StatusText(context: context)
+                    Text(statusLabel(now: now, start: start, end: end))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -251,26 +253,6 @@ private struct PremiumTimeLabel: View {
     }
 }
 
-private struct StatusText: View {
-    let context: ActivityViewContext<ScheduleAttributes>
-
-    var body: some View {
-        let now = Date()
-        let start = context.state.startDate
-        let end = context.state.endDate
-
-        Group {
-            if now < start {
-                Text("Ders başlamasına")
-            } else if now < end {
-                Text("Ders bitimine")
-            } else {
-                Text("Ders tamamlandı")
-            }
-        }
-    }
-}
-
 private struct PremiumProgressBar: View {
     let context: ActivityViewContext<ScheduleAttributes>
 
@@ -318,8 +300,20 @@ private struct PremiumProgressBar: View {
     }
 }
 
+// MARK: - Helpers
+
 private func liveAccentColor(for context: ActivityViewContext<ScheduleAttributes>) -> Color {
     hexColor(context.state.colorHex)
+}
+
+private func liveIconName(now: Date, start: Date, end: Date) -> String {
+    if now < start {
+        return "clock.fill"
+    } else if now < end {
+        return "books.vertical.fill"
+    } else {
+        return "checkmark.circle.fill"
+    }
 }
 
 private func remainingText(from now: Date, start: Date, end: Date) -> String {
@@ -352,16 +346,15 @@ private func compactRemainingText(from now: Date, start: Date, end: Date) -> Str
 
 private func statusLabel(now: Date, start: Date, end: Date) -> String {
     if now < start {
-        return "Ders başlamasına"
+        return "Başlamasına kalan süre"
     } else if now < end {
-        return "Ders bitimine"
+        return "Bitmesine kalan süre"
     } else {
-        return "Ders tamamlandı"
+        return "Etkinlik tamamlandı"
     }
 }
 
 private func progressValue(now: Date, start: Date, end: Date) -> CGFloat {
-
     if now < start {
         let total = start.timeIntervalSince(now)
         let maxWindow: TimeInterval = 600
@@ -371,9 +364,8 @@ private func progressValue(now: Date, start: Date, end: Date) -> CGFloat {
     if now >= end { return 1 }
 
     let total = end.timeIntervalSince(start)
-    let elapsed = now.timeIntervalSince(start)
+    guard total > 0 else { return 0 }
 
+    let elapsed = now.timeIntervalSince(start)
     return CGFloat(elapsed / total)
 }
-
-

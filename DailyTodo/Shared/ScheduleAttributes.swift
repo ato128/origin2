@@ -9,12 +9,12 @@ import Foundation
 import ActivityKit
 
 struct ScheduleAttributes: ActivityAttributes {
-    public struct ContentState: Codable, Hashable {
+    struct ContentState: Codable, Hashable {
         var title: String
         var startDate: Date
         var endDate: Date
         var colorHex: String
     }
 
-    var name: String
+    var scheduleName: String
 }
