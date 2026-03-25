@@ -10,6 +10,7 @@ import SwiftUI
 struct FocusInsightsCard: View {
     let data: FocusInsightsData
 
+    @Environment(\.locale) private var locale
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private let palette = ThemePalette()
 
@@ -17,16 +18,24 @@ struct FocusInsightsCard: View {
     @State private var flamePulse = false
 
     private var focusMinutesValue: Double {
-        Double(data.todayFocusMinutesText.replacingOccurrences(of: " dk", with: "")) ?? 0
+        extractLeadingNumber(from: data.todayFocusMinutesText)
     }
 
     private var sessionCountValue: Double {
-        Double(data.todaySessionsText.replacingOccurrences(of: " session", with: "")) ?? 0
+        extractLeadingNumber(from: data.todaySessionsText)
+    }
+
+    private var minuteUnitText: String {
+        locale.language.languageCode?.identifier == "tr" ? "dk" : "min"
+    }
+
+    private var sessionUnitText: String {
+        locale.language.languageCode?.identifier == "tr" ? "oturum" : "sessions"
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Focus Insights")
+            Text("insights_focus_title")
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(palette.primaryText)
 
@@ -68,7 +77,7 @@ struct FocusInsightsCard: View {
             )
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Today Focus")
+                Text("insights_focus_today_focus")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(palette.secondaryText)
 
@@ -82,7 +91,7 @@ struct FocusInsightsCard: View {
                     .font(.system(size: 34, weight: .bold, design: .rounded))
                     .foregroundStyle(palette.primaryText)
 
-                    Text("dk")
+                    Text(minuteUnitText)
                         .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
                 }
@@ -97,7 +106,7 @@ struct FocusInsightsCard: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(palette.primaryText)
 
-                    Text("session")
+                    Text(sessionUnitText)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -141,6 +150,11 @@ struct FocusInsightsCard: View {
                 flamePulse = true
             }
         }
+    }
+
+    private func extractLeadingNumber(from text: String) -> Double {
+        let digits = text.prefix { $0.isNumber }
+        return Double(digits) ?? 0
     }
 
     private var cardBackground: some View {

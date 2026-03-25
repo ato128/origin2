@@ -13,7 +13,7 @@ extension HomeDashboardView {
     var todayProgressCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Today Progress")
+                Text("home_today_progress")
                     .font(.system(size: 19, weight: .bold))
                     .foregroundStyle(palette.primaryText)
 
@@ -32,13 +32,13 @@ extension HomeDashboardView {
             HStack(spacing: 8) {
                 miniBadge(
                     icon: "flame.fill",
-                    text: "\(streakCount) gün seri",
+                    text: localizedStreakText(streakCount),
                     tint: .orange
                 )
 
                 miniBadge(
                     icon: "checkmark.circle.fill",
-                    text: "\(completedTodayCount) bugün tamamlandı",
+                    text: localizedCompletedTodayText(completedTodayCount),
                     tint: .green
                 )
             }
@@ -51,19 +51,19 @@ extension HomeDashboardView {
     var todayTasksCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Today Tasks")
+                Text("home_today_tasks")
                     .font(.system(size: 19, weight: .bold))
                     .foregroundStyle(palette.primaryText)
 
                 Spacer()
 
-                Text("\(todayTasks.prefix(3).count) gösteriliyor")
+                Text(localizedShowingCount(todayTasks.prefix(3).count))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(palette.secondaryText)
             }
 
             if todayTasks.isEmpty {
-                Text("Bugün için aktif task yok.")
+                Text("home_no_tasks_today")
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(palette.secondaryText)
             } else {
@@ -119,5 +119,28 @@ extension HomeDashboardView {
                 .fill(tint.opacity(0.14))
         )
         .foregroundStyle(tint)
+    }
+    func localizedStreakText(_ count: Int) -> String {
+        if Locale.current.language.languageCode?.identifier == "tr" {
+            return "\(count) gün seri"
+        } else {
+            return "\(count) day streak"
+        }
+    }
+
+    func localizedCompletedTodayText(_ count: Int) -> String {
+        if Locale.current.language.languageCode?.identifier == "tr" {
+            return "\(count) bugün tamamlandı"
+        } else {
+            return "\(count) completed today"
+        }
+    }
+
+    func localizedShowingCount(_ count: Int) -> String {
+        if Locale.current.language.languageCode?.identifier == "tr" {
+            return "\(count) gösteriliyor"
+        } else {
+            return "Showing \(count)"
+        }
     }
 }

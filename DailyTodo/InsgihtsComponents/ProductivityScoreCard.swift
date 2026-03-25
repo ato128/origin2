@@ -11,6 +11,7 @@ struct ProductivityScoreCard: View {
 
     let data: ScoreCardData
 
+    @Environment(\.locale) private var locale
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private let palette = ThemePalette()
 
@@ -18,6 +19,11 @@ struct ProductivityScoreCard: View {
 
     private var scoreValue: Double {
         Double(data.valueText.components(separatedBy: "/").first ?? "0") ?? 0
+    }
+
+    private var maxScoreText: String {
+        // İleride istersen 100 yerine değişebilir diye dinamik bıraktık
+        return locale.language.languageCode?.identifier == "tr" ? "/100" : "/100"
     }
 
     var body: some View {
@@ -43,7 +49,7 @@ struct ProductivityScoreCard: View {
                         .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
 
-                        Text("/100")
+                        Text(maxScoreText)
                             .font(.system(size: 30, weight: .bold))
                             .foregroundStyle(palette.secondaryText)
                     }

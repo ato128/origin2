@@ -22,6 +22,7 @@ struct DailyTodoApp: App {
     @StateObject private var crewStore = CrewStore()
     @StateObject private var friendStore = FriendStore()
     @StateObject private var todoStore: TodoStore
+    @StateObject private var languageManager = LanguageManager()
 
     init() {
         do {
@@ -88,6 +89,8 @@ struct DailyTodoApp: App {
                 .environmentObject(session)
                 .environmentObject(crewStore)
                 .environmentObject(friendStore)
+                .environmentObject(languageManager)
+                .environment(\.locale, languageManager.activeLocale)
                 .onAppear {
                     let context = ModelContext(container)
 
@@ -96,14 +99,23 @@ struct DailyTodoApp: App {
                     LiveActivityScheduler.shared.registerBGTask()
                     LiveActivityScheduler.shared.startForegroundLoop(container: container)
 
-                    PushNotificationManager.requestPermission()
-
                     let currentUserID = session.currentUser?.id.uuidString
                     todoStore.setCurrentUserID(currentUserID)
                     LiveActivityScheduler.shared.setCurrentUserID(currentUserID)
+
+                    let descriptor = FetchDescriptor<EventItem>(
+                        sortBy: [SortDescriptor(\EventItem.startMinute, order: .forward)]
+                    )
+                    let allEvents = (try? context.fetch(descriptor)) ?? []
+                    let scopedEvents = allEvents.filter { $0.ownerUserID == currentUserID }
+
+                    Task {
+                        await NotificationManager.shared.requestPermissionIfNeeded()
+                        await NotificationManager.shared.rescheduleAll(events: scopedEvents)
+                    }
                 }
                 .onChange(of: session.currentUser?.id) { _, newID in
-                    let userIDString = newID?.uuidString
+                    let userIDString = newID.map { $0.uuidString }
 
                     todoStore.setCurrentUserID(userIDString)
                     LiveActivityScheduler.shared.setCurrentUserID(userIDString)
@@ -113,6 +125,16 @@ struct DailyTodoApp: App {
 
                     Task { @MainActor in
                         LiveActivityScheduler.shared.rescheduleBackgroundTask(container: container)
+                    }
+                    let descriptor = FetchDescriptor<EventItem>(
+                        sortBy: [SortDescriptor(\EventItem.startMinute, order: .forward)]
+                    )
+                    let allEvents = (try? context.fetch(descriptor)) ?? []
+                    let scopedEvents = allEvents.filter { $0.ownerUserID == userIDString }
+
+                    Task {
+                        await NotificationManager.shared.requestPermissionIfNeeded()
+                        await NotificationManager.shared.rescheduleAll(events: scopedEvents)
                     }
                 }
                 .onChange(of: scenePhase) { _, newPhase in

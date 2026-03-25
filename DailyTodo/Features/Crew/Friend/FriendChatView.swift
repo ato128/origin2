@@ -11,6 +11,7 @@ struct FriendChatView: View {
     let friend: Friend
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
     @EnvironmentObject var friendStore: FriendStore
     @EnvironmentObject var session: SessionStore
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
@@ -102,7 +103,7 @@ struct FriendChatView: View {
                 if let email = session.currentUser?.email, !email.isEmpty {
                     senderName = email.components(separatedBy: "@").first ?? email
                 } else {
-                    senderName = "You"
+                    senderName = locale.language.languageCode?.identifier == "tr" ? "Sen" : "You"
                 }
 
                 Task {
@@ -184,7 +185,7 @@ private extension FriendChatView {
                         .font(.headline)
                         .foregroundStyle(palette.primaryText)
 
-                    if headerStatusText.contains("yazıyor") {
+                    if headerStatusText.contains(String(localized: "chat_typing_suffix")) {
                         HStack(spacing: 6) {
                             Text(headerStatusText)
                                 .font(.caption)
@@ -220,22 +221,31 @@ private extension FriendChatView {
     private var headerStatusText: String {
         if let friendshipID,
            friendStore.typingStatusByFriendship[friendshipID] == true {
-            return "\(friend.name) yazıyor..."
+            if locale.language.languageCode?.identifier == "tr" {
+                return "\(friend.name) yazıyor..."
+            } else {
+                return "\(friend.name) is typing..."
+            }
         }
 
-        guard let friendPresence else { return "Direct Chat" }
+        guard let friendPresence else { return String(localized: "chat_direct_chat") }
 
         if friendPresence.is_online {
-            return "Online"
+            return String(localized: "chat_online")
         } else {
             let date = CrewDateParser.parse(friendPresence.last_seen_at) ?? Date()
-            return "Last seen \(relativeLastSeen(date))"
+            if locale.language.languageCode?.identifier == "tr" {
+                return "Son görülme \(relativeLastSeen(date))"
+            } else {
+                return "Last seen \(relativeLastSeen(date))"
+            }
         }
     }
 
     func relativeLastSeen(_ date: Date) -> String {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .short
+        formatter.locale = locale
         return formatter.localizedString(for: date, relativeTo: Date())
     }
 
@@ -253,11 +263,11 @@ private extension FriendChatView {
                     .foregroundStyle(Color.accentColor)
             }
 
-            Text("No messages yet")
+            Text("chat_no_messages_yet")
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
-            Text("Start the conversation with \(friend.name).")
+            Text(localizedStartConversationText(friend.name))
                 .font(.subheadline)
                 .foregroundStyle(palette.secondaryText)
                 .multilineTextAlignment(.center)
@@ -306,8 +316,10 @@ private extension FriendChatView {
 
                                     Text(
                                         message.isPending
-                                        ? "Sending"
-                                        : (message.seenAt == nil ? "Sent" : "Seen")
+                                        ? String(localized: "chat_sending")
+                                        : (message.seenAt == nil
+                                           ? String(localized: "chat_sent")
+                                           : String(localized: "chat_seen"))
                                     )
                                     .font(.caption2)
                                 }
@@ -337,7 +349,7 @@ private extension FriendChatView {
 
     var composerBar: some View {
         HStack(spacing: 10) {
-            TextField("Message...", text: $draftMessage)
+            TextField(String(localized: "chat_message_placeholder"), text: $draftMessage)
                 .focused($isComposerFocused)
                 .onChange(of: draftMessage) { _, newValue in
                     guard let friendshipID else { return }
@@ -349,12 +361,11 @@ private extension FriendChatView {
                     if let email = session.currentUser?.email, !email.isEmpty {
                         senderName = email.components(separatedBy: "@").first ?? email
                     } else {
-                        senderName = "You"
+                        senderName = locale.language.languageCode?.identifier == "tr" ? "Sen" : "You"
                     }
 
-                    // 🔥 debounce
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                        Task{
+                        Task {
                             await friendStore.setTyping(
                                 friendshipID: friendshipID,
                                 currentUserID: session.currentUser?.id,
@@ -399,23 +410,26 @@ private extension FriendChatView {
         .background(.ultraThinMaterial.opacity(0.001))
     }
 
+    func localizedStartConversationText(_ name: String) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(name) ile konuşmayı başlat."
+        } else {
+            return "Start the conversation with \(name)."
+        }
+    }
+
     func sendMessage() {
         let clean = draftMessage.trimmingCharacters(in: .whitespacesAndNewlines)
-        print("SEND TAP")
-        print("CLEAN TEXT:", clean)
-        print("FRIENDSHIP ID IN SEND:", friendshipID as Any)
 
         guard !clean.isEmpty else { return }
-        guard let friendshipID else {
-            print("SEND STOPPED: friendshipID nil")
-            return
-        }
+        guard let friendshipID else { return }
+        guard let toUserId = friend.backendUserID?.uuidString else { return }
 
         let senderName: String
         if let email = session.currentUser?.email, !email.isEmpty {
             senderName = email.components(separatedBy: "@").first ?? email
         } else {
-            senderName = "You"
+            senderName = locale.language.languageCode?.identifier == "tr" ? "Sen" : "You"
         }
 
         draftMessage = ""
@@ -427,7 +441,48 @@ private extension FriendChatView {
                 senderID: session.currentUser?.id,
                 senderName: senderName
             )
+
+            triggerPush(toUserId: toUserId, message: clean)
         }
+    }
+
+    func triggerPush(toUserId: String, message: String) {
+        guard let url = URL(string: "https://srzvzaczgydwtopnlrvx.supabase.co/functions/v1/send-message-push") else {
+            print("❌ PUSH URL INVALID")
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("sb_publishable_lrWcbEx1SkaW3BmIYZ-j5g_iuFRrGhH", forHTTPHeaderField: "Authorization")
+
+        let body: [String: Any] = [
+            "toUserId": toUserId,
+            "message": message
+        ]
+
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        } catch {
+            print("❌ PUSH BODY ERROR:", error.localizedDescription)
+            return
+        }
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error {
+                print("❌ PUSH ERROR:", error.localizedDescription)
+                return
+            }
+
+            if let http = response as? HTTPURLResponse {
+                print("🟡 PUSH HTTP STATUS:", http.statusCode)
+            }
+
+            if let data = data {
+                print("🟢 PUSH RESPONSE:", String(data: data, encoding: .utf8) ?? "nil")
+            }
+        }.resume()
     }
 
     func scrollToBottom(proxy: ScrollViewProxy) {
@@ -438,6 +493,7 @@ private extension FriendChatView {
             }
         }
     }
+
     private struct TypingDotsView: View {
         @State private var phase = 0
 
@@ -463,4 +519,3 @@ private extension FriendChatView {
         }
     }
 }
-

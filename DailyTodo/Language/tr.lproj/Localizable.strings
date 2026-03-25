@@ -1,0 +1,593 @@
+/* 
+  Localizable.strings
+  DailyTodo
+
+  Created by Atakan Ortaç on 24.03.2026.
+  
+*/
+"settings_title" = "Ayarlar";
+
+"settings_section_account" = "Hesap";
+"settings_section_appearance" = "Görünüm";
+"settings_section_productivity" = "Üretkenlik";
+"settings_section_language" = "Dil";
+"settings_section_app" = "Uygulama";
+"settings_section_support" = "Destek";
+
+"settings_theme_title" = "Tema";
+"settings_app_language_title" = "Uygulama Dili";
+
+"settings_edit_profile_title" = "Profili Düzenle";
+"settings_edit_profile_subtitle" = "Adını ve kullanıcı adını değiştir";
+
+"settings_sign_out_title" = "Çıkış Yap";
+"settings_sign_out_subtitle" = "Hesabından çıkış yap";
+
+"settings_sign_in_title" = "Giriş Yap / Hesap Oluştur";
+"settings_sign_in_subtitle" = "Senkronizasyon, arkadaşlar ve crew için hesabını hazırla";
+
+"settings_show_only_today_title" = "Sadece Bugünü Göster";
+"settings_show_only_today_subtitle" = "Bugünün görevlerine odaklan";
+
+"settings_smart_engine_title" = "Akıllı Görev Motoru";
+"settings_smart_engine_subtitle" = "YZ önerileri ve akıllı planlama";
+
+"settings_notifications_title" = "Bildirimler";
+"settings_notifications_subtitle" = "Tüm hatırlatıcılar için ana anahtar";
+
+"settings_focus_preferences_title" = "Odak Tercihleri";
+"settings_focus_preferences_subtitle" = "Odak deneyimini yönet";
+
+"settings_show_onboarding_again_title" = "Onboarding'i Tekrar Göster";
+"settings_show_onboarding_again_subtitle" = "Karşılama ekranlarını yeniden oynat";
+
+"settings_show_permission_screen_title" = "İzin Ekranını Göster";
+"settings_show_permission_screen_subtitle" = "Bildirim tanıtımını yeniden oynat";
+
+"settings_about_title" = "DailyTodoo Hakkında";
+"settings_about_subtitle" = "Sürüm 1.0";
+
+"settings_made_with_care_title" = "Özenle yapıldı";
+"settings_made_with_care_subtitle" = "Odak, planlama ve ekipler için geliştirildi";
+
+"language_option_system" = "Sistem Dili";
+"language_option_turkish" = "Türkçe";
+"language_option_english" = "İngilizce";
+
+"home_focus_workout" = "Antrenman";
+"home_focus_default" = "Odak";
+
+"home_no_focus_task_today" = "Bugün odak görevi yok";
+"home_focus_status_overdue" = "⚠️ Gecikmiş görev";
+"home_focus_status_complete_today" = "🔥 Bugün tamamla";
+"home_focus_status_priority" = "🎯 Öncelikli görev";
+
+"home_no_more_classes_today" = "Bugün başka ders yok";
+
+"home_shared_focus" = "Ortak Odak";
+"home_focus_now" = "Şimdi Odaklan";
+"home_shared_session_active" = "🟢 Ortak oturum aktif";
+
+"home_greeting_morning" = "Günaydın";
+"home_greeting_afternoon" = "Tünaydın";
+"home_greeting_evening" = "İyi akşamlar";
+
+"home_header_stay_productive" = "Bugün üretken kal 🚀";
+"home_friends" = "Arkadaşlar";
+"home_this_week" = "Bu Hafta";
+"home_focus_short" = "Odak";
+
+"home_today_progress" = "Bugünkü İlerleme";
+"home_today_tasks" = "Bugünün Görevleri";
+"home_no_tasks_today" = "Bugün için aktif görev yok.";
+
+"home_rest" = "Dinlenme";
+"home_workout_rest_active" = "Dinlenme aktif";
+"home_workout_ready" = "Workout hazır";
+"home_start_workout" = "Workout Başlat";
+"home_start_focus" = "Odak Başlat";
+
+"home_shared_focus_running" = "Ortak Odak Çalışıyor";
+"home_workout_rest_running" = "Workout Dinlenmesi Çalışıyor";
+"home_workout_running" = "Workout Çalışıyor";
+"home_focus_running" = "Odak Çalışıyor";
+"home_with_focus_suffix" = "ile focus";
+"home_deep_work_session" = "Derin Çalışma Oturumu";
+
+"home_last_30_seconds" = "Son 30 sn";
+"home_workout_active" = "Workout aktif";
+"home_focus_active" = "Odak aktif";
+"home_resting" = "Dinlenme";
+"home_set_in_progress" = "Set devam";
+"home_continue" = "Devam";
+"home_continue_after_rest" = "Dinlenmeden Sonra Devam Et";
+"home_next_set" = "Sonraki Set";
+"home_focus_active_button" = "Odak Aktif";
+"home_stop" = "Durdur";
+
+"home_focus_completed" = "Odak Tamamlandı";
+"home_focus_paused" = "Odak Duraklatıldı";
+"home_done" = "Bitti";
+"home_completed" = "Tamamlandı";
+"home_paused" = "Duraklatıldı";
+"home_waiting" = "Bekliyor";
+"home_open_focus" = "Odağı Aç";
+"home_resume" = "Devam Et";
+"home_pause" = "Duraklat";
+"home_session_completed" = "Oturum Tamamlandı";
+
+"home_next_class" = "Sıradaki Ders";
+"home_live" = "CANLI";
+"home_quick_actions" = "Hızlı İşlemler";
+"home_add_task" = "Görev Ekle";
+"home_week" = "Hafta";
+"home_insights" = "Analizler";
+
+"week_share_today_crew_tasks" = "Bugünkü crew görevlerini paylaş";
+"week_share_crew" = "Crew'ü paylaş";
+"week_copy" = "Kopyala";
+"week_share_this_day" = "Bu günü paylaş";
+"week_share_full_week" = "Tüm haftayı paylaş";
+"week_copied" = "Kopyalandı";
+
+"week_choose_crew" = "Crew Seç";
+"week_cancel" = "İptal";
+"week_no_crew_selected" = "Crew seçilmedi";
+"week_task_not_found" = "Görev bulunamadı";
+
+"week_crew_fallback" = "Crew";
+"week_share_crew_plan_title" = "Crew Planı";
+"week_share_my_schedule" = "Programım";
+
+"week_team_flow_today" = "Bugünün ekip akışı";
+"week_live" = "Canlı";
+"week_recent_activity" = "Son Aktiviteler";
+"week_no_crew_activity_yet" = "Henüz crew aktivitesi yok";
+
+"week_no_tasks_today" = "Bugün için görev yok";
+"week_tasks_will_appear_here" = "Seçili gün ve crew için görev eklendiğinde burada görünecek.";
+
+"week_now" = "Şimdi";
+"week_up_next" = "Sıradaki";
+"week_late" = "Geciken";
+"week_later_today" = "Bugün Daha Sonra";
+"week_completed" = "Tamamlananlar";
+"week_crew_tasks" = "Crew Görevleri";
+
+"week_select_a_crew" = "Bir Crew Seç";
+
+"week_edit" = "Düzenle";
+"week_mark_as_done" = "Tamamlandı Olarak İşaretle";
+"week_mark_as_undone" = "Tamamlanmadı Olarak İşaretle";
+"week_delete_task" = "Görevi Sil";
+
+"week_completed_tasks" = "Tamamlanan görevler";
+"week_show_completed" = "Tamamlananları göster";
+
+"week_day_picker" = "Gün";
+"week_empty_day_description" = "Bu güne henüz ders eklenmemiş. Yeni ders eklemek için sağ üstteki + butonunu kullanabilirsin.";
+"week_add_class_top_right" = "Sağ üstteki + ile ders ekle";
+"week_schedule" = "Program";
+
+"week_today" = "Bugün";
+"week_lessons" = "Ders";
+"week_first" = "İlk";
+"week_last" = "Son";
+
+"week_no_saved_classes_for_day" = "Bu gün için kayıtlı ders yok";
+"week_class_active_now" = "Ders şu an aktif";
+
+"plan_date_section" = "Tarih";
+"plan_choose_date" = "Tarih Seç";
+"plan_selected" = "Seçilen";
+
+"plan_type_section" = "Tür";
+"plan_mode" = "Mod";
+"plan_mode_personal" = "Kişisel";
+"plan_mode_crew" = "Crew";
+
+"plan_continue" = "Devam Et";
+"plan_ahead_title" = "İleri Planla";
+
+"event_section_class_or_event" = "Ders / Etkinlik";
+"event_title_placeholder" = "Başlık";
+"event_location_optional" = "Konum (opsiyonel)";
+
+"event_section_day_time" = "Gün & Saat";
+"event_day" = "Gün";
+"event_start" = "Başlangıç";
+"event_end" = "Bitiş";
+"event_duration" = "Süre";
+
+"event_section_color" = "Renk";
+"event_color" = "Renk";
+"event_color_blue" = "Mavi";
+"event_color_purple" = "Mor";
+"event_color_pink" = "Pembe";
+"event_color_orange" = "Turuncu";
+"event_color_green" = "Yeşil";
+"event_color_red" = "Kırmızı";
+"event_color_gray" = "Gri";
+
+"event_section_note" = "Not";
+"event_note_optional" = "Not (opsiyonel)";
+
+"event_add_title" = "Ekle";
+"event_save" = "Kaydet";
+
+"event_conflict_title" = "Çakışma var";
+"event_save_anyway" = "Yine de Kaydet";
+
+"event_edit_title" = "Düzenle";
+"event_delete_confirm_title" = "Etkinlik silinsin mi?";
+"event_delete" = "Sil";
+"event_close" = "Kapat";
+
+"event_duplicate_section" = "Kopyala";
+"event_duplicate_same_day" = "Aynısını kopyala";
+"event_duplicate_to_another_day" = "Başka güne kopyala";
+
+"focus_deep_work_session" = "Derin Çalışma Oturumu";
+"focus_workout_focus" = "Workout Odağı";
+"focus_mode_title" = "Odak Modu";
+
+"focus_rest" = "Dinlenme";
+"focus_resting" = "Dinleniyor...";
+"focus_next_set" = "Sonraki Set";
+"focus_pause" = "Duraklat";
+"focus_start" = "Başlat";
+
+"focus_done" = "Bitti";
+"focus_workout_completed" = "Workout tamamlandı";
+"focus_session_completed" = "Oturum tamamlandı";
+
+"focus_reset" = "Sıfırla";
+"focus_finish" = "Bitir";
+
+"focus_custom_duration" = "Özel Süre";
+"focus_minutes" = "Dakika";
+"focus_ok" = "Tamam";
+"focus_enter_custom_duration" = "Dakika cinsinden özel odak süresi gir.";
+
+"focus_resting_now" = "Dinleniyorsun";
+"focus_set_in_progress" = "Set ilerliyor";
+"focus_you_are_focusing" = "Odaklanıyorsun";
+"focus_ready" = "Hazır";
+
+"focus_rest_upper" = "DİNLENME";
+
+"focus_completed" = "Tamamlandı";
+"focus_rest_active" = "Dinlenme Aktif";
+"focus_session_active" = "Oturum Aktif";
+"focus_ready_to_focus" = "Odaklanmaya Hazır";
+
+"focus_workout" = "Workout";
+"focus_crew_session" = "Crew oturumu";
+"focus_deep_work" = "Derin çalışma";
+
+"chat_typing_suffix" = "yazıyor...";
+"chat_direct_chat" = "Direkt Sohbet";
+"chat_online" = "Online";
+"chat_no_messages_yet" = "Henüz mesaj yok";
+"chat_sending" = "Gönderiliyor";
+"chat_sent" = "Gönderildi";
+"chat_seen" = "Görüldü";
+"chat_message_placeholder" = "Mesaj...";
+
+"friend_info_alert_title" = "Bilgi";
+"friend_info_title" = "Arkadaş Bilgisi";
+"friend_info_offline" = "Çevrimdışı";
+
+"friend_info_open_shared_week" = "Paylaşılan Haftayı Aç";
+"friend_info_see_weekly_plan_together" = "Haftalık planı birlikte gör";
+"friend_info_waiting_for_share" = "Arkadaşın paylaşması bekleniyor";
+
+"friend_info_start_focus_together" = "Birlikte Odağa Başla";
+"friend_info_launch_shared_focus" = "Ortak bir odak oturumu başlat";
+
+"friend_info_share_my_week" = "Haftamı Paylaş";
+"friend_info_let_friend_view_week" = "Bu arkadaşın haftalık planını görmesine izin ver";
+
+"friend_info_mute_notifications" = "Bildirimleri Sessize Al";
+"friend_info_stop_alerts_from_friend" = "Bu arkadaştan gelen uyarıları durdur";
+
+"friend_info_clear_chat_later" = "Sohbeti Sonra Temizle";
+
+"shared_week_title" = "Paylaşılan Hafta";
+"shared_week_subtitle" = "Günler arasında kaydır ve şu anda hangi dersin veya etkinliğin canlı olduğunu gör.";
+
+"shared_week_live_now" = "ŞU AN CANLI";
+"shared_week_next_up" = "SIRADAKİ";
+"shared_week_no_shared_events" = "Paylaşılan etkinlik yok";
+"shared_week_live" = "CANLI";
+
+"crew_title" = "Crew";
+"crew_your_space" = "Crew Alanın";
+"crew_header_subtitle" = "Birlikte kurun, birlikte odaklanın, birlikte bitirin.";
+
+"crew_tab_crews" = "Crewler";
+"crew_tab_friends" = "Arkadaşlar";
+
+"crew_overview" = "Genel Bakış";
+"crew_overview_subtitle" = "Takım üretkenliğine hızlı bakış";
+"crew_members" = "Üyeler";
+"crew_tasks" = "Görevler";
+"crew_completed" = "tamamlandı";
+"crew_progress" = "İlerleme";
+"crew_no_members" = "Üye yok";
+"crew_shared_tasks_active" = "Paylaşılan crew görevleri aktif";
+"crew_ready_for_shared_tasks" = "Backend crew paylaşılan görevler için hazır";
+"crew_your_crews" = "Crewlerin";
+
+"crew_your_friends" = "Arkadaşların";
+"crew_unknown_user" = "Bilinmeyen kullanıcı";
+"crew_unknown_username" = "bilinmiyor";
+
+"crew_incoming_requests" = "Gelen İstekler";
+"crew_sent_requests" = "Gönderilen İstekler";
+"crew_accept" = "Kabul Et";
+"crew_decline" = "Reddet";
+
+"crew_focus_activity" = "Odak Aktivitesi";
+"crew_focus_activity_subtitle" = "Şu anda birlikte çalışan arkadaşlar";
+"crew_join_focus" = "Odağa Katıl";
+
+"crew_friends_overview_subtitle" = "Paylaşılan programlar ve direkt iş birliği";
+"crew_requests" = "İstekler";
+"crew_in_focus" = "Odakta";
+
+"crew_no_friends_yet" = "Henüz arkadaş yok";
+"crew_no_friends_subtitle" = "Program paylaşmaya ve sohbet etmeye başlamak için ilk arkadaşını ekle.";
+"crew_add_first_friend" = "İlk Arkadaşını Ekle";
+
+"crew_no_crew_yet" = "Henüz crew yok";
+"crew_no_crew_subtitle" = "İlk crew’ünü oluştur ve paylaşılan görevleri, üyeleri ve aktiviteleri birlikte yönetmeye başla.";
+"crew_create_first_crew" = "İlk Crew’ünü Oluştur";
+
+"crew_friends_chat_schedule" = "Arkadaş sohbeti ve program paylaşımı";
+"crew_friends_next_step" = "Sonraki adım: bir arkadaş profilini aç, bugünkü programı gör ve mesajlaşmaya başla.";
+
+"crew_chat" = "Sohbet";
+"crew_remove_friend" = "Arkadaşlıktan Çıkar";
+
+"crew_remove_friend_confirm_title" = "Arkadaşlıktan çıkarılsın mı?";
+"crew_keep_friend" = "Vazgeç";
+"crew_remove" = "Çıkar";
+"crew_remove_friend_confirm_message" = "Bu kişi arkadaş listesinden kaldırılacak.";
+
+"friend_detail_remove_message" = "Bu kişi arkadaş listesinden kaldırılacak ve ortak mesaj/veri bağlantısı silinecek.";
+
+"friend_detail_connected_server" = "Sunucu üzerinden bağlı";
+"friend_detail_today_schedule" = "Bugünkü Program";
+"friend_detail_no_schedule_today" = "Bugün için paylaşılan program yok.";
+"friend_detail_recent_messages" = "Son Mesajlar";
+"friend_detail_no_backend_messages" = "Henüz backend mesajı yok.";
+"friend_detail_actions" = "İşlemler";
+"friend_detail_message" = "Mesaj";
+
+"create_crew_title" = "Crew Oluştur";
+"create_crew_your_crew" = "Ekibin";
+"create_crew_preview_subtitle" = "Birlikte üretin, birlikte odaklanın, birlikte bitirin.";
+"create_crew_preview" = "Önizleme";
+
+"create_crew_info" = "Crew Bilgileri";
+"create_crew_name_label" = "Crew adı";
+"create_crew_name_placeholder" = "Crew adını gir";
+"create_crew_selected_icon" = "Seçilen ikon";
+"create_crew_selected_color" = "Seçilen renk";
+"create_crew_choose_icon" = "İkon Seç";
+"create_crew_choose_color" = "Renk Seç";
+
+"join_crew_title" = "Crew'e Katıl";
+"join_crew_join" = "Katıl";
+"join_crew_join_a_crew" = "Bir Crew'e Katıl";
+"join_crew_enter_invite_subtitle" = "Ekibin tarafından paylaşılan davet kodunu gir.";
+"join_crew_invite_code" = "Davet Kodu";
+"join_crew_enter_code" = "Kodu gir";
+"join_crew_code_placeholder" = "ABC123";
+"join_crew_paste" = "Yapıştır";
+"join_crew_how_it_works" = "Nasıl çalışır";
+"join_crew_help_text" = "Bir crew üyesinden davet kodunu iste, buraya yapıştır ve ardından Katıl'a dokun.";
+"join_crew_user_session_not_found" = "Kullanıcı oturumu bulunamadı.";
+
+"add_friend_title" = "Arkadaş Ekle";
+"add_friend_subtitle" = "Bir kullanıcı adı gir ve arkadaşlık isteği gönder.";
+"add_friend_username" = "Kullanıcı Adı";
+"add_friend_username_placeholder" = "ornekkullaniciadi";
+"add_friend_sending" = "Gönderiliyor...";
+"add_friend_send_request" = "İstek Gönder";
+
+"add_friend_login_required" = "Giriş yapmış olman gerekiyor.";
+"add_friend_enter_username" = "Lütfen bir kullanıcı adı gir.";
+"add_friend_cannot_add_self" = "Kendini arkadaş olarak ekleyemezsin.";
+"add_friend_already_exists" = "Arkadaşlık veya istek zaten mevcut.";
+"add_friend_user_not_found" = "Kullanıcı bulunamadı veya istek gönderilemedi.";
+
+"join_focus_title" = "Odağa Katıl";
+"join_focus_session" = "Oturum";
+"join_focus_duration" = "Süre";
+"join_focus_remaining" = "Kalan";
+"join_focus_start_together" = "Birlikte Odağa Başla";
+"join_focus_not_now" = "Şimdi değil";
+"join_focus_shared_focus" = "Paylaşılan Odak";
+"insights_title" = "Insights";
+
+"insights_overview_streak" = "Seri";
+"insights_overview_getting_started" = "Başlangıç";
+"insights_overview_keep_fire_alive" = "Seriyi canlı tut";
+"insights_overview_start_streak" = "Serini başlat";
+"insights_overview_fallback_message" = "İlk görevi tamamlayınca serin başlayacak. Küçük bir adım yeterli.";
+"insights_overview_completion" = "tamamlanma";
+"insights_overview_start_streak_hint" = "Task ekleyerek streak başlatabilirsin";
+
+"insights_weekly_progress_title" = "Haftalık İlerleme";
+"insights_weekly_progress_subtitle_active" = "Son 7 gündeki üretim ritmin";
+"insights_weekly_progress_subtitle_empty" = "Haftalık ritmin burada görünecek";
+
+"insights_focus_title" = "Focus Insights";
+"insights_focus_today_focus" = "Bugünkü Focus";
+"crew_chat_loading_crew_info" = "Crew bilgisi yükleniyor...";
+"crew_chat_header_subtitle" = "Crew sohbeti";
+"crew_chat_empty_title" = "Henüz mesaj yok";
+"crew_chat_empty_subtitle" = "Crew'ünle sohbet etmeye başla.";
+
+"crew_chat_reply_yourself" = "kendin";
+"crew_chat_replying_to %@" = "%@ kişisine yanıt";
+"crew_chat_message_placeholder" = "%@ için mesaj...";
+
+"crew_chat_unknown_user" = "Kullanıcı";
+"crew_chat_reply_label" = "Yanıt";
+
+"crew_chat_you" = "Sen";
+"crew_chat_today" = "Bugün";
+"crew_chat_yesterday" = "Dün";
+
+"crew_chat_focus_start_title" = "Paylaşılan Odağı Başlat";
+"crew_chat_focus_quick" = "Hızlı odak";
+"crew_chat_focus_deep_work" = "Derin çalışma";
+"crew_chat_focus_custom_stepper" = "Özel: %d dk";
+"crew_chat_continue" = "Devam";
+"crew_chat_focus_nav_title" = "Odak";
+
+"crew_chat_focus_choose_task" = "Bir görev seç";
+"crew_chat_focus_shared_minutes" = "%d dk paylaşılan odak";
+"crew_chat_focus_without_task" = "Görevsiz başlat";
+"crew_chat_focus_general_session" = "Genel odak oturumu";
+"crew_chat_focus_no_active_tasks" = "Aktif crew görevi yok";
+"crew_chat_focus_still_general" = "Yine de genel bir odak oturumu başlatabilirsin.";
+"crew_chat_focus_task_nav_title" = "Odak Görevi";
+
+"crew_chat_focus_paused" = "Odak duraklatıldı";
+"crew_chat_focus_running" = "Odak devam ediyor";
+"crew_chat_focus_default_title_suffix" = "Odak";
+
+"crew_focus_room_you" = "Sen";
+"crew_focus_room_title" = "Odak Odası";
+"crew_focus_room_session_completed" = "Oturum tamamlandı";
+"crew_focus_room_paused" = "Duraklatıldı";
+"crew_focus_room_stay_locked_in" = "Odakta kal";
+"crew_focus_room_done" = "Bitti";
+"crew_focus_room_host" = "Host: %@";
+
+"crew_focus_room_participants" = "Katılımcılar";
+"crew_focus_room_no_participants" = "Henüz katılımcı yok";
+"crew_focus_room_host_badge" = "Host";
+
+"crew_focus_room_joining" = "Katılıyor...";
+"crew_focus_room_join_session" = "Oturuma Katıl";
+"crew_focus_room_leaving" = "Ayrılıyor...";
+"crew_focus_room_leave_session" = "Oturumdan Ayrıl";
+"crew_focus_room_resume_session" = "Oturumu Sürdür";
+"crew_focus_room_pause_session" = "Oturumu Duraklat";
+"crew_focus_room_end_session" = "Oturumu Bitir";
+
+"common_error" = "Hata";
+"common_ok" = "Tamam";
+"common_cancel" = "İptal";
+"common_copy" = "Kopyala";
+"common_copied" = "Kopyalandı";
+"common_unknown_error" = "Bilinmeyen hata";
+"common_today" = "Bugün";
+"common_now" = "Şimdi";
+"common_new" = "Yeni";
+
+"backend_crew_share_text" = "Bana DailyTodo'da katıl 🚀\nUygulamayı aç ve şu kodu gir: %@";
+"backend_crew_invite_code" = "Davet Kodu";
+"backend_crew_code_copied_success" = "Kod başarıyla kopyalandı";
+
+"backend_crew_remove_member_title" = "Üyeyi Kaldır";
+"backend_crew_remove_member_action" = "Crew'den Çıkar";
+"backend_crew_remove_member_message" = "Bu üye crew'den kaldırılacak.";
+"backend_crew_owner_cannot_be_removed" = "Sahip crew'den çıkarılamaz.";
+
+"backend_crew_delete_title" = "Crew'ü Sil";
+"backend_crew_delete_action" = "Crew'ü Sil";
+"backend_crew_delete_message" = "Bu crew, görevleri, üyeleri, aktiviteleri ve ilgili kayıtları silinecek.";
+
+"backend_crew_leaderboard" = "Liderlik Tablosu";
+"backend_crew_no_focus_today" = "Bugün ortak focus kaydı yok";
+
+"backend_crew_badge" = "Crew Rozeti";
+"backend_crew_badge_subtitle" = "Toplam focus süresine göre açılır";
+"backend_crew_next_badge" = "Sonraki rozet";
+"backend_crew_time_left" = "%@ kaldı";
+"backend_crew_streak" = "Seri: %@";
+
+"backend_crew_activity" = "Aktivite";
+"backend_crew_activity_subtitle" = "Son takım güncellemeleri";
+"backend_crew_no_activity" = "Henüz aktivite yok";
+
+"backend_crew_invite" = "Davet Et";
+"backend_crew_hero_subtitle" = "Üyeleri, ortak görevleri ve proje aktivitesini tek yerden yönet.";
+"backend_crew_members_count" = "%d üye";
+"backend_crew_tasks_count" = "%d görev";
+"backend_crew_progress" = "Crew İlerlemesi";
+
+"backend_crew_done" = "Biten";
+"backend_crew_pending" = "Bekleyen";
+"backend_crew_members" = "Üyeler";
+
+"backend_crew_no_members" = "Henüz üye yok • Eklemek için + tuşuna bas";
+"backend_crew_shared_tasks" = "Ortak Görevler";
+"backend_crew_no_shared_tasks" = "Henüz ortak görev yok";
+"backend_crew_reopen_task" = "Görevi Yeniden Aç";
+"backend_crew_mark_done" = "Tamamlandı Olarak İşaretle";
+"backend_crew_delete_task" = "Görevi Sil";
+"backend_crew_unassigned" = "Atanmamış";
+
+"backend_crew_focus_together" = "Birlikte Focus";
+"backend_crew_focus_subtitle" = "Ortak focus oturumları backend entegrasyonundan sonra aktif olacak.";
+"backend_crew_soon" = "Yakında";
+"backend_crew_coming_soon" = "Çok Yakında";
+
+"backend_crew_unknown_user" = "Bilinmeyen kullanıcı";
+"backend_crew_unknown" = "bilinmiyor";
+
+"backend_crew_task_detail_title" = "Görev Detayı";
+"backend_crew_quick_actions" = "Hızlı İşlemler";
+"backend_crew_edit_task" = "Görevi Düzenle";
+"backend_crew_assignment" = "Atama";
+"backend_crew_assigned_to" = "Atanan Kişi";
+"backend_crew_created_by" = "Oluşturan";
+
+
+"backend_edit_task_title" = "Görevi Düzenle";
+
+"backend_edit_task_section_task" = "Görev";
+"backend_edit_task_title_placeholder" = "Görev başlığı";
+"backend_edit_task_details_placeholder" = "Detaylar";
+
+"backend_edit_task_section_assignment" = "Atama";
+"backend_edit_task_assigned_member" = "Atanan üye";
+
+"backend_edit_task_section_priority_status" = "Öncelik ve Durum";
+"backend_edit_task_priority" = "Öncelik";
+"backend_edit_task_status" = "Durum";
+"backend_edit_task_completed" = "Tamamlandı";
+
+"backend_edit_task_section_week_planning" = "Hafta Planlaması";
+"backend_edit_task_show_on_week" = "Week sayfasında göster";
+"backend_edit_task_date_time" = "Tarih ve Saat";
+"backend_edit_task_duration_format" = "Süre: %d dk";
+
+"common_save" = "Kaydet";
+
+"backend_create_task_title" = "Yeni Görev";
+
+"backend_create_task_section_task" = "Görev";
+"backend_create_task_title_placeholder" = "Görev başlığı";
+"backend_create_task_details_placeholder" = "Detaylar";
+
+"backend_create_task_section_assignment" = "Atama";
+"backend_create_task_member" = "Üye";
+
+"backend_create_task_section_priority_status" = "Öncelik ve Durum";
+"backend_create_task_priority" = "Öncelik";
+"backend_create_task_status" = "Durum";
+
+"backend_create_task_section_week_planning" = "Hafta Planlaması";
+"backend_create_task_show_on_week" = "Week sayfasında göster";
+"backend_create_task_date_time" = "Tarih ve Saat";
+"backend_create_task_duration_format" = "Süre: %d dk";
+
+"backend_create_task_user_session_not_found" = "Kullanıcı oturumu bulunamadı.";

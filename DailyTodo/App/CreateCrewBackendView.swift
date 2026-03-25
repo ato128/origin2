@@ -81,11 +81,11 @@ struct CreateCrewBackendView: View {
                     .padding(.bottom, 28)
                 }
             }
-            .navigationTitle("Create Crew")
+            .navigationTitle(String(localized: "create_crew_title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") {
+                    Button(String(localized: "common_cancel")) {
                         dismiss()
                     }
                     .disabled(isSaving)
@@ -136,11 +136,15 @@ private extension CreateCrewBackendView {
                 }
 
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Your Crew" : name)
-                        .font(.system(size: 26, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                    Text(
+                        name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        ? String(localized: "create_crew_your_crew")
+                        : name
+                    )
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
 
-                    Text("Build together, focus together, finish together.")
+                    Text(String(localized: "create_crew_preview_subtitle"))
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.7))
                         .lineLimit(2)
@@ -150,7 +154,7 @@ private extension CreateCrewBackendView {
             }
 
             HStack(spacing: 10) {
-                previewPill(text: "Preview", tint: tint)
+                previewPill(text: String(localized: "create_crew_preview"), tint: tint)
                 previewPill(text: icon, tint: .white.opacity(0.7))
             }
         }
@@ -168,12 +172,12 @@ private extension CreateCrewBackendView {
 
     var crewInfoSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionTitle("Crew Info")
+            sectionTitle(String(localized: "create_crew_info"))
 
             VStack(spacing: 0) {
                 textFieldRow(
-                    title: "Crew name",
-                    placeholder: "Enter crew name",
+                    title: String(localized: "create_crew_name_label"),
+                    placeholder: String(localized: "create_crew_name_placeholder"),
                     text: $name
                 )
 
@@ -181,7 +185,7 @@ private extension CreateCrewBackendView {
                     .overlay(Color.white.opacity(0.08))
 
                 infoRow(
-                    title: "Selected icon",
+                    title: String(localized: "create_crew_selected_icon"),
                     value: icon
                 )
 
@@ -189,7 +193,7 @@ private extension CreateCrewBackendView {
                     .overlay(Color.white.opacity(0.08))
 
                 infoRow(
-                    title: "Selected color",
+                    title: String(localized: "create_crew_selected_color"),
                     value: colorHex
                 )
             }
@@ -199,7 +203,7 @@ private extension CreateCrewBackendView {
 
     var iconPickerSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionTitle("Choose Icon")
+            sectionTitle(String(localized: "create_crew_choose_icon"))
 
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4),
@@ -240,7 +244,7 @@ private extension CreateCrewBackendView {
 
     var colorPickerSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionTitle("Choose Color")
+            sectionTitle(String(localized: "create_crew_choose_color"))
 
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 4),

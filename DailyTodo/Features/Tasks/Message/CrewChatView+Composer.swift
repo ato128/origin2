@@ -17,10 +17,11 @@ extension CrewChatView {
                         .clipShape(Capsule())
 
                     VStack(alignment: .leading, spacing: 2) {
-                        let replyingName = currentReply.isFromMe ? "yourself" : currentReply.senderName
-                        Text(currentReply.displayText)
+                        let replyingName = currentReply.isFromMe
+                        ? NSLocalizedString("crew_chat_reply_yourself", comment: "")
+                        : currentReply.senderName
 
-                        Text("Replying to \(replyingName)")
+                        Text("crew_chat_replying_to \(replyingName)")
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(Color.accentColor)
 
@@ -75,24 +76,28 @@ extension CrewChatView {
                 }
                 .buttonStyle(.plain)
 
-                TextField("Message \(crew.name)...", text: $draftMessage, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .foregroundStyle(palette.primaryText)
-                    .focused($isComposerFocused)
-                    .lineLimit(1...4)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
-                    .onChange(of: draftMessage) { _, newValue in
-                        handleTypingChange(newValue)
-                    }
-                    .background(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .fill(palette.secondaryCardFill)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                    .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
-                            )
-                    )
+                TextField(
+                    String(format: NSLocalizedString("crew_chat_message_placeholder", comment: ""), crew.name),
+                    text: $draftMessage,
+                    axis: .vertical
+                )
+                .textFieldStyle(.plain)
+                .foregroundStyle(palette.primaryText)
+                .focused($isComposerFocused)
+                .lineLimit(1...4)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .onChange(of: draftMessage) { _, newValue in
+                    handleTypingChange(newValue)
+                }
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(palette.secondaryCardFill)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
+                        )
+                )
 
                 Button {
                     sendMessage()
@@ -135,4 +140,3 @@ extension CrewChatView {
         )
     }
 }
-

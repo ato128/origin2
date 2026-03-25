@@ -147,14 +147,17 @@ struct BackendCrewDetailView: View {
         }
         .sheet(isPresented: $showShareSheet) {
             ShareSheet(items: [
-                "Join my crew on DailyTodo 🚀\nOpen the app and enter this code: \(inviteCode)"
+                String(
+                    format: String(localized: "backend_crew_share_text"),
+                    inviteCode
+                )
             ])
         }
         .sheet(isPresented: $showInviteSheet, onDismiss: {
             inviteCopied = false
         }) {
             VStack(spacing: 24) {
-                Text("Invite Code")
+                Text("backend_crew_invite_code")
                     .font(.headline)
                     .foregroundStyle(palette.primaryText)
 
@@ -167,13 +170,13 @@ struct BackendCrewDetailView: View {
                     UIPasteboard.general.string = inviteCode
                     inviteCopied = true
                 } label: {
-                    Text(inviteCopied ? "Copied" : "Copy")
+                    Text(inviteCopied ? String(localized: "common_copied") : String(localized: "common_copy"))
                         .font(.headline)
                         .foregroundStyle(.blue)
                 }
 
                 if inviteCopied {
-                    Text("Code copied successfully")
+                    Text("backend_crew_code_copied_success")
                         .font(.caption)
                         .foregroundStyle(palette.secondaryText)
                         .transition(.opacity)
@@ -184,28 +187,28 @@ struct BackendCrewDetailView: View {
             .presentationDragIndicator(.visible)
         }
         .alert(
-            "Error",
+            String(localized: "common_error"),
             isPresented: Binding(
                 get: { errorMessage != nil },
                 set: { if !$0 { errorMessage = nil } }
             )
         ) {
-            Button("OK", role: .cancel) {
+            Button(String(localized: "common_ok"), role: .cancel) {
                 errorMessage = nil
             }
         } message: {
-            Text(errorMessage ?? "Unknown error")
+            Text(errorMessage ?? String(localized: "common_unknown_error"))
         }
         .confirmationDialog(
-            "Remove Member",
+            String(localized: "backend_crew_remove_member_title"),
             isPresented: $showRemoveMemberConfirm,
             titleVisibility: .visible
         ) {
-            Button("Remove from Crew", role: .destructive) {
+            Button(String(localized: "backend_crew_remove_member_action"), role: .destructive) {
                 guard let member = memberToRemove else { return }
 
                 guard member.role.lowercased() != "owner" else {
-                    errorMessage = "Owner cannot be removed from the crew."
+                    errorMessage = String(localized: "backend_crew_owner_cannot_be_removed")
                     return
                 }
 
@@ -219,18 +222,18 @@ struct BackendCrewDetailView: View {
                 }
             }
 
-            Button("Cancel", role: .cancel) {
+            Button(String(localized: "common_cancel"), role: .cancel) {
                 memberToRemove = nil
             }
         } message: {
-            Text("This member will be removed from the crew.")
+            Text("backend_crew_remove_member_message")
         }
         .confirmationDialog(
-            "Delete Crew",
+            String(localized: "backend_crew_delete_title"),
             isPresented: $showDeleteCrewConfirm,
             titleVisibility: .visible
         ) {
-            Button("Delete Crew", role: .destructive) {
+            Button(String(localized: "backend_crew_delete_action"), role: .destructive) {
                 Task {
                     guard let currentUserID = session.currentUser?.id else { return }
 
@@ -250,9 +253,9 @@ struct BackendCrewDetailView: View {
                 }
             }
 
-            Button("Cancel", role: .cancel) { }
+            Button(String(localized: "common_cancel"), role: .cancel) { }
         } message: {
-            Text("This crew, its tasks, members, activity and related records will be removed.")
+            Text("backend_crew_delete_message")
         }
     }
 
@@ -395,19 +398,19 @@ extension BackendCrewDetailView {
     var leaderboardCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Leaderboard")
+                Text("backend_crew_leaderboard")
                     .font(.headline)
                     .foregroundStyle(palette.primaryText)
 
                 Spacer()
 
-                Text("Today")
+                Text("common_today")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(palette.secondaryText)
             }
 
             if topThreeLeaderboard.isEmpty {
-                Text("No shared focus records today")
+                Text("backend_crew_no_focus_today")
                     .font(.subheadline)
                     .foregroundStyle(palette.secondaryText)
             } else {
@@ -434,11 +437,11 @@ extension BackendCrewDetailView {
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Crew Badge")
+                    Text("backend_crew_badge")
                         .font(.headline)
                         .foregroundStyle(palette.primaryText)
 
-                    Text("Unlocked by total focus time")
+                    Text("backend_crew_badge_subtitle")
                         .font(.caption)
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -486,13 +489,13 @@ extension BackendCrewDetailView {
             if let nextTarget {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text("Next badge")
+                        Text("backend_crew_next_badge")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(palette.secondaryText)
 
                         Spacer()
 
-                        Text("\(focusTimeText(max(0, nextTarget - minutes))) left")
+                        Text(String(format: String(localized: "backend_crew_time_left"), focusTimeText(max(0, nextTarget - minutes))))
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(palette.secondaryText)
                     }
@@ -507,7 +510,7 @@ extension BackendCrewDetailView {
                 Image(systemName: "flame.fill")
                     .foregroundStyle(.orange)
 
-                Text("Streak: \(currentStreakText)")
+                Text(String(format: String(localized: "backend_crew_streak"), currentStreakText))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(palette.primaryText)
             }
@@ -517,13 +520,14 @@ extension BackendCrewDetailView {
     }
 
     func focusTimeText(_ minutes: Int) -> String {
+        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
         let hours = minutes / 60
         let mins = minutes % 60
 
         if hours > 0 {
-            return "\(hours)h \(mins)m"
+            return isTurkish ? "\(hours) sa \(mins) dk" : "\(hours)h \(mins)m"
         } else {
-            return "\(mins)m"
+            return isTurkish ? "\(mins) dk" : "\(mins)m"
         }
     }
 
@@ -595,10 +599,10 @@ extension BackendCrewDetailView {
 
         return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("Activity")
+                Text("backend_crew_activity")
                     .font(.headline)
 
-                Text("Recent team updates")
+                Text("backend_crew_activity_subtitle")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -616,7 +620,7 @@ extension BackendCrewDetailView {
             }
 
             if items.isEmpty {
-                emptyMiniState(text: "No activity yet")
+                emptyMiniState(text: String(localized: "backend_crew_no_activity"))
             } else {
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                     backendActivityRow(
@@ -634,7 +638,7 @@ extension BackendCrewDetailView {
     }
 
     func activityTimeText(_ raw: String?) -> String {
-        guard let raw else { return "Now" }
+        guard let raw else { return String(localized: "common_now") }
 
         if let date = Self.backendISOFormatter.date(from: raw) {
             let out = DateFormatter()
@@ -642,7 +646,7 @@ extension BackendCrewDetailView {
             return out.string(from: date)
         }
 
-        return "Now"
+        return String(localized: "common_now")
     }
 
     var customHeader: some View {
@@ -678,7 +682,7 @@ extension BackendCrewDetailView {
                 Button(role: .destructive) {
                     showDeleteCrewConfirm = true
                 } label: {
-                    Label("Delete Crew", systemImage: "trash")
+                    Label(String(localized: "backend_crew_delete_action"), systemImage: "trash")
                 }
             } label: {
                 ZStack {
@@ -738,7 +742,7 @@ extension BackendCrewDetailView {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "person.badge.plus")
-                        Text("Invite")
+                        Text("backend_crew_invite")
                             .font(.caption.weight(.semibold))
                     }
                     .foregroundStyle(.white)
@@ -757,19 +761,25 @@ extension BackendCrewDetailView {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(palette.primaryText)
 
-                Text("Manage members, shared tasks, and project activity in one place.")
+                Text("backend_crew_hero_subtitle")
                     .font(.subheadline)
                     .foregroundStyle(palette.secondaryText)
             }
 
             HStack(spacing: 10) {
-                infoPill(text: "\(memberCount) members", tint: hexColor(crew.color_hex))
-                infoPill(text: "\(totalTasks) tasks", tint: palette.secondaryText)
+                infoPill(
+                    text: String(format: String(localized: "backend_crew_members_count"), memberCount),
+                    tint: hexColor(crew.color_hex)
+                )
+                infoPill(
+                    text: String(format: String(localized: "backend_crew_tasks_count"), totalTasks),
+                    tint: palette.secondaryText
+                )
             }
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("Crew Progress")
+                    Text("backend_crew_progress")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(palette.secondaryText)
 
@@ -795,21 +805,21 @@ extension BackendCrewDetailView {
         HStack(spacing: 10) {
             statCard(
                 value: "\(completed)",
-                title: "Done",
+                title: String(localized: "backend_crew_done"),
                 icon: "checkmark.circle.fill",
                 tint: .green
             )
 
             statCard(
                 value: "\(pending)",
-                title: "Pending",
+                title: String(localized: "backend_crew_pending"),
                 icon: "clock.fill",
                 tint: .orange
             )
 
             statCard(
                 value: "\(memberCount)",
-                title: "Members",
+                title: String(localized: "backend_crew_members"),
                 icon: "person.3.fill",
                 tint: hexColor(crew.color_hex)
             )
@@ -850,7 +860,7 @@ extension BackendCrewDetailView {
     func membersSection(_ crewMembers: [CrewMemberDTO]) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Members")
+                Text("backend_crew_members")
                     .font(.headline)
                     .foregroundStyle(palette.primaryText)
 
@@ -909,7 +919,7 @@ extension BackendCrewDetailView {
             }
 
             if crewMembers.isEmpty {
-                emptyMiniState(text: "No members yet • Tap + to add one")
+                emptyMiniState(text: String(localized: "backend_crew_no_members"))
             } else {
                 ForEach(crewMembers) { member in
                     let profile = memberProfilesByID[member.user_id]
@@ -937,7 +947,7 @@ extension BackendCrewDetailView {
 
                         Spacer()
 
-                        Text(member.role.capitalized)
+                        Text(localizedRole(member.role))
                             .font(.caption.weight(.semibold))
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
@@ -970,7 +980,7 @@ extension BackendCrewDetailView {
                                 memberToRemove = member
                                 showRemoveMemberConfirm = true
                             } label: {
-                                Label("Remove from Crew", systemImage: "person.crop.circle.badge.minus")
+                                Label(String(localized: "backend_crew_remove_member_action"), systemImage: "person.crop.circle.badge.minus")
                             }
                         }
                     }
@@ -985,7 +995,7 @@ extension BackendCrewDetailView {
     func tasksSection(_ crewTasks: [CrewTaskDTO]) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Shared Tasks")
+                Text("backend_crew_shared_tasks")
                     .font(.headline)
                     .foregroundStyle(palette.primaryText)
 
@@ -996,7 +1006,7 @@ extension BackendCrewDetailView {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "plus")
-                        Text("New")
+                        Text("common_new")
                     }
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 10)
@@ -1011,7 +1021,7 @@ extension BackendCrewDetailView {
             }
 
             if crewTasks.isEmpty {
-                emptyMiniState(text: "No shared tasks yet")
+                emptyMiniState(text: String(localized: "backend_crew_no_shared_tasks"))
             } else {
                 LazyVStack(spacing: 12) {
                     ForEach(crewTasks) { task in
@@ -1027,7 +1037,9 @@ extension BackendCrewDetailView {
                                     }
                                 } label: {
                                     Label(
-                                        task.is_done ? "Reopen Task" : "Mark as Done",
+                                        task.is_done
+                                        ? String(localized: "backend_crew_reopen_task")
+                                        : String(localized: "backend_crew_mark_done"),
                                         systemImage: task.is_done
                                             ? "arrow.uturn.backward.circle"
                                             : "checkmark.circle"
@@ -1047,7 +1059,7 @@ extension BackendCrewDetailView {
                                         }
                                     }
                                 } label: {
-                                    Label("Delete Task", systemImage: "trash")
+                                    Label(String(localized: "backend_crew_delete_task"), systemImage: "trash")
                                 }
                             }
                     }
@@ -1087,7 +1099,7 @@ extension BackendCrewDetailView {
                 }
 
                 HStack(spacing: 8) {
-                    miniMeta(icon: "person.fill", text: assigneeName(for: task) ?? "Unassigned")
+                    miniMeta(icon: "person.fill", text: assigneeName(for: task) ?? String(localized: "backend_crew_unassigned"))
 
                     taskPill(
                         text: priorityLabel(task.priority),
@@ -1156,27 +1168,42 @@ extension BackendCrewDetailView {
     }
 
     func priorityLabel(_ raw: String) -> String {
+        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
         switch raw {
-        case "low": return "Low"
-        case "medium": return "Medium"
-        case "high": return "High"
-        case "urgent": return "Urgent"
+        case "low": return isTurkish ? "Düşük" : "Low"
+        case "medium": return isTurkish ? "Orta" : "Medium"
+        case "high": return isTurkish ? "Yüksek" : "High"
+        case "urgent": return isTurkish ? "Acil" : "Urgent"
         default: return raw.capitalized
         }
     }
 
     func statusTitle(_ raw: String) -> String {
+        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
         switch raw {
-        case "todo": return "Todo"
-        case "inProgress": return "In Progress"
-        case "review": return "Review"
-        case "done": return "Done"
+        case "todo": return isTurkish ? "Yapılacak" : "Todo"
+        case "inProgress": return isTurkish ? "Devam Ediyor" : "In Progress"
+        case "review": return isTurkish ? "İncelemede" : "Review"
+        case "done": return isTurkish ? "Tamamlandı" : "Done"
         default: return raw.capitalized
         }
     }
 
+    func localizedRole(_ role: String) -> String {
+        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+        switch role.lowercased() {
+        case "owner": return isTurkish ? "Sahip" : "Owner"
+        case "admin": return isTurkish ? "Yönetici" : "Admin"
+        case "member": return isTurkish ? "Üye" : "Member"
+        default: return role.capitalized
+        }
+    }
+
     func weekdayShort(_ weekday: Int) -> String {
-        let titles = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
+        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+        let titles = isTurkish
+        ? ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
+        : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
         return titles[max(0, min(6, weekday))]
     }
 
@@ -1189,7 +1216,7 @@ extension BackendCrewDetailView {
     func focusPlaceholderSection(memberCount: Int) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Focus Together")
+                Text("backend_crew_focus_together")
                     .font(.headline)
                     .foregroundStyle(palette.primaryText)
 
@@ -1199,20 +1226,23 @@ extension BackendCrewDetailView {
                     .foregroundStyle(hexColor(crew.color_hex))
             }
 
-            Text("Shared focus sessions will be enabled after backend integration.")
+            Text("backend_crew_focus_subtitle")
                 .font(.subheadline)
                 .foregroundStyle(palette.secondaryText)
 
             HStack(spacing: 10) {
-                infoPill(text: "\(memberCount) members", tint: hexColor(crew.color_hex))
-                infoPill(text: "Soon", tint: palette.secondaryText)
+                infoPill(
+                    text: String(format: String(localized: "backend_crew_members_count"), memberCount),
+                    tint: hexColor(crew.color_hex)
+                )
+                infoPill(text: String(localized: "backend_crew_soon"), tint: palette.secondaryText)
             }
 
             Button {
             } label: {
                 HStack {
                     Image(systemName: "hourglass")
-                    Text("Coming Soon")
+                    Text("backend_crew_coming_soon")
                 }
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity)
@@ -1290,7 +1320,7 @@ extension BackendCrewDetailView {
     }
 
     func memberName(from profile: ProfileDTO?) -> String {
-        guard let profile else { return "Unknown user" }
+        guard let profile else { return String(localized: "backend_crew_unknown_user") }
 
         if let fullName = profile.full_name,
            !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -1302,15 +1332,15 @@ extension BackendCrewDetailView {
             return username
         }
 
-        return profile.email ?? "Unkown user"
+        return profile.email ?? String(localized: "backend_crew_unknown_user")
     }
 
     func memberUsername(from profile: ProfileDTO?) -> String {
-        guard let profile else { return "unknown" }
+        guard let profile else { return String(localized: "backend_crew_unknown") }
         if let username = profile.username, !username.isEmpty {
             return username
         }
-        return profile.email ?? "Unkown user"
+        return profile.email ?? String(localized: "backend_crew_unknown")
     }
 
     func memberInitial(from profile: ProfileDTO?) -> String {

@@ -34,7 +34,7 @@ extension CrewChatView {
             )
         }
     }
-    
+
     var typingNames: [String] {
         guard let myID = session.currentUser?.id else { return [] }
 
@@ -48,12 +48,20 @@ extension CrewChatView {
     var typingText: String? {
         guard !typingNames.isEmpty else { return nil }
 
+        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+
         if typingNames.count == 1 {
-            return "\(typingNames[0]) yazıyor..."
+            return isTurkish
+                ? "\(typingNames[0]) yazıyor..."
+                : "\(typingNames[0]) is typing..."
         } else if typingNames.count == 2 {
-            return "\(typingNames[0]) ve \(typingNames[1]) yazıyor..."
+            return isTurkish
+                ? "\(typingNames[0]) ve \(typingNames[1]) yazıyor..."
+                : "\(typingNames[0]) and \(typingNames[1]) are typing..."
         } else {
-            return "Birileri yazıyor..."
+            return isTurkish
+                ? "Birileri yazıyor..."
+                : "Some people are typing..."
         }
     }
 
@@ -62,7 +70,7 @@ extension CrewChatView {
             let prefix = email.components(separatedBy: "@").first ?? email
             return prefix
         }
-        return "You"
+        return String(localized: "crew_chat_you")
     }
 
     func handleTypingChange(_ newValue: String) {
@@ -195,8 +203,6 @@ extension CrewChatView {
         }
     }
 
-    
-
     func shouldShowDateSeparator(at index: Int) -> Bool {
         guard messages.indices.contains(index) else { return false }
         if index == 0 { return true }
@@ -251,11 +257,11 @@ extension CrewChatView {
         let calendar = Calendar.current
 
         if calendar.isDateInToday(date) {
-            return "Today"
+            return String(localized: "crew_chat_today")
         }
 
         if calendar.isDateInYesterday(date) {
-            return "Yesterday"
+            return String(localized: "crew_chat_yesterday")
         }
 
         return date.formatted(.dateTime.day().month().year())

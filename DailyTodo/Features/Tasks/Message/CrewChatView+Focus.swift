@@ -11,7 +11,7 @@ extension CrewChatView {
     var focusDurationSheet: some View {
         NavigationStack {
             VStack(spacing: 18) {
-                Text("Start Shared Focus")
+                Text("crew_chat_focus_start_title")
                     .font(.title3.bold())
                     .padding(.top, 8)
 
@@ -22,7 +22,10 @@ extension CrewChatView {
                         showFocusTaskPicker = true
                     }
                 } label: {
-                    focusOptionRow(title: "25 min", subtitle: "Quick focus")
+                    focusOptionRow(
+                        title: localizedMinutesText(25),
+                        subtitle: String(localized: "crew_chat_focus_quick")
+                    )
                 }
                 .buttonStyle(.plain)
 
@@ -33,12 +36,20 @@ extension CrewChatView {
                         showFocusTaskPicker = true
                     }
                 } label: {
-                    focusOptionRow(title: "50 min", subtitle: "Deep work")
+                    focusOptionRow(
+                        title: localizedMinutesText(50),
+                        subtitle: String(localized: "crew_chat_focus_deep_work")
+                    )
                 }
                 .buttonStyle(.plain)
 
                 VStack(spacing: 10) {
-                    Stepper("Custom: \(customFocusMinutes) min", value: $customFocusMinutes, in: 5...180, step: 5)
+                    Stepper(
+                        String(format: String(localized: "crew_chat_focus_custom_stepper"), customFocusMinutes),
+                        value: $customFocusMinutes,
+                        in: 5...180,
+                        step: 5
+                    )
 
                     Button {
                         selectedFocusMinutes = customFocusMinutes
@@ -47,7 +58,7 @@ extension CrewChatView {
                             showFocusTaskPicker = true
                         }
                     } label: {
-                        Text("Continue")
+                        Text("crew_chat_continue")
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
@@ -70,11 +81,11 @@ extension CrewChatView {
                 Spacer()
             }
             .padding(20)
-            .navigationTitle("Focus")
+            .navigationTitle("crew_chat_focus_nav_title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") {
+                    Button("event_close") {
                         showFocusDurationSheet = false
                     }
                 }
@@ -87,11 +98,11 @@ extension CrewChatView {
         NavigationStack {
             VStack(spacing: 14) {
                 VStack(spacing: 6) {
-                    Text("Choose a task")
+                    Text("crew_chat_focus_choose_task")
                         .font(.title3.bold())
                         .foregroundStyle(palette.primaryText)
 
-                    Text("\(selectedFocusMinutes) min shared focus")
+                    Text(String(format: String(localized: "crew_chat_focus_shared_minutes"), selectedFocusMinutes))
                         .font(.subheadline)
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -105,11 +116,11 @@ extension CrewChatView {
                 } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Start without task")
+                            Text("crew_chat_focus_without_task")
                                 .font(.headline)
                                 .foregroundStyle(palette.primaryText)
 
-                            Text("General focus session")
+                            Text("crew_chat_focus_general_session")
                                 .font(.caption)
                                 .foregroundStyle(palette.secondaryText)
                         }
@@ -135,11 +146,11 @@ extension CrewChatView {
                     VStack(spacing: 8) {
                         Spacer()
 
-                        Text("No active crew tasks")
+                        Text("crew_chat_focus_no_active_tasks")
                             .font(.headline)
                             .foregroundStyle(palette.primaryText)
 
-                        Text("You can still start a general focus session.")
+                        Text("crew_chat_focus_still_general")
                             .font(.subheadline)
                             .foregroundStyle(palette.secondaryText)
 
@@ -174,14 +185,14 @@ extension CrewChatView {
                                                 .foregroundStyle(palette.primaryText)
                                                 .multilineTextAlignment(.leading)
 
-                                            Text(task.status.capitalized)
+                                            Text(localizedTaskStatus(task.status))
                                                 .font(.caption.weight(.semibold))
                                                 .foregroundStyle(palette.secondaryText)
                                         }
 
                                         Spacer()
 
-                                        Text(task.priority.capitalized)
+                                        Text(localizedPriority(task.priority))
                                             .font(.caption2.weight(.bold))
                                             .foregroundStyle(priorityColor(task.priority))
                                             .padding(.horizontal, 8)
@@ -209,11 +220,11 @@ extension CrewChatView {
                 }
             }
             .padding(20)
-            .navigationTitle("Focus Task")
+            .navigationTitle("crew_chat_focus_task_nav_title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Back") {
+                    Button("week_back") {
                         showFocusTaskPicker = false
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                             showFocusDurationSheet = true
@@ -222,7 +233,7 @@ extension CrewChatView {
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") {
+                    Button("event_close") {
                         showFocusTaskPicker = false
                     }
                 }
@@ -275,7 +286,7 @@ extension CrewChatView {
                     )
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(session.is_paused ? "Focus paused" : "Focus devam ediyor")
+                    Text(session.is_paused ? String(localized: "crew_chat_focus_paused") : String(localized: "crew_chat_focus_running"))
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(palette.primaryText)
 
@@ -321,7 +332,7 @@ extension CrewChatView {
         if let selectedFocusTask {
             resolvedTitle = selectedFocusTask.title
         } else {
-            resolvedTitle = "\(crew.name) Focus"
+            resolvedTitle = "\(crew.name) \(String(localized: "crew_chat_focus_default_title_suffix"))"
         }
 
         do {
@@ -358,7 +369,7 @@ extension CrewChatView {
         }
 
         guard let startedAt = CrewDateParser.parse(session.started_at) else {
-            return "\(session.duration_minutes) min"
+            return localizedMinutesText(session.duration_minutes)
         }
 
         let endDate = startedAt.addingTimeInterval(TimeInterval(session.duration_minutes * 60))
@@ -403,6 +414,45 @@ extension CrewChatView {
             return .pink
         default:
             return .blue
+        }
+    }
+
+    func localizedMinutesText(_ minutes: Int) -> String {
+        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+        return isTurkish ? "\(minutes) dk" : "\(minutes) min"
+    }
+
+    func localizedTaskStatus(_ status: String) -> String {
+        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+
+        switch status.lowercased() {
+        case "todo":
+            return isTurkish ? "Yapılacak" : "Todo"
+        case "inprogress":
+            return isTurkish ? "Devam Ediyor" : "In Progress"
+        case "review":
+            return isTurkish ? "İncelemede" : "Review"
+        case "done":
+            return isTurkish ? "Tamamlandı" : "Done"
+        default:
+            return status.capitalized
+        }
+    }
+
+    func localizedPriority(_ priority: String) -> String {
+        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+
+        switch priority.lowercased() {
+        case "low":
+            return isTurkish ? "Düşük" : "Low"
+        case "medium":
+            return isTurkish ? "Orta" : "Medium"
+        case "high":
+            return isTurkish ? "Yüksek" : "High"
+        case "urgent":
+            return isTurkish ? "Acil" : "Urgent"
+        default:
+            return priority.capitalized
         }
     }
 }

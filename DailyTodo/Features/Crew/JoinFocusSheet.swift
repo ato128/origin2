@@ -14,6 +14,7 @@ struct JoinFocusSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.locale) private var locale
 
     @State private var showFocusSession = false
 
@@ -39,19 +40,19 @@ struct JoinFocusSheet: View {
                 }
 
                 VStack(spacing: 8) {
-                    Text("Join Focus")
+                    Text("join_focus_title")
                         .font(.title2.bold())
 
-                    Text("\(friend.name) is currently in a shared focus session.")
+                    Text(localizedSharedFocusSubtitle())
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
 
                 VStack(spacing: 12) {
-                    infoRow(title: "Session", value: session.title)
-                    infoRow(title: "Duration", value: "\(session.durationMinute) min")
-                    infoRow(title: "Remaining", value: "\(minutesLeft) min left")
+                    infoRow(title: String(localized: "join_focus_session"), value: session.title)
+                    infoRow(title: String(localized: "join_focus_duration"), value: localizedMinutes(session.durationMinute))
+                    infoRow(title: String(localized: "join_focus_remaining"), value: localizedMinutesLeft(minutesLeft))
                 }
                 .padding(16)
                 .background(
@@ -63,21 +64,21 @@ struct JoinFocusSheet: View {
                     Button {
                         let joinMessage = FriendMessage(
                             friendID: friend.id,
-                            senderName: "Me",
-                            text: "I joined \(friend.name)’s shared focus session.",
+                            senderName: locale.language.languageCode?.identifier == "tr" ? "Ben" : "Me",
+                            text: localizedJoinedMessage(),
                             isFromMe: true
                         )
 
                         modelContext.insert(joinMessage)
                         try? modelContext.save()
-                        
+
                         UserDefaults.standard.set("shared", forKey: "focus_mode")
                         UserDefaults.standard.set(friend.name, forKey: "focus_friend_name")
                         UserDefaults.standard.set(friend.id.uuidString, forKey: "focus_friend_id")
 
                         showFocusSession = true
                     } label: {
-                        Text("Start Focus Together")
+                        Text("join_focus_start_together")
                             .font(.subheadline.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
@@ -90,7 +91,7 @@ struct JoinFocusSheet: View {
                     Button {
                         dismiss()
                     } label: {
-                        Text("Not now")
+                        Text("join_focus_not_now")
                             .font(.subheadline.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
@@ -104,26 +105,61 @@ struct JoinFocusSheet: View {
                 Spacer()
             }
             .padding(20)
-            .navigationTitle("Shared Focus")
+            .navigationTitle("join_focus_shared_focus")
             .navigationBarTitleDisplayMode(.inline)
             .background(Color(.systemGroupedBackground))
             .sheet(isPresented: $showFocusSession) {
                 FocusSessionView(
                     taskID: nil,
-
-                    taskTitle: "Focus with \(friend.name)",
-
+                    taskTitle: localizedFocusWithFriendTitle(),
                     onStartFocus: { _, _ in },
-
                     onTick: { _ in },
-
                     onFinishFocus: { _, _, _, _, _, _ in
                         dismiss()
                     },
-
                     workoutExercises: nil
                 )
             }
+        }
+    }
+
+    func localizedSharedFocusSubtitle() -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(friend.name) şu anda paylaşılan bir odak oturumunda."
+        } else {
+            return "\(friend.name) is currently in a shared focus session."
+        }
+    }
+
+    func localizedMinutes(_ minutes: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(minutes) dk"
+        } else {
+            return "\(minutes) min"
+        }
+    }
+
+    func localizedMinutesLeft(_ minutes: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(minutes) dk kaldı"
+        } else {
+            return "\(minutes) min left"
+        }
+    }
+
+    func localizedJoinedMessage() -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(friend.name) ile paylaşılan odak oturumuna katıldım."
+        } else {
+            return "I joined \(friend.name)’s shared focus session."
+        }
+    }
+
+    func localizedFocusWithFriendTitle() -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(friend.name) ile odaklan"
+        } else {
+            return "Focus with \(friend.name)"
         }
     }
 

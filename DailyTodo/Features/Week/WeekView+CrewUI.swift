@@ -92,12 +92,12 @@ extension WeekView {
                                     .font(.caption.weight(.bold))
                                     .foregroundStyle(crewSummaryTint)
 
-                                Text("Team flow for today")
+                                Text("week_team_flow_today")
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(palette.secondaryText)
 
                                 if activeCrewTaskCount > 0 {
-                                    Text("Live")
+                                    Text("week_live")
                                         .font(.caption2.weight(.bold))
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 4)
@@ -155,7 +155,7 @@ extension WeekView {
                             .padding(.vertical, 12)
 
                         HStack {
-                            Text("Recent Activity")
+                            Text("week_recent_activity")
                                 .font(.system(size: 18, weight: .bold, design: .rounded))
                                 .foregroundStyle(palette.primaryText)
 
@@ -200,7 +200,7 @@ extension WeekView {
                         selectedDay = day
                     }
                 } label: {
-                    Text(dayTitles[day])
+                    Text(localizedDayTitle(day))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(day == selectedDay ? .white : palette.primaryText)
                         .frame(maxWidth: .infinity)
@@ -250,7 +250,6 @@ extension WeekView {
         }
         .padding(.horizontal, 16)
     }
-
     var crewProjectSelector: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
@@ -305,7 +304,7 @@ extension WeekView {
 
         return VStack(alignment: .leading, spacing: 14) {
             if recent.isEmpty {
-                Text("No crew activity yet")
+                Text("week_no_crew_activity_yet")
                     .font(.caption)
                     .foregroundStyle(palette.secondaryText)
             } else {
@@ -362,11 +361,11 @@ extension WeekView {
                             .font(.system(size: 40))
                             .foregroundStyle(.tertiary)
 
-                        Text("Bugün için görev yok")
+                        Text("week_no_tasks_today")
                             .font(.headline)
                             .foregroundStyle(.secondary)
 
-                        Text("Seçili gün ve crew için görev eklendiğinde burada görünecek.")
+                        Text("week_tasks_will_appear_here")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -384,7 +383,7 @@ extension WeekView {
 
                     VStack(alignment: .leading, spacing: 14) {
                         if !nowTasks.isEmpty {
-                            crewTimelineSectionHeader("Now", systemImage: "dot.radiowaves.left.and.right")
+                            crewTimelineSectionHeader("week_now", systemImage: "dot.radiowaves.left.and.right")
 
                             LazyVStack(spacing: 12) {
                                 ForEach(Array(nowTasks.enumerated()), id: \.element.id) { index, task in
@@ -394,7 +393,7 @@ extension WeekView {
                         }
 
                         if !nextTasks.isEmpty {
-                            crewTimelineSectionHeader("Up Next", systemImage: "clock.badge")
+                            crewTimelineSectionHeader("week_up_next", systemImage: "clock.badge")
 
                             LazyVStack(spacing: 12) {
                                 ForEach(Array(nextTasks.enumerated()), id: \.element.id) { index, task in
@@ -404,7 +403,7 @@ extension WeekView {
                         }
 
                         if !lateTasks.isEmpty {
-                            crewTimelineSectionHeader("Late", systemImage: "exclamationmark.circle")
+                            crewTimelineSectionHeader("week_late", systemImage: "exclamationmark.circle")
 
                             LazyVStack(spacing: 12) {
                                 ForEach(Array(lateTasks.enumerated()), id: \.element.id) { index, task in
@@ -414,7 +413,7 @@ extension WeekView {
                         }
 
                         if !laterTasks.isEmpty {
-                            crewTimelineSectionHeader("Later Today", systemImage: "calendar")
+                            crewTimelineSectionHeader("week_later_today", systemImage: "calendar")
 
                             LazyVStack(spacing: 12) {
                                 ForEach(Array(laterTasks.enumerated()), id: \.element.id) { index, task in
@@ -426,7 +425,7 @@ extension WeekView {
                         if !doneTasks.isEmpty {
                             VStack(spacing: 10) {
                                 crewCollapsibleSectionHeader(
-                                    "Completed",
+                                    "week_completed",
                                     systemImage: "checkmark.circle",
                                     isExpanded: showCompletedCrewTasks,
                                     count: doneTasks.count
@@ -435,7 +434,7 @@ extension WeekView {
                                         showCompletedCrewTasks.toggle()
                                     }
                                 }
-                                
+
                                 .animation(.spring(response: 0.38, dampingFraction: 0.86), value: allCrewTasksForSelectedDay.map { "\($0.id.uuidString)-\($0.isDone)" })
 
                                 if showCompletedCrewTasks {
@@ -471,7 +470,7 @@ extension WeekView {
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(palette.secondaryText)
 
-                Text("Crew Tasks")
+                Text("week_crew_tasks")
                     .font(.system(size: 18, weight: .black, design: .rounded))
                     .foregroundStyle(palette.primaryText)
 
@@ -507,12 +506,25 @@ extension WeekView {
     }
 
     var crewSummaryTitle: String {
-        selectedCrew.map { "Today in \($0.name)" } ?? "Select a Crew"
+        if let crew = selectedCrew {
+            if locale.language.languageCode?.identifier == "tr" {
+                return "Bugün \(crew.name)"
+            } else {
+                return "Today in \(crew.name)"
+            }
+        } else {
+            return String(localized: "week_select_a_crew")
+        }
     }
 
     var crewSummaryTaskCountText: String {
         let count = allCrewTasksForSelectedDay.filter { !$0.isDone }.count
-        return "\(count) Tasks"
+
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(count) Görev"
+        } else {
+            return "\(count) Tasks"
+        }
     }
 
     func enhancedPremiumTimelineCard(
@@ -609,14 +621,14 @@ extension WeekView {
             Button {
                 selectedTaskForEdit = task
             } label: {
-                Label("Edit", systemImage: "pencil")
+                Label("week_edit", systemImage: "pencil")
             }
 
             Button {
                 toggleCrewTaskDone(task)
             } label: {
                 Label(
-                    task.isDone ? "Mark as Undone" : "Mark as Done",
+                    task.isDone ? String(localized: "week_mark_as_undone") : String(localized: "week_mark_as_done"),
                     systemImage: task.isDone
                     ? "arrow.uturn.backward.circle.fill"
                     : "checkmark.circle.fill"
@@ -626,7 +638,7 @@ extension WeekView {
             Button(role: .destructive) {
                 deleteCrewTask(task)
             } label: {
-                Label("Delete Task", systemImage: "trash.fill")
+                Label("week_delete_task", systemImage: "trash.fill")
             }
         }
     }
@@ -671,7 +683,7 @@ extension WeekView {
 
     func completedTasksCollapsedSummary(_ tasks: [WeekCrewTaskItem]) -> some View {
         let count = tasks.count
-        let firstTitle = tasks.first?.title ?? "Completed tasks"
+        let firstTitle = tasks.first?.title ?? String(localized: "week_completed_tasks")
 
         return ZStack(alignment: .top) {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -704,7 +716,7 @@ extension WeekView {
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("\(count) completed")
+                    Text(localizedCompletedCount(count))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(palette.primaryText)
 
@@ -716,7 +728,7 @@ extension WeekView {
 
                 Spacer()
 
-                Text("Show completed")
+                Text("week_show_completed")
                     .font(.caption2)
                     .foregroundStyle(palette.secondaryText.opacity(0.85))
             }
@@ -732,5 +744,12 @@ extension WeekView {
             )
         }
         .frame(height: 68)
+    }
+    func localizedCompletedCount(_ count: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(count) tamamlandı"
+        } else {
+            return "\(count) completed"
+        }
     }
 }

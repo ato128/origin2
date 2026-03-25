@@ -22,7 +22,7 @@ extension HomeDashboardView {
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(palette.secondaryText)
 
-                    Text("Stay productive today 🚀")
+                    Text("home_header_stay_productive")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -63,7 +63,7 @@ extension HomeDashboardView {
 
                             Text(
                                 isSharedFocusActive
-                                ? "\((recentFriend.name.components(separatedBy: " ").first ?? recentFriend.name)) • Focus"
+                                ? "\((recentFriend.name.components(separatedBy: " ").first ?? recentFriend.name)) • \(String(localized: "home_focus_short"))"
                                 : (recentFriend.name.components(separatedBy: " ").first ?? recentFriend.name)
                             )
                             .font(.system(size: 12, weight: .semibold))
@@ -113,7 +113,7 @@ extension HomeDashboardView {
                             Image(systemName: "message.fill")
                                 .font(.system(size: 10, weight: .semibold))
 
-                            Text("Friends")
+                            Text("home_friends")
                                 .font(.system(size: 12, weight: .semibold))
                         }
                         .foregroundStyle(palette.primaryText)
@@ -141,7 +141,7 @@ extension HomeDashboardView {
     var homeMiniWeekCalendar: some View {
         VStack(spacing: 10) {
             HStack {
-                Text("This Week")
+                Text("home_this_week")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(palette.secondaryText)
 

@@ -20,15 +20,15 @@ extension WeekView {
     var pickerSection: some View {
         Section {
             VStack(spacing: 12) {
-                
-                Picker("Gün", selection: $selectedDay) {
+
+                Picker("week_day_picker", selection: $selectedDay) {
                     ForEach(0..<7, id: \.self) { i in
-                        Text(dayTitles[i]).tag(i)
+                        Text(localizedDayTitle(i)).tag(i)
                     }
                 }
                 .pickerStyle(.segmented)
                 .padding(.vertical, 4)
-                
+
                 HStack {
                     ForEach(0..<7, id: \.self) { i in
                         VStack(spacing: 4) {
@@ -37,7 +37,7 @@ extension WeekView {
                                 .frame(width: 6, height: 6)
                                 .scaleEffect(i == weekdayIndexToday() && pulseTodayDot ? 1.18 : 1.0)
                                 .opacity(i == weekdayIndexToday() ? 1 : 0)
-                            
+
                             Color.clear.frame(height: 1)
                         }
                         .frame(maxWidth: .infinity)
@@ -64,7 +64,7 @@ extension WeekView {
                     }
                 } label: {
                     VStack(spacing: 6) {
-                        Text(dayTitles[day])
+                        Text(localizedDayTitle(day))
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(
                                 selectedDay == day
@@ -125,14 +125,14 @@ extension WeekView {
                     .font(.title3)
                     .foregroundStyle(Color.accentColor)
 
-                Text("\(dayTitles[selectedDay]) günü boş")
+                Text(localizedEmptyDayTitle(selectedDay))
                     .font(.headline)
                     .foregroundStyle(palette.primaryText)
 
                 Spacer()
             }
 
-            Text("Bu güne henüz ders eklenmemiş. Yeni ders eklemek için sağ üstteki + butonunu kullanabilirsin.")
+            Text("week_empty_day_description")
                 .font(.subheadline)
                 .foregroundStyle(palette.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
@@ -141,7 +141,7 @@ extension WeekView {
                 Image(systemName: "plus.circle.fill")
                     .foregroundStyle(Color.accentColor)
 
-                Text("Sağ üstteki + ile ders ekle")
+                Text("week_add_class_top_right")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Color.accentColor)
             }
@@ -225,17 +225,17 @@ extension WeekView {
     var eventsSection: some View {
         VStack(spacing: 6) {
             if !nowEvents.isEmpty {
-                personalEventGroup(nowEvents, title: "Now", systemImage: "dot.radiowaves.left.and.right", startIndex: 0)
+                personalEventGroup(nowEvents, title: String(localized: "week_now"), systemImage: "dot.radiowaves.left.and.right", startIndex: 0)
             }
 
             if !nextEvents.isEmpty {
-                personalEventGroup(nextEvents, title: "Up Next", systemImage: "clock.badge", startIndex: nowEvents.count)
+                personalEventGroup(nextEvents, title: String(localized: "week_up_next"), systemImage: "clock.badge", startIndex: nowEvents.count)
             }
 
             if !laterEvents.isEmpty {
                 personalEventGroup(
                     laterEvents,
-                    title: isTodaySelected ? "Later Today" : "Schedule",
+                    title: isTodaySelected ? String(localized: "week_later_today") : String(localized: "week_schedule"),
                     systemImage: "calendar",
                     startIndex: nowEvents.count + nextEvents.count
                 )
@@ -244,7 +244,7 @@ extension WeekView {
             if !completedEvents.isEmpty {
                 personalEventGroup(
                     completedEvents,
-                    title: "Completed",
+                    title: String(localized: "week_completed"),
                     systemImage: "checkmark.circle",
                     startIndex: nowEvents.count + nextEvents.count + laterEvents.count
                 )
@@ -252,18 +252,17 @@ extension WeekView {
         }
         .padding(.top, 2)
     }
-
     var daySummaryCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
-                        Text(dayTitles[selectedDay])
+                        Text(localizedDayTitle(selectedDay))
                             .font(.headline)
                             .foregroundStyle(palette.primaryText)
 
                         if isTodaySelected {
-                            Text("Bugün")
+                            Text("week_today")
                                 .font(.caption2.weight(.bold))
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
@@ -275,7 +274,7 @@ extension WeekView {
                         }
 
                         if liveEventForDay != nil {
-                            Text("LIVE")
+                            Text("week_live")
                                 .font(.caption2.weight(.bold))
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
@@ -303,19 +302,19 @@ extension WeekView {
 
             HStack(spacing: 12) {
                 summaryChip(
-                    title: "Ders",
+                    title: String(localized: "week_lessons"),
                     value: "\(eventsForDay.count)",
                     icon: "book.closed.fill"
                 )
 
                 summaryChip(
-                    title: "İlk",
+                    title: String(localized: "week_first"),
                     value: firstEventOfDay.map { hm($0.startMinute) } ?? "--:--",
                     icon: "sunrise.fill"
                 )
 
                 summaryChip(
-                    title: "Son",
+                    title: String(localized: "week_last"),
                     value: lastEventOfDay.map { hm($0.startMinute + $0.durationMinute) } ?? "--:--",
                     icon: "moon.stars.fill"
                 )
@@ -329,7 +328,7 @@ extension WeekView {
                         .scaleEffect(animateSummary ? 1.12 : 0.92)
                         .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: animateSummary)
 
-                    Text("\(live.title) aktif")
+                    Text(localizedLiveClassText(live.title))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(palette.primaryText)
 
@@ -495,13 +494,36 @@ extension WeekView {
 
     var summarySubtitle: String {
         if eventsForDay.isEmpty {
-            return "Bu gün için kayıtlı ders yok"
+            return String(localized: "week_no_saved_classes_for_day")
         }
 
         if liveEventForDay != nil {
-            return "Ders şu an aktif"
+            return String(localized: "week_class_active_now")
         }
 
-        return "\(eventsForDay.count) ders • \(durationText(totalMinutesForDay)) toplam"
+        return localizedSummarySubtitle(count: eventsForDay.count, totalMinutes: totalMinutesForDay)
+    }
+    func localizedEmptyDayTitle(_ day: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(localizedDayTitle(day)) günü boş"
+        } else {
+            return "\(localizedDayTitle(day)) is empty"
+        }
+    }
+
+    func localizedLiveClassText(_ title: String) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(title) aktif"
+        } else {
+            return "\(title) is active"
+        }
+    }
+
+    func localizedSummarySubtitle(count: Int, totalMinutes: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(count) ders • \(durationText(totalMinutes)) toplam"
+        } else {
+            return "\(count) classes • \(durationText(totalMinutes)) total"
+        }
     }
 }

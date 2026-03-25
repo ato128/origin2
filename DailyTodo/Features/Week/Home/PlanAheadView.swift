@@ -9,65 +9,76 @@ import SwiftUI
 
 struct PlanAheadView: View {
     @Environment(\.dismiss) private var dismiss
-    
+    @Environment(\.locale) private var locale
+
     @Binding var selectedDate: Date
     @Binding var mode: PlanAheadMode
-    
+
     var onContinue: () -> Void
-    
+
     var body: some View {
         Form {
-            Section("Date") {
+            Section("plan_date_section") {
                 DatePicker(
-                    "Choose Date",
+                    "plan_choose_date",
                     selection: $selectedDate,
                     displayedComponents: [.date, .hourAndMinute]
                 )
                 .datePickerStyle(.graphical)
-                
+
                 HStack {
-                    Text("Selected")
+                    Text("plan_selected")
                         .foregroundStyle(.secondary)
-                    
+
                     Spacer()
-                    
+
                     Text(formattedDate(selectedDate))
                         .font(.subheadline.weight(.semibold))
                 }
             }
-            
-            Section("Type") {
-                Picker("Mode", selection: $mode) {
+
+            Section("plan_type_section") {
+                Picker("plan_mode", selection: $mode) {
                     ForEach(PlanAheadMode.allCases, id: \.self) { item in
-                        Text(item.rawValue).tag(item)
+                        Text(localizedPlanAheadMode(item))
+                            .tag(item)
                     }
                 }
                 .pickerStyle(.segmented)
             }
-            
+
             Section {
-                Button("Continue") {
+                Button("plan_continue") {
                     onContinue()
                 }
                 .frame(maxWidth: .infinity)
             }
         }
-        .navigationTitle("Plan Ahead")
+        .navigationTitle("plan_ahead_title")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button("Cancel") {
+                Button("week_cancel") {
                     dismiss()
                 }
             }
         }
     }
-    
+
     private func formattedDate(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "tr_TR")
+        formatter.locale = locale
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+
+    private func localizedPlanAheadMode(_ mode: PlanAheadMode) -> String {
+        switch mode {
+        case .personal:
+            return String(localized: "plan_mode_personal")
+        case .crew:
+            return String(localized: "plan_mode_crew")
+        }
     }
 }

@@ -1,0 +1,593 @@
+/* 
+  Localizable.strings
+  DailyTodo
+
+  Created by Atakan Ortaç on 24.03.2026.
+  
+*/
+"settings_title" = "Settings";
+
+"settings_section_account" = "Account";
+"settings_section_appearance" = "Appearance";
+"settings_section_productivity" = "Productivity";
+"settings_section_language" = "Language";
+"settings_section_app" = "App";
+"settings_section_support" = "Support";
+
+"settings_theme_title" = "Theme";
+"settings_app_language_title" = "App Language";
+
+"settings_edit_profile_title" = "Edit Profile";
+"settings_edit_profile_subtitle" = "Change your name and username";
+
+"settings_sign_out_title" = "Sign Out";
+"settings_sign_out_subtitle" = "Sign out from your account";
+
+"settings_sign_in_title" = "Sign In / Create Account";
+"settings_sign_in_subtitle" = "Prepare your account for sync, friends and crews";
+
+"settings_show_only_today_title" = "Show Only Today";
+"settings_show_only_today_subtitle" = "Focus on today’s tasks";
+
+"settings_smart_engine_title" = "Smart Task Engine";
+"settings_smart_engine_subtitle" = "AI suggestions and smart planning";
+
+"settings_notifications_title" = "Notifications";
+"settings_notifications_subtitle" = "Master switch for all reminders";
+
+"settings_focus_preferences_title" = "Focus Preferences";
+"settings_focus_preferences_subtitle" = "Manage your focus experience";
+
+"settings_show_onboarding_again_title" = "Show Onboarding Again";
+"settings_show_onboarding_again_subtitle" = "Replay the welcome screens";
+
+"settings_show_permission_screen_title" = "Show Permission Screen";
+"settings_show_permission_screen_subtitle" = "Replay notification intro";
+
+"settings_about_title" = "About DailyTodoo";
+"settings_about_subtitle" = "Version 1.0";
+
+"settings_made_with_care_title" = "Made with care";
+"settings_made_with_care_subtitle" = "Built for focus, planning and crews";
+
+"language_option_system" = "System Default";
+"language_option_turkish" = "Türkçe";
+"language_option_english" = "English";
+
+"home_focus_workout" = "Workout";
+"home_focus_default" = "Focus";
+
+"home_no_focus_task_today" = "No focus task for today";
+"home_focus_status_overdue" = "⚠️ Overdue task";
+"home_focus_status_complete_today" = "🔥 Complete today";
+"home_focus_status_priority" = "🎯 Priority task";
+
+"home_no_more_classes_today" = "No more classes today";
+
+"home_shared_focus" = "Shared Focus";
+"home_focus_now" = "Focus Now";
+"home_shared_session_active" = "🟢 Shared session active";
+
+"home_greeting_morning" = "Good morning";
+"home_greeting_afternoon" = "Good afternoon";
+"home_greeting_evening" = "Good evening";
+
+"home_header_stay_productive" = "Stay productive today 🚀";
+"home_friends" = "Friends";
+"home_this_week" = "This Week";
+"home_focus_short" = "Focus";
+
+"home_today_progress" = "Today Progress";
+"home_today_tasks" = "Today Tasks";
+"home_no_tasks_today" = "No tasks for today.";
+
+"home_rest" = "Rest";
+"home_workout_rest_active" = "Rest active";
+"home_workout_ready" = "Workout ready";
+"home_start_workout" = "Start Workout";
+"home_start_focus" = "Start Focus";
+
+"home_shared_focus_running" = "Shared Focus Running";
+"home_workout_rest_running" = "Workout Rest Running";
+"home_workout_running" = "Workout Running";
+"home_focus_running" = "Focus Running";
+"home_with_focus_suffix" = "in focus";
+"home_deep_work_session" = "Deep Work Session";
+
+"home_last_30_seconds" = "Last 30 sec";
+"home_workout_active" = "Workout active";
+"home_focus_active" = "Focus active";
+"home_resting" = "Resting";
+"home_set_in_progress" = "Set in progress";
+"home_continue" = "Continue";
+"home_continue_after_rest" = "Continue After Rest";
+"home_next_set" = "Next Set";
+"home_focus_active_button" = "Focus Active";
+"home_stop" = "Stop";
+
+"home_focus_completed" = "Focus Completed";
+"home_focus_paused" = "Focus Paused";
+"home_done" = "Done";
+"home_completed" = "Completed";
+"home_paused" = "Paused";
+"home_waiting" = "Waiting";
+"home_open_focus" = "Open Focus";
+"home_resume" = "Resume";
+"home_pause" = "Pause";
+"home_session_completed" = "Session Completed";
+
+"home_next_class" = "Next Class";
+"home_live" = "LIVE";
+"home_quick_actions" = "Quick Actions";
+"home_add_task" = "Add Task";
+"home_week" = "Week";
+"home_insights" = "Insights";
+
+"week_share_today_crew_tasks" = "Share today's crew tasks";
+"week_share_crew" = "Share crew";
+"week_copy" = "Copy";
+"week_share_this_day" = "Share this day";
+"week_share_full_week" = "Share full week";
+"week_copied" = "Copied";
+
+"week_choose_crew" = "Choose Crew";
+"week_cancel" = "Cancel";
+"week_no_crew_selected" = "No crew selected";
+"week_task_not_found" = "Task not found";
+
+"week_crew_fallback" = "Crew";
+"week_share_crew_plan_title" = "Crew Plan";
+"week_share_my_schedule" = "My Schedule";
+
+"week_team_flow_today" = "Team flow for today";
+"week_live" = "Live";
+"week_recent_activity" = "Recent Activity";
+"week_no_crew_activity_yet" = "No crew activity yet";
+
+"week_no_tasks_today" = "No tasks for today";
+"week_tasks_will_appear_here" = "Tasks will appear here when added for the selected day and crew.";
+
+"week_now" = "Now";
+"week_up_next" = "Up Next";
+"week_late" = "Late";
+"week_later_today" = "Later Today";
+"week_completed" = "Completed";
+"week_crew_tasks" = "Crew Tasks";
+
+"week_select_a_crew" = "Select a Crew";
+
+"week_edit" = "Edit";
+"week_mark_as_done" = "Mark as Done";
+"week_mark_as_undone" = "Mark as Undone";
+"week_delete_task" = "Delete Task";
+
+"week_completed_tasks" = "Completed tasks";
+"week_show_completed" = "Show completed";
+
+"week_day_picker" = "Day";
+"week_empty_day_description" = "No classes have been added for this day yet. You can use the + button at the top right to add a new class.";
+"week_add_class_top_right" = "Add a class with the + button";
+"week_schedule" = "Schedule";
+
+"week_today" = "Today";
+"week_lessons" = "Classes";
+"week_first" = "First";
+"week_last" = "Last";
+
+"week_no_saved_classes_for_day" = "No saved classes for this day";
+"week_class_active_now" = "Class is active now";
+
+"plan_date_section" = "Date";
+"plan_choose_date" = "Choose Date";
+"plan_selected" = "Selected";
+
+"plan_type_section" = "Type";
+"plan_mode" = "Mode";
+"plan_mode_personal" = "Personal";
+"plan_mode_crew" = "Crew";
+
+"plan_continue" = "Continue";
+"plan_ahead_title" = "Plan Ahead";
+
+"event_section_class_or_event" = "Class / Event";
+"event_title_placeholder" = "Title";
+"event_location_optional" = "Location (optional)";
+
+"event_section_day_time" = "Day & Time";
+"event_day" = "Day";
+"event_start" = "Start";
+"event_end" = "End";
+"event_duration" = "Duration";
+
+"event_section_color" = "Color";
+"event_color" = "Color";
+"event_color_blue" = "Blue";
+"event_color_purple" = "Purple";
+"event_color_pink" = "Pink";
+"event_color_orange" = "Orange";
+"event_color_green" = "Green";
+"event_color_red" = "Red";
+"event_color_gray" = "Gray";
+
+"event_section_note" = "Note";
+"event_note_optional" = "Note (optional)";
+
+"event_add_title" = "Add";
+"event_save" = "Save";
+
+"event_conflict_title" = "Conflict found";
+"event_save_anyway" = "Save Anyway";
+
+"event_edit_title" = "Edit";
+"event_delete_confirm_title" = "Delete this event?";
+"event_delete" = "Delete";
+"event_close" = "Close";
+
+"event_duplicate_section" = "Duplicate";
+"event_duplicate_same_day" = "Duplicate same day";
+"event_duplicate_to_another_day" = "Duplicate to another day";
+
+"focus_deep_work_session" = "Deep Work Session";
+"focus_workout_focus" = "Workout Focus";
+"focus_mode_title" = "Focus Mode";
+
+"focus_rest" = "Rest";
+"focus_resting" = "Resting...";
+"focus_next_set" = "Next Set";
+"focus_pause" = "Pause";
+"focus_start" = "Start";
+
+"focus_done" = "Done";
+"focus_workout_completed" = "Workout completed";
+"focus_session_completed" = "Session completed";
+
+"focus_reset" = "Reset";
+"focus_finish" = "Finish";
+
+"focus_custom_duration" = "Custom Duration";
+"focus_minutes" = "Minutes";
+"focus_ok" = "OK";
+"focus_enter_custom_duration" = "Enter custom focus duration in minutes.";
+
+"focus_resting_now" = "Resting";
+"focus_set_in_progress" = "Set in progress";
+"focus_you_are_focusing" = "You are focusing";
+"focus_ready" = "Ready";
+
+"focus_rest_upper" = "REST";
+
+"focus_completed" = "Completed";
+"focus_rest_active" = "Rest Active";
+"focus_session_active" = "Session Active";
+"focus_ready_to_focus" = "Ready to Focus";
+
+"focus_workout" = "Workout";
+"focus_crew_session" = "Crew session";
+"focus_deep_work" = "Deep work";
+
+"chat_typing_suffix" = "is typing...";
+"chat_direct_chat" = "Direct Chat";
+"chat_online" = "Online";
+"chat_no_messages_yet" = "No messages yet";
+"chat_sending" = "Sending";
+"chat_sent" = "Sent";
+"chat_seen" = "Seen";
+"chat_message_placeholder" = "Message...";
+
+"friend_info_alert_title" = "Info";
+"friend_info_title" = "Friend Info";
+"friend_info_offline" = "Offline";
+
+"friend_info_open_shared_week" = "Open Shared Week";
+"friend_info_see_weekly_plan_together" = "See weekly plan together";
+"friend_info_waiting_for_share" = "Waiting for friend to share";
+
+"friend_info_start_focus_together" = "Start Focus Together";
+"friend_info_launch_shared_focus" = "Launch a shared focus session";
+
+"friend_info_share_my_week" = "Share My Week";
+"friend_info_let_friend_view_week" = "Let this friend view your weekly plan";
+
+"friend_info_mute_notifications" = "Mute Notifications";
+"friend_info_stop_alerts_from_friend" = "Stop alerts from this friend";
+
+"friend_info_clear_chat_later" = "Clear Chat Later";
+
+"shared_week_title" = "Shared Week";
+"shared_week_subtitle" = "Swipe between days and see which class or event is live right now.";
+
+"shared_week_live_now" = "LIVE NOW";
+"shared_week_next_up" = "NEXT UP";
+"shared_week_no_shared_events" = "No shared events";
+"shared_week_live" = "LIVE";
+
+"crew_title" = "Crew";
+"crew_your_space" = "Your Crew Space";
+"crew_header_subtitle" = "Build together, focus together, finish together.";
+
+"crew_tab_crews" = "Crews";
+"crew_tab_friends" = "Friends";
+
+"crew_overview" = "Overview";
+"crew_overview_subtitle" = "Your team productivity at a glance";
+"crew_members" = "Members";
+"crew_tasks" = "Tasks";
+"crew_completed" = "completed";
+"crew_progress" = "Progress";
+"crew_no_members" = "No members";
+"crew_shared_tasks_active" = "Shared crew tasks are active";
+"crew_ready_for_shared_tasks" = "Backend crew is ready for shared tasks";
+"crew_your_crews" = "Your Crews";
+
+"crew_your_friends" = "Your Friends";
+"crew_unknown_user" = "Unknown user";
+"crew_unknown_username" = "unknown";
+
+"crew_incoming_requests" = "Incoming Requests";
+"crew_sent_requests" = "Sent Requests";
+"crew_accept" = "Accept";
+"crew_decline" = "Decline";
+
+"crew_focus_activity" = "Focus Activity";
+"crew_focus_activity_subtitle" = "Friends currently studying together";
+"crew_join_focus" = "Join Focus";
+
+"crew_friends_overview_subtitle" = "Shared schedules and direct collaboration";
+"crew_requests" = "Requests";
+"crew_in_focus" = "In Focus";
+
+"crew_no_friends_yet" = "No friends yet";
+"crew_no_friends_subtitle" = "Add your first friend to start sharing schedules and chatting.";
+"crew_add_first_friend" = "Add Your First Friend";
+
+"crew_no_crew_yet" = "No crew yet";
+"crew_no_crew_subtitle" = "Create your first crew and start managing shared tasks, members, and activity together.";
+"crew_create_first_crew" = "Create Your First Crew";
+
+"crew_friends_chat_schedule" = "Friends chat & schedule sharing";
+"crew_friends_next_step" = "Next step: open a friend profile, view today's schedule, and start messaging.";
+
+"crew_chat" = "Chat";
+"crew_remove_friend" = "Remove Friend";
+
+"crew_remove_friend_confirm_title" = "Remove this friend?";
+"crew_keep_friend" = "Keep";
+"crew_remove" = "Remove";
+"crew_remove_friend_confirm_message" = "This person will be removed from your friends list.";
+
+"friend_detail_remove_message" = "This person will be removed from your friends list and the shared message/data connection will be deleted.";
+
+"friend_detail_connected_server" = "Connected via server";
+"friend_detail_today_schedule" = "Today Schedule";
+"friend_detail_no_schedule_today" = "No shared schedule for today.";
+"friend_detail_recent_messages" = "Recent Messages";
+"friend_detail_no_backend_messages" = "No backend messages yet.";
+"friend_detail_actions" = "Actions";
+"friend_detail_message" = "Message";
+
+"create_crew_title" = "Create Crew";
+"create_crew_your_crew" = "Your Crew";
+"create_crew_preview_subtitle" = "Build together, focus together, finish together.";
+"create_crew_preview" = "Preview";
+
+"create_crew_info" = "Crew Info";
+"create_crew_name_label" = "Crew name";
+"create_crew_name_placeholder" = "Enter crew name";
+"create_crew_selected_icon" = "Selected icon";
+"create_crew_selected_color" = "Selected color";
+
+"create_crew_choose_icon" = "Choose Icon";
+"create_crew_choose_color" = "Choose Color";
+"join_crew_title" = "Join Crew";
+"join_crew_join" = "Join";
+"join_crew_join_a_crew" = "Join a Crew";
+"join_crew_enter_invite_subtitle" = "Enter the invite code shared by your team.";
+"join_crew_invite_code" = "Invite Code";
+"join_crew_enter_code" = "Enter code";
+"join_crew_code_placeholder" = "ABC123";
+"join_crew_paste" = "Paste";
+"join_crew_how_it_works" = "How it works";
+"join_crew_help_text" = "Ask a crew member for their invite code, paste it here, then tap Join.";
+"join_crew_user_session_not_found" = "User session not found.";
+
+"add_friend_title" = "Add Friend";
+"add_friend_subtitle" = "Enter a username and send a friend request.";
+"add_friend_username" = "Username";
+"add_friend_username_placeholder" = "exampleusername";
+"add_friend_sending" = "Sending...";
+"add_friend_send_request" = "Send Request";
+
+"add_friend_login_required" = "You need to be logged in.";
+"add_friend_enter_username" = "Please enter a username.";
+"add_friend_cannot_add_self" = "You cannot add yourself.";
+"add_friend_already_exists" = "A friendship or request already exists.";
+"add_friend_user_not_found" = "User not found or request could not be sent.";
+
+"join_focus_title" = "Join Focus";
+"join_focus_session" = "Session";
+"join_focus_duration" = "Duration";
+"join_focus_remaining" = "Remaining";
+"join_focus_start_together" = "Start Focus Together";
+"join_focus_not_now" = "Not now";
+"join_focus_shared_focus" = "Shared Focus";
+"insights_title" = "Insights";
+
+"insights_overview_streak" = "Streak";
+"insights_overview_getting_started" = "Getting Started";
+"insights_overview_keep_fire_alive" = "Keep the fire alive";
+"insights_overview_start_streak" = "Start your streak";
+"insights_overview_fallback_message" = "Your streak will start when you complete your first task. One small step is enough.";
+"insights_overview_completion" = "completed";
+"insights_overview_start_streak_hint" = "You can start a streak by adding a task";
+
+"insights_weekly_progress_title" = "Weekly Progress";
+"insights_weekly_progress_subtitle_active" = "Your productivity rhythm over the last 7 days";
+"insights_weekly_progress_subtitle_empty" = "Your weekly rhythm will appear here";
+
+"insights_focus_title" = "Focus Insights";
+"insights_focus_today_focus" = "Today Focus";
+
+"crew_chat_loading_crew_info" = "Loading crew info...";
+"crew_chat_header_subtitle" = "Crew chat";
+"crew_chat_empty_title" = "No messages yet";
+"crew_chat_empty_subtitle" = "Start chatting with your crew.";
+
+"crew_chat_reply_yourself" = "yourself";
+"crew_chat_replying_to %@" = "Replying to %@";
+"crew_chat_message_placeholder" = "Message %@...";
+
+"crew_chat_unknown_user" = "User";
+"crew_chat_reply_label" = "Reply";
+
+"crew_chat_you" = "You";
+"crew_chat_today" = "Today";
+"crew_chat_yesterday" = "Yesterday";
+
+"crew_chat_focus_start_title" = "Start Shared Focus";
+"crew_chat_focus_quick" = "Quick focus";
+"crew_chat_focus_deep_work" = "Deep work";
+"crew_chat_focus_custom_stepper" = "Custom: %d min";
+"crew_chat_continue" = "Continue";
+"crew_chat_focus_nav_title" = "Focus";
+
+"crew_chat_focus_choose_task" = "Choose a task";
+"crew_chat_focus_shared_minutes" = "%d min shared focus";
+"crew_chat_focus_without_task" = "Start without task";
+"crew_chat_focus_general_session" = "General focus session";
+"crew_chat_focus_no_active_tasks" = "No active crew tasks";
+"crew_chat_focus_still_general" = "You can still start a general focus session.";
+"crew_chat_focus_task_nav_title" = "Focus Task";
+
+"crew_chat_focus_paused" = "Focus paused";
+"crew_chat_focus_running" = "Focus is running";
+"crew_chat_focus_default_title_suffix" = "Focus";
+
+"crew_focus_room_you" = "You";
+"crew_focus_room_title" = "Focus Room";
+"crew_focus_room_session_completed" = "Session completed";
+"crew_focus_room_paused" = "Paused";
+"crew_focus_room_stay_locked_in" = "Stay locked in";
+"crew_focus_room_done" = "Done";
+"crew_focus_room_host" = "Host: %@";
+
+"crew_focus_room_participants" = "Participants";
+"crew_focus_room_no_participants" = "No participants yet";
+"crew_focus_room_host_badge" = "Host";
+
+"crew_focus_room_joining" = "Joining...";
+"crew_focus_room_join_session" = "Join Session";
+"crew_focus_room_leaving" = "Leaving...";
+"crew_focus_room_leave_session" = "Leave Session";
+"crew_focus_room_resume_session" = "Resume Session";
+"crew_focus_room_pause_session" = "Pause Session";
+"crew_focus_room_end_session" = "End Session";
+
+"common_error" = "Error";
+"common_ok" = "OK";
+"common_cancel" = "Cancel";
+"common_copy" = "Copy";
+"common_copied" = "Copied";
+"common_unknown_error" = "Unknown error";
+"common_today" = "Today";
+"common_now" = "Now";
+"common_new" = "New";
+
+"backend_crew_share_text" = "Join my crew on DailyTodo 🚀\nOpen the app and enter this code: %@";
+"backend_crew_invite_code" = "Invite Code";
+"backend_crew_code_copied_success" = "Code copied successfully";
+
+"backend_crew_remove_member_title" = "Remove Member";
+"backend_crew_remove_member_action" = "Remove from Crew";
+"backend_crew_remove_member_message" = "This member will be removed from the crew.";
+"backend_crew_owner_cannot_be_removed" = "Owner cannot be removed from the crew.";
+
+"backend_crew_delete_title" = "Delete Crew";
+"backend_crew_delete_action" = "Delete Crew";
+"backend_crew_delete_message" = "This crew, its tasks, members, activity and related records will be removed.";
+
+"backend_crew_leaderboard" = "Leaderboard";
+"backend_crew_no_focus_today" = "No shared focus records today";
+
+"backend_crew_badge" = "Crew Badge";
+"backend_crew_badge_subtitle" = "Unlocked by total focus time";
+"backend_crew_next_badge" = "Next badge";
+"backend_crew_time_left" = "%@ left";
+"backend_crew_streak" = "Streak: %@";
+
+"backend_crew_activity" = "Activity";
+"backend_crew_activity_subtitle" = "Recent team updates";
+"backend_crew_no_activity" = "No activity yet";
+
+"backend_crew_invite" = "Invite";
+"backend_crew_hero_subtitle" = "Manage members, shared tasks, and project activity in one place.";
+"backend_crew_members_count" = "%d members";
+"backend_crew_tasks_count" = "%d tasks";
+"backend_crew_progress" = "Crew Progress";
+
+"backend_crew_done" = "Done";
+"backend_crew_pending" = "Pending";
+"backend_crew_members" = "Members";
+
+"backend_crew_no_members" = "No members yet • Tap + to add one";
+"backend_crew_shared_tasks" = "Shared Tasks";
+"backend_crew_no_shared_tasks" = "No shared tasks yet";
+"backend_crew_reopen_task" = "Reopen Task";
+"backend_crew_mark_done" = "Mark as Done";
+"backend_crew_delete_task" = "Delete Task";
+"backend_crew_unassigned" = "Unassigned";
+
+"backend_crew_focus_together" = "Focus Together";
+"backend_crew_focus_subtitle" = "Shared focus sessions will be enabled after backend integration.";
+"backend_crew_soon" = "Soon";
+"backend_crew_coming_soon" = "Coming Soon";
+
+"backend_crew_unknown_user" = "Unknown user";
+"backend_crew_unknown" = "unknown";
+
+"backend_crew_task_detail_title" = "Task Detail";
+"backend_crew_quick_actions" = "Quick Actions";
+"backend_crew_edit_task" = "Edit Task";
+"backend_crew_assignment" = "Assignment";
+"backend_crew_assigned_to" = "Assigned To";
+"backend_crew_created_by" = "Created By";
+
+"backend_edit_task_title" = "Görevi Düzenle";
+
+"backend_edit_task_section_task" = "Görev";
+"backend_edit_task_title_placeholder" = "Görev başlığı";
+"backend_edit_task_details_placeholder" = "Detaylar";
+
+"backend_edit_task_section_assignment" = "Atama";
+"backend_edit_task_assigned_member" = "Atanan üye";
+
+"backend_edit_task_section_priority_status" = "Öncelik ve Durum";
+"backend_edit_task_priority" = "Öncelik";
+"backend_edit_task_status" = "Durum";
+"backend_edit_task_completed" = "Tamamlandı";
+
+"backend_edit_task_section_week_planning" = "Hafta Planlaması";
+"backend_edit_task_show_on_week" = "Week sayfasında göster";
+"backend_edit_task_date_time" = "Tarih ve Saat";
+"backend_edit_task_duration_format" = "Süre: %d dk";
+
+"common_save" = "Kaydet";
+
+"backend_create_task_title" = "Yeni Görev";
+
+"backend_create_task_section_task" = "Görev";
+"backend_create_task_title_placeholder" = "Görev başlığı";
+"backend_create_task_details_placeholder" = "Detaylar";
+
+"backend_create_task_section_assignment" = "Atama";
+"backend_create_task_member" = "Üye";
+
+"backend_create_task_section_priority_status" = "Öncelik ve Durum";
+"backend_create_task_priority" = "Öncelik";
+"backend_create_task_status" = "Durum";
+
+"backend_create_task_section_week_planning" = "Hafta Planlaması";
+"backend_create_task_show_on_week" = "Week sayfasında göster";
+"backend_create_task_date_time" = "Tarih ve Saat";
+"backend_create_task_duration_format" = "Süre: %d dk";
+
+"backend_create_task_user_session_not_found" = "Kullanıcı oturumu bulunamadı.";

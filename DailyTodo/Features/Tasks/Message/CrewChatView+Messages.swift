@@ -49,7 +49,7 @@ extension CrewChatView {
             }
         }
     }
-    
+
     func lastReadDate(for userID: UUID) -> Date? {
         guard let raw = crewStore.crewMessageReads.first(where: {
             $0.crew_id == crew.id && $0.user_id == userID
@@ -72,7 +72,7 @@ extension CrewChatView {
             return readDate.timeIntervalSince1970 >= message.createdAt.timeIntervalSince1970 - 1
         }
     }
-    
+
     var crewMembers: [WeekCrewMemberItem] {
         crewStore.crewMembers
             .filter { $0.crew_id == crew.id }
@@ -86,7 +86,7 @@ extension CrewChatView {
                 } else if let username = profile?.username, !username.isEmpty {
                     name = username
                 } else {
-                    name = "User"
+                    name = String(localized: "crew_chat_unknown_user")
                 }
 
                 return WeekCrewMemberItem(
@@ -126,19 +126,29 @@ extension CrewChatView {
 
     @ViewBuilder
     func messageBubble(_ message: CrewChatMessageItem, index: Int) -> some View {
+        let text = message.displayText.lowercased()
+
         let isFocusSystemMessage =
-            message.displayText.contains("started a") && message.displayText.contains("shared focus session") ||
-            message.displayText.contains("ended the shared focus session") ||
-            message.displayText.contains("joined the shared focus session") ||
-            message.displayText.contains("paused the shared focus session") ||
-            message.displayText.contains("resumed the shared focus session")
+            message.isSystemMessage ||
+            text.contains("shared focus session") ||
+            text.contains("started a") ||
+            text.contains("ended the shared focus session") ||
+            text.contains("joined the shared focus session") ||
+            text.contains("paused the shared focus session") ||
+            text.contains("resumed the shared focus session") ||
+            text.contains("paylaşılan odak oturumu") ||
+            text.contains("odak oturumunu başlattı") ||
+            text.contains("odak oturumunu bitirdi") ||
+            text.contains("odak oturumuna katıldı") ||
+            text.contains("odak oturumunu duraklattı") ||
+            text.contains("odak oturumunu devam ettirdi")
 
         let showSenderName = shouldShowSenderName(at: index)
         let topSpacing: CGFloat = shouldTightenSpacing(at: index) ? 2 : 8
         let isFromMe = message.isFromMe
 
         HStack(alignment: .bottom) {
-            if isFocusSystemMessage || message.isSystemMessage {
+            if isFocusSystemMessage {
                 Spacer()
 
                 HStack(spacing: 8) {
@@ -190,7 +200,7 @@ extension CrewChatView {
                                     .clipShape(Capsule())
 
                                 VStack(alignment: .leading, spacing: 1) {
-                                    Text("Reply")
+                                    Text("crew_chat_reply_label")
                                         .font(.caption2.weight(.semibold))
                                         .foregroundStyle(
                                             isFromMe
@@ -290,5 +300,4 @@ extension CrewChatView {
             }
         }
     }
-    }
-
+}

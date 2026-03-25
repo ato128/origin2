@@ -10,7 +10,8 @@ import SwiftData
 
 struct InsightsView: View {
     @EnvironmentObject var session: SessionStore
-    
+    @Environment(\.locale) private var locale
+
     @AppStorage("smartEngineEnabled") private var smartEngineEnabled: Bool = true
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private let palette = ThemePalette()
@@ -32,32 +33,32 @@ struct InsightsView: View {
     private var events: [EventItem]
 
     private var currentUserIDString: String? {
-            session.currentUser?.id.uuidString
-        }
+        session.currentUser?.id.uuidString
+    }
 
-        private var filteredTasks: [DTTaskItem] {
-            guard let currentUserIDString else { return [] }
-            return tasks.filter { $0.ownerUserID == currentUserIDString }
-        }
+    private var filteredTasks: [DTTaskItem] {
+        guard let currentUserIDString else { return [] }
+        return tasks.filter { $0.ownerUserID == currentUserIDString }
+    }
 
-        private var filteredFocusSessions: [FocusSessionRecord] {
-            guard let currentUserIDString else { return [] }
-            return focusSessions.filter { $0.ownerUserID == currentUserIDString }
-        }
+    private var filteredFocusSessions: [FocusSessionRecord] {
+        guard let currentUserIDString else { return [] }
+        return focusSessions.filter { $0.ownerUserID == currentUserIDString }
+    }
 
-        private var filteredEvents: [EventItem] {
-            guard let currentUserIDString else { return [] }
-            return events.filter { $0.ownerUserID == currentUserIDString }
-        }
+    private var filteredEvents: [EventItem] {
+        guard let currentUserIDString else { return [] }
+        return events.filter { $0.ownerUserID == currentUserIDString }
+    }
 
-        private var vm: InsightsViewModel {
-            InsightsViewModel(
-                tasks: filteredTasks,
-                focusSessions: filteredFocusSessions,
-                events: filteredEvents,
-                userID: currentUserIDString
-            )
-        }
+    private var vm: InsightsViewModel {
+        InsightsViewModel(
+            tasks: filteredTasks,
+            focusSessions: filteredFocusSessions,
+            events: filteredEvents,
+            userID: currentUserIDString
+        )
+    }
 
     private var collapseProgress: CGFloat {
         let progress = (-scrollOffset - 20) / 70
@@ -101,7 +102,7 @@ struct InsightsView: View {
 
                 VStack(spacing: 16) {
                     VStack(alignment: .leading, spacing: 0) {
-                        Text("Insights")
+                        Text("insights_title")
                             .font(.system(size: 36, weight: .bold, design: .rounded))
                             .foregroundStyle(palette.primaryText)
                             .padding(.horizontal, 20)
@@ -173,7 +174,7 @@ struct InsightsView: View {
             .scrollIndicators(.hidden)
 
             VStack(spacing: 0) {
-                Text("Insights")
+                Text("insights_title")
                     .font(.system(size: 17, weight: .bold, design: .rounded))
                     .foregroundStyle(palette.primaryText)
                     .opacity(smallTitleOpacity)
@@ -196,7 +197,7 @@ struct InsightsView: View {
                 NavigationLink("", isActive: $goFocus) {
                     FocusSessionView(
                         taskID: nil,
-                        taskTitle: "Quick Focus",
+                        taskTitle: localizedQuickFocusTitle(),
                         onStartFocus: { _, _ in },
                         onTick: { _ in },
                         onFinishFocus: { _, _, _, _, _, _ in },
@@ -206,6 +207,14 @@ struct InsightsView: View {
             }
             .hidden()
         )
+    }
+
+    private func localizedQuickFocusTitle() -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "Hızlı Odak"
+        } else {
+            return "Quick Focus"
+        }
     }
 
     private func handleInsightAction(_ action: SmartSuggestionAction) {

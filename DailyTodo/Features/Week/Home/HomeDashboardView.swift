@@ -24,6 +24,7 @@ struct HomeDashboardView: View {
     @EnvironmentObject var store: TodoStore
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var session: SessionStore
+    @Environment(\.locale) private var locale
 
     @Query(sort: \EventItem.startMinute, order: .forward)
     var allEvents: [EventItem]
@@ -229,7 +230,7 @@ struct HomeDashboardView: View {
 
             let duration = max(60, firstExercise.restSeconds > 0 ? firstExercise.restSeconds : 60)
 
-            activeFocusTaskTitle = focusTask?.title ?? "Workout"
+            activeFocusTaskTitle = focusTask?.title ?? String(localized: "home_focus_workout")
             activeFocusTotalSeconds = duration
             activeFocusRemainingSeconds = duration
             activeFocusStartedAt = Date()
@@ -245,7 +246,7 @@ struct HomeDashboardView: View {
                 duration = 25 * 60
             }
 
-            activeFocusTaskTitle = focusTask?.title ?? "Focus"
+            activeFocusTaskTitle = focusTask?.title ?? String(localized: "home_focus_default")
             activeFocusTotalSeconds = duration
             activeFocusRemainingSeconds = duration
             activeFocusStartedAt = Date()
@@ -396,20 +397,36 @@ struct HomeDashboardView: View {
             }
         }
     }
+    
+    func localizedActiveMinutesLeft(_ minutes: Int) -> String {
+        if Locale.current.language.languageCode?.identifier == "tr" {
+            return "Şu an aktif • \(minutes) dk kaldı"
+        } else {
+            return "Active now • \(minutes) min left"
+        }
+    }
+
+    func localizedStartsInMinutes(_ minutes: Int) -> String {
+        if Locale.current.language.languageCode?.identifier == "tr" {
+            return "\(minutes) dk sonra"
+        } else {
+            return "In \(minutes) min"
+        }
+    }
 
     var focusTaskStatusText: String {
-        guard let task = focusTask else { return "Bugün odak görevi yok" }
+        guard let task = focusTask else { return String(localized: "home_no_focus_task_today") }
 
         if store.isOverdue(task) {
-            return "⚠️ Gecikmiş görev"
+            return String(localized: "home_focus_status_overdue")
         }
 
         if let due = task.dueDate,
            Calendar.current.isDateInToday(due) {
-            return "🔥 Bugün tamamla"
+            return String(localized: "home_focus_status_complete_today")
         }
 
-        return "🎯 Öncelikli görev"
+        return String(localized: "home_focus_status_priority")
     }
 
     var recentChatFriend: Friend? {
@@ -451,7 +468,7 @@ struct HomeDashboardView: View {
     }
 
     var nextEventStatusText: String {
-        guard let nextEvent else { return "Bugün başka ders yok" }
+        guard let nextEvent else { return String(localized: "home_no_more_classes_today") }
 
         let now = currentMinuteOfDay()
         let start = nextEvent.startMinute
@@ -459,10 +476,10 @@ struct HomeDashboardView: View {
 
         if now >= start && now < end {
             let left = max(0, end - now)
-            return "Şu an aktif • \(left) dk kaldı"
+            return localizedActiveMinutesLeft(left)
         } else {
             let remain = max(0, start - now)
-            return "\(remain) dk sonra"
+            return localizedStartsInMinutes(remain)
         }
     }
 
@@ -503,21 +520,21 @@ struct HomeDashboardView: View {
 
     var focusCardTitle: String {
         if isSharedFocusActive {
-            return "Shared Focus"
+            return String(localized: "home_shared_focus")
         }
-        return "Focus Now"
+        return String(localized: "home_focus_now")
     }
 
     var focusCardMainText: String {
         if isSharedFocusActive, let friendName = activeSharedFriendName {
             return "\(friendName) ile focus"
         }
-        return focusTask?.title ?? "Bugün odak görevi yok"
+        return focusTask?.title ?? String(localized: "home_no_focus_task_today")
     }
 
     var focusCardStatusText: String {
         if isSharedFocusActive {
-            return "🟢 Shared session active"
+            return String(localized: "home_shared_session_active")
         }
         return focusTaskStatusText
     }
@@ -530,15 +547,15 @@ struct HomeDashboardView: View {
     var greetingText: String {
         let hour = Calendar.current.component(.hour, from: Date())
         switch hour {
-        case 5..<12: return "Good morning"
-        case 12..<18: return "Good afternoon"
-        default: return "Good evening"
+        case 5..<12: return String(localized: "home_greeting_morning")
+        case 12..<18: return String(localized: "home_greeting_afternoon")
+        default: return String(localized: "home_greeting_evening")
         }
     }
 
     var todayDateText: String {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "tr_TR")
+        f.locale = locale
         f.dateFormat = "d MMMM, EEEE"
         return f.string(from: Date())
     }

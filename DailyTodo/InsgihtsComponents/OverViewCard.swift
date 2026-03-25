@@ -10,6 +10,7 @@ import SwiftUI
 struct OverviewCard: View {
     let data: OverviewData
 
+    @Environment(\.locale) private var locale
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private let palette = ThemePalette()
 
@@ -28,11 +29,15 @@ struct OverviewCard: View {
     }
 
     private var headerTitle: String {
-        hasStrongStreak ? "Streak" : "Getting Started"
+        hasStrongStreak
+        ? String(localized: "insights_overview_streak")
+        : String(localized: "insights_overview_getting_started")
     }
 
     private var headerStatusText: String {
-        hasStrongStreak ? "Keep the fire alive" : "Start your streak"
+        hasStrongStreak
+        ? String(localized: "insights_overview_keep_fire_alive")
+        : String(localized: "insights_overview_start_streak")
     }
 
     private var flameColor: Color {
@@ -44,7 +49,15 @@ struct OverviewCard: View {
     }
 
     private var fallbackMessage: String {
-        "İlk görevi tamamlayınca serin başlayacak. Küçük bir adım yeterli."
+        String(localized: "insights_overview_fallback_message")
+    }
+
+    private var completionText: String {
+        String(localized: "insights_overview_completion")
+    }
+
+    private var startStreakHint: String {
+        String(localized: "insights_overview_start_streak_hint")
     }
 
     var body: some View {
@@ -130,7 +143,7 @@ struct OverviewCard: View {
                 .font(.system(size: 38, weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
 
-                Text("tamamlanma")
+                Text(completionText)
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(palette.secondaryText)
             }
@@ -199,7 +212,7 @@ struct OverviewCard: View {
                         Image(systemName: "sparkles")
                             .foregroundStyle(Color.accentColor)
 
-                        Text("Task ekleyerek streak başlatabilirsin")
+                        Text(startStreakHint)
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(Color.accentColor)
                     }

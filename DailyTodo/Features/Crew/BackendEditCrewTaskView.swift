@@ -79,16 +79,16 @@ struct BackendEditCrewTaskView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Task") {
-                    TextField("Task title", text: $title)
+                Section(String(localized: "backend_edit_task_section_task")) {
+                    TextField(String(localized: "backend_edit_task_title_placeholder"), text: $title)
 
-                    TextField("Details", text: $details, axis: .vertical)
+                    TextField(String(localized: "backend_edit_task_details_placeholder"), text: $details, axis: .vertical)
                         .lineLimit(3...6)
                 }
 
-                Section("Assignment") {
-                    Picker("Assigned member", selection: $selectedAssigneeID) {
-                        Text("Unassigned").tag(UUID?.none)
+                Section(String(localized: "backend_edit_task_section_assignment")) {
+                    Picker(String(localized: "backend_edit_task_assigned_member"), selection: $selectedAssigneeID) {
+                        Text("backend_crew_unassigned").tag(UUID?.none)
 
                         ForEach(filteredCrewMembers) { member in
                             Text(displayName(for: member))
@@ -97,20 +97,20 @@ struct BackendEditCrewTaskView: View {
                     }
                 }
 
-                Section("Priority & Status") {
-                    Picker("Priority", selection: $priority) {
+                Section(String(localized: "backend_edit_task_section_priority_status")) {
+                    Picker(String(localized: "backend_edit_task_priority"), selection: $priority) {
                         ForEach(priorityOptions, id: \.self) { item in
                             Text(priorityLabel(item)).tag(item)
                         }
                     }
 
-                    Picker("Status", selection: $status) {
+                    Picker(String(localized: "backend_edit_task_status"), selection: $status) {
                         ForEach(statusOptions, id: \.self) { item in
                             Text(statusLabel(item)).tag(item)
                         }
                     }
 
-                    Toggle("Completed", isOn: $isDone)
+                    Toggle(String(localized: "backend_edit_task_completed"), isOn: $isDone)
                         .onChange(of: isDone) { _, newValue in
                             if newValue {
                                 status = "done"
@@ -120,17 +120,22 @@ struct BackendEditCrewTaskView: View {
                         }
                 }
 
-                Section("Week Planning") {
-                    Toggle("Show on Week page", isOn: $showOnWeek)
+                Section(String(localized: "backend_edit_task_section_week_planning")) {
+                    Toggle(String(localized: "backend_edit_task_show_on_week"), isOn: $showOnWeek)
 
                     if showOnWeek {
                         DatePicker(
-                            "Date & Time",
+                            String(localized: "backend_edit_task_date_time"),
                             selection: $plannedDate,
                             displayedComponents: [.date, .hourAndMinute]
                         )
 
-                        Stepper("Duration: \(durationMinute) min", value: $durationMinute, in: 15...240, step: 15)
+                        Stepper(
+                            String(format: String(localized: "backend_edit_task_duration_format"), durationMinute),
+                            value: $durationMinute,
+                            in: 15...240,
+                            step: 15
+                        )
                     }
                 }
 
@@ -141,11 +146,11 @@ struct BackendEditCrewTaskView: View {
                     }
                 }
             }
-            .navigationTitle("Edit Task")
+            .navigationTitle("backend_edit_task_title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") {
+                    Button(String(localized: "common_cancel")) {
                         dismiss()
                     }
                 }
@@ -275,7 +280,7 @@ struct BackendEditCrewTaskView: View {
 
     private func displayName(for member: CrewMemberDTO) -> String {
         guard let profile = crewStore.memberProfiles.first(where: { $0.id == member.user_id }) else {
-            return "Unknown user"
+            return String(localized: "backend_crew_unknown_user")
         }
 
         if let fullName = profile.full_name, !fullName.isEmpty {
@@ -286,25 +291,27 @@ struct BackendEditCrewTaskView: View {
             return username
         }
 
-        return profile.email ?? "Unkown user"
+        return profile.email ?? String(localized: "backend_crew_unknown_user")
     }
 
     private func priorityLabel(_ raw: String) -> String {
+        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
         switch raw {
-        case "low": return "Low"
-        case "medium": return "Medium"
-        case "high": return "High"
-        case "urgent": return "Urgent"
+        case "low": return isTurkish ? "Düşük" : "Low"
+        case "medium": return isTurkish ? "Orta" : "Medium"
+        case "high": return isTurkish ? "Yüksek" : "High"
+        case "urgent": return isTurkish ? "Acil" : "Urgent"
         default: return raw.capitalized
         }
     }
 
     private func statusLabel(_ raw: String) -> String {
+        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
         switch raw {
-        case "todo": return "Todo"
-        case "inProgress": return "In Progress"
-        case "review": return "Review"
-        case "done": return "Done"
+        case "todo": return isTurkish ? "Yapılacak" : "Todo"
+        case "inProgress": return isTurkish ? "Devam Ediyor" : "In Progress"
+        case "review": return isTurkish ? "İncelemede" : "Review"
+        case "done": return isTurkish ? "Tamamlandı" : "Done"
         default: return raw.capitalized
         }
     }

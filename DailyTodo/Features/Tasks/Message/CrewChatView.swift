@@ -11,6 +11,7 @@ struct CrewChatView: View {
     let crew: WeekCrewItem
 
     @Environment(\.dismiss) var dismiss
+    @Environment(\.locale) private var locale
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var session: SessionStore
     @AppStorage("appTheme") var appTheme = AppTheme.gradient.rawValue
@@ -124,7 +125,7 @@ struct CrewChatView: View {
                         ZStack {
                             AppBackground()
 
-                            ProgressView("Loading crew info...")
+                            ProgressView("crew_chat_loading_crew_info")
                                 .foregroundStyle(.white)
                         }
                         .task {

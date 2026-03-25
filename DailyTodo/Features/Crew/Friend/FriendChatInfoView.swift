@@ -11,6 +11,7 @@ import SwiftData
 struct FriendChatInfoView: View {
     @Bindable var friend: Friend
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
     @EnvironmentObject var friendStore: FriendStore
     @EnvironmentObject var session: SessionStore
     @Environment(\.modelContext) private var modelContext
@@ -126,11 +127,11 @@ struct FriendChatInfoView: View {
                     .environmentObject(session)
             }
         }
-        .alert("Info", isPresented: Binding(
+        .alert("friend_info_alert_title", isPresented: Binding(
             get: { infoMessage != nil },
             set: { if !$0 { infoMessage = nil } }
         )) {
-            Button("OK", role: .cancel) { }
+            Button("focus_ok", role: .cancel) { }
         } message: {
             Text(infoMessage ?? "")
         }
@@ -160,7 +161,7 @@ private extension FriendChatInfoView {
 
             Spacer()
 
-            Text("Friend Info")
+            Text("friend_info_title")
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
@@ -193,7 +194,7 @@ private extension FriendChatInfoView {
                         .fill(friend.isOnline ? .green : .gray.opacity(0.6))
                         .frame(width: 8, height: 8)
 
-                    Text(friend.isOnline ? "Online" : "Offline")
+                    Text(friend.isOnline ? "chat_online" : "friend_info_offline")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -216,20 +217,22 @@ private extension FriendChatInfoView {
                 if canOpenSharedWeek {
                     showSharedWeek = true
                 } else {
-                    infoMessage = "\(friend.name) henüz haftasını seninle paylaşmadı."
+                    infoMessage = localizedFriendNotSharedWeek(friend.name)
                 }
             } label: {
                 actionRow(
-                    title: "Open Shared Week",
-                    subtitle: canOpenSharedWeek ? "See weekly plan together" : "Waiting for friend to share",
+                    title: String(localized: "friend_info_open_shared_week"),
+                    subtitle: canOpenSharedWeek
+                        ? String(localized: "friend_info_see_weekly_plan_together")
+                        : String(localized: "friend_info_waiting_for_share"),
                     icon: "calendar"
                 )
             }
             .buttonStyle(.plain)
 
             actionRow(
-                title: "Start Focus Together",
-                subtitle: "Launch a shared focus session",
+                title: String(localized: "friend_info_start_focus_together"),
+                subtitle: String(localized: "friend_info_launch_shared_focus"),
                 icon: "timer"
             )
         }
@@ -271,11 +274,11 @@ private extension FriendChatInfoView {
                 }
             )) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Share My Week")
+                    Text("friend_info_share_my_week")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(palette.primaryText)
 
-                    Text("Let this friend view your weekly plan")
+                    Text("friend_info_let_friend_view_week")
                         .font(.caption)
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -288,11 +291,11 @@ private extension FriendChatInfoView {
 
             Toggle(isOn: $friend.isMuted) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Mute Notifications")
+                    Text("friend_info_mute_notifications")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(palette.primaryText)
 
-                    Text("Stop alerts from this friend")
+                    Text("friend_info_stop_alerts_from_friend")
                         .font(.caption)
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -307,7 +310,7 @@ private extension FriendChatInfoView {
             } label: {
                 HStack {
                     Image(systemName: "bell.slash.fill")
-                    Text("Clear Chat Later")
+                    Text("friend_info_clear_chat_later")
                     Spacer()
                 }
                 .font(.subheadline.weight(.semibold))
@@ -317,6 +320,14 @@ private extension FriendChatInfoView {
         }
         .padding(.horizontal, 18)
         .background(cardBackground)
+    }
+
+    func localizedFriendNotSharedWeek(_ name: String) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(name) henüz haftasını seninle paylaşmadı."
+        } else {
+            return "\(name) has not shared their week with you yet."
+        }
     }
 
     func actionRow(title: String, subtitle: String, icon: String) -> some View {

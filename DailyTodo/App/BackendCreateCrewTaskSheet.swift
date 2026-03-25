@@ -34,16 +34,16 @@ struct BackendCreateCrewTaskSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Task") {
-                    TextField("Task title", text: $title)
+                Section(String(localized: "backend_create_task_section_task")) {
+                    TextField(String(localized: "backend_create_task_title_placeholder"), text: $title)
 
-                    TextField("Details", text: $details, axis: .vertical)
+                    TextField(String(localized: "backend_create_task_details_placeholder"), text: $details, axis: .vertical)
                         .lineLimit(3...6)
                 }
 
-                Section("Assignment") {
-                    Picker("Member", selection: $selectedAssigneeID) {
-                        Text("Unassigned").tag(UUID?.none)
+                Section(String(localized: "backend_create_task_section_assignment")) {
+                    Picker(String(localized: "backend_create_task_member"), selection: $selectedAssigneeID) {
+                        Text("backend_crew_unassigned").tag(UUID?.none)
 
                         ForEach(members) { member in
                             Text(displayName(for: member))
@@ -52,32 +52,32 @@ struct BackendCreateCrewTaskSheet: View {
                     }
                 }
 
-                Section("Priority & Status") {
-                    Picker("Priority", selection: $priority) {
+                Section(String(localized: "backend_create_task_section_priority_status")) {
+                    Picker(String(localized: "backend_create_task_priority"), selection: $priority) {
                         ForEach(priorityOptions, id: \.self) { item in
                             Text(priorityLabel(item)).tag(item)
                         }
                     }
 
-                    Picker("Status", selection: $status) {
+                    Picker(String(localized: "backend_create_task_status"), selection: $status) {
                         ForEach(statusOptions, id: \.self) { item in
                             Text(statusLabel(item)).tag(item)
                         }
                     }
                 }
 
-                Section("Week Planning") {
-                    Toggle("Show on Week page", isOn: $showOnWeek)
+                Section(String(localized: "backend_create_task_section_week_planning")) {
+                    Toggle(String(localized: "backend_create_task_show_on_week"), isOn: $showOnWeek)
 
                     if showOnWeek {
                         DatePicker(
-                            "Date & Time",
+                            String(localized: "backend_create_task_date_time"),
                             selection: $plannedDate,
                             displayedComponents: [.date, .hourAndMinute]
                         )
 
                         Stepper(
-                            "Duration: \(durationMinute) min",
+                            String(format: String(localized: "backend_create_task_duration_format"), durationMinute),
                             value: $durationMinute,
                             in: 15...240,
                             step: 15
@@ -92,11 +92,11 @@ struct BackendCreateCrewTaskSheet: View {
                     }
                 }
             }
-            .navigationTitle("New Task")
+            .navigationTitle("backend_create_task_title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") {
+                    Button(String(localized: "common_cancel")) {
                         dismiss()
                     }
                 }
@@ -110,7 +110,7 @@ struct BackendCreateCrewTaskSheet: View {
                         if isSaving {
                             ProgressView()
                         } else {
-                            Text("Save")
+                            Text("common_save")
                         }
                     }
                     .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
@@ -125,7 +125,7 @@ struct BackendCreateCrewTaskSheet: View {
         guard !cleanTitle.isEmpty else { return }
 
         guard let user = session.currentUser else {
-            errorMessage = "User session not found."
+            errorMessage = String(localized: "backend_create_task_user_session_not_found")
             return
         }
 
@@ -172,7 +172,7 @@ struct BackendCreateCrewTaskSheet: View {
 
     private func displayName(for member: CrewMemberDTO) -> String {
         guard let profile = memberProfiles.first(where: { $0.id == member.user_id }) else {
-            return "Unknown user"
+            return String(localized: "backend_crew_unknown_user")
         }
 
         if let fullName = profile.full_name,
@@ -185,25 +185,27 @@ struct BackendCreateCrewTaskSheet: View {
             return username
         }
 
-        return profile.email ?? "Unknown user"
+        return profile.email ?? String(localized: "backend_crew_unknown_user")
     }
 
     private func priorityLabel(_ raw: String) -> String {
+        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
         switch raw {
-        case "low": return "Low"
-        case "medium": return "Medium"
-        case "high": return "High"
-        case "urgent": return "Urgent"
+        case "low": return isTurkish ? "Düşük" : "Low"
+        case "medium": return isTurkish ? "Orta" : "Medium"
+        case "high": return isTurkish ? "Yüksek" : "High"
+        case "urgent": return isTurkish ? "Acil" : "Urgent"
         default: return raw.capitalized
         }
     }
 
     private func statusLabel(_ raw: String) -> String {
+        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
         switch raw {
-        case "todo": return "Todo"
-        case "inProgress": return "In Progress"
-        case "review": return "Review"
-        case "done": return "Done"
+        case "todo": return isTurkish ? "Yapılacak" : "Todo"
+        case "inProgress": return isTurkish ? "Devam Ediyor" : "In Progress"
+        case "review": return isTurkish ? "İncelemede" : "Review"
+        case "done": return isTurkish ? "Tamamlandı" : "Done"
         default: return raw.capitalized
         }
     }

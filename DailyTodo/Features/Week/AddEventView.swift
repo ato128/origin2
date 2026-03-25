@@ -12,19 +12,18 @@ struct AddEventView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
+    @Environment(\.locale) private var locale
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var friendStore: FriendStore
 
-    private let dayTitles = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
-
-    private let colorPalette: [(name: String, hex: String)] = [
-        ("Mavi", "#3B82F6"),
-        ("Mor", "#8B5CF6"),
-        ("Pembe", "#EC4899"),
-        ("Turuncu", "#F97316"),
-        ("Yeşil", "#22C55E"),
-        ("Kırmızı", "#EF4444"),
-        ("Gri", "#64748B")
+    private let colorPalette: [(nameKey: String, hex: String)] = [
+        ("event_color_blue", "#3B82F6"),
+        ("event_color_purple", "#8B5CF6"),
+        ("event_color_pink", "#EC4899"),
+        ("event_color_orange", "#F97316"),
+        ("event_color_green", "#22C55E"),
+        ("event_color_red", "#EF4444"),
+        ("event_color_gray", "#64748B")
     ]
 
     let defaultWeekday: Int
@@ -48,64 +47,64 @@ struct AddEventView: View {
     var body: some View {
         Form {
 
-            Section("Ders / Etkinlik") {
-                TextField("Başlık", text: $title)
-                TextField("Konum (opsiyonel)", text: $location)
+            Section("event_section_class_or_event") {
+                TextField(String(localized: "event_title_placeholder"), text: $title)
+                TextField(String(localized: "event_location_optional"), text: $location)
             }
 
-            Section("Gün & Saat") {
-                Picker("Gün", selection: $weekday) {
+            Section("event_section_day_time") {
+                Picker("event_day", selection: $weekday) {
                     ForEach(0..<7, id: \.self) { i in
-                        Text(dayTitles[i]).tag(i)
+                        Text(localizedDayTitle(i)).tag(i)
                     }
                 }
 
                 DatePicker(
-                    "Başlangıç",
+                    "event_start",
                     selection: $startTime,
                     displayedComponents: [.hourAndMinute]
                 )
 
                 DatePicker(
-                    "Bitiş",
+                    "event_end",
                     selection: $endTime,
                     displayedComponents: [.hourAndMinute]
                 )
 
-                Text("Süre: \(durationText)")
+                Text("\(String(localized: "event_duration")): \(durationText)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
-            Section("Renk") {
-                Picker("Renk", selection: $selectedColorHex) {
+            Section("event_section_color") {
+                Picker("event_color", selection: $selectedColorHex) {
                     ForEach(colorPalette, id: \.hex) { c in
                         HStack {
                             Circle()
                                 .fill(colorFromHex(c.hex))
                                 .frame(width: 12, height: 12)
 
-                            Text(c.name)
+                            Text(LocalizedStringKey(c.nameKey))
                         }
                         .tag(c.hex)
                     }
                 }
             }
 
-            Section("Not") {
-                TextField("Not (opsiyonel)", text: $notes, axis: .vertical)
+            Section("event_section_note") {
+                TextField(String(localized: "event_note_optional"), text: $notes, axis: .vertical)
                     .lineLimit(3...6)
             }
         }
-        .navigationTitle("Ekle")
+        .navigationTitle("event_add_title")
         .toolbar {
 
             ToolbarItem(placement: .topBarLeading) {
-                Button("İptal") { dismiss() }
+                Button("week_cancel") { dismiss() }
             }
 
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Kaydet") {
+                Button("event_save") {
                     trySaveWithConflictCheck()
                 }
                 .disabled(!canSave)
@@ -118,11 +117,11 @@ struct AddEventView: View {
                 selectedColorHex = "#3B82F6"
             }
         }
-        .alert("Çakışma var", isPresented: $showConflictAlert) {
+        .alert("event_conflict_title", isPresented: $showConflictAlert) {
 
-            Button("İptal", role: .cancel) { }
+            Button("week_cancel", role: .cancel) { }
 
-            Button("Yine de Kaydet") {
+            Button("event_save_anyway") {
                 saveIgnoringConflicts()
             }
 
@@ -150,10 +149,42 @@ struct AddEventView: View {
         let h = d / 60
         let m = d % 60
 
-        if h == 0 { return "\(m) dk" }
-        if m == 0 { return "\(h) saat" }
+        if locale.language.languageCode?.identifier == "tr" {
+            if h == 0 { return "\(m) dk" }
+            if m == 0 { return "\(h) saat" }
+            return "\(h) saat \(m) dk"
+        } else {
+            if h == 0 { return "\(m) min" }
+            if m == 0 { return "\(h) hr" }
+            return "\(h) hr \(m) min"
+        }
+    }
 
-        return "\(h) saat \(m) dk"
+    private func localizedDayTitle(_ day: Int) -> String {
+        let safeDay = max(0, min(6, day))
+        let isTR = locale.language.languageCode?.identifier == "tr"
+
+        if isTR {
+            switch safeDay {
+            case 0: return "Pzt"
+            case 1: return "Sal"
+            case 2: return "Çar"
+            case 3: return "Per"
+            case 4: return "Cum"
+            case 5: return "Cmt"
+            default: return "Paz"
+            }
+        } else {
+            switch safeDay {
+            case 0: return "Mon"
+            case 1: return "Tue"
+            case 2: return "Wed"
+            case 3: return "Thu"
+            case 4: return "Fri"
+            case 5: return "Sat"
+            default: return "Sun"
+            }
+        }
     }
 
     private func minutesFrom(_ date: Date) -> Int {
@@ -225,7 +256,11 @@ struct AddEventView: View {
             .joined(separator: "\n")
 
         if conflicts.count > 4 {
-            conflictSummary += "\n+ \(conflicts.count - 4) daha"
+            if locale.language.languageCode?.identifier == "tr" {
+                conflictSummary += "\n+ \(conflicts.count - 4) daha"
+            } else {
+                conflictSummary += "\n+ \(conflicts.count - 4) more"
+            }
         }
 
         showConflictAlert = true
@@ -262,7 +297,9 @@ struct AddEventView: View {
             WidgetAppSync.refreshFromSwiftData(context: context)
 
             Task {
-                await NotificationManager.shared.schedule(for: ev, minutesBefore: 5)
+                await NotificationManager.shared.cancel(for: ev)
+                await NotificationManager.shared.schedule(for: ev, minutesBefore: 10)
+                await NotificationManager.shared.schedule(for: ev, minutesBefore: 0)
             }
 
             Task {

@@ -118,6 +118,9 @@
 		6DB70E7F2F72EEEE00F04B43 /* FocusLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E7E2F72EEEE00F04B43 /* FocusLiveActivityWidget.swift */; };
 		6DB70E802F72F28900F04B43 /* FocusLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E7E2F72EEEE00F04B43 /* FocusLiveActivityWidget.swift */; };
 		6DB70E812F72F2AD00F04B43 /* FocusAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E7A2F72EE1300F04B43 /* FocusAttributes.swift */; };
+		6DB70E842F73217400F04B43 /* AppLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E832F73217400F04B43 /* AppLanguage.swift */; };
+		6DB70E862F7321A700F04B43 /* LanguageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E852F7321A700F04B43 /* LanguageManager.swift */; };
+		6DB70E8D2F73266D00F04B43 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 6DB70E8B2F73266D00F04B43 /* Localizable.strings */; };
 		6DBE91982F6B1556001DF813 /* IntroFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE91972F6B1555001DF813 /* IntroFlowView.swift */; };
 		6DBE919A2F6B157B001DF813 /* IntroPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE91992F6B157B001DF813 /* IntroPageView.swift */; };
 		6DBE919C2F6B2EFD001DF813 /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE919B2F6B2EFD001DF813 /* SessionStore.swift */; };
@@ -169,7 +172,6 @@
 		6DBE91FD2F6E1129001DF813 /* FriendTypingStatusDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE91FC2F6E1129001DF813 /* FriendTypingStatusDTO.swift */; };
 		6DBE91FF2F6E1627001DF813 /* FriendPresenceDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE91FE2F6E1627001DF813 /* FriendPresenceDTO.swift */; };
 		6DBE92012F6E1BA7001DF813 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE92002F6E1BA7001DF813 /* AppDelegate.swift */; };
-		6DBE92032F6E1BDE001DF813 /* PushNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE92022F6E1BDE001DF813 /* PushNotificationManager.swift */; };
 		6DBE92052F6E1C8F001DF813 /* PushTokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE92042F6E1C8F001DF813 /* PushTokenStore.swift */; };
 		6DBE92072F6EB064001DF813 /* FriendWeekShareDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE92062F6EB064001DF813 /* FriendWeekShareDTO.swift */; };
 		6DBE92092F6EB0B8001DF813 /* SharedWeekView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE92082F6EB0B8001DF813 /* SharedWeekView.swift */; };
@@ -359,6 +361,10 @@
 		6DB70E7A2F72EE1300F04B43 /* FocusAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusAttributes.swift; sourceTree = "<group>"; };
 		6DB70E7C2F72EECF00F04B43 /* FocusLiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusLiveActivityManager.swift; sourceTree = "<group>"; };
 		6DB70E7E2F72EEEE00F04B43 /* FocusLiveActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusLiveActivityWidget.swift; sourceTree = "<group>"; };
+		6DB70E832F73217400F04B43 /* AppLanguage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLanguage.swift; sourceTree = "<group>"; };
+		6DB70E852F7321A700F04B43 /* LanguageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageManager.swift; sourceTree = "<group>"; };
+		6DB70E8C2F73266D00F04B43 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		6DB70E8E2F73268200F04B43 /* tr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/Localizable.strings; sourceTree = "<group>"; };
 		6DBE91972F6B1555001DF813 /* IntroFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntroFlowView.swift; sourceTree = "<group>"; };
 		6DBE91992F6B157B001DF813 /* IntroPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntroPageView.swift; sourceTree = "<group>"; };
 		6DBE919B2F6B2EFD001DF813 /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
@@ -404,7 +410,6 @@
 		6DBE91FC2F6E1129001DF813 /* FriendTypingStatusDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendTypingStatusDTO.swift; sourceTree = "<group>"; };
 		6DBE91FE2F6E1627001DF813 /* FriendPresenceDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendPresenceDTO.swift; sourceTree = "<group>"; };
 		6DBE92002F6E1BA7001DF813 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		6DBE92022F6E1BDE001DF813 /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
 		6DBE92042F6E1C8F001DF813 /* PushTokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushTokenStore.swift; sourceTree = "<group>"; };
 		6DBE92062F6EB064001DF813 /* FriendWeekShareDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendWeekShareDTO.swift; sourceTree = "<group>"; };
 		6DBE92082F6EB0B8001DF813 /* SharedWeekView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedWeekView.swift; sourceTree = "<group>"; };
@@ -648,6 +653,16 @@
 			path = AI;
 			sourceTree = "<group>";
 		};
+		6DB70E822F73215800F04B43 /* Language */ = {
+			isa = PBXGroup;
+			children = (
+				6DB70E832F73217400F04B43 /* AppLanguage.swift */,
+				6DB70E852F7321A700F04B43 /* LanguageManager.swift */,
+				6DB70E8B2F73266D00F04B43 /* Localizable.strings */,
+			);
+			path = Language;
+			sourceTree = "<group>";
+		};
 		6DC0CA8E2F5F7D0000A875ED /* ScheduleShared */ = {
 			isa = PBXGroup;
 			children = (
@@ -658,6 +673,7 @@
 		6DC0CAAC2F5F7D0000A875ED /* DailyTodo */ = {
 			isa = PBXGroup;
 			children = (
+				6DB70E822F73215800F04B43 /* Language */,
 				6DD282942F69AA3200B1281A /* Notification */,
 				6DD2828B2F697DCF00B1281A /* Workout */,
 				6D8C3D3B2F65B82300ABF6CA /* AI */,
@@ -813,7 +829,6 @@
 			isa = PBXGroup;
 			children = (
 				6DD282952F69AA5800B1281A /* Notification+Names.swift */,
-				6DBE92022F6E1BDE001DF813 /* PushNotificationManager.swift */,
 				6DBE92042F6E1C8F001DF813 /* PushTokenStore.swift */,
 			);
 			path = Notification;
@@ -1030,6 +1045,7 @@
 			knownRegions = (
 				en,
 				Base,
+				tr,
 			);
 			mainGroup = 6DF0C9102F557AA50043B887;
 			minimizedProjectReferenceProxies = 1;
@@ -1060,6 +1076,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6DC0CAAE2F5F7D0000A875ED /* Assets.xcassets in Resources */,
+				6DB70E8D2F73266D00F04B43 /* Localizable.strings in Resources */,
 				6DD282822F68C0FA00B1281A /* DailyTodo.entitlements.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1141,7 +1158,6 @@
 				6D215DA92F5603B100F7B9D7 /* WeekView.swift in Sources */,
 				6D2004862F63334D0022C810 /* AddMemberView.swift in Sources */,
 				6DF8FB992F5B918100D548E4 /* HeatmapView.swift in Sources */,
-				6DBE92032F6E1BDE001DF813 /* PushNotificationManager.swift in Sources */,
 				6D02C9D32F5B4D1F008193F3 /* StreakEngine.swift in Sources */,
 				6DBE91FD2F6E1129001DF813 /* FriendTypingStatusDTO.swift in Sources */,
 				6DD2828A2F6979E500B1281A /* TasksScheduleSheet.swift in Sources */,
@@ -1164,6 +1180,7 @@
 				6D8C3D412F65C9C000ABF6CA /* SmartTaskEngine.swift in Sources */,
 				6DC0CAB12F5F7D0000A875ED /* ImportScheduleView.swift in Sources */,
 				6DBE91E92F6D888A001DF813 /* CrewFocusSessionDTO.swift in Sources */,
+				6DB70E862F7321A700F04B43 /* LanguageManager.swift in Sources */,
 				6DBE91CF2F6C4EE2001DF813 /* WeekCrewModels.swift in Sources */,
 				6DBE91C92F6C38C4001DF813 /* BackendEditCrewTaskView.swift in Sources */,
 				6D2004D92F6469B20022C810 /* InsightsRevealStyle.swift in Sources */,
@@ -1207,6 +1224,7 @@
 				6DBE91EF2F6D91B7001DF813 /* CrewDateParser.swift in Sources */,
 				6DBE919C2F6B2EFD001DF813 /* SessionStore.swift in Sources */,
 				6DC0CABA2F5F7D0000A875ED /* CreateCrewView.swift in Sources */,
+				6DB70E842F73217400F04B43 /* AppLanguage.swift in Sources */,
 				6D2004D12F6462130022C810 /* ParallaxCardModifier.swift in Sources */,
 				6DC0CABB2F5F7D0000A875ED /* InsightsEngine.swift in Sources */,
 				6DBE91DF2F6C8277001DF813 /* WeekCrewMemberItem.swift in Sources */,
@@ -1296,6 +1314,18 @@
 		};
 /* End PBXTargetDependency section */
 
+/* Begin PBXVariantGroup section */
+		6DB70E8B2F73266D00F04B43 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				6DB70E8C2F73266D00F04B43 /* en */,
+				6DB70E8E2F73268200F04B43 /* tr */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
 /* Begin XCBuildConfiguration section */
 		6D215DD32F56458E00F7B9D7 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -1368,6 +1398,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -1432,6 +1463,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";

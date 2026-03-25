@@ -46,7 +46,7 @@ extension CrewChatView {
                             .font(.headline)
                             .foregroundStyle(palette.primaryText)
 
-                        Text("Crew chat")
+                        Text("crew_chat_header_subtitle")
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(palette.secondaryText)
                     }
@@ -80,11 +80,11 @@ extension CrewChatView {
                     .foregroundStyle(hexColor(crew.colorHex))
             }
 
-            Text("No messages yet")
+            Text("crew_chat_empty_title")
                 .font(.title3.weight(.bold))
                 .foregroundStyle(palette.primaryText)
 
-            Text("Start chatting with your crew.")
+            Text("crew_chat_empty_subtitle")
                 .font(.subheadline)
                 .foregroundStyle(palette.secondaryText)
 

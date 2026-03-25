@@ -36,7 +36,7 @@ extension HomeDashboardView {
 
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Next Class")
+                Text("home_next_class")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(nextEvent == nil ? .primary : animatedClassColor)
 
@@ -73,8 +73,8 @@ extension HomeDashboardView {
                             .foregroundStyle(.secondary)
 
                         HStack(spacing: 8) {
-                            if nextEventStatusText.contains("aktif") {
-                                Text("LIVE")
+                            if nextEventStatusText.contains("aktif") || nextEventStatusText.contains("Active") {
+                                Text("home_live")
                                     .font(.system(size: 11, weight: .bold))
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 3)
@@ -104,7 +104,7 @@ extension HomeDashboardView {
                     )
                 )
             } else {
-                Text("Bugün başka ders yok")
+                Text("home_no_more_classes_today")
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(.secondary)
                     .id("no-next-class")

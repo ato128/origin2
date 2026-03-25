@@ -51,7 +51,7 @@ extension HomeDashboardView {
                                 if focusWorkoutIsResting {
                                     miniBadge(
                                         icon: "figure.cooldown",
-                                        text: "Rest",
+                                        text: String(localized: "home_rest"),
                                         tint: .orange
                                     )
                                 }
@@ -74,7 +74,9 @@ extension HomeDashboardView {
 
                         Text(
                             task.taskType == "workout"
-                            ? (focusWorkoutIsResting ? "Rest aktif" : "Workout hazır")
+                            ? (focusWorkoutIsResting
+                               ? String(localized: "home_workout_rest_active")
+                               : String(localized: "home_workout_ready"))
                             : focusCardStatusText
                         )
                         .font(.system(size: 12, weight: .semibold))
@@ -90,7 +92,7 @@ extension HomeDashboardView {
                     Button {
                         startInlineFocus()
                     } label: {
-                        Text(task.taskType == "workout" ? "Start Workout" : "Start Focus")
+                        Text(task.taskType == "workout" ? "home_start_workout" : "home_start_focus")
                             .font(.system(size: 15, weight: .semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
@@ -147,10 +149,12 @@ extension HomeDashboardView {
 
                         Text(
                             isSharedFocusActive
-                            ? "Shared Focus Running"
+                            ? String(localized: "home_shared_focus_running")
                             : (focusWorkoutMode
-                               ? (focusWorkoutIsResting ? "Workout Rest Running" : "Workout Running")
-                               : "Focus Running")
+                               ? (focusWorkoutIsResting
+                                  ? String(localized: "home_workout_rest_running")
+                                  : String(localized: "home_workout_running"))
+                               : String(localized: "home_focus_running"))
                         )
                         .font(.system(size: 14, weight: .semibold))
                     }
@@ -164,8 +168,12 @@ extension HomeDashboardView {
 
                 Text(
                     isSharedFocusActive
-                    ? ((activeSharedFriendName != nil) ? "\(activeSharedFriendName!) ile focus" : "Shared Focus")
-                    : (activeFocusTaskTitle.isEmpty ? "Deep Work Session" : activeFocusTaskTitle)
+                    ? ((activeSharedFriendName != nil)
+                       ? "\(activeSharedFriendName!) \(String(localized: "home_with_focus_suffix"))"
+                       : String(localized: "home_shared_focus"))
+                    : (activeFocusTaskTitle.isEmpty
+                       ? String(localized: "home_deep_work_session")
+                       : activeFocusTaskTitle)
                 )
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .lineLimit(2)
@@ -192,7 +200,7 @@ extension HomeDashboardView {
                             if focusWorkoutIsResting {
                                 miniBadge(
                                     icon: "figure.cooldown",
-                                    text: "Rest",
+                                    text: String(localized: "home_rest"),
                                     tint: .orange
                                 )
                             }
@@ -207,16 +215,22 @@ extension HomeDashboardView {
                     miniBadge(
                         icon: focusWorkoutIsResting ? "figure.cooldown" : "timer",
                         text: focusWorkoutIsResting
-                        ? "Rest aktif"
-                        : (liveRemaining <= 30 ? "Son 30 sn" : (focusWorkoutMode ? "Workout aktif" : "Odak aktif")),
+                        ? String(localized: "home_workout_rest_active")
+                        : (liveRemaining <= 30
+                           ? String(localized: "home_last_30_seconds")
+                           : (focusWorkoutMode
+                              ? String(localized: "home_workout_active")
+                              : String(localized: "home_focus_active"))),
                         tint: focusWorkoutIsResting ? .orange : urgencyColor
                     )
 
                     miniBadge(
                         icon: focusWorkoutMode ? "dumbbell.fill" : "scope",
                         text: focusWorkoutMode
-                        ? (focusWorkoutIsResting ? "Dinlenme" : "Set devam")
-                        : "Devam",
+                        ? (focusWorkoutIsResting
+                           ? String(localized: "home_resting")
+                           : String(localized: "home_set_in_progress"))
+                        : String(localized: "home_continue"),
                         tint: focusWorkoutIsResting ? .orange : (warmState ? urgencyColor : .green)
                     )
                 }
@@ -229,8 +243,10 @@ extension HomeDashboardView {
                     } label: {
                         Text(
                             focusWorkoutMode
-                            ? (focusWorkoutIsResting ? "Continue After Rest" : "Next Set")
-                            : "Focus Active"
+                            ? (focusWorkoutIsResting
+                               ? String(localized: "home_continue_after_rest")
+                               : String(localized: "home_next_set"))
+                            : String(localized: "home_focus_active_button")
                         )
                         .font(.system(size: 15, weight: .semibold))
                         .frame(maxWidth: .infinity)
@@ -248,7 +264,7 @@ extension HomeDashboardView {
                     Button {
                         stopActiveFocus()
                     } label: {
-                        Text("Stop")
+                        Text("home_stop")
                             .font(.system(size: 15, weight: .semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
@@ -382,10 +398,10 @@ extension HomeDashboardView {
 
                         Text(
                             !session.is_active
-                            ? "Focus Completed"
+                            ? String(localized: "home_focus_completed")
                             : session.is_paused
-                            ? "Focus Paused"
-                            : "Focus Running"
+                            ? String(localized: "home_focus_paused")
+                            : String(localized: "home_focus_running")
                         )
                         .font(.headline.weight(.bold))
                         .foregroundStyle(palette.primaryText)
@@ -428,25 +444,29 @@ extension HomeDashboardView {
                 HStack(spacing: 10) {
                     if !session.is_active {
                         focusChip(
-                            title: "Done",
+                            title: String(localized: "home_done"),
                             icon: "checkmark.circle.fill",
                             color: .green
                         )
 
                         focusChip(
-                            title: "Completed",
+                            title: String(localized: "home_completed"),
                             icon: "sparkles",
                             color: .green
                         )
                     } else {
                         focusChip(
-                            title: session.is_paused ? "Duraklatıldı" : "Odak aktif",
+                            title: session.is_paused
+                                ? String(localized: "home_paused")
+                                : String(localized: "home_focus_active"),
                             icon: session.is_paused ? "pause.fill" : "timer",
                             color: accent
                         )
 
                         focusChip(
-                            title: session.is_paused ? "Bekliyor" : "Devam",
+                            title: session.is_paused
+                                ? String(localized: "home_waiting")
+                                : String(localized: "home_continue"),
                             icon: session.is_paused ? "pause.circle.fill" : "scope",
                             color: session.is_paused ? .orange : .green
                         )
@@ -458,7 +478,7 @@ extension HomeDashboardView {
                         Button {
                             focusRoomSession = session
                         } label: {
-                            Text("Open Focus")
+                            Text("home_open_focus")
                                 .font(.headline.weight(.bold))
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)
@@ -500,7 +520,7 @@ extension HomeDashboardView {
                                 }
                             }
                         } label: {
-                            Text(session.is_paused ? "Resume" : "Pause")
+                            Text(session.is_paused ? "home_resume" : "home_pause")
                                 .font(.headline.weight(.bold))
                                 .foregroundStyle(session.is_paused ? .green : .orange)
                                 .frame(maxWidth: .infinity)
@@ -517,7 +537,7 @@ extension HomeDashboardView {
                     }
                 } else {
                     HStack {
-                        Label("Session Completed", systemImage: "checkmark.circle.fill")
+                        Label("home_session_completed", systemImage: "checkmark.circle.fill")
                             .font(.headline.weight(.bold))
                             .foregroundStyle(.green)
 

@@ -14,12 +14,12 @@ final class NotificationManager: ObservableObject {
     static let shared = NotificationManager()
     private init() {}
 
-    // İstersen Settings'ten kapatmak için AppStorage da ekleriz.
-    // Şimdilik basit.
+    // MARK: - Permission
 
     func requestPermissionIfNeeded() async {
         let center = UNUserNotificationCenter.current()
         let settings = await center.notificationSettings()
+
         guard settings.authorizationStatus == .notDetermined else { return }
 
         do {
@@ -29,18 +29,20 @@ final class NotificationManager: ObservableObject {
         }
     }
 
-    /// Tüm ders bildirimlerini yeniden kurar (en sağlıklısı bu)
+    // MARK: - EVENT NOTIFICATIONS
+
+    /// Tüm event bildirimlerini yeniden kurar
     func rescheduleAll(events: [EventItem]) async {
         await requestPermissionIfNeeded()
         await cancelAllEventNotifications()
 
-        for e in events {
-            await schedule(for: e, minutesBefore: 10)  // 10 dk önce
-            await schedule(for: e, minutesBefore: 0)   // ders başlarken
+        for event in events where !event.isCompleted {
+            await schedule(for: event, minutesBefore: 10)
+            await schedule(for: event, minutesBefore: 0)
         }
     }
 
-    /// Sadece derslerle ilgili bildirimleri iptal et
+    /// Sadece ders/event bildirimlerini iptal et
     func cancelAllEventNotifications() async {
         let center = UNUserNotificationCenter.current()
         let pending = await center.pendingNotificationRequests()
@@ -52,92 +54,206 @@ final class NotificationManager: ObservableObject {
         center.removePendingNotificationRequests(withIdentifiers: ids)
         center.removeDeliveredNotifications(withIdentifiers: ids)
     }
+    
+    func cancelAllManagedNotifications() async {
+        await cancelAllEventNotifications()
+        await cancelAllFocusFinishedNotifications()
+    }
 
     func cancel(for event: EventItem) async {
         let center = UNUserNotificationCenter.current()
-        let ids = notificationIDs(for: event)
+        let ids = eventNotificationIDs(for: event)
         center.removePendingNotificationRequests(withIdentifiers: ids)
         center.removeDeliveredNotifications(withIdentifiers: ids)
     }
 
-    // ✅ EKLENDİ: EditEventView’de çağırdığın sync versiyon
-    // (Senin EditEventView’de async bekletmeden çağırman için)
+    /// Sync versiyon
     func remove(for event: EventItem) {
         let center = UNUserNotificationCenter.current()
-        let ids = notificationIDs(for: event)
+        let ids = eventNotificationIDs(for: event)
         center.removePendingNotificationRequests(withIdentifiers: ids)
         center.removeDeliveredNotifications(withIdentifiers: ids)
     }
 
     func schedule(for event: EventItem, minutesBefore: Int) async {
-        let center = UNUserNotificationCenter.current()
+        guard !event.isCompleted else { return }
 
-        // Haftalık tekrar eden trigger:
-        // weekday: 0=Pzt...6=Paz  →  Calendar weekday: 2=Pzt...1=Paz
-        // (Gregorian: 1=Sun, 2=Mon, ...7=Sat)
-        let cal = Calendar.current
+        await requestPermissionIfNeeded()
+
+        let center = UNUserNotificationCenter.current()
+        let calendar = Calendar.current
+
+        if let scheduledDate = event.scheduledDate {
+            let targetDate = calendar.date(
+                byAdding: .minute,
+                value: -minutesBefore,
+                to: scheduledDate
+            ) ?? scheduledDate
+
+            if targetDate <= Date() { return }
+
+            let comps = calendar.dateComponents(
+                [.year, .month, .day, .hour, .minute],
+                from: targetDate
+            )
+
+            let trigger = UNCalendarNotificationTrigger(
+                dateMatching: comps,
+                repeats: false
+            )
+
+            let content = UNMutableNotificationContent()
+            content.sound = .default
+            content.title = event.title
+            content.body = minutesBefore == 0
+                ? "Ders başladı."
+                : "\(minutesBefore) dk sonra başlıyor."
+
+            let request = UNNotificationRequest(
+                identifier: eventID(for: event, minutesBefore: minutesBefore),
+                content: content,
+                trigger: trigger
+            )
+
+            do {
+                try await center.add(request)
+                print("🟢 Scheduled one-shot:", request.identifier)
+            } catch {
+                print("🔴 Schedule one-shot error:", error)
+            }
+
+            return
+        }
+
         let mappedWeekday = mapWeekdayToGregorian(event.weekday)
 
         let startHour = event.startMinute / 60
-        let startMin  = event.startMinute % 60
+        let startMinute = event.startMinute % 60
 
-        // Bildirim saati = ders saati - offset
-        let notifDate = cal.date(bySettingHour: startHour, minute: startMin, second: 0, of: Date()) ?? Date()
-        let adjusted = cal.date(byAdding: .minute, value: -minutesBefore, to: notifDate) ?? notifDate
+        let baseDate = calendar.date(
+            bySettingHour: startHour,
+            minute: startMinute,
+            second: 0,
+            of: Date()
+        ) ?? Date()
 
-        let notifHour = cal.component(.hour, from: adjusted)
-        let notifMin  = cal.component(.minute, from: adjusted)
+        let adjusted = calendar.date(
+            byAdding: .minute,
+            value: -minutesBefore,
+            to: baseDate
+        ) ?? baseDate
+
+        let notifHour = calendar.component(.hour, from: adjusted)
+        let notifMinute = calendar.component(.minute, from: adjusted)
 
         var comps = DateComponents()
         comps.weekday = mappedWeekday
         comps.hour = notifHour
-        comps.minute = notifMin
+        comps.minute = notifMinute
 
-        let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
+        let trigger = UNCalendarNotificationTrigger(
+            dateMatching: comps,
+            repeats: true
+        )
 
         let content = UNMutableNotificationContent()
         content.sound = .default
         content.title = event.title
-
-        if minutesBefore == 0 {
-            content.body = "Ders başladı."
-        } else {
-            content.body = "\(minutesBefore) dk sonra başlıyor."
-        }
+        content.body = minutesBefore == 0
+            ? "Ders başladı."
+            : "\(minutesBefore) dk sonra başlıyor."
 
         let request = UNNotificationRequest(
-            identifier: id(for: event, minutesBefore: minutesBefore),
+            identifier: eventID(for: event, minutesBefore: minutesBefore),
             content: content,
             trigger: trigger
         )
 
         do {
             try await center.add(request)
-            print("🟢 Scheduled:", request.identifier)
+            print("🟢 Scheduled repeating:", request.identifier)
         } catch {
-            print("🔴 Schedule error:", error)
+            print("🔴 Schedule repeating error:", error)
+        }
+    }
+
+    // MARK: - FOCUS NOTIFICATIONS
+
+    func scheduleFocusFinishedNotification(title: String, after seconds: Int) async {
+        guard seconds > 0 else { return }
+
+        await requestPermissionIfNeeded()
+        await cancelAllFocusFinishedNotifications()
+
+        let center = UNUserNotificationCenter.current()
+
+        let content = UNMutableNotificationContent()
+        content.sound = .default
+        content.title = "Focus tamamlandı"
+        content.body = "\(title) oturumu bitti."
+        content.categoryIdentifier = "FOCUS_FINISHED"
+
+        let trigger = UNTimeIntervalNotificationTrigger(
+            timeInterval: TimeInterval(seconds),
+            repeats: false
+        )
+
+        let request = UNNotificationRequest(
+            identifier: focusFinishedID(),
+            content: content,
+            trigger: trigger
+        )
+
+        do {
+            try await center.add(request)
+            print("🟢 Focus finish scheduled:", request.identifier)
+        } catch {
+            print("🔴 Focus finish schedule error:", error)
+        }
+    }
+
+    func cancelAllFocusFinishedNotifications() async {
+        let center = UNUserNotificationCenter.current()
+        let pending = await center.pendingNotificationRequests()
+
+        let ids = pending
+            .map(\.identifier)
+            .filter { $0.hasPrefix("focus.finished.") }
+
+        center.removePendingNotificationRequests(withIdentifiers: ids)
+        center.removeDeliveredNotifications(withIdentifiers: ids)
+    }
+
+    // MARK: - DEBUG
+
+    func printPendingRequests() async {
+        let center = UNUserNotificationCenter.current()
+        let pending = await center.pendingNotificationRequests()
+
+        print("📬 Pending notifications count:", pending.count)
+        for req in pending {
+            print("•", req.identifier)
         }
     }
 
     // MARK: - Helpers
 
-    // Senin mevcut identifier formatın:
-    // "event.<uuid>.before.<minutes>"
-    private func id(for event: EventItem, minutesBefore: Int) -> String {
+    private func eventID(for event: EventItem, minutesBefore: Int) -> String {
         "event.\(event.id.uuidString).before.\(minutesBefore)"
     }
 
-    // ✅ remove/cancel için aynı formatta 0 ve 10 dk id’leri
-    private func notificationIDs(for event: EventItem) -> [String] {
+    private func eventNotificationIDs(for event: EventItem) -> [String] {
         [
-            id(for: event, minutesBefore: 10),
-            id(for: event, minutesBefore: 0)
+            eventID(for: event, minutesBefore: 10),
+            eventID(for: event, minutesBefore: 0)
         ]
     }
 
+    private func focusFinishedID() -> String {
+        "focus.finished.main"
+    }
+
     private func mapWeekdayToGregorian(_ weekday: Int) -> Int {
-        // event: 0=Pzt..6=Paz
-        // greg: 1=Paz,2=Pzt,3=Sal,4=Çar,5=Per,6=Cum,7=Cmt
         switch weekday {
         case 0: return 2 // Pzt
         case 1: return 3 // Sal

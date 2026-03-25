@@ -12,12 +12,12 @@ struct SharedWeekView: View {
     let friend: Friend
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
     @EnvironmentObject var friendStore: FriendStore
     @EnvironmentObject var session: SessionStore
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
 
     private let palette = ThemePalette()
-    private let dayTitles = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
 
     @State private var selectedDay: Int = 0
     @State private var now = Date()
@@ -108,6 +108,84 @@ private extension SharedWeekView {
         )
     }
 
+    func localizedDayTitle(_ day: Int) -> String {
+        let safeDay = max(0, min(6, day))
+        let isTR = locale.language.languageCode?.identifier == "tr"
+
+        if isTR {
+            switch safeDay {
+            case 0: return "Pzt"
+            case 1: return "Sal"
+            case 2: return "Çar"
+            case 3: return "Per"
+            case 4: return "Cum"
+            case 5: return "Cmt"
+            default: return "Paz"
+            }
+        } else {
+            switch safeDay {
+            case 0: return "Mon"
+            case 1: return "Tue"
+            case 2: return "Wed"
+            case 3: return "Thu"
+            case 4: return "Fri"
+            case 5: return "Sat"
+            default: return "Sun"
+            }
+        }
+    }
+
+    func localizedEventCount(_ count: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(count) etkinlik"
+        } else {
+            return "\(count) event"
+        }
+    }
+
+    func localizedMinutesLeft(_ minutes: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(minutes) dk kaldı"
+        } else {
+            return "\(minutes) min left"
+        }
+    }
+
+    func localizedInMinutes(_ minutes: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(minutes) dk sonra"
+        } else {
+            return "In \(minutes) min"
+        }
+    }
+
+    func localizedNoEventText(for day: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(localizedDayTitle(day)) için paylaşılmış etkinlik yok."
+        } else {
+            return "There is no shared event for \(localizedDayTitle(day))."
+        }
+    }
+
+    func localizedLiveStatusText(for item: FriendWeekShareItemDTO) -> String {
+        let end = item.start_minute + item.duration_minute
+        let left = max(0, end - currentMinuteOfDay())
+
+        if locale.language.languageCode?.identifier == "tr" {
+            return "Şu an aktif • \(left) dk kaldı"
+        } else {
+            return "Active now • \(left) min left"
+        }
+    }
+
+    func localizedSharedWeekTitle(_ name: String) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(name) adlı kişinin paylaşılan haftası"
+        } else {
+            return "\(name)'s Shared Week"
+        }
+    }
+
     var todayItems: [FriendWeekShareItemDTO] {
         sharedItemsForDay(todayIndex())
     }
@@ -160,7 +238,7 @@ private extension SharedWeekView {
 
             Spacer()
 
-            Text("Shared Week")
+            Text("shared_week_title")
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
@@ -172,11 +250,11 @@ private extension SharedWeekView {
 
     var heroCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("\(friend.name)'s Shared Week")
+            Text(localizedSharedWeekTitle(friend.name))
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
 
-            Text("Swipe between days and see which class or event is live right now.")
+            Text("shared_week_subtitle")
                 .font(.subheadline)
                 .foregroundStyle(palette.secondaryText)
         }
@@ -201,7 +279,7 @@ private extension SharedWeekView {
 
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 8) {
-                            Text("LIVE NOW")
+                            Text("shared_week_live_now")
                                 .font(.caption2.weight(.bold))
                                 .foregroundStyle(.green)
                                 .padding(.horizontal, 8)
@@ -211,7 +289,7 @@ private extension SharedWeekView {
                                         .fill(Color.green.opacity(0.16))
                                 )
 
-                            Text("\(minutesLeft(liveItem)) dk kaldı")
+                            Text(localizedMinutesLeft(minutesLeft(liveItem)))
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(palette.secondaryText)
                         }
@@ -220,7 +298,7 @@ private extension SharedWeekView {
                             .font(.headline)
                             .foregroundStyle(palette.primaryText)
 
-                        Text("\(dayTitles[todayIndex()]) • \(timeText(for: liveItem))")
+                        Text("\(localizedDayTitle(todayIndex())) • \(timeText(for: liveItem))")
                             .font(.subheadline)
                             .foregroundStyle(palette.secondaryText)
                     }
@@ -252,7 +330,7 @@ private extension SharedWeekView {
 
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 8) {
-                            Text("NEXT UP")
+                            Text("shared_week_next_up")
                                 .font(.caption2.weight(.bold))
                                 .foregroundStyle(.orange)
                                 .padding(.horizontal, 8)
@@ -262,7 +340,7 @@ private extension SharedWeekView {
                                         .fill(Color.orange.opacity(0.16))
                                 )
 
-                            Text("\(minutesUntilStart(nextItem)) dk sonra")
+                            Text(localizedInMinutes(minutesUntilStart(nextItem)))
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(palette.secondaryText)
                         }
@@ -271,7 +349,7 @@ private extension SharedWeekView {
                             .font(.headline)
                             .foregroundStyle(palette.primaryText)
 
-                        Text("\(dayTitles[todayIndex()]) • \(timeText(for: nextItem))")
+                        Text("\(localizedDayTitle(todayIndex())) • \(timeText(for: nextItem))")
                             .font(.subheadline)
                             .foregroundStyle(palette.secondaryText)
                     }
@@ -296,7 +374,7 @@ private extension SharedWeekView {
                     }
                 } label: {
                     VStack(spacing: 6) {
-                        Text(dayTitles[day])
+                        Text(localizedDayTitle(day))
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(isSelected ? palette.primaryText : palette.secondaryText)
 
@@ -354,13 +432,13 @@ private extension SharedWeekView {
 
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text(dayTitles[day])
+                Text(localizedDayTitle(day))
                     .font(.title3.weight(.bold))
                     .foregroundStyle(palette.primaryText)
 
                 Spacer()
 
-                Text("\(items.count) event")
+                Text(localizedEventCount(items.count))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(palette.secondaryText)
             }
@@ -371,11 +449,11 @@ private extension SharedWeekView {
                         .font(.system(size: 26))
                         .foregroundStyle(Color.accentColor)
 
-                    Text("No shared events")
+                    Text("shared_week_no_shared_events")
                         .font(.headline)
                         .foregroundStyle(palette.primaryText)
 
-                    Text("There is no event shared for \(dayTitles[day]).")
+                    Text(localizedNoEventText(for: day))
                         .font(.subheadline)
                         .foregroundStyle(palette.secondaryText)
                         .multilineTextAlignment(.center)
@@ -416,7 +494,7 @@ private extension SharedWeekView {
                         .foregroundStyle(palette.primaryText)
 
                     if isLive {
-                        Text("LIVE")
+                        Text("shared_week_live")
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(.green)
                             .padding(.horizontal, 8)
@@ -428,7 +506,7 @@ private extension SharedWeekView {
                     }
                 }
 
-                Text("\(dayTitles[day]) • \(timeText(for: item))")
+                Text("\(localizedDayTitle(day)) • \(timeText(for: item))")
                     .font(.subheadline)
                     .foregroundStyle(palette.secondaryText)
 
@@ -441,7 +519,7 @@ private extension SharedWeekView {
                 }
 
                 if isLive {
-                    Text(liveStatusText(for: item))
+                    Text(localizedLiveStatusText(for: item))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.green)
                 }
@@ -495,12 +573,6 @@ private extension SharedWeekView {
         let end = item.start_minute + item.duration_minute
 
         return nowMinute >= item.start_minute && nowMinute < end
-    }
-
-    func liveStatusText(for item: FriendWeekShareItemDTO) -> String {
-        let end = item.start_minute + item.duration_minute
-        let left = max(0, end - currentMinuteOfDay())
-        return "Active now • \(left) dk kaldı"
     }
 
     func timeText(for item: FriendWeekShareItemDTO) -> String {

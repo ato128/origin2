@@ -11,6 +11,7 @@ struct ConsistencyScoreCard: View {
 
     let data: ScoreCardData
 
+    @Environment(\.locale) private var locale
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private let palette = ThemePalette()
 
@@ -18,6 +19,12 @@ struct ConsistencyScoreCard: View {
 
     private var scoreValue: Double {
         Double(data.valueText.replacingOccurrences(of: "%", with: "")) ?? 0
+    }
+
+    private func percentText(_ value: Double) -> String {
+        let intValue = Int(value)
+        // Şimdilik TR & EN aynı ama ileride kolay değişsin diye fonksiyon yaptık
+        return "%\(intValue)"
     }
 
     var body: some View {
@@ -38,7 +45,7 @@ struct ConsistencyScoreCard: View {
                             value: scoreValue,
                             duration: 0.9,
                             trigger: isVisible,
-                            formatter: { "%\(Int($0))" }
+                            formatter: { percentText($0) }
                         )
                         .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)

@@ -27,6 +27,7 @@ struct WeekView: View {
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var store: TodoStore
     @EnvironmentObject var friendStore: FriendStore
+    @Environment(\.locale)  var locale
 
     @Query(sort: \EventItem.startMinute, order: .forward)
      var allEvents: [EventItem]
@@ -189,15 +190,15 @@ struct WeekView: View {
             now >= $0.startMinute && now < ($0.startMinute + $0.durationMinute)
         }) {
             let left = max(0, (live.startMinute + live.durationMinute) - now)
-            return "Şu an \(hm(now)) • \(live.title) devam ediyor • \(left) dk kaldı"
+            return localizedCurrentTimeLive(now: now, title: live.title, minutesLeft: left)
         }
 
         if let next = eventsForDay.first(where: { $0.startMinute > now }) {
-            return "Şu an \(hm(now)) • Sıradaki ders \(hm(next.startMinute))"
+            return localizedCurrentTimeNext(now: now, nextStart: next.startMinute)
         }
 
         if !eventsForDay.isEmpty {
-            return "Şu an \(hm(now)) • Bugünkü dersler bitti"
+            return localizedCurrentTimeFinished(now: now)
         }
 
         return nil
@@ -667,7 +668,7 @@ extension WeekView {
         let tasks = allCrewTasksForSelectedDay
 
         if tasks.isEmpty {
-            return "👥 \(dayTitles[selectedDay]) crew planı — görev yok"
+            return localizedShareEmptyCrewPlan(dayName: localizedDayTitle(selectedDay))
         }
 
         let lines = tasks.map { task in
@@ -679,25 +680,34 @@ extension WeekView {
             }
 
             let assigneeText = task.assignedTo.isEmpty ? "" : " • \(task.assignedTo)"
-            let crewNameText = crewMap[task.crewID]?.name ?? "Crew"
+            let crewNameText = crewMap[task.crewID]?.name ?? String(localized: "week_crew_fallback")
 
             return "• \(timeText)  \(task.title) • \(crewNameText)\(assigneeText)"
         }
 
         return """
-        👥 \(dayTitles[selectedDay]) Crew Planı
+        👥 \(localizedDayTitle(selectedDay)) \(String(localized: "week_share_crew_plan_title"))
 
         \(lines.joined(separator: "\n"))
 
-        (DailyTodo ile oluşturuldu)
+        \(localizedDailyTodoFooter())
         """
     }
 
     func shareTextForSelectedCrew() -> String {
         if let crew = selectedCrew {
-            return "Join my crew '\(crew.name)' on DailyTodo 🚀"
+            if locale.language.languageCode?.identifier == "tr" {
+                return "DailyTodo'da '\(crew.name)' crew'üme katıl 🚀"
+            } else {
+                return "Join my crew '\(crew.name)' on DailyTodo 🚀"
+            }
         }
-        return "Join my crew on DailyTodo 🚀"
+
+        if locale.language.languageCode?.identifier == "tr" {
+            return "DailyTodo'da crew'üme katıl 🚀"
+        } else {
+            return "Join my crew on DailyTodo 🚀"
+        }
     }
 
     func shareTextForSelectedDay() -> String {
@@ -705,28 +715,32 @@ extension WeekView {
     }
 
     func priorityTitle(_ value: String) -> String {
+        let isTR = locale.language.languageCode?.identifier == "tr"
+
         switch value {
-        case "low": return "Low"
-        case "medium": return "Medium"
-        case "high": return "High"
-        case "urgent": return "Urgent"
+        case "low": return isTR ? "Düşük" : "Low"
+        case "medium": return isTR ? "Orta" : "Medium"
+        case "high": return isTR ? "Yüksek" : "High"
+        case "urgent": return isTR ? "Acil" : "Urgent"
         default: return value.capitalized
         }
     }
 
     func statusTitle(_ value: String) -> String {
+        let isTR = locale.language.languageCode?.identifier == "tr"
+
         switch value {
-        case "todo": return "Todo"
-        case "inProgress": return "In Progress"
-        case "review": return "Review"
-        case "done": return "Done"
+        case "todo": return isTR ? "Yapılacak" : "Todo"
+        case "inProgress": return isTR ? "Devam Ediyor" : "In Progress"
+        case "review": return isTR ? "İncelemede" : "Review"
+        case "done": return isTR ? "Tamamlandı" : "Done"
         default: return value.capitalized
         }
     }
 
     func shareTextForDay(_ day: Int) -> String {
         let d = max(0, min(6, day))
-        let dayName = dayTitles[d]
+        let dayName = localizedDayTitle(d)
 
         let calendar = Calendar.current
         let targetDate = targetDateFor(day: d)
@@ -741,7 +755,9 @@ extension WeekView {
             }
             .sorted { $0.startMinute < $1.startMinute }
 
-        if items.isEmpty { return "📅 \(dayName) — Ders yok" }
+        if items.isEmpty {
+            return localizedShareEmptyDay(dayName: dayName)
+        }
 
         let lines = items.map { ev in
             let start = hm(ev.startMinute)
@@ -752,11 +768,11 @@ extension WeekView {
         }
 
         return """
-        📅 \(dayName) Programım
+        📅 \(dayName) \(String(localized: "week_share_my_schedule"))
 
         \(lines.joined(separator: "\n"))
 
-        (DailyTodo ile oluşturuldu)
+        \(localizedDailyTodoFooter())
         """
     }
 
@@ -764,6 +780,79 @@ extension WeekView {
         withAnimation { showCopied = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
             withAnimation { showCopied = false }
+        }
+    }
+    func localizedDayTitle(_ day: Int) -> String {
+        let safeDay = max(0, min(6, day))
+        let isTR = locale.language.languageCode?.identifier == "tr"
+
+        if isTR {
+            switch safeDay {
+            case 0: return "Pzt"
+            case 1: return "Sal"
+            case 2: return "Çar"
+            case 3: return "Per"
+            case 4: return "Cum"
+            case 5: return "Cmt"
+            default: return "Paz"
+            }
+        } else {
+            switch safeDay {
+            case 0: return "Mon"
+            case 1: return "Tue"
+            case 2: return "Wed"
+            case 3: return "Thu"
+            case 4: return "Fri"
+            case 5: return "Sat"
+            default: return "Sun"
+            }
+        }
+    }
+    func localizedCurrentTimeLive(now: Int, title: String, minutesLeft: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "Şu an \(hm(now)) • \(title) devam ediyor • \(minutesLeft) dk kaldı"
+        } else {
+            return "Now \(hm(now)) • \(title) is ongoing • \(minutesLeft) min left"
+        }
+    }
+
+    func localizedCurrentTimeNext(now: Int, nextStart: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "Şu an \(hm(now)) • Sıradaki ders \(hm(nextStart))"
+        } else {
+            return "Now \(hm(now)) • Next class \(hm(nextStart))"
+        }
+    }
+
+    func localizedCurrentTimeFinished(now: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "Şu an \(hm(now)) • Bugünkü dersler bitti"
+        } else {
+            return "Now \(hm(now)) • Today's classes are over"
+        }
+    }
+
+    func localizedShareEmptyCrewPlan(dayName: String) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "👥 \(dayName) crew planı — görev yok"
+        } else {
+            return "👥 \(dayName) crew plan — no tasks"
+        }
+    }
+
+    func localizedShareEmptyDay(dayName: String) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "📅 \(dayName) — Ders yok"
+        } else {
+            return "📅 \(dayName) — No classes"
+        }
+    }
+
+    func localizedDailyTodoFooter() -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "(DailyTodo ile oluşturuldu)"
+        } else {
+            return "(Created with DailyTodo)"
         }
     }
 }

@@ -107,7 +107,7 @@ private extension BackendCrewTaskDetailView {
 
             Spacer()
 
-            Text("Task Detail")
+            Text("backend_crew_task_detail_title")
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
 
@@ -163,7 +163,7 @@ private extension BackendCrewTaskDetailView {
                     }
                 }
             } label: {
-                Label("Delete Task", systemImage: "trash")
+                Label(String(localized: "backend_crew_delete_task"), systemImage: "trash")
             }
         }
     }
@@ -189,28 +189,30 @@ private extension BackendCrewTaskDetailView {
     }
 
     func priorityLabel(_ raw: String) -> String {
+        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
         switch raw {
-        case "low": return "Low"
-        case "medium": return "Medium"
-        case "high": return "High"
-        case "urgent": return "Urgent"
+        case "low": return isTurkish ? "Düşük" : "Low"
+        case "medium": return isTurkish ? "Orta" : "Medium"
+        case "high": return isTurkish ? "Yüksek" : "High"
+        case "urgent": return isTurkish ? "Acil" : "Urgent"
         default: return raw.capitalized
         }
     }
 
     func statusTitle(_ raw: String) -> String {
+        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
         switch raw {
-        case "todo": return "Todo"
-        case "inProgress": return "In Progress"
-        case "review": return "Review"
-        case "done": return "Done"
+        case "todo": return isTurkish ? "Yapılacak" : "Todo"
+        case "inProgress": return isTurkish ? "Devam Ediyor" : "In Progress"
+        case "review": return isTurkish ? "İncelemede" : "Review"
+        case "done": return isTurkish ? "Tamamlandı" : "Done"
         default: return raw.capitalized
         }
     }
 
     var quickActionsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Quick Actions")
+            Text("backend_crew_quick_actions")
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
@@ -221,7 +223,9 @@ private extension BackendCrewTaskDetailView {
             } label: {
                 HStack {
                     Image(systemName: currentTask.is_done ? "arrow.uturn.backward.circle.fill" : "checkmark.circle.fill")
-                    Text(currentTask.is_done ? "Reopen Task" : "Mark Done")
+                    Text(currentTask.is_done
+                         ? String(localized: "backend_crew_reopen_task")
+                         : String(localized: "backend_crew_mark_done"))
                 }
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity)
@@ -237,7 +241,7 @@ private extension BackendCrewTaskDetailView {
             } label: {
                 HStack {
                     Image(systemName: "pencil")
-                    Text("Edit Task")
+                    Text("backend_crew_edit_task")
                 }
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity)
@@ -258,21 +262,21 @@ private extension BackendCrewTaskDetailView {
         let creatorProfile = crewStore.memberProfiles.first(where: { $0.id == currentTask.created_by })
 
         return VStack(alignment: .leading, spacing: 12) {
-            Text("Assignment")
+            Text("backend_crew_assignment")
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
             infoRow(
                 icon: "person.fill",
-                title: "Assigned To",
-                value: assignedProfile.map(displayName(for:)) ?? "Unassigned",
+                title: String(localized: "backend_crew_assigned_to"),
+                value: assignedProfile.map(displayName(for:)) ?? String(localized: "backend_crew_unassigned"),
                 tint: hexColor(crew.color_hex)
             )
 
             infoRow(
                 icon: "plus.circle.fill",
-                title: "Created By",
-                value: creatorProfile.map(displayName(for:)) ?? "Unknown",
+                title: String(localized: "backend_crew_created_by"),
+                value: creatorProfile.map(displayName(for:)) ?? String(localized: "backend_crew_unknown"),
                 tint: palette.secondaryText
             )
         }
@@ -312,15 +316,17 @@ private extension BackendCrewTaskDetailView {
     }
 
     func displayName(for profile: ProfileDTO) -> String {
-        if let fullName = profile.full_name, !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if let fullName = profile.full_name,
+           !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return fullName
         }
 
-        if let username = profile.username, !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if let username = profile.username,
+           !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return username
         }
 
-        return profile.email ?? "Unknown user"
+        return profile.email ?? String(localized: "backend_crew_unknown_user")
     }
 
     var cardBackground: some View {

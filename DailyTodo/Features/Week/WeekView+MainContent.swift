@@ -141,14 +141,14 @@ extension WeekView {
                         Haptics.impact(.light)
                         shareCrewDay()
                     } label: {
-                        Label("Bugünkü crew görevlerini paylaş", systemImage: "square.and.arrow.up")
+                        Label("week_share_today_crew_tasks", systemImage: "square.and.arrow.up")
                     }
 
                     Button {
                         Haptics.impact(.light)
                         shareSelectedCrew()
                     } label: {
-                        Label("Crew'ü paylaş", systemImage: "person.3.fill")
+                        Label("week_share_crew", systemImage: "person.3.fill")
                     }
 
                     Button {
@@ -156,21 +156,21 @@ extension WeekView {
                         Haptics.notify(.success)
                         showCopiedToast()
                     } label: {
-                        Label("Kopyala", systemImage: "doc.on.doc")
+                        Label("week_copy", systemImage: "doc.on.doc")
                     }
                 } else {
                     Button {
                         Haptics.impact(.light)
                         shareDay()
                     } label: {
-                        Label("Bu günü paylaş", systemImage: "square.and.arrow.up")
+                        Label("week_share_this_day", systemImage: "square.and.arrow.up")
                     }
 
                     Button {
                         Haptics.impact(.light)
                         shareWeek()
                     } label: {
-                        Label("Tüm haftayı paylaş", systemImage: "calendar")
+                        Label("week_share_full_week", systemImage: "calendar")
                     }
 
                     Button {
@@ -178,7 +178,7 @@ extension WeekView {
                         Haptics.notify(.success)
                         showCopiedToast()
                     } label: {
-                        Label("Kopyala", systemImage: "doc.on.doc")
+                        Label("week_copy", systemImage: "doc.on.doc")
                     }
                 }
             } label: {
@@ -222,7 +222,7 @@ extension WeekView {
     var toastView: some View {
         Group {
             if showCopied {
-                Text("Kopyalandı")
+                Text("week_copied")
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)

@@ -11,19 +11,18 @@ import SwiftData
 struct EditEventView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
+    @Environment(\.locale) private var locale
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var friendStore: FriendStore
 
-    private let dayTitles = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
-
-    private let colorPalette: [(name: String, hex: String)] = [
-        ("Mavi", "#3B82F6"),
-        ("Mor", "#8B5CF6"),
-        ("Pembe", "#EC4899"),
-        ("Turuncu", "#F97316"),
-        ("Yeşil", "#22C55E"),
-        ("Kırmızı", "#EF4444"),
-        ("Gri", "#64748B")
+    private let colorPalette: [(nameKey: String, hex: String)] = [
+        ("event_color_blue", "#3B82F6"),
+        ("event_color_purple", "#8B5CF6"),
+        ("event_color_pink", "#EC4899"),
+        ("event_color_orange", "#F97316"),
+        ("event_color_green", "#22C55E"),
+        ("event_color_red", "#EF4444"),
+        ("event_color_gray", "#64748B")
     ]
 
     let event: EventItem
@@ -43,15 +42,15 @@ struct EditEventView: View {
 
     var body: some View {
         formContent
-            .navigationTitle("Düzenle")
+            .navigationTitle("event_edit_title")
             .toolbar { toolbarContent }
             .onAppear { loadFromEvent() }
             .confirmationDialog(
-                "Etkinlik silinsin mi?",
+                String(localized: "event_delete_confirm_title"),
                 isPresented: $showDeleteConfirm,
                 titleVisibility: .visible
             ) {
-                Button("Sil", role: .destructive) {
+                Button("event_delete", role: .destructive) {
                     Haptics.impact(.heavy)
 
                     Task {
@@ -74,17 +73,15 @@ struct EditEventView: View {
                     }
                 }
 
-                Button("İptal", role: .cancel) { }
+                Button("week_cancel", role: .cancel) { }
             }
-            .alert("Çakışma var", isPresented: $showConflictAlert) {
-                Button("İptal", role: .cancel) { }
-                Button("Yine de Kaydet") { saveIgnoringConflicts() }
+            .alert("event_conflict_title", isPresented: $showConflictAlert) {
+                Button("week_cancel", role: .cancel) { }
+                Button("event_save_anyway") { saveIgnoringConflicts() }
             } message: {
                 Text(conflictSummary)
             }
     }
-
-    // MARK: - UI pieces
 
     private var formContent: some View {
         Form {
@@ -100,50 +97,50 @@ struct EditEventView: View {
     private var toolbarContent: some ToolbarContent {
         Group {
             ToolbarItem(placement: .topBarLeading) {
-                Button("Kapat") { dismiss() }
+                Button("event_close") { dismiss() }
             }
 
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Kaydet") { trySaveWithConflictCheck() }
+                Button("event_save") { trySaveWithConflictCheck() }
                     .disabled(!canSave)
             }
         }
     }
 
     private var sectionMain: some View {
-        Section("Ders / Etkinlik") {
-            TextField("Başlık", text: $title)
-            TextField("Konum (opsiyonel)", text: $location)
+        Section("event_section_class_or_event") {
+            TextField(String(localized: "event_title_placeholder"), text: $title)
+            TextField(String(localized: "event_location_optional"), text: $location)
         }
     }
 
     private var sectionDayTime: some View {
-        Section("Gün & Saat") {
-            Picker("Gün", selection: $weekday) {
+        Section("event_section_day_time") {
+            Picker("event_day", selection: $weekday) {
                 ForEach(0..<7, id: \.self) { i in
-                    Text(dayTitles[i]).tag(i)
+                    Text(localizedDayTitle(i)).tag(i)
                 }
             }
 
-            DatePicker("Başlangıç", selection: $startTime, displayedComponents: [.hourAndMinute])
-            DatePicker("Bitiş", selection: $endTime, displayedComponents: [.hourAndMinute])
+            DatePicker("event_start", selection: $startTime, displayedComponents: [.hourAndMinute])
+            DatePicker("event_end", selection: $endTime, displayedComponents: [.hourAndMinute])
 
-            Text("Süre: \(durationText)")
+            Text("\(String(localized: "event_duration")): \(durationText)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
     }
 
     private var sectionColor: some View {
-        Section("Renk") {
-            Picker("Renk", selection: $selectedColorHex) {
+        Section("event_section_color") {
+            Picker("event_color", selection: $selectedColorHex) {
                 ForEach(colorPalette, id: \.hex) { c in
                     HStack {
                         Circle()
                             .fill(colorFromHex(c.hex))
                             .frame(width: 12, height: 12)
 
-                        Text(c.name)
+                        Text(LocalizedStringKey(c.nameKey))
                     }
                     .tag(c.hex)
                 }
@@ -152,26 +149,26 @@ struct EditEventView: View {
     }
 
     private var sectionNotes: some View {
-        Section("Not") {
-            TextField("Not (opsiyonel)", text: $notes, axis: .vertical)
+        Section("event_section_note") {
+            TextField(String(localized: "event_note_optional"), text: $notes, axis: .vertical)
                 .lineLimit(3...6)
         }
     }
 
     private var sectionDuplicate: some View {
-        Section("Kopyala") {
+        Section("event_duplicate_section") {
             Button {
                 duplicateSameDay()
             } label: {
-                Label("Aynısını kopyala", systemImage: "doc.on.doc")
+                Label("event_duplicate_same_day", systemImage: "doc.on.doc")
             }
 
             Menu {
                 ForEach(0..<7, id: \.self) { d in
-                    Button(dayTitles[d]) { duplicateToDay(d) }
+                    Button(localizedDayTitle(d)) { duplicateToDay(d) }
                 }
             } label: {
-                Label("Başka güne kopyala", systemImage: "calendar.badge.plus")
+                Label("event_duplicate_to_another_day", systemImage: "calendar.badge.plus")
             }
         }
     }
@@ -181,12 +178,10 @@ struct EditEventView: View {
             Button(role: .destructive) {
                 showDeleteConfirm = true
             } label: {
-                Label("Sil", systemImage: "trash")
+                Label("event_delete", systemImage: "trash")
             }
         }
     }
-
-    // MARK: - Load
 
     private func loadFromEvent() {
         title = event.title
@@ -198,8 +193,6 @@ struct EditEventView: View {
         startTime = dateFromMinutes(event.startMinute)
         endTime = dateFromMinutes(event.startMinute + event.durationMinute)
     }
-
-    // MARK: - Save helpers
 
     private var canSave: Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && durationMinute >= 15
@@ -218,9 +211,42 @@ struct EditEventView: View {
         let h = d / 60
         let m = d % 60
 
-        if h == 0 { return "\(m) dk" }
-        if m == 0 { return "\(h) saat" }
-        return "\(h) saat \(m) dk"
+        if locale.language.languageCode?.identifier == "tr" {
+            if h == 0 { return "\(m) dk" }
+            if m == 0 { return "\(h) saat" }
+            return "\(h) saat \(m) dk"
+        } else {
+            if h == 0 { return "\(m) min" }
+            if m == 0 { return "\(h) hr" }
+            return "\(h) hr \(m) min"
+        }
+    }
+
+    private func localizedDayTitle(_ day: Int) -> String {
+        let safeDay = max(0, min(6, day))
+        let isTR = locale.language.languageCode?.identifier == "tr"
+
+        if isTR {
+            switch safeDay {
+            case 0: return "Pzt"
+            case 1: return "Sal"
+            case 2: return "Çar"
+            case 3: return "Per"
+            case 4: return "Cum"
+            case 5: return "Cmt"
+            default: return "Paz"
+            }
+        } else {
+            switch safeDay {
+            case 0: return "Mon"
+            case 1: return "Tue"
+            case 2: return "Wed"
+            case 3: return "Thu"
+            case 4: return "Fri"
+            case 5: return "Sat"
+            default: return "Sun"
+            }
+        }
     }
 
     private func minutesFrom(_ date: Date) -> Int {
@@ -236,7 +262,7 @@ struct EditEventView: View {
         let mm = m % 60
         return Calendar.current.date(bySettingHour: h, minute: mm, second: 0, of: Date()) ?? Date()
     }
-    
+
     private func buildScheduledDate(for weekday: Int, startMinute: Int) -> Date? {
         let calendar = Calendar.current
         let hour = startMinute / 60
@@ -258,8 +284,6 @@ struct EditEventView: View {
             of: targetDate
         )
     }
-
-    // MARK: - Conflict Check
 
     private func trySaveWithConflictCheck() {
         let t = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -294,7 +318,11 @@ struct EditEventView: View {
             .joined(separator: "\n")
 
         if conflicts.count > 4 {
-            conflictSummary += "\n+ \(conflicts.count - 4) daha"
+            if locale.language.languageCode?.identifier == "tr" {
+                conflictSummary += "\n+ \(conflicts.count - 4) daha"
+            } else {
+                conflictSummary += "\n+ \(conflicts.count - 4) more"
+            }
         }
 
         showConflictAlert = true
@@ -334,8 +362,6 @@ struct EditEventView: View {
             print("Edit save error:", error)
         }
     }
-
-    // MARK: - Duplicate
 
     private func duplicateSameDay() {
         let copy = EventItem(
@@ -409,8 +435,6 @@ struct EditEventView: View {
         }
     }
 
-    // MARK: - Shared week sync
-
     private func resyncSharedWeek() async {
         guard let currentUserID = session.currentUser?.id else { return }
 
@@ -426,8 +450,6 @@ struct EditEventView: View {
             events: currentUserEvents
         )
     }
-
-    // MARK: - Small helpers
 
     private func hm(_ minute: Int) -> String {
         let m = max(0, minute)
@@ -450,6 +472,7 @@ struct EditEventView: View {
 
         return Color(red: r, green: g, blue: b)
     }
+
     private func rebuiltScheduledDate(weekday: Int, startMinute: Int) -> Date? {
         let calendar = Calendar.current
         let safeWeekday = max(0, min(6, weekday))

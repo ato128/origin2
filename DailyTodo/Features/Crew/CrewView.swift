@@ -21,6 +21,7 @@ struct CrewView: View {
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var friendStore: FriendStore
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.locale) private var locale
     
     
 
@@ -161,10 +162,10 @@ struct CrewView: View {
                     showJoinCrewSheet = true
                 }
             }
-            .alert("Arkadaşlıktan çıkarılsın mı?", isPresented: $showRemoveFriendConfirm) {
-                Button("Vazgeç", role: .cancel) { }
+            .alert("crew_remove_friend_confirm_title", isPresented: $showRemoveFriendConfirm) {
+                Button("crew_keep_friend", role: .cancel)  { }
 
-                Button("Çıkar", role: .destructive) {
+                Button("crew_remove", role: .destructive) {
                     Task {
                         guard let friend = selectedFriendForMenu,
                               let friendshipID = friend.backendFriendshipID,
@@ -188,7 +189,7 @@ struct CrewView: View {
                     }
                 }
             } message: {
-                Text("Bu kişi arkadaş listesinden kaldırılacak.")
+                Text("crew_remove_friend_confirm_message")
             }
         }
     }
@@ -243,7 +244,7 @@ private extension CrewView {
         VStack(alignment: .leading, spacing: 18) {
             ZStack(alignment: .leading) {
                 if appTheme == AppTheme.gradient.rawValue {
-                    Text("Crew")
+                    Text("crew_title")
                         .font(.system(size: 68, weight: .black, design: .rounded))
                         .foregroundStyle(
                             LinearGradient(
@@ -260,18 +261,18 @@ private extension CrewView {
                         .offset(x: 2, y: -6)
                 }
 
-                Text("Crew")
+                Text("crew_title")
                     .font(.system(size: 40, weight: .black, design: .rounded))
                     .foregroundStyle(palette.primaryText)
             }
 
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Your Crew Space")
+                    Text("crew_your_space")
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
 
-                    Text("Build together, focus together, finish together.")
+                    Text("crew_header_subtitle")
                         .font(.subheadline)
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -353,7 +354,7 @@ private extension CrewView {
                         crewTabMode = mode
                     }
                 } label: {
-                    Text(mode.rawValue)
+                    Text(localizedCrewTabTitle(mode))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(isSelected ? palette.primaryText : palette.secondaryText)
                         .frame(maxWidth: .infinity)
@@ -408,6 +409,14 @@ private extension CrewView {
                 )
         )
     }
+    func localizedCrewTabTitle(_ mode: CrewTabMode) -> String {
+        switch mode {
+        case .crews:
+            return String(localized: "crew_tab_crews")
+        case .friends:
+            return String(localized: "crew_tab_friends")
+        }
+    }
 
     var crewsContent: some View {
         Group {
@@ -430,11 +439,11 @@ private extension CrewView {
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Overview")
+                    Text("crew_overview")
                         .font(.headline)
                         .foregroundStyle(palette.primaryText)
 
-                    Text("Your team productivity at a glance")
+                    Text("crew_overview_subtitle")
                         .font(.caption)
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -447,14 +456,77 @@ private extension CrewView {
             }
 
             HStack(spacing: 10) {
-                statPill(title: "\(totalCrews)", subtitle: "Crews")
-                statPill(title: "\(totalMembers)", subtitle: "Members")
-                statPill(title: "\(totalTasks)", subtitle: "Tasks")
+                statPill(title: "\(totalCrews)", subtitle: String(localized: "crew_tab_crews"))
+                statPill(title: "\(totalMembers)", subtitle: String(localized: "crew_members"))
+                statPill(title: "\(totalTasks)", subtitle: String(localized: "crew_tasks"))
             }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
+    }
+    func localizedCrewMembersTasks(memberCount: Int, taskCount: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(memberCount) üye • \(taskCount) görev"
+        } else {
+            return "\(memberCount) members • \(taskCount) tasks"
+        }
+    }
+
+    func localizedDoneLeft(done: Int, left: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(done) tamamlandı • \(left) kaldı"
+        } else {
+            return "\(done) done • \(left) left"
+        }
+    }
+
+    func localizedCompletedTasksText(done: Int, total: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(done)/\(total) görev"
+        } else {
+            return "\(done)/\(total) tasks"
+        }
+    }
+
+    func localizedMembersOnly(_ count: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(count) üye"
+        } else {
+            return "\(count) members"
+        }
+    }
+
+    func localizedFocusSessionLeft(title: String, minutes: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(title) • \(minutes) dk kaldı"
+        } else {
+            return "\(title) • \(minutes) min left"
+        }
+    }
+
+    func localizedFriendsStudyingNow(_ count: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(count) arkadaş şu an çalışıyor"
+        } else {
+            return "\(count) friend\(count == 1 ? "" : "s") studying now"
+        }
+    }
+
+    func localizedPendingFriendRequests(_ count: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(count) bekleyen arkadaşlık isteği"
+        } else {
+            return "\(count) pending friend request"
+        }
+    }
+
+    func localizedFocusingMinutes(_ minutes: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "Odaklanıyor • \(minutes) dk"
+        } else {
+            return "Focusing • \(minutes) min"
+        }
     }
 
     func backendCrewCard(for crew: CrewDTO) -> some View {
@@ -482,7 +554,7 @@ private extension CrewView {
                         .foregroundStyle(palette.primaryText)
                         .lineLimit(1)
 
-                    Text("\(memberCount) members • \(taskCount) tasks")
+                    Text(localizedCrewMembersTasks(memberCount: memberCount, taskCount: taskCount))
                         .font(.caption)
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -504,7 +576,7 @@ private extension CrewView {
                         .font(.headline.weight(.bold))
                         .foregroundStyle(palette.primaryText)
 
-                    Text("completed")
+                    Text("crew_completed")
                         .font(.caption2)
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -512,13 +584,13 @@ private extension CrewView {
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("Progress")
+                    Text("crew_progress")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(palette.secondaryText)
 
                     Spacer()
 
-                    Text("\(completedTasks) done • \(pendingCount) left")
+                    Text(localizedDoneLeft(done: completedTasks, left: pendingCount))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -532,13 +604,13 @@ private extension CrewView {
             HStack(spacing: 10) {
                 miniPill(
                     icon: "checkmark.circle.fill",
-                    text: "\(completedTasks)/\(taskCount) tasks",
+                    text: localizedCompletedTasksText(done: completedTasks, total: taskCount),
                     tint: hexColor(crew.color_hex)
                 )
 
                 miniPill(
                     icon: "person.crop.circle.fill",
-                    text: memberCount > 0 ? "\(memberCount) members" : "No members",
+                    text: memberCount > 0 ? localizedMembersOnly(memberCount) : String(localized: "crew_no_members"),
                     tint: .secondary
                 )
             }
@@ -547,14 +619,14 @@ private extension CrewView {
                 Image(systemName: "bolt.horizontal.circle.fill")
                     .foregroundStyle(hexColor(crew.color_hex))
 
-                Text(taskCount > 0 ? "Shared crew tasks are active" : "Backend crew is ready for shared tasks")
+                Text(taskCount > 0 ? String(localized: "crew_shared_tasks_active") : String(localized: "crew_ready_for_shared_tasks"))
                     .font(.caption)
                     .foregroundStyle(palette.secondaryText)
                     .lineLimit(1)
 
                 Spacer()
 
-                Text("Now")
+                Text("week_now")
                     .font(.caption2)
                     .foregroundStyle(palette.tertiaryText)
             }
@@ -617,7 +689,7 @@ private extension CrewView {
 
     var backendCrewsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Your Crews")
+            Text("crew_your_crews")
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
@@ -653,7 +725,7 @@ private extension CrewView {
                 friendsEmptyStateCard
             } else {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Your Friends")
+                    Text("crew_your_friends")
                         .font(.headline)
                         .foregroundStyle(palette.primaryText)
 
@@ -691,7 +763,7 @@ private extension CrewView {
     func requestDisplayName(for friendship: FriendshipDTO) -> String {
         guard let otherUserID = otherUserID(for: friendship),
               let profile = friendStore.profiles[otherUserID]
-        else { return "Unknown user" }
+        else { return String(localized: "crew_unknown_user") }
 
         if let fullName = profile.full_name,
            !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -703,21 +775,21 @@ private extension CrewView {
             return username
         }
 
-        return profile.email ?? "Unknown user"
+        return profile.email ?? String(localized: "crew_unknown_user")
     }
 
     func requestUsername(for friendship: FriendshipDTO) -> String {
         guard let otherUserID = otherUserID(for: friendship),
               let profile = friendStore.profiles[otherUserID]
-        else { return "unknown" }
-
-        return profile.username ?? profile.email ?? "unknown"
+        else { return String(localized: "crew_unknown_username") }
+        
+        return profile.username ?? profile.email ?? String(localized: "crew_unknown_username")
     }
     
     var incomingRequestsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Incoming Requests")
+                Text("crew_incoming_requests")
                     .font(.headline)
                     .foregroundStyle(palette.primaryText)
 
@@ -745,7 +817,7 @@ private extension CrewView {
     var sentRequestsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Sent Requests")
+                Text("crew_sent_requests")
                     .font(.headline)
                     .foregroundStyle(palette.primaryText)
 
@@ -799,7 +871,7 @@ private extension CrewView {
                         await acceptRequest(request)
                     }
                 } label: {
-                    Text("Accept")
+                    Text("crew_accept")
                         .font(.caption.weight(.semibold))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 7)
@@ -814,7 +886,7 @@ private extension CrewView {
                         await removePendingRequest(request)
                     }
                 } label: {
-                    Text("Decline")
+                    Text("crew_decline")
                         .font(.caption.weight(.semibold))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 7)
@@ -860,7 +932,7 @@ private extension CrewView {
                     await removePendingRequest(request)
                 }
             } label: {
-                Text("Cancel")
+                Text("week_cancel")
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 7)
@@ -962,11 +1034,11 @@ private extension CrewView {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Focus Activity")
+                    Text("crew_focus_activity")
                         .font(.headline)
                         .foregroundStyle(palette.primaryText)
 
-                    Text("Friends currently studying together")
+                    Text("crew_focus_activity_subtitle")
                         .font(.caption)
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -1002,7 +1074,7 @@ private extension CrewView {
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(palette.primaryText)
 
-                                Text("\(session.title) • \(focusMinutesLeft(for: session)) min left")
+                                Text(localizedFocusSessionLeft(title: session.title, minutes: focusMinutesLeft(for: session)))
                                     .font(.caption)
                                     .foregroundStyle(palette.secondaryText)
                             }
@@ -1026,7 +1098,7 @@ private extension CrewView {
                                         )
                                 }
 
-                                Text("Live")
+                                Text("week_live")
                                     .font(.caption2.weight(.semibold))
                                     .foregroundStyle(.green)
                             }
@@ -1046,7 +1118,7 @@ private extension CrewView {
             } label: {
                 HStack {
                     Image(systemName: "person.2.wave.2.fill")
-                    Text("Join Focus")
+                    Text("crew_join_focus")
                 }
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity)
@@ -1066,11 +1138,11 @@ private extension CrewView {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Friends")
+                    Text("crew_tab_friends")
                         .font(.headline)
                         .foregroundStyle(palette.primaryText)
 
-                    Text("Shared schedules and direct collaboration")
+                    Text("crew_friends_overview_subtitle")
                         .font(.caption)
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -1083,9 +1155,9 @@ private extension CrewView {
             }
 
             HStack(spacing: 10) {
-                statPill(title: "\(backendFriends.count)", subtitle: "Friends")
-                statPill(title: "\(incomingRequests.count + sentRequests.count)", subtitle: "Requests")
-                statPill(title: "\(activeFriendFocusCount)", subtitle: "In Focus")
+                statPill(title: "\(backendFriends.count)", subtitle: String(localized: "crew_tab_friends"))
+                statPill(title: "\(incomingRequests.count + sentRequests.count)", subtitle: String(localized: "crew_requests"))
+                statPill(title: "\(activeFriendFocusCount)", subtitle: String(localized: "crew_in_focus"))
             }
 
             if activeFriendFocusCount > 0 {
@@ -1094,7 +1166,7 @@ private extension CrewView {
                         .fill(.green)
                         .frame(width: 8, height: 8)
 
-                    Text("\(activeFriendFocusCount) friend\(activeFriendFocusCount == 1 ? "" : "s") studying now")
+                    Text(localizedFriendsStudyingNow(activeFriendFocusCount))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(palette.secondaryText)
 
@@ -1107,7 +1179,7 @@ private extension CrewView {
                         .fill(.orange)
                         .frame(width: 8, height: 8)
 
-                    Text("\(incomingRequests.count) pending friend request")
+                    Text(localizedPendingFriendRequests(incomingRequests.count))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(palette.secondaryText)
 
@@ -1135,11 +1207,11 @@ private extension CrewView {
                     .foregroundStyle(Color.accentColor)
             }
 
-            Text("No friends yet")
+            Text("crew_no_friends_yet")
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
-            Text("Add your first friend to start sharing schedules and chatting.")
+            Text("crew_no_friends_subtitle")
                 .font(.subheadline)
                 .foregroundStyle(palette.secondaryText)
                 .multilineTextAlignment(.center)
@@ -1147,7 +1219,7 @@ private extension CrewView {
             Button {
                 showAddFriendSheet = true
             } label: {
-                Text("Add Your First Friend")
+                Text("crew_add_first_friend")
                     .font(.subheadline.weight(.semibold))
                     .padding(.horizontal, 18)
                     .padding(.vertical, 11)
@@ -1192,11 +1264,11 @@ private extension CrewView {
                     .foregroundStyle(Color.accentColor)
             }
 
-            Text("No crew yet")
+            Text("crew_no_crew_yet")
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
-            Text("Create your first crew and start managing shared tasks, members, and activity together.")
+            Text("crew_no_crew_subtitle")
                 .font(.subheadline)
                 .foregroundStyle(palette.secondaryText)
                 .multilineTextAlignment(.center)
@@ -1204,7 +1276,7 @@ private extension CrewView {
             Button {
                 showCreateCrewBackend = true
             } label: {
-                Text("Create Your First Crew")
+                Text("crew_create_first_crew")
                     .font(.subheadline.weight(.semibold))
                     .padding(.horizontal, 18)
                     .padding(.vertical, 11)
@@ -1229,11 +1301,11 @@ private extension CrewView {
                 .font(.system(size: 26))
                 .foregroundStyle(Color.accentColor)
 
-            Text("Friends chat & schedule sharing")
+            Text("crew_friends_chat_schedule")
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
-            Text("Next step: open a friend profile, view today's schedule, and start messaging.")
+            Text("crew_friends_next_step")
                 .font(.subheadline)
                 .foregroundStyle(palette.secondaryText)
                 .multilineTextAlignment(.center)
@@ -1268,7 +1340,7 @@ private extension CrewView {
                         .foregroundStyle(palette.primaryText)
 
                     if let session = activeSession {
-                        Text("Focusing • \(session.durationMinute) min")
+                        Text(localizedFocusingMinutes(session.durationMinute))
                             .font(.caption)
                             .foregroundStyle(.green)
                     } else {
@@ -1286,7 +1358,7 @@ private extension CrewView {
                             .fill(.green)
                             .frame(width: 8, height: 8)
 
-                        Text("Live")
+                        Text("week_live")
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.green)
                     }
@@ -1296,7 +1368,7 @@ private extension CrewView {
                             .fill(isOnline ? Color.green : Color.gray.opacity(0.5))
                             .frame(width: 8, height: 8)
 
-                        Text(isOnline ? "Online" : "Offline")
+                        Text(isOnline ? String(localized: "chat_online") : String(localized: "friend_info_offline"))
                             .font(.caption2)
                             .foregroundStyle(palette.secondaryText)
                     }
@@ -1329,7 +1401,7 @@ private extension CrewView {
                     .environmentObject(friendStore)
                     .environmentObject(session)
             } label: {
-                Label("Chat", systemImage: "message.fill")
+                Label("crew_chat", systemImage: "message.fill")
             }
 
             Button(role: .destructive) {
@@ -1350,7 +1422,7 @@ private extension CrewView {
                     }
                 }
             } label: {
-                Label("Arkadaşlıktan Çıkar", systemImage: "person.crop.circle.badge.xmark")
+                Label("crew_remove_friend", systemImage: "person.crop.circle.badge.xmark")
             }
             .simultaneousGesture(
                 LongPressGesture(minimumDuration: 0.5)

@@ -23,6 +23,7 @@ struct FocusSessionView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.locale) private var locale
     @EnvironmentObject var session: SessionStore
 
     @State private var selectedMinutes: Int = 25
@@ -100,12 +101,12 @@ struct FocusSessionView: View {
            !taskTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return taskTitle
         }
-        return "Deep Work Session"
+        return String(localized: "focus_deep_work_session")
     }
 
     private var mainTitleText: String {
-        if isWorkoutMode { return "Workout Focus" }
-        return "Focus Mode"
+        if isWorkoutMode { return String(localized: "focus_workout_focus") }
+        return String(localized: "focus_mode_title")
     }
 
     private var subtitleView: some View {
@@ -118,12 +119,12 @@ struct FocusSessionView: View {
                         .multilineTextAlignment(.center)
 
                     HStack(spacing: 8) {
-                        Text("Set \(currentSet) / \(exercise.sets)")
+                        Text(localizedSetText(current: currentSet, total: exercise.sets))
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.secondary)
 
                         if isRestPhase {
-                            Text("Rest")
+                            Text("focus_rest")
                                 .font(.caption.weight(.bold))
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
@@ -146,9 +147,9 @@ struct FocusSessionView: View {
 
     private var primaryButtonTitle: String {
         if isWorkoutMode {
-            return isRestPhase ? "Resting..." : "Next Set"
+            return isRestPhase ? String(localized: "focus_resting") : String(localized: "focus_next_set")
         } else {
-            return isRunning ? "Pause" : "Start"
+            return isRunning ? String(localized: "focus_pause") : String(localized: "focus_start")
         }
     }
 
@@ -236,11 +237,11 @@ struct FocusSessionView: View {
                                         .font(.system(size: 52))
                                         .foregroundStyle(.green)
 
-                                    Text("Done")
+                                    Text("focus_done")
                                         .font(.title3.weight(.bold))
                                         .foregroundStyle(.green)
 
-                                    Text(isWorkoutMode ? "Workout completed" : "Session completed")
+                                    Text(isWorkoutMode ? "focus_workout_completed" : "focus_session_completed")
                                         .font(.subheadline.weight(.medium))
                                         .foregroundStyle(.secondary)
                                 } else {
@@ -280,7 +281,7 @@ struct FocusSessionView: View {
                         Button {
                             resetTimer()
                         } label: {
-                            Text("Reset")
+                            Text("focus_reset")
                                 .font(.headline)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
@@ -294,7 +295,7 @@ struct FocusSessionView: View {
                     Button {
                         finishAndDismiss()
                     } label: {
-                        Text("Finish")
+                        Text("focus_finish")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.secondary)
                     }
@@ -340,22 +341,22 @@ struct FocusSessionView: View {
                 .onReceive(timer) { _ in
                     handleTimerTick()
                 }
-                .alert("Custom Duration", isPresented: $showCustomInput) {
-                    TextField("Minutes", text: $customMinutes)
+                .alert("focus_custom_duration", isPresented: $showCustomInput) {
+                    TextField(String(localized: "focus_minutes"), text: $customMinutes)
                         .keyboardType(.numberPad)
 
-                    Button("OK") {
+                    Button("focus_ok") {
                         if let m = Int(customMinutes), m > 0 {
                             applyPreset(m)
                         }
                         customMinutes = ""
                     }
 
-                    Button("Cancel", role: .cancel) {
+                    Button("week_cancel", role: .cancel) {
                         customMinutes = ""
                     }
                 } message: {
-                    Text("Enter custom focus duration in minutes.")
+                    Text("focus_enter_custom_duration")
                 }
 
                 if restOverlayVisible {
@@ -371,25 +372,24 @@ struct FocusSessionView: View {
 private extension FocusSessionView {
     var statusCenterText: String {
         if isRestPhase {
-            return "Dinleniyorsun"
+            return String(localized: "focus_resting_now")
         }
         if isWorkoutMode {
-            return "Set ilerliyor"
+            return String(localized: "focus_set_in_progress")
         }
-        return isRunning ? "Odaklanıyorsun" : "Hazır"
+        return isRunning ? String(localized: "focus_you_are_focusing") : String(localized: "focus_ready")
     }
-
     var restOverlay: some View {
         VStack(spacing: 12) {
             Image(systemName: "figure.cooldown")
                 .font(.system(size: 36, weight: .bold))
                 .foregroundStyle(.orange)
 
-            Text("REST")
+            Text("focus_rest_upper")
                 .font(.title2.weight(.bold))
                 .foregroundStyle(.orange)
 
-            Text("\(restOverlaySeconds) sec")
+            Text(localizedSecondsText(restOverlaySeconds))
                 .font(.system(size: 30, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(.primary)
@@ -432,10 +432,10 @@ private extension FocusSessionView {
 
             Text(
                 showDoneState
-                ? "Completed"
+                ? String(localized: "focus_completed")
                 : (isRestPhase
-                    ? "Rest Active"
-                    : (isRunning ? "Session Active" : "Ready to Focus"))
+                   ? String(localized: "focus_rest_active")
+                   : (isRunning ? String(localized: "focus_session_active") : String(localized: "focus_ready_to_focus")))
             )
             .font(.caption.weight(.semibold))
         }
@@ -466,7 +466,7 @@ private extension FocusSessionView {
                 Button {
                     applyPreset(minutes)
                 } label: {
-                    Text("\(minutes) dk")
+                    Text(localizedMinutePreset(minutes))
                         .font(.subheadline.weight(.semibold))
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
@@ -637,6 +637,7 @@ private extension FocusSessionView {
             clearSavedTimer()
 
             Task {
+                await NotificationManager.shared.cancelAllFocusFinishedNotifications()
                 await FocusLiveActivityManager.shared.end()
             }
 
@@ -653,6 +654,13 @@ private extension FocusSessionView {
             hasStartedSession = true
             sessionStartedAt = Date()
             onStartFocus(resolvedTaskTitle, totalSeconds)
+            Task {
+                await NotificationManager.shared.cancelAllFocusFinishedNotifications()
+                await NotificationManager.shared.scheduleFocusFinishedNotification(
+                    title: resolvedTaskTitle,
+                    after: remainingSeconds
+                )
+            }
 
             if let startedAt = sessionStartedAt {
                 let liveEndDate = Date().addingTimeInterval(TimeInterval(remainingSeconds))
@@ -695,6 +703,9 @@ private extension FocusSessionView {
                     )
                 }
             }
+            Task {
+                            await NotificationManager.shared.cancelAllFocusFinishedNotifications()
+                        }
 
             clearSavedTimer()
             onTick(remainingSeconds)
@@ -704,6 +715,13 @@ private extension FocusSessionView {
             saveTimer()
             isRunning = true
             onTick(remainingSeconds)
+            Task {
+                            await NotificationManager.shared.cancelAllFocusFinishedNotifications()
+                            await NotificationManager.shared.scheduleFocusFinishedNotification(
+                                title: resolvedTaskTitle,
+                                after: remainingSeconds
+                            )
+                        }
 
             Task {
                 guard let startedAt = sessionStartedAt,
@@ -839,6 +857,7 @@ private extension FocusSessionView {
         )
 
         Task {
+            await NotificationManager.shared.cancelAllFocusFinishedNotifications()
             await FocusLiveActivityManager.shared.end()
         }
 
@@ -862,6 +881,7 @@ private extension FocusSessionView {
         onTick(remainingSeconds)
         
         Task {
+            await NotificationManager.shared.cancelAllFocusFinishedNotifications()
             await FocusLiveActivityManager.shared.end()
         }
     }
@@ -882,6 +902,7 @@ private extension FocusSessionView {
         onTick(remainingSeconds)
 
         Task {
+            await NotificationManager.shared.cancelAllFocusFinishedNotifications()
             await FocusLiveActivityManager.shared.end()
         }
     }
@@ -922,6 +943,7 @@ private extension FocusSessionView {
         clearWorkoutLiveState()
 
         Task {
+            await NotificationManager.shared.cancelAllFocusFinishedNotifications()
             await FocusLiveActivityManager.shared.end()
         }
 
@@ -1058,21 +1080,56 @@ private extension FocusSessionView {
     func focusLiveSubtitle() -> String {
         if isWorkoutMode {
             if isRestPhase {
-                return "Rest"
+                return String(localized: "focus_rest")
             }
             if let exercise = currentExercise {
-                return "Set \(currentSet)/\(exercise.sets) • \(exercise.name)"
+                return "\(localizedSetCompactText(current: currentSet, total: exercise.sets)) • \(exercise.name)"
             }
-            return "Workout"
+            return String(localized: "focus_workout")
         }
 
         if UserDefaults.standard.string(forKey: Keys.focusMode) == "shared" {
             if let name = UserDefaults.standard.string(forKey: Keys.focusFriendName), !name.isEmpty {
-                return "\(name) ile focus"
+                if locale.language.languageCode?.identifier == "tr" {
+                    return "\(name) ile focus"
+                } else {
+                    return "Focus with \(name)"
+                }
             }
-            return "Crew session"
+            return String(localized: "focus_crew_session")
         }
 
-        return "Deep work"
+        return String(localized: "focus_deep_work")
+    }
+    func localizedSetText(current: Int, total: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "Set \(current) / \(total)"
+        } else {
+            return "Set \(current) / \(total)"
+        }
+    }
+
+    func localizedSetCompactText(current: Int, total: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "Set \(current)/\(total)"
+        } else {
+            return "Set \(current)/\(total)"
+        }
+    }
+
+    func localizedMinutePreset(_ minutes: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(minutes) dk"
+        } else {
+            return "\(minutes) min"
+        }
+    }
+
+    func localizedSecondsText(_ seconds: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(seconds) sn"
+        } else {
+            return "\(seconds) sec"
+        }
     }
 }

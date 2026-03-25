@@ -12,14 +12,14 @@ import Combine
 extension HomeDashboardView {
     var quickActionsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Quick Actions")
+            Text("home_quick_actions")
                 .font(.system(size: 19, weight: .bold))
                 .foregroundStyle(palette.primaryText)
 
             HStack(spacing: 12) {
 
                 quickActionButton(
-                    title: "Add Task",
+                    title: String(localized: "home_add_task"),
                     systemImage: "plus.circle.fill",
                     isHighlighted: false
                 ) {
@@ -27,7 +27,7 @@ extension HomeDashboardView {
                 }
 
                 quickActionButton(
-                    title: "Week",
+                    title: String(localized: "home_week"),
                     systemImage: "calendar",
                     isHighlighted: false
                 ) {
@@ -35,7 +35,7 @@ extension HomeDashboardView {
                 }
 
                 quickActionButton(
-                    title: "Insights",
+                    title: String(localized: "home_insights"),
                     systemImage: "chart.bar.fill",
                     isHighlighted: false
                 ) {
@@ -92,4 +92,3 @@ extension HomeDashboardView {
         .buttonStyle(.plain)
     }
 }
-

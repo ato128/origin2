@@ -13,6 +13,7 @@ struct FriendDetailView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.locale) private var locale
     @EnvironmentObject var friendStore: FriendStore
     @EnvironmentObject var session: SessionStore
 
@@ -158,10 +159,10 @@ struct FriendDetailView: View {
                 currentUserID: session.currentUser?.id
             )
         }
-        .alert("Arkadaşlıktan çıkarılsın mı?", isPresented: $showRemoveFriendAlert) {
-            Button("Vazgeç", role: .cancel) { }
+        .alert("crew_remove_friend_confirm_title", isPresented: $showRemoveFriendAlert) {
+            Button("crew_keep_friend", role: .cancel) { }
 
-            Button("Çıkar", role: .destructive) {
+            Button("crew_remove", role: .destructive) {
                 Task {
                     guard let friendshipID = friendshipID,
                           let currentUserID = session.currentUser?.id else { return }
@@ -183,12 +184,52 @@ struct FriendDetailView: View {
                 }
             }
         } message: {
-            Text("Bu kişi arkadaş listesinden kaldırılacak ve ortak mesaj/veri bağlantısı silinecek.")
+            Text("friend_detail_remove_message")
         }
     }
 }
 
 private extension FriendDetailView {
+
+    func localizedThisWeek(_ count: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "Bu Hafta"
+        } else {
+            return "This Week"
+        }
+    }
+
+    func localizedToday(_ count: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "Bugün"
+        } else {
+            return "Today"
+        }
+    }
+
+    func localizedMessages(_ count: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "Mesajlar"
+        } else {
+            return "Messages"
+        }
+    }
+
+    func localizedInFocusNow(_ minutes: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "Şu an odakta • \(minutes) dk"
+        } else {
+            return "In focus now • \(minutes) min"
+        }
+    }
+
+    func localizedScheduleCount(_ count: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(count) öğe"
+        } else {
+            return "\(count) items"
+        }
+    }
 
     var ambientBackground: some View {
         ZStack(alignment: .topLeading) {
@@ -255,13 +296,13 @@ private extension FriendDetailView {
                         .environmentObject(friendStore)
                         .environmentObject(session)
                 } label: {
-                    Label("Chat", systemImage: "message.fill")
+                    Label("crew_chat", systemImage: "message.fill")
                 }
 
                 Button(role: .destructive) {
                     showRemoveFriendAlert = true
                 } label: {
-                    Label("Arkadaşlıktan Çıkar", systemImage: "person.crop.circle.badge.xmark")
+                    Label("crew_remove_friend", systemImage: "person.crop.circle.badge.xmark")
                 }
             } label: {
                 ZStack {
@@ -311,7 +352,7 @@ private extension FriendDetailView {
                         .foregroundStyle(palette.secondaryText)
 
                     if isBackendFriend {
-                        Text("Connected via server")
+                        Text("friend_detail_connected_server")
                             .font(.caption)
                             .foregroundStyle(.green)
                     }
@@ -321,7 +362,7 @@ private extension FriendDetailView {
                             .fill(friend.isOnline ? .green : Color.gray.opacity(0.5))
                             .frame(width: 8, height: 8)
 
-                        Text(friend.isOnline ? "Online" : "Offline")
+                        Text(friend.isOnline ? "chat_online" : "friend_info_offline")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(palette.secondaryText)
                     }
@@ -332,7 +373,7 @@ private extension FriendDetailView {
                                 .fill(.green)
                                 .frame(width: 8, height: 8)
 
-                            Text("In focus now • \(session.durationMinute) min")
+                            Text(localizedInFocusNow(session.durationMinute))
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(.green)
                         }
@@ -343,9 +384,9 @@ private extension FriendDetailView {
             }
 
             HStack(spacing: 10) {
-                statPill(title: "\(weekCount)", subtitle: "This Week")
-                statPill(title: "\(todaySchedule.count)", subtitle: "Today")
-                statPill(title: "\(messages.count)", subtitle: "Messages")
+                statPill(title: "\(weekCount)", subtitle: localizedThisWeek(weekCount))
+                statPill(title: "\(todaySchedule.count)", subtitle: localizedToday(todaySchedule.count))
+                statPill(title: "\(messages.count)", subtitle: localizedMessages(messages.count))
             }
         }
         .padding(20)
@@ -357,19 +398,19 @@ private extension FriendDetailView {
     var todayScheduleCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Today Schedule")
+                Text("friend_detail_today_schedule")
                     .font(.headline)
                     .foregroundStyle(palette.primaryText)
 
                 Spacer()
 
-                Text("\(todaySchedule.count) items")
+                Text(localizedScheduleCount(todaySchedule.count))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(palette.secondaryText)
             }
 
             if todaySchedule.isEmpty {
-                Text("No shared schedule for today.")
+                Text("friend_detail_no_schedule_today")
                     .font(.subheadline)
                     .foregroundStyle(palette.secondaryText)
             } else {
@@ -416,7 +457,7 @@ private extension FriendDetailView {
     var recentMessagesCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Recent Messages")
+                Text("friend_detail_recent_messages")
                     .font(.headline)
                     .foregroundStyle(palette.primaryText)
 
@@ -428,7 +469,7 @@ private extension FriendDetailView {
             }
 
             if messages.isEmpty {
-                Text(isBackendFriend ? "No backend messages yet." : "No messages yet.")
+                Text(isBackendFriend ? String(localized: "friend_detail_no_backend_messages") : String(localized: "chat_no_messages_yet"))
                     .font(.subheadline)
                     .foregroundStyle(palette.secondaryText)
             } else {
@@ -462,7 +503,7 @@ private extension FriendDetailView {
 
     var actionsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Actions")
+            Text("friend_detail_actions")
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
@@ -473,7 +514,7 @@ private extension FriendDetailView {
                         .environmentObject(session)
                 } label: {
                     actionTile(
-                        title: "Message",
+                        title: String(localized: "friend_detail_message"),
                         systemImage: "message.fill"
                     )
                 }

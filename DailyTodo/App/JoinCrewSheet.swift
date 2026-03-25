@@ -10,6 +10,7 @@ import UIKit
 
 struct JoinCrewSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var session: SessionStore
 
@@ -47,11 +48,11 @@ struct JoinCrewSheet: View {
                     .padding(.bottom, 28)
                 }
             }
-            .navigationTitle("Join Crew")
+            .navigationTitle("join_crew_title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") {
+                    Button("week_cancel") {
                         dismiss()
                     }
                     .disabled(isLoading)
@@ -66,7 +67,7 @@ struct JoinCrewSheet: View {
                         if isLoading {
                             ProgressView()
                         } else {
-                            Text("Join")
+                            Text("join_crew_join")
                                 .fontWeight(.semibold)
                         }
                     }
@@ -102,11 +103,11 @@ private extension JoinCrewSheet {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Join a Crew")
+                    Text("join_crew_join_a_crew")
                         .font(.system(size: 26, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
 
-                    Text("Enter the invite code shared by your team.")
+                    Text("join_crew_enter_invite_subtitle")
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.72))
                         .lineLimit(2)
@@ -116,7 +117,7 @@ private extension JoinCrewSheet {
             }
 
             HStack(spacing: 10) {
-                pill(text: "Invite Code", tint: .green)
+                pill(text: String(localized: "join_crew_invite_code"), tint: .green)
                 if !cleanCode.isEmpty {
                     pill(text: cleanCode, tint: .white.opacity(0.75))
                 }
@@ -135,17 +136,17 @@ private extension JoinCrewSheet {
 
     var codeInputSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Invite Code")
+            Text("join_crew_invite_code")
                 .font(.title3.bold())
                 .foregroundStyle(.white)
 
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Enter code")
+                    Text("join_crew_enter_code")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.white.opacity(0.64))
 
-                    TextField("ABC123", text: $code)
+                    TextField(String(localized: "join_crew_code_placeholder"), text: $code)
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
                         .font(.system(size: 22, weight: .bold, design: .rounded))
@@ -171,7 +172,7 @@ private extension JoinCrewSheet {
                     } label: {
                         HStack(spacing: 8) {
                             Image(systemName: "doc.on.doc")
-                            Text("Copy")
+                            Text("week_copy")
                         }
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
@@ -192,7 +193,7 @@ private extension JoinCrewSheet {
                     } label: {
                         HStack(spacing: 8) {
                             Image(systemName: "arrow.down.doc")
-                            Text("Paste")
+                            Text("join_crew_paste")
                         }
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
@@ -211,11 +212,11 @@ private extension JoinCrewSheet {
 
     var helpCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("How it works")
+            Text("join_crew_how_it_works")
                 .font(.headline)
                 .foregroundStyle(.white)
 
-            Text("Ask a crew member for their invite code, paste it here, then tap Join.")
+            Text("join_crew_help_text")
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.72))
                 .fixedSize(horizontal: false, vertical: true)
@@ -265,7 +266,7 @@ private extension JoinCrewSheet {
     func joinCrew() async {
         guard !cleanCode.isEmpty else { return }
         guard let user = session.currentUser else {
-            errorMessage = "User session not found."
+            errorMessage = String(localized: "join_crew_user_session_not_found")
             return
         }
 
