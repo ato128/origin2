@@ -10,6 +10,7 @@ import SwiftData
 
 struct InsightsView: View {
     @EnvironmentObject var session: SessionStore
+    @Environment(\.locale) private var locale
 
     @AppStorage("smartEngineEnabled") private var smartEngineEnabled: Bool = true
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
@@ -55,7 +56,8 @@ struct InsightsView: View {
             tasks: filteredTasks,
             focusSessions: filteredFocusSessions,
             events: filteredEvents,
-            userID: currentUserIDString
+            userID: currentUserIDString,
+            localeIdentifier: locale.identifier
         )
     }
 

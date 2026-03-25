@@ -796,3 +796,22 @@
 "insights_weekly_progress_best_day_format %@ %lld" = "%@ • %lld";
 "insights_weekly_progress_repeat_hint" = "En iyi gününü tekrar etmek için benzer saatlerde görev planlayabilirsin";
 "insights_weekly_progress_first_tasks_hint" = "İlk tamamlanan görevlerin burada haftalık grafik olarak görünmeye başlayacak";
+
+"insights_focus_minute_unit" = "dk";
+"insights_focus_session_unit" = "oturum";
+
+"insights_quick_focus_title" = "Hızlı Focus";
+
+"insights_most_busy_day_has_day" = "En yoğun günün";
+"insights_most_busy_day_no_day" = "Henüz yoğun bir gün oluşmadı";
+"insights_most_busy_day_empty_hint" = "Etkinlik ve görev tamamladıkça bu alan netleşecek";
+
+"insights_suggestion_today" = "Bugünün içgörüsü";
+
+"insights_heatmap_fallback_text" = "Henüz tamamlanan görev görünmüyor. İlk tamamlanan görevlerin burada son 4 haftalık ritim olarak görünecek.";
+"insights_heatmap_subtitle_active" = "Son 28 günde tamamlama yoğunluğu";
+"insights_heatmap_subtitle_empty" = "Son 28 günlük aktivite burada görünecek";
+"insights_heatmap_low" = "Az";
+"insights_heatmap_high" = "Çok";
+"insights_heatmap_density_info" = "Bu görünüm son 4 haftadaki tamamlanan görev yoğunluğunu gösterir";
+"insights_heatmap_fill_hint" = "Görev tamamladıkça burası dolacak";

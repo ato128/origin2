@@ -10,7 +10,6 @@ import SwiftUI
 struct FocusInsightsCard: View {
     let data: FocusInsightsData
 
-    @Environment(\.locale) private var locale
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private let palette = ThemePalette()
 
@@ -25,17 +24,25 @@ struct FocusInsightsCard: View {
         extractLeadingNumber(from: data.todaySessionsText)
     }
 
+    private var titleText: String {
+        String(localized: "insights_focus_title")
+    }
+
+    private var todayFocusText: String {
+        String(localized: "insights_focus_today_focus")
+    }
+
     private var minuteUnitText: String {
-        locale.language.languageCode?.identifier == "tr" ? "dk" : "min"
+        String(localized: "insights_focus_minute_unit")
     }
 
     private var sessionUnitText: String {
-        locale.language.languageCode?.identifier == "tr" ? "oturum" : "sessions"
+        String(localized: "insights_focus_session_unit")
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("insights_focus_title")
+            Text(titleText)
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(palette.primaryText)
 
@@ -45,13 +52,19 @@ struct FocusInsightsCard: View {
                         .fill(Color.orange.opacity(0.12))
                         .frame(width: 38, height: 38)
                         .scaleEffect(flamePulse ? 1.08 : 0.96)
-                        .shadow(color: Color.orange.opacity(flamePulse ? 0.22 : 0.08), radius: flamePulse ? 12 : 4)
+                        .shadow(
+                            color: Color.orange.opacity(flamePulse ? 0.22 : 0.08),
+                            radius: flamePulse ? 12 : 4
+                        )
 
                     Image(systemName: "flame.fill")
                         .foregroundStyle(.orange)
                         .font(.system(size: 18, weight: .bold))
                         .scaleEffect(flamePulse ? 1.07 : 1.0)
-                        .shadow(color: Color.orange.opacity(flamePulse ? 0.26 : 0.10), radius: flamePulse ? 8 : 3)
+                        .shadow(
+                            color: Color.orange.opacity(flamePulse ? 0.26 : 0.10),
+                            radius: flamePulse ? 8 : 3
+                        )
                 }
 
                 VStack(alignment: .leading, spacing: 1) {
@@ -77,7 +90,7 @@ struct FocusInsightsCard: View {
             )
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("insights_focus_today_focus")
+                Text(todayFocusText)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(palette.secondaryText)
 

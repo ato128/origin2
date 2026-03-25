@@ -12,19 +12,20 @@ struct InsightsViewModel {
     let focusSessions: [FocusSessionRecord]
     let events: [EventItem]
     let userID: String?
+    let localeIdentifier: String
 
     private let calendar = Calendar.current
 
+    private var isTurkish: Bool {
+        localeIdentifier.hasPrefix("tr")
+    }
+
     private var dayLabels: [String] {
-        [
-            String(localized: "weekday_mon_short"),
-            String(localized: "weekday_tue_short"),
-            String(localized: "weekday_wed_short"),
-            String(localized: "weekday_thu_short"),
-            String(localized: "weekday_fri_short"),
-            String(localized: "weekday_sat_short"),
-            String(localized: "weekday_sun_short")
-        ]
+        if isTurkish {
+            return ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
+        } else {
+            return ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+        }
     }
 
     private var lastSuggestionKey: String {
@@ -111,52 +112,46 @@ struct InsightsViewModel {
     }
 
     private func minutesText(_ minutes: Int) -> String {
-        String(
-            localized: "insights_minutes_format",
-            defaultValue: "\(minutes) min",
-            table: nil,
-            comment: ""
-        ).replacingOccurrences(of: "%d", with: "\(minutes)")
+        isTurkish ? "\(minutes) dk" : "\(minutes) min"
     }
 
     private func hoursMinutesText(_ total: Int) -> String {
         let h = total / 60
         let m = total % 60
 
-        if h > 0 {
-            return String(
-                localized: "insights_hours_minutes_format",
-                defaultValue: "\(h)h \(m)m",
-                table: nil,
-                comment: ""
-            )
-            .replacingOccurrences(of: "%1$d", with: "\(h)")
-            .replacingOccurrences(of: "%2$d", with: "\(m)")
+        if isTurkish {
+            return h > 0 ? "\(h) sa \(m) dk" : "\(m) dk"
         } else {
-            return minutesText(m)
+            return h > 0 ? "\(h)h \(m)m" : "\(m) min"
         }
     }
 
     var dailyBoost: DailyBoostData {
         if !activeTasks.isEmpty {
             return .init(
-                title: String(localized: "insights_daily_boost_title"),
-                message: String(localized: "insights_daily_boost_tasks_message"),
-                buttonTitle: String(localized: "insights_action_open_tasks")
+                title: isTurkish ? "⚡ Günlük Destek" : "⚡ Daily Boost",
+                message: isTurkish
+                    ? "Sadece bir görev daha bitirerek bugünü güçlü kapatabilirsin."
+                    : "You can finish today strong by completing just one more task.",
+                buttonTitle: isTurkish ? "Görevleri Aç" : "Open Tasks"
             )
         }
 
         if todayFocusMinutes < 20 {
             return .init(
-                title: String(localized: "insights_daily_boost_great_job"),
-                message: String(localized: "insights_daily_boost_focus_message"),
-                buttonTitle: String(localized: "insights_action_new_focus")
+                title: isTurkish ? "🔥 Harika İş" : "🔥 Great Job",
+                message: isTurkish
+                    ? "Ana hedeflerin bitti. İstersen kısa bir ekstra focus açıp ritmi koru."
+                    : "Your main goals are done. You could keep the rhythm with one short extra focus session.",
+                buttonTitle: isTurkish ? "Yeni Focus" : "New Focus"
             )
         }
 
         return .init(
-            title: String(localized: "insights_daily_boost_nice_flow"),
-            message: String(localized: "insights_daily_boost_nice_flow_message"),
+            title: isTurkish ? "✨ Güzel Akış" : "✨ Nice Flow",
+            message: isTurkish
+                ? "Bugün iyi gidiyorsun. Aynı tempoyla devam et."
+                : "You are doing well today. Keep going at the same pace.",
             buttonTitle: nil
         )
     }
@@ -167,35 +162,35 @@ struct InsightsViewModel {
 
         switch progress {
         case 0..<0.2:
-            status = String(localized: "insights_overview_status_start")
+            status = isTurkish ? "Ritmi başlat" : "Start your momentum"
         case 0.2..<0.5:
-            status = String(localized: "insights_overview_status_momentum")
+            status = isTurkish ? "Ritim oluşuyor" : "Getting momentum"
         case 0.5..<0.85:
-            status = String(localized: "insights_overview_status_solid")
+            status = isTurkish ? "Güçlü ilerleme" : "Solid progress"
         default:
-            status = String(localized: "insights_overview_status_great")
+            status = isTurkish ? "Harika ilerleme" : "Great progress"
         }
 
         return .init(
             progress: progress,
             progressText: "%\(Int(progress * 100))",
             statusText: status,
-            streakText: String(localized: "insights_overview_streak_format")
-                .replacingOccurrences(of: "%d", with: "\(streakCount)"),
-            completedText: String(localized: "insights_overview_completed_format")
-                .replacingOccurrences(of: "%d", with: "\(completedTasks.count)"),
-            subtitle: String(localized: "insights_overview_subtitle")
+            streakText: isTurkish ? "\(streakCount) gün seri" : "\(streakCount)-day streak",
+            completedText: isTurkish ? "\(completedTasks.count) tamamlandı" : "\(completedTasks.count) completed",
+            subtitle: isTurkish
+                ? "Görev tamamlama oranı ve genel ilerleme"
+                : "Task completion rate and overall progress"
         )
     }
 
     var weeklyProgress: WeeklyProgressData {
         let values = weeklyCompletedCounts
         let highlight = values.enumerated().max(by: { $0.element < $1.element })?.offset
-
         let summary = highlight.map {
-            String(localized: "insights_weekly_best_day_format")
-                .replacingOccurrences(of: "%@", with: dayLabels[$0])
-        } ?? String(localized: "insights_no_data_yet")
+            isTurkish
+                ? "En üretken günün: \(dayLabels[$0])"
+                : "Your most productive day: \(dayLabels[$0])"
+        } ?? (isTurkish ? "Henüz veri yok" : "No data yet")
 
         return .init(
             values: values,
@@ -226,24 +221,29 @@ struct InsightsViewModel {
 
         return .init(
             cells: cells,
-            title: String(localized: "insights_heatmap_title"),
-            subtitle: String(localized: "insights_heatmap_subtitle"),
-            selectedDayText: String(localized: "insights_heatmap_selected_day")
+            title: isTurkish ? "Son 4 Hafta" : "Last 4 Weeks",
+            subtitle: isTurkish ? "28 gün" : "28 days",
+            selectedDayText: isTurkish
+                ? "13 Mar, Cum • tamamlanan görev yok"
+                : "13 Mar, Fri • no completed tasks"
         )
     }
 
     var focusInsights: FocusInsightsData {
         return .init(
-            streakTitle: String(localized: "insights_focus_streak_format")
-                .replacingOccurrences(of: "%d", with: "\(max(streakCount, 3))"),
+            streakTitle: isTurkish
+                ? "\(max(streakCount, 3)) Günlük Focus Serisi"
+                : "\(max(streakCount, 3))-Day Focus Streak",
             streakSubtitle: streakCount > 0
-                ? String(localized: "insights_focus_streak_subtitle_active")
-                : String(localized: "insights_focus_streak_subtitle_inactive"),
+                ? (isTurkish ? "İvme kazanıyorsun" : "You're building momentum")
+                : (isTurkish ? "Ritmi başlatabilirsin" : "You can start the rhythm"),
             todayFocusMinutesText: minutesText(todayFocusMinutes),
-            todaySessionsText: String(localized: "insights_focus_sessions_format")
-                .replacingOccurrences(of: "%d", with: "\(todayFocusSessions.count)"),
-            longestSessionText: String(localized: "insights_focus_longest_format")
-                .replacingOccurrences(of: "%@", with: minutesText(longestFocusMinutes))
+            todaySessionsText: isTurkish
+                ? "\(todayFocusSessions.count) oturum"
+                : "\(todayFocusSessions.count) sessions",
+            longestSessionText: isTurkish
+                ? "En uzun session: \(minutesText(longestFocusMinutes))"
+                : "Longest session: \(minutesText(longestFocusMinutes))"
         )
     }
 
@@ -253,17 +253,17 @@ struct InsightsViewModel {
 
         switch raw {
         case 0..<30:
-            subtitle = String(localized: "insights_productivity_subtitle_low")
+            subtitle = isTurkish ? "Yeni başlıyorsun" : "You're just getting started"
         case 30..<60:
-            subtitle = String(localized: "insights_productivity_subtitle_mid")
+            subtitle = isTurkish ? "Daha iyi olabilir" : "Could be better"
         case 60..<80:
-            subtitle = String(localized: "insights_productivity_subtitle_good")
+            subtitle = isTurkish ? "İyi gidiyorsun" : "You're doing well"
         default:
-            subtitle = String(localized: "insights_productivity_subtitle_great")
+            subtitle = isTurkish ? "Harika performans" : "Great performance"
         }
 
         return .init(
-            title: String(localized: "insights_productivity_title"),
+            title: isTurkish ? "Üretkenlik Skoru" : "Productivity Score",
             valueText: "\(raw)/100",
             subtitle: subtitle,
             progress: Double(raw) / 100
@@ -273,13 +273,12 @@ struct InsightsViewModel {
     var consistencyScore: ScoreCardData {
         let activeDays = weeklyCompletedCounts.filter { $0 > 0 }.count
         let raw = min(100, activeDays * 14)
-
         let subtitle = raw < 30
-            ? String(localized: "insights_consistency_subtitle_low")
-            : String(localized: "insights_consistency_subtitle_good")
+            ? (isTurkish ? "Biraz daha düzen lazım" : "You need a bit more consistency")
+            : (isTurkish ? "Daha dengeli gidiyorsun" : "You're getting more consistent")
 
         return .init(
-            title: String(localized: "insights_consistency_title"),
+            title: isTurkish ? "Tutarlılık Skoru" : "Consistency Score",
             valueText: "%\(raw)",
             subtitle: subtitle,
             progress: Double(raw) / 100
@@ -289,10 +288,10 @@ struct InsightsViewModel {
     var mostBusyDay: MostBusyDayData {
         guard let maxIndex = weeklyStudyMinutes.enumerated().max(by: { $0.element < $1.element })?.offset else {
             return .init(
-                title: String(localized: "insights_busy_day_title"),
+                title: isTurkish ? "En Yoğun Gün" : "Most Busy Day",
                 dayText: "-",
                 durationText: minutesText(0),
-                subtitle: String(localized: "insights_busy_day_subtitle")
+                subtitle: isTurkish ? "Bu haftanın en yoğun günü" : "The busiest day of this week"
             )
         }
 
@@ -300,10 +299,10 @@ struct InsightsViewModel {
         let duration = hoursMinutesText(total)
 
         return .init(
-            title: String(localized: "insights_busy_day_title"),
+            title: isTurkish ? "En Yoğun Gün" : "Most Busy Day",
             dayText: dayLabels[maxIndex],
             durationText: duration,
-            subtitle: String(localized: "insights_busy_day_subtitle")
+            subtitle: isTurkish ? "Bu haftanın en yoğun günü" : "The busiest day of this week"
         )
     }
 
@@ -330,7 +329,7 @@ struct InsightsViewModel {
            weeklyProgress.labels.indices.contains(index) {
             return weeklyProgress.labels[index]
         }
-        return String(localized: "insights_this_week")
+        return isTurkish ? "bu hafta" : "this week"
     }
 
     private var isEveningProductive: Bool {
@@ -359,9 +358,11 @@ struct InsightsViewModel {
         if hasTaskBacklog {
             suggestions.append(
                 SmartSuggestionData(
-                    title: String(localized: "insights_suggestion_task_title"),
-                    message: String(localized: "insights_suggestion_task_message"),
-                    buttonTitle: String(localized: "insights_action_open_tasks"),
+                    title: isTurkish ? "Görev İçgörüsü" : "Task Insight",
+                    message: isTurkish
+                        ? "Aktif görevlerin birikmiş görünüyor. Önce en küçük görevi kapatmak ritim kazanmanı sağlayabilir."
+                        : "Your active tasks seem to be piling up. Finishing the smallest task first may help you build momentum.",
+                    buttonTitle: isTurkish ? "Görevleri Aç" : "Open Tasks",
                     action: .openTasks
                 )
             )
@@ -370,9 +371,11 @@ struct InsightsViewModel {
         if hasNoFocusHabit && activeTasksCount > 0 {
             suggestions.append(
                 SmartSuggestionData(
-                    title: String(localized: "insights_suggestion_focus_title"),
-                    message: String(localized: "insights_suggestion_focus_message"),
-                    buttonTitle: String(localized: "insights_action_start_focus"),
+                    title: isTurkish ? "Focus Önerisi" : "Focus Suggestion",
+                    message: isTurkish
+                        ? "Bugün henüz bir focus oturumu başlatmadın. 25 dakikalık kısa bir session iyi gelebilir."
+                        : "You haven’t started a focus session today yet. A short 25-minute session could help.",
+                    buttonTitle: isTurkish ? "Focus Başlat" : "Start Focus",
                     action: .openFocus
                 )
             )
@@ -381,9 +384,11 @@ struct InsightsViewModel {
         if hasStrongMomentum {
             suggestions.append(
                 SmartSuggestionData(
-                    title: String(localized: "insights_suggestion_momentum_title"),
-                    message: String(localized: "insights_suggestion_momentum_message"),
-                    buttonTitle: String(localized: "insights_action_open_tasks"),
+                    title: isTurkish ? "Momentum İçgörüsü" : "Momentum Insight",
+                    message: isTurkish
+                        ? "Bugün ritim yakalamış görünüyorsun. Şimdi bir zor görevi bitirmek için iyi bir an olabilir."
+                        : "You seem to have built momentum today. This might be a good time to finish a difficult task.",
+                    buttonTitle: isTurkish ? "Görevleri Aç" : "Open Tasks",
                     action: .openTasks
                 )
             )
@@ -391,10 +396,11 @@ struct InsightsViewModel {
 
         suggestions.append(
             SmartSuggestionData(
-                title: String(localized: "insights_suggestion_pattern_title"),
-                message: String(localized: "insights_suggestion_pattern_message")
-                    .replacingOccurrences(of: "%@", with: bestDayLabel),
-                buttonTitle: String(localized: "insights_action_view_week"),
+                title: isTurkish ? "Desen İçgörüsü" : "Pattern Insight",
+                message: isTurkish
+                    ? "Bu hafta en verimli günün \(bestDayLabel). Önemli işlerini o güne yerleştirmek iyi sonuç verebilir."
+                    : "Your most productive day this week is \(bestDayLabel). Scheduling important work on that day may help.",
+                buttonTitle: isTurkish ? "Haftayı Gör" : "View Week",
                 action: .openWeek
             )
         )
@@ -402,9 +408,11 @@ struct InsightsViewModel {
         if isEveningProductive {
             suggestions.append(
                 SmartSuggestionData(
-                    title: String(localized: "insights_suggestion_focus_pattern_title"),
-                    message: String(localized: "insights_suggestion_focus_pattern_message"),
-                    buttonTitle: String(localized: "insights_action_start_focus"),
+                    title: isTurkish ? "Focus Deseni" : "Focus Pattern",
+                    message: isTurkish
+                        ? "Akşam saatlerinde daha iyi odaklanıyor gibisin. Derin işlerini 18:00 sonrası planlamayı deneyebilirsin."
+                        : "You seem to focus better in the evening. You could try planning deep work after 18:00.",
+                    buttonTitle: isTurkish ? "Focus Başlat" : "Start Focus",
                     action: .openFocus
                 )
             )
@@ -413,9 +421,11 @@ struct InsightsViewModel {
         if totalFocusMinutes >= 90 {
             suggestions.append(
                 SmartSuggestionData(
-                    title: String(localized: "insights_suggestion_deep_work_title"),
-                    message: String(localized: "insights_suggestion_deep_work_message"),
-                    buttonTitle: String(localized: "insights_action_view_week"),
+                    title: isTurkish ? "Derin Çalışma İçgörüsü" : "Deep Work Insight",
+                    message: isTurkish
+                        ? "Uzun focus oturumları sende işe yarıyor. Zor görevleri focus sonrası bloklara koymak verimini artırabilir."
+                        : "Long focus sessions seem to work well for you. Putting hard tasks after focus blocks may boost productivity.",
+                    buttonTitle: isTurkish ? "Haftayı Gör" : "View Week",
                     action: .openWeek
                 )
             )
@@ -423,9 +433,11 @@ struct InsightsViewModel {
 
         suggestions.append(
             SmartSuggestionData(
-                title: String(localized: "insights_suggestion_daily_title"),
-                message: String(localized: "insights_suggestion_daily_message"),
-                buttonTitle: String(localized: "insights_action_open_tasks"),
+                title: isTurkish ? "Günlük Öneri" : "Daily Suggestion",
+                message: isTurkish
+                    ? "Küçük ama net bir görev tamamlamak günün geri kalanını daha verimli hale getirebilir."
+                    : "Completing one small but clear task can make the rest of your day more productive.",
+                buttonTitle: isTurkish ? "Görevleri Aç" : "Open Tasks",
                 action: .openTasks
             )
         )
@@ -435,12 +447,13 @@ struct InsightsViewModel {
 
     var smartSuggestion: SmartSuggestionData {
         let suggestions = rotatedSuggestions()
-
         guard !suggestions.isEmpty else {
             return SmartSuggestionData(
-                title: String(localized: "insights_suggestion_fallback_title"),
-                message: String(localized: "insights_suggestion_fallback_message"),
-                buttonTitle: String(localized: "insights_action_open_tasks"),
+                title: isTurkish ? "Öneri" : "Suggestion",
+                message: isTurkish
+                    ? "Bugün küçük bir görev tamamlamak iyi bir başlangıç olabilir."
+                    : "Completing a small task today could be a good start.",
+                buttonTitle: isTurkish ? "Görevleri Aç" : "Open Tasks",
                 action: .openTasks
             )
         }
@@ -462,31 +475,35 @@ struct InsightsViewModel {
     var aiCoach: AICoachData {
         if totalFocusMinutes >= 60 && completedTasksCount >= 2 {
             return AICoachData(
-                title: String(localized: "insights_ai_coach_title"),
-                message: String(localized: "insights_ai_coach_focus_message"),
-                buttonTitle: String(localized: "insights_action_start_focus"),
+                title: isTurkish ? "Yapay Zekâ Üretkenlik Koçu" : "AI Productivity Coach",
+                message: isTurkish
+                    ? "Focus sonrası görev kapatma hızın artıyor gibi görünüyor. Önce kısa bir focus sonra zor görev iyi çalışabilir."
+                    : "You seem to complete tasks faster after focus sessions. A short focus first, then a hard task, may work well.",
+                buttonTitle: isTurkish ? "Focus Başlat" : "Start Focus",
                 action: .openFocus
             )
         }
 
         if let index = weeklyProgress.highlightIndex,
            weeklyProgress.labels.indices.contains(index) {
-
             let bestDay = weeklyProgress.labels[index]
 
             return AICoachData(
-                title: String(localized: "insights_ai_coach_title"),
-                message: String(localized: "insights_ai_coach_best_day_message")
-                    .replacingOccurrences(of: "%@", with: bestDay),
-                buttonTitle: String(localized: "insights_action_view_week"),
+                title: isTurkish ? "Yapay Zekâ Üretkenlik Koçu" : "AI Productivity Coach",
+                message: isTurkish
+                    ? "\(bestDay) günü daha verimli görünüyorsun. Önemli işlerini o güne koymayı deneyebilirsin."
+                    : "You seem more productive on \(bestDay). You could try scheduling important work on that day.",
+                buttonTitle: isTurkish ? "Haftayı Gör" : "View Week",
                 action: .openWeek
             )
         }
 
         return AICoachData(
-            title: String(localized: "insights_ai_coach_title"),
-            message: String(localized: "insights_ai_coach_default_message"),
-            buttonTitle: String(localized: "insights_action_open_tasks"),
+            title: isTurkish ? "Yapay Zekâ Üretkenlik Koçu" : "AI Productivity Coach",
+            message: isTurkish
+                ? "Küçük görevleri hızlı kapatıp zor görevleri focus sonrası yapmak verimini artırabilir."
+                : "Quickly finishing small tasks and doing hard tasks after focus sessions may improve your productivity.",
+            buttonTitle: isTurkish ? "Görevleri Aç" : "Open Tasks",
             action: .openTasks
         )
     }

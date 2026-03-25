@@ -23,7 +23,29 @@ struct StudyHeatMapCard: View {
     }
 
     private var fallbackText: String {
-        "Henüz tamamlanan görev görünmüyor. İlk tamamlanan görevlerin burada son 4 haftalık ritim olarak görünecek."
+        String(localized: "insights_heatmap_fallback_text")
+    }
+
+    private var subtitleText: String {
+        hasActivity
+        ? String(localized: "insights_heatmap_subtitle_active")
+        : String(localized: "insights_heatmap_subtitle_empty")
+    }
+
+    private var lowText: String {
+        String(localized: "insights_heatmap_low")
+    }
+
+    private var highText: String {
+        String(localized: "insights_heatmap_high")
+    }
+
+    private var densityInfoText: String {
+        String(localized: "insights_heatmap_density_info")
+    }
+
+    private var fillHintText: String {
+        String(localized: "insights_heatmap_fill_hint")
     }
 
     var body: some View {
@@ -68,7 +90,7 @@ struct StudyHeatMapCard: View {
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundStyle(palette.primaryText)
 
-                Text(hasActivity ? "Son 28 günde tamamlama yoğunluğu" : "Son 28 günlük aktivite burada görünecek")
+                Text(subtitleText)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(palette.secondaryText)
             }
@@ -127,7 +149,7 @@ struct StudyHeatMapCard: View {
     private var expandedSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
-                Text("Az")
+                Text(lowText)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(palette.secondaryText)
 
@@ -137,7 +159,7 @@ struct StudyHeatMapCard: View {
                         .frame(width: 30, height: 16)
                 }
 
-                Text("Çok")
+                Text(highText)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(palette.secondaryText)
             }
@@ -152,7 +174,7 @@ struct StudyHeatMapCard: View {
                         Image(systemName: "sparkles")
                             .foregroundStyle(Color.accentColor)
 
-                        Text("Bu görünüm son 4 haftadaki tamamlanan görev yoğunluğunu gösterir")
+                        Text(densityInfoText)
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(palette.secondaryText)
                     }
@@ -168,7 +190,7 @@ struct StudyHeatMapCard: View {
                         Image(systemName: "sparkles")
                             .foregroundStyle(Color.accentColor)
 
-                        Text("Görev tamamladıkça burası dolacak")
+                        Text(fillHintText)
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(Color.accentColor)
                     }

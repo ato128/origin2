@@ -34,7 +34,7 @@ struct SmartSuggestionCard: View {
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Insight for today")
+                    Text(String(localized: "insights_suggestion_today"))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(palette.secondaryText)
 

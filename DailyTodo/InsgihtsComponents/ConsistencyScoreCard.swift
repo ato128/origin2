@@ -8,10 +8,8 @@
 import SwiftUI
 
 struct ConsistencyScoreCard: View {
-
     let data: ScoreCardData
 
-    @Environment(\.locale) private var locale
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private let palette = ThemePalette()
 
@@ -22,25 +20,18 @@ struct ConsistencyScoreCard: View {
     }
 
     private func percentText(_ value: Double) -> String {
-        let intValue = Int(value)
-        // Şimdilik TR & EN aynı ama ileride kolay değişsin diye fonksiyon yaptık
-        return "%\(intValue)"
+        "%\(Int(value))"
     }
 
     var body: some View {
-
         VStack(alignment: .leading, spacing: 12) {
-
             Text(data.title)
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(palette.primaryText)
 
             HStack {
-
                 VStack(alignment: .leading, spacing: 6) {
-
                     HStack(alignment: .lastTextBaseline, spacing: 4) {
-
                         CountUpText(
                             value: scoreValue,
                             duration: 0.9,
@@ -59,7 +50,6 @@ struct ConsistencyScoreCard: View {
                 Spacer()
 
                 ZStack {
-
                     ProgressRing(
                         progress: data.progress,
                         color: .green,

@@ -795,3 +795,22 @@
 "insights_weekly_progress_best_day_format %@ %lld" = "%@ • %lld";
 "insights_weekly_progress_repeat_hint" = "You can schedule tasks at similar times to repeat your best day";
 "insights_weekly_progress_first_tasks_hint" = "Your first completed tasks will start appearing here as a weekly chart";
+
+"insights_focus_minute_unit" = "min";
+"insights_focus_session_unit" = "sessions";
+
+"insights_quick_focus_title" = "Quick Focus";
+
+"insights_most_busy_day_has_day" = "Your busiest day";
+"insights_most_busy_day_no_day" = "No busy day yet";
+"insights_most_busy_day_empty_hint" = "This area will become clearer as you complete events and tasks";
+
+"insights_suggestion_today" = "Insight for today";
+
+"insights_heatmap_fallback_text" = "No completed tasks yet. Your first completed tasks will appear here as a 4-week rhythm.";
+"insights_heatmap_subtitle_active" = "Completion intensity over the last 28 days";
+"insights_heatmap_subtitle_empty" = "Your last 28 days of activity will appear here";
+"insights_heatmap_low" = "Low";
+"insights_heatmap_high" = "High";
+"insights_heatmap_density_info" = "This view shows your completed-task density over the last 4 weeks";
+"insights_heatmap_fill_hint" = "This area will fill up as you complete tasks";

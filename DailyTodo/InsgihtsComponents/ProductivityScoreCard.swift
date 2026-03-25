@@ -8,10 +8,8 @@
 import SwiftUI
 
 struct ProductivityScoreCard: View {
-
     let data: ScoreCardData
 
-    @Environment(\.locale) private var locale
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private let palette = ThemePalette()
 
@@ -22,24 +20,18 @@ struct ProductivityScoreCard: View {
     }
 
     private var maxScoreText: String {
-        // İleride istersen 100 yerine değişebilir diye dinamik bıraktık
-        return locale.language.languageCode?.identifier == "tr" ? "/100" : "/100"
+        "/100"
     }
 
     var body: some View {
-
         VStack(alignment: .leading, spacing: 12) {
-
             Text(data.title)
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(palette.primaryText)
 
             HStack {
-
                 VStack(alignment: .leading, spacing: 6) {
-
                     HStack(alignment: .lastTextBaseline, spacing: 2) {
-
                         CountUpText(
                             value: scoreValue,
                             duration: 0.9,
@@ -62,7 +54,6 @@ struct ProductivityScoreCard: View {
                 Spacer()
 
                 ZStack {
-
                     ProgressRing(
                         progress: data.progress,
                         color: .accentColor,

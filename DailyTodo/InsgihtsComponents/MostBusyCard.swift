@@ -19,6 +19,16 @@ struct MostBusyDayCard: View {
         !data.durationText.contains("0")
     }
 
+    private var headerSubtitle: String {
+        hasBusyDay
+        ? String(localized: "insights_most_busy_day_has_day")
+        : String(localized: "insights_most_busy_day_no_day")
+    }
+
+    private var emptyHint: String {
+        String(localized: "insights_most_busy_day_empty_hint")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center) {
@@ -27,7 +37,7 @@ struct MostBusyDayCard: View {
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
 
-                    Text(hasBusyDay ? "En yoğun günün" : "Henüz yoğun bir gün oluşmadı")
+                    Text(headerSubtitle)
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -70,7 +80,7 @@ struct MostBusyDayCard: View {
                     Image(systemName: "sparkles")
                         .foregroundStyle(Color.accentColor)
 
-                    Text("Etkinlik ve görev tamamladıkça bu alan netleşecek")
+                    Text(emptyHint)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Color.accentColor)
                 }

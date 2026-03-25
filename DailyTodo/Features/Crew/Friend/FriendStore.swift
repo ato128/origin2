@@ -26,14 +26,15 @@ final class FriendStore: ObservableObject {
     @Published var hasLoadedInitialFriends = false
     @Published var lastFriendsRefreshAt: Date? = nil
     @Published var isRefreshingFriends = false
-
+    @Published var activeChatFriendshipID: UUID? = nil
+    
     private var lastForegroundRefreshAt: Date? = nil
     
     func shouldDoForegroundRefresh() -> Bool {
         guard let lastForegroundRefreshAt else { return true }
         return Date().timeIntervalSince(lastForegroundRefreshAt) > 20
     }
-
+    
     func markForegroundRefreshDone() {
         lastForegroundRefreshAt = Date()
     }
@@ -64,26 +65,26 @@ final class FriendStore: ObservableObject {
     func loadAllFriendships(currentUserID: UUID) async {
         isLoading = true
         defer { isLoading = false }
-
+        
         do {
             let response = try await SupabaseManager.shared.client
                 .from("friendships")
                 .select()
                 .or("requester_id.eq.\(currentUserID.uuidString),addressee_id.eq.\(currentUserID.uuidString)")
                 .execute()
-
+            
             let decoded = try JSONDecoder().decode([FriendshipDTO].self, from: response.data)
-
+            
             friendships = decoded.sorted { lhs, rhs in
                 let l = CrewDateParser.parse(lhs.created_at) ?? .distantPast
                 let r = CrewDateParser.parse(rhs.created_at) ?? .distantPast
                 return l > r
             }
-
+            
             saveFriendshipsToCache(currentUserID: currentUserID)
         } catch {
             print("LOAD ALL FRIENDSHIPS ERROR:", error.localizedDescription)
-
+            
             if friendships.isEmpty {
                 loadFriendshipsFromCache(currentUserID: currentUserID)
             }
@@ -103,16 +104,16 @@ final class FriendStore: ObservableObject {
         guard let data = UserDefaults.standard.data(forKey: friendshipsCacheKey(for: currentUserID)) else {
             return
         }
-
+        
         do {
             let decoded = try JSONDecoder().decode([FriendshipDTO].self, from: data)
-
+            
             friendships = decoded.sorted { lhs, rhs in
                 let l = CrewDateParser.parse(lhs.created_at) ?? .distantPast
                 let r = CrewDateParser.parse(rhs.created_at) ?? .distantPast
                 return l > r
             }
-
+            
             print("✅ FRIENDSHIPS LOADED FROM CACHE:", friendships.count)
         } catch {
             print("LOAD FRIENDSHIPS CACHE ERROR:", error.localizedDescription)
@@ -124,28 +125,28 @@ final class FriendStore: ObservableObject {
     func loadProfiles(for userIDs: [UUID], currentUserID: UUID? = nil) async {
         let uniqueIDs = Array(Set(userIDs))
         guard !uniqueIDs.isEmpty else { return }
-
+        
         do {
             let response = try await SupabaseManager.shared.client
                 .from("profiles")
                 .select()
                 .in("id", values: uniqueIDs.map(\.uuidString))
                 .execute()
-
+            
             let decoded = try JSONDecoder().decode([FriendProfileDTO].self, from: response.data)
-
+            
             var dict: [UUID: FriendProfileDTO] = [:]
             for item in decoded {
                 dict[item.id] = item
             }
-
+            
             profiles = dict
-
+            
             // ✅ CACHE SAVE
             if let currentUserID {
                 saveProfilesToCache(currentUserID: currentUserID)
             }
-
+            
         } catch {
             print("LOAD FRIEND PROFILES ERROR:", error.localizedDescription)
         }
@@ -173,18 +174,18 @@ final class FriendStore: ObservableObject {
             let addressee_id: UUID
             let status: String
         }
-
+        
         let payload = Payload(
             requester_id: currentUserID,
             addressee_id: targetUserID,
             status: "pending"
         )
-
+        
         try await SupabaseManager.shared.client
             .from("friendships")
             .insert(payload)
             .execute()
-
+        
         await loadAllFriendships(currentUserID: currentUserID)
         markFriendsCacheRefreshed()
     }
@@ -210,12 +211,12 @@ final class FriendStore: ObservableObject {
             print("SAVE PROFILES CACHE ERROR:", error.localizedDescription)
         }
     }
-
+    
     func loadProfilesFromCache(currentUserID: UUID) {
         guard let data = UserDefaults.standard.data(forKey: profilesCacheKey(for: currentUserID)) else {
             return
         }
-
+        
         do {
             let decoded = try JSONDecoder().decode([UUID: FriendProfileDTO].self, from: data)
             profiles = decoded
@@ -242,36 +243,36 @@ final class FriendStore: ObservableObject {
                 )
                 .execute()
             print("WEEK SHARE RAW:", String(data: response.data, encoding: .utf8) ?? "nil")
-
+            
             let decoded = try JSONDecoder().decode([FriendWeekShareDTO].self, from: response.data)
-
+            
             var outgoing: FriendWeekShareDTO?
             var incoming: FriendWeekShareDTO?
-
+            
             for item in decoded {
                 if item.owner_user_id == currentUserID &&
                     item.viewer_user_id == friendUserID {
                     outgoing = item
                 }
-
+                
                 if item.owner_user_id == friendUserID &&
                     item.viewer_user_id == currentUserID {
                     incoming = item
                 }
             }
-
+            
             if let outgoing {
                 outgoingWeekSharesByFriendship[friendshipID] = outgoing
             } else {
                 outgoingWeekSharesByFriendship.removeValue(forKey: friendshipID)
             }
-
+            
             if let incoming {
                 incomingWeekSharesByFriendship[friendshipID] = incoming
             } else {
                 incomingWeekSharesByFriendship.removeValue(forKey: friendshipID)
             }
-
+            
         } catch {
             print("LOAD WEEK SHARE STATUS ERROR:", error.localizedDescription)
         }
@@ -290,7 +291,7 @@ final class FriendStore: ObservableObject {
             let viewer_user_id: UUID
             let is_enabled: Bool
         }
-
+        
         struct ItemPayload: Encodable {
             let friendship_id: UUID
             let owner_user_id: UUID
@@ -301,7 +302,7 @@ final class FriendStore: ObservableObject {
             let start_minute: Int
             let duration_minute: Int
         }
-
+        
         do {
             let sharePayload = SharePayload(
                 friendship_id: friendshipID,
@@ -309,12 +310,12 @@ final class FriendStore: ObservableObject {
                 viewer_user_id: friendUserID,
                 is_enabled: isEnabled
             )
-
+            
             try await SupabaseManager.shared.client
                 .from("friend_week_shares")
                 .upsert(sharePayload, onConflict: "friendship_id,owner_user_id,viewer_user_id")
                 .execute()
-
+            
             try await SupabaseManager.shared.client
                 .from("friend_week_share_items")
                 .delete()
@@ -322,10 +323,10 @@ final class FriendStore: ObservableObject {
                 .eq("owner_user_id", value: currentUserID.uuidString)
                 .eq("viewer_user_id", value: friendUserID.uuidString)
                 .execute()
-
+            
             if isEnabled {
                 let validEvents = events.filter { !$0.isCompleted }
-
+                
                 let payloads = validEvents.map { event in
                     ItemPayload(
                         friendship_id: friendshipID,
@@ -338,7 +339,7 @@ final class FriendStore: ObservableObject {
                         duration_minute: event.durationMinute
                     )
                 }
-
+                
                 if !payloads.isEmpty {
                     try await SupabaseManager.shared.client
                         .from("friend_week_share_items")
@@ -346,19 +347,19 @@ final class FriendStore: ObservableObject {
                         .execute()
                 }
             }
-
+            
             await loadWeekShareStatus(
                 friendshipID: friendshipID,
                 currentUserID: currentUserID,
                 friendUserID: friendUserID
             )
-
+            
             await loadSharedWeekItems(
                 friendshipID: friendshipID,
                 ownerUserID: currentUserID,
                 viewerUserID: friendUserID
             )
-
+            
         } catch {
             print("SET WEEK SHARE ENABLED ERROR:", error.localizedDescription)
         }
@@ -373,7 +374,7 @@ final class FriendStore: ObservableObject {
                 .eq("is_enabled", value: true)
                 .limit(1)
                 .execute()
-
+            
             let decoded = try JSONDecoder().decode([FriendWeekShareDTO].self, from: response.data)
             weekShareEnabledByUserID[userID] = !decoded.isEmpty
         } catch {
@@ -381,7 +382,7 @@ final class FriendStore: ObservableObject {
             weekShareEnabledByUserID[userID] = false
         }
     }
-
+    
     func loadSharedWeekItems(
         friendshipID: UUID,
         ownerUserID: UUID,
@@ -397,12 +398,12 @@ final class FriendStore: ObservableObject {
                 .order("weekday", ascending: true)
                 .order("start_minute", ascending: true)
                 .execute()
-
+            
             print("SHARED WEEK ITEMS RAW:", String(data: response.data, encoding: .utf8) ?? "nil")
-
+            
             let decoded = try JSONDecoder().decode([FriendWeekShareItemDTO].self, from: response.data)
             sharedWeekItemsByFriendship[friendshipID] = decoded
-
+            
             print("SHARED WEEK ITEMS COUNT:", decoded.count)
         } catch {
             print("LOAD SHARED WEEK ITEMS ERROR:", error.localizedDescription)
@@ -413,7 +414,7 @@ final class FriendStore: ObservableObject {
     func shouldRefreshFriends(force: Bool = false) -> Bool {
         if force { return true }
         if !hasLoadedInitialFriends { return true }
-
+        
         guard let lastFriendsRefreshAt else { return true }
         return Date().timeIntervalSince(lastFriendsRefreshAt) > 60
     }
@@ -425,26 +426,26 @@ final class FriendStore: ObservableObject {
     func resetFriendsCache(currentUserID: UUID? = nil) {
         hasLoadedInitialFriends = false
         lastFriendsRefreshAt = nil
-
+        
         if let currentUserID {
             UserDefaults.standard.removeObject(forKey: friendshipsCacheKey(for: currentUserID))
             UserDefaults.standard.removeObject(forKey: profilesCacheKey(for: currentUserID))
         }
     }
-
+    
     // MARK: - Local Sync
-
+    
     func syncAcceptedFriendsToLocal(
         currentUserID: UUID,
         modelContext: ModelContext
     ) {
         let acceptedFriendships = friendships.filter { $0.status == "accepted" }
-
+        
         let acceptedFriendshipIDs = Set(acceptedFriendships.map(\.id))
-
+        
         let descriptor = FetchDescriptor<Friend>()
         let existingFriends = (try? modelContext.fetch(descriptor)) ?? []
-
+        
         for localFriend in existingFriends {
             if localFriend.ownerUserID == currentUserID.uuidString,
                let backendFriendshipID = localFriend.backendFriendshipID,
@@ -452,19 +453,19 @@ final class FriendStore: ObservableObject {
                 modelContext.delete(localFriend)
             }
         }
-
+        
         for friendship in acceptedFriendships {
             let otherUserID =
-                friendship.requester_id == currentUserID
-                ? friendship.addressee_id
-                : friendship.requester_id
-
+            friendship.requester_id == currentUserID
+            ? friendship.addressee_id
+            : friendship.requester_id
+            
             guard let profile = profiles[otherUserID] else { continue }
-
+            
             let existing = existingFriends.first(where: {
                 $0.backendFriendshipID == friendship.id
             })
-
+            
             let displayName: String
             if let fullName = profile.full_name,
                !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -475,7 +476,7 @@ final class FriendStore: ObservableObject {
             } else {
                 displayName = profile.email ?? "Unknown"
             }
-
+            
             if let existing {
                 existing.backendFriendshipID = friendship.id
                 existing.backendUserID = otherUserID
@@ -497,7 +498,7 @@ final class FriendStore: ObservableObject {
                 modelContext.insert(newFriend)
             }
         }
-
+        
         do {
             try modelContext.save()
         } catch {
@@ -512,9 +513,9 @@ final class FriendStore: ObservableObject {
         let activeShares = outgoingWeekSharesByFriendship.filter {
             $0.value.is_enabled == true && $0.value.owner_user_id == currentUserID
         }
-
+        
         guard !activeShares.isEmpty else { return }
-
+        
         for (_, share) in activeShares {
             await setWeekShareEnabled(
                 friendshipID: share.friendship_id,
@@ -535,21 +536,21 @@ final class FriendStore: ObservableObject {
            sharedWeekItemsChannel != nil {
             return
         }
-
+        
         Task {
             if let oldChannel = sharedWeekItemsChannel {
                 try? await oldChannel.unsubscribe()
             }
-
+            
             await MainActor.run {
                 self.sharedWeekItemsChannel = nil
                 self.subscribedSharedWeekFriendshipID = nil
             }
-
+            
             let channel = SupabaseManager.shared.client
                 .realtimeV2
                 .channel("shared-week-items-\(friendshipID.uuidString)")
-
+            
             _ = channel.onPostgresChange(
                 InsertAction.self,
                 schema: "public",
@@ -565,7 +566,7 @@ final class FriendStore: ObservableObject {
                     )
                 }
             }
-
+            
             _ = channel.onPostgresChange(
                 UpdateAction.self,
                 schema: "public",
@@ -581,7 +582,7 @@ final class FriendStore: ObservableObject {
                     )
                 }
             }
-
+            
             _ = channel.onPostgresChange(
                 DeleteAction.self,
                 schema: "public",
@@ -597,22 +598,23 @@ final class FriendStore: ObservableObject {
                     )
                 }
             }
-
+            
+            
             await MainActor.run {
                 self.sharedWeekItemsChannel = channel
                 self.subscribedSharedWeekFriendshipID = friendshipID
             }
-
+            
             try? await channel.subscribeWithError()
         }
     }
-
+    
     func unsubscribeSharedWeekItemsRealtime() {
         Task {
             if let oldChannel = sharedWeekItemsChannel {
                 try? await oldChannel.unsubscribe()
             }
-
+            
             await MainActor.run {
                 self.sharedWeekItemsChannel = nil
                 self.subscribedSharedWeekFriendshipID = nil
@@ -620,7 +622,7 @@ final class FriendStore: ObservableObject {
         }
     }
     // MARK: - Remove Friend
-
+    
     func removeFriendship(
         friendshipID: UUID,
         currentUserID: UUID,
@@ -634,20 +636,20 @@ final class FriendStore: ObservableObject {
                 NSLocalizedDescriptionKey: "Local friend not found."
             ])
         }
-
+        
         let backendUserID = localFriend.backendUserID
-
+        
         // Önce realtime/local cache temizle
         if subscribedFriendshipID == friendshipID {
             unsubscribeFriendMessagesRealtime()
         }
-
+        
         if subscribedSharedWeekFriendshipID == friendshipID {
             unsubscribeSharedWeekItemsRealtime()
         }
-
+        
         unsubscribeTypingRealtime()
-
+        
         // Supabase delete
         do {
             try await SupabaseManager.shared.client
@@ -655,47 +657,47 @@ final class FriendStore: ObservableObject {
                 .delete()
                 .eq("id", value: friendshipID.uuidString)
                 .execute()
-
+            
             print("✅ FRIENDSHIP DELETED FROM SUPABASE:", friendshipID.uuidString)
         } catch {
             print("❌ SUPABASE FRIENDSHIP DELETE ERROR:", error.localizedDescription)
             throw error
         }
-
+        
         // Local ilişkili verileri temizle
         let sharedItems = (try? modelContext.fetch(FetchDescriptor<SharedWeekItem>())) ?? []
         for item in sharedItems where item.friendID == localFriend.id {
             modelContext.delete(item)
         }
-
+        
         let focusItems = (try? modelContext.fetch(FetchDescriptor<FriendFocusSession>())) ?? []
         for item in focusItems where item.friendID == localFriend.id {
             modelContext.delete(item)
         }
-
+        
         let localMessages = (try? modelContext.fetch(FetchDescriptor<FriendMessage>())) ?? []
         for item in localMessages where item.friendID == localFriend.id {
             modelContext.delete(item)
         }
-
+        
         modelContext.delete(localFriend)
-
+        
         try modelContext.save()
-
+        
         friendMessagesByFriendship.removeValue(forKey: friendshipID)
         typingStatusByFriendship.removeValue(forKey: friendshipID)
         incomingWeekSharesByFriendship.removeValue(forKey: friendshipID)
         outgoingWeekSharesByFriendship.removeValue(forKey: friendshipID)
         sharedWeekItemsByFriendship.removeValue(forKey: friendshipID)
-
+        
         if let backendUserID {
             profiles.removeValue(forKey: backendUserID)
             presenceByUserID.removeValue(forKey: backendUserID)
         }
-
+        
         resetFriendsCache()
         await loadAllFriendships(currentUserID: currentUserID)
-
+        
         let otherUserIDs = friendships.compactMap { friendship -> UUID? in
             if friendship.requester_id == currentUserID {
                 return friendship.addressee_id
@@ -705,20 +707,20 @@ final class FriendStore: ObservableObject {
                 return nil
             }
         }
-
+        
         await loadProfiles(for: otherUserIDs)
         await loadPresence(for: otherUserIDs)
-
+        
         syncAcceptedFriendsToLocal(
             currentUserID: currentUserID,
             modelContext: modelContext
         )
-
+        
         markFriendsCacheRefreshed()
     }
-
+    
     // MARK: - Messages
-
+    
     private func mapDTOToFriendItem(
         _ dto: FriendMessageDTO,
         currentUserID: UUID?
@@ -740,13 +742,25 @@ final class FriendStore: ObservableObject {
             seenAt: dto.seen_at.flatMap { CrewDateParser.parse($0) }
         )
     }
+    func unsubscribeFriendMessagesRealtime() {
+        Task {
+            if let old = friendMessagesChannel {
+                try? await old.unsubscribe()
+            }
+            await MainActor.run {
+                self.friendMessagesChannel = nil
+                self.subscribedFriendshipID = nil
+            }
+        }
+    }
+
     func userDidType(
         friendshipID: UUID,
         currentUserID: UUID?,
         currentUserName: String
     ) {
         typingResetTask?.cancel()
-
+        
         Task {
             await setTyping(
                 friendshipID: friendshipID,
@@ -755,10 +769,10 @@ final class FriendStore: ObservableObject {
                 isTyping: true
             )
         }
-
+        
         typingResetTask = Task {
             try? await Task.sleep(nanoseconds: 1_200_000_000)
-
+            
             await setTyping(
                 friendshipID: friendshipID,
                 currentUserID: currentUserID,
@@ -777,15 +791,15 @@ final class FriendStore: ObservableObject {
             if let oldChannel = friendTypingChannel {
                 try? await oldChannel.unsubscribe()
             }
-
+            
             await MainActor.run {
                 self.friendTypingChannel = nil
             }
-
+            
             let channel = SupabaseManager.shared.client
                 .realtimeV2
                 .channel("friend-typing-\(friendshipID.uuidString)")
-
+            
             _ = channel.onPostgresChange(
                 InsertAction.self,
                 schema: "public",
@@ -793,14 +807,14 @@ final class FriendStore: ObservableObject {
                 filter: "friendship_id=eq.\(friendshipID.uuidString)"
             ) { [weak self] action in
                 guard let self else { return }
-
+                
                 Task { @MainActor [weak self] in
                     guard let self else { return }
-
+                    
                     do {
                         let jsonData = try JSONSerialization.data(withJSONObject: action.record)
                         let dto = try JSONDecoder().decode(FriendTypingStatusDTO.self, from: jsonData)
-
+                        
                         guard dto.user_id != currentUserID else { return }
                         self.typingStatusByFriendship[friendshipID] = dto.is_typing
                     } catch {
@@ -808,7 +822,7 @@ final class FriendStore: ObservableObject {
                     }
                 }
             }
-
+            
             _ = channel.onPostgresChange(
                 UpdateAction.self,
                 schema: "public",
@@ -816,14 +830,14 @@ final class FriendStore: ObservableObject {
                 filter: "friendship_id=eq.\(friendshipID.uuidString)"
             ) { [weak self] action in
                 guard let self else { return }
-
+                
                 Task { @MainActor [weak self] in
                     guard let self else { return }
-
+                    
                     do {
                         let jsonData = try JSONSerialization.data(withJSONObject: action.record)
                         let dto = try JSONDecoder().decode(FriendTypingStatusDTO.self, from: jsonData)
-
+                        
                         guard dto.user_id != currentUserID else { return }
                         self.typingStatusByFriendship[friendshipID] = dto.is_typing
                     } catch {
@@ -831,7 +845,7 @@ final class FriendStore: ObservableObject {
                     }
                 }
             }
-
+            
             _ = channel.onPostgresChange(
                 DeleteAction.self,
                 schema: "public",
@@ -843,11 +857,11 @@ final class FriendStore: ObservableObject {
                     self.typingStatusByFriendship[friendshipID] = false
                 }
             }
-
+            
             await MainActor.run {
                 self.friendTypingChannel = channel
             }
-
+            
             try? await channel.subscribeWithError()
         }
     }
@@ -856,7 +870,7 @@ final class FriendStore: ObservableObject {
             if let oldChannel = friendTypingChannel {
                 try? await oldChannel.unsubscribe()
             }
-
+            
             await MainActor.run {
                 self.friendTypingChannel = nil
             }
@@ -870,7 +884,7 @@ final class FriendStore: ObservableObject {
         isTyping: Bool
     ) async {
         guard let currentUserID else { return }
-
+        
         struct Payload: Encodable {
             let friendship_id: UUID
             let user_id: UUID
@@ -878,7 +892,7 @@ final class FriendStore: ObservableObject {
             let is_typing: Bool
             let updated_at: String
         }
-
+        
         let payload = Payload(
             friendship_id: friendshipID,
             user_id: currentUserID,
@@ -886,7 +900,7 @@ final class FriendStore: ObservableObject {
             is_typing: isTyping,
             updated_at: ISO8601DateFormatter().string(from: Date())
         )
-
+        
         do {
             try await SupabaseManager.shared.client
                 .from("friend_typing_status")
@@ -902,7 +916,7 @@ final class FriendStore: ObservableObject {
         friendshipID: UUID
     ) {
         var items = friendMessagesByFriendship[friendshipID] ?? []
-
+        
         if let existingIndex = items.firstIndex(where: { $0.serverID == item.serverID }) {
             items[existingIndex] = item
         } else if let clientID = item.clientID,
@@ -913,15 +927,18 @@ final class FriendStore: ObservableObject {
         } else {
             items.append(item)
         }
-
+        
         items.sort { $0.createdAt < $1.createdAt }
         friendMessagesByFriendship[friendshipID] = Array(items.suffix(100))
     }
-
+    
     func loadMessages(
         for friendshipID: UUID,
         currentUserID: UUID?
     ) async {
+        // ✅ Zaten yüklüyse UI'ı sıfırlama, arka planda güncelle
+        let alreadyLoaded = !(friendMessagesByFriendship[friendshipID]?.isEmpty ?? true)
+        
         do {
             let response = try await SupabaseManager.shared.client
                 .from("friend_messages")
@@ -932,18 +949,22 @@ final class FriendStore: ObservableObject {
                 .execute()
 
             let decoded = try JSONDecoder().decode([FriendMessageDTO].self, from: response.data)
+            let items = decoded.map { mapDTOToFriendItem($0, currentUserID: currentUserID) }
 
-            let items = decoded.map {
-                mapDTOToFriendItem($0, currentUserID: currentUserID)
+            // ✅ Sadece değiştiyse güncelle
+            if !alreadyLoaded {
+                friendMessagesByFriendship[friendshipID] = items
+            } else {
+                // Yeni mesajları merge et, var olanları silme
+                for item in items {
+                    appendFriendMessage(item, friendshipID: friendshipID)
+                }
             }
-
-            friendMessagesByFriendship[friendshipID] = items
         } catch {
             print("LOAD FRIEND MESSAGES ERROR:", error.localizedDescription)
-            friendMessagesByFriendship[friendshipID] = []
         }
     }
-
+    
     func sendMessage(
         text: String,
         friendshipID: UUID,
@@ -952,7 +973,7 @@ final class FriendStore: ObservableObject {
     ) async {
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else { return }
-
+        
         let localItem = FriendChatMessageItem(
             id: UUID(),
             serverID: nil,
@@ -969,12 +990,12 @@ final class FriendStore: ObservableObject {
             isFailed: false,
             seenAt: nil
         )
-
+        
         var current = friendMessagesByFriendship[friendshipID] ?? []
         current.append(localItem)
         current.sort { $0.createdAt < $1.createdAt }
         friendMessagesByFriendship[friendshipID] = current
-
+        
         do {
             struct Payload: Encodable {
                 let friendship_id: UUID
@@ -985,7 +1006,7 @@ final class FriendStore: ObservableObject {
                 let is_system_message: Bool
                 let client_id: String
             }
-
+            
             let payload = Payload(
                 friendship_id: friendshipID,
                 sender_id: senderID,
@@ -995,17 +1016,17 @@ final class FriendStore: ObservableObject {
                 is_system_message: false,
                 client_id: localItem.clientID ?? UUID().uuidString
             )
-
+            
             try await SupabaseManager.shared.client
                 .from("friend_messages")
                 .insert(payload)
                 .execute()
-
+            
             // Realtime gelmezse fallback
             await loadMessages(for: friendshipID, currentUserID: senderID)
         } catch {
             print("SEND FRIEND MESSAGE ERROR:", error.localizedDescription)
-
+            
             var failed = friendMessagesByFriendship[friendshipID] ?? []
             if let index = failed.firstIndex(where: { $0.id == localItem.id }) {
                 let old = failed[index]
@@ -1035,7 +1056,7 @@ final class FriendStore: ObservableObject {
         currentUserID: UUID?
     ) async {
         guard let currentUserID else { return }
-
+        
         do {
             try await SupabaseManager.shared.client
                 .from("friend_messages")
@@ -1044,7 +1065,7 @@ final class FriendStore: ObservableObject {
                 .neq("sender_id", value: currentUserID.uuidString)
                 .is("seen_at", value: nil)
                 .execute()
-
+            
             await loadMessages(for: friendshipID, currentUserID: currentUserID)
         } catch {
             print("MARK MESSAGES SEEN ERROR:", error.localizedDescription)
@@ -1056,7 +1077,7 @@ final class FriendStore: ObservableObject {
             if let oldChannel = friendPresenceChannel {
                 try? await oldChannel.unsubscribe()
             }
-
+            
             await MainActor.run {
                 self.friendPresenceChannel = nil
             }
@@ -1067,29 +1088,29 @@ final class FriendStore: ObservableObject {
             if let oldChannel = friendPresenceChannel {
                 try? await oldChannel.unsubscribe()
             }
-
+            
             await MainActor.run {
                 self.friendPresenceChannel = nil
             }
-
+            
             let channel = SupabaseManager.shared.client
                 .realtimeV2
                 .channel("friend-presence")
-
+            
             _ = channel.onPostgresChange(
                 InsertAction.self,
                 schema: "public",
                 table: "friend_presence"
             ) { [weak self] action in
                 guard let self else { return }
-
+                
                 Task { @MainActor [weak self] in
                     guard let self else { return }
-
+                    
                     do {
                         let jsonData = try JSONSerialization.data(withJSONObject: action.record)
                         let dto = try JSONDecoder().decode(FriendPresenceDTO.self, from: jsonData)
-
+                        
                         guard userIDs.contains(dto.user_id) else { return }
                         self.presenceByUserID[dto.user_id] = dto
                     } catch {
@@ -1097,21 +1118,21 @@ final class FriendStore: ObservableObject {
                     }
                 }
             }
-
+            
             _ = channel.onPostgresChange(
                 UpdateAction.self,
                 schema: "public",
                 table: "friend_presence"
             ) { [weak self] action in
                 guard let self else { return }
-
+                
                 Task { @MainActor [weak self] in
                     guard let self else { return }
-
+                    
                     do {
                         let jsonData = try JSONSerialization.data(withJSONObject: action.record)
                         let dto = try JSONDecoder().decode(FriendPresenceDTO.self, from: jsonData)
-
+                        
                         guard userIDs.contains(dto.user_id) else { return }
                         self.presenceByUserID[dto.user_id] = dto
                     } catch {
@@ -1119,17 +1140,17 @@ final class FriendStore: ObservableObject {
                     }
                 }
             }
-
+            
             _ = channel.onPostgresChange(
                 DeleteAction.self,
                 schema: "public",
                 table: "friend_presence"
             ) { [weak self] action in
                 guard let self else { return }
-
+                
                 Task { @MainActor [weak self] in
                     guard let self else { return }
-
+                    
                     if let userIDString = action.oldRecord["user_id"] as? String,
                        let userID = UUID(uuidString: userIDString),
                        userIDs.contains(userID) {
@@ -1137,11 +1158,11 @@ final class FriendStore: ObservableObject {
                     }
                 }
             }
-
+            
             await MainActor.run {
                 self.friendPresenceChannel = channel
             }
-
+            
             try? await channel.subscribeWithError()
         }
     }
@@ -1149,16 +1170,16 @@ final class FriendStore: ObservableObject {
     func loadPresence(for userIDs: [UUID]) async {
         let uniqueIDs = Array(Set(userIDs))
         guard !uniqueIDs.isEmpty else { return }
-
+        
         do {
             let response = try await SupabaseManager.shared.client
                 .from("friend_presence")
                 .select()
                 .in("user_id", values: uniqueIDs.map(\.uuidString))
                 .execute()
-
+            
             let decoded = try JSONDecoder().decode([FriendPresenceDTO].self, from: response.data)
-
+            
             var dict: [UUID: FriendPresenceDTO] = [:]
             for item in decoded {
                 dict[item.user_id] = item
@@ -1175,23 +1196,23 @@ final class FriendStore: ObservableObject {
         isOnline: Bool
     ) async {
         guard let currentUserID else { return }
-
+        
         struct Payload: Encodable {
             let user_id: UUID
             let is_online: Bool
             let last_seen_at: String
             let updated_at: String
         }
-
+        
         let now = ISO8601DateFormatter().string(from: Date())
-
+        
         let payload = Payload(
             user_id: currentUserID,
             is_online: isOnline,
             last_seen_at: now,
             updated_at: now
         )
-
+        
         do {
             try await SupabaseManager.shared.client
                 .from("friend_presence")
@@ -1201,93 +1222,81 @@ final class FriendStore: ObservableObject {
             print("SET PRESENCE ERROR:", error.localizedDescription)
         }
     }
-
+    
     // MARK: - Realtime
-
+    
     func subscribeToFriendMessagesRealtime(
-        friendshipID: UUID,
-        currentUserID: UUID?
+            friendshipID: UUID,
+            currentUserID: UUID?
     ) {
+        guard subscribedFriendshipID != friendshipID else { return }
         
-
         let currentUserIDCopy = currentUserID
-
+        
         Task {
-            await friendMessagesChannel?.unsubscribe()
-        }
-        friendMessagesChannel = nil
-
-        let client = SupabaseManager.shared.client
-        let channel = client.realtimeV2.channel("friend-messages-\(friendshipID.uuidString)")
-
-        _ =  channel.onPostgresChange(
-            InsertAction.self,
-            schema: "public",
-            table: "friend_messages",
-            filter: "friendship_id=eq.\(friendshipID.uuidString)"
-        ) { [weak self] action in
-            guard let self else { return }
-
-            Task { @MainActor [self] in
-                do {
-                    let jsonData = try JSONSerialization.data(withJSONObject: action.record)
-                    let dto = try JSONDecoder().decode(FriendMessageDTO.self, from: jsonData)
-
-                    let item = self.mapDTOToFriendItem(dto, currentUserID: currentUserIDCopy)
-                    self.appendFriendMessage(item, friendshipID: friendshipID)
-
-                    if dto.sender_id != currentUserIDCopy {
-                        Task {
+            // 1️⃣ Önce eskiyi temizle
+            if let old = friendMessagesChannel {
+                try? await old.unsubscribe()
+            }
+            
+            await MainActor.run {
+                self.friendMessagesChannel = nil
+                self.subscribedFriendshipID = nil
+            }
+            
+            // 2️⃣ Channel oluştur
+            let channel = SupabaseManager.shared.client
+                .realtimeV2
+                .channel("friend-messages-\(friendshipID.uuidString)")
+            
+            print("🔵 REALTIME SUBSCRIBING TO:", friendshipID.uuidString)
+            
+            // 3️⃣ Listener'ları ekle (subscribe'dan ÖNCE)
+            _ = channel.onPostgresChange(
+                InsertAction.self,
+                schema: "public",
+                table: "friend_messages",
+                filter: "friendship_id=eq.\(friendshipID.uuidString)"
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    do {
+                        let jsonData = try JSONSerialization.data(
+                            withJSONObject: action.record
+                        )
+                        let dto = try JSONDecoder().decode(
+                            FriendMessageDTO.self, from: jsonData
+                        )
+                        let item = self.mapDTOToFriendItem(
+                            dto, currentUserID: currentUserIDCopy
+                        )
+                        self.appendFriendMessage(item, friendshipID: friendshipID)
+                        
+                        if dto.sender_id != currentUserIDCopy {
                             await self.markMessagesSeen(
                                 friendshipID: friendshipID,
                                 currentUserID: currentUserIDCopy
                             )
                         }
+                    } catch {
+                        print("REALTIME DECODE ERROR:", error.localizedDescription)
                     }
-                } catch {
-                    print("REALTIME DECODE ERROR:", error.localizedDescription)
                 }
             }
-        }
-        _ =  channel.onPostgresChange(
-            InsertAction.self,
-            schema: "public",
-            table: "friend_typing_status"
-        ) { [weak self] action in
-            guard let self else { return }
-            Task { @MainActor in
-                
-
-                do {
-                    let jsonData = try JSONSerialization.data(withJSONObject: action.record)
-                    let dto = try JSONDecoder().decode(FriendTypingStatusDTO.self, from: jsonData)
-
-                    guard dto.user_id != currentUserID else { return }
-                    self.typingUsers[dto.user_id] = dto.user_name
-
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                        self.typingUsers.removeValue(forKey: dto.user_id)
-                    }
-                } catch {
-                    print("TYPING STATUS REALTIME DECODE ERROR:", error.localizedDescription)
-                }
+            
+            // 4️⃣ Channel'ı kaydet
+            await MainActor.run {
+                self.friendMessagesChannel = channel
+                self.subscribedFriendshipID = friendshipID
+            }
+            
+            // 5️⃣ En son subscribe ol
+            do {
+                try await channel.subscribeWithError()
+                print("🟢 REALTIME SUBSCRIBED SUCCESSFULLY")
+            } catch {
+                print("🔴 REALTIME SUBSCRIBE ERROR:", error.localizedDescription)
             }
         }
-
-        Task {
-          try?  await channel.subscribeWithError()
-        }
-
-        friendMessagesChannel = channel
-        subscribedFriendshipID = friendshipID
-    }
-    
-
-    func unsubscribeFriendMessagesRealtime() {
-        Task {
-            await friendMessagesChannel?.unsubscribe()
-        }
-        friendMessagesChannel = nil
-        subscribedFriendshipID = nil
     }
 }

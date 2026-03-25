@@ -54,10 +54,18 @@ struct FriendChatView: View {
         .task {
             guard let friendshipID else { return }
 
-            await friendStore.loadMessages(
-                for: friendshipID,
-                currentUserID: session.currentUser?.id
-            )
+            // ✅ Aktif chat'i kaydet
+            friendStore.activeChatFriendshipID = friendshipID
+
+            let alreadyLoaded = !(friendStore.friendMessagesByFriendship[friendshipID]?.isEmpty ?? true)
+            
+            if !alreadyLoaded {
+                await friendStore.loadMessages(
+                    for: friendshipID,
+                    currentUserID: session.currentUser?.id
+                )
+            }
+
             let pushStore = PushTokenStore()
             await pushStore.saveCurrentToken(currentUserID: session.currentUser?.id)
 
@@ -87,6 +95,9 @@ struct FriendChatView: View {
             )
         }
         .onDisappear {
+            // ✅ Aktif chat'i temizle
+            friendStore.activeChatFriendshipID = nil
+
             friendStore.unsubscribeFriendMessagesRealtime()
             friendStore.unsubscribeTypingRealtime()
             friendStore.unsubscribePresenceRealtime()
@@ -442,7 +453,10 @@ private extension FriendChatView {
                 senderName: senderName
             )
 
-            triggerPush(toUserId: toUserId, message: clean)
+            // ✅ Sadece chat dışındayken push gönder
+            if friendStore.activeChatFriendshipID != friendshipID {
+                triggerPush(toUserId: toUserId, message: clean)
+            }
         }
     }
 
@@ -455,7 +469,10 @@ private extension FriendChatView {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("sb_publishable_lrWcbEx1SkaW3BmIYZ-j5g_iuFRrGhH", forHTTPHeaderField: "Authorization")
+        request.setValue(
+            "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNyenZ6YWN6Z3lkd3RvcG5scnZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NjIzNjAsImV4cCI6MjA4OTQzODM2MH0.8eSacyni-OQZEU6wbMZwjSPhLdQthZFGvUwHlCiaaF4",
+            forHTTPHeaderField: "Authorization"
+        )
 
         let body: [String: Any] = [
             "toUserId": toUserId,
@@ -474,11 +491,9 @@ private extension FriendChatView {
                 print("❌ PUSH ERROR:", error.localizedDescription)
                 return
             }
-
             if let http = response as? HTTPURLResponse {
                 print("🟡 PUSH HTTP STATUS:", http.statusCode)
             }
-
             if let data = data {
                 print("🟢 PUSH RESPONSE:", String(data: data, encoding: .utf8) ?? "nil")
             }
