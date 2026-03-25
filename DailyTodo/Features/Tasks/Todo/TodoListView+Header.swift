@@ -8,8 +8,7 @@
 import SwiftUI
 
 extension TodoListView {
-    
-    
+
     var tasksAmbientBackground: some View {
         AppBackground()
     }
@@ -19,9 +18,10 @@ extension TodoListView {
             !task.isDone && store.isOverdue(task)
         }.count
     }
+
     var tasksHeader: some View {
         HStack(alignment: .center, spacing: 12) {
-            Text("Home")
+            Text(String(localized: "todo_home_title"))
                 .font(.system(size: 34, weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
 
@@ -108,8 +108,7 @@ extension TodoListView {
                     } label: {
                         LiveBadgeView(
                             next: next,
-                            palette: palette,
-                           
+                            palette: palette
                         )
                     }
                     .buttonStyle(.plain)
@@ -136,7 +135,6 @@ extension TodoListView {
     struct LiveBadgeView: View {
         let next: (title: String, timeText: String, status: TodoListView.NextClassStatus)
         let palette: ThemePalette
-        
 
         var body: some View {
             let isLive = next.status == .live
@@ -151,7 +149,9 @@ extension TodoListView {
                             radius: isLive ? 6 : 4
                         )
 
-                    Text(isLive ? "LIVE" : "NEXT")
+                    Text(isLive
+                         ? String(localized: "todo_live_badge_live")
+                         : String(localized: "todo_live_badge_next"))
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(isLive ? Color.green : Color.orange)
                         .lineLimit(1)

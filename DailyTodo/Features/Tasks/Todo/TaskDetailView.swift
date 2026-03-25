@@ -11,22 +11,20 @@ import SwiftData
 struct TaskDetailView: View {
     @Bindable var task: DTTaskItem
     @Environment(\.modelContext) private var modelContext
-    @Query private var allWorkoutExercises: [WorkoutExerciseItem]
-    
-    @Query private var allExerciseHistory: [WorkoutExerciseHistoryItem]
-    
-    @Query private var allEvents: [EventItem]
-    
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var session: SessionStore
-    
+
+    @Query private var allWorkoutExercises: [WorkoutExerciseItem]
+    @Query private var allExerciseHistory: [WorkoutExerciseHistoryItem]
+    @Query private var allEvents: [EventItem]
+
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private let palette = ThemePalette()
-    
+
     @State private var showWorkoutTemplateSheet = false
     @State private var showWeekAddedToast = false
     @State private var showFinishWorkoutToast = false
-    
+
     let workoutDays = [
         "Leg Day",
         "Push Day",
@@ -37,26 +35,25 @@ struct TaskDetailView: View {
         "Arm Day",
         "Full Body"
     ]
-    
+
     var body: some View {
         ZStack {
             AppBackground()
-            
+
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
-                    
                     titleCard
                     notesCard
                     typeCard
-                    
+
                     if task.taskType == "workout" {
                         workoutCard
                     }
-                    
+
                     scheduleCard
                     actionCard
-                    
+
                     Spacer(minLength: 80)
                 }
                 .padding(.horizontal, 16)
@@ -64,7 +61,7 @@ struct TaskDetailView: View {
                 .padding(.bottom, 30)
             }
             .scrollIndicators(.hidden)
-            
+
             if showFinishWorkoutToast {
                 VStack {
                     Spacer()
@@ -73,7 +70,7 @@ struct TaskDetailView: View {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundStyle(.white)
 
-                        Text("Workout finished")
+                        Text(String(localized: "task_detail_workout_finished"))
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.white)
                     }
@@ -89,16 +86,16 @@ struct TaskDetailView: View {
                 }
                 .zIndex(5)
             }
-            
+
             if showWeekAddedToast {
                 VStack {
                     Spacer()
-                    
+
                     HStack(spacing: 10) {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundStyle(.white)
-                        
-                        Text("Added to Week")
+
+                        Text(String(localized: "task_detail_added_to_week"))
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.white)
                     }
@@ -145,7 +142,7 @@ private extension TaskDetailView {
 
             Spacer()
 
-            Text("Task Detail")
+            Text(String(localized: "task_detail_title"))
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
 
@@ -157,11 +154,11 @@ private extension TaskDetailView {
 
     var titleCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Title")
+            Text(String(localized: "task_detail_section_title"))
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
-            TextField("Task title", text: $task.title)
+            TextField(String(localized: "task_detail_task_title_placeholder"), text: $task.title)
                 .textFieldStyle(.plain)
                 .padding(14)
                 .background(
@@ -174,7 +171,7 @@ private extension TaskDetailView {
                 )
 
             if let dueDate = task.dueDate {
-                Text("Due: \(dueDate.formatted(date: .abbreviated, time: .shortened))")
+                Text("\(String(localized: "task_detail_due_prefix")): \(dueDate.formatted(date: .abbreviated, time: .shortened))")
                     .font(.caption)
                     .foregroundStyle(palette.secondaryText)
             }
@@ -185,7 +182,7 @@ private extension TaskDetailView {
 
     var notesCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Notes")
+            Text(String(localized: "task_detail_notes"))
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
@@ -207,21 +204,21 @@ private extension TaskDetailView {
 
     var typeCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Task Type")
+            Text(String(localized: "task_detail_task_type"))
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
-            Picker("Task Type", selection: $task.taskType) {
-                Text("Standard").tag("standard")
-                Text("Study").tag("study")
-                Text("Workout").tag("workout")
+            Picker(String(localized: "task_detail_task_type"), selection: $task.taskType) {
+                Text(String(localized: "task_type_standard")).tag("standard")
+                Text(String(localized: "task_type_study")).tag("study")
+                Text(String(localized: "task_type_workout")).tag("workout")
             }
             .pickerStyle(.segmented)
         }
         .padding(18)
         .background(cardBackground)
     }
-    
+
     var selectedWorkoutDay: String {
         task.workoutDay ?? "Leg Day"
     }
@@ -236,7 +233,7 @@ private extension TaskDetailView {
                 return lhs.createdAt < rhs.createdAt
             }
     }
-    
+
     func saveWorkoutHistoryIfNeeded() {
         guard task.taskType == "workout" else { return }
 
@@ -263,6 +260,8 @@ private extension TaskDetailView {
             )
             modelContext.insert(item)
         }
+
+        try? modelContext.save()
     }
 
     var recommendedExercises: [String] {
@@ -278,7 +277,7 @@ private extension TaskDetailView {
                 !taskExercises.contains(where: { $0.name == name })
             }
     }
-    
+
     func addExercise(_ name: String) {
         let item = WorkoutExerciseItem(
             taskUUID: task.taskUUID,
@@ -290,8 +289,9 @@ private extension TaskDetailView {
             orderIndex: taskExercises.count
         )
         modelContext.insert(item)
+        try? modelContext.save()
     }
-    
+
     @ViewBuilder
     func flowExerciseButtons(_ items: [String], tint: Color) -> some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 10)], spacing: 10) {
@@ -337,18 +337,19 @@ private extension TaskDetailView {
                 }
                 .buttonStyle(.plain)
             }
+
             if latestHistory(for: exercise) != nil || bestHistory(for: exercise) != nil {
                 VStack(alignment: .leading, spacing: 6) {
                     if let latest = latestHistory(for: exercise) {
                         historyMiniLine(
-                            title: "Last",
+                            title: String(localized: "task_detail_history_last"),
                             value: historyText(for: latest)
                         )
                     }
 
                     if let best = bestHistory(for: exercise) {
                         historyMiniLine(
-                            title: "Best",
+                            title: String(localized: "task_detail_history_best"),
                             value: historyText(for: best)
                         )
                     }
@@ -356,33 +357,40 @@ private extension TaskDetailView {
             }
 
             HStack(spacing: 10) {
-                stepCard(title: "Sets", value: exercise.sets) {
+                stepCard(title: String(localized: "task_detail_sets"), value: exercise.sets) {
                     if exercise.sets > 1 { exercise.sets -= 1 }
                 } increment: {
                     exercise.sets += 1
+                    try? modelContext.save()
                 }
 
-                stepCard(title: "Reps", value: exercise.reps) {
+                stepCard(title: String(localized: "task_detail_reps"), value: exercise.reps) {
                     if exercise.reps > 1 { exercise.reps -= 1 }
                 } increment: {
                     exercise.reps += 1
+                    try? modelContext.save()
                 }
             }
-            
+
             HStack(spacing: 10) {
-                stepCard(title: "KG", value: Int(exercise.weight)) {
+                stepCard(title: String(localized: "task_detail_kg"), value: Int(exercise.weight)) {
                     if exercise.weight >= 2.5 { exercise.weight -= 2.5 }
+                    try? modelContext.save()
                 } increment: {
                     exercise.weight += 2.5
+                    try? modelContext.save()
                 }
 
                 Toggle(
                     isOn: Binding(
                         get: { exercise.isSuperset },
-                        set: { exercise.isSuperset = $0 }
+                        set: {
+                            exercise.isSuperset = $0
+                            try? modelContext.save()
+                        }
                     )
                 ) {
-                    Text("Superset")
+                    Text(String(localized: "task_detail_superset"))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -400,23 +408,31 @@ private extension TaskDetailView {
             }
 
             HStack(spacing: 10) {
-                stepCard(title: "Sec", value: exercise.durationSeconds) {
+                stepCard(title: String(localized: "task_detail_seconds_short"), value: exercise.durationSeconds) {
                     if exercise.durationSeconds >= 5 { exercise.durationSeconds -= 5 }
+                    try? modelContext.save()
                 } increment: {
                     exercise.durationSeconds += 5
+                    try? modelContext.save()
                 }
 
-                stepCard(title: "Rest", value: exercise.restSeconds) {
+                stepCard(title: String(localized: "task_detail_rest"), value: exercise.restSeconds) {
                     if exercise.restSeconds >= 5 { exercise.restSeconds -= 5 }
+                    try? modelContext.save()
                 } increment: {
                     exercise.restSeconds += 5
+                    try? modelContext.save()
                 }
             }
+
             TextField(
-                "Notes (optional)",
+                String(localized: "task_detail_notes_optional"),
                 text: Binding(
                     get: { exercise.notes },
-                    set: { exercise.notes = $0 }
+                    set: {
+                        exercise.notes = $0
+                        try? modelContext.save()
+                    }
                 )
             )
             .font(.caption)
@@ -440,7 +456,7 @@ private extension TaskDetailView {
                 )
         )
     }
-    
+
     func historyText(for item: WorkoutExerciseHistoryItem) -> String {
         if item.weight > 0 {
             return "\(Int(item.weight)) kg × \(item.reps)"
@@ -448,13 +464,15 @@ private extension TaskDetailView {
             return "\(item.sets) set × \(item.reps) rep"
         }
     }
-    
+
     func markRelatedWeekEventsCompleted() {
         let relatedEvents = allEvents.filter { $0.sourceTaskUUID == task.taskUUID }
 
         for event in relatedEvents {
             event.isCompleted = task.isDone
         }
+
+        try? modelContext.save()
     }
 
     func historyMiniLine(title: String, value: String) -> some View {
@@ -523,13 +541,12 @@ private extension TaskDetailView {
 
     func removeExercise(_ exercise: WorkoutExerciseItem) {
         modelContext.delete(exercise)
+        try? modelContext.save()
     }
-    
+
     func addTaskToWeek() {
         guard let user = session.currentUser else { return }
         let currentUserID = user.id.uuidString
-        
-
         let selectedDate = task.scheduledWeekDate ?? Date()
 
         let existing = allEvents.first {
@@ -542,15 +559,10 @@ private extension TaskDetailView {
         }
 
         let calendar = Calendar.current
-
-        let weekdayFromCalendar =
-            calendar.component(.weekday, from: selectedDate)
-
+        let weekdayFromCalendar = calendar.component(.weekday, from: selectedDate)
         let mappedWeekday = (weekdayFromCalendar + 5) % 7
-
         let hour = calendar.component(.hour, from: selectedDate)
         let minute = calendar.component(.minute, from: selectedDate)
-
         let startMinute = hour * 60 + minute
 
         let duration = task.scheduledWeekDurationMinutes
@@ -571,10 +583,9 @@ private extension TaskDetailView {
         )
 
         modelContext.insert(event)
-
         try? modelContext.save()
     }
-    
+
     func historyItems(for exercise: WorkoutExerciseItem) -> [WorkoutExerciseHistoryItem] {
         allExerciseHistory
             .filter { $0.exerciseName == exercise.name }
@@ -598,7 +609,7 @@ private extension TaskDetailView {
     var workoutCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("Workout Plan")
+                Text(String(localized: "task_detail_workout_plan"))
                     .font(.headline)
                     .foregroundStyle(palette.primaryText)
 
@@ -607,7 +618,7 @@ private extension TaskDetailView {
                 Button {
                     showWorkoutTemplateSheet = true
                 } label: {
-                    Text("Templates")
+                    Text(String(localized: "task_detail_templates"))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.blue)
                         .padding(.horizontal, 10)
@@ -621,13 +632,16 @@ private extension TaskDetailView {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Workout Day")
+                Text(String(localized: "task_detail_workout_day"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(palette.primaryText)
 
-                Picker("Workout Day", selection: Binding(
+                Picker(String(localized: "task_detail_workout_day"), selection: Binding(
                     get: { task.workoutDay ?? "Leg Day" },
-                    set: { task.workoutDay = $0 }
+                    set: {
+                        task.workoutDay = $0
+                        try? modelContext.save()
+                    }
                 )) {
                     ForEach(workoutDays, id: \.self) { day in
                         Text(day).tag(day)
@@ -647,7 +661,7 @@ private extension TaskDetailView {
 
             if !recommendedExercises.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Most Recommended")
+                    Text(String(localized: "task_detail_most_recommended"))
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(palette.primaryText)
 
@@ -657,7 +671,7 @@ private extension TaskDetailView {
 
             if !otherExercises.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Other Exercises")
+                    Text(String(localized: "task_detail_other_exercises"))
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(palette.primaryText)
 
@@ -666,12 +680,12 @@ private extension TaskDetailView {
             }
 
             VStack(alignment: .leading, spacing: 12) {
-                Text("Selected Exercises")
+                Text(String(localized: "task_detail_selected_exercises"))
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(palette.primaryText)
 
                 if taskExercises.isEmpty {
-                    Text("No exercises added yet")
+                    Text(String(localized: "task_detail_no_exercises"))
                         .font(.caption)
                         .foregroundStyle(palette.secondaryText)
                         .padding(.vertical, 6)
@@ -683,14 +697,17 @@ private extension TaskDetailView {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Duration")
+                Text(String(localized: "task_detail_duration"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(palette.primaryText)
 
                 Stepper(
                     value: Binding(
                         get: { task.workoutDurationMinutes ?? 45 },
-                        set: { task.workoutDurationMinutes = $0 }
+                        set: {
+                            task.workoutDurationMinutes = $0
+                            try? modelContext.save()
+                        }
                     ),
                     in: 10...180,
                     step: 5
@@ -715,15 +732,18 @@ private extension TaskDetailView {
 
     var scheduleCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Schedule on Week")
+            Text(String(localized: "task_detail_schedule_on_week"))
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
             DatePicker(
-                "Week Date",
+                String(localized: "task_detail_week_date"),
                 selection: Binding(
                     get: { task.scheduledWeekDate ?? Date() },
-                    set: { task.scheduledWeekDate = $0 }
+                    set: {
+                        task.scheduledWeekDate = $0
+                        try? modelContext.save()
+                    }
                 ),
                 displayedComponents: [.date, .hourAndMinute]
             )
@@ -732,12 +752,15 @@ private extension TaskDetailView {
             Stepper(
                 value: Binding(
                     get: { task.scheduledWeekDurationMinutes ?? 60 },
-                    set: { task.scheduledWeekDurationMinutes = $0 }
+                    set: {
+                        task.scheduledWeekDurationMinutes = $0
+                        try? modelContext.save()
+                    }
                 ),
                 in: 15...240,
                 step: 15
             ) {
-                Text("Duration: \(task.scheduledWeekDurationMinutes ?? 60) min")
+                Text("\(String(localized: "task_detail_duration")): \(task.scheduledWeekDurationMinutes ?? 60) min")
                     .foregroundStyle(palette.primaryText)
             }
 
@@ -758,7 +781,7 @@ private extension TaskDetailView {
                     dismiss()
                 }
             } label: {
-                Text("Add to Week")
+                Text(String(localized: "task_detail_add_to_week"))
                     .font(.headline)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -781,6 +804,7 @@ private extension TaskDetailView {
 
                 task.isDone = willBeDone
                 task.completedAt = willBeDone ? Date() : nil
+                try? modelContext.save()
 
                 if willBeDone && task.taskType == "workout" {
                     saveWorkoutHistoryIfNeeded()
@@ -825,21 +849,21 @@ private extension TaskDetailView {
         .padding(18)
         .background(cardBackground)
     }
-    
+
     var primaryActionTitle: String {
         if task.taskType == "workout" {
-            return task.isDone ? "Reopen Workout" : "Finish Workout"
+            return task.isDone
+            ? String(localized: "task_detail_reopen_workout")
+            : String(localized: "task_detail_finish_workout")
         } else {
-            return task.isDone ? "Mark as Undone" : "Mark as Done"
+            return task.isDone
+            ? String(localized: "task_detail_mark_undone")
+            : String(localized: "task_detail_mark_done")
         }
     }
 
     var primaryActionColor: Color {
-        if task.taskType == "workout" {
-            return task.isDone ? .orange : .green
-        } else {
-            return task.isDone ? .orange : .green
-        }
+        task.isDone ? .orange : .green
     }
 
     var cardBackground: some View {
@@ -898,6 +922,7 @@ private struct WorkoutTemplateSheet: View {
                             modelContext.insert(item)
                         }
 
+                        try? modelContext.save()
                         dismiss()
                     } label: {
                         VStack(alignment: .leading, spacing: 6) {
@@ -914,9 +939,8 @@ private struct WorkoutTemplateSheet: View {
                     .buttonStyle(.plain)
                 }
             }
-            .navigationTitle("Workout Templates")
+            .navigationTitle(String(localized: "task_detail_workout_templates"))
             .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
-

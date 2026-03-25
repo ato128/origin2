@@ -18,27 +18,37 @@ struct AddTaskView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Görev") {
-                    TextField("Başlık", text: $title)
+                Section(String(localized: "add_task_section_task")) {
+                    TextField(String(localized: "add_task_title_placeholder"), text: $title)
                         .textInputAutocapitalization(.sentences)
                 }
 
-                Section("Tarih") {
-                    Toggle("Tarih ekle", isOn: $hasDueDate.animation())
+                Section(String(localized: "add_task_section_date")) {
+                    Toggle(String(localized: "add_task_add_date"), isOn: $hasDueDate.animation())
+
                     if hasDueDate {
-                        DatePicker("Tarih", selection: $dueDate, displayedComponents: [.date, .hourAndMinute])
+                        DatePicker(
+                            String(localized: "add_task_date_picker"),
+                            selection: $dueDate,
+                            displayedComponents: [.date, .hourAndMinute]
+                        )
                     }
                 }
             }
-            .navigationTitle("Görev Ekle")
+            .navigationTitle(String(localized: "add_task_title"))
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("İptal") { dismiss() }
+                    Button(String(localized: "common_cancel")) {
+                        dismiss()
+                    }
                 }
+
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Ekle") { add() }
-                        .fontWeight(.semibold)
-                        .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button(String(localized: "add_task_add_button")) {
+                        add()
+                    }
+                    .fontWeight(.semibold)
+                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
         }

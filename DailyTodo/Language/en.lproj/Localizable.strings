@@ -591,3 +591,96 @@
 "backend_create_task_duration_format" = "Süre: %d dk";
 
 "backend_create_task_user_session_not_found" = "Kullanıcı oturumu bulunamadı.";
+
+"todo_home_title" = "Home";
+"todo_live_badge_live" = "LIVE";
+"todo_live_badge_next" = "NEXT";
+
+"add_task_title" = "Add Task";
+"add_task_section_task" = "Task";
+"add_task_title_placeholder" = "Title";
+"add_task_section_date" = "Date";
+"add_task_add_date" = "Add date";
+"add_task_date_picker" = "Date";
+"add_task_add_button" = "Add";
+
+"edit_task_title" = "Edit";
+"edit_task_section_task" = "Task";
+"edit_task_title_placeholder" = "Title";
+"edit_task_section_date" = "Date";
+"edit_task_toggle_date" = "Date";
+"edit_task_date_picker" = "Date";
+"edit_task_delete_button" = "Delete Task";
+
+"tasks_title" = "Tasks";
+
+"tasks_filter_today" = "Today";
+"tasks_filter_all" = "All";
+"tasks_filter_done" = "Done";
+
+"tasks_summary_open" = "Open";
+"tasks_summary_done" = "Done";
+"tasks_summary_today" = "Today";
+
+"tasks_no_due_date" = "No due date";
+
+"tasks_mark_as_done" = "Mark as Done";
+"tasks_mark_as_undone" = "Mark as Undone";
+"tasks_schedule" = "Schedule";
+
+"tasks_empty_today_title" = "No tasks for today";
+"tasks_empty_today_subtitle" = "Enjoy the day or add a new task.";
+
+"tasks_empty_all_title" = "No open tasks";
+"tasks_empty_all_subtitle" = "Your inbox is clear for now.";
+
+"tasks_empty_done_title" = "No completed tasks yet";
+"tasks_empty_done_subtitle" = "Complete a task to see it here.";
+
+"common_delete" = "Delete";
+
+"task_detail_title" = "Task Detail";
+"task_detail_section_title" = "Title";
+"task_detail_task_title_placeholder" = "Task title";
+"task_detail_due_prefix" = "Due";
+
+"task_detail_notes" = "Notes";
+
+"task_detail_task_type" = "Task Type";
+"task_type_standard" = "Standard";
+"task_type_study" = "Study";
+"task_type_workout" = "Workout";
+
+"task_detail_workout_plan" = "Workout Plan";
+"task_detail_templates" = "Templates";
+"task_detail_workout_day" = "Workout Day";
+
+"task_detail_most_recommended" = "Most Recommended";
+"task_detail_other_exercises" = "Other Exercises";
+"task_detail_selected_exercises" = "Selected Exercises";
+"task_detail_no_exercises" = "No exercises added yet";
+
+"task_detail_duration" = "Duration";
+"task_detail_history_last" = "Last";
+"task_detail_history_best" = "Best";
+
+"task_detail_sets" = "Sets";
+"task_detail_reps" = "Reps";
+"task_detail_kg" = "KG";
+"task_detail_superset" = "Superset";
+"task_detail_seconds_short" = "Sec";
+"task_detail_rest" = "Rest";
+"task_detail_notes_optional" = "Notes (optional)";
+
+"task_detail_schedule_on_week" = "Schedule on Week";
+"task_detail_week_date" = "Week Date";
+"task_detail_add_to_week" = "Add to Week";
+"task_detail_added_to_week" = "Added to Week";
+
+"task_detail_finish_workout" = "Finish Workout";
+"task_detail_reopen_workout" = "Reopen Workout";
+"task_detail_mark_done" = "Mark as Done";
+"task_detail_mark_undone" = "Mark as Undone";
+"task_detail_workout_finished" = "Workout finished";
+
+"task_detail_workout_templates" = "Workout Templates";

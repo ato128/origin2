@@ -10,34 +10,42 @@ import SwiftUI
 struct TasksView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var store: TodoStore
-    
-    
+
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
-    
+
     @State private var selectedFilter: TasksFilter = .today
     @State private var showAddTask = false
-    
+
     @State private var recentlyCompletedTaskKey: String?
     @State private var pendingRemovalTaskKeys: Set<String> = []
-    
+
     @State private var selectedTask: DTTaskItem?
     @State private var selectedTaskForSchedule: DTTaskItem?
-    
+
     private let palette = ThemePalette()
-    
+
     enum TasksFilter: String, CaseIterable, Identifiable {
-        case today = "Today"
-        case all = "All"
-        case done = "Done"
-        
+        case today = "today"
+        case all = "all"
+        case done = "done"
+
         var id: String { rawValue }
+
+        var localizedTitle: String {
+            switch self {
+            case .today:
+                return String(localized: "tasks_filter_today")
+            case .all:
+                return String(localized: "tasks_filter_all")
+            case .done:
+                return String(localized: "tasks_filter_done")
+            }
+        }
     }
-    
-    
-    
+
     var filteredTasks: [DTTaskItem] {
         let baseTasks: [DTTaskItem]
-        
+
         switch selectedFilter {
         case .today:
             baseTasks = store.items
@@ -47,7 +55,7 @@ struct TasksView: View {
                 .sorted { lhs, rhs in
                     (lhs.dueDate ?? .distantFuture) < (rhs.dueDate ?? .distantFuture)
                 }
-            
+
         case .all:
             baseTasks = store.items
                 .filter { task in
@@ -56,7 +64,7 @@ struct TasksView: View {
                 .sorted { lhs, rhs in
                     (lhs.dueDate ?? .distantFuture) < (rhs.dueDate ?? .distantFuture)
                 }
-            
+
         case .done:
             baseTasks = store.items
                 .filter { task in
@@ -66,21 +74,21 @@ struct TasksView: View {
                     (lhs.completedAt ?? .distantPast) > (rhs.completedAt ?? .distantPast)
                 }
         }
-        
+
         return baseTasks
     }
-    
+
     var body: some View {
         ZStack {
             AppBackground()
-            
+
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
-                    
+
                     filterSegment
                     summaryCard
-                    
+
                     if filteredTasks.isEmpty {
                         emptyState
                     } else {
@@ -96,7 +104,7 @@ struct TasksView: View {
                             }
                         }
                     }
-                    
+
                     Spacer(minLength: 80)
                 }
                 .padding(.horizontal, 16)
@@ -148,7 +156,7 @@ private extension TasksView {
 
             Spacer()
 
-            Text("Tasks")
+            Text(String(localized: "tasks_title"))
                 .font(.system(size: 24, weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
 
@@ -184,7 +192,7 @@ private extension TasksView {
                         selectedFilter = filter
                     }
                 } label: {
-                    Text(filter.rawValue)
+                    Text(filter.localizedTitle)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(isSelected ? palette.primaryText : palette.secondaryText)
                         .frame(maxWidth: .infinity)
@@ -225,19 +233,19 @@ private extension TasksView {
     var summaryCard: some View {
         HStack(spacing: 12) {
             summaryBox(
-                title: "Open",
+                title: String(localized: "tasks_summary_open"),
                 value: "\(store.items.filter { !$0.isDone }.count)",
                 icon: "circle"
             )
 
             summaryBox(
-                title: "Done",
+                title: String(localized: "tasks_summary_done"),
                 value: "\(store.items.filter(\.isDone).count)",
                 icon: "checkmark.circle.fill"
             )
 
             summaryBox(
-                title: "Today",
+                title: String(localized: "tasks_summary_today"),
                 value: "\(store.items.filter { task in !task.isDone && isToday(task) }.count)",
                 icon: "sun.max.fill"
             )
@@ -304,7 +312,7 @@ private extension TasksView {
                                     .font(.caption)
                                     .foregroundStyle(palette.secondaryText)
                             } else {
-                                Text("No due date")
+                                Text(String(localized: "tasks_no_due_date"))
                                     .font(.caption)
                                     .foregroundStyle(palette.secondaryText)
                             }
@@ -365,23 +373,28 @@ private extension TasksView {
                     toggleTask(task)
                 }
             } label: {
-                Label(task.isDone ? "Mark as Undone" : "Mark as Done",
-                      systemImage: task.isDone ? "arrow.uturn.backward.circle" : "checkmark.circle")
+                Label(
+                    task.isDone
+                    ? String(localized: "tasks_mark_as_undone")
+                    : String(localized: "tasks_mark_as_done"),
+                    systemImage: task.isDone ? "arrow.uturn.backward.circle" : "checkmark.circle"
+                )
             }
 
             Button {
                 selectedTaskForSchedule = task
             } label: {
-                Label("Schedule", systemImage: "calendar.badge.plus")
+                Label(String(localized: "tasks_schedule"), systemImage: "calendar.badge.plus")
             }
 
             Button(role: .destructive) {
                 deleteTask(task)
             } label: {
-                Label("Delete", systemImage: "trash")
+                Label(String(localized: "common_delete"), systemImage: "trash")
             }
         }
     }
+
     var emptyState: some View {
         VStack(spacing: 14) {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -408,17 +421,23 @@ private extension TasksView {
 
     var emptyTitle: String {
         switch selectedFilter {
-        case .today: return "No tasks for today"
-        case .all: return "No open tasks"
-        case .done: return "No completed tasks yet"
+        case .today:
+            return String(localized: "tasks_empty_today_title")
+        case .all:
+            return String(localized: "tasks_empty_all_title")
+        case .done:
+            return String(localized: "tasks_empty_done_title")
         }
     }
 
     var emptySubtitle: String {
         switch selectedFilter {
-        case .today: return "Enjoy the day or add a new task."
-        case .all: return "Your inbox is clear for now."
-        case .done: return "Complete a task to see it here."
+        case .today:
+            return String(localized: "tasks_empty_today_subtitle")
+        case .all:
+            return String(localized: "tasks_empty_all_subtitle")
+        case .done:
+            return String(localized: "tasks_empty_done_subtitle")
         }
     }
 
@@ -447,25 +466,23 @@ private extension TasksView {
             let generator = UIImpactFeedbackGenerator(style: .light)
             generator.prepare()
             generator.impactOccurred()
-            
+
             recentlyCompletedTaskKey = key
             pendingRemovalTaskKeys.insert(key)
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { () -> Void in
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 withAnimation(.easeOut(duration: 0.22)) {
                     if recentlyCompletedTaskKey == key {
                         recentlyCompletedTaskKey = nil
                     }
                 }
             }
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.15) { () -> Void in
-               _ = withAnimation(.spring(response: 0.30, dampingFraction: 0.88)) {
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.15) {
+                _ = withAnimation(.spring(response: 0.30, dampingFraction: 0.88)) {
                     pendingRemovalTaskKeys.remove(key)
                 }
             }
-        
-
         } else {
             store.items[index].completedAt = nil
 
@@ -476,6 +493,7 @@ private extension TasksView {
             pendingRemovalTaskKeys.remove(key)
         }
     }
+
     func deleteTask(_ task: DTTaskItem) {
         withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
             store.delete(task)

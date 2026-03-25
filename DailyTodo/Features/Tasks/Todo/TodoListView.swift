@@ -16,11 +16,10 @@ struct TodoListView: View {
     @EnvironmentObject var session: SessionStore
 
     @AppStorage("appTheme") var appTheme = AppTheme.gradient.rawValue
-    
+
     var palette: ThemePalette {
         ThemePalette()
     }
-   
 
     @Query(sort: \EventItem.startMinute, order: .forward)
     var allEvents: [EventItem]
@@ -36,8 +35,6 @@ struct TodoListView: View {
 
     @Query var friendMessages: [FriendMessage]
     @Query var crewMessages: [CrewMessage]
-
-    
 
     enum NextClassStatus {
         case live
@@ -62,7 +59,7 @@ struct TodoListView: View {
     var items: [DTTaskItem] {
         store.items
     }
-    
+
     var currentUserID: UUID? {
         session.currentUser?.id
     }
@@ -102,16 +99,17 @@ struct TodoListView: View {
         }) {
             let endMinute = live.startMinute + live.durationMinute
             let remain = max(0, endMinute - nowMinute)
-            return (live.title, "\(remain) dk", .live)
+            return (live.title, localizedMinuteText(remain), .live)
         }
 
         if let next = todayEvents.first(where: { $0.startMinute > nowMinute }) {
             let remain = max(0, next.startMinute - nowMinute)
-            return (next.title, "\(remain) dk", .next)
+            return (next.title, localizedMinuteText(remain), .next)
         }
 
         return nil
     }
+
     var todayTasks: [DTTaskItem] {
         let calendar = Calendar.current
 
@@ -199,5 +197,10 @@ struct TodoListView: View {
 
             self.previousTopCrewID = newTopCrewID
         }
+    }
+
+    private func localizedMinuteText(_ minutes: Int) -> String {
+        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+        return isTurkish ? "\(minutes) dk" : "\(minutes) min"
     }
 }

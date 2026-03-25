@@ -20,15 +20,19 @@ struct EditTaskView: View {
 
     var body: some View {
         Form {
-            Section("Görev") {
-                TextField("Başlık", text: $title)
+            Section(String(localized: "edit_task_section_task")) {
+                TextField(String(localized: "edit_task_title_placeholder"), text: $title)
                     .textInputAutocapitalization(.sentences)
             }
 
-            Section("Tarih") {
-                Toggle("Tarih", isOn: $hasDueDate.animation(.spring()))
+            Section(String(localized: "edit_task_section_date")) {
+                Toggle(String(localized: "edit_task_toggle_date"), isOn: $hasDueDate.animation(.spring()))
                 if hasDueDate {
-                    DatePicker("Tarih", selection: $dueDate, displayedComponents: [.date, .hourAndMinute])
+                    DatePicker(
+                        String(localized: "edit_task_date_picker"),
+                        selection: $dueDate,
+                        displayedComponents: [.date, .hourAndMinute]
+                    )
                 }
             }
 
@@ -36,19 +40,24 @@ struct EditTaskView: View {
                 Button(role: .destructive) {
                     delete()
                 } label: {
-                    Text("Görevi Sil")
+                    Text(String(localized: "edit_task_delete_button"))
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
             }
         }
-        .navigationTitle("Düzenle")
+        .navigationTitle(String(localized: "edit_task_title"))
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button("İptal") { dismiss() }
+                Button(String(localized: "common_cancel")) {
+                    dismiss()
+                }
             }
+
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Kaydet") { save() }
-                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                Button(String(localized: "common_save")) {
+                    save()
+                }
+                .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
         .onAppear {
