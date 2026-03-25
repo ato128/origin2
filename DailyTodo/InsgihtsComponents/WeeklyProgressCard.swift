@@ -10,7 +10,6 @@ import SwiftUI
 struct WeeklyProgressCard: View {
     let data: WeeklyProgressData
 
-    @Environment(\.locale) private var locale
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private let palette = ThemePalette()
 
@@ -47,6 +46,10 @@ struct WeeklyProgressCard: View {
         max(data.values.max() ?? 0, 1)
     }
 
+    private var headerTitle: String {
+        String(localized: "insights_weekly_progress_title")
+    }
+
     private var headerSubtitle: String {
         hasAnyProgress
         ? String(localized: "insights_weekly_progress_subtitle_active")
@@ -54,31 +57,27 @@ struct WeeklyProgressCard: View {
     }
 
     private var daysLabel: String {
-        locale.language.languageCode?.identifier == "tr" ? "7 gün" : "7 days"
+        String(localized: "insights_weekly_progress_days_label")
     }
 
     private var totalPillText: String {
-        if locale.language.languageCode?.identifier == "tr" {
-            return "Toplam \(totalCount)"
-        } else {
-            return "Total \(totalCount)"
-        }
+        String(
+            localized: "insights_weekly_progress_total_format \(totalCount)"
+        )
+    }
+
+    private var bestDayPillText: String {
+        String(
+            localized: "insights_weekly_progress_best_day_format \(bestDayLabel) \(bestDayValue)"
+        )
     }
 
     private var repeatBestDayHint: String {
-        if locale.language.languageCode?.identifier == "tr" {
-            return "En iyi gününü tekrar etmek için benzer saatlerde görev planlayabilirsin"
-        } else {
-            return "You can schedule tasks at similar times to repeat your best day"
-        }
+        String(localized: "insights_weekly_progress_repeat_hint")
     }
 
     private var firstTasksHint: String {
-        if locale.language.languageCode?.identifier == "tr" {
-            return "İlk tamamlanan görevlerin burada haftalık grafik olarak görünmeye başlayacak"
-        } else {
-            return "Your first completed tasks will start appearing here as a weekly chart"
-        }
+        String(localized: "insights_weekly_progress_first_tasks_hint")
     }
 
     var body: some View {
@@ -116,7 +115,7 @@ struct WeeklyProgressCard: View {
     private var headerSection: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("insights_weekly_progress_title")
+                Text(headerTitle)
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundStyle(palette.primaryText)
                     .lineLimit(1)
@@ -205,7 +204,7 @@ struct WeeklyProgressCard: View {
 
                     miniInfoPill(
                         icon: "star.fill",
-                        text: "\(bestDayLabel) • \(bestDayValue)"
+                        text: bestDayPillText
                     )
                 }
 
@@ -217,7 +216,7 @@ struct WeeklyProgressCard: View {
 
                     miniInfoPill(
                         icon: "star.fill",
-                        text: "\(bestDayLabel) • \(bestDayValue)"
+                        text: bestDayPillText
                     )
                 }
             }

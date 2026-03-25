@@ -149,13 +149,15 @@ extension TodoListView {
                             radius: isLive ? 6 : 4
                         )
 
-                    Text(isLive
-                         ? String(localized: "todo_live_badge_live")
-                         : String(localized: "todo_live_badge_next"))
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(isLive ? Color.green : Color.orange)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                    Text(
+                        isLive
+                        ? String(localized: "todo_live_badge_live")
+                        : String(localized: "todo_live_badge_next")
+                    )
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(isLive ? Color.green : Color.orange)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 }
                 .padding(.horizontal, 6)
                 .padding(.vertical, 4)

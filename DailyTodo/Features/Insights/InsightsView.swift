@@ -10,7 +10,6 @@ import SwiftData
 
 struct InsightsView: View {
     @EnvironmentObject var session: SessionStore
-    @Environment(\.locale) private var locale
 
     @AppStorage("smartEngineEnabled") private var smartEngineEnabled: Bool = true
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
@@ -102,7 +101,7 @@ struct InsightsView: View {
 
                 VStack(spacing: 16) {
                     VStack(alignment: .leading, spacing: 0) {
-                        Text("insights_title")
+                        Text(String(localized: "insights_title"))
                             .font(.system(size: 36, weight: .bold, design: .rounded))
                             .foregroundStyle(palette.primaryText)
                             .padding(.horizontal, 20)
@@ -174,7 +173,7 @@ struct InsightsView: View {
             .scrollIndicators(.hidden)
 
             VStack(spacing: 0) {
-                Text("insights_title")
+                Text(String(localized: "insights_title"))
                     .font(.system(size: 17, weight: .bold, design: .rounded))
                     .foregroundStyle(palette.primaryText)
                     .opacity(smallTitleOpacity)
@@ -190,6 +189,7 @@ struct InsightsView: View {
                 NavigationLink("", isActive: $goTasks) {
                     TodoListView(selectedTab: $insightSelectedTab)
                 }
+
                 NavigationLink("", isActive: $goWeek) {
                     WeekView()
                 }
@@ -197,7 +197,7 @@ struct InsightsView: View {
                 NavigationLink("", isActive: $goFocus) {
                     FocusSessionView(
                         taskID: nil,
-                        taskTitle: localizedQuickFocusTitle(),
+                        taskTitle: String(localized: "insights_quick_focus_title"),
                         onStartFocus: { _, _ in },
                         onTick: { _ in },
                         onFinishFocus: { _, _, _, _, _, _ in },
@@ -207,14 +207,6 @@ struct InsightsView: View {
             }
             .hidden()
         )
-    }
-
-    private func localizedQuickFocusTitle() -> String {
-        if locale.language.languageCode?.identifier == "tr" {
-            return "Hızlı Odak"
-        } else {
-            return "Quick Focus"
-        }
     }
 
     private func handleInsightAction(_ action: SmartSuggestionAction) {

@@ -10,7 +10,6 @@ import SwiftUI
 struct OverviewCard: View {
     let data: OverviewData
 
-    @Environment(\.locale) private var locale
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private let palette = ThemePalette()
 
@@ -164,7 +163,10 @@ struct OverviewCard: View {
                                 endPoint: .trailing
                             )
                         )
-                        .frame(width: max(animatedProgress > 0.001 ? 20 : 0, geo.size.width * animatedProgress), height: 9)
+                        .frame(
+                            width: max(animatedProgress > 0.001 ? 20 : 0, geo.size.width * animatedProgress),
+                            height: 9
+                        )
                         .shadow(
                             color: (hasStrongStreak ? Color.orange : Color.accentColor).opacity(0.22),
                             radius: 8

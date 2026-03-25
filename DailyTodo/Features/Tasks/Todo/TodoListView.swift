@@ -200,7 +200,7 @@ struct TodoListView: View {
     }
 
     private func localizedMinuteText(_ minutes: Int) -> String {
-        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
-        return isTurkish ? "\(minutes) dk" : "\(minutes) min"
+        let format = String(localized: "todo_minutes_format")
+        return String(format: format, minutes)
     }
 }

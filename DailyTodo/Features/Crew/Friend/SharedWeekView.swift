@@ -238,7 +238,7 @@ private extension SharedWeekView {
 
             Spacer()
 
-            Text("shared_week_title")
+            Text(String(localized: "shared_week_title"))
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
@@ -254,7 +254,7 @@ private extension SharedWeekView {
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
 
-            Text("shared_week_subtitle")
+            Text(String(localized: "shared_week_subtitle"))
                 .font(.subheadline)
                 .foregroundStyle(palette.secondaryText)
         }
@@ -279,7 +279,7 @@ private extension SharedWeekView {
 
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 8) {
-                            Text("shared_week_live_now")
+                            Text(String(localized: "shared_week_live_now"))
                                 .font(.caption2.weight(.bold))
                                 .foregroundStyle(.green)
                                 .padding(.horizontal, 8)
@@ -330,7 +330,7 @@ private extension SharedWeekView {
 
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 8) {
-                            Text("shared_week_next_up")
+                            Text(String(localized: "shared_week_next_up"))
                                 .font(.caption2.weight(.bold))
                                 .foregroundStyle(.orange)
                                 .padding(.horizontal, 8)
@@ -449,7 +449,7 @@ private extension SharedWeekView {
                         .font(.system(size: 26))
                         .foregroundStyle(Color.accentColor)
 
-                    Text("shared_week_no_shared_events")
+                    Text(String(localized: "shared_week_no_shared_events"))
                         .font(.headline)
                         .foregroundStyle(palette.primaryText)
 
@@ -494,7 +494,7 @@ private extension SharedWeekView {
                         .foregroundStyle(palette.primaryText)
 
                     if isLive {
-                        Text("shared_week_live")
+                        Text(String(localized: "shared_week_live"))
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(.green)
                             .padding(.horizontal, 8)

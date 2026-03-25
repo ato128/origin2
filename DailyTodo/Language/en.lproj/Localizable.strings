@@ -551,47 +551,44 @@
 "backend_crew_assigned_to" = "Assigned To";
 "backend_crew_created_by" = "Created By";
 
-"backend_edit_task_title" = "Görevi Düzenle";
+"backend_edit_task_title" = "Edit Task";
 
-"backend_edit_task_section_task" = "Görev";
-"backend_edit_task_title_placeholder" = "Görev başlığı";
-"backend_edit_task_details_placeholder" = "Detaylar";
+"backend_edit_task_section_task" = "Task";
+"backend_edit_task_title_placeholder" = "Task title";
+"backend_edit_task_details_placeholder" = "Details";
 
-"backend_edit_task_section_assignment" = "Atama";
-"backend_edit_task_assigned_member" = "Atanan üye";
+"backend_edit_task_section_assignment" = "Assignment";
+"backend_edit_task_assigned_member" = "Assigned member";
 
-"backend_edit_task_section_priority_status" = "Öncelik ve Durum";
-"backend_edit_task_priority" = "Öncelik";
-"backend_edit_task_status" = "Durum";
-"backend_edit_task_completed" = "Tamamlandı";
+"backend_edit_task_section_priority_status" = "Priority & Status";
+"backend_edit_task_priority" = "Priority";
+"backend_edit_task_status" = "Status";
+"backend_edit_task_completed" = "Completed";
 
-"backend_edit_task_section_week_planning" = "Hafta Planlaması";
-"backend_edit_task_show_on_week" = "Week sayfasında göster";
-"backend_edit_task_date_time" = "Tarih ve Saat";
-"backend_edit_task_duration_format" = "Süre: %d dk";
+"backend_edit_task_section_week_planning" = "Week Planning";
+"backend_edit_task_show_on_week" = "Show on Week page";
+"backend_edit_task_date_time" = "Date & Time";
+"backend_edit_task_duration_format" = "Duration: %d min";
 
-"common_save" = "Kaydet";
+"backend_create_task_title" = "New Task";
 
-"backend_create_task_title" = "Yeni Görev";
+"backend_create_task_section_task" = "Task";
+"backend_create_task_title_placeholder" = "Task title";
+"backend_create_task_details_placeholder" = "Details";
 
-"backend_create_task_section_task" = "Görev";
-"backend_create_task_title_placeholder" = "Görev başlığı";
-"backend_create_task_details_placeholder" = "Detaylar";
+"backend_create_task_section_assignment" = "Assignment";
+"backend_create_task_member" = "Member";
 
-"backend_create_task_section_assignment" = "Atama";
-"backend_create_task_member" = "Üye";
+"backend_create_task_section_priority_status" = "Priority & Status";
+"backend_create_task_priority" = "Priority";
+"backend_create_task_status" = "Status";
 
-"backend_create_task_section_priority_status" = "Öncelik ve Durum";
-"backend_create_task_priority" = "Öncelik";
-"backend_create_task_status" = "Durum";
+"backend_create_task_section_week_planning" = "Week Planning";
+"backend_create_task_show_on_week" = "Show on Week page";
+"backend_create_task_date_time" = "Date & Time";
+"backend_create_task_duration_format" = "Duration: %d min";
 
-"backend_create_task_section_week_planning" = "Hafta Planlaması";
-"backend_create_task_show_on_week" = "Week sayfasında göster";
-"backend_create_task_date_time" = "Tarih ve Saat";
-"backend_create_task_duration_format" = "Süre: %d dk";
-
-"backend_create_task_user_session_not_found" = "Kullanıcı oturumu bulunamadı.";
-
+"backend_create_task_user_session_not_found" = "User session not found.";
 "todo_home_title" = "Home";
 "todo_live_badge_live" = "LIVE";
 "todo_live_badge_next" = "NEXT";
@@ -684,3 +681,117 @@
 "task_detail_workout_finished" = "Workout finished";
 
 "task_detail_workout_templates" = "Workout Templates";
+
+"todo_minutes_format" = "%d min";
+
+"week_event_detail_title" = "Event Detail";
+"week_event_workout_summary" = "Workout Summary";
+"week_event_no_exercises_found" = "No exercises found";
+"week_event_time" = "Time";
+"week_event_starts" = "Starts";
+"week_event_ends" = "Ends";
+"week_event_duration" = "Duration";
+"week_event_details" = "Details";
+"week_event_location" = "Location";
+"week_event_notes" = "Notes";
+"week_event_no_extra_details" = "No extra details";
+"week_event_edit" = "Edit Event";
+"week_event_delete" = "Delete Event";
+
+"insights_quick_focus_title" = "Quick Focus";
+
+
+
+"weekday_mon_short" = "Mon";
+"weekday_tue_short" = "Tue";
+"weekday_wed_short" = "Wed";
+"weekday_thu_short" = "Thu";
+"weekday_fri_short" = "Fri";
+"weekday_sat_short" = "Sat";
+"weekday_sun_short" = "Sun";
+
+"insights_minutes_format" = "%d min";
+"insights_hours_minutes_format" = "%1$dh %2$dm";
+
+"insights_daily_boost_title" = "⚡ Daily Boost";
+"insights_daily_boost_tasks_message" = "You can finish today strong by completing just one more task.";
+"insights_daily_boost_great_job" = "🔥 Great Job";
+"insights_daily_boost_focus_message" = "Your main goals are done. You could keep the rhythm with one short extra focus session.";
+"insights_daily_boost_nice_flow" = "✨ Nice Flow";
+"insights_daily_boost_nice_flow_message" = "You are doing well today. Keep going at the same pace.";
+
+"insights_action_open_tasks" = "Open Tasks";
+"insights_action_new_focus" = "New Focus";
+"insights_action_start_focus" = "Start Focus";
+"insights_action_view_week" = "View Week";
+
+"insights_overview_status_start" = "Start your momentum";
+"insights_overview_status_momentum" = "Getting momentum";
+"insights_overview_status_solid" = "Solid progress";
+"insights_overview_status_great" = "Great progress";
+"insights_overview_streak_format" = "%d-day streak";
+"insights_overview_completed_format" = "%d completed";
+"insights_overview_subtitle" = "Task completion rate and overall progress";
+
+"insights_weekly_best_day_format" = "Your most productive day: %@";
+"insights_no_data_yet" = "No data yet";
+
+"insights_heatmap_title" = "Last 4 Weeks";
+"insights_heatmap_subtitle" = "28 days";
+"insights_heatmap_selected_day" = "13 Mar, Fri • no completed tasks";
+
+"insights_focus_streak_format" = "%d-Day Focus Streak";
+"insights_focus_streak_subtitle_active" = "You're building momentum";
+"insights_focus_streak_subtitle_inactive" = "You can start the rhythm";
+"insights_focus_sessions_format" = "%d sessions";
+"insights_focus_longest_format" = "Longest session: %@";
+
+"insights_productivity_title" = "Productivity Score";
+"insights_productivity_subtitle_low" = "You're just getting started";
+"insights_productivity_subtitle_mid" = "Could be better";
+"insights_productivity_subtitle_good" = "You're doing well";
+"insights_productivity_subtitle_great" = "Great performance";
+
+"insights_consistency_title" = "Consistency Score";
+"insights_consistency_subtitle_low" = "You need a bit more consistency";
+"insights_consistency_subtitle_good" = "You're getting more consistent";
+
+"insights_busy_day_title" = "Most Busy Day";
+"insights_busy_day_subtitle" = "The busiest day of this week";
+
+"insights_this_week" = "this week";
+
+"insights_suggestion_task_title" = "Task Insight";
+"insights_suggestion_task_message" = "Your active tasks seem to be piling up. Finishing the smallest task first may help you build momentum.";
+
+"insights_suggestion_focus_title" = "Focus Suggestion";
+"insights_suggestion_focus_message" = "You haven’t started a focus session today yet. A short 25-minute session could help.";
+
+"insights_suggestion_momentum_title" = "Momentum Insight";
+"insights_suggestion_momentum_message" = "You seem to have built momentum today. This might be a good time to finish a difficult task.";
+
+"insights_suggestion_pattern_title" = "Pattern Insight";
+"insights_suggestion_pattern_message" = "Your most productive day this week is %@. Scheduling important work on that day may help.";
+
+"insights_suggestion_focus_pattern_title" = "Focus Pattern";
+"insights_suggestion_focus_pattern_message" = "You seem to focus better in the evening. You could try planning deep work after 18:00.";
+
+"insights_suggestion_deep_work_title" = "Deep Work Insight";
+"insights_suggestion_deep_work_message" = "Long focus sessions seem to work well for you. Putting hard tasks after focus blocks may boost productivity.";
+
+"insights_suggestion_daily_title" = "Daily Suggestion";
+"insights_suggestion_daily_message" = "Completing one small but clear task can make the rest of your day more productive.";
+
+"insights_suggestion_fallback_title" = "Suggestion";
+"insights_suggestion_fallback_message" = "Completing a small task today could be a good start.";
+
+"insights_ai_coach_title" = "AI Productivity Coach";
+"insights_ai_coach_focus_message" = "You seem to complete tasks faster after focus sessions. A short focus first, then a hard task, may work well.";
+"insights_ai_coach_best_day_message" = "You seem more productive on %@. You could try scheduling important work on that day.";
+"insights_ai_coach_default_message" = "Quickly finishing small tasks and doing hard tasks after focus sessions may improve your productivity.";
+
+"insights_weekly_progress_days_label" = "7 days";
+"insights_weekly_progress_total_format %lld" = "Total %lld";
+"insights_weekly_progress_best_day_format %@ %lld" = "%@ • %lld";
+"insights_weekly_progress_repeat_hint" = "You can schedule tasks at similar times to repeat your best day";
+"insights_weekly_progress_first_tasks_hint" = "Your first completed tasks will start appearing here as a weekly chart";

@@ -83,13 +83,13 @@
 
 "home_rest" = "Dinlenme";
 "home_workout_rest_active" = "Dinlenme aktif";
-"home_workout_ready" = "Workout hazır";
-"home_start_workout" = "Workout Başlat";
+"home_workout_ready" = "Antrenman hazır";
+"home_start_workout" = "Antrenman Başlat";
 "home_start_focus" = "Odak Başlat";
 
 "home_shared_focus_running" = "Ortak Odak Çalışıyor";
-"home_workout_rest_running" = "Workout Dinlenmesi Çalışıyor";
-"home_workout_running" = "Workout Çalışıyor";
+"home_workout_rest_running" = "Antrenman Dinlenmesi Çalışıyor";
+"home_workout_running" = "Antrenman Çalışıyor";
 "home_focus_running" = "Odak Çalışıyor";
 "home_with_focus_suffix" = "ile focus";
 "home_deep_work_session" = "Derin Çalışma Oturumu";
@@ -676,3 +676,123 @@
 "task_detail_workout_finished" = "Antrenman tamamlandı";
 
 "task_detail_workout_templates" = "Antrenman Şablonları";
+"edit_task_title" = "Düzenle";
+"edit_task_section_task" = "Görev";
+"edit_task_title_placeholder" = "Başlık";
+"edit_task_section_date" = "Tarih";
+"edit_task_toggle_date" = "Tarih";
+"edit_task_date_picker" = "Tarih";
+"edit_task_delete_button" = "Görevi Sil";
+
+"todo_minutes_format" = "%d dk";
+
+"week_event_detail_title" = "Etkinlik Detayı";
+"week_event_workout_summary" = "Antrenman Özeti";
+"week_event_no_exercises_found" = "Egzersiz bulunamadı";
+"week_event_time" = "Saat";
+"week_event_starts" = "Başlangıç";
+"week_event_ends" = "Bitiş";
+"week_event_duration" = "Süre";
+"week_event_details" = "Detaylar";
+"week_event_location" = "Konum";
+"week_event_notes" = "Notlar";
+"week_event_no_extra_details" = "Ek detay yok";
+"week_event_edit" = "Etkinliği Düzenle";
+"week_event_delete" = "Etkinliği Sil";
+
+"insights_quick_focus_title" = "Hızlı Focus";
+
+
+"weekday_mon_short" = "Pzt";
+"weekday_tue_short" = "Sal";
+"weekday_wed_short" = "Çar";
+"weekday_thu_short" = "Per";
+"weekday_fri_short" = "Cum";
+"weekday_sat_short" = "Cmt";
+"weekday_sun_short" = "Paz";
+
+"insights_minutes_format" = "%d dk";
+"insights_hours_minutes_format" = "%1$d sa %2$d dk";
+
+"insights_daily_boost_title" = "⚡ Günlük Destek";
+"insights_daily_boost_tasks_message" = "Sadece bir görev daha bitirerek bugünü güçlü kapatabilirsin.";
+"insights_daily_boost_great_job" = "🔥 Harika İş";
+"insights_daily_boost_focus_message" = "Ana hedeflerin bitti. İstersen kısa bir ekstra focus açıp ritmi koru.";
+"insights_daily_boost_nice_flow" = "✨ Güzel Akış";
+"insights_daily_boost_nice_flow_message" = "Bugün iyi gidiyorsun. Aynı tempoyla devam et.";
+
+"insights_action_open_tasks" = "Görevleri Aç";
+"insights_action_new_focus" = "Yeni Focus";
+"insights_action_start_focus" = "Focus Başlat";
+"insights_action_view_week" = "Haftayı Gör";
+
+"insights_overview_status_start" = "Ritmi başlat";
+"insights_overview_status_momentum" = "Ritim oluşuyor";
+"insights_overview_status_solid" = "Güçlü ilerleme";
+"insights_overview_status_great" = "Harika ilerleme";
+"insights_overview_streak_format" = "%d gün seri";
+"insights_overview_completed_format" = "%d tamamlandı";
+"insights_overview_subtitle" = "Görev tamamlama oranı ve genel ilerleme";
+
+"insights_weekly_best_day_format" = "En üretken günün: %@";
+"insights_no_data_yet" = "Henüz veri yok";
+
+"insights_heatmap_title" = "Son 4 Hafta";
+"insights_heatmap_subtitle" = "28 gün";
+"insights_heatmap_selected_day" = "13 Mar, Cum • tamamlanan görev yok";
+
+"insights_focus_streak_format" = "%d Günlük Focus Serisi";
+"insights_focus_streak_subtitle_active" = "İvme kazanıyorsun";
+"insights_focus_streak_subtitle_inactive" = "Ritmi başlatabilirsin";
+"insights_focus_sessions_format" = "%d session";
+"insights_focus_longest_format" = "En uzun session: %@";
+
+"insights_productivity_title" = "Üretkenlik Skoru";
+"insights_productivity_subtitle_low" = "Yeni başlıyorsun";
+"insights_productivity_subtitle_mid" = "Daha iyi olabilir";
+"insights_productivity_subtitle_good" = "İyi gidiyorsun";
+"insights_productivity_subtitle_great" = "Harika performans";
+
+"insights_consistency_title" = "Tutarlılık Skoru";
+"insights_consistency_subtitle_low" = "Biraz daha düzen lazım";
+"insights_consistency_subtitle_good" = "Daha dengeli gidiyorsun";
+
+"insights_busy_day_title" = "En Yoğun Gün";
+"insights_busy_day_subtitle" = "Bu haftanın en yoğun günü";
+
+"insights_this_week" = "bu hafta";
+
+"insights_suggestion_task_title" = "Görev İçgörüsü";
+"insights_suggestion_task_message" = "Aktif görevlerin birikmiş görünüyor. Önce en küçük görevi kapatmak ritim kazanmanı sağlayabilir.";
+
+"insights_suggestion_focus_title" = "Focus Önerisi";
+"insights_suggestion_focus_message" = "Bugün henüz bir focus oturumu başlatmadın. 25 dakikalık kısa bir session iyi gelebilir.";
+
+"insights_suggestion_momentum_title" = "Momentum İçgörüsü";
+"insights_suggestion_momentum_message" = "Bugün ritim yakalamış görünüyorsun. Şimdi bir zor görevi bitirmek için iyi bir an olabilir.";
+
+"insights_suggestion_pattern_title" = "Desen İçgörüsü";
+"insights_suggestion_pattern_message" = "Bu hafta en verimli günün %@. Önemli işlerini o güne yerleştirmek iyi sonuç verebilir.";
+
+"insights_suggestion_focus_pattern_title" = "Focus Deseni";
+"insights_suggestion_focus_pattern_message" = "Akşam saatlerinde daha iyi odaklanıyor gibisin. Derin işlerini 18:00 sonrası planlamayı deneyebilirsin.";
+
+"insights_suggestion_deep_work_title" = "Derin Çalışma İçgörüsü";
+"insights_suggestion_deep_work_message" = "Uzun focus oturumları sende işe yarıyor. Zor görevleri focus sonrası bloklara koymak verimini artırabilir.";
+
+"insights_suggestion_daily_title" = "Günlük Öneri";
+"insights_suggestion_daily_message" = "Küçük ama net bir görev tamamlamak günün geri kalanını daha verimli hale getirebilir.";
+
+"insights_suggestion_fallback_title" = "Öneri";
+"insights_suggestion_fallback_message" = "Bugün küçük bir görev tamamlamak iyi bir başlangıç olabilir.";
+
+"insights_ai_coach_title" = "Yapay Zekâ Üretkenlik Koçu";
+"insights_ai_coach_focus_message" = "Focus sonrası görev kapatma hızın artıyor gibi görünüyor. Önce kısa bir focus sonra zor görev iyi çalışabilir.";
+"insights_ai_coach_best_day_message" = "%@ günü daha verimli görünüyorsun. Önemli işlerini o güne koymayı deneyebilirsin.";
+"insights_ai_coach_default_message" = "Küçük görevleri hızlı kapatıp zor görevleri focus sonrası yapmak verimini artırabilir.";
+
+"insights_weekly_progress_days_label" = "7 gün";
+"insights_weekly_progress_total_format %lld" = "Toplam %lld";
+"insights_weekly_progress_best_day_format %@ %lld" = "%@ • %lld";
+"insights_weekly_progress_repeat_hint" = "En iyi gününü tekrar etmek için benzer saatlerde görev planlayabilirsin";
+"insights_weekly_progress_first_tasks_hint" = "İlk tamamlanan görevlerin burada haftalık grafik olarak görünmeye başlayacak";

@@ -13,9 +13,10 @@ struct WeekEventDetailView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.locale) private var locale
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var friendStore: FriendStore
-    
+
     @Query private var allTasks: [DTTaskItem]
     @Query private var allWorkoutExercises: [WorkoutExerciseItem]
     @Query(sort: \EventItem.startMinute, order: .forward) private var allEvents: [EventItem]
@@ -80,7 +81,7 @@ private extension WeekEventDetailView {
 
             Spacer()
 
-            Text("Event Detail")
+            Text(String(localized: "week_event_detail_title"))
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
 
@@ -111,11 +112,11 @@ private extension WeekEventDetailView {
     var isWorkoutEvent: Bool {
         sourceTask?.taskType == "workout"
     }
-    
+
     var workoutSummaryCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Workout Summary")
+                Text(String(localized: "week_event_workout_summary"))
                     .font(.headline)
                     .foregroundStyle(palette.primaryText)
 
@@ -135,7 +136,7 @@ private extension WeekEventDetailView {
             }
 
             if workoutExercisesForEvent.isEmpty {
-                Text("No exercises found")
+                Text(String(localized: "week_event_no_exercises_found"))
                     .font(.subheadline)
                     .foregroundStyle(palette.secondaryText)
             } else {
@@ -149,7 +150,7 @@ private extension WeekEventDetailView {
         .padding(18)
         .background(cardBackground)
     }
-    
+
     func miniInfoPill(_ text: String) -> some View {
         Text(text)
             .font(.caption2.weight(.semibold))
@@ -161,7 +162,7 @@ private extension WeekEventDetailView {
                     .fill(palette.cardFill)
             )
     }
-    
+
     func workoutExerciseMiniCard(_ exercise: WorkoutExerciseItem) -> some View {
         HStack(alignment: .center, spacing: 12) {
             Circle()
@@ -180,15 +181,15 @@ private extension WeekEventDetailView {
                     .lineLimit(1)
 
                 HStack(spacing: 8) {
-                    miniInfoPill("\(exercise.sets) set")
-                    miniInfoPill("\(exercise.reps) rep")
+                    miniInfoPill(localizedSetText(exercise.sets))
+                    miniInfoPill(localizedRepText(exercise.reps))
 
                     if exercise.durationSeconds > 0 {
-                        miniInfoPill("\(exercise.durationSeconds) sec")
+                        miniInfoPill(localizedSecondText(exercise.durationSeconds))
                     }
 
                     if exercise.restSeconds > 0 {
-                        miniInfoPill("\(exercise.restSeconds) rest")
+                        miniInfoPill(localizedRestText(exercise.restSeconds))
                     }
                 }
             }
@@ -205,7 +206,7 @@ private extension WeekEventDetailView {
                 )
         )
     }
-    
+
     var titleCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
@@ -228,26 +229,26 @@ private extension WeekEventDetailView {
 
     var timeCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Time")
+            Text(String(localized: "week_event_time"))
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
             HStack(spacing: 12) {
                 infoBlock(
-                    title: "Starts",
+                    title: String(localized: "week_event_starts"),
                     value: hm(event.startMinute),
                     icon: "clock.fill"
                 )
 
                 infoBlock(
-                    title: "Ends",
+                    title: String(localized: "week_event_ends"),
                     value: hm(event.startMinute + event.durationMinute),
                     icon: "clock.badge.checkmark.fill"
                 )
 
                 infoBlock(
-                    title: "Duration",
-                    value: "\(event.durationMinute) min",
+                    title: String(localized: "week_event_duration"),
+                    value: localizedMinuteValue(event.durationMinute),
                     icon: "timer"
                 )
             }
@@ -258,22 +259,30 @@ private extension WeekEventDetailView {
 
     var detailsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Details")
+            Text(String(localized: "week_event_details"))
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
             if let location = event.location,
                !location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                detailRow(title: "Location", value: location, icon: "mappin.and.ellipse")
+                detailRow(
+                    title: String(localized: "week_event_location"),
+                    value: location,
+                    icon: "mappin.and.ellipse"
+                )
             }
 
             if let notes = event.notes,
                !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                detailRow(title: "Notes", value: notes, icon: "note.text")
+                detailRow(
+                    title: String(localized: "week_event_notes"),
+                    value: notes,
+                    icon: "note.text"
+                )
             }
 
             if event.location?.isEmpty != false && event.notes?.isEmpty != false {
-                Text("No extra details")
+                Text(String(localized: "week_event_no_extra_details"))
                     .font(.subheadline)
                     .foregroundStyle(palette.secondaryText)
             }
@@ -287,7 +296,7 @@ private extension WeekEventDetailView {
             Button {
                 showEditSheet = true
             } label: {
-                Text("Edit Event")
+                Text(String(localized: "week_event_edit"))
                     .font(.headline)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -328,7 +337,7 @@ private extension WeekEventDetailView {
                     }
                 }
             } label: {
-                Text("Delete Event")
+                Text(String(localized: "week_event_delete"))
                     .font(.headline)
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity)
@@ -397,9 +406,57 @@ private extension WeekEventDetailView {
     }
 
     func dayText(for weekday: Int) -> String {
-        let days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-        guard weekday >= 0 && weekday < days.count else { return "Unknown day" }
-        return days[weekday]
+        let isTR = locale.language.languageCode?.identifier == "tr"
+
+        if isTR {
+            let days = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
+            guard weekday >= 0 && weekday < days.count else { return "Bilinmeyen gün" }
+            return days[weekday]
+        } else {
+            let days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            guard weekday >= 0 && weekday < days.count else { return "Unknown day" }
+            return days[weekday]
+        }
+    }
+
+    func localizedMinuteValue(_ value: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(value) dk"
+        } else {
+            return "\(value) min"
+        }
+    }
+
+    func localizedSetText(_ value: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(value) set"
+        } else {
+            return "\(value) set"
+        }
+    }
+
+    func localizedRepText(_ value: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(value) tekrar"
+        } else {
+            return "\(value) rep"
+        }
+    }
+
+    func localizedSecondText(_ value: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(value) sn"
+        } else {
+            return "\(value) sec"
+        }
+    }
+
+    func localizedRestText(_ value: Int) -> String {
+        if locale.language.languageCode?.identifier == "tr" {
+            return "\(value) dinlenme"
+        } else {
+            return "\(value) rest"
+        }
     }
 
     var cardBackground: some View {
