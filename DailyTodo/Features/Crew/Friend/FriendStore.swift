@@ -911,13 +911,16 @@ final class FriendStore: ObservableObject {
         }
     }
     
+    @MainActor
     private func appendFriendMessage(
         _ item: FriendChatMessageItem,
         friendshipID: UUID
     ) {
+        print("📝 APPEND MESSAGE:", item.text, "friendshipID:", friendshipID)
         var items = friendMessagesByFriendship[friendshipID] ?? []
         
-        if let existingIndex = items.firstIndex(where: { $0.serverID == item.serverID }) {
+        if let serverID = item.serverID,
+           let existingIndex = items.firstIndex(where: { $0.serverID == serverID }) {
             items[existingIndex] = item
         } else if let clientID = item.clientID,
                   let pendingIndex = items.firstIndex(where: {
@@ -929,7 +932,9 @@ final class FriendStore: ObservableObject {
         }
         
         items.sort { $0.createdAt < $1.createdAt }
-        friendMessagesByFriendship[friendshipID] = Array(items.suffix(100))
+        var updated = friendMessagesByFriendship
+        updated[friendshipID] = Array(items.suffix(100))
+        friendMessagesByFriendship = updated
     }
     
     func loadMessages(
@@ -1023,7 +1028,7 @@ final class FriendStore: ObservableObject {
                 .execute()
             
             // Realtime gelmezse fallback
-            await loadMessages(for: friendshipID, currentUserID: senderID)
+            
         } catch {
             print("SEND FRIEND MESSAGE ERROR:", error.localizedDescription)
             
@@ -1256,8 +1261,9 @@ final class FriendStore: ObservableObject {
                 InsertAction.self,
                 schema: "public",
                 table: "friend_messages",
-                filter: "friendship_id=eq.\(friendshipID.uuidString)"
+                filter: "friendship_id=eq. \(friendshipID.uuidString)"
             ) { [weak self] action in
+                print("🔥 RAW ACTION RECEIVED")
                 Task { @MainActor [weak self] in
                     guard let self else { return }
                     do {
@@ -1267,6 +1273,10 @@ final class FriendStore: ObservableObject {
                         let dto = try JSONDecoder().decode(
                             FriendMessageDTO.self, from: jsonData
                         )
+                        
+                        // ✅ Doğru friendship kontrolü
+                        guard dto.friendship_id == friendshipID else { return }
+                        
                         let item = self.mapDTOToFriendItem(
                             dto, currentUserID: currentUserIDCopy
                         )

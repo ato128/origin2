@@ -57,6 +57,10 @@ struct FriendChatView: View {
             // ✅ Aktif chat'i kaydet
             friendStore.activeChatFriendshipID = friendshipID
 
+            // ✅ Önce unsubscribe, sonra yeniden subscribe
+            friendStore.unsubscribeFriendMessagesRealtime()
+            try? await Task.sleep(nanoseconds: 500_000_000)
+
             let alreadyLoaded = !(friendStore.friendMessagesByFriendship[friendshipID]?.isEmpty ?? true)
             
             if !alreadyLoaded {
@@ -93,6 +97,15 @@ struct FriendChatView: View {
                 currentUserID: session.currentUser?.id,
                 isOnline: true
             )
+
+            // ✅ Polling - realtime çalışmazsa fallback
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                await friendStore.loadMessages(
+                    for: friendshipID,
+                    currentUserID: session.currentUser?.id
+                )
+            }
         }
         .onDisappear {
             // ✅ Aktif chat'i temizle
