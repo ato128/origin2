@@ -144,7 +144,7 @@ struct FriendDetailView: View {
         .task {
             guard let friendshipID else { return }
 
-            await friendStore.loadMessages(
+            await friendStore.loadInitialMessages(
                 for: friendshipID,
                 currentUserID: session.currentUser?.id
             )

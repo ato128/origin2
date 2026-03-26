@@ -227,7 +227,7 @@ struct MessagesView: View {
 
                 for friend in backendFriends {
                     if let friendshipID = friend.backendFriendshipID {
-                        await friendStore.loadMessages(
+                        await friendStore.loadInitialMessages(
                             for: friendshipID,
                             currentUserID: currentUserID
                         )
