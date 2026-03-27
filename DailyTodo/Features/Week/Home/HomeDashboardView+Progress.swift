@@ -13,7 +13,7 @@ extension HomeDashboardView {
     var todayProgressCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("home_today_progress")
+                Text(tr("home_today_progress"))
                     .font(.system(size: 19, weight: .bold))
                     .foregroundStyle(palette.primaryText)
 
@@ -35,7 +35,6 @@ extension HomeDashboardView {
                     text: localizedStreakText(streakCount),
                     tint: .orange
                 )
-
                 miniBadge(
                     icon: "checkmark.circle.fill",
                     text: localizedCompletedTodayText(completedTodayCount),
@@ -51,7 +50,7 @@ extension HomeDashboardView {
     var todayTasksCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("home_today_tasks")
+                Text(tr("home_today_tasks"))
                     .font(.system(size: 19, weight: .bold))
                     .foregroundStyle(palette.primaryText)
 
@@ -63,7 +62,7 @@ extension HomeDashboardView {
             }
 
             if todayTasks.isEmpty {
-                Text("home_no_tasks_today")
+                Text(tr("home_no_tasks_today"))
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(palette.secondaryText)
             } else {
@@ -106,41 +105,25 @@ extension HomeDashboardView {
 
     func miniBadge(icon: String, text: String, tint: Color) -> some View {
         HStack(spacing: 5) {
-            Image(systemName: icon)
-                .font(.caption2)
-
+            Image(systemName: icon).font(.caption2)
             Text(text)
         }
         .font(.system(size: 11, weight: .semibold))
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(
-            Capsule()
-                .fill(tint.opacity(0.14))
-        )
+        .background(Capsule().fill(tint.opacity(0.14)))
         .foregroundStyle(tint)
     }
+
     func localizedStreakText(_ count: Int) -> String {
-        if Locale.current.language.languageCode?.identifier == "tr" {
-            return "\(count) gün seri"
-        } else {
-            return "\(count) day streak"
-        }
+        tr("insights_overview_streak_format", count)
     }
 
     func localizedCompletedTodayText(_ count: Int) -> String {
-        if Locale.current.language.languageCode?.identifier == "tr" {
-            return "\(count) bugün tamamlandı"
-        } else {
-            return "\(count) completed today"
-        }
+        tr("home_completed_today_format", count)
     }
 
     func localizedShowingCount(_ count: Int) -> String {
-        if Locale.current.language.languageCode?.identifier == "tr" {
-            return "\(count) gösteriliyor"
-        } else {
-            return "Showing \(count)"
-        }
+        tr("home_showing_count_format", count)
     }
 }

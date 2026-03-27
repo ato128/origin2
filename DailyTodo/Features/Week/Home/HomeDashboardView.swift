@@ -42,7 +42,17 @@ struct HomeDashboardView: View {
     let onOpenWeek: () -> Void
     let onOpenInsights: () -> Void
 
-    let dayTitles = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
+    var dayTitles: [String] {
+        [
+            String(localized: "weekday_mon_short"),
+            String(localized: "weekday_tue_short"),
+            String(localized: "weekday_wed_short"),
+            String(localized: "weekday_thu_short"),
+            String(localized: "weekday_fri_short"),
+            String(localized: "weekday_sat_short"),
+            String(localized: "weekday_sun_short")
+        ]
+    }
 
     @State var isFocusActive: Bool = false
     @State var activeFocusTaskTitle: String = ""
@@ -399,19 +409,13 @@ struct HomeDashboardView: View {
     }
     
     func localizedActiveMinutesLeft(_ minutes: Int) -> String {
-        if Locale.current.language.languageCode?.identifier == "tr" {
-            return "Şu an aktif • \(minutes) dk kaldı"
-        } else {
-            return "Active now • \(minutes) min left"
-        }
+        let format = String(localized: "home_active_now_minutes_left")
+        return String(format: format, minutes)
     }
 
     func localizedStartsInMinutes(_ minutes: Int) -> String {
-        if Locale.current.language.languageCode?.identifier == "tr" {
-            return "\(minutes) dk sonra"
-        } else {
-            return "In \(minutes) min"
-        }
+        let format = String(localized: "home_starts_in_minutes")
+        return String(format: format, minutes)
     }
 
     var focusTaskStatusText: String {
@@ -527,7 +531,7 @@ struct HomeDashboardView: View {
 
     var focusCardMainText: String {
         if isSharedFocusActive, let friendName = activeSharedFriendName {
-            return "\(friendName) ile focus"
+            return "\(friendName) \(String(localized: "home_with_focus_suffix"))"
         }
         return focusTask?.title ?? String(localized: "home_no_focus_task_today")
     }
@@ -554,10 +558,13 @@ struct HomeDashboardView: View {
     }
 
     var todayDateText: String {
-        let f = DateFormatter()
-        f.locale = locale
-        f.dateFormat = "d MMMM, EEEE"
-        return f.string(from: Date())
+        Date.now.formatted(
+            Date.FormatStyle()
+                .locale(locale)
+                .day()
+                .month(.wide)
+                .weekday(.wide)
+        )
     }
 
     var body: some View {

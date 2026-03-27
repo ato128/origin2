@@ -200,7 +200,6 @@ struct TodoListView: View {
     }
 
     private func localizedMinuteText(_ minutes: Int) -> String {
-        let format = String(localized: "todo_minutes_format")
-        return String(format: format, minutes)
+        tr("todo_minutes_format", minutes)
     }
 }

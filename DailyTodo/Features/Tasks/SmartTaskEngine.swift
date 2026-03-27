@@ -31,8 +31,8 @@ struct SmartTaskEngine {
         if !overdueTasks.isEmpty {
             results.append(
                 SmartTaskSuggestion(
-                    title: "Geciken görev var",
-                    message: "Önce geciken görevlerden birini kapatman en doğru adım olabilir.",
+                    title: tr("smart_suggestion_overdue_title"),
+                    message: tr("smart_suggestion_overdue_message"),
                     priorityScore: 100
                 )
             )
@@ -46,8 +46,8 @@ struct SmartTaskEngine {
         if todayTasks.count >= 3 {
             results.append(
                 SmartTaskSuggestion(
-                    title: "Bugün yoğun görünüyorsun",
-                    message: "Görevleri kısa bloklara bölerek ilerlemek daha verimli olabilir.",
+                    title: tr("smart_suggestion_busy_title"),
+                    message: tr("smart_suggestion_busy_message"),
                     priorityScore: 80
                 )
             )
@@ -59,8 +59,8 @@ struct SmartTaskEngine {
         if !todayEvents.isEmpty && !todayTasks.isEmpty {
             results.append(
                 SmartTaskSuggestion(
-                    title: "Ders + görev dengesi",
-                    message: "Ders aralarına küçük tasklar koymak bugünü daha kontrollü yapabilir.",
+                    title: tr("smart_suggestion_balance_title"),
+                    message: tr("smart_suggestion_balance_message"),
                     priorityScore: 70
                 )
             )
@@ -69,8 +69,8 @@ struct SmartTaskEngine {
         if results.isEmpty {
             results.append(
                 SmartTaskSuggestion(
-                    title: "Ritim korunabilir",
-                    message: "Küçük bir görevi tamamlayarak güne akış kazandırabilirsin.",
+                    title: tr("smart_suggestion_default_title"),
+                    message: tr("smart_suggestion_default_message"),
                     priorityScore: 50
                 )
             )

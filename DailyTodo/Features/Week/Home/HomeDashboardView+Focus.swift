@@ -43,7 +43,10 @@ extension HomeDashboardView {
                                 if focusWorkoutCurrentSet > 0 && focusWorkoutTotalSets > 0 {
                                     miniBadge(
                                         icon: "figure.strengthtraining.traditional",
-                                        text: "Set \(focusWorkoutCurrentSet)/\(focusWorkoutTotalSets)",
+                                        text: String(
+                                            localized: "home_workout_set_format",
+                                            defaultValue: "Set \(focusWorkoutCurrentSet)/\(focusWorkoutTotalSets)"
+                                        ),
                                         tint: .green
                                     )
                                 }
@@ -92,7 +95,9 @@ extension HomeDashboardView {
                     Button {
                         startInlineFocus()
                     } label: {
-                        Text(task.taskType == "workout" ? "home_start_workout" : "home_start_focus")
+                        Text(task.taskType == "workout"
+                             ? String(localized: "home_start_workout")
+                             : String(localized: "home_start_focus"))
                             .font(.system(size: 15, weight: .semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
@@ -169,7 +174,10 @@ extension HomeDashboardView {
                 Text(
                     isSharedFocusActive
                     ? ((activeSharedFriendName != nil)
-                       ? "\(activeSharedFriendName!) \(String(localized: "home_with_focus_suffix"))"
+                       ? String(
+                            localized: "home_shared_focus_with_friend",
+                            defaultValue: "\(activeSharedFriendName!) \(String(localized: "home_with_focus_suffix"))"
+                         )
                        : String(localized: "home_shared_focus"))
                     : (activeFocusTaskTitle.isEmpty
                        ? String(localized: "home_deep_work_session")
@@ -192,7 +200,10 @@ extension HomeDashboardView {
                             if focusWorkoutCurrentSet > 0 && focusWorkoutTotalSets > 0 {
                                 miniBadge(
                                     icon: "figure.strengthtraining.traditional",
-                                    text: "Set \(focusWorkoutCurrentSet)/\(focusWorkoutTotalSets)",
+                                    text: String(
+                                        localized: "home_workout_set_format",
+                                        defaultValue: "Set \(focusWorkoutCurrentSet)/\(focusWorkoutTotalSets)"
+                                    ),
                                     tint: .green
                                 )
                             }
@@ -264,7 +275,7 @@ extension HomeDashboardView {
                     Button {
                         stopActiveFocus()
                     } label: {
-                        Text("home_stop")
+                        Text(String(localized: "home_stop"))
                             .font(.system(size: 15, weight: .semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
@@ -409,7 +420,7 @@ extension HomeDashboardView {
 
                     Spacer()
 
-                    Text(!session.is_active ? "DONE" : liveTimeText)
+                    Text(!session.is_active ? String(localized: "home_done") : liveTimeText)
                         .font(.system(size: 28, weight: .bold, design: .rounded))
                         .foregroundStyle(!session.is_active ? .green : palette.primaryText)
                         .contentTransition(.numericText())
@@ -478,7 +489,7 @@ extension HomeDashboardView {
                         Button {
                             focusRoomSession = session
                         } label: {
-                            Text("home_open_focus")
+                            Text(String(localized: "home_open_focus"))
                                 .font(.headline.weight(.bold))
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)
@@ -492,7 +503,7 @@ extension HomeDashboardView {
 
                         Button {
                             Task {
-                                let hostName = sessionStoreSafeEmailPrefix() ?? "You"
+                                let hostName = sessionStoreSafeEmailPrefix() ?? String(localized: "crew_focus_room_you")
 
                                 do {
                                     if session.is_paused {
@@ -520,7 +531,9 @@ extension HomeDashboardView {
                                 }
                             }
                         } label: {
-                            Text(session.is_paused ? "home_resume" : "home_pause")
+                            Text(session.is_paused
+                                 ? String(localized: "home_resume")
+                                 : String(localized: "home_pause"))
                                 .font(.headline.weight(.bold))
                                 .foregroundStyle(session.is_paused ? .green : .orange)
                                 .frame(maxWidth: .infinity)
@@ -537,7 +550,7 @@ extension HomeDashboardView {
                     }
                 } else {
                     HStack {
-                        Label("home_session_completed", systemImage: "checkmark.circle.fill")
+                        Label(String(localized: "home_session_completed"), systemImage: "checkmark.circle.fill")
                             .font(.headline.weight(.bold))
                             .foregroundStyle(.green)
 

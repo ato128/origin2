@@ -18,44 +18,21 @@ struct StudyHeatMapCard: View {
     @State private var isVisible = false
     @State private var isExpanded = false
 
-    private var hasActivity: Bool {
-        data.cells.contains { $0.level > 0 }
-    }
+    private var hasActivity: Bool { data.cells.contains { $0.level > 0 } }
 
-    private var fallbackText: String {
-        String(localized: "insights_heatmap_fallback_text")
-    }
-
+    private var fallbackText: String { tr("insights_heatmap_fallback_text") }
     private var subtitleText: String {
-        hasActivity
-        ? String(localized: "insights_heatmap_subtitle_active")
-        : String(localized: "insights_heatmap_subtitle_empty")
+        hasActivity ? tr("insights_heatmap_subtitle_active") : tr("insights_heatmap_subtitle_empty")
     }
-
-    private var lowText: String {
-        String(localized: "insights_heatmap_low")
-    }
-
-    private var highText: String {
-        String(localized: "insights_heatmap_high")
-    }
-
-    private var densityInfoText: String {
-        String(localized: "insights_heatmap_density_info")
-    }
-
-    private var fillHintText: String {
-        String(localized: "insights_heatmap_fill_hint")
-    }
+    private var lowText: String { tr("insights_heatmap_low") }
+    private var highText: String { tr("insights_heatmap_high") }
+    private var densityInfoText: String { tr("insights_heatmap_density_info") }
+    private var fillHintText: String { tr("insights_heatmap_fill_hint") }
 
     var body: some View {
         Button {
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.84)) {
-                isExpanded.toggle()
-            }
-        } label: {
-            content
-        }
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.84)) { isExpanded.toggle() }
+        } label: { content }
         .buttonStyle(.plain)
         .opacity(isVisible ? 1 : 0)
         .scaleEffect(isVisible ? 1 : 0.985)
@@ -68,15 +45,12 @@ struct StudyHeatMapCard: View {
         VStack(alignment: .leading, spacing: 18) {
             headerSection
             heatmapSection
-
             if isExpanded {
                 expandedSection
-                    .transition(
-                        .asymmetric(
-                            insertion: .move(edge: .top).combined(with: .opacity),
-                            removal: .opacity
-                        )
-                    )
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .top).combined(with: .opacity),
+                        removal: .opacity
+                    ))
             }
         }
         .padding(18)
@@ -89,19 +63,15 @@ struct StudyHeatMapCard: View {
                 Text(data.title)
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundStyle(palette.primaryText)
-
                 Text(subtitleText)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(palette.secondaryText)
             }
-
             Spacer()
-
             HStack(spacing: 10) {
                 Text(data.subtitle)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(palette.secondaryText)
-
                 Image(systemName: "chevron.down")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(palette.secondaryText)
@@ -137,8 +107,7 @@ struct StudyHeatMapCard: View {
                     .scaleEffect(isVisible ? (cell.isSelected ? 1.03 : 1.0) : 0.90)
                     .offset(y: isVisible ? 0 : 8)
                     .animation(
-                        .spring(response: 0.46, dampingFraction: 0.84)
-                            .delay(Double(index) * 0.01),
+                        .spring(response: 0.46, dampingFraction: 0.84).delay(Double(index) * 0.01),
                         value: isVisible
                     )
             }
@@ -152,13 +121,11 @@ struct StudyHeatMapCard: View {
                 Text(lowText)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(palette.secondaryText)
-
                 ForEach(0..<4, id: \.self) { level in
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
                         .fill(legendColor(for: level))
                         .frame(width: 30, height: 16)
                 }
-
                 Text(highText)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(palette.secondaryText)
@@ -169,11 +136,8 @@ struct StudyHeatMapCard: View {
                     Text(data.selectedDayText)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(palette.primaryText)
-
                     HStack(spacing: 8) {
-                        Image(systemName: "sparkles")
-                            .foregroundStyle(Color.accentColor)
-
+                        Image(systemName: "sparkles").foregroundStyle(Color.accentColor)
                         Text(densityInfoText)
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(palette.secondaryText)
@@ -185,21 +149,15 @@ struct StudyHeatMapCard: View {
                         .font(.system(size: 14))
                         .foregroundStyle(palette.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
-
                     HStack(spacing: 8) {
-                        Image(systemName: "sparkles")
-                            .foregroundStyle(Color.accentColor)
-
+                        Image(systemName: "sparkles").foregroundStyle(Color.accentColor)
                         Text(fillHintText)
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(Color.accentColor)
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 9)
-                    .background(
-                        Capsule()
-                            .fill(Color.accentColor.opacity(0.14))
-                    )
+                    .background(Capsule().fill(Color.accentColor.opacity(0.14)))
                 }
             }
         }
@@ -207,36 +165,25 @@ struct StudyHeatMapCard: View {
 
     func fillColor(for cell: InsightsHeatmapCell) -> Color {
         switch cell.level {
-        case 0:
-            return palette.secondaryCardFill
-        case 1:
-            return Color.accentColor.opacity(palette.isLight ? 0.20 : 0.28)
-        case 2:
-            return Color.accentColor.opacity(palette.isLight ? 0.40 : 0.55)
-        default:
-            return Color.accentColor
+        case 0: return palette.secondaryCardFill
+        case 1: return Color.accentColor.opacity(palette.isLight ? 0.20 : 0.28)
+        case 2: return Color.accentColor.opacity(palette.isLight ? 0.40 : 0.55)
+        default: return Color.accentColor
         }
     }
 
     func legendColor(for level: Int) -> Color {
         switch level {
-        case 0:
-            return palette.secondaryCardFill
-        case 1:
-            return Color.accentColor.opacity(palette.isLight ? 0.20 : 0.28)
-        case 2:
-            return Color.accentColor.opacity(palette.isLight ? 0.40 : 0.55)
-        default:
-            return Color.accentColor
+        case 0: return palette.secondaryCardFill
+        case 1: return Color.accentColor.opacity(palette.isLight ? 0.20 : 0.28)
+        case 2: return Color.accentColor.opacity(palette.isLight ? 0.40 : 0.55)
+        default: return Color.accentColor
         }
     }
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 24, style: .continuous)
             .fill(palette.cardFill)
-            .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(palette.cardStroke, lineWidth: 1)
-            )
+            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(palette.cardStroke, lineWidth: 1))
     }
 }

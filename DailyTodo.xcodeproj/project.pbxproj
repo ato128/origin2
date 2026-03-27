@@ -121,6 +121,7 @@
 		6DB70E842F73217400F04B43 /* AppLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E832F73217400F04B43 /* AppLanguage.swift */; };
 		6DB70E862F7321A700F04B43 /* LanguageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E852F7321A700F04B43 /* LanguageManager.swift */; };
 		6DB70E8D2F73266D00F04B43 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 6DB70E8B2F73266D00F04B43 /* Localizable.strings */; };
+		6DB70E902F76F2A600F04B43 /* LocalizedString.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E8F2F76F2A600F04B43 /* LocalizedString.swift */; };
 		6DBE91982F6B1556001DF813 /* IntroFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE91972F6B1555001DF813 /* IntroFlowView.swift */; };
 		6DBE919A2F6B157B001DF813 /* IntroPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE91992F6B157B001DF813 /* IntroPageView.swift */; };
 		6DBE919C2F6B2EFD001DF813 /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE919B2F6B2EFD001DF813 /* SessionStore.swift */; };
@@ -365,6 +366,7 @@
 		6DB70E852F7321A700F04B43 /* LanguageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageManager.swift; sourceTree = "<group>"; };
 		6DB70E8C2F73266D00F04B43 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		6DB70E8E2F73268200F04B43 /* tr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/Localizable.strings; sourceTree = "<group>"; };
+		6DB70E8F2F76F2A600F04B43 /* LocalizedString.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizedString.swift; sourceTree = "<group>"; };
 		6DBE91972F6B1555001DF813 /* IntroFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntroFlowView.swift; sourceTree = "<group>"; };
 		6DBE91992F6B157B001DF813 /* IntroPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntroPageView.swift; sourceTree = "<group>"; };
 		6DBE919B2F6B2EFD001DF813 /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
@@ -659,6 +661,7 @@
 				6DB70E832F73217400F04B43 /* AppLanguage.swift */,
 				6DB70E852F7321A700F04B43 /* LanguageManager.swift */,
 				6DB70E8B2F73266D00F04B43 /* Localizable.strings */,
+				6DB70E8F2F76F2A600F04B43 /* LocalizedString.swift */,
 			);
 			path = Language;
 			sourceTree = "<group>";
@@ -1154,6 +1157,7 @@
 				6D2004C32F6450C40022C810 /* MostBusyCard.swift in Sources */,
 				6D215DAB2F5603D600F7B9D7 /* AddEventView.swift in Sources */,
 				6D64E0E12F71BC3100C68B5B /* IntroInsightsMockView.swift in Sources */,
+				6DB70E902F76F2A600F04B43 /* LocalizedString.swift in Sources */,
 				6D2004942F63862E0022C810 /* FriendDetailView.swift in Sources */,
 				6D215DA92F5603B100F7B9D7 /* WeekView.swift in Sources */,
 				6D2004862F63334D0022C810 /* AddMemberView.swift in Sources */,
@@ -1334,7 +1338,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = WidgetExtensionExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 2KC59ZZTWK;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WidgetExtension/Info.plist;
@@ -1347,8 +1351,8 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.atakan.DailyTodo.WidgetExtension;
+				MARKETING_VERSION = 1.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.atakan.updo.WidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -1367,7 +1371,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = WidgetExtensionExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 2KC59ZZTWK;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WidgetExtension/Info.plist;
@@ -1380,8 +1384,8 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.atakan.DailyTodo.WidgetExtension;
+				MARKETING_VERSION = 1.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.atakan.updo.WidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -1523,11 +1527,13 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = DailyTodo/DailyTodo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 2KC59ZZTWK;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = DailyTodo/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Updo;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -1540,8 +1546,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.atakan.DailyTodo;
+				MARKETING_VERSION = 1.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.atakan.updo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -1560,11 +1566,13 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = DailyTodo/DailyTodo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 2KC59ZZTWK;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = DailyTodo/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Updo;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -1577,8 +1585,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.atakan.DailyTodo;
+				MARKETING_VERSION = 1.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.atakan.updo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;

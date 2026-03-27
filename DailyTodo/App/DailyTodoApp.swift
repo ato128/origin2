@@ -84,6 +84,7 @@ struct DailyTodoApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .id(languageManager.selectedLanguage)
                 .modelContainer(container)
                 .environmentObject(todoStore)
                 .environmentObject(session)
@@ -126,6 +127,7 @@ struct DailyTodoApp: App {
                     Task { @MainActor in
                         LiveActivityScheduler.shared.rescheduleBackgroundTask(container: container)
                     }
+
                     let descriptor = FetchDescriptor<EventItem>(
                         sortBy: [SortDescriptor(\EventItem.startMinute, order: .forward)]
                     )
@@ -140,10 +142,8 @@ struct DailyTodoApp: App {
                 .onChange(of: scenePhase) { _, newPhase in
                     if newPhase == .active {
                         LiveActivityScheduler.shared.startForegroundLoop(container: container)
-
                         let context = ModelContext(container)
                         WidgetAppSync.refreshFromSwiftData(context: context)
-
                     } else if newPhase == .background {
                         LiveActivityScheduler.shared.stopForegroundLoop()
                         LiveActivityScheduler.shared.rescheduleBackgroundTask(container: container)
@@ -155,8 +155,6 @@ struct DailyTodoApp: App {
         }
     }
 
-    // MARK: - URL Handling
-
     private func handleIncomingURL(_ url: URL) {
         guard url.scheme == "dailytodo" else { return }
 
@@ -166,10 +164,7 @@ struct DailyTodoApp: App {
         }
 
         if url.host == "week" {
-            NotificationCenter.default.post(
-                name: .openWeekFromWidget,
-                object: nil
-            )
+            NotificationCenter.default.post(name: .openWeekFromWidget, object: nil)
             return
         }
 
@@ -181,27 +176,18 @@ struct DailyTodoApp: App {
 
     private func handleLiveActivityURL(_ url: URL) {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
-
         let action = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-
         if action == "stop" {
-            Task {
-                await LiveActivityManager.shared.end()
-            }
+            Task { await LiveActivityManager.shared.end() }
         }
     }
 
     private func handleIncomingInviteURL(_ url: URL) {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let code = components.queryItems?.first(where: { $0.name == "code" })?.value,
-              !code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return
-        }
+              !code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
 
-        NotificationCenter.default.post(
-            name: .openCrewInviteFromLink,
-            object: code
-        )
+        NotificationCenter.default.post(name: .openCrewInviteFromLink, object: code)
     }
 }
 

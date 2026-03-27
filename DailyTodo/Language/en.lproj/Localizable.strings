@@ -698,7 +698,7 @@
 "week_event_edit" = "Edit Event";
 "week_event_delete" = "Delete Event";
 
-"insights_quick_focus_title" = "Quick Focus";
+
 
 
 
@@ -791,8 +791,8 @@
 "insights_ai_coach_default_message" = "Quickly finishing small tasks and doing hard tasks after focus sessions may improve your productivity.";
 
 "insights_weekly_progress_days_label" = "7 days";
-"insights_weekly_progress_total_format %lld" = "Total %lld";
-"insights_weekly_progress_best_day_format %@ %lld" = "%@ • %lld";
+"insights_weekly_progress_total_format " = "Total %lld";
+"insights_weekly_progress_best_day_format " = "%@ • %lld";
 "insights_weekly_progress_repeat_hint" = "You can schedule tasks at similar times to repeat your best day";
 "insights_weekly_progress_first_tasks_hint" = "Your first completed tasks will start appearing here as a weekly chart";
 
@@ -814,3 +814,26 @@
 "insights_heatmap_high" = "High";
 "insights_heatmap_density_info" = "This view shows your completed-task density over the last 4 weeks";
 "insights_heatmap_fill_hint" = "This area will fill up as you complete tasks";
+
+"home_active_now_minutes_left" = "Active now • %d min left";
+"home_starts_in_minutes" = "In %d min";
+
+"home_completed_today_format" = "%d completed today";
+"home_showing_count_format" = "Showing %d";
+
+"home_workout_set_format" = "Set %d/%d";
+"home_shared_focus_with_friend" = "%@ in focus";
+
+"smart_suggestion_overdue_title" = "You have overdue tasks";
+"smart_suggestion_overdue_message" = "Closing one overdue task first might be the best move.";
+
+"smart_suggestion_busy_title" = "Today looks busy";
+"smart_suggestion_busy_message" = "Breaking tasks into short blocks may help you stay productive.";
+
+"smart_suggestion_balance_title" = "Class + task balance";
+"smart_suggestion_balance_message" = "Placing small tasks between classes could make today feel more manageable.";
+
+"smart_suggestion_default_title" = "You can keep the rhythm";
+"smart_suggestion_default_message" = "Completing one small task could help you build momentum today.";
+
+"todo_minutes_format" = "%d min";

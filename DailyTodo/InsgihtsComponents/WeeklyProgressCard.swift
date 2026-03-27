@@ -10,75 +10,49 @@ import SwiftUI
 struct WeeklyProgressCard: View {
     let data: WeeklyProgressData
 
+    @Environment(\.locale) private var locale
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private let palette = ThemePalette()
 
     @State private var isVisible = false
     @State private var isExpanded = false
 
-    private var totalCount: Int {
-        data.values.reduce(0, +)
-    }
+    private var totalCount: Int { data.values.reduce(0, +) }
 
     private var bestDayLabel: String {
-        guard let index = data.highlightIndex,
-              index >= 0,
-              index < data.labels.count else {
-            return "-"
-        }
+        guard let index = data.highlightIndex, index >= 0, index < data.labels.count else { return "-" }
         return data.labels[index]
     }
 
     private var bestDayValue: Int {
-        guard let index = data.highlightIndex,
-              index >= 0,
-              index < data.values.count else {
-            return 0
-        }
+        guard let index = data.highlightIndex, index >= 0, index < data.values.count else { return 0 }
         return data.values[index]
     }
 
-    private var hasAnyProgress: Bool {
-        totalCount > 0
-    }
-
-    private var maxValue: Int {
-        max(data.values.max() ?? 0, 1)
-    }
-
-    private var headerTitle: String {
-        String(localized: "insights_weekly_progress_title")
-    }
+    private var hasAnyProgress: Bool { totalCount > 0 }
+    private var maxValue: Int { max(data.values.max() ?? 0, 1) }
 
     private var headerSubtitle: String {
         hasAnyProgress
-        ? String(localized: "insights_weekly_progress_subtitle_active")
-        : String(localized: "insights_weekly_progress_subtitle_empty")
+        ? tr("insights_weekly_progress_subtitle_active")
+        : tr("insights_weekly_progress_subtitle_empty")
     }
 
-    private var daysLabel: String {
-        String(localized: "insights_weekly_progress_days_label")
-    }
+    private var daysLabel: String { tr("insights_weekly_progress_days_label") }
 
     private var totalPillText: String {
-        String(
-            localized: "insights_weekly_progress_total_format \(totalCount)"
-        )
+        tr("insights_weekly_progress_total_format ")
+            .replacingOccurrences(of: "%lld", with: "\(totalCount)")
     }
 
     private var bestDayPillText: String {
-        String(
-            localized: "insights_weekly_progress_best_day_format \(bestDayLabel) \(bestDayValue)"
-        )
+        tr("insights_weekly_progress_best_day_format ")
+            .replacingOccurrences(of: "%@", with: bestDayLabel)
+            .replacingOccurrences(of: "%lld", with: "\(bestDayValue)")
     }
 
-    private var repeatBestDayHint: String {
-        String(localized: "insights_weekly_progress_repeat_hint")
-    }
-
-    private var firstTasksHint: String {
-        String(localized: "insights_weekly_progress_first_tasks_hint")
-    }
+    private var repeatBestDayHint: String { tr("insights_weekly_progress_repeat_hint") }
+    private var firstTasksHint: String { tr("insights_weekly_progress_first_tasks_hint") }
 
     var body: some View {
         Button {
@@ -92,12 +66,10 @@ struct WeeklyProgressCard: View {
 
                 if isExpanded {
                     expandedSection
-                        .transition(
-                            .asymmetric(
-                                insertion: .move(edge: .top).combined(with: .opacity),
-                                removal: .opacity
-                            )
-                        )
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .top).combined(with: .opacity),
+                            removal: .opacity
+                        ))
                 }
             }
             .padding(18)
@@ -115,7 +87,7 @@ struct WeeklyProgressCard: View {
     private var headerSection: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(headerTitle)
+                Text(tr("insights_weekly_progress_title"))
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundStyle(palette.primaryText)
                     .lineLimit(1)
@@ -162,22 +134,16 @@ struct WeeklyProgressCard: View {
                     .minimumScaleFactor(0.8)
 
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(
-                            index == data.highlightIndex
-                            ? Color.accentColor
-                            : palette.secondaryCardFill
-                        )
+                        .fill(index == data.highlightIndex ? Color.accentColor : palette.secondaryCardFill)
                         .frame(height: barHeight(for: value))
                         .scaleEffect(y: isVisible ? 1 : 0.88, anchor: .bottom)
                         .shadow(
                             color: index == data.highlightIndex
-                            ? Color.accentColor.opacity(isVisible ? 0.18 : 0)
-                            : .clear,
+                                ? Color.accentColor.opacity(isVisible ? 0.18 : 0) : .clear,
                             radius: 6
                         )
                         .animation(
-                            .spring(response: 0.55, dampingFraction: 0.82)
-                                .delay(Double(index) * 0.04),
+                            .spring(response: 0.55, dampingFraction: 0.82).delay(Double(index) * 0.04),
                             value: isVisible
                         )
 
@@ -197,27 +163,12 @@ struct WeeklyProgressCard: View {
         VStack(alignment: .leading, spacing: 12) {
             ViewThatFits(in: .vertical) {
                 HStack(spacing: 10) {
-                    miniInfoPill(
-                        icon: "chart.bar.fill",
-                        text: totalPillText
-                    )
-
-                    miniInfoPill(
-                        icon: "star.fill",
-                        text: bestDayPillText
-                    )
+                    miniInfoPill(icon: "chart.bar.fill", text: totalPillText)
+                    miniInfoPill(icon: "star.fill", text: bestDayPillText)
                 }
-
                 VStack(alignment: .leading, spacing: 8) {
-                    miniInfoPill(
-                        icon: "chart.bar.fill",
-                        text: totalPillText
-                    )
-
-                    miniInfoPill(
-                        icon: "star.fill",
-                        text: bestDayPillText
-                    )
+                    miniInfoPill(icon: "chart.bar.fill", text: totalPillText)
+                    miniInfoPill(icon: "star.fill", text: bestDayPillText)
                 }
             }
 
@@ -226,28 +177,14 @@ struct WeeklyProgressCard: View {
                 .foregroundStyle(palette.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
 
-            if hasAnyProgress {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "sparkles")
-                        .foregroundStyle(Color.accentColor)
-                        .padding(.top, 1)
-
-                    Text(repeatBestDayHint)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(palette.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            } else {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "sparkles")
-                        .foregroundStyle(Color.accentColor)
-                        .padding(.top, 1)
-
-                    Text(firstTasksHint)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(palette.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "sparkles")
+                    .foregroundStyle(Color.accentColor)
+                    .padding(.top, 1)
+                Text(hasAnyProgress ? repeatBestDayHint : firstTasksHint)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -263,30 +200,19 @@ struct WeeklyProgressCard: View {
     private func miniInfoPill(icon: String, text: String) -> some View {
         HStack(spacing: 6) {
             Image(systemName: icon)
-            Text(text)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
+            Text(text).lineLimit(1).minimumScaleFactor(0.75)
         }
         .font(.system(size: 12, weight: .semibold))
         .foregroundStyle(palette.secondaryText)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(
-            Capsule()
-                .fill(palette.secondaryCardFill)
-        )
-        .overlay(
-            Capsule()
-                .stroke(palette.cardStroke, lineWidth: 1)
-        )
+        .background(Capsule().fill(palette.secondaryCardFill))
+        .overlay(Capsule().stroke(palette.cardStroke, lineWidth: 1))
     }
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 22, style: .continuous)
             .fill(palette.cardFill)
-            .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(palette.cardStroke, lineWidth: 1)
-            )
+            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(palette.cardStroke, lineWidth: 1))
     }
 }

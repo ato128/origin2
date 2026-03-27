@@ -36,7 +36,7 @@ extension HomeDashboardView {
 
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("home_next_class")
+                Text(tr("home_next_class"))
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(nextEvent == nil ? .primary : animatedClassColor)
 
@@ -48,10 +48,7 @@ extension HomeDashboardView {
                     Image(systemName: "arrow.right")
                         .font(.system(size: 12, weight: .bold))
                         .padding(9)
-                        .background(
-                            Circle()
-                                .fill(animatedClassColor.opacity(0.16))
-                        )
+                        .background(Circle().fill(animatedClassColor.opacity(0.16)))
                 }
                 .buttonStyle(.plain)
             }
@@ -73,15 +70,12 @@ extension HomeDashboardView {
                             .foregroundStyle(.secondary)
 
                         HStack(spacing: 8) {
-                            if nextEventStatusText.contains("aktif") || nextEventStatusText.contains("Active") {
-                                Text("home_live")
+                            if isLiveNow {
+                                Text(tr("home_live"))
                                     .font(.system(size: 11, weight: .bold))
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 3)
-                                    .background(
-                                        Capsule()
-                                            .fill(Color.green.opacity(0.18))
-                                    )
+                                    .background(Capsule().fill(Color.green.opacity(0.18)))
                                     .foregroundStyle(.green)
                             }
 
@@ -94,17 +88,12 @@ extension HomeDashboardView {
                     Spacer()
                 }
                 .id("\(nextEvent.title)-\(nextEvent.startMinute)-\(nextEvent.weekday)-\(nextEvent.colorHex)")
-                .transition(
-                    .asymmetric(
-                        insertion: .move(edge: .trailing)
-                            .combined(with: .opacity)
-                            .combined(with: .scale(scale: 0.98)),
-                        removal: .move(edge: .leading)
-                            .combined(with: .opacity)
-                    )
-                )
+                .transition(.asymmetric(
+                    insertion: .move(edge: .trailing).combined(with: .opacity).combined(with: .scale(scale: 0.98)),
+                    removal: .move(edge: .leading).combined(with: .opacity)
+                ))
             } else {
-                Text("home_no_more_classes_today")
+                Text(tr("home_no_more_classes_today"))
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(.secondary)
                     .id("no-next-class")
@@ -123,41 +112,26 @@ extension HomeDashboardView {
 
                         if startsSoon {
                             LinearGradient(
-                                colors: [
-                                    Color.clear,
-                                    animatedClassColor.opacity(0.03),
-                                    animatedClassColor.opacity(0.10)
-                                ],
+                                colors: [Color.clear, animatedClassColor.opacity(0.03), animatedClassColor.opacity(0.10)],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
-                            .clipShape(
-                                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                         }
 
                         if isLiveNow {
                             RadialGradient(
-                                colors: [
-                                    animatedClassColor.opacity(0.10),
-                                    Color.clear
-                                ],
+                                colors: [animatedClassColor.opacity(0.10), Color.clear],
                                 center: .center,
                                 startRadius: 20,
                                 endRadius: 180
                             )
-                            .clipShape(
-                                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                         }
 
                         if nextClassSweep {
                             LinearGradient(
-                                colors: [
-                                    Color.clear,
-                                    Color.white.opacity(0.22),
-                                    Color.clear
-                                ],
+                                colors: [Color.clear, Color.white.opacity(0.22), Color.clear],
                                 startPoint: .top,
                                 endPoint: .bottom
                             )
@@ -166,33 +140,21 @@ extension HomeDashboardView {
                             .offset(x: nextClassSweep ? 220 : -220)
                             .blendMode(.plusLighter)
                             .animation(.easeInOut(duration: 0.9), value: nextClassSweep)
-                            .clipShape(
-                                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                         }
                     }
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .stroke(
-                            animatedClassColor.opacity(
-                                nextEvent == nil
-                                ? 0.08
-                                : (isLiveNow ? 0.24 : (startsSoon ? 0.20 : 0.18))
-                            ),
+                            animatedClassColor.opacity(nextEvent == nil ? 0.08 : (isLiveNow ? 0.24 : (startsSoon ? 0.20 : 0.18))),
                             lineWidth: 1
                         )
                 )
         )
         .shadow(
-            color: animatedClassColor.opacity(
-                nextEvent == nil
-                ? 0.0
-                : (isLiveNow ? 0.16 : (startsSoon ? 0.10 : 0.10))
-            ),
-            radius: isLiveNow ? 14 : 10,
-            x: 0,
-            y: 4
+            color: animatedClassColor.opacity(nextEvent == nil ? 0.0 : (isLiveNow ? 0.16 : 0.10)),
+            radius: isLiveNow ? 14 : 10, x: 0, y: 4
         )
         .animation(.interactiveSpring(response: 0.55, dampingFraction: 0.82, blendDuration: 0.25), value: nextEvent?.title)
         .animation(.interactiveSpring(response: 0.55, dampingFraction: 0.82, blendDuration: 0.25), value: nextEvent?.startMinute)
@@ -200,41 +162,20 @@ extension HomeDashboardView {
         .animation(.easeInOut(duration: 0.7), value: nextEvent?.colorHex)
         .scaleEffect(startsVerySoon ? (nextClassPulse ? 1.012 : 1.0) : 1.0)
         .shadow(
-            color: animatedClassColor.opacity(
-                startsVerySoon
-                ? (nextClassPulse ? 0.22 : 0.12)
-                : 0.0
-            ),
-            radius: startsVerySoon ? (nextClassPulse ? 18 : 10) : 0,
-            x: 0,
-            y: 0
+            color: animatedClassColor.opacity(startsVerySoon ? (nextClassPulse ? 0.22 : 0.12) : 0.0),
+            radius: startsVerySoon ? (nextClassPulse ? 18 : 10) : 0, x: 0, y: 0
         )
         .animation(
-            startsVerySoon
-            ? .easeInOut(duration: 1.1).repeatForever(autoreverses: true)
-            : .easeInOut(duration: 0.2),
+            startsVerySoon ? .easeInOut(duration: 1.1).repeatForever(autoreverses: true) : .easeInOut(duration: 0.2),
             value: nextClassPulse
         )
-        .onAppear {
-            if startsVerySoon {
-                nextClassPulse = true
-            }
-        }
-        .onChange(of: startsVerySoon) { _, newValue in
-            nextClassPulse = newValue
-        }
+        .onAppear { if startsVerySoon { nextClassPulse = true } }
+        .onChange(of: startsVerySoon) { _, newValue in nextClassPulse = newValue }
         .onChange(of: isLiveNow) { _, newValue in
             guard newValue else { return }
-
             nextClassSweep = false
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                nextClassSweep = true
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                nextClassSweep = false
-            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { nextClassSweep = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { nextClassSweep = false }
         }
     }
 }

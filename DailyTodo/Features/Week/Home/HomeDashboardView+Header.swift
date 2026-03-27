@@ -22,7 +22,7 @@ extension HomeDashboardView {
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(palette.secondaryText)
 
-                    Text("home_header_stay_productive")
+                    Text(tr("home_header_stay_productive"))
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -39,9 +39,7 @@ extension HomeDashboardView {
                                     .fill(hexColor(recentFriend.colorHex).opacity(0.14))
                                     .frame(width: 22, height: 22)
                                     .shadow(
-                                        color: isSharedFocusActive
-                                        ? hexColor(recentFriend.colorHex).opacity(0.28)
-                                        : .clear,
+                                        color: isSharedFocusActive ? hexColor(recentFriend.colorHex).opacity(0.28) : .clear,
                                         radius: isSharedFocusActive ? 6 : 0
                                     )
 
@@ -52,10 +50,7 @@ extension HomeDashboardView {
                                 Circle()
                                     .fill(isSharedFocusActive ? .green : palette.accent)
                                     .frame(width: 7, height: 7)
-                                    .overlay(
-                                        Circle()
-                                            .stroke(palette.cardFill, lineWidth: 1.4)
-                                    )
+                                    .overlay(Circle().stroke(palette.cardFill, lineWidth: 1.4))
                                     .scaleEffect(isSharedFocusActive ? (pulseRecentFriendPill ? 1.18 : 0.92) : 1.0)
                                     .opacity(isSharedFocusActive ? (pulseRecentFriendPill ? 0.9 : 1.0) : 1.0)
                                     .offset(x: 7, y: -7)
@@ -63,7 +58,7 @@ extension HomeDashboardView {
 
                             Text(
                                 isSharedFocusActive
-                                ? "\((recentFriend.name.components(separatedBy: " ").first ?? recentFriend.name)) • \(String(localized: "home_focus_short"))"
+                                ? "\((recentFriend.name.components(separatedBy: " ").first ?? recentFriend.name)) • \(tr("home_focus_short"))"
                                 : (recentFriend.name.components(separatedBy: " ").first ?? recentFriend.name)
                             )
                             .font(.system(size: 12, weight: .semibold))
@@ -72,39 +67,24 @@ extension HomeDashboardView {
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(
-                            Capsule()
-                                .fill(palette.secondaryCardFill)
-                        )
+                        .background(Capsule().fill(palette.secondaryCardFill))
                         .clipShape(Capsule())
                         .overlay(
-                            Capsule()
-                                .stroke(
-                                    isSharedFocusActive
-                                    ? Color.green.opacity(0.22)
-                                    : palette.cardStroke,
-                                    lineWidth: 1
-                                )
+                            Capsule().stroke(
+                                isSharedFocusActive ? Color.green.opacity(0.22) : palette.cardStroke,
+                                lineWidth: 1
+                            )
                         )
                         .shadow(
-                            color: isSharedFocusActive
-                            ? Color.green.opacity(pulseRecentFriendPill ? 0.16 : 0.08)
-                            : .clear,
+                            color: isSharedFocusActive ? Color.green.opacity(pulseRecentFriendPill ? 0.16 : 0.08) : .clear,
                             radius: isSharedFocusActive ? (pulseRecentFriendPill ? 10 : 4) : 0
                         )
                         .scaleEffect(pulseRecentFriendPill ? 1.015 : 1.0)
-                        .animation(
-                            .easeInOut(duration: 1.1).repeatForever(autoreverses: true),
-                            value: pulseRecentFriendPill
-                        )
+                        .animation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true), value: pulseRecentFriendPill)
                     }
                     .buttonStyle(.plain)
-                    .onAppear {
-                        pulseRecentFriendPill = isSharedFocusActive
-                    }
-                    .onChange(of: isSharedFocusActive) { _, newValue in
-                        pulseRecentFriendPill = newValue
-                    }
+                    .onAppear { pulseRecentFriendPill = isSharedFocusActive }
+                    .onChange(of: isSharedFocusActive) { _, newValue in pulseRecentFriendPill = newValue }
                 } else {
                     Button {
                         showFriendsShortcut = true
@@ -112,22 +92,15 @@ extension HomeDashboardView {
                         HStack(spacing: 6) {
                             Image(systemName: "message.fill")
                                 .font(.system(size: 10, weight: .semibold))
-
-                            Text("home_friends")
+                            Text(tr("home_friends"))
                                 .font(.system(size: 12, weight: .semibold))
                         }
                         .foregroundStyle(palette.primaryText)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(
-                            Capsule()
-                                .fill(palette.secondaryCardFill)
-                        )
+                        .background(Capsule().fill(palette.secondaryCardFill))
                         .clipShape(Capsule())
-                        .overlay(
-                            Capsule()
-                                .stroke(palette.cardStroke, lineWidth: 1)
-                        )
+                        .overlay(Capsule().stroke(palette.cardStroke, lineWidth: 1))
                     }
                     .buttonStyle(.plain)
                 }
@@ -141,7 +114,7 @@ extension HomeDashboardView {
     var homeMiniWeekCalendar: some View {
         VStack(spacing: 10) {
             HStack {
-                Text("home_this_week")
+                Text(tr("home_this_week"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(palette.secondaryText)
 
@@ -154,14 +127,8 @@ extension HomeDashboardView {
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(palette.primaryText)
                         .padding(7)
-                        .background(
-                            Circle()
-                                .fill(palette.secondaryCardFill)
-                        )
-                        .overlay(
-                            Circle()
-                                .stroke(palette.cardStroke, lineWidth: 1)
-                        )
+                        .background(Circle().fill(palette.secondaryCardFill))
+                        .overlay(Circle().stroke(palette.cardStroke, lineWidth: 1))
                 }
                 .buttonStyle(.plain)
             }
@@ -221,10 +188,7 @@ extension HomeDashboardView {
                                     lineWidth: 1
                                 )
                         )
-                        .shadow(
-                            color: isSelected ? Color.accentColor.opacity(0.08) : .clear,
-                            radius: isSelected ? 10 : 0
-                        )
+                        .shadow(color: isSelected ? Color.accentColor.opacity(0.08) : .clear, radius: isSelected ? 10 : 0)
                         .scaleEffect(isSelected ? 1.015 : 1.0)
                     }
                     .buttonStyle(.plain)
@@ -239,7 +203,6 @@ extension HomeDashboardView {
     func hasEvents(on day: Int) -> Bool {
         let calendar = Calendar.current
         let targetDate = targetDateFor(day: day)
-
         return allEvents.contains { ev in
             if let scheduledDate = ev.scheduledDate {
                 return calendar.isDate(scheduledDate, inSameDayAs: targetDate)

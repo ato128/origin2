@@ -700,7 +700,7 @@
 "week_event_edit" = "Etkinliği Düzenle";
 "week_event_delete" = "Etkinliği Sil";
 
-"insights_quick_focus_title" = "Hızlı Focus";
+
 
 
 "weekday_mon_short" = "Pzt";
@@ -792,8 +792,8 @@
 "insights_ai_coach_default_message" = "Küçük görevleri hızlı kapatıp zor görevleri focus sonrası yapmak verimini artırabilir.";
 
 "insights_weekly_progress_days_label" = "7 gün";
-"insights_weekly_progress_total_format %lld" = "Toplam %lld";
-"insights_weekly_progress_best_day_format %@ %lld" = "%@ • %lld";
+"insights_weekly_progress_total_format " = "Toplam %lld";
+"insights_weekly_progress_best_day_format " = "%@ • %lld";
 "insights_weekly_progress_repeat_hint" = "En iyi gününü tekrar etmek için benzer saatlerde görev planlayabilirsin";
 "insights_weekly_progress_first_tasks_hint" = "İlk tamamlanan görevlerin burada haftalık grafik olarak görünmeye başlayacak";
 
@@ -815,3 +815,26 @@
 "insights_heatmap_high" = "Çok";
 "insights_heatmap_density_info" = "Bu görünüm son 4 haftadaki tamamlanan görev yoğunluğunu gösterir";
 "insights_heatmap_fill_hint" = "Görev tamamladıkça burası dolacak";
+
+"home_active_now_minutes_left" = "Şu an aktif • %d dk kaldı";
+"home_starts_in_minutes" = "%d dk sonra";
+
+"home_completed_today_format" = "%d bugün tamamlandı";
+"home_showing_count_format" = "%d gösteriliyor";
+
+"home_workout_set_format" = "Set %d/%d";
+"home_shared_focus_with_friend" = "%@ ile focus";
+
+"smart_suggestion_overdue_title" = "You have overdue tasks";
+"smart_suggestion_overdue_message" = "Closing one overdue task first might be the best move.";
+
+"smart_suggestion_busy_title" = "Today looks busy";
+"smart_suggestion_busy_message" = "Breaking tasks into short blocks may help you stay productive.";
+
+"smart_suggestion_balance_title" = "Class + task balance";
+"smart_suggestion_balance_message" = "Placing small tasks between classes could make today feel more manageable.";
+
+"smart_suggestion_default_title" = "You can keep the rhythm";
+"smart_suggestion_default_message" = "Completing one small task could help you build momentum today.";
+
+"todo_minutes_format" = "%d dk";

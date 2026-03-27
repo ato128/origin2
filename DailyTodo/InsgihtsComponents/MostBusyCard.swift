@@ -20,14 +20,10 @@ struct MostBusyDayCard: View {
     }
 
     private var headerSubtitle: String {
-        hasBusyDay
-        ? String(localized: "insights_most_busy_day_has_day")
-        : String(localized: "insights_most_busy_day_no_day")
+        hasBusyDay ? tr("insights_most_busy_day_has_day") : tr("insights_most_busy_day_no_day")
     }
 
-    private var emptyHint: String {
-        String(localized: "insights_most_busy_day_empty_hint")
-    }
+    private var emptyHint: String { tr("insights_most_busy_day_empty_hint") }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -36,19 +32,15 @@ struct MostBusyDayCard: View {
                     Text(data.title)
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
-
                     Text(headerSubtitle)
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(palette.secondaryText)
                 }
-
                 Spacer()
-
                 ZStack {
                     Circle()
                         .fill(Color.accentColor.opacity(0.14))
                         .frame(width: 42, height: 42)
-
                     Image(systemName: "calendar")
                         .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(Color.accentColor)
@@ -62,9 +54,7 @@ struct MostBusyDayCard: View {
                 .minimumScaleFactor(0.8)
 
             HStack(spacing: 8) {
-                Image(systemName: "clock.fill")
-                    .foregroundStyle(.orange)
-
+                Image(systemName: "clock.fill").foregroundStyle(.orange)
                 Text(data.durationText)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(palette.secondaryText)
@@ -77,19 +67,14 @@ struct MostBusyDayCard: View {
 
             if !hasBusyDay {
                 HStack(spacing: 8) {
-                    Image(systemName: "sparkles")
-                        .foregroundStyle(Color.accentColor)
-
+                    Image(systemName: "sparkles").foregroundStyle(Color.accentColor)
                     Text(emptyHint)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Color.accentColor)
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 9)
-                .background(
-                    Capsule()
-                        .fill(Color.accentColor.opacity(0.14))
-                )
+                .background(Capsule().fill(Color.accentColor.opacity(0.14)))
                 .padding(.top, 2)
             }
         }
@@ -106,9 +91,6 @@ struct MostBusyDayCard: View {
     var cardBackground: some View {
         RoundedRectangle(cornerRadius: 22)
             .fill(palette.cardFill)
-            .overlay(
-                RoundedRectangle(cornerRadius: 22)
-                    .stroke(palette.cardStroke, lineWidth: 1)
-            )
+            .overlay(RoundedRectangle(cornerRadius: 22).stroke(palette.cardStroke, lineWidth: 1))
     }
 }

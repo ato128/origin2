@@ -21,7 +21,7 @@ extension TodoListView {
 
     var tasksHeader: some View {
         HStack(alignment: .center, spacing: 12) {
-            Text(String(localized: "todo_home_title"))
+            Text(tr("todo_home_title"))
                 .font(.system(size: 34, weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
 
@@ -151,8 +151,8 @@ extension TodoListView {
 
                     Text(
                         isLive
-                        ? String(localized: "todo_live_badge_live")
-                        : String(localized: "todo_live_badge_next")
+                        ? tr("todo_live_badge_live")
+                        : tr("todo_live_badge_next")
                     )
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(isLive ? Color.green : Color.orange)

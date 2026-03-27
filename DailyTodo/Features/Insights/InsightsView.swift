@@ -103,7 +103,7 @@ struct InsightsView: View {
 
                 VStack(spacing: 16) {
                     VStack(alignment: .leading, spacing: 0) {
-                        Text(String(localized: "insights_title"))
+                        Text("insights_title")
                             .font(.system(size: 36, weight: .bold, design: .rounded))
                             .foregroundStyle(palette.primaryText)
                             .padding(.horizontal, 20)
@@ -175,7 +175,7 @@ struct InsightsView: View {
             .scrollIndicators(.hidden)
 
             VStack(spacing: 0) {
-                Text(String(localized: "insights_title"))
+                Text("insights_title")
                     .font(.system(size: 17, weight: .bold, design: .rounded))
                     .foregroundStyle(palette.primaryText)
                     .opacity(smallTitleOpacity)

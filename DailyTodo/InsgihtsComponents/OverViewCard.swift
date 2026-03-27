@@ -5,6 +5,7 @@
 //  Created by Atakan Ortaç on 13.03.2026.
 //
 
+
 import SwiftUI
 
 struct OverviewCard: View {
@@ -29,14 +30,14 @@ struct OverviewCard: View {
 
     private var headerTitle: String {
         hasStrongStreak
-        ? String(localized: "insights_overview_streak")
-        : String(localized: "insights_overview_getting_started")
+        ? tr("insights_overview_streak")
+        : tr("insights_overview_getting_started")
     }
 
     private var headerStatusText: String {
         hasStrongStreak
-        ? String(localized: "insights_overview_keep_fire_alive")
-        : String(localized: "insights_overview_start_streak")
+        ? tr("insights_overview_keep_fire_alive")
+        : tr("insights_overview_start_streak")
     }
 
     private var flameColor: Color {
@@ -47,17 +48,9 @@ struct OverviewCard: View {
         hasStrongStreak ? 0.30 : 0.12
     }
 
-    private var fallbackMessage: String {
-        String(localized: "insights_overview_fallback_message")
-    }
-
-    private var completionText: String {
-        String(localized: "insights_overview_completion")
-    }
-
-    private var startStreakHint: String {
-        String(localized: "insights_overview_start_streak_hint")
-    }
+    private var fallbackMessage: String { tr("insights_overview_fallback_message") }
+    private var completionText: String { tr("insights_overview_completion") }
+    private var startStreakHint: String { tr("insights_overview_start_streak_hint") }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -66,10 +59,7 @@ struct OverviewCard: View {
                     Circle()
                         .fill(flameColor.opacity(hasStrongStreak ? 0.16 : 0.10))
                         .frame(width: 42, height: 42)
-                        .shadow(
-                            color: flameColor.opacity(glowOpacity),
-                            radius: hasStrongStreak && flamePulse ? 14 : 6
-                        )
+                        .shadow(color: flameColor.opacity(glowOpacity), radius: hasStrongStreak && flamePulse ? 14 : 6)
 
                     if hasStrongStreak {
                         Circle()
@@ -91,16 +81,8 @@ struct OverviewCard: View {
                         .font(.system(size: 18, weight: .bold))
                         .foregroundStyle(
                             hasStrongStreak
-                            ? LinearGradient(
-                                colors: [.yellow, .orange, .red],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                            : LinearGradient(
-                                colors: [flameColor, flameColor],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
+                            ? LinearGradient(colors: [.yellow, .orange, .red], startPoint: .top, endPoint: .bottom)
+                            : LinearGradient(colors: [flameColor, flameColor], startPoint: .top, endPoint: .bottom)
                         )
                         .scaleEffect(hasStrongStreak && flamePulse ? 1.08 : 1.0)
                 }
@@ -121,14 +103,7 @@ struct OverviewCard: View {
                     .font(.system(size: 12, weight: .semibold))
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(
-                                hasStrongStreak
-                                ? Color.orange.opacity(0.16)
-                                : palette.secondaryCardFill
-                            )
-                    )
+                    .background(Capsule().fill(hasStrongStreak ? Color.orange.opacity(0.16) : palette.secondaryCardFill))
                     .foregroundStyle(hasStrongStreak ? Color.orange : palette.secondaryText)
             }
 
@@ -163,21 +138,11 @@ struct OverviewCard: View {
                                 endPoint: .trailing
                             )
                         )
-                        .frame(
-                            width: max(animatedProgress > 0.001 ? 20 : 0, geo.size.width * animatedProgress),
-                            height: 9
-                        )
-                        .shadow(
-                            color: (hasStrongStreak ? Color.orange : Color.accentColor).opacity(0.22),
-                            radius: 8
-                        )
+                        .frame(width: max(animatedProgress > 0.001 ? 20 : 0, geo.size.width * animatedProgress), height: 9)
+                        .shadow(color: (hasStrongStreak ? Color.orange : Color.accentColor).opacity(0.22), radius: 8)
                         .overlay(alignment: .trailing) {
                             Circle()
-                                .fill(
-                                    palette.isLight
-                                    ? Color.black.opacity(0.10)
-                                    : Color.white.opacity(0.22)
-                                )
+                                .fill(palette.isLight ? Color.black.opacity(0.10) : Color.white.opacity(0.22))
                                 .frame(width: 10, height: 10)
                                 .blur(radius: 2)
                                 .opacity(animatedProgress > 0.02 ? 1 : 0)
@@ -187,17 +152,8 @@ struct OverviewCard: View {
             .frame(height: 9)
 
             HStack(spacing: 10) {
-                pill(
-                    text: data.streakText,
-                    icon: "flame.fill",
-                    tint: hasStrongStreak ? .orange : palette.secondaryText
-                )
-
-                pill(
-                    text: data.completedText,
-                    icon: "checkmark.circle.fill",
-                    tint: .green
-                )
+                pill(text: data.streakText, icon: "flame.fill", tint: hasStrongStreak ? .orange : palette.secondaryText)
+                pill(text: data.completedText, icon: "checkmark.circle.fill", tint: .green)
             }
 
             if hasStarted {
@@ -213,17 +169,13 @@ struct OverviewCard: View {
                     HStack(spacing: 8) {
                         Image(systemName: "sparkles")
                             .foregroundStyle(Color.accentColor)
-
                         Text(startStreakHint)
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(Color.accentColor)
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 9)
-                    .background(
-                        Capsule()
-                            .fill(Color.accentColor.opacity(0.14))
-                    )
+                    .background(Capsule().fill(Color.accentColor.opacity(0.14)))
                 }
                 .padding(.top, 2)
             }
@@ -233,15 +185,12 @@ struct OverviewCard: View {
         .animateWhenVisible($isVisible)
         .onChange(of: isVisible) { _, newValue in
             guard newValue else { return }
-
             withAnimation(.spring(response: 0.9, dampingFraction: 0.85)) {
                 animatedProgress = data.progress
             }
-
             if hasStrongStreak {
                 flamePulse = true
                 emberDrift = false
-
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                     withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) {
                         emberDrift = true
@@ -255,18 +204,8 @@ struct OverviewCard: View {
                 emberDrift = true
             }
         }
-        .animation(
-            hasStrongStreak
-            ? .easeInOut(duration: 1.0).repeatForever(autoreverses: true)
-            : .default,
-            value: flamePulse
-        )
-        .animation(
-            hasStrongStreak
-            ? .easeOut(duration: 1.4).repeatForever(autoreverses: false)
-            : .default,
-            value: emberDrift
-        )
+        .animation(hasStrongStreak ? .easeInOut(duration: 1.0).repeatForever(autoreverses: true) : .default, value: flamePulse)
+        .animation(hasStrongStreak ? .easeOut(duration: 1.4).repeatForever(autoreverses: false) : .default, value: emberDrift)
     }
 
     func pill(text: String, icon: String, tint: Color) -> some View {
@@ -278,22 +217,13 @@ struct OverviewCard: View {
         .foregroundStyle(tint)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(
-            Capsule()
-                .fill(palette.secondaryCardFill)
-        )
-        .overlay(
-            Capsule()
-                .stroke(tint.opacity(0.12), lineWidth: 1)
-        )
+        .background(Capsule().fill(palette.secondaryCardFill))
+        .overlay(Capsule().stroke(tint.opacity(0.12), lineWidth: 1))
     }
 
     var cardBackground: some View {
         RoundedRectangle(cornerRadius: 22)
             .fill(palette.cardFill)
-            .overlay(
-                RoundedRectangle(cornerRadius: 22)
-                    .stroke(palette.cardStroke)
-            )
+            .overlay(RoundedRectangle(cornerRadius: 22).stroke(palette.cardStroke))
     }
 }

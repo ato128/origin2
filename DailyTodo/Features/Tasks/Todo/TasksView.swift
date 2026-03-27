@@ -34,11 +34,11 @@ struct TasksView: View {
         var localizedTitle: String {
             switch self {
             case .today:
-                return String(localized: "tasks_filter_today")
+                return tr("tasks_filter_today")
             case .all:
-                return String(localized: "tasks_filter_all")
+                return tr("tasks_filter_all")
             case .done:
-                return String(localized: "tasks_filter_done")
+                return tr("tasks_filter_done")
             }
         }
     }
@@ -156,7 +156,7 @@ private extension TasksView {
 
             Spacer()
 
-            Text(String(localized: "tasks_title"))
+            Text(tr("tasks_title"))
                 .font(.system(size: 24, weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
 
@@ -233,19 +233,19 @@ private extension TasksView {
     var summaryCard: some View {
         HStack(spacing: 12) {
             summaryBox(
-                title: String(localized: "tasks_summary_open"),
+                title: tr("tasks_summary_open"),
                 value: "\(store.items.filter { !$0.isDone }.count)",
                 icon: "circle"
             )
 
             summaryBox(
-                title: String(localized: "tasks_summary_done"),
+                title: tr("tasks_summary_done"),
                 value: "\(store.items.filter(\.isDone).count)",
                 icon: "checkmark.circle.fill"
             )
 
             summaryBox(
-                title: String(localized: "tasks_summary_today"),
+                title: tr("tasks_summary_today"),
                 value: "\(store.items.filter { task in !task.isDone && isToday(task) }.count)",
                 icon: "sun.max.fill"
             )
@@ -312,7 +312,7 @@ private extension TasksView {
                                     .font(.caption)
                                     .foregroundStyle(palette.secondaryText)
                             } else {
-                                Text(String(localized: "tasks_no_due_date"))
+                                Text(tr("tasks_no_due_date"))
                                     .font(.caption)
                                     .foregroundStyle(palette.secondaryText)
                             }
@@ -375,8 +375,8 @@ private extension TasksView {
             } label: {
                 Label(
                     task.isDone
-                    ? String(localized: "tasks_mark_as_undone")
-                    : String(localized: "tasks_mark_as_done"),
+                    ? tr("tasks_mark_as_undone")
+                    : tr("tasks_mark_as_done"),
                     systemImage: task.isDone ? "arrow.uturn.backward.circle" : "checkmark.circle"
                 )
             }
@@ -384,13 +384,13 @@ private extension TasksView {
             Button {
                 selectedTaskForSchedule = task
             } label: {
-                Label(String(localized: "tasks_schedule"), systemImage: "calendar.badge.plus")
+                Label(tr("tasks_schedule"), systemImage: "calendar.badge.plus")
             }
 
             Button(role: .destructive) {
                 deleteTask(task)
             } label: {
-                Label(String(localized: "common_delete"), systemImage: "trash")
+                Label(tr("common_delete"), systemImage: "trash")
             }
         }
     }
@@ -422,22 +422,22 @@ private extension TasksView {
     var emptyTitle: String {
         switch selectedFilter {
         case .today:
-            return String(localized: "tasks_empty_today_title")
+            return tr("tasks_empty_today_title")
         case .all:
-            return String(localized: "tasks_empty_all_title")
+            return tr("tasks_empty_all_title")
         case .done:
-            return String(localized: "tasks_empty_done_title")
+            return tr("tasks_empty_done_title")
         }
     }
 
     var emptySubtitle: String {
         switch selectedFilter {
         case .today:
-            return String(localized: "tasks_empty_today_subtitle")
+            return tr("tasks_empty_today_subtitle")
         case .all:
-            return String(localized: "tasks_empty_all_subtitle")
+            return tr("tasks_empty_all_subtitle")
         case .done:
-            return String(localized: "tasks_empty_done_subtitle")
+            return tr("tasks_empty_done_subtitle")
         }
     }
 
