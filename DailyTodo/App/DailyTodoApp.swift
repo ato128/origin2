@@ -10,6 +10,7 @@ import SwiftData
 import WidgetKit
 import UserNotifications
 
+
 @main
 struct DailyTodoApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate

@@ -29,10 +29,6 @@ final class TodoStore: ObservableObject {
         reload()
     }
 
-    
-
-    // MARK: - Read
-
     func reload() {
         do {
             let descriptor = FetchDescriptor<DTTaskItem>(
@@ -52,8 +48,6 @@ final class TodoStore: ObservableObject {
         }
     }
 
-    // MARK: - Helpers
-
     private func saveAndReload() {
         do {
             try context.save()
@@ -71,13 +65,21 @@ final class TodoStore: ObservableObject {
         return due < Date()
     }
 
-    // MARK: - Create
-
     func add(
         title: String,
-        dueDate: Date?
+        dueDate: Date?,
+        notes: String = "",
+        taskType: String = "standard",
+        colorName: String = "blue",
+        courseName: String = "",
+        scheduledWeekDate: Date? = nil,
+        scheduledWeekDurationMinutes: Int? = nil,
+        workoutDurationMinutes: Int? = nil
     ) {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedCourseName = courseName.trimmingCharacters(in: .whitespacesAndNewlines)
+
         guard !trimmed.isEmpty else { return }
 
         guard let currentUserID else {
@@ -91,14 +93,20 @@ final class TodoStore: ObservableObject {
             isDone: false,
             dueDate: dueDate,
             createdAt: Date(),
-            completedAt: nil
+            completedAt: nil,
+            notes: trimmedNotes,
+            taskType: taskType,
+            colorName: colorName,
+            courseName: trimmedCourseName,
+            workoutDay: nil,
+            workoutDurationMinutes: workoutDurationMinutes,
+            scheduledWeekDate: scheduledWeekDate,
+            scheduledWeekDurationMinutes: scheduledWeekDurationMinutes
         )
 
         context.insert(newItem)
         saveAndReload()
     }
-
-    // MARK: - Update
 
     func toggleDone(_ item: DTTaskItem) {
         guard item.ownerUserID == currentUserID else { return }
@@ -110,20 +118,36 @@ final class TodoStore: ObservableObject {
     func update(
         itemID: PersistentIdentifier,
         title: String,
-        dueDate: Date?
+        dueDate: Date?,
+        notes: String = "",
+        taskType: String = "standard",
+        colorName: String = "blue",
+        courseName: String = "",
+        scheduledWeekDate: Date? = nil,
+        scheduledWeekDurationMinutes: Int? = nil,
+        workoutDurationMinutes: Int? = nil
     ) {
         guard let target = items.first(where: { $0.persistentModelID == itemID }) else { return }
         guard target.ownerUserID == currentUserID else { return }
 
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedCourseName = courseName.trimmingCharacters(in: .whitespacesAndNewlines)
+
         guard !trimmed.isEmpty else { return }
 
         target.title = trimmed
         target.dueDate = dueDate
+        target.notes = trimmedNotes
+        target.taskType = taskType
+        target.colorName = colorName
+        target.courseName = trimmedCourseName
+        target.scheduledWeekDate = scheduledWeekDate
+        target.scheduledWeekDurationMinutes = scheduledWeekDurationMinutes
+        target.workoutDurationMinutes = workoutDurationMinutes
+
         saveAndReload()
     }
-
-    // MARK: - Delete
 
     func delete(_ item: DTTaskItem) {
         guard item.ownerUserID == currentUserID else { return }

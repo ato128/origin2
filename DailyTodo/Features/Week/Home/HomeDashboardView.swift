@@ -72,7 +72,6 @@ struct HomeDashboardView: View {
 
     @State var showHeaderCard = false
     @State var showWeekCard = false
-    @State var showProgressCard = false
     @State var showFocusCard = false
     @State var showNextClassCard = false
     @State var showTodayTasksCard = false
@@ -85,7 +84,7 @@ struct HomeDashboardView: View {
     @State private var inlineWorkoutRestSeconds: Int = 0
     @State private var didLoadCrewFocusSessions = false
 
-    @State  var focusRoomSession: CrewFocusSessionDTO?
+    @State var focusRoomSession: CrewFocusSessionDTO?
 
     let dashboardTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -106,7 +105,7 @@ struct HomeDashboardView: View {
     var allTasks: [DTTaskItem] {
         store.items
     }
-    
+
     var currentUserID: String? {
         session.currentUser?.id.uuidString
     }
@@ -152,7 +151,7 @@ struct HomeDashboardView: View {
     }
 
     var streakCount: Int {
-        return StreakEngine.currentStreak(tasks: userScopedTasks)
+        StreakEngine.currentStreak(tasks: userScopedTasks)
     }
 
     var focusTask: DTTaskItem? {
@@ -407,7 +406,7 @@ struct HomeDashboardView: View {
             }
         }
     }
-    
+
     func localizedActiveMinutesLeft(_ minutes: Int) -> String {
         let format = String(localized: "home_active_now_minutes_left")
         return String(format: format, minutes)
@@ -530,9 +529,13 @@ struct HomeDashboardView: View {
     }
 
     var focusCardMainText: String {
-        if isSharedFocusActive, let friendName = activeSharedFriendName {
-            return "\(friendName) \(String(localized: "home_with_focus_suffix"))"
+        if isSharedFocusActive {
+            if let friendName = activeSharedFriendName {
+                return "\(friendName) \(String(localized: "home_with_focus_suffix"))"
+            }
+            return String(localized: "home_shared_focus")
         }
+
         return focusTask?.title ?? String(localized: "home_no_focus_task_today")
     }
 
@@ -581,53 +584,32 @@ struct HomeDashboardView: View {
                         .opacity(showWeekCard ? 1 : 0)
                         .scaleEffect(showWeekCard ? 1 : 0.985)
 
-                    todayProgressCard
-                        .offset(y: showProgressCard ? 0 : 18)
-                        .opacity(showProgressCard ? 1 : 0)
-                        .scaleEffect(showProgressCard ? 1 : 0.985)
-
-                    if let activeSession = activeBackendCrewFocusSession {
-                        crewSharedFocusCard(session: activeSession)
-                            .offset(y: showFocusCard ? 0 : 18)
-                            .opacity(showFocusCard ? 1 : 0)
-                            .scaleEffect(showFocusCard ? 1 : 0.985)
-                            .transition(.asymmetric(
-                                insertion: .scale(scale: 0.98).combined(with: .opacity),
-                                removal: .scale(scale: 0.96).combined(with: .opacity)
-                            ))
-                    } else if isFocusActive || hasAnyActiveFocusSession {
-                        activeFocusCard
-                            .offset(y: showFocusCard ? 0 : 18)
-                            .opacity(showFocusCard ? 1 : 0)
-                            .scaleEffect(showFocusCard ? 1 : 0.985)
-                            .transition(.asymmetric(
-                                insertion: .scale(scale: 0.98).combined(with: .opacity),
-                                removal: .scale(scale: 0.96).combined(with: .opacity)
-                            ))
-                    } else {
-                        focusCard
-                            .offset(y: showFocusCard ? 0 : 18)
-                            .opacity(showFocusCard ? 1 : 0)
-                            .scaleEffect(showFocusCard ? 1 : 0.985)
-                            .transition(.asymmetric(
-                                insertion: .scale(scale: 0.98).combined(with: .opacity),
-                                removal: .opacity
-                            ))
-                    }
-
                     nextClassCard
                         .offset(y: showNextClassCard ? 0 : 18)
                         .opacity(showNextClassCard ? 1 : 0)
                         .scaleEffect(showNextClassCard ? 1 : 0.985)
 
+                    Group {
+                        if let activeSession = activeBackendCrewFocusSession {
+                            crewSharedFocusCard(session: activeSession)
+                        } else if isFocusActive || hasAnyActiveFocusSession {
+                            activeFocusCard
+                        } else {
+                            focusCard
+                        }
+                    }
+                    .offset(y: showFocusCard ? 0 : 18)
+                    .opacity(showFocusCard ? 1 : 0)
+                    .scaleEffect(showFocusCard ? 1 : 0.985)
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.98).combined(with: .opacity),
+                        removal: .scale(scale: 0.96).combined(with: .opacity)
+                    ))
+
                     todayTasksCard
                         .offset(y: showTodayTasksCard ? 0 : 18)
                         .opacity(showTodayTasksCard ? 1 : 0)
                         .scaleEffect(showTodayTasksCard ? 1 : 0.985)
-
-                    if smartEngineEnabled, let firstSuggestion = smartSuggestions.first {
-                        SmartTaskSuggestionCard(suggestion: firstSuggestion)
-                    }
 
                     quickActionsCard
                         .offset(y: showQuickActionsCard ? 0 : 18)
@@ -690,7 +672,6 @@ struct HomeDashboardView: View {
 
                 showHeaderCard = false
                 showWeekCard = false
-                showProgressCard = false
                 showFocusCard = false
                 showNextClassCard = false
                 showTodayTasksCard = false
@@ -713,7 +694,7 @@ struct HomeDashboardView: View {
 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
                     withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
-                        showProgressCard = true
+                        showNextClassCard = true
                     }
                 }
 
@@ -725,17 +706,11 @@ struct HomeDashboardView: View {
 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.26) {
                     withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
-                        showNextClassCard = true
-                    }
-                }
-
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) {
-                    withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
                         showTodayTasksCard = true
                     }
                 }
 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.38) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) {
                     withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
                         showQuickActionsCard = true
                     }

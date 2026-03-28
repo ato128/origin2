@@ -12,7 +12,7 @@ import SwiftData
 final class DTTaskItem {
     var taskUUID: String
 
-    var ownerUserID: String?   // 🔥 EKLENDİ
+    var ownerUserID: String?
 
     var title: String
     var isDone: Bool
@@ -23,19 +23,20 @@ final class DTTaskItem {
     var notes: String
     var taskType: String
 
+    var colorName: String
+    var courseName: String
+
     var workoutDay: String?
     var workoutDurationMinutes: Int?
 
     var scheduledWeekDate: Date?
     var scheduledWeekDurationMinutes: Int?
-    
+
     var workoutExercises: [WorkoutExerciseItem]? = nil
-    
-  
 
     init(
         taskUUID: String = UUID().uuidString,
-        ownerUserID: String? = nil,   // 🔥 EKLENDİ
+        ownerUserID: String? = nil,
         title: String,
         isDone: Bool = false,
         dueDate: Date? = nil,
@@ -43,13 +44,15 @@ final class DTTaskItem {
         completedAt: Date? = nil,
         notes: String = "",
         taskType: String = "standard",
+        colorName: String = "blue",
+        courseName: String = "",
         workoutDay: String? = nil,
         workoutDurationMinutes: Int? = nil,
         scheduledWeekDate: Date? = nil,
         scheduledWeekDurationMinutes: Int? = nil
     ) {
         self.taskUUID = taskUUID
-        self.ownerUserID = ownerUserID   // 🔥 EKLENDİ
+        self.ownerUserID = ownerUserID
         self.title = title
         self.isDone = isDone
         self.dueDate = dueDate
@@ -57,6 +60,8 @@ final class DTTaskItem {
         self.completedAt = completedAt
         self.notes = notes
         self.taskType = taskType
+        self.colorName = colorName
+        self.courseName = courseName
         self.workoutDay = workoutDay
         self.workoutDurationMinutes = workoutDurationMinutes
         self.scheduledWeekDate = scheduledWeekDate

@@ -11,35 +11,44 @@ import Combine
 
 extension HomeDashboardView {
     var quickActionsCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("home_quick_actions")
-                .font(.system(size: 19, weight: .bold))
-                .foregroundStyle(palette.primaryText)
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Hızlı İşlemler")
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundStyle(palette.primaryText)
 
-            HStack(spacing: 12) {
+                Text("Öğrenci akışın için kısa yollar")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(palette.secondaryText)
+            }
 
+            HStack(spacing: 10) {
                 quickActionButton(
-                    title: String(localized: "home_add_task"),
-                    systemImage: "plus.circle.fill",
-                    isHighlighted: false
+                    title: "Görev",
+                    subtitle: "Yeni görev",
+                    systemImage: "checklist",
+                    tint: .blue,
+                    isHighlighted: true
                 ) {
                     onAddTask()
                 }
 
                 quickActionButton(
-                    title: String(localized: "home_week"),
-                    systemImage: "calendar",
-                    isHighlighted: false
+                    title: "Sınav",
+                    subtitle: "Planla",
+                    systemImage: "doc.text.fill",
+                    tint: .orange
                 ) {
-                    onOpenWeek()
+                    onAddTask()
                 }
 
                 quickActionButton(
-                    title: String(localized: "home_insights"),
-                    systemImage: "chart.bar.fill",
-                    isHighlighted: false
+                    title: "Hafta",
+                    subtitle: "Ekle",
+                    systemImage: "calendar.badge.plus",
+                    tint: .purple
                 ) {
-                    onOpenInsights()
+                    onOpenWeek()
                 }
             }
         }
@@ -50,27 +59,43 @@ extension HomeDashboardView {
 
     func quickActionButton(
         title: String,
+        subtitle: String,
         systemImage: String,
+        tint: Color,
         isHighlighted: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            VStack(spacing: 12) {
-                Image(systemName: systemImage)
-                    .font(.title2)
-                    .foregroundStyle(isHighlighted ? .white : Color.accentColor)
+            VStack(alignment: .leading, spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(tint.opacity(isHighlighted ? 0.18 : 0.14))
+                        .frame(width: 40, height: 40)
 
-                Text(title)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(palette.primaryText)
+                    Image(systemName: systemImage)
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(tint)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(palette.primaryText)
+                        .lineLimit(1)
+
+                    Text(subtitle)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(palette.secondaryText)
+                        .lineLimit(1)
+                }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 18)
+            .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
+            .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(
                         isHighlighted
-                        ? Color.accentColor.opacity(0.22)
+                        ? tint.opacity(0.08)
                         : palette.secondaryCardFill
                     )
             )
@@ -78,16 +103,16 @@ extension HomeDashboardView {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .stroke(
                         isHighlighted
-                        ? Color.accentColor.opacity(0.95)
+                        ? tint.opacity(0.26)
                         : palette.cardStroke,
-                        lineWidth: isHighlighted ? 2 : 1
+                        lineWidth: 1
                     )
             )
             .shadow(
-                color: isHighlighted ? Color.accentColor.opacity(0.28) : .clear,
-                radius: isHighlighted ? 14 : 0
+                color: isHighlighted ? tint.opacity(0.08) : .clear,
+                radius: isHighlighted ? 8 : 0,
+                y: isHighlighted ? 3 : 0
             )
-            .scaleEffect(isHighlighted ? 1.02 : 1.0)
         }
         .buttonStyle(.plain)
     }

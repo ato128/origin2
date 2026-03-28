@@ -12,122 +12,113 @@ extension HomeDashboardView {
     var focusCard: some View {
         Group {
             if let task = focusTask {
+                let accent = focusAccentColor(for: task)
+
                 VStack(alignment: .leading, spacing: 14) {
-                    HStack {
-                        Text(focusCardTitle)
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(palette.primaryText)
+                    HStack(alignment: .center) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Çalışma Seansı")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(palette.secondaryText)
+
+                            Text(task.title)
+                                .font(.system(size: 24, weight: .bold, design: .rounded))
+                                .foregroundStyle(palette.primaryText)
+                                .lineLimit(1)
+                        }
 
                         Spacer()
 
-                        Image(systemName: isSharedFocusActive ? "person.2.fill" : (task.taskType == "workout" ? "dumbbell.fill" : "scope"))
-                            .font(.title3)
-                            .foregroundStyle(Color.accentColor)
-                    }
+                        ZStack {
+                            Circle()
+                                .fill(accent.opacity(0.14))
+                                .frame(width: 46, height: 46)
 
-                    Text(focusCardMainText)
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundStyle(palette.primaryText)
-                        .lineLimit(2)
-
-                    if task.taskType == "workout" {
-                        VStack(alignment: .leading, spacing: 8) {
-                            if !focusWorkoutExerciseName.isEmpty {
-                                Text(focusWorkoutExerciseName)
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(palette.secondaryText)
-                                    .lineLimit(1)
-                            }
-
-                            HStack(spacing: 8) {
-                                if focusWorkoutCurrentSet > 0 && focusWorkoutTotalSets > 0 {
-                                    miniBadge(
-                                        icon: "figure.strengthtraining.traditional",
-                                        text: String(
-                                            localized: "home_workout_set_format",
-                                            defaultValue: "Set \(focusWorkoutCurrentSet)/\(focusWorkoutTotalSets)"
-                                        ),
-                                        tint: .green
-                                    )
-                                }
-
-                                if focusWorkoutIsResting {
-                                    miniBadge(
-                                        icon: "figure.cooldown",
-                                        text: String(localized: "home_rest"),
-                                        tint: .orange
-                                    )
-                                }
-                            }
+                            Image(systemName: focusSymbol(for: task))
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundStyle(accent)
                         }
                     }
 
                     HStack(spacing: 8) {
                         if let due = task.dueDate {
-                            Label {
-                                Text(due, style: .time)
-                            } icon: {
-                                Image(systemName: "calendar")
-                            }
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(palette.secondaryText)
+                            miniBadge(
+                                icon: "clock.fill",
+                                text: due.formatted(date: .omitted, time: .shortened),
+                                tint: palette.secondaryText
+                            )
                         }
 
-                        Spacer()
+                        miniBadge(
+                            icon: "scope",
+                            text: focusCardStatusTextStudent,
+                            tint: accent
+                        )
 
-                        Text(
-                            task.taskType == "workout"
-                            ? (focusWorkoutIsResting
-                               ? String(localized: "home_workout_rest_active")
-                               : String(localized: "home_workout_ready"))
-                            : focusCardStatusText
-                        )
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(
-                            task.taskType == "workout"
-                            ? (focusWorkoutIsResting ? .orange : .green)
-                            : (isSharedFocusActive
-                               ? .green
-                               : (store.isOverdue(task) ? .red : palette.secondaryText))
-                        )
+                        Spacer()
                     }
 
                     Button {
                         startInlineFocus()
                     } label: {
-                        Text(task.taskType == "workout"
-                             ? String(localized: "home_start_workout")
-                             : String(localized: "home_start_focus"))
-                            .font(.system(size: 15, weight: .semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(
-                                ZStack {
-                                    Capsule()
-                                        .fill(Color.accentColor)
+                        HStack(spacing: 8) {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 13, weight: .bold))
 
-                                    Capsule()
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [
-                                                    Color.white.opacity(0.14),
-                                                    Color.clear
-                                                ],
-                                                startPoint: .top,
-                                                endPoint: .bottom
-                                            )
-                                        )
-                                }
-                            )
-                            .foregroundStyle(.white)
-                            .clipShape(Capsule())
-                            .shadow(color: Color.accentColor.opacity(0.22), radius: 8)
+                            Text("Çalışmayı Başlat")
+                                .font(.system(size: 15, weight: .bold))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            accent,
+                                            accent.opacity(0.88)
+                                        ],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                        )
+                        .foregroundStyle(.white)
+                        .clipShape(Capsule())
+                        .shadow(color: accent.opacity(0.20), radius: 10, y: 4)
                     }
                     .buttonStyle(.plain)
                 }
                 .padding(18)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(heroCardBackground)
+                .background(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(palette.cardFill)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .fill(
+                                    RadialGradient(
+                                        colors: [
+                                            accent.opacity(0.10),
+                                            Color.clear
+                                        ],
+                                        center: .topTrailing,
+                                        startRadius: 10,
+                                        endRadius: 220
+                                    )
+                                )
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .stroke(accent.opacity(0.16), lineWidth: 1)
+                        )
+                )
+                .shadow(
+                    color: accent.opacity(0.08),
+                    radius: 12,
+                    x: 0,
+                    y: 5
+                )
             }
         }
     }
@@ -137,182 +128,96 @@ extension HomeDashboardView {
             let now = timeline.date
             let liveRemaining = liveFocusRemaining(at: now)
             let urgencyColor = activeFocusUrgencyColor(for: liveRemaining)
-            let warmState = liveRemaining > 0 && liveRemaining <= 30
 
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .center) {
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(focusWorkoutIsResting ? .orange : urgencyColor)
-                            .frame(width: 8, height: 8)
-                            .scaleEffect(liveDotPulse ? 1.35 : 0.85)
-                            .opacity(liveDotPulse ? 0.65 : 1)
-                            .animation(
-                                .easeInOut(duration: 1).repeatForever(autoreverses: true),
-                                value: liveDotPulse
-                            )
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Aktif Çalışma")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(palette.secondaryText)
 
-                        Text(
-                            isSharedFocusActive
-                            ? String(localized: "home_shared_focus_running")
-                            : (focusWorkoutMode
-                               ? (focusWorkoutIsResting
-                                  ? String(localized: "home_workout_rest_running")
-                                  : String(localized: "home_workout_running"))
-                               : String(localized: "home_focus_running"))
-                        )
-                        .font(.system(size: 14, weight: .semibold))
+                        Text(activeFocusTaskTitle.isEmpty ? "Odak Oturumu" : activeFocusTaskTitle)
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .foregroundStyle(palette.primaryText)
+                            .lineLimit(1)
                     }
 
                     Spacer()
 
                     Text(liveFocusTimeText(at: now))
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
                         .monospacedDigit()
-                }
-
-                Text(
-                    isSharedFocusActive
-                    ? ((activeSharedFriendName != nil)
-                       ? String(
-                            localized: "home_shared_focus_with_friend",
-                            defaultValue: "\(activeSharedFriendName!) \(String(localized: "home_with_focus_suffix"))"
-                         )
-                       : String(localized: "home_shared_focus"))
-                    : (activeFocusTaskTitle.isEmpty
-                       ? String(localized: "home_deep_work_session")
-                       : activeFocusTaskTitle)
-                )
-                .font(.system(size: 22, weight: .bold, design: .rounded))
-                .lineLimit(2)
-                .minimumScaleFactor(0.9)
-
-                if focusWorkoutMode {
-                    VStack(alignment: .leading, spacing: 8) {
-                        if !focusWorkoutExerciseName.isEmpty {
-                            Text(focusWorkoutExerciseName)
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(palette.primaryText)
-                                .lineLimit(1)
-                        }
-
-                        HStack(spacing: 8) {
-                            if focusWorkoutCurrentSet > 0 && focusWorkoutTotalSets > 0 {
-                                miniBadge(
-                                    icon: "figure.strengthtraining.traditional",
-                                    text: String(
-                                        localized: "home_workout_set_format",
-                                        defaultValue: "Set \(focusWorkoutCurrentSet)/\(focusWorkoutTotalSets)"
-                                    ),
-                                    tint: .green
-                                )
-                            }
-
-                            if focusWorkoutIsResting {
-                                miniBadge(
-                                    icon: "figure.cooldown",
-                                    text: String(localized: "home_rest"),
-                                    tint: .orange
-                                )
-                            }
-                        }
-                    }
+                        .foregroundStyle(urgencyColor)
                 }
 
                 smoothActiveFocusProgressBar(at: now)
-                    .frame(height: 10)
+                    .frame(height: 8)
 
-                HStack(spacing: 8) {
-                    miniBadge(
-                        icon: focusWorkoutIsResting ? "figure.cooldown" : "timer",
-                        text: focusWorkoutIsResting
-                        ? String(localized: "home_workout_rest_active")
-                        : (liveRemaining <= 30
-                           ? String(localized: "home_last_30_seconds")
-                           : (focusWorkoutMode
-                              ? String(localized: "home_workout_active")
-                              : String(localized: "home_focus_active"))),
-                        tint: focusWorkoutIsResting ? .orange : urgencyColor
-                    )
-
-                    miniBadge(
-                        icon: focusWorkoutMode ? "dumbbell.fill" : "scope",
-                        text: focusWorkoutMode
-                        ? (focusWorkoutIsResting
-                           ? String(localized: "home_resting")
-                           : String(localized: "home_set_in_progress"))
-                        : String(localized: "home_continue"),
-                        tint: focusWorkoutIsResting ? .orange : (warmState ? urgencyColor : .green)
-                    )
-                }
-
-                HStack(spacing: 8) {
+                HStack(spacing: 10) {
                     Button {
                         if focusWorkoutMode {
                             advanceInlineWorkout()
                         }
                     } label: {
-                        Text(
-                            focusWorkoutMode
-                            ? (focusWorkoutIsResting
-                               ? String(localized: "home_continue_after_rest")
-                               : String(localized: "home_next_set"))
-                            : String(localized: "home_focus_active_button")
-                        )
-                        .font(.system(size: 15, weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(
-                            Capsule()
-                                .fill(focusWorkoutMode ? Color.accentColor : Color.accentColor.opacity(0.16))
-                        )
-                        .foregroundStyle(focusWorkoutMode ? .white : Color.accentColor)
-                        .clipShape(Capsule())
+                        Text(focusWorkoutMode ? "Sonraki Set" : "Odayı Aç")
+                            .font(.system(size: 14, weight: .bold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 11)
+                            .background(
+                                Capsule()
+                                    .fill(Color.accentColor)
+                            )
+                            .foregroundStyle(.white)
+                            .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
-                    .disabled(!focusWorkoutMode)
 
                     Button {
                         stopActiveFocus()
                     } label: {
-                        Text(String(localized: "home_stop"))
-                            .font(.system(size: 15, weight: .semibold))
+                        Text("Duraklat")
+                            .font(.system(size: 14, weight: .bold))
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(Color.red.opacity(0.14))
-                            .foregroundStyle(.red)
+                            .padding(.vertical, 11)
+                            .background(
+                                Capsule()
+                                    .fill(Color.orange.opacity(0.16))
+                            )
+                            .foregroundStyle(.orange)
                             .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(16)
+            .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(.ultraThinMaterial)
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(palette.cardFill)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .fill((focusWorkoutIsResting ? Color.orange : urgencyColor).opacity(warmState ? 0.08 : 0.06))
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(
+                                RadialGradient(
+                                    colors: [
+                                        urgencyColor.opacity(0.10),
+                                        Color.clear
+                                    ],
+                                    center: .topLeading,
+                                    startRadius: 20,
+                                    endRadius: 220
+                                )
+                            )
                     )
                     .overlay(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(
-                                (focusWorkoutIsResting ? Color.orange : urgencyColor).opacity(pulseActiveFocus ? 0.34 : 0.16),
-                                lineWidth: 1.1
-                            )
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(urgencyColor.opacity(0.16), lineWidth: 1)
                     )
             )
             .shadow(
-                color: (focusWorkoutIsResting ? Color.orange : urgencyColor).opacity(pulseActiveFocus ? 0.22 : 0.10),
-                radius: pulseActiveFocus ? 14 : 7,
+                color: urgencyColor.opacity(0.08),
+                radius: 12,
                 x: 0,
                 y: 5
-            )
-            .scaleEffect(pulseActiveFocus ? 1.008 : 1.0)
-            .animation(
-                .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
-                value: pulseActiveFocus
             )
         }
         .onAppear {
@@ -336,24 +241,12 @@ extension HomeDashboardView {
     }
 
     func backendCrewFocusAccentColor(for session: CrewFocusSessionDTO, now: Date) -> Color {
-        if !session.is_active {
-            return .green
-        }
-
-        if session.is_paused {
-            return .orange
-        }
+        if !session.is_active { return .green }
+        if session.is_paused { return .orange }
 
         let remaining = backendCrewFocusRemainingSeconds(for: session, now: now)
-
-        if remaining <= 180 {
-            return .red
-        }
-
-        if remaining <= 600 {
-            return .orange
-        }
-
+        if remaining <= 180 { return .red }
+        if remaining <= 600 { return .orange }
         return .blue
     }
 
@@ -398,202 +291,172 @@ extension HomeDashboardView {
 
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(accent.opacity(crewFocusGlowPulse ? 1 : 0.75))
-                            .frame(width: 10, height: 10)
-                            .shadow(
-                                color: accent.opacity(crewFocusGlowPulse ? 0.45 : 0.20),
-                                radius: 8
-                            )
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Ortak Odak")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(palette.secondaryText)
 
-                        Text(
-                            !session.is_active
-                            ? String(localized: "home_focus_completed")
-                            : session.is_paused
-                            ? String(localized: "home_focus_paused")
-                            : String(localized: "home_focus_running")
-                        )
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(palette.primaryText)
+                        Text(session.title)
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .foregroundStyle(palette.primaryText)
+                            .lineLimit(1)
                     }
 
                     Spacer()
 
-                    Text(!session.is_active ? String(localized: "home_done") : liveTimeText)
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                    Text(!session.is_active ? "Bitti" : liveTimeText)
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundStyle(!session.is_active ? .green : palette.primaryText)
-                        .contentTransition(.numericText())
-                        .animation(.easeInOut(duration: 0.2), value: liveTimeText)
+                        .monospacedDigit()
                 }
-
-                Text(session.title)
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(palette.primaryText)
 
                 ZStack(alignment: .leading) {
                     Capsule()
                         .fill(palette.secondaryCardFill)
-                        .frame(height: 10)
+                        .frame(height: 8)
 
                     GeometryReader { geo in
                         Capsule()
                             .fill(accent)
                             .frame(
                                 width: max(10, geo.size.width * (!session.is_active ? 1 : progress)),
-                                height: 10
+                                height: 8
                             )
-                            .shadow(
-                                color: accent.opacity(crewFocusGlowPulse ? 0.45 : 0.20),
-                                radius: crewFocusGlowPulse ? 10 : 5
-                            )
-                            .animation(.linear(duration: 1), value: progress)
                     }
                 }
-                .frame(height: 10)
+                .frame(height: 8)
 
                 HStack(spacing: 10) {
-                    if !session.is_active {
-                        focusChip(
-                            title: String(localized: "home_done"),
-                            icon: "checkmark.circle.fill",
-                            color: .green
-                        )
-
-                        focusChip(
-                            title: String(localized: "home_completed"),
-                            icon: "sparkles",
-                            color: .green
-                        )
-                    } else {
-                        focusChip(
-                            title: session.is_paused
-                                ? String(localized: "home_paused")
-                                : String(localized: "home_focus_active"),
-                            icon: session.is_paused ? "pause.fill" : "timer",
-                            color: accent
-                        )
-
-                        focusChip(
-                            title: session.is_paused
-                                ? String(localized: "home_waiting")
-                                : String(localized: "home_continue"),
-                            icon: session.is_paused ? "pause.circle.fill" : "scope",
-                            color: session.is_paused ? .orange : .green
-                        )
+                    Button {
+                        focusRoomSession = session
+                    } label: {
+                        Text("Odayı Aç")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 11)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(Color.accentColor)
+                            )
                     }
-                }
+                    .buttonStyle(.plain)
 
-                if session.is_active {
-                    HStack(spacing: 12) {
-                        Button {
-                            focusRoomSession = session
-                        } label: {
-                            Text(String(localized: "home_open_focus"))
-                                .font(.headline.weight(.bold))
-                                .foregroundStyle(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .fill(Color.accentColor)
-                                )
-                        }
-                        .buttonStyle(.plain)
+                    Button {
+                        Task {
+                            let hostName = sessionStoreSafeEmailPrefix() ?? "You"
 
-                        Button {
-                            Task {
-                                let hostName = sessionStoreSafeEmailPrefix() ?? String(localized: "crew_focus_room_you")
-
-                                do {
-                                    if session.is_paused {
-                                        try await crewStore.resumeCrewFocusSession(
-                                            sessionID: session.id,
-                                            crewID: session.crew_id,
-                                            hostUserID: self.session.currentUser?.id,
-                                            hostName: hostName,
-                                            durationMinutes: session.duration_minutes,
-                                            pausedRemainingSeconds: session.paused_remaining_seconds ?? 0
-                                        )
-                                    } else {
-                                        try await crewStore.pauseCrewFocusSession(
-                                            sessionID: session.id,
-                                            crewID: session.crew_id,
-                                            hostUserID: self.session.currentUser?.id,
-                                            hostName: hostName,
-                                            pausedRemainingSeconds: remaining
-                                        )
-                                    }
-
-                                    await crewStore.loadActiveFocusSession(for: session.crew_id)
-                                } catch {
-                                    print("HOME FOCUS PAUSE/RESUME ERROR:", error.localizedDescription)
+                            do {
+                                if session.is_paused {
+                                    try await crewStore.resumeCrewFocusSession(
+                                        sessionID: session.id,
+                                        crewID: session.crew_id,
+                                        hostUserID: self.session.currentUser?.id,
+                                        hostName: hostName,
+                                        durationMinutes: session.duration_minutes,
+                                        pausedRemainingSeconds: session.paused_remaining_seconds ?? 0
+                                    )
+                                } else {
+                                    try await crewStore.pauseCrewFocusSession(
+                                        sessionID: session.id,
+                                        crewID: session.crew_id,
+                                        hostUserID: self.session.currentUser?.id,
+                                        hostName: hostName,
+                                        pausedRemainingSeconds: remaining
+                                    )
                                 }
-                            }
-                        } label: {
-                            Text(session.is_paused
-                                 ? String(localized: "home_resume")
-                                 : String(localized: "home_pause"))
-                                .font(.headline.weight(.bold))
-                                .foregroundStyle(session.is_paused ? .green : .orange)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .fill(
-                                            (session.is_paused ? Color.green : Color.orange)
-                                                .opacity(0.12)
-                                        )
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                } else {
-                    HStack {
-                        Label(String(localized: "home_session_completed"), systemImage: "checkmark.circle.fill")
-                            .font(.headline.weight(.bold))
-                            .foregroundStyle(.green)
 
-                        Spacer()
+                                await crewStore.loadActiveFocusSession(for: session.crew_id)
+                            } catch {
+                                print("HOME FOCUS PAUSE/RESUME ERROR:", error.localizedDescription)
+                            }
+                        }
+                    } label: {
+                        Text(session.is_paused ? "Devam Et" : "Duraklat")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(session.is_paused ? .green : .orange)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 11)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill((session.is_paused ? Color.green : Color.orange).opacity(0.12))
+                            )
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .padding(.horizontal, 16)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(Color.green.opacity(0.12))
-                    )
+                    .buttonStyle(.plain)
                 }
             }
             .padding(18)
             .background(
-                ZStack {
-                    RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .fill(palette.cardFill)
-
-                    RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .stroke(accent.opacity(0.30), lineWidth: 1)
-
-                    RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .fill(
-                            RadialGradient(
-                                colors: [
-                                    accent.opacity(crewFocusGlowPulse ? 0.20 : 0.10),
-                                    Color.clear
-                                ],
-                                center: .topLeading,
-                                startRadius: 20,
-                                endRadius: 260
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(palette.cardFill)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(
+                                RadialGradient(
+                                    colors: [
+                                        accent.opacity(0.10),
+                                        Color.clear
+                                    ],
+                                    center: .topLeading,
+                                    startRadius: 20,
+                                    endRadius: 220
+                                )
                             )
-                        )
-                        .blur(radius: 24)
-                }
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(accent.opacity(0.18), lineWidth: 1)
+                    )
             )
-            .shadow(
-                color: accent.opacity(crewFocusGlowPulse ? 0.18 : 0.08),
-                radius: 18,
-                y: 8
-            )
+        }
+    }
+
+    var focusCardStatusTextStudent: String {
+        guard let task = focusTask else { return "Bugün için öneri yok" }
+
+        if store.isOverdue(task) {
+            return "Öncelikli"
+        }
+
+        if let due = task.dueDate,
+           Calendar.current.isDateInToday(due) {
+            return "Sıradaki odak"
+        }
+
+        return "Hazır"
+    }
+
+    func focusAccentColor(for task: DTTaskItem) -> Color {
+        if store.isOverdue(task) {
+            return .red
+        }
+
+        switch task.taskType.lowercased() {
+        case "exam":
+            return .orange
+        case "project":
+            return .purple
+        case "workout":
+            return .green
+        case "study":
+            return .blue
+        default:
+            return .accentColor
+        }
+    }
+
+    func focusSymbol(for task: DTTaskItem) -> String {
+        switch task.taskType.lowercased() {
+        case "exam":
+            return "doc.text.fill"
+        case "project":
+            return "folder.fill"
+        case "workout":
+            return "dumbbell.fill"
+        case "study":
+            return "book.fill"
+        default:
+            return "scope"
         }
     }
 }

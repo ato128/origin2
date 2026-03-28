@@ -7,6 +7,7 @@
 
 import UIKit
 import UserNotifications
+import FirebaseCore
 
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
@@ -20,6 +21,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         if let notificationResponse = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
             handleNotificationPayload(notificationResponse)
         }
+        FirebaseApp.configure()
 
         return true
     }
