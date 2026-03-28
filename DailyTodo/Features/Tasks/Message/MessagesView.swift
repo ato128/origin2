@@ -20,11 +20,9 @@ struct MessagesView: View {
     @Query(sort: \Friend.createdAt, order: .reverse)
     private var friends: [Friend]
 
-    
-
     private let replyMarker = "[[reply]]"
     private let bodyMarker = "[[body]]"
-    
+
     private var currentUserID: UUID? {
         session.currentUser?.id
     }
@@ -49,158 +47,30 @@ struct MessagesView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                Picker("", selection: $selectedTab) {
-                    Text("Friends").tag(0)
-                    Text("Crews").tag(1)
-                }
-                .pickerStyle(.segmented)
-                .padding()
+            ZStack {
+                AppBackground()
 
-                if selectedTab == 0 {
-                    List {
-                        if backendFriends.isEmpty  {
-                            ContentUnavailableView(
-                                "No Friends Yet",
-                                systemImage: "person.2.slash",
-                                description: Text("Your friend chats will appear here.")
-                            )
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        header
+                        segmentedPicker
+
+                        if selectedTab == 0 {
+                            friendsSection
                         } else {
-                            ForEach(backendFriends) { friend in
-                                NavigationLink {
-                                    FriendChatView(friend: friend)
-                                        .environmentObject(friendStore)
-                                        .environmentObject(session)
-                                } label: {
-                                    HStack(spacing: 12) {
-                                        Circle()
-                                            .fill(hexColor(friend.colorHex).opacity(0.16))
-                                            .frame(width: 42, height: 42)
-                                            .overlay(
-                                                Image(systemName: friend.avatarSymbol)
-                                                    .foregroundStyle(hexColor(friend.colorHex))
-                                            )
-
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text(friend.name)
-                                                .font(.headline)
-
-                                            Text(lastPreviewText(for: friend))
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                                .lineLimit(1)
-
-                                            if friend.isMuted {
-                                                Text("Muted")
-                                                    .font(.caption2.weight(.semibold))
-                                                    .foregroundStyle(.orange)
-                                            }
-                                        }
-
-                                        Spacer()
-
-                                        VStack(alignment: .trailing, spacing: 8) {
-                                            if let lastDate = lastFriendMessageDate(for: friend) {
-                                                Text(lastDate, style: .time)
-                                                    .font(.caption2)
-                                                    .foregroundStyle(.secondary)
-                                            }
-
-                                            HStack(spacing: 8) {
-                                                if unreadFriendCount(for: friend) > 0 {
-                                                    unreadBadge(unreadFriendCount(for: friend))
-                                                }
-
-                                                Circle()
-                                                    .fill(friend.isOnline ? Color.green : Color.gray.opacity(0.4))
-                                                    .frame(width: 8, height: 8)
-
-                                                if friend.isMuted {
-                                                    Image(systemName: "bell.slash.fill")
-                                                        .font(.caption.weight(.semibold))
-                                                        .foregroundStyle(.orange)
-                                                }
-
-                                                Image(systemName: "chevron.right")
-                                                    .font(.caption.weight(.bold))
-                                                    .foregroundStyle(.secondary)
-                                            }
-                                        }
-                                    }
-                                    .padding(.vertical, 4)
-                                }
-                            }
+                            crewsSection
                         }
+
+                        Spacer(minLength: 80)
                     }
-                    .listStyle(.plain)
-
-                } else {
-                    List {
-                        if backendCrews.isEmpty {
-                            ContentUnavailableView(
-                                "No Crews Yet",
-                                systemImage: "person.3.slash",
-                                description: Text("Your crew chats will appear here.")
-                            )
-                        } else {
-                            ForEach(backendCrews) { crew in
-                                NavigationLink {
-                                    CrewChatView(crew: crew)
-                                        .environmentObject(crewStore)
-                                        .environmentObject(session)
-                                } label: {
-                                    HStack(spacing: 12) {
-                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                            .fill(hexColor(crew.colorHex).opacity(0.16))
-                                            .frame(width: 42, height: 42)
-                                            .overlay(
-                                                Image(systemName: crew.icon)
-                                                    .foregroundStyle(hexColor(crew.colorHex))
-                                            )
-
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text(crew.name)
-                                                .font(.headline)
-
-                                            Text(lastPreviewText(for: crew))
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                                .lineLimit(1)
-                                        }
-
-                                        Spacer()
-
-                                        VStack(alignment: .trailing, spacing: 8) {
-                                            if let lastDate = lastCrewMessageDate(for: crew) {
-                                                Text(lastDate, style: .time)
-                                                    .font(.caption2)
-                                                    .foregroundStyle(.secondary)
-                                            }
-
-                                            HStack(spacing: 8) {
-                                                Image(systemName: "chevron.right")
-                                                    .font(.caption.weight(.bold))
-                                                    .foregroundStyle(.secondary)
-                                            }
-                                        }
-                                    }
-                                    .padding(.vertical, 4)
-                                }
-                            }
-                        }
-                    }
-                    .listStyle(.plain)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 10)
+                    .padding(.bottom, 24)
                 }
+                .scrollIndicators(.hidden)
             }
-            .navigationTitle("Messages")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
+            .navigationBarBackButtonHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
             .task {
                 await crewStore.loadCrews()
 
@@ -235,6 +105,290 @@ struct MessagesView: View {
                 }
             }
         }
+    }
+}
+
+private extension MessagesView {
+    var header: some View {
+        HStack(alignment: .center) {
+            Text("Messages")
+                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+
+            Spacer()
+
+            Button {
+                dismiss()
+            } label: {
+                Text("Done")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 18)
+                    .frame(height: 42)
+                    .background(smallGlassCapsule)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    var segmentedPicker: some View {
+        HStack(spacing: 0) {
+            segmentButton(title: "Friends", isSelected: selectedTab == 0) {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                    selectedTab = 0
+                }
+            }
+
+            segmentButton(title: "Crews", isSelected: selectedTab == 1) {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                    selectedTab = 1
+                }
+            }
+        }
+        .padding(4)
+        .background(largeGlassCapsule)
+    }
+
+    func segmentButton(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 18, weight: .semibold, design: .rounded))
+                .foregroundStyle(isSelected ? .white : .white.opacity(0.62))
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+                .background {
+                    if isSelected {
+                        Capsule()
+                            .fill(Color.white.opacity(0.16))
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                            )
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+    }
+
+    var friendsSection: some View {
+        VStack(spacing: 12) {
+            if backendFriends.isEmpty {
+                emptyState(
+                    title: "No Friends Yet",
+                    subtitle: "Your friend chats will appear here.",
+                    systemImage: "person.2.slash"
+                )
+            } else {
+                ForEach(backendFriends) { friend in
+                    NavigationLink {
+                        FriendChatView(friend: friend)
+                            .environmentObject(friendStore)
+                            .environmentObject(session)
+                    } label: {
+                        friendRow(friend)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    var crewsSection: some View {
+        VStack(spacing: 12) {
+            if backendCrews.isEmpty {
+                emptyState(
+                    title: "No Crews Yet",
+                    subtitle: "Your crew chats will appear here.",
+                    systemImage: "person.3.slash"
+                )
+            } else {
+                ForEach(backendCrews) { crew in
+                    NavigationLink {
+                        CrewChatView(crew: crew)
+                            .environmentObject(crewStore)
+                            .environmentObject(session)
+                    } label: {
+                        crewRow(crew)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    func friendRow(_ friend: Friend) -> some View {
+        let unreadCount = unreadFriendCount(for: friend)
+        let hasUnread = unreadCount > 0
+
+        return HStack(spacing: 12) {
+            ZStack(alignment: .bottomTrailing) {
+                Circle()
+                    .fill(hexColor(friend.colorHex).opacity(0.16))
+                    .frame(width: 44, height: 44)
+
+                Image(systemName: friend.avatarSymbol)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(hexColor(friend.colorHex))
+
+                Circle()
+                    .fill(friend.isOnline ? Color.green : Color.gray.opacity(0.45))
+                    .frame(width: 9, height: 9)
+                    .overlay(
+                        Circle()
+                            .stroke(Color.black.opacity(0.35), lineWidth: 1.2)
+                    )
+                    .offset(x: 1, y: 1)
+            }
+            .frame(width: 48, height: 48)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(friend.name)
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+
+                Text(lastPreviewText(for: friend))
+                    .font(.system(size: 13.5, weight: .semibold))
+                    .foregroundStyle(hasUnread ? .white.opacity(0.86) : .white.opacity(0.62))
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 8)
+
+            VStack(alignment: .trailing, spacing: 8) {
+                if let lastDate = lastFriendMessageDate(for: friend) {
+                    Text(lastDate, style: .time)
+                        .font(.system(size: 11.5, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.70))
+                }
+
+                HStack(spacing: 8) {
+                    if unreadCount > 0 {
+                        unreadBadge(unreadCount)
+                    }
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.34))
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 13)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(hasUnread ? Color.white.opacity(0.06) : Color.white.opacity(0.045))
+                .background(
+                    .ultraThinMaterial,
+                    in: RoundedRectangle(cornerRadius: 24, style: .continuous)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(
+                            hasUnread ? Color.white.opacity(0.13) : Color.white.opacity(0.08),
+                            lineWidth: 1
+                        )
+                )
+        )
+        .shadow(
+            color: hasUnread ? Color.white.opacity(0.04) : .clear,
+            radius: hasUnread ? 8 : 0,
+            y: hasUnread ? 3 : 0
+        )
+    }
+
+    func crewRow(_ crew: WeekCrewItem) -> some View {
+        HStack(spacing: 12) {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(hexColor(crew.colorHex).opacity(0.16))
+                .frame(width: 44, height: 44)
+                .overlay(
+                    Image(systemName: crew.icon)
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(hexColor(crew.colorHex))
+                )
+                .frame(width: 48, height: 48)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(crew.name)
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+
+                Text(lastPreviewText(for: crew))
+                    .font(.system(size: 13.5, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.62))
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 8)
+
+            VStack(alignment: .trailing, spacing: 8) {
+                if let lastDate = lastCrewMessageDate(for: crew) {
+                    Text(lastDate, style: .time)
+                        .font(.system(size: 11.5, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.70))
+                }
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.34))
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 13)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color.white.opacity(0.045))
+                .background(
+                    .ultraThinMaterial,
+                    in: RoundedRectangle(cornerRadius: 24, style: .continuous)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
+        )
+    }
+
+    func emptyState(title: String, subtitle: String, systemImage: String) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.system(size: 26, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.80))
+
+            Text(title)
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+
+            Text(subtitle)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.white.opacity(0.58))
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 34)
+        .padding(.horizontal, 20)
+    }
+
+    var smallGlassCapsule: some View {
+        Capsule()
+            .fill(Color.white.opacity(0.05))
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(Color.white.opacity(0.09), lineWidth: 1)
+            )
+    }
+
+    var largeGlassCapsule: some View {
+        RoundedRectangle(cornerRadius: 28, style: .continuous)
+            .fill(Color.white.opacity(0.035))
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+            )
     }
 
     private func cleanedPreview(_ text: String) -> String {
@@ -300,14 +454,13 @@ struct MessagesView: View {
 
     private func unreadBadge(_ count: Int) -> some View {
         Text(count > 99 ? "99+" : "\(count)")
-            .font(.caption2.weight(.bold))
+            .font(.system(size: 12, weight: .bold))
             .foregroundStyle(.white)
-            .padding(.horizontal, count > 9 ? 7 : 6)
-            .padding(.vertical, 4)
+            .padding(.horizontal, count > 9 ? 8 : 7)
+            .frame(height: 26)
             .background(
                 Capsule()
                     .fill(Color.accentColor)
             )
     }
 }
-

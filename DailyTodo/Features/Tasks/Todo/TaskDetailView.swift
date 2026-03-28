@@ -43,9 +43,9 @@ struct TaskDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
-                    titleCard
+                    heroCard
+                    identityCard
                     notesCard
-                    typeCard
 
                     if task.taskType == "workout" {
                         workoutCard
@@ -63,53 +63,11 @@ struct TaskDetailView: View {
             .scrollIndicators(.hidden)
 
             if showFinishWorkoutToast {
-                VStack {
-                    Spacer()
-
-                    HStack(spacing: 10) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.white)
-
-                        Text(String(localized: "task_detail_workout_finished"))
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .background(
-                        Capsule()
-                            .fill(Color.green)
-                    )
-                    .shadow(color: Color.green.opacity(0.22), radius: 10, y: 4)
-                    .padding(.bottom, 28)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-                .zIndex(5)
+                toastView(text: "Workout tamamlandı")
             }
 
             if showWeekAddedToast {
-                VStack {
-                    Spacer()
-
-                    HStack(spacing: 10) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.white)
-
-                        Text(String(localized: "task_detail_added_to_week"))
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .background(
-                        Capsule()
-                            .fill(Color.green)
-                    )
-                    .shadow(color: Color.green.opacity(0.22), radius: 10, y: 4)
-                    .padding(.bottom, 28)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-                .zIndex(5)
+                toastView(text: "Week ekranına eklendi")
             }
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -142,7 +100,7 @@ private extension TaskDetailView {
 
             Spacer()
 
-            Text(String(localized: "task_detail_title"))
+            Text("Görev Detayı")
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
 
@@ -152,28 +110,161 @@ private extension TaskDetailView {
         }
     }
 
-    var titleCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(String(localized: "task_detail_section_title"))
-                .font(.headline)
-                .foregroundStyle(palette.primaryText)
+    var heroCard: some View {
+        let accent = taskAccentColor
+        let course = task.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
 
-            TextField(String(localized: "task_detail_task_title_placeholder"), text: $task.title)
-                .textFieldStyle(.plain)
-                .padding(14)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(palette.secondaryCardFill)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(palette.cardStroke, lineWidth: 1)
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Text(taskTypeTitle)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(accent)
+
+                        if task.isDone {
+                            capsuleTag("Tamamlandı", tint: .green)
+                        } else if isOverdue {
+                            capsuleTag("Gecikmiş", tint: .red)
+                        } else if !dueBadgeText.isEmpty {
+                            capsuleTag(dueBadgeText, tint: accent)
+                        }
+                    }
+
+                    Text(task.title.isEmpty ? "Başlıksız görev" : task.title)
+                        .font(.system(size: 30, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
+                        .lineLimit(2)
+
+                    if !course.isEmpty {
+                        Text(course)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(palette.secondaryText)
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer()
+
+                ZStack {
+                    Circle()
+                        .fill(accent.opacity(0.15))
+                        .frame(width: 56, height: 56)
+
+                    Image(systemName: taskTypeSymbol)
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(accent)
+                }
+            }
+
+            HStack(spacing: 8) {
+                if let due = task.dueDate {
+                    infoChip(
+                        icon: "calendar",
+                        text: due.formatted(date: .abbreviated, time: .shortened),
+                        tint: .secondary
+                    )
+                }
+
+                if task.taskType.lowercased() == "study",
+                   let mins = task.workoutDurationMinutes {
+                    infoChip(
+                        icon: "timer",
+                        text: "\(mins) dk",
+                        tint: accent
+                    )
+                }
+
+                if !task.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    infoChip(
+                        icon: "note.text",
+                        text: "Not var",
+                        tint: .secondary
+                    )
+                }
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(palette.cardFill)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    accent.opacity(0.10),
+                                    Color.clear
+                                ],
+                                center: .topTrailing,
+                                startRadius: 10,
+                                endRadius: 240
+                            )
                         )
                 )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .stroke(accent.opacity(0.16), lineWidth: 1)
+                )
+        )
+        .shadow(color: accent.opacity(0.08), radius: 12, y: 5)
+    }
 
-            if let dueDate = task.dueDate {
-                Text("\(String(localized: "task_detail_due_prefix")): \(dueDate.formatted(date: .abbreviated, time: .shortened))")
-                    .font(.caption)
-                    .foregroundStyle(palette.secondaryText)
+    var identityCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionLabel("Kimlik")
+
+            VStack(spacing: 12) {
+                labeledTextField(
+                    title: "Başlık",
+                    placeholder: "Görev başlığı",
+                    text: $task.title
+                )
+
+                labeledTextField(
+                    title: "Ders Adı",
+                    placeholder: "Örn. Calculus, Physics",
+                    text: Binding(
+                        get: { task.courseName },
+                        set: {
+                            task.courseName = $0
+                            try? modelContext.save()
+                        }
+                    )
+                )
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Görev Türü")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(palette.secondaryText)
+
+                    Picker("Görev Türü", selection: $task.taskType) {
+                        Text("Görev").tag("standard")
+                        Text("Ödev").tag("homework")
+                        Text("Sınav").tag("exam")
+                        Text("Çalışma").tag("study")
+                        Text("Proje").tag("project")
+                        Text("Workout").tag("workout")
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: task.taskType) { _, _ in
+                        try? modelContext.save()
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Renk")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(palette.secondaryText)
+
+                    HStack(spacing: 12) {
+                        detailColorButton("blue", color: .blue)
+                        detailColorButton("green", color: .green)
+                        detailColorButton("orange", color: .orange)
+                        detailColorButton("pink", color: .pink)
+                        detailColorButton("purple", color: .purple)
+                    }
+                }
             }
         }
         .padding(18)
@@ -182,38 +273,23 @@ private extension TaskDetailView {
 
     var notesCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(String(localized: "task_detail_notes"))
-                .font(.headline)
-                .foregroundStyle(palette.primaryText)
+            sectionLabel("Notlar")
 
             TextEditor(text: $task.notes)
-                .frame(minHeight: 120)
+                .frame(minHeight: 130)
                 .padding(10)
+                .scrollContentBackground(.hidden)
                 .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .fill(palette.secondaryCardFill)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
                                 .stroke(palette.cardStroke, lineWidth: 1)
                         )
                 )
-        }
-        .padding(18)
-        .background(cardBackground)
-    }
-
-    var typeCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(String(localized: "task_detail_task_type"))
-                .font(.headline)
-                .foregroundStyle(palette.primaryText)
-
-            Picker(String(localized: "task_detail_task_type"), selection: $task.taskType) {
-                Text(String(localized: "task_type_standard")).tag("standard")
-                Text(String(localized: "task_type_study")).tag("study")
-                Text(String(localized: "task_type_workout")).tag("workout")
-            }
-            .pickerStyle(.segmented)
+                .onChange(of: task.notes) { _, _ in
+                    try? modelContext.save()
+                }
         }
         .padding(18)
         .background(cardBackground)
@@ -341,31 +417,27 @@ private extension TaskDetailView {
             if latestHistory(for: exercise) != nil || bestHistory(for: exercise) != nil {
                 VStack(alignment: .leading, spacing: 6) {
                     if let latest = latestHistory(for: exercise) {
-                        historyMiniLine(
-                            title: String(localized: "task_detail_history_last"),
-                            value: historyText(for: latest)
-                        )
+                        historyMiniLine(title: "Son", value: historyText(for: latest))
                     }
 
                     if let best = bestHistory(for: exercise) {
-                        historyMiniLine(
-                            title: String(localized: "task_detail_history_best"),
-                            value: historyText(for: best)
-                        )
+                        historyMiniLine(title: "En iyi", value: historyText(for: best))
                     }
                 }
             }
 
             HStack(spacing: 10) {
-                stepCard(title: String(localized: "task_detail_sets"), value: exercise.sets) {
+                stepCard(title: "Set", value: exercise.sets) {
                     if exercise.sets > 1 { exercise.sets -= 1 }
+                    try? modelContext.save()
                 } increment: {
                     exercise.sets += 1
                     try? modelContext.save()
                 }
 
-                stepCard(title: String(localized: "task_detail_reps"), value: exercise.reps) {
+                stepCard(title: "Tekrar", value: exercise.reps) {
                     if exercise.reps > 1 { exercise.reps -= 1 }
+                    try? modelContext.save()
                 } increment: {
                     exercise.reps += 1
                     try? modelContext.save()
@@ -373,7 +445,7 @@ private extension TaskDetailView {
             }
 
             HStack(spacing: 10) {
-                stepCard(title: String(localized: "task_detail_kg"), value: Int(exercise.weight)) {
+                stepCard(title: "KG", value: Int(exercise.weight)) {
                     if exercise.weight >= 2.5 { exercise.weight -= 2.5 }
                     try? modelContext.save()
                 } increment: {
@@ -390,7 +462,7 @@ private extension TaskDetailView {
                         }
                     )
                 ) {
-                    Text(String(localized: "task_detail_superset"))
+                    Text("Superset")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -408,7 +480,7 @@ private extension TaskDetailView {
             }
 
             HStack(spacing: 10) {
-                stepCard(title: String(localized: "task_detail_seconds_short"), value: exercise.durationSeconds) {
+                stepCard(title: "Saniye", value: exercise.durationSeconds) {
                     if exercise.durationSeconds >= 5 { exercise.durationSeconds -= 5 }
                     try? modelContext.save()
                 } increment: {
@@ -416,7 +488,7 @@ private extension TaskDetailView {
                     try? modelContext.save()
                 }
 
-                stepCard(title: String(localized: "task_detail_rest"), value: exercise.restSeconds) {
+                stepCard(title: "Dinlenme", value: exercise.restSeconds) {
                     if exercise.restSeconds >= 5 { exercise.restSeconds -= 5 }
                     try? modelContext.save()
                 } increment: {
@@ -426,7 +498,7 @@ private extension TaskDetailView {
             }
 
             TextField(
-                String(localized: "task_detail_notes_optional"),
+                "Opsiyonel not",
                 text: Binding(
                     get: { exercise.notes },
                     set: {
@@ -461,7 +533,7 @@ private extension TaskDetailView {
         if item.weight > 0 {
             return "\(Int(item.weight)) kg × \(item.reps)"
         } else {
-            return "\(item.sets) set × \(item.reps) rep"
+            return "\(item.sets) set × \(item.reps) tekrar"
         }
     }
 
@@ -578,7 +650,7 @@ private extension TaskDetailView {
             scheduledDate: selectedDate,
             location: nil,
             notes: task.notes.isEmpty ? nil : task.notes,
-            colorHex: task.taskType == "workout" ? "#22C55E" : "#3B82F6",
+            colorHex: eventHexColor,
             sourceTaskUUID: task.taskUUID
         )
 
@@ -609,16 +681,14 @@ private extension TaskDetailView {
     var workoutCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text(String(localized: "task_detail_workout_plan"))
-                    .font(.headline)
-                    .foregroundStyle(palette.primaryText)
+                sectionLabel("Workout")
 
                 Spacer()
 
                 Button {
                     showWorkoutTemplateSheet = true
                 } label: {
-                    Text(String(localized: "task_detail_templates"))
+                    Text("Şablonlar")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.blue)
                         .padding(.horizontal, 10)
@@ -632,11 +702,11 @@ private extension TaskDetailView {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text(String(localized: "task_detail_workout_day"))
+                Text("Workout Day")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(palette.primaryText)
 
-                Picker(String(localized: "task_detail_workout_day"), selection: Binding(
+                Picker("Workout Day", selection: Binding(
                     get: { task.workoutDay ?? "Leg Day" },
                     set: {
                         task.workoutDay = $0
@@ -661,7 +731,7 @@ private extension TaskDetailView {
 
             if !recommendedExercises.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text(String(localized: "task_detail_most_recommended"))
+                    Text("Önerilenler")
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(palette.primaryText)
 
@@ -671,7 +741,7 @@ private extension TaskDetailView {
 
             if !otherExercises.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text(String(localized: "task_detail_other_exercises"))
+                    Text("Diğer Egzersizler")
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(palette.primaryText)
 
@@ -680,12 +750,12 @@ private extension TaskDetailView {
             }
 
             VStack(alignment: .leading, spacing: 12) {
-                Text(String(localized: "task_detail_selected_exercises"))
+                Text("Seçili Egzersizler")
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(palette.primaryText)
 
                 if taskExercises.isEmpty {
-                    Text(String(localized: "task_detail_no_exercises"))
+                    Text("Henüz egzersiz eklenmedi")
                         .font(.caption)
                         .foregroundStyle(palette.secondaryText)
                         .padding(.vertical, 6)
@@ -697,7 +767,7 @@ private extension TaskDetailView {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text(String(localized: "task_detail_duration"))
+                Text("Süre")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(palette.primaryText)
 
@@ -712,7 +782,7 @@ private extension TaskDetailView {
                     in: 10...180,
                     step: 5
                 ) {
-                    Text("\(task.workoutDurationMinutes ?? 45) min")
+                    Text("\(task.workoutDurationMinutes ?? 45) dk")
                         .foregroundStyle(palette.primaryText)
                 }
                 .padding(12)
@@ -732,12 +802,18 @@ private extension TaskDetailView {
 
     var scheduleCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(String(localized: "task_detail_schedule_on_week"))
-                .font(.headline)
-                .foregroundStyle(palette.primaryText)
+            sectionLabel("Planlama")
+
+            if let due = task.dueDate {
+                infoChip(
+                    icon: "calendar",
+                    text: "Teslim: \(due.formatted(date: .abbreviated, time: .shortened))",
+                    tint: taskAccentColor
+                )
+            }
 
             DatePicker(
-                String(localized: "task_detail_week_date"),
+                "Week zamanı",
                 selection: Binding(
                     get: { task.scheduledWeekDate ?? Date() },
                     set: {
@@ -760,7 +836,7 @@ private extension TaskDetailView {
                 in: 15...240,
                 step: 15
             ) {
-                Text("\(String(localized: "task_detail_duration")): \(task.scheduledWeekDurationMinutes ?? 60) min")
+                Text("Süre: \(task.scheduledWeekDurationMinutes ?? 60) dk")
                     .foregroundStyle(palette.primaryText)
             }
 
@@ -781,7 +857,7 @@ private extension TaskDetailView {
                     dismiss()
                 }
             } label: {
-                Text(String(localized: "task_detail_add_to_week"))
+                Text("Week’e Ekle")
                     .font(.headline)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -852,13 +928,9 @@ private extension TaskDetailView {
 
     var primaryActionTitle: String {
         if task.taskType == "workout" {
-            return task.isDone
-            ? String(localized: "task_detail_reopen_workout")
-            : String(localized: "task_detail_finish_workout")
+            return task.isDone ? "Workout’u Geri Aç" : "Workout’u Bitir"
         } else {
-            return task.isDone
-            ? String(localized: "task_detail_mark_undone")
-            : String(localized: "task_detail_mark_done")
+            return task.isDone ? "Tekrar Aç" : "Tamamlandı Olarak İşaretle"
         }
     }
 
@@ -873,6 +945,206 @@ private extension TaskDetailView {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(palette.cardStroke, lineWidth: 1)
             )
+    }
+
+    var taskTypeTitle: String {
+        switch task.taskType.lowercased() {
+        case "homework": return "Ödev"
+        case "exam": return "Sınav"
+        case "study": return "Çalışma"
+        case "project": return "Proje"
+        case "workout": return "Workout"
+        default: return "Görev"
+        }
+    }
+
+    var taskTypeSymbol: String {
+        switch task.taskType.lowercased() {
+        case "homework": return "book.closed.fill"
+        case "exam": return "doc.text.fill"
+        case "study": return "brain.head.profile"
+        case "project": return "folder.fill"
+        case "workout": return "dumbbell.fill"
+        default: return "checklist"
+        }
+    }
+
+    var isOverdue: Bool {
+        guard let due = task.dueDate else { return false }
+        return !task.isDone && due < Date()
+    }
+
+    var dueBadgeText: String {
+        guard let due = task.dueDate else { return "" }
+
+        let diff = Int(due.timeIntervalSinceNow)
+        let minutes = max(0, diff / 60)
+        let hours = minutes / 60
+        let days = minutes / 1440
+
+        if task.taskType.lowercased() == "exam" {
+            if days >= 1 { return "\(days) gün kaldı" }
+            if hours >= 1 { return "\(hours) sa kaldı" }
+            return "\(minutes) dk kaldı"
+        }
+
+        if task.taskType.lowercased() == "homework" {
+            if Calendar.current.isDateInToday(due) {
+                return "Bugün teslim"
+            }
+            if Calendar.current.isDateInTomorrow(due) {
+                return "Yarın teslim"
+            }
+        }
+
+        if Calendar.current.isDateInToday(due) {
+            if hours >= 1 { return "\(hours) sa sonra" }
+            return "\(minutes) dk sonra"
+        }
+
+        if Calendar.current.isDateInTomorrow(due) {
+            return "Yarın"
+        }
+
+        return due.formatted(date: .abbreviated, time: .shortened)
+    }
+
+    var taskAccentColor: Color {
+        if isOverdue { return .red }
+
+        switch task.colorName.lowercased() {
+        case "green": return .green
+        case "orange": return .orange
+        case "pink": return .pink
+        case "purple": return .purple
+        default: return .blue
+        }
+    }
+
+    var eventHexColor: String {
+        switch task.colorName.lowercased() {
+        case "green": return "#22C55E"
+        case "orange": return "#F59E0B"
+        case "pink": return "#FF2D55"
+        case "purple": return "#AF52DE"
+        default: return "#3B82F6"
+        }
+    }
+
+    func labeledTextField(title: String, placeholder: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(palette.secondaryText)
+
+            TextField(placeholder, text: text)
+                .textFieldStyle(.plain)
+                .padding(14)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(palette.secondaryCardFill)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(palette.cardStroke, lineWidth: 1)
+                        )
+                )
+                .onChange(of: text.wrappedValue) { _, _ in
+                    try? modelContext.save()
+                }
+        }
+    }
+
+    func detailColorButton(_ name: String, color: Color) -> some View {
+        let isSelected = task.colorName.lowercased() == name.lowercased()
+
+        return Button {
+            task.colorName = name
+            try? modelContext.save()
+        } label: {
+            ZStack {
+                Circle()
+                    .fill(color)
+                    .frame(width: 28, height: 28)
+
+                if isSelected {
+                    Circle()
+                        .stroke(Color.white.opacity(0.95), lineWidth: 2.2)
+                        .frame(width: 36, height: 36)
+
+                    Circle()
+                        .stroke(color.opacity(0.22), lineWidth: 6)
+                        .frame(width: 42, height: 42)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .shadow(
+            color: isSelected ? color.opacity(0.16) : .clear,
+            radius: isSelected ? 8 : 0,
+            y: 2
+        )
+    }
+
+    func infoChip(icon: String, text: String, tint: Color) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .bold))
+            Text(text)
+                .lineLimit(1)
+        }
+        .font(.system(size: 12, weight: .semibold))
+        .foregroundStyle(tint)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(
+            Capsule()
+                .fill(tint.opacity(0.12))
+        )
+    }
+
+    func capsuleTag(_ text: String, tint: Color) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(
+                Capsule()
+                    .fill(tint.opacity(0.12))
+            )
+    }
+
+    func sectionLabel(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 12, weight: .bold))
+            .tracking(1.2)
+            .foregroundStyle(.secondary.opacity(0.82))
+            .padding(.leading, 2)
+    }
+
+    func toastView(text: String) -> some View {
+        VStack {
+            Spacer()
+
+            HStack(spacing: 10) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.white)
+
+                Text(text)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                Capsule()
+                    .fill(Color.green)
+            )
+            .shadow(color: Color.green.opacity(0.22), radius: 10, y: 4)
+            .padding(.bottom, 28)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+        .zIndex(5)
     }
 }
 
@@ -939,7 +1211,7 @@ private struct WorkoutTemplateSheet: View {
                     .buttonStyle(.plain)
                 }
             }
-            .navigationTitle(String(localized: "task_detail_workout_templates"))
+            .navigationTitle("Workout Şablonları")
             .navigationBarTitleDisplayMode(.inline)
         }
     }

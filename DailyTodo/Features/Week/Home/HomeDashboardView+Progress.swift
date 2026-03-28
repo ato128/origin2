@@ -23,6 +23,10 @@ extension HomeDashboardView {
                     return true
                 }
 
+                if let weekDate = task.scheduledWeekDate, calendar.isDateInToday(weekDate) {
+                    return true
+                }
+
                 return false
             }
             .sorted { lhs, rhs in
@@ -38,8 +42,14 @@ extension HomeDashboardView {
                     return lhsUrgency > rhsUrgency
                 }
 
-                let lhsDate = lhs.dueDate ?? lhs.completedAt ?? .distantFuture
-                let rhsDate = rhs.dueDate ?? rhs.completedAt ?? .distantFuture
+                let lhsCourse = lhs.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
+                let rhsCourse = rhs.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !lhsCourse.isEmpty, !rhsCourse.isEmpty, lhsCourse != rhsCourse {
+                    return lhsCourse.localizedCaseInsensitiveCompare(rhsCourse) == .orderedAscending
+                }
+
+                let lhsDate = lhs.dueDate ?? lhs.scheduledWeekDate ?? lhs.completedAt ?? .distantFuture
+                let rhsDate = rhs.dueDate ?? rhs.scheduledWeekDate ?? rhs.completedAt ?? .distantFuture
                 return lhsDate < rhsDate
             }
     }
@@ -47,13 +57,13 @@ extension HomeDashboardView {
     var todayTasksCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text("Bugünün Görevleri")
                         .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
 
-                    Text("\(completedTodayBoardCount)/\(max(todayBoardTasks.count, completedTodayBoardCount))")
-                        .font(.system(size: 13, weight: .semibold))
+                    Text(todayTaskHeaderText)
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(palette.secondaryText)
                 }
 
@@ -136,8 +146,8 @@ extension HomeDashboardView {
                 )
             } else {
                 VStack(spacing: 10) {
-                    ForEach(Array(todayBoardTasks.prefix(4))) { task in
-                        todayTaskBoardRow(task: task)
+                    ForEach(Array(todayBoardTasks.prefix(4).enumerated()), id: \.element.taskUUID) { index, task in
+                        todayTaskBoardRow(task: task, isPrimary: index == 0 && !task.isDone)
                     }
                 }
 
@@ -161,10 +171,13 @@ extension HomeDashboardView {
         )
     }
 
-    func todayTaskBoardRow(task: DTTaskItem) -> some View {
+    func todayTaskBoardRow(task: DTTaskItem, isPrimary: Bool = false) -> some View {
         let accent = todayTaskAccent(for: task)
         let isUpcoming = isUpcomingPriorityTask(task)
         let isOverdue = store.isOverdue(task) && !task.isDone
+        let dueText = dueBadgeText(for: task)
+        let course = task.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isFocused = isCurrentFocusTask(task)
 
         return Button {
             toggleTodayBoardTask(task)
@@ -179,21 +192,45 @@ extension HomeDashboardView {
                         Image(systemName: "checkmark")
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(.green)
+                    } else if isFocused {
+                        Image(systemName: "scope")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(accent)
+                    } else if isPrimary {
+                        Circle()
+                            .fill(accent)
+                            .frame(width: 8, height: 8)
                     }
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(task.title)
-                            .font(.system(size: 16, weight: .bold))
+                            .font(.system(size: isPrimary ? 16 : 15, weight: .bold))
                             .foregroundStyle(task.isDone ? palette.secondaryText : palette.primaryText)
                             .strikethrough(task.isDone, color: palette.secondaryText.opacity(0.75))
                             .lineLimit(1)
 
-                        if isUpcoming && !task.isDone {
-                            Circle()
-                                .fill(accent)
-                                .frame(width: 6, height: 6)
+                        if isFocused && !task.isDone {
+                            Text("Odakta")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(accent)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(accent.opacity(0.14))
+                                )
+                        } else if isPrimary && !task.isDone {
+                            Text("Şimdi")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(accent)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(accent.opacity(0.14))
+                                )
                         }
                     }
 
@@ -201,6 +238,13 @@ extension HomeDashboardView {
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(palette.secondaryText)
                         .lineLimit(1)
+
+                    if !course.isEmpty && isPrimary && !task.isDone && !isFocused {
+                        Text(course)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(accent.opacity(0.95))
+                            .lineLimit(1)
+                    }
                 }
 
                 Spacer()
@@ -208,18 +252,20 @@ extension HomeDashboardView {
                 if task.isDone {
                     miniBadge(icon: "checkmark.circle.fill", text: "Tamamlandı", tint: .green)
                 } else if isOverdue {
-                    miniBadge(icon: "exclamationmark.triangle.fill", text: "Gecikmiş", tint: .red)
+                    miniBadge(icon: "exclamationmark.triangle.fill", text: dueText, tint: .red)
+                } else if isFocused {
+                    miniBadge(icon: "scope", text: "Odak aktif", tint: accent)
                 } else if isUpcoming {
-                    miniBadge(icon: "clock.fill", text: "Yaklaşan", tint: accent)
+                    miniBadge(icon: taskTypeBadgeIcon(for: task), text: dueText, tint: accent)
                 } else {
-                    miniBadge(icon: "calendar", text: todayTaskLabel(for: task), tint: accent.opacity(0.95))
+                    miniBadge(icon: taskTypeBadgeIcon(for: task), text: dueText, tint: accent.opacity(0.95))
                 }
             }
             .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(
-                        isUpcoming && !task.isDone
+                        (isPrimary || isFocused) && !task.isDone
                         ? accent.opacity(0.09)
                         : palette.secondaryCardFill
                     )
@@ -229,14 +275,14 @@ extension HomeDashboardView {
                     .stroke(
                         task.isDone
                         ? Color.green.opacity(0.14)
-                        : (isUpcoming ? accent.opacity(0.34) : palette.cardStroke),
+                        : ((isPrimary || isFocused) ? accent.opacity(0.32) : palette.cardStroke),
                         lineWidth: 1
                     )
             )
             .shadow(
-                color: isUpcoming && !task.isDone ? accent.opacity(0.10) : .clear,
-                radius: isUpcoming && !task.isDone ? 10 : 0,
-                y: isUpcoming && !task.isDone ? 4 : 0
+                color: (isPrimary || isFocused) && !task.isDone ? accent.opacity(0.10) : .clear,
+                radius: (isPrimary || isFocused) && !task.isDone ? 10 : 0,
+                y: (isPrimary || isFocused) && !task.isDone ? 4 : 0
             )
             .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
@@ -268,11 +314,34 @@ extension HomeDashboardView {
         todayBoardTasks.filter { !$0.isDone }.count
     }
 
+    var todayTaskHeaderText: String {
+        if todayBoardTasks.isEmpty {
+            return "Bugün sakin görünüyor"
+        }
+
+        if let firstPending = todayBoardTasks.first(where: { !$0.isDone }) {
+            let course = firstPending.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !course.isEmpty {
+                return "\(course) odaklı devam"
+            }
+        }
+
+        return "\(completedTodayBoardCount)/\(todayBoardTasks.count) tamamlandı"
+    }
+
     func todayTaskUrgencyScore(_ task: DTTaskItem) -> Int {
         if task.isDone { return -1 }
         if store.isOverdue(task) { return 100 }
 
-        guard let due = task.dueDate else { return 10 }
+        if task.taskType.lowercased() == "exam" {
+            if let due = task.dueDate {
+                let minutes = Int(due.timeIntervalSinceNow / 60)
+                if minutes <= 180 { return 95 }
+                if minutes <= 1440 { return 85 }
+            }
+        }
+
+        guard let due = task.dueDate ?? task.scheduledWeekDate else { return 10 }
 
         let minutes = Int(due.timeIntervalSinceNow / 60)
 
@@ -284,7 +353,7 @@ extension HomeDashboardView {
 
     func isUpcomingPriorityTask(_ task: DTTaskItem) -> Bool {
         guard !task.isDone else { return false }
-        guard let due = task.dueDate else { return false }
+        guard let due = task.dueDate ?? task.scheduledWeekDate else { return false }
 
         let minutes = Int(due.timeIntervalSinceNow / 60)
         return minutes >= 0 && minutes <= 90
@@ -296,12 +365,93 @@ extension HomeDashboardView {
         }
 
         switch task.colorName.lowercased() {
-            case "green": return .green
-            case "orange": return .orange
-            case "pink": return .pink
-            case "purple": return .purple
-            default: return .blue
+        case "green":
+            return .green
+        case "orange":
+            return .orange
+        case "pink":
+            return .pink
+        case "purple":
+            return .purple
+        default:
+            return .blue
         }
+    }
+
+    func taskTypeBadgeIcon(for task: DTTaskItem) -> String {
+        switch task.taskType.lowercased() {
+        case "exam":
+            return "doc.text.fill"
+        case "homework":
+            return "book.closed.fill"
+        case "study":
+            return "brain.head.profile"
+        case "project":
+            return "folder.fill"
+        default:
+            return "checklist"
+        }
+    }
+
+    func dueBadgeText(for task: DTTaskItem) -> String {
+        if task.isDone {
+            return "Tamamlandı"
+        }
+
+        let type = task.taskType.lowercased()
+
+        if store.isOverdue(task) {
+            if type == "exam" {
+                return "Sınav geçti"
+            }
+            return "Gecikmiş"
+        }
+
+        guard let target = task.dueDate ?? task.scheduledWeekDate else {
+            return todayTaskLabel(for: task)
+        }
+
+        let now = Date()
+        let diff = Int(target.timeIntervalSince(now))
+        let minutes = max(0, diff / 60)
+        let hours = minutes / 60
+        let days = minutes / 1440
+
+        if type == "exam" {
+            if days >= 1 {
+                return "\(days) gün kaldı"
+            }
+            if hours >= 1 {
+                return "\(hours) sa kaldı"
+            }
+            return "\(minutes) dk kaldı"
+        }
+
+        if type == "homework" {
+            if Calendar.current.isDateInToday(target) {
+                return "Bugün teslim"
+            }
+            if Calendar.current.isDateInTomorrow(target) {
+                return "Yarın teslim"
+            }
+        }
+
+        if type == "study", let duration = task.workoutDurationMinutes {
+            return "\(duration) dk"
+        }
+
+        if Calendar.current.isDateInToday(target) {
+            if hours >= 1 {
+                return "\(hours) sa sonra"
+            }
+            return "\(minutes) dk sonra"
+        }
+
+        if Calendar.current.isDateInTomorrow(target) {
+            return "Yarın"
+        }
+
+        return target.formatted(date: .abbreviated, time: .shortened)
     }
 
     func todayTaskLabel(for task: DTTaskItem) -> String {
@@ -325,16 +475,24 @@ extension HomeDashboardView {
 
     func taskRowSubtitle(for task: DTTaskItem) -> String {
         let course = task.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let note = task.notes.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        if !course.isEmpty, let due = task.dueDate {
-            return "\(course) • \(due.formatted(date: .omitted, time: .shortened))"
+        if !course.isEmpty, !note.isEmpty {
+            return "\(course) • \(note)"
         }
 
         if !course.isEmpty {
+            if let due = task.dueDate ?? task.scheduledWeekDate {
+                return "\(course) • \(due.formatted(date: .omitted, time: .shortened))"
+            }
             return course
         }
 
-        if let due = task.dueDate {
+        if !note.isEmpty {
+            return note
+        }
+
+        if let due = task.dueDate ?? task.scheduledWeekDate {
             return due.formatted(date: .omitted, time: .shortened)
         }
 

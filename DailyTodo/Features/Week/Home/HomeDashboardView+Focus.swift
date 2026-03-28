@@ -13,18 +13,25 @@ extension HomeDashboardView {
         Group {
             if let task = focusTask {
                 let accent = focusAccentColor(for: task)
+                let isLinkedToCurrentFocus = isCurrentFocusTask(task)
 
                 VStack(alignment: .leading, spacing: 14) {
                     HStack(alignment: .center) {
-                        VStack(alignment: .leading, spacing: 3) {
+                        VStack(alignment: .leading, spacing: 4) {
                             Text("Çalışma Seansı")
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(palette.secondaryText)
 
-                            Text(task.title)
-                                .font(.system(size: 24, weight: .bold, design: .rounded))
-                                .foregroundStyle(palette.primaryText)
-                                .lineLimit(1)
+                            HStack(spacing: 6) {
+                                Text(task.title)
+                                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                                    .foregroundStyle(palette.primaryText)
+                                    .lineLimit(1)
+
+                                if isLinkedToCurrentFocus {
+                                    focusStateTag(title: "Odakta", tint: accent)
+                                }
+                            }
                         }
 
                         Spacer()
@@ -54,6 +61,14 @@ extension HomeDashboardView {
                             text: focusCardStatusTextStudent,
                             tint: accent
                         )
+
+                        if !task.courseName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            miniBadge(
+                                icon: "book.closed.fill",
+                                text: task.courseName,
+                                tint: accent.opacity(0.95)
+                            )
+                        }
 
                         Spacer()
                     }
@@ -131,15 +146,19 @@ extension HomeDashboardView {
 
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .center) {
-                    VStack(alignment: .leading, spacing: 3) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text("Aktif Çalışma")
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(palette.secondaryText)
 
-                        Text(activeFocusTaskTitle.isEmpty ? "Odak Oturumu" : activeFocusTaskTitle)
-                            .font(.system(size: 22, weight: .bold, design: .rounded))
-                            .foregroundStyle(palette.primaryText)
-                            .lineLimit(1)
+                        HStack(spacing: 6) {
+                            Text(activeFocusTaskTitle.isEmpty ? "Odak Oturumu" : activeFocusTaskTitle)
+                                .font(.system(size: 22, weight: .bold, design: .rounded))
+                                .foregroundStyle(palette.primaryText)
+                                .lineLimit(1)
+
+                            focusStateTag(title: "Odakta", tint: urgencyColor)
+                        }
                     }
 
                     Spacer()
@@ -152,6 +171,25 @@ extension HomeDashboardView {
 
                 smoothActiveFocusProgressBar(at: now)
                     .frame(height: 8)
+
+                HStack(spacing: 8) {
+                    miniBadge(
+                        icon: "timer",
+                        text: liveRemaining <= 60 ? "Son dakika" : "Devam ediyor",
+                        tint: urgencyColor
+                    )
+
+                    if let task = focusTask,
+                       !task.courseName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        miniBadge(
+                            icon: "book.closed.fill",
+                            text: task.courseName,
+                            tint: urgencyColor.opacity(0.95)
+                        )
+                    }
+
+                    Spacer()
+                }
 
                 HStack(spacing: 10) {
                     Button {
@@ -238,6 +276,18 @@ extension HomeDashboardView {
             Capsule()
                 .fill(color.opacity(0.14))
         )
+    }
+
+    func focusStateTag(title: String, tint: Color) -> some View {
+        Text(title)
+            .font(.system(size: 10, weight: .bold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 4)
+            .background(
+                Capsule()
+                    .fill(tint.opacity(0.14))
+            )
     }
 
     func backendCrewFocusAccentColor(for session: CrewFocusSessionDTO, now: Date) -> Color {
@@ -440,6 +490,8 @@ extension HomeDashboardView {
             return .green
         case "study":
             return .blue
+        case "homework":
+            return .pink
         default:
             return .accentColor
         }
@@ -454,9 +506,16 @@ extension HomeDashboardView {
         case "workout":
             return "dumbbell.fill"
         case "study":
-            return "book.fill"
+            return "brain.head.profile"
+        case "homework":
+            return "book.closed.fill"
         default:
             return "scope"
         }
+    }
+
+    func isCurrentFocusTask(_ task: DTTaskItem) -> Bool {
+        guard isFocusActive else { return false }
+        return activeFocusTaskTitle == task.title
     }
 }

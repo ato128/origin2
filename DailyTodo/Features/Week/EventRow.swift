@@ -11,7 +11,6 @@ struct EventRow: View {
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
 
     @State private var pulse: Bool = false
-    @State private var glowPhase: Bool = false
 
     let event: EventItem
     let timeText: String
@@ -26,7 +25,6 @@ struct EventRow: View {
     let onEdit: () -> Void
     let onDelete: () -> Void
     let onComplete: (() -> Void)?
-    
 
     private let palette = ThemePalette()
 
@@ -43,7 +41,7 @@ struct EventRow: View {
     private var isUpNext: Bool {
         guard !event.isCompleted else { return false }
         guard isTodaySelected else { return false }
-        return nowMinute < start && (start - nowMinute) <= 15
+        return nowMinute < start && (start - nowMinute) <= 20
     }
 
     private var isSoon: Bool {
@@ -67,267 +65,292 @@ struct EventRow: View {
     private var minutesLeft: Int { max(0, end - nowMinute) }
     private var minutesUntilStart: Int { max(0, start - nowMinute) }
 
-    private var isLightTheme: Bool {
-        palette.isLight
+    private var accent: Color {
+        if event.isCompleted { return .green }
+        if hasConflict { return .red }
+        if isSoon { return .orange }
+        return hexColor(event.colorHex)
     }
 
-    private func hm(_ minute: Int) -> String {
-        let m = max(0, min(1439, minute))
-        let h = m / 60
-        let mm = m % 60
-        return String(format: "%02d:%02d", h, mm)
+    private var cardFill: Color {
+        if event.isCompleted {
+            return Color.green.opacity(palette.isLight ? 0.12 : 0.16)
+        }
+
+        if isLive {
+            return accent.opacity(palette.isLight ? 0.20 : 0.18)
+        }
+
+        if isUpNext {
+            return accent.opacity(palette.isLight ? 0.14 : 0.13)
+        }
+
+        if isDone {
+            return palette.secondaryCardFill.opacity(0.94)
+        }
+
+        return accent.opacity(palette.isLight ? 0.08 : 0.09)
+    }
+
+    private var borderColor: Color {
+        if event.isCompleted {
+            return Color.green.opacity(0.24)
+        }
+
+        if hasConflict {
+            return Color.red.opacity(0.32)
+        }
+
+        if isLive {
+            return accent.opacity(0.34)
+        }
+
+        if isUpNext {
+            return accent.opacity(0.20)
+        }
+
+        return palette.cardStroke
+    }
+
+    private var statusText: String? {
+        if event.isCompleted { return "Tamamlandı" }
+        if isLive { return "Şu an" }
+        if isSoon { return "5 dk" }
+        if isUpNext { return "Sıradaki" }
+        if isDone { return "Bitti" }
+        return nil
+    }
+
+    private var subtitleText: String {
+        if isWorkout {
+            if let day = workoutDay, !day.isEmpty {
+                if exerciseCount > 0 {
+                    return "\(day) • \(exerciseCount) hareket"
+                }
+                return day
+            }
+            if exerciseCount > 0 {
+                return "\(exerciseCount) hareket"
+            }
+        }
+
+        if let location = event.location?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !location.isEmpty {
+            return location
+        }
+
+        return "\(max(15, event.durationMinute)) dk"
+    }
+
+    private var liveInfoText: String? {
+        if isLive {
+            return "\(minutesLeft) dk kaldı"
+        }
+
+        if isUpNext {
+            return "\(minutesUntilStart) dk sonra"
+        }
+
+        return nil
     }
 
     var body: some View {
-        let baseColor = hexColor(event.colorHex)
+        HStack(spacing: 12) {
+            VStack(spacing: 0) {
+                ZStack {
+                    Circle()
+                        .fill(accent.opacity(isLive ? 0.22 : 0.14))
+                        .frame(width: isLive ? 20 : 16, height: isLive ? 20 : 16)
+                        .blur(radius: isLive ? 5 : 2)
 
-        let accent: Color = {
-            if event.isCompleted { return .green }
-            if isDone { return palette.secondaryText.opacity(0.8) }
-            if isSoon { return .orange }
-            return baseColor
-        }()
-
-        let bg: Color = {
-            if event.isCompleted {
-                return Color.green.opacity(isLightTheme ? 0.12 : 0.16)
-            }
-
-            if isDone {
-                return accent.opacity(isLightTheme ? 0.08 : 0.10)
-            }
-
-            if isLive {
-                return accent.opacity(isLightTheme ? 0.22 : 0.18)
-            }
-
-            if isUpNext {
-                return accent.opacity(isLightTheme ? 0.16 : 0.13)
-            }
-
-            return accent.opacity(isLightTheme ? 0.12 : 0.09)
-        }()
-
-        let strokeColor: Color = {
-            if event.isCompleted { return Color.green.opacity(0.32) }
-            if hasConflict { return .red.opacity(0.28) }
-            if isDone { return palette.cardStroke }
-            if isLive { return accent.opacity(glowPhase ? 0.60 : 0.32) }
-            if isSoon { return .orange.opacity(0.54) }
-            if isUpNext { return accent.opacity(0.22) }
-            return palette.cardStroke
-        }()
-
-        let strokeWidth: CGFloat =
-            event.isCompleted ? 1.25 :
-            hasConflict ? 1.35 :
-            (isLive ? 1.8 :
-            (isSoon ? 1.55 :
-            (isUpNext ? 1.15 : 1.0)))
-
-        let mainTextOpacity: Double = isDone ? 0.72 : 1.0
-        let secondaryTextOpacity: Double = isDone ? 0.72 : 1.0
-
-        HStack(spacing: 10) {
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [accent.opacity(1.0), accent.opacity(0.70)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .frame(width: isLive ? 9 : 7)
-                .shadow(
-                    color: event.isCompleted
-                    ? Color.green.opacity(0.22)
-                    : (isLive ? accent.opacity(0.55) : .clear),
-                    radius: event.isCompleted ? 8 : (isLive ? 10 : 0)
-                )
-                .padding(.vertical, 10)
-                .opacity(isDone ? 0.8 : 1.0)
-
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    HStack(spacing: 6) {
-                        Text(event.title)
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(palette.primaryText)
-                            .lineLimit(1)
-                            .opacity(mainTextOpacity)
-
-                        if event.isCompleted {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.green)
-                                .transition(.scale.combined(with: .opacity))
-                        }
-                    }
-
-                    if isLive {
-                        statusPill("Şu an", tint: accent)
-                    } else if isSoon {
-                        statusPill("5 dk", tint: .orange)
-                    } else if event.isCompleted {
-                        statusPill("Tamamlandı", tint: .green)
-                            .opacity(0.95)
-                    } else if isDone {
-                        statusPill("Bitti", tint: palette.secondaryText)
-                            .opacity(0.9)
-                    }
-
-                    Spacer(minLength: 6)
-
-                    if hasConflict && !event.isCompleted {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.red)
-                    }
-
-                    Text(timeText)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(palette.primaryText)
-                        .monospacedDigit()
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 5)
-                        .background(
-                            Capsule()
-                                .fill(
-                                    isDone
-                                    ? palette.secondaryCardFill
-                                    : accent.opacity(isLive ? 0.22 : 0.14)
-                                )
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.95),
+                                    accent
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
-                        .overlay(
-                            Capsule()
-                                .stroke(
-                                    isDone
-                                    ? palette.cardStroke
-                                    : accent.opacity(isLive ? 0.34 : 0.22),
-                                    lineWidth: 1
-                                )
+                        .frame(width: isLive ? 12 : 10, height: isLive ? 12 : 10)
+                        .scaleEffect(isLive && pulse ? 1.14 : 1.0)
+                        .shadow(
+                            color: accent.opacity(isLive ? 0.34 : 0.14),
+                            radius: isLive ? 10 : 4,
+                            y: 1
                         )
-                        .opacity(secondaryTextOpacity)
                 }
 
-                HStack(spacing: 8) {
-                    if let loc = event.location,
-                       !loc.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Label(loc, systemImage: "mappin.and.ellipse")
-                            .font(.caption2)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 999, style: .continuous)
+                        .fill(accent.opacity(isDone ? 0.10 : 0.18))
+                        .frame(width: isLive ? 5 : 4)
+
+                    RoundedRectangle(cornerRadius: 999, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(isLive ? 0.55 : 0.20),
+                                    accent.opacity(0.95),
+                                    accent.opacity(isDone ? 0.30 : 0.72)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .frame(width: isLive ? 3 : 2.5)
+                        .shadow(
+                            color: isLive ? accent.opacity(0.28) : .clear,
+                            radius: isLive ? 7 : 0
+                        )
+                }
+                .frame(maxHeight: .infinity)
+                .padding(.top, 7)
+                .opacity(isDone ? 0.45 : 1)
+            }
+            .frame(width: 18)
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text(event.title)
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(palette.primaryText)
+                                .lineLimit(1)
+                                .opacity(isDone ? 0.72 : 1.0)
+
+                            if let statusText {
+                                statusPill(statusText, tint: statusTintColor)
+                            }
+                        }
+
+                        Text(subtitleText)
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(palette.secondaryText)
                             .lineLimit(1)
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 5)
-                            .background(Capsule().fill(palette.secondaryCardFill))
+                            .opacity(isDone ? 0.72 : 1.0)
+                    }
+
+                    Spacer(minLength: 8)
+
+                    VStack(alignment: .trailing, spacing: 6) {
+                        Text(timeText)
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(palette.primaryText)
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 7)
+                            .background(
+                                Capsule()
+                                    .fill(palette.secondaryCardFill.opacity(0.92))
+                                    .overlay(
+                                        Capsule()
+                                            .fill(
+                                                LinearGradient(
+                                                    colors: [
+                                                        Color.white.opacity(palette.isLight ? 0.22 : 0.10),
+                                                        accent.opacity(isLive ? 0.14 : 0.08),
+                                                        Color.clear
+                                                    ],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                )
+                                            )
+                                    )
+                            )
                             .overlay(
                                 Capsule()
-                                    .stroke(palette.cardStroke, lineWidth: 1)
+                                    .stroke(
+                                        isLive ? accent.opacity(0.26) : palette.cardStroke,
+                                        lineWidth: 1
+                                    )
                             )
-                            .opacity(secondaryTextOpacity)
-                    }
-
-                    if isWorkout {
-                        Label(
-                            workoutDay ?? "Workout",
-                            systemImage: "dumbbell.fill"
-                        )
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.green)
-                        .lineLimit(1)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 5)
-                        .background(Capsule().fill(Color.green.opacity(0.14)))
-                        .overlay(
-                            Capsule()
-                                .stroke(Color.green.opacity(0.22), lineWidth: 1)
-                        )
-                        .opacity(secondaryTextOpacity)
-                    }
-
-                    if exerciseCount > 0 {
-                        Text("\(exerciseCount) hareket")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.blue)
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 5)
-                            .background(Capsule().fill(Color.blue.opacity(0.12)))
-                            .overlay(
-                                Capsule()
-                                    .stroke(Color.blue.opacity(0.18), lineWidth: 1)
+                            .shadow(
+                                color: isLive ? accent.opacity(0.10) : .clear,
+                                radius: isLive ? 8 : 0,
+                                y: isLive ? 2 : 0
                             )
-                            .opacity(secondaryTextOpacity)
+
+                        if let liveInfoText {
+                            Text(liveInfoText)
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(statusTintColor)
+                                .monospacedDigit()
+                        }
                     }
-
-                    Spacer()
-
-                    Text("\(max(15, event.durationMinute)) dk")
-                        .font(.caption2)
-                        .foregroundStyle(palette.secondaryText)
-                        .opacity(secondaryTextOpacity)
                 }
 
                 if isLive {
-                    VStack(alignment: .leading, spacing: 5) {
+                    VStack(alignment: .leading, spacing: 6) {
                         ProgressView(value: progress)
-                            .tint(baseColor)
-                            .animation(.smooth, value: progress)
+                            .tint(accent)
 
                         HStack(spacing: 8) {
-                            Image(systemName: "hourglass")
-                                .font(.caption2)
-                                .foregroundStyle(baseColor)
-
                             Text("%\(Int(progress * 100))")
-                                .font(.caption2)
+                                .font(.system(size: 11, weight: .semibold))
                                 .foregroundStyle(palette.secondaryText)
 
                             Spacer()
 
                             Text("\(minutesLeft) dk kaldı")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(palette.primaryText)
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(accent)
                         }
                     }
                 }
 
-                if isUpNext {
-                    HStack(spacing: 6) {
-                        Text("\(minutesUntilStart) dk")
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(accent)
-                            .monospacedDigit()
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 5)
-                            .background(Capsule().fill(accent.opacity(0.14)))
-                            .overlay(
-                                Capsule()
-                                    .stroke(accent.opacity(0.22), lineWidth: 1)
-                            )
+                HStack(spacing: 8) {
+                    metaChip(
+                        icon: "clock",
+                        text: "\(max(15, event.durationMinute)) dk",
+                        tint: palette.secondaryText
+                    )
 
-                        Text("sonra (\(hm(start)))")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(palette.secondaryText)
-
-                        Spacer()
+                    if isWorkout {
+                        metaChip(
+                            icon: "dumbbell.fill",
+                            text: workoutDay ?? "Workout",
+                            tint: .green
+                        )
                     }
+
+                    if exerciseCount > 0 {
+                        metaChip(
+                            icon: "figure.strengthtraining.traditional",
+                            text: "\(exerciseCount)",
+                            tint: .blue
+                        )
+                    }
+
+                    if hasConflict && !event.isCompleted {
+                        metaChip(
+                            icon: "exclamationmark.triangle.fill",
+                            text: "Çakışma",
+                            tint: .red
+                        )
+                    }
+
+                    Spacer()
                 }
+                .opacity(isDone ? 0.78 : 1.0)
             }
-            .padding(.vertical, 10)
+            .padding(.vertical, 4)
         }
         .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(bg)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(cardFill)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    event.isCompleted
-                                    ? Color.green.opacity(0.14)
-                                    : Color.white.opacity(isLive ? 0.30 : 0.16),
-                                    accent.opacity(isLightTheme ? 0.05 : 0.02),
+                                    Color.white.opacity(palette.isLight ? 0.18 : 0.10),
+                                    accent.opacity(0.10),
                                     Color.clear
                                 ],
                                 startPoint: .topLeading,
@@ -337,43 +360,24 @@ struct EventRow: View {
                 )
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(strokeColor, lineWidth: strokeWidth)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(borderColor.opacity(isLive ? 1.0 : 0.92), lineWidth: isLive ? 1.25 : 1)
         )
         .shadow(
-            color: event.isCompleted
-            ? Color.green.opacity(0.16)
-            : (isLive ? baseColor.opacity(glowPhase ? 0.30 : 0.14) : .clear),
-            radius: event.isCompleted ? 10 : (isLive ? 12 : 0)
+            color: isLive ? accent.opacity(0.12) : .clear,
+            radius: isLive ? 12 : 6,
+            y: isLive ? 4 : 2
         )
-        .shadow(color: isSoon ? Color.orange.opacity(0.18) : .clear, radius: isSoon ? 8 : 0)
-        .shadow(
-            color: isLightTheme
-                ? accent.opacity(event.isCompleted ? 0.10 : 0.14)
-                : accent.opacity(event.isCompleted ? 0.18 : 0.25),
-            radius: 12,
-            x: 0,
-            y: 8
-        )
-        .scaleEffect(isLive && pulse ? 1.006 : (event.isCompleted ? 0.985 : 1.0))
-        .opacity(event.isCompleted ? 0.72 : 1)
-        .blur(radius: event.isCompleted ? 1.2 : 0)
-        .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: pulse)
-        .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: glowPhase)
-        .animation(.easeInOut(duration: 0.25), value: event.isCompleted)
+        .opacity(event.isCompleted ? 0.78 : 1.0)
+        .scaleEffect(isLive && pulse ? 1.004 : 1.0)
+        .animation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true), value: pulse)
         .onAppear {
             pulse = isLive
-            glowPhase = isLive
         }
         .onChange(of: isLive) { _, newValue in
             pulse = newValue
-            glowPhase = newValue
         }
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-        .contentShape(Rectangle())
+        .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .onTapGesture {
             Haptics.impact(.light)
             onTap()
@@ -384,6 +388,13 @@ struct EventRow: View {
                 onTap()
             } label: {
                 Label("Detay", systemImage: "info.circle")
+            }
+
+            Button {
+                Haptics.impact(.light)
+                onEdit()
+            } label: {
+                Label("Düzenle", systemImage: "pencil")
             }
 
             if !event.isCompleted {
@@ -404,17 +415,43 @@ struct EventRow: View {
         }
     }
 
+    private var statusTintColor: Color {
+        if event.isCompleted { return .green }
+        if isLive { return accent }
+        if isSoon { return .orange }
+        if isUpNext { return accent }
+        if isDone { return palette.secondaryText }
+        return accent
+    }
+
     @ViewBuilder
     private func statusPill(_ text: String, tint: Color) -> some View {
         Text(text)
-            .font(.caption2.weight(.bold))
+            .font(.system(size: 10, weight: .bold))
             .foregroundStyle(tint)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(Capsule().fill(tint.opacity(0.18)))
-            .overlay(
+            .background(
                 Capsule()
-                    .stroke(tint.opacity(0.30), lineWidth: 1)
+                    .fill(tint.opacity(0.14))
             )
+    }
+
+    @ViewBuilder
+    private func metaChip(icon: String, text: String, tint: Color) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .bold))
+            Text(text)
+                .lineLimit(1)
+        }
+        .font(.system(size: 11, weight: .semibold))
+        .foregroundStyle(tint)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background(
+            Capsule()
+                .fill(tint.opacity(0.10))
+        )
     }
 }

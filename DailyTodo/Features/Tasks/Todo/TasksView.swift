@@ -6,9 +6,11 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct TasksView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var store: TodoStore
 
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
@@ -34,48 +36,37 @@ struct TasksView: View {
         var localizedTitle: String {
             switch self {
             case .today:
-                return tr("tasks_filter_today")
+                return "Bugün"
             case .all:
-                return tr("tasks_filter_all")
+                return "Tümü"
             case .done:
-                return tr("tasks_filter_done")
+                return "Biten"
             }
         }
     }
 
     var filteredTasks: [DTTaskItem] {
-        let baseTasks: [DTTaskItem]
+        let tasks: [DTTaskItem]
 
         switch selectedFilter {
         case .today:
-            baseTasks = store.items
+            tasks = store.items
                 .filter { task in
                     (isToday(task) && !task.isDone) || pendingRemovalTaskKeys.contains(taskKey(task))
                 }
-                .sorted { lhs, rhs in
-                    (lhs.dueDate ?? .distantFuture) < (rhs.dueDate ?? .distantFuture)
-                }
 
         case .all:
-            baseTasks = store.items
+            tasks = store.items
                 .filter { task in
                     !task.isDone || pendingRemovalTaskKeys.contains(taskKey(task))
                 }
-                .sorted { lhs, rhs in
-                    (lhs.dueDate ?? .distantFuture) < (rhs.dueDate ?? .distantFuture)
-                }
 
         case .done:
-            baseTasks = store.items
-                .filter { task in
-                    task.isDone
-                }
-                .sorted { lhs, rhs in
-                    (lhs.completedAt ?? .distantPast) > (rhs.completedAt ?? .distantPast)
-                }
+            tasks = store.items
+                .filter(\.isDone)
         }
 
-        return baseTasks
+        return tasks.sorted(by: taskSort)
     }
 
     var body: some View {
@@ -85,16 +76,15 @@ struct TasksView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
-
+                    heroSummaryCard
                     filterSegment
-                    summaryCard
 
                     if filteredTasks.isEmpty {
                         emptyState
                     } else {
                         LazyVStack(spacing: 12) {
-                            ForEach(filteredTasks) { task in
-                                taskCard(task)
+                            ForEach(Array(filteredTasks.enumerated()), id: \.element.taskUUID) { index, task in
+                                taskCard(task, isTopPriority: index == 0 && !task.isDone)
                                     .transition(.asymmetric(
                                         insertion: .opacity,
                                         removal: .opacity
@@ -118,7 +108,7 @@ struct TasksView: View {
         .sheet(isPresented: $showAddTask) {
             AddTaskView()
                 .environmentObject(store)
-                .presentationDetents([.medium, .large])
+                .presentationDetents([.large])
         }
         .sheet(item: $selectedTask) { task in
             NavigationStack {
@@ -129,6 +119,9 @@ struct TasksView: View {
             NavigationStack {
                 TaskScheduleSheet(task: task)
             }
+        }
+        .onAppear {
+            store.reload()
         }
     }
 }
@@ -156,7 +149,7 @@ private extension TasksView {
 
             Spacer()
 
-            Text(tr("tasks_title"))
+            Text("Görevler")
                 .font(.system(size: 24, weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
 
@@ -182,6 +175,63 @@ private extension TasksView {
         }
     }
 
+    var heroSummaryCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Akademik Akışın")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(palette.secondaryText)
+
+                    Text(summaryTitle)
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
+                }
+
+                Spacer()
+
+                ZStack {
+                    Circle()
+                        .fill(Color.accentColor.opacity(0.14))
+                        .frame(width: 50, height: 50)
+
+                    Image(systemName: "checklist")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(Color.accentColor)
+                }
+            }
+
+            HStack(spacing: 8) {
+                summaryChip(title: "Açık", value: "\(openCount)", tint: .blue)
+                summaryChip(title: "Biten", value: "\(doneCount)", tint: .green)
+                summaryChip(title: "Bugün", value: "\(todayOpenCount)", tint: .orange)
+            }
+        }
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(palette.cardFill)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    Color.accentColor.opacity(0.08),
+                                    Color.clear
+                                ],
+                                center: .topTrailing,
+                                startRadius: 10,
+                                endRadius: 220
+                            )
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(palette.cardStroke, lineWidth: 1)
+                )
+        )
+    }
+
     var filterSegment: some View {
         HStack(spacing: 8) {
             ForEach(TasksFilter.allCases) { filter in
@@ -193,7 +243,7 @@ private extension TasksView {
                     }
                 } label: {
                     Text(filter.localizedTitle)
-                        .font(.subheadline.weight(.semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(isSelected ? palette.primaryText : palette.secondaryText)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
@@ -230,102 +280,84 @@ private extension TasksView {
         )
     }
 
-    var summaryCard: some View {
-        HStack(spacing: 12) {
-            summaryBox(
-                title: tr("tasks_summary_open"),
-                value: "\(store.items.filter { !$0.isDone }.count)",
-                icon: "circle"
-            )
-
-            summaryBox(
-                title: tr("tasks_summary_done"),
-                value: "\(store.items.filter(\.isDone).count)",
-                icon: "checkmark.circle.fill"
-            )
-
-            summaryBox(
-                title: tr("tasks_summary_today"),
-                value: "\(store.items.filter { task in !task.isDone && isToday(task) }.count)",
-                icon: "sun.max.fill"
-            )
-        }
-    }
-
-    func summaryBox(title: String, value: String, icon: String) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(Color.accentColor)
-
-            Text(value)
-                .font(.title3.bold())
-                .foregroundStyle(palette.primaryText)
-                .monospacedDigit()
-
-            Text(title)
-                .font(.caption2)
-                .foregroundStyle(palette.secondaryText)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(palette.cardFill)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(palette.cardStroke, lineWidth: 1)
-                )
-        )
-    }
-
-    func taskCard(_ task: DTTaskItem) -> some View {
+    func taskCard(_ task: DTTaskItem, isTopPriority: Bool = false) -> some View {
         let key = taskKey(task)
         let isRecentlyCompleted = recentlyCompletedTaskKey == key
+        let accent = taskAccent(for: task)
+        let course = task.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isOverdueTask = isOverdue(task)
 
         return Button {
             selectedTask = task
         } label: {
             ZStack(alignment: .topTrailing) {
                 HStack(spacing: 12) {
-                    Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
-                        .font(.title3)
-                        .foregroundStyle(task.isDone ? .green : palette.secondaryText)
+                    ZStack {
+                        Circle()
+                            .stroke(task.isDone ? Color.green.opacity(0.28) : accent, lineWidth: 2.4)
+                            .frame(width: 28, height: 28)
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(task.title)
-                            .font(.headline)
-                            .foregroundStyle(task.isDone ? palette.secondaryText : palette.primaryText)
-                            .strikethrough(task.isDone, color: palette.secondaryText)
+                        if task.isDone {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(.green)
+                        } else if isTopPriority {
+                            Circle()
+                                .fill(accent)
+                                .frame(width: 8, height: 8)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack(spacing: 6) {
+                            Text(task.title)
+                                .font(.system(size: 17, weight: .bold))
+                                .foregroundStyle(task.isDone ? palette.secondaryText : palette.primaryText)
+                                .strikethrough(task.isDone, color: palette.secondaryText)
+
+                            if isTopPriority && !task.isDone {
+                                smallTag("Öncelikli", tint: accent)
+                            }
+                        }
+
+                        Text(taskSubtitle(for: task))
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(palette.secondaryText)
+                            .lineLimit(1)
 
                         HStack(spacing: 8) {
-                            if let due = task.dueDate {
-                                Label {
-                                    Text(due, style: .date)
-                                } icon: {
-                                    Image(systemName: "calendar")
-                                }
-                                .font(.caption)
-                                .foregroundStyle(palette.secondaryText)
+                            if !course.isEmpty {
+                                miniMeta(icon: "book.closed.fill", text: course, tint: accent.opacity(0.95))
+                            }
 
-                                Text(due, style: .time)
-                                    .font(.caption)
-                                    .foregroundStyle(palette.secondaryText)
-                            } else {
-                                Text(tr("tasks_no_due_date"))
-                                    .font(.caption)
-                                    .foregroundStyle(palette.secondaryText)
+                            miniMeta(icon: taskTypeSymbol(for: task), text: taskTypeTitle(for: task), tint: accent)
+
+                            if task.taskType.lowercased() == "study",
+                               let mins = task.workoutDurationMinutes {
+                                miniMeta(icon: "timer", text: "\(mins) dk", tint: .orange)
                             }
                         }
                     }
 
                     Spacer()
+
+                    if task.isDone {
+                        statusBadge(icon: "checkmark.circle.fill", text: "Tamamlandı", tint: .green)
+                    } else if isOverdueTask {
+                        statusBadge(icon: "exclamationmark.triangle.fill", text: "Gecikmiş", tint: .red)
+                    } else {
+                        statusBadge(icon: "calendar", text: dueText(for: task), tint: accent)
+                    }
                 }
                 .padding(16)
                 .background(
                     ZStack {
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .fill(palette.cardFill)
+                            .fill(
+                                isTopPriority && !task.isDone
+                                ? accent.opacity(0.08)
+                                : palette.cardFill
+                            )
 
                         if isRecentlyCompleted {
                             RoundedRectangle(cornerRadius: 22, style: .continuous)
@@ -335,10 +367,17 @@ private extension TasksView {
 
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
                             .stroke(
-                                isRecentlyCompleted ? Color.green.opacity(0.34) : palette.cardStroke,
+                                isRecentlyCompleted
+                                ? Color.green.opacity(0.34)
+                                : (isTopPriority && !task.isDone ? accent.opacity(0.28) : palette.cardStroke),
                                 lineWidth: 1
                             )
                     }
+                )
+                .shadow(
+                    color: isTopPriority && !task.isDone ? accent.opacity(0.10) : .clear,
+                    radius: isTopPriority && !task.isDone ? 10 : 0,
+                    y: isTopPriority && !task.isDone ? 4 : 0
                 )
 
                 if isRecentlyCompleted {
@@ -352,7 +391,6 @@ private extension TasksView {
                         )
                         .shadow(color: Color.green.opacity(0.22), radius: 8, y: 3)
                         .offset(x: -8, y: 8)
-                        .scaleEffect(1.0)
                         .transition(.scale(scale: 0.7).combined(with: .opacity))
                 }
             }
@@ -374,9 +412,7 @@ private extension TasksView {
                 }
             } label: {
                 Label(
-                    task.isDone
-                    ? tr("tasks_mark_as_undone")
-                    : tr("tasks_mark_as_done"),
+                    task.isDone ? "Tekrar Aç" : "Tamamlandı Yap",
                     systemImage: task.isDone ? "arrow.uturn.backward.circle" : "checkmark.circle"
                 )
             }
@@ -384,13 +420,13 @@ private extension TasksView {
             Button {
                 selectedTaskForSchedule = task
             } label: {
-                Label(tr("tasks_schedule"), systemImage: "calendar.badge.plus")
+                Label("Planla", systemImage: "calendar.badge.plus")
             }
 
             Button(role: .destructive) {
                 deleteTask(task)
             } label: {
-                Label(tr("common_delete"), systemImage: "trash")
+                Label("Sil", systemImage: "trash")
             }
         }
     }
@@ -422,47 +458,147 @@ private extension TasksView {
     var emptyTitle: String {
         switch selectedFilter {
         case .today:
-            return tr("tasks_empty_today_title")
+            return "Bugün için görev yok"
         case .all:
-            return tr("tasks_empty_all_title")
+            return "Henüz görev eklenmedi"
         case .done:
-            return tr("tasks_empty_done_title")
+            return "Tamamlanan görev görünmüyor"
         }
     }
 
     var emptySubtitle: String {
         switch selectedFilter {
         case .today:
-            return tr("tasks_empty_today_subtitle")
+            return "Bugün sakin görünüyor. Yeni bir görev ekleyebilirsin."
         case .all:
-            return tr("tasks_empty_all_subtitle")
+            return "İlk görevi ekleyerek akışını başlat."
         case .done:
-            return tr("tasks_empty_done_subtitle")
+            return "Tamamladığın görevler burada görünecek."
         }
+    }
+
+    var openCount: Int {
+        store.items.filter { !$0.isDone }.count
+    }
+
+    var doneCount: Int {
+        store.items.filter(\.isDone).count
+    }
+
+    var todayOpenCount: Int {
+        store.items.filter { task in !task.isDone && isToday(task) }.count
+    }
+
+    var summaryTitle: String {
+        switch selectedFilter {
+        case .today:
+            return "Bugüne odaklan"
+        case .all:
+            return "Tüm görevlerin"
+        case .done:
+            return "Tamamlananlar"
+        }
+    }
+
+    func summaryChip(title: String, value: String, tint: Color) -> some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(tint)
+                .frame(width: 7, height: 7)
+
+            Text("\(title) \(value)")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(tint)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(
+            Capsule()
+                .fill(tint.opacity(0.12))
+        )
     }
 
     func taskKey(_ task: DTTaskItem) -> String {
         if let due = task.dueDate {
-            return "\(task.title)-\(due.timeIntervalSince1970)"
+            return "\(task.taskUUID)-\(due.timeIntervalSince1970)"
         } else {
-            return "\(task.title)-no-date"
+            return "\(task.taskUUID)-no-date"
         }
     }
 
     func isToday(_ task: DTTaskItem) -> Bool {
+        if let due = task.dueDate {
+            return Calendar.current.isDateInToday(due)
+        }
+        if let weekDate = task.scheduledWeekDate {
+            return Calendar.current.isDateInToday(weekDate)
+        }
+        return false
+    }
+
+    func isOverdue(_ task: DTTaskItem) -> Bool {
         guard let due = task.dueDate else { return false }
-        return Calendar.current.isDateInToday(due)
+        return !task.isDone && due < Date()
+    }
+
+    func taskSort(_ lhs: DTTaskItem, _ rhs: DTTaskItem) -> Bool {
+        if lhs.isDone != rhs.isDone {
+            return !lhs.isDone && rhs.isDone
+        }
+
+        let lhsUrgency = urgencyScore(for: lhs)
+        let rhsUrgency = urgencyScore(for: rhs)
+        if lhsUrgency != rhsUrgency {
+            return lhsUrgency > rhsUrgency
+        }
+
+        let lhsCourse = lhs.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let rhsCourse = rhs.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !lhsCourse.isEmpty, !rhsCourse.isEmpty, lhsCourse != rhsCourse {
+            return lhsCourse.localizedCaseInsensitiveCompare(rhsCourse) == .orderedAscending
+        }
+
+        let lhsDate = lhs.dueDate ?? lhs.scheduledWeekDate ?? lhs.createdAt
+        let rhsDate = rhs.dueDate ?? rhs.scheduledWeekDate ?? rhs.createdAt
+        return lhsDate < rhsDate
+    }
+
+    func urgencyScore(for task: DTTaskItem) -> Int {
+        if task.isDone { return -1 }
+        if isOverdue(task) { return 100 }
+
+        if task.taskType.lowercased() == "exam" {
+            if let due = task.dueDate {
+                let minutes = Int(due.timeIntervalSinceNow / 60)
+                if minutes <= 180 { return 95 }
+                if minutes <= 1440 { return 85 }
+            }
+        }
+
+        guard let due = task.dueDate ?? task.scheduledWeekDate else { return 10 }
+
+        let minutes = Int(due.timeIntervalSinceNow / 60)
+        if minutes <= 30 { return 90 }
+        if minutes <= 120 { return 70 }
+        if Calendar.current.isDateInToday(due) { return 50 }
+        return 20
     }
 
     func toggleTask(_ task: DTTaskItem) {
-        guard let index = store.items.firstIndex(where: { $0.id == task.id }) else { return }
-
         let key = taskKey(task)
+        let willBeDone = !task.isDone
 
-        store.items[index].isDone.toggle()
+        task.isDone = willBeDone
+        task.completedAt = willBeDone ? Date() : nil
 
-        if store.items[index].isDone {
-            store.items[index].completedAt = Date()
+        do {
+            try modelContext.save()
+            store.reload()
+        } catch {
+            print("❌ TasksView toggle save error:", error)
+        }
+
+        if willBeDone {
             let generator = UIImpactFeedbackGenerator(style: .light)
             generator.prepare()
             generator.impactOccurred()
@@ -479,17 +615,15 @@ private extension TasksView {
             }
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.15) {
-                _ = withAnimation(.spring(response: 0.30, dampingFraction: 0.88)) {
+                withAnimation(.spring(response: 0.30, dampingFraction: 0.88)) {
                     pendingRemovalTaskKeys.remove(key)
+                    return
                 }
             }
         } else {
-            store.items[index].completedAt = nil
-
             if recentlyCompletedTaskKey == key {
                 recentlyCompletedTaskKey = nil
             }
-
             pendingRemovalTaskKeys.remove(key)
         }
     }
@@ -498,5 +632,149 @@ private extension TasksView {
         withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
             store.delete(task)
         }
+    }
+
+    func taskAccent(for task: DTTaskItem) -> Color {
+        if isOverdue(task) {
+            return .red
+        }
+
+        switch task.colorName.lowercased() {
+        case "green":
+            return .green
+        case "orange":
+            return .orange
+        case "pink":
+            return .pink
+        case "purple":
+            return .purple
+        default:
+            return .blue
+        }
+    }
+
+    func taskTypeTitle(for task: DTTaskItem) -> String {
+        switch task.taskType.lowercased() {
+        case "homework": return "Ödev"
+        case "exam": return "Sınav"
+        case "study": return "Çalışma"
+        case "project": return "Proje"
+        case "workout": return "Workout"
+        default: return "Görev"
+        }
+    }
+
+    func taskTypeSymbol(for task: DTTaskItem) -> String {
+        switch task.taskType.lowercased() {
+        case "homework": return "book.closed.fill"
+        case "exam": return "doc.text.fill"
+        case "study": return "brain.head.profile"
+        case "project": return "folder.fill"
+        case "workout": return "dumbbell.fill"
+        default: return "checklist"
+        }
+    }
+
+    func dueText(for task: DTTaskItem) -> String {
+        guard let target = task.dueDate ?? task.scheduledWeekDate else {
+            return taskTypeTitle(for: task)
+        }
+
+        if isOverdue(task) {
+            return "Gecikmiş"
+        }
+
+        let diff = Int(target.timeIntervalSinceNow)
+        let minutes = max(0, diff / 60)
+        let hours = minutes / 60
+        let days = minutes / 1440
+
+        if task.taskType.lowercased() == "exam" {
+            if days >= 1 { return "\(days) gün kaldı" }
+            if hours >= 1 { return "\(hours) sa kaldı" }
+            return "\(minutes) dk kaldı"
+        }
+
+        if task.taskType.lowercased() == "homework" {
+            if Calendar.current.isDateInToday(target) {
+                return "Bugün teslim"
+            }
+            if Calendar.current.isDateInTomorrow(target) {
+                return "Yarın teslim"
+            }
+        }
+
+        if Calendar.current.isDateInToday(target) {
+            if hours >= 1 { return "\(hours) sa sonra" }
+            return "\(minutes) dk sonra"
+        }
+
+        if Calendar.current.isDateInTomorrow(target) {
+            return "Yarın"
+        }
+
+        return target.formatted(date: .abbreviated, time: .shortened)
+    }
+
+    func taskSubtitle(for task: DTTaskItem) -> String {
+        let course = task.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let note = task.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if !course.isEmpty, !note.isEmpty {
+            return "\(course) • \(note)"
+        }
+
+        if !course.isEmpty {
+            if let due = task.dueDate ?? task.scheduledWeekDate {
+                return "\(course) • \(due.formatted(date: .omitted, time: .shortened))"
+            }
+            return course
+        }
+
+        if !note.isEmpty {
+            return note
+        }
+
+        if let due = task.dueDate ?? task.scheduledWeekDate {
+            return due.formatted(date: .omitted, time: .shortened)
+        }
+
+        return "Detay eklenmedi"
+    }
+
+    func statusBadge(icon: String, text: String, tint: Color) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.caption2)
+            Text(text)
+        }
+        .font(.system(size: 11, weight: .semibold))
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background(Capsule().fill(tint.opacity(0.14)))
+        .foregroundStyle(tint)
+    }
+
+    func miniMeta(icon: String, text: String, tint: Color) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .bold))
+            Text(text)
+                .lineLimit(1)
+        }
+        .font(.system(size: 11, weight: .semibold))
+        .foregroundStyle(tint)
+    }
+
+    func smallTag(_ text: String, tint: Color) -> some View {
+        Text(text)
+            .font(.system(size: 10, weight: .bold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 4)
+            .background(
+                Capsule()
+                    .fill(tint.opacity(0.14))
+            )
     }
 }

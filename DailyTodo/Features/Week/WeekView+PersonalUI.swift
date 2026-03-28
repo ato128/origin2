@@ -8,55 +8,111 @@
 import SwiftUI
 import SwiftData
 
-
-
 extension WeekView {
-   
-    
+
     var palette: ThemePalette {
         ThemePalette()
     }
-    
+
     var pickerSection: some View {
         Section {
-            VStack(spacing: 12) {
-
-                Picker("week_day_picker", selection: $selectedDay) {
-                    ForEach(0..<7, id: \.self) { i in
-                        Text(localizedDayTitle(i)).tag(i)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding(.vertical, 4)
-
-                HStack {
-                    ForEach(0..<7, id: \.self) { i in
-                        VStack(spacing: 4) {
-                            Circle()
-                                .fill(i == weekdayIndexToday() ? Color.accentColor : .clear)
-                                .frame(width: 6, height: 6)
-                                .scaleEffect(i == weekdayIndexToday() && pulseTodayDot ? 1.18 : 1.0)
-                                .opacity(i == weekdayIndexToday() ? 1 : 0)
-
-                            Color.clear.frame(height: 1)
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                }
-                .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: pulseTodayDot)
+            VStack(spacing: 14) {
+                personalWeekHeroCard
+                personalDayPickerSection
             }
-            .padding(8)
-            .background(sectionCardBackground)
         }
         .listRowInsets(EdgeInsets(top: 16, leading: 16, bottom: 8, trailing: 16))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
-    
+
+    var personalWeekHeroCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Haftalık Plan")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(palette.secondaryText)
+
+                    Text(heroTitleText)
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
+
+                    Text(heroSubtitleText)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(palette.secondaryText)
+                        .lineLimit(2)
+                }
+
+                Spacer()
+
+                ZStack {
+                    Circle()
+                        .fill(heroAccentColor.opacity(0.14))
+                        .frame(width: 52, height: 52)
+
+                    Image(systemName: heroSymbolName)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(heroAccentColor)
+                }
+            }
+
+            HStack(spacing: 8) {
+                heroInfoChip(
+                    icon: "calendar",
+                    text: localizedDayTitle(selectedDay),
+                    tint: heroAccentColor
+                )
+
+                if isTodaySelected {
+                    heroInfoChip(
+                        icon: "sun.max.fill",
+                        text: "Bugün",
+                        tint: .orange
+                    )
+                }
+
+                if totalMinutesForDay > 0 {
+                    heroInfoChip(
+                        icon: "timer",
+                        text: durationText(totalMinutesForDay),
+                        tint: .blue
+                    )
+                }
+            }
+        }
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(palette.cardFill)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    heroAccentColor.opacity(0.10),
+                                    Color.clear
+                                ],
+                                center: .topTrailing,
+                                startRadius: 10,
+                                endRadius: 240
+                            )
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .stroke(heroAccentColor.opacity(0.14), lineWidth: 1)
+                )
+        )
+        .shadow(color: heroAccentColor.opacity(0.08), radius: 12, y: 5)
+    }
+
     var personalDayPickerSection: some View {
         HStack(spacing: 8) {
             ForEach(dayTitles.indices, id: \.self) { day in
                 let tint = dayIndicatorColor(for: day)
+                let isSelected = selectedDay == day
+                let isToday = day == weekdayIndexToday()
 
                 Button {
                     withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
@@ -65,24 +121,30 @@ extension WeekView {
                 } label: {
                     VStack(spacing: 6) {
                         Text(localizedDayTitle(day))
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(
-                                selectedDay == day
-                                ? palette.primaryText
-                                : palette.secondaryText
-                            )
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(isSelected ? palette.primaryText : palette.secondaryText)
 
-                        Circle()
-                            .fill(day == weekdayIndexToday() ? Color.blue : Color.clear)
-                            .frame(width: 6, height: 6)
-                            .opacity(day == weekdayIndexToday() ? 1 : 0)
+                        ZStack {
+                            Circle()
+                                .fill(isToday ? tint : .clear)
+                                .frame(width: isToday ? 6 : 4, height: isToday ? 6 : 4)
+                                .opacity(isToday ? 1 : 0)
+
+                            if isSelected {
+                                Capsule()
+                                    .fill(tint)
+                                    .frame(width: 18, height: 4)
+                                    .offset(y: 8)
+                            }
+                        }
+                        .frame(height: 10)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 11)
                     .background(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .fill(
-                                selectedDay == day
+                                isSelected
                                 ? tint.opacity(0.18)
                                 : palette.secondaryCardFill
                             )
@@ -90,59 +152,72 @@ extension WeekView {
                     .overlay(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .stroke(
-                                selectedDay == day
+                                isSelected
                                 ? tint.opacity(0.28)
                                 : palette.cardStroke,
                                 lineWidth: 1
                             )
                     )
                     .shadow(
-                        color: selectedDay == day ? tint.opacity(0.18) : .clear,
-                        radius: selectedDay == day ? 12 : 0
+                        color: isSelected ? tint.opacity(0.12) : .clear,
+                        radius: isSelected ? 10 : 0,
+                        y: isSelected ? 3 : 0
                     )
-                    .scaleEffect(selectedDay == day ? 1.02 : 1.0)
+                    .scaleEffect(isSelected ? 1.015 : 1.0)
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 16)
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(palette.cardFill)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(palette.cardStroke, lineWidth: 1)
+                )
+        )
     }
-    
-    
+
     var summarySection: some View {
         daySummaryCard
-        
             .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 14, trailing: 16))
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
     }
-    
 
     var emptySection: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 10) {
-                Image(systemName: "calendar.badge.exclamationmark")
-                    .font(.title3)
-                    .foregroundStyle(Color.accentColor)
+                ZStack {
+                    Circle()
+                        .fill(Color.accentColor.opacity(0.14))
+                        .frame(width: 42, height: 42)
 
-                Text(localizedEmptyDayTitle(selectedDay))
-                    .font(.headline)
-                    .foregroundStyle(palette.primaryText)
+                    Image(systemName: "calendar.badge.exclamationmark")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(Color.accentColor)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(localizedEmptyDayTitle(selectedDay))
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
+
+                    Text("Bugün için planlı bir ders ya da etkinlik görünmüyor.")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(palette.secondaryText)
+                }
 
                 Spacer()
             }
-
-            Text("week_empty_day_description")
-                .font(.subheadline)
-                .foregroundStyle(palette.secondaryText)
-                .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 8) {
                 Image(systemName: "plus.circle.fill")
                     .foregroundStyle(Color.accentColor)
 
-                Text("week_add_class_top_right")
-                    .font(.subheadline.weight(.semibold))
+                Text("Sağ üstten yeni ders veya etkinlik ekleyebilirsin")
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Color.accentColor)
             }
             .padding(.horizontal, 14)
@@ -154,12 +229,19 @@ extension WeekView {
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(sectionCardBackground)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(palette.cardFill)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(palette.cardStroke, lineWidth: 1)
+                )
+        )
         .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 16, trailing: 16))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
-    
+
     var nowEvents: [EventItem] {
         let now = currentMinuteOfDay()
 
@@ -194,16 +276,14 @@ extension WeekView {
         let calendar = Calendar.current
         let targetDate = targetDateForSelectedDay()
 
-        let items = (allEventsAccessible )
+        return allEventsAccessible
             .filter { ev in
                 let end = ev.startMinute + ev.durationMinute
 
-                // ✅ 1. Manuel completed
                 if ev.isCompleted {
                     return true
                 }
 
-                // ✅ 2. Zaman geçmişse otomatik completed
                 if isTodaySelected && now >= end {
                     return true
                 }
@@ -218,24 +298,32 @@ extension WeekView {
                 }
             }
             .sorted { $0.startMinute < $1.startMinute }
-
-        print("✅ completedEvents count:", items.count)
-        return items
     }
+
     var eventsSection: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             if !nowEvents.isEmpty {
-                personalEventGroup(nowEvents, title: String(localized: "week_now"), systemImage: "dot.radiowaves.left.and.right", startIndex: 0)
+                personalEventGroup(
+                    nowEvents,
+                    title: "Şimdi",
+                    systemImage: "dot.radiowaves.left.and.right",
+                    startIndex: 0
+                )
             }
 
             if !nextEvents.isEmpty {
-                personalEventGroup(nextEvents, title: String(localized: "week_up_next"), systemImage: "clock.badge", startIndex: nowEvents.count)
+                personalEventGroup(
+                    nextEvents,
+                    title: "Sıradaki",
+                    systemImage: "clock.badge",
+                    startIndex: nowEvents.count
+                )
             }
 
             if !laterEvents.isEmpty {
                 personalEventGroup(
                     laterEvents,
-                    title: isTodaySelected ? String(localized: "week_later_today") : String(localized: "week_schedule"),
+                    title: isTodaySelected ? "Daha Sonra" : "Program",
                     systemImage: "calendar",
                     startIndex: nowEvents.count + nextEvents.count
                 )
@@ -244,7 +332,7 @@ extension WeekView {
             if !completedEvents.isEmpty {
                 personalEventGroup(
                     completedEvents,
-                    title: String(localized: "week_completed"),
+                    title: "Tamamlananlar",
                     systemImage: "checkmark.circle",
                     startIndex: nowEvents.count + nextEvents.count + laterEvents.count
                 )
@@ -252,41 +340,27 @@ extension WeekView {
         }
         .padding(.top, 2)
     }
+
     var daySummaryCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
                         Text(localizedDayTitle(selectedDay))
-                            .font(.headline)
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
                             .foregroundStyle(palette.primaryText)
 
                         if isTodaySelected {
-                            Text("week_today")
-                                .font(.caption2.weight(.bold))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(
-                                    Capsule()
-                                        .fill(Color.accentColor.opacity(0.18))
-                                )
-                                .foregroundStyle(Color.accentColor)
+                            capsuleMicroTag("Bugün", tint: .orange)
                         }
 
                         if liveEventForDay != nil {
-                            Text("week_live")
-                                .font(.caption2.weight(.bold))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Capsule().fill(Color.green.opacity(0.18)))
-                                .foregroundStyle(.green)
-                                .scaleEffect(animateSummary ? 1.03 : 1.0)
-                                .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: animateSummary)
+                            capsuleMicroTag("Canlı", tint: .green)
                         }
                     }
 
                     Text(summarySubtitle)
-                        .font(.subheadline)
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(palette.secondaryText)
                 }
 
@@ -294,27 +368,27 @@ extension WeekView {
 
                 if totalMinutesForDay > 0 {
                     Text(durationText(totalMinutesForDay))
-                        .font(.title3.weight(.semibold))
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
                         .monospacedDigit()
                 }
             }
 
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 summaryChip(
-                    title: String(localized: "week_lessons"),
+                    title: "Ders",
                     value: "\(eventsForDay.count)",
                     icon: "book.closed.fill"
                 )
 
                 summaryChip(
-                    title: String(localized: "week_first"),
+                    title: "İlk",
                     value: firstEventOfDay.map { hm($0.startMinute) } ?? "--:--",
                     icon: "sunrise.fill"
                 )
 
                 summaryChip(
-                    title: String(localized: "week_last"),
+                    title: "Son",
                     value: lastEventOfDay.map { hm($0.startMinute + $0.durationMinute) } ?? "--:--",
                     icon: "moon.stars.fill"
                 )
@@ -329,26 +403,44 @@ extension WeekView {
                         .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: animateSummary)
 
                     Text(localizedLiveClassText(live.title))
-                        .font(.caption.weight(.semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(palette.primaryText)
 
                     Spacer()
 
                     Text(timeText(for: live))
-                        .font(.caption.weight(.semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(palette.secondaryText)
+                }
+            } else if let info = currentTimeIndicatorText {
+                HStack(spacing: 8) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(palette.secondaryText)
+
+                    Text(info)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(palette.secondaryText)
+                        .lineLimit(1)
                 }
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 18)
-        .background(sectionCardBackground)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(palette.cardFill)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(palette.cardStroke, lineWidth: 1)
+                )
+        )
         .scaleEffect(animateSummary ? 1.01 : 1.0)
         .animation(.spring(response: 0.35, dampingFraction: 0.78), value: animateSummary)
     }
-    
+
     func personalEventGroup(_ items: [EventItem], title: String, systemImage: String, startIndex: Int = 0) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 6) {
             personalTimelineSectionHeader(title, systemImage: systemImage)
 
             LazyVStack(spacing: 14) {
@@ -393,7 +485,7 @@ extension WeekView {
             value: showPersonalEventCards
         )
     }
-    
+
     func markEventCompleted(_ event: EventItem) {
         event.isCompleted = true
 
@@ -401,15 +493,12 @@ extension WeekView {
             try context.save()
             Haptics.impact(.medium)
 
-            // Widget refresh
             WidgetAppSync.refreshFromSwiftData(context: context)
 
-            // Notification yeniden planla
             Task {
                 await NotificationManager.shared.rescheduleAll(events: allEventsAccessible)
             }
 
-            // Shared week sync (friends / crew)
             Task {
                 guard let currentUserID = session.currentUser?.id else { return }
 
@@ -430,7 +519,7 @@ extension WeekView {
             print("❌ markEventCompleted error:", error)
         }
     }
-    
+
     func sourceTask(for event: EventItem) -> DTTaskItem? {
         guard let sourceTaskUUID = event.sourceTaskUUID else { return nil }
         return tasks.first(where: { $0.taskUUID == sourceTaskUUID })
@@ -448,15 +537,15 @@ extension WeekView {
     func workoutDayText(for event: EventItem) -> String? {
         sourceTask(for: event)?.workoutDay
     }
-    
+
     func personalTimelineSectionHeader(_ title: String, systemImage: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: systemImage)
-                .font(.caption.weight(.bold))
+                .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(palette.secondaryText)
 
             Text(title)
-                .font(.caption.weight(.bold))
+                .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(palette.secondaryText)
 
             Spacer()
@@ -469,11 +558,11 @@ extension WeekView {
     func summaryChip(title: String, value: String, icon: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Label(title, systemImage: icon)
-                .font(.caption)
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(palette.secondaryText)
 
             Text(value)
-                .font(.subheadline.weight(.semibold))
+                .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(palette.primaryText)
                 .monospacedDigit()
                 .lineLimit(1)
@@ -494,18 +583,96 @@ extension WeekView {
 
     var summarySubtitle: String {
         if eventsForDay.isEmpty {
-            return String(localized: "week_no_saved_classes_for_day")
+            return "Bu gün için kayıtlı ders görünmüyor"
         }
 
         if liveEventForDay != nil {
-            return String(localized: "week_class_active_now")
+            return "Şu anda aktif bir ders var"
         }
 
         return localizedSummarySubtitle(count: eventsForDay.count, totalMinutes: totalMinutesForDay)
     }
+
+    var heroTitleText: String {
+        if eventsForDay.isEmpty {
+            return isTodaySelected ? "Bugün boş" : "\(localizedDayTitle(selectedDay)) hafif"
+        }
+
+        if let live = liveEventForDay {
+            return live.title
+        }
+
+        if let first = firstEventOfDay {
+            return first.title
+        }
+
+        return "Planın hazır"
+    }
+
+    var heroSubtitleText: String {
+        if eventsForDay.isEmpty {
+            return "Yeni ders, çalışma saati veya etkinlik ekleyerek planını doldurabilirsin."
+        }
+
+        if let live = liveEventForDay {
+            return "\(timeText(for: live)) arasında aktif."
+        }
+
+        return "\(eventsForDay.count) kayıt • \(durationText(totalMinutesForDay)) toplam yük"
+    }
+
+    var heroAccentColor: Color {
+        if liveEventForDay != nil {
+            return .green
+        }
+        if eventsForDay.isEmpty {
+            return .blue
+        }
+        return firstEventOfDay.map { dayIndicatorColor(for: $0.weekday) } ?? .accentColor
+    }
+
+    var heroSymbolName: String {
+        if liveEventForDay != nil {
+            return "dot.radiowaves.left.and.right"
+        }
+        if eventsForDay.isEmpty {
+            return "calendar"
+        }
+        return "book.closed.fill"
+    }
+
+    func heroInfoChip(icon: String, text: String, tint: Color) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .bold))
+            Text(text)
+                .lineLimit(1)
+        }
+        .font(.system(size: 12, weight: .semibold))
+        .foregroundStyle(tint)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(
+            Capsule()
+                .fill(tint.opacity(0.12))
+        )
+    }
+
+    func capsuleMicroTag(_ text: String, tint: Color) -> some View {
+        Text(text)
+            .font(.system(size: 10, weight: .bold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                Capsule()
+                    .fill(tint.opacity(0.12))
+            )
+    }
+
     func localizedEmptyDayTitle(_ day: Int) -> String {
         if locale.language.languageCode?.identifier == "tr" {
-            return "\(localizedDayTitle(day)) günü boş"
+            return "\(localizedDayTitle(day)) boş"
         } else {
             return "\(localizedDayTitle(day)) is empty"
         }
@@ -521,9 +688,9 @@ extension WeekView {
 
     func localizedSummarySubtitle(count: Int, totalMinutes: Int) -> String {
         if locale.language.languageCode?.identifier == "tr" {
-            return "\(count) ders • \(durationText(totalMinutes)) toplam"
+            return "\(count) kayıt • \(durationText(totalMinutes)) toplam"
         } else {
-            return "\(count) classes • \(durationText(totalMinutes)) total"
+            return "\(count) items • \(durationText(totalMinutes)) total"
         }
     }
 }
