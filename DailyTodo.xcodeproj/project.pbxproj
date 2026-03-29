@@ -243,6 +243,7 @@
 		6DD282912F698F6F00B1281A /* WeekEventDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD282902F698F6F00B1281A /* WeekEventDetailView.swift */; };
 		6DD282932F699C2D00B1281A /* WorkoutExerciseHistoryItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD282922F699C2D00B1281A /* WorkoutExerciseHistoryItem.swift */; };
 		6DD282962F69AA5800B1281A /* Notification+Names.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD282952F69AA5800B1281A /* Notification+Names.swift */; };
+		6DD286B32F79A7FF005A73FA /* CrewChatView+Glass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD286B22F79A7FF005A73FA /* CrewChatView+Glass.swift */; };
 		6DDF5B5B2F5F9DFF003057C9 /* CrewTaskComment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DDF5B5A2F5F9DFE003057C9 /* CrewTaskComment.swift */; };
 		6DDF5B5D2F5F9E21003057C9 /* CrewTaskPoll.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DDF5B5C2F5F9E21003057C9 /* CrewTaskPoll.swift */; };
 		6DDF5B5F2F5FA38A003057C9 /* CreateCrewTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DDF5B5E2F5FA38A003057C9 /* CreateCrewTaskView.swift */; };
@@ -484,6 +485,7 @@
 		6DD282902F698F6F00B1281A /* WeekEventDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekEventDetailView.swift; sourceTree = "<group>"; };
 		6DD282922F699C2D00B1281A /* WorkoutExerciseHistoryItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutExerciseHistoryItem.swift; sourceTree = "<group>"; };
 		6DD282952F69AA5800B1281A /* Notification+Names.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Notification+Names.swift"; sourceTree = "<group>"; };
+		6DD286B22F79A7FF005A73FA /* CrewChatView+Glass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CrewChatView+Glass.swift"; sourceTree = "<group>"; };
 		6DDF5B5A2F5F9DFE003057C9 /* CrewTaskComment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewTaskComment.swift; sourceTree = "<group>"; };
 		6DDF5B5C2F5F9E21003057C9 /* CrewTaskPoll.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewTaskPoll.swift; sourceTree = "<group>"; };
 		6DDF5B5E2F5FA38A003057C9 /* CreateCrewTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateCrewTaskView.swift; sourceTree = "<group>"; };
@@ -624,6 +626,7 @@
 				6DBE91E02F6C8295001DF813 /* WeekCrewItem.swift */,
 				6DBE91E42F6C9612001DF813 /* CrewChatView+Models.swift */,
 				6DBE91E62F6D6A27001DF813 /* CrewChatMessageItem.swift */,
+				6DD286B22F79A7FF005A73FA /* CrewChatView+Glass.swift */,
 			);
 			path = Message;
 			sourceTree = "<group>";
@@ -1331,6 +1334,7 @@
 				6D2004582F61D19B0022C810 /* WeekView+CrewUI.swift in Sources */,
 				6DBE919E2F6B2F25001DF813 /* AuthView.swift in Sources */,
 				6DC0CABE2F5F7D0000A875ED /* TaskNotifications.swift in Sources */,
+				6DD286B32F79A7FF005A73FA /* CrewChatView+Glass.swift in Sources */,
 				6D5FE4492F689760007C124D /* CrewBadgeHelpers.swift in Sources */,
 				6D2004B22F644F300022C810 /* InsightsModels.swift in Sources */,
 				6DD282862F68CBC100B1281A /* TaskCompleteAnimation.swift in Sources */,
@@ -1421,7 +1425,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = WidgetExtensionExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = 2KC59ZZTWK;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WidgetExtension/Info.plist;
@@ -1454,7 +1458,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = WidgetExtensionExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = 2KC59ZZTWK;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WidgetExtension/Info.plist;
@@ -1611,7 +1615,7 @@
 				CODE_SIGN_ENTITLEMENTS = DailyTodo/DailyTodo.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = 2KC59ZZTWK;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1652,7 +1656,7 @@
 				CODE_SIGN_ENTITLEMENTS = DailyTodo/DailyTodo.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = 2KC59ZZTWK;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;

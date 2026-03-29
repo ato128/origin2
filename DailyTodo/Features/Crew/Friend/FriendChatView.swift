@@ -20,6 +20,8 @@ struct FriendChatView: View {
 
     @State private var draftMessage: String = ""
     @State private var showFriendInfo = false
+    // State olarak ekle
+    @State private var composerBarHeight: CGFloat = 90
     
     // View'e bu state'i ekle
     @State private var keyboardHeight: CGFloat = 0
@@ -332,7 +334,7 @@ private extension FriendChatView {
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 64)
-                .padding(.bottom, keyboardHeight > 0 ? keyboardHeight + 70 : 110) // ✅ tek padding
+                .padding(.bottom, keyboardHeight > 0 ? keyboardHeight + composerBarHeight + 16 : composerBarHeight + 34)
             }
             .scrollIndicators(.hidden)
             .scrollDismissesKeyboard(.interactively) // ✅ ScrollView'e taşındı
@@ -393,7 +395,7 @@ private extension FriendChatView {
                     .background(glassCircleBackground)
             }
             .buttonStyle(.plain)
-
+            
             HStack(spacing: 10) {
                 TextField(tr("chat_message_placeholder"), text: $draftMessage)
                     .focused($isComposerFocused)
@@ -417,16 +419,16 @@ private extension FriendChatView {
                     .tint(Color.accentColor)
                     .submitLabel(.send)
                     .onSubmit { sendMessage() }
-
+                
                 Button {
                     if !draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         sendMessage()
                     }
                 } label: {
                     Image(systemName:
-                        draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? "mic.fill"
-                        : "arrow.up.circle.fill"
+                            draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                          ? "mic.fill"
+                          : "arrow.up.circle.fill"
                     )
                     .font(.system(
                         size: draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 18 : 24,
@@ -447,6 +449,13 @@ private extension FriendChatView {
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 10)
+        .background(
+            GeometryReader { geo in
+                Color.clear.onAppear {
+                    composerBarHeight = geo.size.height
+                }
+            }
+        )
     }
 }
 
@@ -481,7 +490,7 @@ private extension FriendChatView {
         guard let toUserId = friend.backendUserID?.uuidString else { return }
 
         draftMessage = ""
-        isComposerFocused = false
+        
 
         Task {
             await friendStore.sendMessage(

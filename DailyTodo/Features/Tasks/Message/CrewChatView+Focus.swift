@@ -8,6 +8,7 @@
 import SwiftUI
 
 extension CrewChatView {
+
     var focusDurationSheet: some View {
         NavigationStack {
             VStack(spacing: 18) {
@@ -45,7 +46,10 @@ extension CrewChatView {
 
                 VStack(spacing: 10) {
                     Stepper(
-                        String(format: String(localized: "crew_chat_focus_custom_stepper"), customFocusMinutes),
+                        String(
+                            format: String(localized: "crew_chat_focus_custom_stepper"),
+                            customFocusMinutes
+                        ),
                         value: $customFocusMinutes,
                         in: 5...180,
                         step: 5
@@ -102,9 +106,14 @@ extension CrewChatView {
                         .font(.title3.bold())
                         .foregroundStyle(palette.primaryText)
 
-                    Text(String(format: String(localized: "crew_chat_focus_shared_minutes"), selectedFocusMinutes))
-                        .font(.subheadline)
-                        .foregroundStyle(palette.secondaryText)
+                    Text(
+                        String(
+                            format: String(localized: "crew_chat_focus_shared_minutes"),
+                            selectedFocusMinutes
+                        )
+                    )
+                    .font(.subheadline)
+                    .foregroundStyle(palette.secondaryText)
                 }
                 .padding(.top, 8)
 
@@ -142,7 +151,11 @@ extension CrewChatView {
                 }
                 .buttonStyle(.plain)
 
-                if crewStore.crewTasks.filter({ !$0.is_done && $0.crew_id == crew.id }).isEmpty {
+                let activeTasks = crewStore.crewTasks.filter {
+                    !$0.is_done && $0.crew_id == crew.id
+                }
+
+                if activeTasks.isEmpty {
                     VStack(spacing: 8) {
                         Spacer()
 
@@ -159,10 +172,7 @@ extension CrewChatView {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 10) {
-                            ForEach(
-                                crewStore.crewTasks.filter { !$0.is_done && $0.crew_id == crew.id },
-                                id: \.id
-                            ) { task in
+                            ForEach(activeTasks, id: \.id) { task in
                                 Button {
                                     selectedFocusTask = task
                                     Task {
@@ -278,46 +288,41 @@ extension CrewChatView {
             HStack(spacing: 12) {
                 Circle()
                     .fill(focusBannerAccent(session).opacity(0.18))
-                    .frame(width: 32, height: 32)
+                    .frame(width: 34, height: 34)
                     .overlay(
                         Image(systemName: session.is_paused ? "pause.fill" : "timer")
-                            .font(.caption.bold())
+                            .font(.system(size: 13, weight: .bold))
                             .foregroundStyle(focusBannerAccent(session))
                     )
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(session.is_paused ? String(localized: "crew_chat_focus_paused") : String(localized: "crew_chat_focus_running"))
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(palette.primaryText)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(
+                        session.is_paused
+                        ? String(localized: "crew_chat_focus_paused")
+                        : String(localized: "crew_chat_focus_running")
+                    )
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.white)
 
                     HStack(spacing: 4) {
                         Text(session.host_name)
                         Text("•")
                         Text(focusRemainingText(session))
                     }
-                    .font(.caption)
-                    .foregroundStyle(palette.secondaryText)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.68))
                 }
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
-                    .font(.caption.bold())
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(focusBannerAccent(session))
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(palette.cardFill)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(focusBannerAccent(session).opacity(0.22), lineWidth: 1)
-                    )
-            )
+            .frame(height: 76)
+            .background(glassRoundedBackground(cornerRadius: 26))
             .padding(.horizontal, 16)
-            .padding(.top, 6)
-            .padding(.bottom, 8)
         }
         .buttonStyle(.plain)
     }
@@ -384,6 +389,7 @@ extension CrewChatView {
         if !session.is_active {
             return .green
         }
+
         if session.is_paused {
             return .orange
         }

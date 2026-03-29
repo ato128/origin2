@@ -36,6 +36,10 @@ final class CrewStore: ObservableObject {
     @Published var activeFocusSessionByCrew: [UUID: CrewFocusSessionDTO] = [:]
     @Published var focusParticipantsBySession: [UUID: [CrewFocusParticipantDTO]] = [:]
     @Published private(set) var currentUserID: UUID?
+    
+    @Published var chatLastLoadedAtByCrew: [UUID: Date] = [:]
+    @Published var hasLoadedChatInitiallyByCrew: [UUID: Bool] = [:]
+    @Published var chatLoadingByCrew: [UUID: Bool] = [:]
 
     private var activeFocusChannel: RealtimeChannelV2?
     private var focusParticipantsChannel: RealtimeChannelV2?
@@ -53,6 +57,14 @@ final class CrewStore: ObservableObject {
     private var crewsListChannel: RealtimeChannelV2?
     private var crewsMemberListChannel: RealtimeChannelV2?
     private var subscribedCrewsListUserID: UUID?
+    
+    private var crewTypingChannel: RealtimeChannelV2?
+    private var crewReadsChannel: RealtimeChannelV2?
+    private var subscribedCrewAuxRealtimeID: UUID?
+    private var subscribedAuxCrewID: UUID?
+    
+    private var isSubscribingCrewMessages = false
+    private var isSubscribingCrewAux = false
     
     
    
@@ -246,6 +258,9 @@ final class CrewStore: ObservableObject {
 
     // MARK: - Chat Helpers
 
+    
+    
+    
     private func isoDate(_ raw: String?) -> Date {
         CrewDateParser.parse(raw) ?? Date()
     }
@@ -271,21 +286,71 @@ final class CrewStore: ObservableObject {
         )
     }
 
+    private func sortAndTrimChatItems(_ items: [CrewChatMessageItem]) -> [CrewChatMessageItem] {
+        let sorted = items.sorted { lhs, rhs in
+            if lhs.createdAt == rhs.createdAt {
+                return lhs.id.uuidString < rhs.id.uuidString
+            }
+            return lhs.createdAt < rhs.createdAt
+        }
+
+        return Array(sorted.suffix(100))
+    }
+
+    private func mergeChatItem(_ item: CrewChatMessageItem, into crewID: UUID) {
+        var items = chatMessagesByCrew[crewID] ?? []
+
+        if let serverID = item.serverID,
+           let existingIndex = items.firstIndex(where: { $0.serverID == serverID }) {
+            items[existingIndex] = item
+        } else if let clientID = item.clientID,
+                  let pendingIndex = items.firstIndex(where: {
+                      $0.serverID == nil && $0.clientID == clientID
+                  }) {
+            items[pendingIndex] = item
+        } else {
+            items.append(item)
+        }
+
+        chatMessagesByCrew[crewID] = sortAndTrimChatItems(items)
+    }
+
     private func setChatMessages(
         _ items: [CrewChatMessageItem],
-        for crewID: UUID
+        for crewID: UUID,
+        preserveExistingIfIncomingEmpty: Bool = true
     ) {
-        chatMessagesByCrew[crewID] = items.sorted { $0.createdAt < $1.createdAt }
+        if preserveExistingIfIncomingEmpty,
+           items.isEmpty,
+           let existing = chatMessagesByCrew[crewID],
+           !existing.isEmpty {
+            return
+        }
+
+        chatMessagesByCrew[crewID] = sortAndTrimChatItems(items)
     }
 
     private func appendChatMessage(
         _ item: CrewChatMessageItem,
         for crewID: UUID
     ) {
-        var items = chatMessagesByCrew[crewID] ?? []
-        items.append(item)
-        items.sort { $0.createdAt < $1.createdAt }
-        chatMessagesByCrew[crewID] = Array(items.suffix(30))
+        mergeChatItem(item, into: crewID)
+    }
+
+    private func replacePendingMessageByClientID(
+        crewID: UUID,
+        clientID: String,
+        with item: CrewChatMessageItem
+    ) {
+        mergeChatItem(item, into: crewID)
+    }
+
+    func handleIncomingMessage(
+        _ dto: CrewMessageDTO,
+        currentUserID: UUID?
+    ) {
+        let item = mapDTOToChatItem(dto, currentUserID: currentUserID)
+        mergeChatItem(item, into: dto.crew_id)
     }
 
     private func markPendingMessageFailed(
@@ -313,26 +378,9 @@ final class CrewStore: ObservableObject {
             isFailed: true
         )
 
-        chatMessagesByCrew[crewID] = items
+        chatMessagesByCrew[crewID] = sortAndTrimChatItems(items)
     }
-    private func replacePendingMessageByClientID(
-        crewID: UUID,
-        clientID: String,
-        with item: CrewChatMessageItem
-    ) {
-        var items = chatMessagesByCrew[crewID] ?? []
-
-        if let index = items.firstIndex(where: { $0.clientID == clientID && $0.serverID == nil }) {
-            items[index] = item
-        } else if let existingIndex = items.firstIndex(where: { $0.serverID == item.serverID }) {
-            items[existingIndex] = item
-        } else {
-            items.append(item)
-        }
-
-        items.sort { $0.createdAt < $1.createdAt }
-        chatMessagesByCrew[crewID] = Array(items.suffix(30))
-    }
+    
     
     private func fetchInsertedMessage(
         crewID: UUID,
@@ -362,52 +410,205 @@ final class CrewStore: ObservableObject {
             print("FETCH INSERTED MESSAGE ERROR:", error.localizedDescription)
         }
     }
-
-    func handleIncomingMessage(
-        _ dto: CrewMessageDTO,
-        currentUserID: UUID?
-    ) {
-        let item = mapDTOToChatItem(dto, currentUserID: currentUserID)
-        var items = chatMessagesByCrew[dto.crew_id] ?? []
-
-        if let existingIndex = items.firstIndex(where: { $0.serverID == dto.id }) {
-            items[existingIndex] = item
-        } else if let clientID = dto.client_id,
-                  let pendingIndex = items.firstIndex(where: {
-                      $0.serverID == nil &&
-                      $0.clientID == clientID
-                  }) {
-            items[pendingIndex] = item
-        } else {
-            items.append(item)
-        }
-
-        items.sort { $0.createdAt < $1.createdAt }
-        chatMessagesByCrew[dto.crew_id] = Array(items.suffix(30))
+    
+    func shouldRefreshChat(for crewID: UUID, maxAge: TimeInterval = 60) -> Bool {
+        guard let last = chatLastLoadedAtByCrew[crewID] else { return true }
+        return Date().timeIntervalSince(last) > maxAge
     }
 
+    
     // MARK: - Chat Load
+    
+    func loadNewerMessages(
+        for crewID: UUID,
+        currentUserID: UUID?
+    ) async {
+        guard let latest = chatMessagesByCrew[crewID]?.last?.createdAt else {
+            await loadInitialChatMessages(for: crewID, currentUserID: currentUserID)
+            return
+        }
+
+        do {
+            let iso = CrewDateParser.string(from: latest)
+
+            let response = try await SupabaseManager.shared.client
+                .from("crew_messages")
+                .select()
+                .eq("crew_id", value: crewID.uuidString)
+                .gt("created_at", value: iso)
+                .order("created_at", ascending: true)
+                .execute()
+
+            let decoded = try JSONDecoder().decode([CrewMessageDTO].self, from: response.data)
+
+            for dto in decoded {
+                handleIncomingMessage(dto, currentUserID: currentUserID)
+            }
+
+            if !decoded.isEmpty {
+                chatLastLoadedAtByCrew[crewID] = Date()
+            }
+        } catch {
+            print("LOAD NEWER CREW MESSAGES ERROR:", error.localizedDescription)
+        }
+    }
+    
+    func subscribeToCrewAuxRealtime(crewID: UUID) {
+        if subscribedAuxCrewID == crewID,
+           crewTypingChannel != nil,
+           crewReadsChannel != nil {
+            return
+        }
+
+        if isSubscribingCrewAux {
+            return
+        }
+
+        isSubscribingCrewAux = true
+
+        let client = SupabaseManager.shared.client
+
+        Task { @MainActor in
+            if let existingTyping = crewTypingChannel {
+                await existingTyping.unsubscribe()
+            }
+
+            if let existingReads = crewReadsChannel {
+                await existingReads.unsubscribe()
+            }
+
+            crewTypingChannel = nil
+            crewReadsChannel = nil
+            subscribedAuxCrewID = nil
+
+            let typingChannel = client.realtimeV2.channel("crew-typing-\(crewID.uuidString)")
+            let readsChannel = client.realtimeV2.channel("crew-reads-\(crewID.uuidString)")
+
+            _ = typingChannel.onPostgresChange(
+                InsertAction.self,
+                schema: "public",
+                table: "crew_typing_status",
+                filter: "crew_id=eq.\(crewID.uuidString)"
+            ) { [weak self] _ in
+                guard let self else { return }
+                Task { @MainActor in
+                    await self.loadCrewTypingStatuses(for: crewID)
+                }
+            }
+
+            _ = typingChannel.onPostgresChange(
+                UpdateAction.self,
+                schema: "public",
+                table: "crew_typing_status",
+                filter: "crew_id=eq.\(crewID.uuidString)"
+            ) { [weak self] _ in
+                guard let self else { return }
+                Task { @MainActor in
+                    await self.loadCrewTypingStatuses(for: crewID)
+                }
+            }
+
+            _ = readsChannel.onPostgresChange(
+                InsertAction.self,
+                schema: "public",
+                table: "crew_message_reads",
+                filter: "crew_id=eq.\(crewID.uuidString)"
+            ) { [weak self] _ in
+                guard let self else { return }
+                Task { @MainActor in
+                    await self.loadCrewMessageReads(for: crewID)
+                }
+            }
+
+            _ = readsChannel.onPostgresChange(
+                UpdateAction.self,
+                schema: "public",
+                table: "crew_message_reads",
+                filter: "crew_id=eq.\(crewID.uuidString)"
+            ) { [weak self] _ in
+                guard let self else { return }
+                Task { @MainActor in
+                    await self.loadCrewMessageReads(for: crewID)
+                }
+            }
+
+            crewTypingChannel = typingChannel
+            crewReadsChannel = readsChannel
+            subscribedAuxCrewID = crewID
+
+            do {
+                try await typingChannel.subscribeWithError()
+                try await readsChannel.subscribeWithError()
+            } catch {
+                print("SUBSCRIBE CREW AUX CHANNEL ERROR:", error.localizedDescription)
+                crewTypingChannel = nil
+                crewReadsChannel = nil
+                subscribedAuxCrewID = nil
+            }
+
+            isSubscribingCrewAux = false
+        }
+    }
+
+    func unsubscribeCrewAuxRealtime() {
+        let typingToUnsub = crewTypingChannel
+        let readsToUnsub = crewReadsChannel
+        crewTypingChannel = nil
+        crewReadsChannel = nil
+        subscribedAuxCrewID = nil
+        isSubscribingCrewAux = false
+
+        Task {
+            await typingToUnsub?.unsubscribe()
+            await readsToUnsub?.unsubscribe()
+        }
+    }
 
     func loadInitialChatMessages(
         for crewID: UUID,
         currentUserID: UUID?
     ) async {
+        chatLoadingByCrew[crewID] = true
+        defer { chatLoadingByCrew[crewID] = false }
+
         do {
             let response = try await SupabaseManager.shared.client
                 .from("crew_messages")
                 .select()
                 .eq("crew_id", value: crewID.uuidString)
-                .order("created_at", ascending: true)
-                .limit(30)
+                .order("created_at", ascending: false)
+                .limit(50)
                 .execute()
 
             let decoded = try JSONDecoder().decode([CrewMessageDTO].self, from: response.data)
-            let items = decoded.map { mapDTOToChatItem($0, currentUserID: currentUserID) }
-            setChatMessages(items, for: crewID)
+            let items = decoded.reversed().map { mapDTOToChatItem($0, currentUserID: currentUserID) }
+
+            setChatMessages(items, for: crewID, preserveExistingIfIncomingEmpty: true)
+            chatLastLoadedAtByCrew[crewID] = Date()
+            hasLoadedChatInitiallyByCrew[crewID] = true
         } catch {
             print("LOAD INITIAL CHAT MESSAGES ERROR:", error.localizedDescription)
-            setChatMessages([], for: crewID)
+
+            if chatMessagesByCrew[crewID] == nil {
+                setChatMessages([], for: crewID, preserveExistingIfIncomingEmpty: false)
+            }
         }
+    }
+    
+    func loadInitialChatMessagesIfNeeded(
+        for crewID: UUID,
+        currentUserID: UUID?,
+        force: Bool = false
+    ) async {
+        if !force,
+           hasLoadedChatInitiallyByCrew[crewID] == true,
+           shouldRefreshChat(for: crewID) == false,
+           let cached = chatMessagesByCrew[crewID],
+           !cached.isEmpty {
+            return
+        }
+
+        await loadInitialChatMessages(for: crewID, currentUserID: currentUserID)
     }
 
     // MARK: - Chat Send
@@ -638,71 +839,92 @@ final class CrewStore: ObservableObject {
         crewID: UUID,
         currentUserID: UUID?
     ) {
-        if subscribedCrewMessageID == crewID {
+        if subscribedCrewMessageID == crewID, crewMessagesChannel != nil {
             return
         }
 
+        if isSubscribingCrewMessages {
+            return
+        }
+
+        isSubscribingCrewMessages = true
+
         let client = SupabaseManager.shared.client
 
-        Task {
-            await crewMessagesChannel?.unsubscribe()
-        }
+        Task { @MainActor in
+            // Race condition guard
+            guard subscribedCrewMessageID != crewID else {
+                isSubscribingCrewMessages = false
+                return
+            }
 
-        crewMessagesChannel = nil
-        crewMessagesChannel = client.realtimeV2.channel("crew-messages-\(crewID.uuidString)")
-        subscribedCrewMessageID = crewID
+            if let existing = crewMessagesChannel {
+                await existing.unsubscribe()
+                crewMessagesChannel = nil
+                subscribedCrewMessageID = nil
+            }
 
-        _ =     crewMessagesChannel?.onPostgresChange(
-            InsertAction.self,
-            schema: "public",
-            table: "crew_messages",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] action in
-            guard let self else { return }
-            Task { @MainActor in
-                
+            let channel = client.realtimeV2.channel("crew-messages-\(crewID.uuidString)")
 
-                do {
-                    let jsonData = try JSONSerialization.data(withJSONObject: action.record)
-                    let dto = try JSONDecoder().decode(CrewMessageDTO.self, from: jsonData)
-                    self.handleIncomingMessage(dto, currentUserID: currentUserID)
-                } catch {
-                    print("CREW MESSAGE INSERT REALTIME DECODE ERROR:", error.localizedDescription)
+            _ = channel.onPostgresChange(
+                InsertAction.self,
+                schema: "public",
+                table: "crew_messages",
+                filter: "crew_id=eq.\(crewID.uuidString)"
+            ) { [weak self] action in
+                guard let self else { return }
+                Task { @MainActor in
+                    do {
+                        let jsonData = try JSONSerialization.data(withJSONObject: action.record)
+                        let dto = try JSONDecoder().decode(CrewMessageDTO.self, from: jsonData)
+                        self.handleIncomingMessage(dto, currentUserID: currentUserID)
+                    } catch {
+                        print("CREW MESSAGE INSERT REALTIME DECODE ERROR:", error.localizedDescription)
+                    }
                 }
             }
-        }
 
-        _ =    crewMessagesChannel?.onPostgresChange(
-            UpdateAction.self,
-            schema: "public",
-            table: "crew_messages",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] action in
-            guard let self else { return }
-            Task { @MainActor in
-               
-
-                do {
-                    let jsonData = try JSONSerialization.data(withJSONObject: action.record)
-                    let dto = try JSONDecoder().decode(CrewMessageDTO.self, from: jsonData)
-                    self.handleIncomingMessage(dto, currentUserID: currentUserID)
-                } catch {
-                    print("CREW MESSAGE UPDATE REALTIME DECODE ERROR:", error.localizedDescription)
+            _ = channel.onPostgresChange(
+                UpdateAction.self,
+                schema: "public",
+                table: "crew_messages",
+                filter: "crew_id=eq.\(crewID.uuidString)"
+            ) { [weak self] action in
+                guard let self else { return }
+                Task { @MainActor in
+                    do {
+                        let jsonData = try JSONSerialization.data(withJSONObject: action.record)
+                        let dto = try JSONDecoder().decode(CrewMessageDTO.self, from: jsonData)
+                        self.handleIncomingMessage(dto, currentUserID: currentUserID)
+                    } catch {
+                        print("CREW MESSAGE UPDATE REALTIME DECODE ERROR:", error.localizedDescription)
+                    }
                 }
             }
-        }
 
-        Task {
-          try?  await crewMessagesChannel?.subscribeWithError()
+            crewMessagesChannel = channel
+            subscribedCrewMessageID = crewID
+
+            do {
+                try await channel.subscribeWithError()
+            } catch {
+                print("SUBSCRIBE CREW MESSAGE CHANNEL ERROR:", error.localizedDescription)
+                crewMessagesChannel = nil
+                subscribedCrewMessageID = nil
+            }
+
+            isSubscribingCrewMessages = false
         }
     }
-
     func unsubscribeCrewChat() {
-        Task {
-            await crewMessagesChannel?.unsubscribe()
-        }
+        let channelToUnsub = crewMessagesChannel
         crewMessagesChannel = nil
         subscribedCrewMessageID = nil
+        isSubscribingCrewMessages = false
+
+        Task {
+            await channelToUnsub?.unsubscribe()
+        }
     }
 
     // MARK: - General Crew Realtime
@@ -1262,10 +1484,15 @@ final class CrewStore: ObservableObject {
         chatMessagesByCrew = [:]
         activeFocusSessionByCrew = [:]
         focusParticipantsBySession = [:]
+        chatMessagesByCrew = [:]
+        chatLastLoadedAtByCrew = [:]
+        hasLoadedChatInitiallyByCrew = [:]
+        chatLoadingByCrew = [:]
         hasLoadedCrews = false
 
         unsubscribe()
         unsubscribeCrewChat()
+        unsubscribeCrewAuxRealtime()
         unsubscribeCrewFocusRealtime()
         unsubscribeCrewsListRealtime()
     }

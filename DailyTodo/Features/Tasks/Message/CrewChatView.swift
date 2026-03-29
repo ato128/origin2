@@ -44,36 +44,42 @@ struct CrewChatView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .top) {
-            AppBackground()
+        ZStack {
+            ambientBackground
 
             VStack(spacing: 0) {
-                header
-
-                if let activeFocusSession {
-                    focusLiveBanner(session: activeFocusSession)
-                }
-
-                if let typingText {
-                    HStack {
-                        Text(typingText)
-                            .font(.caption)
-                            .foregroundStyle(palette.secondaryText)
+                if messages.isEmpty, crewStore.chatLoadingByCrew[crew.id] == true {
+                    VStack {
+                        Spacer()
+                        ProgressView()
+                            .tint(.white)
                         Spacer()
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 4)
-                    .padding(.bottom, 6)
-                }
-
-                if messages.isEmpty {
+                } else if messages.isEmpty {
                     emptyState
                 } else {
                     messagesList
                 }
-
-                composerBar
             }
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            VStack(spacing: 8) {
+                floatingTopControls
+
+                if let activeFocusSession {
+                    focusLiveBanner(session: activeFocusSession)
+                } else if let typingText {
+                    typingBanner(text: typingText)
+                }
+            }
+            .padding(.top, 8)
+            .padding(.bottom, 6)
+            .background(Color.clear)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            composerBar
+                .padding(.top, 6)
+                .background(Color.clear)
         }
         .contentShape(Rectangle())
         .hideKeyboardOnTap()
@@ -83,25 +89,29 @@ struct CrewChatView: View {
             guard !didInitialLoad else { return }
             didInitialLoad = true
 
-            Task {
+            Task(priority: .userInitiated) {
                 await loadChatData()
                 await crewStore.loadActiveFocusSession(for: crew.id)
 
                 let loadedSession = crewStore.activeFocusSessionByCrew[crew.id]
-                localActiveFocusSession = loadedSession
+                await MainActor.run {
+                    localActiveFocusSession = loadedSession
+                }
 
                 if let loadedSession {
                     await crewStore.loadFocusParticipants(sessionID: loadedSession.id)
                 }
 
-                crewStore.subscribeToActiveFocusRealtime(crewID: crew.id)
+                await MainActor.run {
+                    crewStore.subscribeToActiveFocusRealtime(crewID: crew.id)
+                }
             }
         }
         .onDisappear {
             typingStopTask?.cancel()
 
             if let myID = session.currentUser?.id {
-                Task {
+                Task(priority: .utility) {
                     await crewStore.sendTypingEvent(
                         crewID: crew.id,
                         userID: myID,
@@ -111,8 +121,11 @@ struct CrewChatView: View {
                 }
             }
 
-            crewStore.unsubscribeCrewChat()
-            crewStore.unsubscribeCrewFocusRealtime()
+            Task { @MainActor in
+                crewStore.unsubscribeCrewChat()
+                crewStore.unsubscribeCrewAuxRealtime()
+                crewStore.unsubscribeCrewFocusRealtime()
+            }
         }
         .sheet(isPresented: $showCrewInfo) {
             NavigationStack {
