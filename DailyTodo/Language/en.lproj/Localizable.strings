@@ -837,3 +837,9 @@
 "smart_suggestion_default_message" = "Completing one small task could help you build momentum today.";
 
 "todo_minutes_format" = "%d min";
+
+"chat_today" = "Today";
+"chat_yesterday" = "Yesterday";
+"chat_you" = "You";
+"chat_last_seen_format" = "Last seen %@";
+"chat_start_conversation_format" = "Start the conversation with %@.";

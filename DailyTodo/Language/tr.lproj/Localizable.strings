@@ -838,3 +838,9 @@
 "smart_suggestion_default_message" = "Completing one small task could help you build momentum today.";
 
 "todo_minutes_format" = "%d dk";
+
+"chat_today" = "Bugün";
+"chat_yesterday" = "Dün";
+"chat_you" = "Sen";
+"chat_last_seen_format" = "Son görülme %@";
+"chat_start_conversation_format" = "%@ ile konuşmayı başlat.";

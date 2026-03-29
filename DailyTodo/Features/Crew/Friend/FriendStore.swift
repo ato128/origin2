@@ -662,37 +662,40 @@ final class FriendStore: ObservableObject {
 
     func loadNewMessages(for friendshipID: UUID, currentUserID: UUID?) async {
         do {
-            let lastCreatedAt = friendMessagesByFriendship[friendshipID]?
-                .filter { $0.serverID != nil }
-                .last?.createdAt
+            // Mevcut server ID'leri al
+            let response = try await SupabaseManager.shared.client
+                .from("friend_messages")
+                .select()
+                .eq("friendship_id", value: friendshipID.uuidString)
+                .order("created_at", ascending: true)
+                .limit(100)
+                .execute()
 
-            if let lastCreatedAt {
-                let formatter = ISO8601DateFormatter()
-                formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-                let dateString = formatter.string(from: lastCreatedAt)
+            let decoded = try JSONDecoder().decode([FriendMessageDTO].self, from: response.data)
+            let serverIDs = Set(decoded.map { $0.id })
 
-                let response = try await SupabaseManager.shared.client
-                    .from("friend_messages")
-                    .select()
-                    .eq("friendship_id", value: friendshipID.uuidString)
-                    .gt("created_at", value: dateString)
-                    .order("created_at", ascending: true)
-                    .execute()
-
-                let decoded = try JSONDecoder().decode([FriendMessageDTO].self, from: response.data)
-                guard !decoded.isEmpty else { return }
-                for dto in decoded {
-                    let item = mapDTOToFriendItem(dto, currentUserID: currentUserID)
-                    appendFriendMessage(item, friendshipID: friendshipID)
-                }
-            } else {
-                await loadInitialMessages(for: friendshipID, currentUserID: currentUserID)
+            // Silinmiş mesajları local'den kaldır
+            var current = friendMessagesByFriendship[friendshipID] ?? []
+            current.removeAll { msg in
+                guard let sid = msg.serverID else { return false }
+                return !serverIDs.contains(sid)
             }
+
+            // Yeni mesajları ekle
+            for dto in decoded {
+                let item = mapDTOToFriendItem(dto, currentUserID: currentUserID)
+                if !current.contains(where: { $0.serverID == item.serverID }) {
+                    current.append(item)
+                }
+            }
+
+            current.sort { $0.createdAt < $1.createdAt }
+            friendMessagesByFriendship[friendshipID] = Array(current.suffix(100))
+
         } catch {
             print("LOAD NEW MESSAGES ERROR:", error.localizedDescription)
         }
     }
-
     // MARK: - Send Message
 
     func sendMessage(text: String, friendshipID: UUID, senderID: UUID?, senderName: String) async {
@@ -789,6 +792,33 @@ final class FriendStore: ObservableObject {
             friendMessagesByFriendship[friendshipID] = items
         } catch {
             print("MARK MESSAGES SEEN ERROR:", error.localizedDescription)
+        }
+    }
+    
+    // MARK: - Delete Message
+
+    func deleteMessage(_ message: FriendChatMessageItem, friendshipID: UUID) async {
+        guard let serverID = message.serverID else {
+            var items = friendMessagesByFriendship[friendshipID] ?? []
+            items.removeAll { $0.id == message.id }
+            friendMessagesByFriendship[friendshipID] = items
+            return
+        }
+
+        // Önce local'den sil
+        var items = friendMessagesByFriendship[friendshipID] ?? []
+        items.removeAll { $0.serverID == serverID }
+        friendMessagesByFriendship[friendshipID] = items
+
+        // Server'dan sil
+        do {
+            try await SupabaseManager.shared.client
+                .from("friend_messages")
+                .delete()
+                .eq("id", value: serverID.uuidString)
+                .execute()
+        } catch {
+            print("DELETE MESSAGE ERROR:", error.localizedDescription)
         }
     }
 
@@ -949,6 +979,23 @@ final class FriendStore: ObservableObject {
                         self.appendFriendMessage(item, friendshipID: friendshipID)
                     } catch {
                         print("REALTIME UPDATE DECODE ERROR:", error.localizedDescription)
+                    }
+                }
+            }
+            // ✅ Mesaj silinince
+            _ = channel.onPostgresChange(
+                DeleteAction.self,
+                schema: "public",
+                table: "friend_messages",
+                filter: "friendship_id=eq.\(friendshipID.uuidString)"
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    if let idString = action.oldRecord["id"] as? String,
+                       let deletedID = UUID(uuidString: idString) {
+                        var items = self.friendMessagesByFriendship[friendshipID] ?? []
+                        items.removeAll { $0.serverID == deletedID }
+                        self.friendMessagesByFriendship[friendshipID] = items
                     }
                 }
             }
