@@ -14,7 +14,7 @@ extension HomeDashboardView {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("\(greetingText) 👋")
+                    Text("\(adaptiveGreetingText) \(headerEmoji)")
                         .font(.system(size: 30, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
 
@@ -22,11 +22,11 @@ extension HomeDashboardView {
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(palette.secondaryText)
 
-                    Text(studentHeaderSubtitle)
+                    Text(homePriorityLine)
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(palette.secondaryText)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                        .foregroundStyle(headerAccentColor.opacity(0.95))
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Spacer(minLength: 12)
@@ -39,10 +39,10 @@ extension HomeDashboardView {
                     }
                 } label: {
                     HStack(spacing: 7) {
-                        Image(systemName: "person.2.fill")
+                        Image(systemName: headerPeopleButtonIcon)
                             .font(.system(size: 12, weight: .bold))
 
-                        Text("Arkadaşlar")
+                        Text(headerPeopleButtonTitle)
                             .font(.system(size: 13, weight: .bold))
                     }
                     .foregroundStyle(palette.primaryText)
@@ -50,11 +50,11 @@ extension HomeDashboardView {
                     .padding(.vertical, 10)
                     .background(
                         Capsule()
-                            .fill(palette.secondaryCardFill)
+                            .fill(headerPeopleButtonFill)
                     )
                     .overlay(
                         Capsule()
-                            .stroke(palette.cardStroke, lineWidth: 1)
+                            .stroke(headerPeopleButtonStroke, lineWidth: 1)
                     )
                 }
                 .buttonStyle(.plain)
@@ -65,124 +65,176 @@ extension HomeDashboardView {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    var homeMiniWeekCalendar: some View {
-        VStack(spacing: 10) {
-            HStack {
-                Text("Bu Hafta")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(palette.secondaryText)
+    var adaptiveGreetingText: String {
+        switch homeLayoutMode {
+        case .focusActive:
+            return "Akıştasın"
+        case .crewFollowUp:
+            return greetingText
+        case .insightsFollowUp:
+            return "İyi gidiyorsun"
+        case .completionWrapUp:
+            return currentHour >= 20 ? "Günü kapat" : greetingText
+        case .defaultFlow:
+            return greetingText
+        }
+    }
 
-                Spacer()
+    var headerEmoji: String {
+        switch homeLayoutMode {
+        case .focusActive:
+            return "🎯"
+        case .crewFollowUp:
+            return "👥"
+        case .insightsFollowUp:
+            return "✨"
+        case .completionWrapUp:
+            return currentHour >= 20 ? "🌙" : "✅"
+        case .defaultFlow:
+            if currentHour < 12 { return "☀️" }
+            if currentHour < 18 { return "👋" }
+            return "🌆"
+        }
+    }
 
-                Button {
-                    onOpenWeek()
-                } label: {
-                    Image(systemName: "calendar")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(palette.primaryText)
-                        .padding(8)
-                        .background(
-                            Circle()
-                                .fill(palette.secondaryCardFill)
-                        )
-                        .overlay(
-                            Circle()
-                                .stroke(palette.cardStroke, lineWidth: 1)
-                        )
-                }
-                .buttonStyle(.plain)
-            }
+    var headerAccentColor: Color {
+        switch homeLayoutMode {
+        case .focusActive:
+            return .blue
+        case .crewFollowUp:
+            return .pink
+        case .insightsFollowUp:
+            return .orange
+        case .completionWrapUp:
+            return .green
+        case .defaultFlow:
+            return palette.secondaryText
+        }
+    }
 
-            HStack(spacing: 8) {
-                ForEach(0..<7, id: \.self) { day in
-                    let isSelected = day == selectedDay
-                    let isToday = day == weekdayIndexToday()
-                    let date = targetDateFor(day: day)
-                    let hasItems = hasEvents(on: day)
+    var headerPeopleButtonTitle: String {
+        switch homeLayoutMode {
+        case .crewFollowUp:
+            return "Crew"
+        case .focusActive:
+            return recentChatFriend != nil ? "Sohbet" : "Arkadaşlar"
+        default:
+            return "Arkadaşlar"
+        }
+    }
 
-                    Button {
-                        withAnimation(.spring(response: 0.30, dampingFraction: 0.86)) {
-                            selectedDay = day
-                        }
-                    } label: {
-                        VStack(spacing: 4) {
-                            Text(dayTitles[day])
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(isSelected ? palette.primaryText : palette.secondaryText)
+    var headerPeopleButtonIcon: String {
+        switch homeLayoutMode {
+        case .crewFollowUp:
+            return "person.3.fill"
+        default:
+            return "person.2.fill"
+        }
+    }
 
-                            Text("\(Calendar.current.component(.day, from: date))")
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
-                                .foregroundStyle(palette.primaryText)
-                                .monospacedDigit()
+    var headerPeopleButtonFill: Color {
+        switch homeLayoutMode {
+        case .crewFollowUp:
+            return Color.pink.opacity(0.10)
+        case .insightsFollowUp:
+            return Color.orange.opacity(0.08)
+        default:
+            return palette.secondaryCardFill
+        }
+    }
 
-                            Circle()
-                                .fill(hasItems ? Color.accentColor : palette.cardStroke)
-                                .frame(width: hasItems ? 6 : 4, height: hasItems ? 6 : 4)
-                                .opacity(isToday || hasItems ? 1 : 0.7)
-                                .padding(.top, 1)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(
-                                    isSelected
-                                    ? Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.14 : 0.18)
-                                    : palette.secondaryCardFill
-                                )
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(
-                                    isSelected
-                                    ? Color.accentColor.opacity(0.28)
-                                    : palette.cardStroke,
-                                    lineWidth: 1
-                                )
-                        )
+    var headerPeopleButtonStroke: Color {
+        switch homeLayoutMode {
+        case .crewFollowUp:
+            return Color.pink.opacity(0.20)
+        case .insightsFollowUp:
+            return Color.orange.opacity(0.18)
+        default:
+            return palette.cardStroke
+        }
+    }
+
+    var greetingText: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        switch hour {
+        case 5..<12:
+            return "Günaydın"
+        case 12..<18:
+            return "İyi günler"
+        default:
+            return "İyi akşamlar"
+        }
+    }
+
+    var todayDateText: String {
+        Date.now.formatted(
+            Date.FormatStyle()
+                .locale(locale)
+                .day()
+                .month(.wide)
+                .weekday(.wide)
+        )
+    }
+
+    var homePriorityLine: String {
+        switch homeLayoutMode {
+        case .focusActive:
+            if isFocusActive || hasAnyActiveFocusSession {
+                if let task = focusTask {
+                    let course = task.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !course.isEmpty {
+                        return "\(course) odağındasın. Ritmi bozma."
                     }
-                    .buttonStyle(.plain)
+                }
+                return "Odak açık. Küçük ama net devam et."
+            }
+            return "Akışı koru."
+
+        case .crewFollowUp:
+            if let activeSession = activeBackendCrewFocusSession {
+                return "\(activeSession.title) için crew akışı aktif."
+            }
+            if activeCrewTaskCount > 0 {
+                return "Kişisel taraf tamamlanınca crew tarafına geç."
+            }
+            return "Ekip tarafında kontrol edilecek şeyler olabilir."
+
+        case .insightsFollowUp:
+            if completedTodayCount > 0 {
+                return "Bugünkü ritmini içgörülerden daha net görebilirsin."
+            }
+            return "Bugünün akışını hızlıca gözden geçirebilirsin."
+
+        case .completionWrapUp:
+            if currentHour >= 20 {
+                return "Bugün sakin görünüyor. İstersen yarını planla."
+            }
+            return "Bugünün yükü büyük ölçüde tamam."
+
+        case .defaultFlow:
+            if let nextEvent {
+                let now = currentMinuteOfDay()
+                let start = nextEvent.startMinute
+                let end = nextEvent.startMinute + nextEvent.durationMinute
+
+                if now >= start && now < end {
+                    return "\(nextEvent.title) aktif. Odağını koru."
+                }
+
+                let diff = start - now
+                if diff > 0 && diff <= 45 {
+                    return "\(nextEvent.title) \(diff) dk sonra başlıyor."
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 10)
-            .background(secondaryCardBackground)
-        }
-    }
 
-    var studentHeaderSubtitle: String {
-        if let nextEvent {
-            let now = currentMinuteOfDay()
-            let start = nextEvent.startMinute
-            let end = nextEvent.startMinute + nextEvent.durationMinute
-
-            if now >= start && now < end {
-                return "\(nextEvent.title) dersindesin, odağını koru."
+            if let topTask = todayPendingTasks.first {
+                if store.isOverdue(topTask) {
+                    return "Önce geciken görevi temizlemek iyi olur."
+                }
+                return "Bugün önce \(topTask.title) ile başla."
             }
 
-            if todayBoardTasks.count > 0 {
-                return "Bugün \(todayBoardTasks.count) görevin ve sıradaki dersin var."
-            }
-
-            return "Bugünün programı hazır."
-        }
-
-        if todayBoardTasks.count > 0 {
-            return "Bugünkü görevlerini tamamlamaya odaklan."
-        }
-
-        return "Bugün sakin bir gün görünüyor."
-    }
-
-    func hasEvents(on day: Int) -> Bool {
-        let calendar = Calendar.current
-        let targetDate = targetDateFor(day: day)
-        return allEvents.contains { ev in
-            if let scheduledDate = ev.scheduledDate {
-                return calendar.isDate(scheduledDate, inSameDayAs: targetDate)
-            } else {
-                return ev.weekday == day
-            }
+            return "Bugün sakin görünüyor. İstersen yarını planla."
         }
     }
 }

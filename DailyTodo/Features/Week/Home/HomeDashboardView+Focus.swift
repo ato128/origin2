@@ -18,7 +18,7 @@ extension HomeDashboardView {
                 VStack(alignment: .leading, spacing: 14) {
                     HStack(alignment: .center) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Çalışma Seansı")
+                            Text(focusSectionTitle(for: task))
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(palette.secondaryText)
 
@@ -32,6 +32,10 @@ extension HomeDashboardView {
                                     focusStateTag(title: "Odakta", tint: accent)
                                 }
                             }
+
+                            Text(focusReasonText(for: task))
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(palette.secondaryText)
                         }
 
                         Spacer()
@@ -80,7 +84,7 @@ extension HomeDashboardView {
                             Image(systemName: "play.fill")
                                 .font(.system(size: 13, weight: .bold))
 
-                            Text("Çalışmayı Başlat")
+                            Text("25 dk Başlat")
                                 .font(.system(size: 15, weight: .bold))
                         }
                         .frame(maxWidth: .infinity)
@@ -89,17 +93,13 @@ extension HomeDashboardView {
                             Capsule()
                                 .fill(
                                     LinearGradient(
-                                        colors: [
-                                            accent,
-                                            accent.opacity(0.88)
-                                        ],
+                                        colors: [accent, accent.opacity(0.88)],
                                         startPoint: .leading,
                                         endPoint: .trailing
                                     )
                                 )
                         )
                         .foregroundStyle(.white)
-                        .clipShape(Capsule())
                         .shadow(color: accent.opacity(0.20), radius: 10, y: 4)
                     }
                     .buttonStyle(.plain)
@@ -113,10 +113,7 @@ extension HomeDashboardView {
                             RoundedRectangle(cornerRadius: 24, style: .continuous)
                                 .fill(
                                     RadialGradient(
-                                        colors: [
-                                            accent.opacity(0.10),
-                                            Color.clear
-                                        ],
+                                        colors: [accent.opacity(0.10), Color.clear],
                                         center: .topTrailing,
                                         startRadius: 10,
                                         endRadius: 220
@@ -128,12 +125,7 @@ extension HomeDashboardView {
                                 .stroke(accent.opacity(0.16), lineWidth: 1)
                         )
                 )
-                .shadow(
-                    color: accent.opacity(0.08),
-                    radius: 12,
-                    x: 0,
-                    y: 5
-                )
+                .shadow(color: accent.opacity(0.08), radius: 12, x: 0, y: 5)
             }
         }
     }
@@ -147,7 +139,7 @@ extension HomeDashboardView {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .center) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Aktif Çalışma")
+                        Text("Aktif Odak")
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(palette.secondaryText)
 
@@ -197,16 +189,12 @@ extension HomeDashboardView {
                             advanceInlineWorkout()
                         }
                     } label: {
-                        Text(focusWorkoutMode ? "Sonraki Set" : "Odayı Aç")
+                        Text(focusWorkoutMode ? "Sonraki Set" : "Devam Et")
                             .font(.system(size: 14, weight: .bold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 11)
-                            .background(
-                                Capsule()
-                                    .fill(Color.accentColor)
-                            )
+                            .background(Capsule().fill(Color.accentColor))
                             .foregroundStyle(.white)
-                            .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
 
@@ -217,12 +205,8 @@ extension HomeDashboardView {
                             .font(.system(size: 14, weight: .bold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 11)
-                            .background(
-                                Capsule()
-                                    .fill(Color.orange.opacity(0.16))
-                            )
+                            .background(Capsule().fill(Color.orange.opacity(0.16)))
                             .foregroundStyle(.orange)
-                            .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
                 }
@@ -236,10 +220,7 @@ extension HomeDashboardView {
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
                             .fill(
                                 RadialGradient(
-                                    colors: [
-                                        urgencyColor.opacity(0.10),
-                                        Color.clear
-                                    ],
+                                    colors: [urgencyColor.opacity(0.10), Color.clear],
                                     center: .topLeading,
                                     startRadius: 20,
                                     endRadius: 220
@@ -251,80 +232,11 @@ extension HomeDashboardView {
                             .stroke(urgencyColor.opacity(0.16), lineWidth: 1)
                     )
             )
-            .shadow(
-                color: urgencyColor.opacity(0.08),
-                radius: 12,
-                x: 0,
-                y: 5
-            )
+            .shadow(color: urgencyColor.opacity(0.08), radius: 12, x: 0, y: 5)
         }
         .onAppear {
             liveDotPulse = true
         }
-    }
-
-    func focusChip(title: String, icon: String, color: Color) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon)
-            Text(title)
-        }
-        .font(.caption.weight(.semibold))
-        .foregroundStyle(color)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(
-            Capsule()
-                .fill(color.opacity(0.14))
-        )
-    }
-
-    func focusStateTag(title: String, tint: Color) -> some View {
-        Text(title)
-            .font(.system(size: 10, weight: .bold))
-            .foregroundStyle(tint)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 4)
-            .background(
-                Capsule()
-                    .fill(tint.opacity(0.14))
-            )
-    }
-
-    func backendCrewFocusAccentColor(for session: CrewFocusSessionDTO, now: Date) -> Color {
-        if !session.is_active { return .green }
-        if session.is_paused { return .orange }
-
-        let remaining = backendCrewFocusRemainingSeconds(for: session, now: now)
-        if remaining <= 180 { return .red }
-        if remaining <= 600 { return .orange }
-        return .blue
-    }
-
-    func backendCrewFocusRemainingSeconds(for session: CrewFocusSessionDTO, now: Date) -> Int {
-        if session.is_paused {
-            return max(0, session.paused_remaining_seconds ?? 0)
-        }
-
-        guard let startedAt = CrewDateParser.parse(session.started_at) else {
-            return session.duration_minutes * 60
-        }
-
-        let endDate = startedAt.addingTimeInterval(TimeInterval(session.duration_minutes * 60))
-        return max(0, Int(endDate.timeIntervalSince(now)))
-    }
-
-    func backendCrewFocusTimeText(for session: CrewFocusSessionDTO, now: Date) -> String {
-        let remaining = backendCrewFocusRemainingSeconds(for: session, now: now)
-        let minutes = remaining / 60
-        let seconds = remaining % 60
-        return String(format: "%02d:%02d", minutes, seconds)
-    }
-
-    func sessionStoreSafeEmailPrefix() -> String? {
-        if let email = session.currentUser?.email, !email.isEmpty {
-            return email.components(separatedBy: "@").first ?? email
-        }
-        return nil
     }
 
     func crewSharedFocusCard(session: CrewFocusSessionDTO) -> some View {
@@ -333,10 +245,7 @@ extension HomeDashboardView {
             let remaining = backendCrewFocusRemainingSeconds(for: session, now: now)
             let liveTimeText = backendCrewFocusTimeText(for: session, now: now)
             let total = Double(session.duration_minutes * 60)
-            let progress = total > 0
-                ? min(1, max(0, 1 - Double(remaining) / total))
-                : 0
-
+            let progress = total > 0 ? min(1, max(0, 1 - Double(remaining) / total)) : 0
             let accent = backendCrewFocusAccentColor(for: session, now: now)
 
             VStack(alignment: .leading, spacing: 14) {
@@ -350,6 +259,10 @@ extension HomeDashboardView {
                             .font(.system(size: 22, weight: .bold, design: .rounded))
                             .foregroundStyle(palette.primaryText)
                             .lineLimit(1)
+
+                        Text("\(session.host_name) başlattı")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(palette.secondaryText)
                     }
 
                     Spacer()
@@ -380,7 +293,7 @@ extension HomeDashboardView {
                     Button {
                         focusRoomSession = session
                     } label: {
-                        Text("Odayı Aç")
+                        Text("Katıl")
                             .font(.system(size: 14, weight: .bold))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
@@ -443,10 +356,7 @@ extension HomeDashboardView {
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
                             .fill(
                                 RadialGradient(
-                                    colors: [
-                                        accent.opacity(0.10),
-                                        Color.clear
-                                    ],
+                                    colors: [accent.opacity(0.10), Color.clear],
                                     center: .topLeading,
                                     startRadius: 20,
                                     endRadius: 220
@@ -461,56 +371,66 @@ extension HomeDashboardView {
         }
     }
 
+    func focusStateTag(title: String, tint: Color) -> some View {
+        Text(title)
+            .font(.system(size: 10, weight: .bold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(tint.opacity(0.14)))
+    }
+
     var focusCardStatusTextStudent: String {
         guard let task = focusTask else { return "Bugün için öneri yok" }
-
-        if store.isOverdue(task) {
-            return "Öncelikli"
-        }
-
-        if let due = task.dueDate,
-           Calendar.current.isDateInToday(due) {
-            return "Sıradaki odak"
-        }
-
+        if store.isOverdue(task) { return "Öncelikli" }
+        if let due = task.dueDate, Calendar.current.isDateInToday(due) { return "Sıradaki odak" }
         return "Hazır"
     }
 
-    func focusAccentColor(for task: DTTaskItem) -> Color {
+    func focusSectionTitle(for task: DTTaskItem) -> String {
+        if store.isOverdue(task) { return "Öncelikli Odak" }
+        if let due = task.dueDate, Calendar.current.isDateInToday(due) { return "Bugünün Odak Noktası" }
+        return "Çalışma Seansı"
+    }
+
+    func focusReasonText(for task: DTTaskItem) -> String {
         if store.isOverdue(task) {
-            return .red
+            return "Bu görev gecikmiş. Önce bunu temizlemek iyi olur."
         }
 
+        if let due = task.dueDate {
+            let minutes = Int(due.timeIntervalSinceNow / 60)
+            if minutes > 0 && minutes <= 90 {
+                return "Teslime yakın. Kısa bir odak çok iş çıkarır."
+            }
+            if Calendar.current.isDateInToday(due) {
+                return "Bugün bitirmen iyi olur."
+            }
+        }
+
+        return "Şimdi başlamak için uygun bir görev."
+    }
+
+    func focusAccentColor(for task: DTTaskItem) -> Color {
+        if store.isOverdue(task) { return .red }
         switch task.taskType.lowercased() {
-        case "exam":
-            return .orange
-        case "project":
-            return .purple
-        case "workout":
-            return .green
-        case "study":
-            return .blue
-        case "homework":
-            return .pink
-        default:
-            return .accentColor
+        case "exam": return .orange
+        case "project": return .purple
+        case "workout": return .green
+        case "study": return .blue
+        case "homework": return .pink
+        default: return .accentColor
         }
     }
 
     func focusSymbol(for task: DTTaskItem) -> String {
         switch task.taskType.lowercased() {
-        case "exam":
-            return "doc.text.fill"
-        case "project":
-            return "folder.fill"
-        case "workout":
-            return "dumbbell.fill"
-        case "study":
-            return "brain.head.profile"
-        case "homework":
-            return "book.closed.fill"
-        default:
-            return "scope"
+        case "exam": return "doc.text.fill"
+        case "project": return "folder.fill"
+        case "workout": return "dumbbell.fill"
+        case "study": return "brain.head.profile"
+        case "homework": return "book.closed.fill"
+        default: return "scope"
         }
     }
 
