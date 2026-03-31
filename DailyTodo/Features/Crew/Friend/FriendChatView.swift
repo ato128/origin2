@@ -6,35 +6,57 @@
 //
 
 import SwiftUI
+import PhotosUI
+import UniformTypeIdentifiers
+import UIKit
+import Photos
+import AVFoundation
 
 struct FriendChatView: View {
     let friend: Friend
-
+    
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
+    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject var friendStore: FriendStore
     @EnvironmentObject var session: SessionStore
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
-
+    
     private let palette = ThemePalette()
-
+    
     @State private var draftMessage: String = ""
     @State private var showFriendInfo = false
     // State olarak ekle
     @State private var composerBarHeight: CGFloat = 90
+    @State private var showCamera = false
+    @State private var showFileImporter = false
+    @State private var showAttachmentAlert = false
+    @State private var attachmentAlertText = ""
     
-    // View'e bu state'i ekle
-    @State private var keyboardHeight: CGFloat = 0
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var selectedFileURL: URL?
+    @State private var capturedImage: UIImage?
+    @State private var draftAttachment: DraftAttachment?
+    @State private var showMicPermissionAlert = false
+    
+    @StateObject private var audioRecorder = AudioRecorderManager()
+    
+    
+    enum DraftAttachment {
+        case photo(UIImage)
+        case file(URL)
+    }
+    
     @FocusState private var isComposerFocused: Bool
-
+    
     private var friendshipID: UUID? { friend.backendFriendshipID }
-
+    
     private var messages: [FriendChatMessageItem] {
         guard let friendshipID else { return [] }
         return friendStore.friendMessagesByFriendship[friendshipID] ?? []
     }
-
-    var body: some View {
+    
+    private var chatRootContent: some View {
         ZStack(alignment: .top) {
             ambientBackground
 
@@ -48,100 +70,196 @@ struct FriendChatView: View {
 
             floatingTopControls
 
-            VStack {
-                Spacer()
+            
+        }
+    }
+    
+    private var chatMainView: some View {
+        chatRootContent
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 composerBar
             }
-        }
-        .contentShape(Rectangle())
-        .onTapGesture { isComposerFocused = false }
-        .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
-        .task {
-            guard let friendshipID else { return }
+            .contentShape(Rectangle())
+            .onTapGesture { isComposerFocused = false }
+            .navigationBarBackButtonHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
+    }
+    
+    private var chatSheetsAndDialogs: some View {
+        EmptyView()
+            .sheet(isPresented: $showFriendInfo) {
+                NavigationStack {
+                    FriendChatInfoView(friend: friend)
+                }
+            }
+            .fileImporter(
+                isPresented: $showFileImporter,
+                allowedContentTypes: [.item, .data, .content, .image, .pdf],
+                allowsMultipleSelection: false
+            ) { result in
+                switch result {
+                case .success(let urls):
+                    guard let url = urls.first else { return }
+                    selectedFileURL = url
+                    draftAttachment = .file(url)
 
-            friendStore.activeChatFriendshipID = friendshipID
-
-            if friendStore.friendMessagesByFriendship[friendshipID] == nil {
-                await friendStore.loadInitialMessages(
-                    for: friendshipID,
+                case .failure(let error):
+                    attachmentAlertText = "Dosya seçilemedi: \(error.localizedDescription)"
+                    showAttachmentAlert = true
+                }
+            }
+            .sheet(isPresented: $showCamera) {
+                CameraPicker(image: $capturedImage)
+            }
+            .alert("Bilgi", isPresented: $showAttachmentAlert) {
+                Button("Tamam", role: .cancel) { }
+            } message: {
+                Text(attachmentAlertText)
+            }
+    }
+    private var chatLifecycleHandlers: some View {
+        EmptyView()
+            .task {
+                guard let friendshipID else { return }
+                
+                FriendStore.sharedRetryBridge = { message in
+                    await friendStore.retryMessage(message)
+                }
+                
+                friendStore.setActiveChat(friendshipID)
+                
+                if friendStore.friendMessagesByFriendship[friendshipID] == nil {
+                    await friendStore.loadInitialMessages(
+                        for: friendshipID,
+                        currentUserID: session.currentUser?.id
+                    )
+                }
+                
+                let pushStore = PushTokenStore()
+                await pushStore.saveCurrentToken(currentUserID: session.currentUser?.id)
+                
+                await friendStore.markMessagesSeen(
+                    friendshipID: friendshipID,
                     currentUserID: session.currentUser?.id
                 )
-            }
-
-            let pushStore = PushTokenStore()
-            await pushStore.saveCurrentToken(currentUserID: session.currentUser?.id)
-
-            await friendStore.markMessagesSeen(
-                friendshipID: friendshipID,
-                currentUserID: session.currentUser?.id
-            )
-
-            friendStore.unsubscribeFriendMessagesRealtime()
-            friendStore.subscribeToFriendMessagesRealtime(
-                friendshipID: friendshipID,
-                currentUserID: session.currentUser?.id
-            )
-
-            friendStore.subscribeToTypingRealtime(
-                friendshipID: friendshipID,
-                currentUserID: session.currentUser?.id
-            )
-
-            if let friendUserID = friend.backendUserID {
-                await friendStore.loadPresence(for: [friendUserID])
-                friendStore.subscribeToPresenceRealtime(for: [friendUserID])
-            }
-
-            await friendStore.setPresence(
-                currentUserID: session.currentUser?.id,
-                isOnline: true
-            )
-
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
-                await friendStore.loadNewMessages(
-                    for: friendshipID,
+                
+                friendStore.unsubscribeFriendMessagesRealtime()
+                friendStore.subscribeToFriendMessagesRealtime(
+                    friendshipID: friendshipID,
                     currentUserID: session.currentUser?.id
                 )
-            }
-        }
-        .onDisappear {
-            friendStore.activeChatFriendshipID = nil
-            friendStore.unsubscribeFriendMessagesRealtime()
-            friendStore.unsubscribeTypingRealtime()
-            friendStore.unsubscribePresenceRealtime()
-
-            Task {
+                
+                friendStore.subscribeToTypingRealtime(
+                    friendshipID: friendshipID,
+                    currentUserID: session.currentUser?.id
+                )
+                
+                if let friendUserID = friend.backendUserID {
+                    await friendStore.loadPresence(for: [friendUserID])
+                    friendStore.subscribeToPresenceRealtime(for: [friendUserID])
+                }
+                
                 await friendStore.setPresence(
                     currentUserID: session.currentUser?.id,
-                    isOnline: false
+                    isOnline: true
                 )
             }
-
-            if let friendshipID {
+            .onDisappear {
+                friendStore.setActiveChat(nil)
+                friendStore.unsubscribeFriendMessagesRealtime()
+                friendStore.unsubscribeTypingRealtime()
+                friendStore.unsubscribePresenceRealtime()
+                
                 Task {
-                    await friendStore.setTyping(
-                        friendshipID: friendshipID,
+                    await friendStore.setPresence(
                         currentUserID: session.currentUser?.id,
-                        currentUserName: senderDisplayName(),
-                        isTyping: false
+                        isOnline: false
+                    )
+                }
+                
+                if let friendshipID {
+                    Task {
+                        await friendStore.setTyping(
+                            friendshipID: friendshipID,
+                            currentUserID: session.currentUser?.id,
+                            currentUserName: senderDisplayName(),
+                            isTyping: false
+                        )
+                    }
+                }
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                let isActive = newPhase == .active
+                friendStore.setAppActive(isActive)
+                
+                guard isActive, let friendshipID else { return }
+                
+                Task {
+                    await friendStore.loadNewMessages(
+                        for: friendshipID,
+                        currentUserID: session.currentUser?.id
+                    )
+                    
+                    await friendStore.markMessagesSeen(
+                        friendshipID: friendshipID,
+                        currentUserID: session.currentUser?.id
                     )
                 }
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notif in
-            let frame = notif.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect ?? .zero
-            keyboardHeight = frame.height
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-            keyboardHeight = 0
-        }
-        .sheet(isPresented: $showFriendInfo) {
-            NavigationStack {
-                FriendChatInfoView(friend: friend)
+            .onChange(of: messages.count) { _, _ in
+                guard let friendshipID else { return }
+                
+                Task {
+                    await friendStore.markMessagesSeen(
+                        friendshipID: friendshipID,
+                        currentUserID: session.currentUser?.id
+                    )
+                }
             }
-        }
+            .onChange(of: selectedPhotoItem) { _, newItem in
+                guard let newItem else { return }
+                
+                Task {
+                    do {
+                        if let data = try await newItem.loadTransferable(type: Data.self),
+                           let image = UIImage(data: data) {
+                            await MainActor.run {
+                                draftAttachment = .photo(image)
+                            }
+                        } else {
+                            await MainActor.run {
+                                attachmentAlertText = "Fotoğraf alınamadı."
+                                showAttachmentAlert = true
+                            }
+                        }
+                    } catch {
+                        await MainActor.run {
+                            attachmentAlertText = "Fotoğraf seçilemedi: \(error.localizedDescription)"
+                            showAttachmentAlert = true
+                        }
+                    }
+                }
+            }
+            .onChange(of: capturedImage) { _, newImage in
+                guard let newImage else { return }
+                draftAttachment = .photo(newImage)
+            }
+    }
+    
+    var body: some View {
+        chatMainView
+            .background(chatSheetsAndDialogs)
+            .background(chatLifecycleHandlers)
+            .alert("Mikrofon izni gerekli", isPresented: $showMicPermissionAlert) {
+                Button("Ayarlar") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                Button("İptal", role: .cancel) { }
+            } message: {
+                Text("Ses mesajı göndermek için mikrofon izni vermen gerekiyor.")
+            }
     }
 }
 
@@ -327,23 +445,70 @@ private extension FriendChatView {
                             .id(message.id)
                         }
                     }
+                    if isTypingNow {
+                        HStack {
+                            HStack(spacing: 6) {
+                                TypingDotsBubble()
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                    .fill(Color.white.opacity(0.045))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                    )
+                            )
+
+                            Spacer(minLength: 56)
+                        }
+                        .padding(.top, 4)
+                        .transition(.opacity.combined(with: .move(edge: .leading)))
+                    }
 
                     Color.clear
                         .frame(height: 1)
                         .id("chat-bottom-anchor")
                 }
+                .animation(.spring(response: 0.32, dampingFraction: 0.86), value: messages.count)
                 .padding(.horizontal, 16)
                 .padding(.top, 64)
-                .padding(.bottom, keyboardHeight > 0 ? keyboardHeight + composerBarHeight + 16 : composerBarHeight + 34)
+                .padding(.bottom, composerBarHeight + 18)
             }
             .scrollIndicators(.hidden)
-            .scrollDismissesKeyboard(.interactively) // ✅ ScrollView'e taşındı
-            .onAppear { scrollToBottom(proxy: proxy, animated: false) }
-            .onChange(of: messages.count) { _, _ in scrollToBottom(proxy: proxy, animated: true) }
-            .onChange(of: keyboardHeight) { _, newHeight in // ✅ klavye açılınca scroll
-                if newHeight > 0 {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        scrollToBottom(proxy: proxy, animated: true)
+            .scrollDismissesKeyboard(.interactively)
+            .onAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                    scrollToBottom(proxy: proxy, animated: false)
+                }
+            }
+
+            .task(id: messages.last?.id) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                    scrollToBottom(proxy: proxy, animated: true)
+                }
+            }
+
+            .onChange(of: isComposerFocused) { _, focused in
+                guard focused else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    scrollToBottom(proxy: proxy, animated: true)
+                }
+            }
+        }
+    }
+    private struct TypingDotsBubble: View {
+        var body: some View {
+            TimelineView(.animation(minimumInterval: 0.35)) { context in
+                let tick = Int(context.date.timeIntervalSinceReferenceDate / 0.35) % 3
+
+                HStack(spacing: 4) {
+                    ForEach(0..<3, id: \.self) { i in
+                        Circle()
+                            .fill(Color.white.opacity(tick == i ? 0.95 : 0.35))
+                            .frame(width: 6, height: 6)
+                            .scaleEffect(tick == i ? 1.0 : 0.78)
                     }
                 }
             }
@@ -386,76 +551,201 @@ private extension FriendChatView {
 // MARK: - Composer
 private extension FriendChatView {
     var composerBar: some View {
-        HStack(alignment: .center, spacing: 10) {
-            Button {} label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.95))
-                    .frame(width: 42, height: 42)
-                    .background(glassCircleBackground)
+        VStack(spacing: 8) {
+            if let draftAttachment {
+                attachmentPreviewCard(attachment: draftAttachment)
+                    .padding(.horizontal, 16)
             }
-            .buttonStyle(.plain)
-            
-            HStack(spacing: 10) {
-                TextField(tr("chat_message_placeholder"), text: $draftMessage)
-                    .focused($isComposerFocused)
-                    .onChange(of: draftMessage) { _, newValue in
-                        guard let friendshipID else { return }
-                        let clean = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                            Task {
-                                await friendStore.setTyping(
-                                    friendshipID: friendshipID,
-                                    currentUserID: session.currentUser?.id,
-                                    currentUserName: senderDisplayName(),
-                                    isTyping: !clean.isEmpty
-                                )
+
+            if audioRecorder.isRecording {
+                HStack(spacing: 12) {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 10, height: 10)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Ses kaydı")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white)
+
+                        HStack(spacing: 3) {
+                            ForEach(0..<18, id: \.self) { index in
+                                Capsule()
+                                    .fill(Color.white.opacity(0.75))
+                                    .frame(width: 3, height: barHeight(for: index))
                             }
                         }
                     }
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(.white)
-                    .tint(Color.accentColor)
-                    .submitLabel(.send)
-                    .onSubmit { sendMessage() }
-                
-                Button {
-                    if !draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        sendMessage()
+
+                    Spacer()
+
+                    Text(audioRecorder.durationText())
+                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.9))
+
+                    Button("İptal") {
+                        audioRecorder.cancelRecording()
+                    }
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.red)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.white.opacity(0.06))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        )
+                )
+                .padding(.horizontal, 16)
+            }
+
+            HStack(alignment: .center, spacing: 10) {
+                Menu {
+                    PhotosPicker(
+                        selection: $selectedPhotoItem,
+                        matching: .images,
+                        photoLibrary: .shared()
+                    ) {
+                        Label("Fotoğraf", systemImage: "photo")
+                    }
+
+                    Button {
+                        showCamera = true
+                    } label: {
+                        Label("Kamera", systemImage: "camera")
+                    }
+
+                    Button {
+                        showFileImporter = true
+                    } label: {
+                        Label("Dosya", systemImage: "doc")
                     }
                 } label: {
-                    Image(systemName:
-                            draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                          ? "mic.fill"
-                          : "arrow.up.circle.fill"
-                    )
-                    .font(.system(
-                        size: draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 18 : 24,
-                        weight: .semibold
-                    ))
-                    .foregroundStyle(
-                        draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? Color.white.opacity(0.78)
-                        : Color.accentColor
-                    )
-                    .animation(.spring(response: 0.25), value: draftMessage.isEmpty)
+                    Image(systemName: "plus")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.95))
+                        .frame(width: 42, height: 42)
+                        .background(glassCircleBackground)
                 }
-                .buttonStyle(.plain)
+
+                HStack(spacing: 10) {
+                    TextField(tr("chat_message_placeholder"), text: $draftMessage)
+                        .focused($isComposerFocused)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(.white)
+                        .tint(Color.accentColor)
+                        .submitLabel(.send)
+                        .onSubmit { sendMessage() }
+
+                    Button {
+                        if hasSendableContent {
+                            sendMessage()
+                            return
+                        }
+
+                        Task {
+                            if audioRecorder.isRecording {
+                                audioRecorder.stopRecording()
+
+                                guard let recordedURL = audioRecorder.recordedURL,
+                                      let friendshipID else { return }
+
+                                await friendStore.sendVoiceMessage(
+                                    audioURL: recordedURL,
+                                    friendshipID: friendshipID,
+                                    senderID: session.currentUser?.id,
+                                    senderName: senderDisplayName(),
+                                    durationText: audioRecorder.durationText()
+                                )
+
+                                if let toUserId = friend.backendUserID?.uuidString {
+                                    PushService.shared.send(toUserId: toUserId, message: "🎤 Ses mesajı")
+                                }
+
+                                audioRecorder.recordedURL = nil
+                                audioRecorder.elapsedSeconds = 0
+                            } else {
+                                let granted = await audioRecorder.requestPermission()
+                                guard granted else {
+                                    showMicPermissionAlert = true
+                                    return
+                                }
+
+                                do {
+                                    try audioRecorder.startRecording()
+                                } catch {
+                                    print("VOICE RECORD START ERROR:", error.localizedDescription)
+                                }
+                            }
+                        }
+                    } label: {
+                        Image(systemName:
+                            hasSendableContent
+                            ? "arrow.up.circle.fill"
+                            : (audioRecorder.isRecording ? "stop.circle.fill" : "mic.fill")
+                        )
+                        .font(.system(size: hasSendableContent ? 24 : 20, weight: .semibold))
+                        .foregroundStyle(
+                            hasSendableContent
+                            ? Color.accentColor
+                            : (audioRecorder.isRecording ? Color.red : Color.white.opacity(0.78))
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 16)
+                .frame(height: 46)
+                .background(glassCapsuleBackground)
             }
             .padding(.horizontal, 16)
-            .frame(height: 46)
-            .background(glassCapsuleBackground)
         }
-        .padding(.horizontal, 16)
         .padding(.bottom, 10)
         .background(
             GeometryReader { geo in
-                Color.clear.onAppear {
-                    composerBarHeight = geo.size.height
-                }
+                Color.clear
+                    .onAppear {
+                        composerBarHeight = geo.size.height
+                    }
+                    .onChange(of: geo.size.height) { _, newHeight in
+                        composerBarHeight = newHeight
+                    }
             }
         )
+    }
+    
+    func barHeight(for index: Int) -> CGFloat {
+        let normalized = max(0.08, CGFloat((audioRecorder.averagePower + 50) / 50))
+        let base = 6 + CGFloat((index % 5) * 2)
+        return base + (normalized * 18)
+    }
+}
+
+private extension FriendChatView {
+   
+
+    func attachmentMenuRow(title: String, systemImage: String) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: systemImage)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(.white)
+
+            Text(title)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(.white)
+
+            Spacer()
+        }
+        .padding(.horizontal, 18)
+        .frame(height: 56)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.08))
+        )
+        .padding(.horizontal, 14)
     }
 }
 
@@ -485,24 +775,74 @@ private extension FriendChatView {
     }
 
     func sendMessage() {
+        guard let friendshipID else { return }
+        guard let senderID = session.currentUser?.id else { return }
+
         let clean = draftMessage.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !clean.isEmpty, let friendshipID else { return }
-        guard let toUserId = friend.backendUserID?.uuidString else { return }
+        let toUserId = friend.backendUserID?.uuidString
+        let attachmentToSend = draftAttachment
 
         draftMessage = ""
-        
+        draftAttachment = nil
+        selectedPhotoItem = nil
+        selectedFileURL = nil
+        capturedImage = nil
 
         Task {
+            if let attachment = attachmentToSend {
+                switch attachment {
+                case .photo(let image):
+                    guard let jpegData = image.jpegData(compressionQuality: 0.82) else {
+                        await MainActor.run {
+                            attachmentAlertText = "Fotoğraf hazırlanamadı."
+                            showAttachmentAlert = true
+                        }
+                        return
+                    }
+
+                    await friendStore.sendPhotoMessage(
+                        imageData: jpegData,
+                        friendshipID: friendshipID,
+                        senderID: senderID,
+                        senderName: senderDisplayName(),
+                        caption: clean.isEmpty ? nil : clean
+                    )
+
+                    PushService.shared.send(
+                        toUserId: toUserId ?? "",
+                        message: clean.isEmpty ? "📷 Fotoğraf" : clean
+                    )
+                    return
+
+                case .file(let fileURL):
+                    await friendStore.sendFileMessage(
+                        fileURL: fileURL,
+                        friendshipID: friendshipID,
+                        senderID: senderID,
+                        senderName: senderDisplayName(),
+                        caption: clean.isEmpty ? nil : clean
+                    )
+
+                    PushService.shared.send(
+                        toUserId: toUserId ?? "",
+                        message: clean.isEmpty ? "📎 Dosya" : clean
+                    )
+                    return
+                }
+            }
+
+            guard !clean.isEmpty else { return }
+
             await friendStore.sendMessage(
                 text: clean,
                 friendshipID: friendshipID,
-                senderID: session.currentUser?.id,
+                senderID: senderID,
                 senderName: senderDisplayName()
             )
-            PushService.shared.send(toUserId: toUserId, message: clean)
+
+            PushService.shared.send(toUserId: toUserId ?? "", message: clean)
         }
     }
-
     func scrollToBottom(proxy: ScrollViewProxy, animated: Bool) {
         DispatchQueue.main.async {
             if animated {
@@ -513,6 +853,93 @@ private extension FriendChatView {
                 proxy.scrollTo("chat-bottom-anchor", anchor: .bottom)
             }
         }
+    }
+    @ViewBuilder
+    func attachmentPreviewCard(attachment: DraftAttachment) -> some View {
+        HStack(spacing: 12) {
+            switch attachment {
+            case .photo(let image):
+                ZStack(alignment: .topTrailing) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 64, height: 64)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                    removeAttachmentButton
+                        .offset(x: 6, y: -6)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Fotoğraf hazır")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(palette.primaryText)
+
+                    Text("Göndermeden önce istersen mesaj ekleyebilirsin.")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(palette.secondaryText)
+                        .lineLimit(2)
+                }
+
+                Spacer()
+
+            case .file(let url):
+                HStack(spacing: 12) {
+                    ZStack(alignment: .topTrailing) {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color.white.opacity(0.06))
+                            .frame(width: 64, height: 64)
+                            .overlay(
+                                Image(systemName: "doc.fill")
+                                    .font(.system(size: 24, weight: .semibold))
+                                    .foregroundStyle(Color.accentColor)
+                            )
+
+                        removeAttachmentButton
+                            .offset(x: 6, y: -6)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(url.lastPathComponent)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(palette.primaryText)
+                            .lineLimit(2)
+
+                        Text("Dosya hazır")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(palette.secondaryText)
+                    }
+
+                    Spacer()
+                }
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.06))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
+        )
+    }
+    var removeAttachmentButton: some View {
+        Button {
+            draftAttachment = nil
+            selectedPhotoItem = nil
+            selectedFileURL = nil
+            capturedImage = nil
+        } label: {
+            Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(.white, Color.black.opacity(0.45))
+                .background(Circle().fill(Color.black.opacity(0.18)))
+        }
+        .buttonStyle(.plain)
+    }
+    private var hasSendableContent: Bool {
+        !draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || draftAttachment != nil
     }
 }
 
@@ -574,11 +1001,23 @@ private struct ChatMessageRow: View {
     let onDelete: () -> Void
 
     @State private var showTime = false
+    @State private var showImageViewer = false
+    @State private var isSavingImage = false
+    @State private var imageSaveAlertText = ""
+    @State private var showImageSaveAlert = false
 
     private var timeText: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm"
         return formatter.string(from: message.createdAt)
+    }
+
+    private var isImageMessage: Bool {
+        message.messageType == "image" && message.mediaURL != nil
+    }
+
+    private var isFileMessage: Bool {
+        message.messageType == "file" && message.mediaURL != nil
     }
 
     var body: some View {
@@ -587,18 +1026,32 @@ private struct ChatMessageRow: View {
                 if message.isFromMe { Spacer(minLength: 56) }
 
                 VStack(alignment: message.isFromMe ? .trailing : .leading, spacing: 4) {
-                    Text(message.text)
-                        .font(.system(size: 17, weight: .medium))
-                        .foregroundStyle(message.isFromMe ? .white : .white.opacity(0.96))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(messageBubbleBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    messageContent
                         .contextMenu {
-                            Button {
-                                UIPasteboard.general.string = message.text
-                            } label: {
-                                Label(tr("common_copy"), systemImage: "doc.on.doc")
+                            if !message.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                Button {
+                                    UIPasteboard.general.string = message.text
+                                } label: {
+                                    Label(tr("common_copy"), systemImage: "doc.on.doc")
+                                }
+                            }
+
+                            if isImageMessage {
+                                Button {
+                                    saveImageToPhotos()
+                                } label: {
+                                    Label("Fotoğrafı Kaydet", systemImage: "square.and.arrow.down")
+                                }
+                            }
+
+                            if message.isFailed && message.isFromMe {
+                                Button {
+                                    Task {
+                                        await FriendStore.sharedRetryBridge?(message)
+                                    }
+                                } label: {
+                                    Label("Tekrar Gönder", systemImage: "arrow.clockwise")
+                                }
                             }
 
                             if message.isFromMe {
@@ -610,7 +1063,6 @@ private struct ChatMessageRow: View {
                             }
                         }
 
-                    // Saat
                     if showTime {
                         Text(timeText)
                             .font(.system(size: 11, weight: .medium))
@@ -619,27 +1071,19 @@ private struct ChatMessageRow: View {
                             .transition(.opacity.combined(with: .scale(scale: 0.9)))
                     }
 
-                    // Seen indicator
                     if message.isFromMe {
                         HStack(spacing: 4) {
-                            Image(systemName:
-                                message.isPending ? "clock"
-                                : (message.seenAt == nil ? "checkmark" : "checkmark.circle.fill")
-                            )
-                            .font(.system(size: 10, weight: .medium))
+                            messageStatusSymbol
 
-                            Text(
-                                message.isPending ? tr("chat_sending")
-                                : (message.seenAt == nil ? tr("chat_sent") : tr("chat_seen"))
-                            )
-                            .font(.system(size: 11, weight: .medium))
+                            if !messageStatusText.isEmpty {
+                                Text(messageStatusText)
+                                    .font(.system(size: 10, weight: .medium))
+                                    .lineLimit(1)
+                            }
                         }
-                        .foregroundStyle(
-                            message.seenAt != nil
-                            ? Color(red: 0.33, green: 0.62, blue: 1.0)
-                            : Color.white.opacity(0.45)
-                        )
-                        .padding(.horizontal, 4)
+                        .foregroundStyle(messageStatusColor)
+                        .padding(.horizontal, 6)
+                        .padding(.top, 1)
                     }
                 }
 
@@ -648,24 +1092,631 @@ private struct ChatMessageRow: View {
         }
         .padding(.vertical, 3)
         .onTapGesture {
-            withAnimation(.spring(response: 0.28)) {
-                showTime.toggle()
+            if isImageMessage {
+                showImageViewer = true
+            } else {
+                withAnimation(.spring(response: 0.28)) {
+                    showTime.toggle()
+                }
             }
         }
+        .fullScreenCover(isPresented: $showImageViewer) {
+            if let mediaURL = message.mediaURL {
+                FullScreenImageViewer(
+                    imageURLString: mediaURL,
+                    onSave: {
+                        saveImageToPhotos()
+                    }
+                )
+            }
+        }
+        .alert("Bilgi", isPresented: $showImageSaveAlert) {
+            Button("Tamam", role: .cancel) { }
+        } message: {
+            Text(imageSaveAlertText)
+        }
+        .transition(
+            .asymmetric(
+                insertion: .move(edge: message.isFromMe ? .trailing : .leading)
+                    .combined(with: .opacity),
+                removal: .opacity
+            )
+        )
+    }
+    private var isVoiceMessage: Bool {
+        message.messageType == "voice" && message.mediaURL != nil
+    }
+
+    @ViewBuilder
+    private var messageContent: some View {
+        if isImageMessage {
+            imageMessageBubble
+        } else if isFileMessage {
+            fileMessageBubble
+        } else if isVoiceMessage {
+            voiceMessageBubble
+        } else {
+            textMessageBubble
+        }
+    }
+    
+    private var voiceMessageBubble: some View {
+        VoiceMessageBubble(message: message)
+    }
+    
+    private struct VoiceMessageBubble: View {
+        let message: FriendChatMessageItem
+
+        @State private var player: AVPlayer?
+        @State private var isPlaying = false
+        @State private var observer: Any?
+
+        var body: some View {
+            Button {
+                togglePlayback()
+            } label: {
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.white.opacity(message.isFromMe ? 0.18 : 0.08))
+                            .frame(width: 40, height: 40)
+
+                        if message.messageStatus == "uploading" || message.isPending {
+                            ProgressView()
+                                .scaleEffect(0.85)
+                                .tint(message.isFromMe ? .white : Color.accentColor)
+                        } else {
+                            Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(message.isFromMe ? .white : Color.accentColor)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 7) {
+                        HStack(spacing: 3) {
+                            ForEach(0..<20, id: \.self) { i in
+                                Capsule()
+                                    .fill((message.isFromMe ? Color.white : Color.white.opacity(0.9)).opacity(
+                                        isPlaying ? (i % 2 == 0 ? 0.95 : 0.45) : (i % 3 == 0 ? 0.95 : 0.5)
+                                    ))
+                                    .frame(width: 3, height: CGFloat(8 + (i % 6) * 3))
+                                    .scaleEffect(y: isPlaying ? (i % 2 == 0 ? 1.15 : 0.88) : 1.0)
+                                    .animation(.easeInOut(duration: 0.22), value: isPlaying)
+                            }
+                        }
+
+                        Text(message.text.isEmpty ? "Ses mesajı" : message.text)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(message.isFromMe ? .white.opacity(0.88) : .white.opacity(0.72))
+                    }
+
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(
+                            message.isFromMe
+                            ? AnyShapeStyle(
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 0.33, green: 0.62, blue: 1.0),
+                                        Color(red: 0.24, green: 0.55, blue: 0.99)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            : AnyShapeStyle(Color.white.opacity(0.045))
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(message.isFromMe ? .clear : Color.white.opacity(0.08), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(message.messageStatus == "uploading" || message.isPending)
+            .onDisappear {
+                player?.pause()
+                isPlaying = false
+                if let observer {
+                    NotificationCenter.default.removeObserver(observer)
+                }
+            }
+        }
+
+        private func togglePlayback() {
+            guard let mediaURL = message.mediaURL,
+                  let url = URL(string: mediaURL) else { return }
+
+            if isPlaying {
+                player?.pause()
+                isPlaying = false
+                return
+            }
+
+            let item = AVPlayerItem(url: url)
+            let newPlayer = AVPlayer(playerItem: item)
+            player = newPlayer
+
+            if let observer {
+                NotificationCenter.default.removeObserver(observer)
+            }
+
+            observer = NotificationCenter.default.addObserver(
+                forName: .AVPlayerItemDidPlayToEndTime,
+                object: item,
+                queue: .main
+            ) { _ in
+                isPlaying = false
+                player?.seek(to: .zero)
+            }
+
+            newPlayer.play()
+            isPlaying = true
+        }
+    }
+    
+   
+
+    private var textMessageBubble: some View {
+        Text(message.text)
+            .font(.system(size: 17, weight: .medium))
+            .foregroundStyle(message.isFromMe ? .white : .white.opacity(0.96))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(messageBubbleBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private var imageMessageBubble: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ZStack {
+                if let mediaURL = message.mediaURL,
+                   let url = URL(string: mediaURL) {
+                    AsyncImage(url: url, transaction: Transaction(animation: .easeInOut)) { phase in
+                        switch phase {
+                        case .empty:
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(Color.white.opacity(0.08))
+                                ProgressView()
+                                    .tint(.white.opacity(0.8))
+                            }
+                            .frame(width: 220, height: 260)
+
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 220, height: 260)
+                                .clipped()
+
+                        case .failure:
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(Color.white.opacity(0.08))
+                                VStack(spacing: 8) {
+                                    Image(systemName: "photo")
+                                        .font(.system(size: 26, weight: .medium))
+                                    Text("Görsel yüklenemedi")
+                                        .font(.system(size: 12, weight: .medium))
+                                }
+                                .foregroundStyle(.white.opacity(0.75))
+                            }
+                            .frame(width: 220, height: 260)
+
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                } else {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(Color.white.opacity(0.08))
+                        .frame(width: 220, height: 260)
+                }
+
+                if message.messageStatus == "uploading" || message.isPending {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(Color.black.opacity(0.22))
+                        .frame(width: 220, height: 260)
+                        .overlay {
+                            VStack(spacing: 10) {
+                                ProgressView()
+                                    .tint(.white)
+
+                                Text(message.messageStatus == "uploading" ? "Fotoğraf yükleniyor" : "Hazırlanıyor")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(.white)
+                            }
+                        }
+                }
+            }
+
+            if !message.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               message.text != "📷 Fotoğraf" {
+                Text(message.text)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(message.isFromMe ? .white : .white.opacity(0.96))
+                    .padding(.horizontal, 4)
+                    .padding(.bottom, 2)
+            }
+        }
+        .padding(8)
+        .background(messageBubbleBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+    
+    private func presentShareSheet(url: URL) {
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let root = scene.windows.first?.rootViewController else { return }
+
+        let vc = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        root.present(vc, animated: true)
+    }
+    private func downloadFile() {
+        guard let mediaURL = message.mediaURL,
+              let url = URL(string: mediaURL) else {
+            return
+        }
+
+        URLSession.shared.downloadTask(with: url) { tempURL, _, error in
+            guard let tempURL, error == nil else {
+                print("❌ Dosya indirilemedi")
+                return
+            }
+
+            let fileName = message.fileName ?? url.lastPathComponent
+            let destination = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+
+            do {
+                try? FileManager.default.removeItem(at: destination)
+                try FileManager.default.copyItem(at: tempURL, to: destination)
+
+                DispatchQueue.main.async {
+                    presentShareSheet(url: destination)
+                }
+            } catch {
+                print("❌ Dosya kaydedilemedi:", error)
+            }
+        }.resume()
+    }
+
+    private var fileMessageBubble: some View {
+        Button {
+            downloadFile()
+            
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color.white.opacity(message.isFromMe ? 0.16 : 0.08))
+                        .frame(width: 46, height: 46)
+
+                    Image(systemName: "doc.fill")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(message.isFromMe ? .white : Color.accentColor)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(message.fileName ?? "Dosya")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(message.isFromMe ? .white : .white.opacity(0.96))
+                        .lineLimit(2)
+
+                    HStack(spacing: 6) {
+                        if let mimeType = message.mimeType, !mimeType.isEmpty {
+                            Text(shortMimeText(mimeType))
+                        }
+
+                        if let size = message.fileSizeBytes {
+                            Text(fileSizeText(size))
+                        }
+                    }
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(message.isFromMe ? .white.opacity(0.78) : .white.opacity(0.58))
+                }
+
+                Spacer(minLength: 0)
+
+                Group {
+                    if message.isFailed {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .foregroundStyle(.red)
+                    } else if message.messageStatus == "uploading" || message.isPending {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                            .tint(message.isFromMe ? .white : Color.accentColor)
+                    } else {
+                        Image(systemName: "arrow.down.circle")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundStyle(message.isFromMe ? .white.opacity(0.9) : .white.opacity(0.72))
+                    }
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(messageBubbleBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private var messageStatusSymbol: some View {
+        if message.isFailed {
+            Image(systemName: "exclamationmark.circle.fill")
+                .font(.system(size: 10, weight: .bold))
+        } else if message.messageStatus == "uploading" {
+            ProgressView()
+                .scaleEffect(0.55)
+                .tint(.white.opacity(0.9))
+        } else if message.isPending {
+            Image(systemName: "clock")
+                .font(.system(size: 9, weight: .medium))
+        } else if message.seenAt != nil {
+            HStack(spacing: -3) {
+                Image(systemName: "checkmark")
+                Image(systemName: "checkmark")
+            }
+            .font(.system(size: 9, weight: .bold))
+        } else if message.serverID != nil {
+            HStack(spacing: -3) {
+                Image(systemName: "checkmark")
+                Image(systemName: "checkmark")
+            }
+            .font(.system(size: 9, weight: .bold))
+        } else {
+            Image(systemName: "checkmark")
+                .font(.system(size: 9, weight: .bold))
+        }
+    }
+
+    private var messageStatusText: String {
+        if message.isFailed {
+            return "Gönderilemedi"
+        }
+
+        if message.messageStatus == "uploading" {
+            return "Yükleniyor"
+        }
+
+        if message.isPending {
+            return "Gönderiliyor"
+        }
+
+        if message.seenAt != nil {
+            return "Görüldü"
+        }
+
+        if message.serverID != nil {
+            return "İletildi"
+        }
+
+        return ""
+    }
+
+    private var messageStatusColor: Color {
+        if message.isFailed {
+            return .red.opacity(0.92)
+        }
+
+        if message.messageStatus == "uploading" {
+            return Color.orange.opacity(0.95)
+        }
+
+        if message.isPending {
+            return Color.white.opacity(0.42)
+        }
+
+        if message.seenAt != nil {
+            return Color(red: 0.33, green: 0.62, blue: 1.0)
+        }
+
+        return Color.white.opacity(0.58)
     }
 
     @ViewBuilder
     private var messageBubbleBackground: some View {
         if message.isFromMe {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(LinearGradient(
-                    colors: [Color(red: 0.33, green: 0.62, blue: 1.0), Color(red: 0.24, green: 0.55, blue: 0.99)],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                ))
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.33, green: 0.62, blue: 1.0),
+                            Color(red: 0.24, green: 0.55, blue: 0.99)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
         } else {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(Color.white.opacity(0.045))
-                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color.white.opacity(0.08), lineWidth: 1))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
+        }
+    }
+
+    private func fileSizeText(_ bytes: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useKB, .useMB]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: bytes)
+    }
+
+    private func shortMimeText(_ mime: String) -> String {
+        if mime == "application/pdf" { return "PDF" }
+        if mime.contains("image") { return "Görsel" }
+        return "Dosya"
+    }
+
+    private func saveImageToPhotos() {
+        guard let mediaURL = message.mediaURL,
+              let url = URL(string: mediaURL) else {
+            imageSaveAlertText = "Görsel bulunamadı."
+            showImageSaveAlert = true
+            return
+        }
+
+        isSavingImage = true
+
+        URLSession.shared.dataTask(with: url) { data, _, error in
+            DispatchQueue.main.async {
+                isSavingImage = false
+
+                guard let data,
+                      let image = UIImage(data: data),
+                      error == nil else {
+                    imageSaveAlertText = "Görsel indirilemedi."
+                    showImageSaveAlert = true
+                    return
+                }
+
+                PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
+                    DispatchQueue.main.async {
+                        guard status == .authorized || status == .limited else {
+                            imageSaveAlertText = "Fotoğraflara kaydetme izni verilmedi."
+                            showImageSaveAlert = true
+                            return
+                        }
+
+                        UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+                        imageSaveAlertText = "Fotoğraf galerine kaydedildi."
+                        showImageSaveAlert = true
+                    }
+                }
+            }
+        }.resume()
+    }
+}
+
+private struct FullScreenImageViewer: View {
+    let imageURLString: String
+    let onSave: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Color.black.ignoresSafeArea()
+
+            if let url = URL(string: imageURLString) {
+                AsyncImage(url: url, transaction: Transaction(animation: .easeInOut)) { phase in
+                    switch phase {
+                    case .empty:
+                        ProgressView()
+                            .tint(.white)
+
+                    case .success(let image):
+                        FullScreenImageContent(image: image)
+                    case .failure:
+                        VStack(spacing: 12) {
+                            Image(systemName: "photo")
+                                .font(.system(size: 36))
+                            Text("Görsel yüklenemedi")
+                                .font(.system(size: 15, weight: .medium))
+                        }
+                        .foregroundStyle(.white.opacity(0.8))
+
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+            }
+
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    Button {
+                        onSave()
+                    } label: {
+                        Image(systemName: "square.and.arrow.down")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 42, height: 42)
+                            .background(.black.opacity(0.35), in: Circle())
+                    }
+
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 42, height: 42)
+                            .background(.black.opacity(0.35), in: Circle())
+                    }
+                }
+                .padding(.top, 18)
+                .padding(.trailing, 16)
+
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
 }
+
+private struct FullScreenImageContent: View {
+    let image: Image
+
+    var body: some View {
+        GeometryReader { geo in
+            image
+                .resizable()
+                .scaledToFit()
+                .frame(width: geo.size.width, height: geo.size.height)
+                .background(Color.black)
+        }
+        .ignoresSafeArea()
+    }
+}
+
+private struct CameraPicker: UIViewControllerRepresentable {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var image: UIImage?
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.allowsEditing = false
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) { }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+        let parent: CameraPicker
+
+        init(_ parent: CameraPicker) {
+            self.parent = parent
+        }
+
+        func imagePickerController(
+            _ picker: UIImagePickerController,
+            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]
+        ) {
+            if let image = info[.originalImage] as? UIImage {
+                parent.image = image
+            }
+            parent.dismiss()
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.dismiss()
+        }
+    }
+}
+   
+
+

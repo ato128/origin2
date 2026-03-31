@@ -12,6 +12,7 @@ import Combine
 
 @MainActor
 final class FriendStore: ObservableObject {
+    static var sharedRetryBridge: ((FriendChatMessageItem) async -> Void)?
     @Published var friendships: [FriendshipDTO] = []
     @Published var profiles: [UUID: FriendProfileDTO] = [:]
     @Published var isLoading = false
@@ -27,6 +28,9 @@ final class FriendStore: ObservableObject {
     @Published var lastFriendsRefreshAt: Date? = nil
     @Published var isRefreshingFriends = false
     @Published var activeChatFriendshipID: UUID? = nil
+    @Published var unreadCountByFriendship: [UUID: Int] = [:]
+    @Published var lastIncomingMessageByFriendship: [UUID: FriendChatMessageItem] = [:]
+    @Published var isAppActive: Bool = true
 
     private var lastForegroundRefreshAt: Date? = nil
 
@@ -514,18 +518,88 @@ final class FriendStore: ObservableObject {
         syncAcceptedFriendsToLocal(currentUserID: currentUserID, modelContext: modelContext)
         markFriendsCacheRefreshed()
     }
+    
+    // MARK: - Unread
+
+    var totalUnreadCount: Int {
+        unreadCountByFriendship.values.reduce(0, +)
+    }
+
+    func unreadCount(for friendshipID: UUID) -> Int {
+        unreadCountByFriendship[friendshipID] ?? 0
+    }
+
+    func hasUnread(for friendshipID: UUID) -> Bool {
+        unreadCount(for: friendshipID) > 0
+    }
+
+    func setAppActive(_ isActive: Bool) {
+        isAppActive = isActive
+    }
+
+    func setActiveChat(_ friendshipID: UUID?) {
+        activeChatFriendshipID = friendshipID
+
+        guard let friendshipID else { return }
+        Task {
+            await markMessagesSeen(
+                friendshipID: friendshipID,
+                currentUserID: nil
+            )
+        }
+    }
+
+    private func recomputeUnreadState(for friendshipID: UUID) {
+        let items = friendMessagesByFriendship[friendshipID] ?? []
+
+        let unread = items.filter {
+            !$0.isFromMe && $0.seenAt == nil && $0.serverID != nil
+        }.count
+
+        unreadCountByFriendship[friendshipID] = unread
+
+        if let lastIncoming = items
+            .filter({ !$0.isFromMe })
+            .sorted(by: { $0.createdAt > $1.createdAt })
+            .first {
+            lastIncomingMessageByFriendship[friendshipID] = lastIncoming
+        } else {
+            lastIncomingMessageByFriendship.removeValue(forKey: friendshipID)
+        }
+    }
+
+    func refreshAllUnreadCounts() {
+        for friendshipID in friendMessagesByFriendship.keys {
+            recomputeUnreadState(for: friendshipID)
+        }
+    }
 
     // MARK: - Messages
 
     private func mapDTOToFriendItem(_ dto: FriendMessageDTO, currentUserID: UUID?) -> FriendChatMessageItem {
-        FriendChatMessageItem(
-            id: dto.id, serverID: dto.id, clientID: dto.client_id,
-            friendshipID: dto.friendship_id, senderID: dto.sender_id,
-            senderName: dto.sender_name, text: dto.text,
+        let resolvedStatus = dto.message_status ?? "sent"
+
+        return FriendChatMessageItem(
+            id: dto.id,
+            serverID: dto.id,
+            clientID: dto.client_id,
+            friendshipID: dto.friendship_id,
+            senderID: dto.sender_id,
+            senderName: dto.sender_name,
+            text: dto.text,
             createdAt: CrewDateParser.parse(dto.created_at) ?? Date(),
-            reaction: dto.reaction, isSystemMessage: dto.is_system_message ?? false,
-            isFromMe: dto.sender_id == currentUserID, isPending: false, isFailed: false,
-            seenAt: dto.seen_at.flatMap { CrewDateParser.parse($0) }
+            reaction: dto.reaction,
+            isSystemMessage: dto.is_system_message ?? false,
+            isFromMe: dto.sender_id == currentUserID,
+            isPending: resolvedStatus == "sending" || resolvedStatus == "uploading",
+            isFailed: resolvedStatus == "failed",
+            seenAt: dto.seen_at.flatMap { CrewDateParser.parse($0) },
+            messageType: dto.message_type ?? "text",
+            mediaURL: dto.media_url,
+            fileName: dto.file_name,
+            fileSizeBytes: dto.file_size_bytes,
+            mimeType: dto.mime_type,
+            messageStatus: resolvedStatus
         )
     }
 
@@ -639,6 +713,7 @@ final class FriendStore: ObservableObject {
         var updated = friendMessagesByFriendship
         updated[friendshipID] = Array(items.suffix(100))
         friendMessagesByFriendship = updated
+        recomputeUnreadState(for: friendshipID)
     }
 
     // MARK: - Load Messages
@@ -654,7 +729,10 @@ final class FriendStore: ObservableObject {
                 .execute()
 
             let decoded = try JSONDecoder().decode([FriendMessageDTO].self, from: response.data)
-            friendMessagesByFriendship[friendshipID] = decoded.map { mapDTOToFriendItem($0, currentUserID: currentUserID) }
+            friendMessagesByFriendship[friendshipID] = decoded.map {
+                mapDTOToFriendItem($0, currentUserID: currentUserID)
+            }
+            recomputeUnreadState(for: friendshipID)
         } catch {
             print("LOAD INITIAL MESSAGES ERROR:", error.localizedDescription)
         }
@@ -691,6 +769,7 @@ final class FriendStore: ObservableObject {
 
             current.sort { $0.createdAt < $1.createdAt }
             friendMessagesByFriendship[friendshipID] = Array(current.suffix(100))
+            recomputeUnreadState(for: friendshipID)
 
         } catch {
             print("LOAD NEW MESSAGES ERROR:", error.localizedDescription)
@@ -702,31 +781,66 @@ final class FriendStore: ObservableObject {
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else { return }
 
+        let resolvedSenderID: UUID
+        do {
+            if let senderID {
+                resolvedSenderID = senderID
+            } else {
+                resolvedSenderID = try await currentAuthUserID()
+            }
+        } catch {
+            print("SEND FRIEND MESSAGE ERROR: senderID alınamadı -", error.localizedDescription)
+            return
+        }
+
         let clientID = UUID().uuidString
 
         let localItem = FriendChatMessageItem(
-            id: UUID(), serverID: nil, clientID: clientID,
-            friendshipID: friendshipID, senderID: senderID, senderName: senderName,
-            text: clean, createdAt: Date(), reaction: nil, isSystemMessage: false,
-            isFromMe: true, isPending: true, isFailed: false, seenAt: nil
+            id: UUID(),
+            serverID: nil,
+            clientID: clientID,
+            friendshipID: friendshipID,
+            senderID: resolvedSenderID,
+            senderName: senderName,
+            text: clean,
+            createdAt: Date(),
+            reaction: nil,
+            isSystemMessage: false,
+            isFromMe: true,
+            isPending: true,
+            isFailed: false,
+            seenAt: nil,
+            messageType: "text",
+            mediaURL: nil,
+            fileName: nil,
+            fileSizeBytes: nil,
+            mimeType: nil,
+            messageStatus: "sending"
         )
 
         appendFriendMessage(localItem, friendshipID: friendshipID)
 
         do {
-            struct Payload: Encodable {
-                let friendship_id: UUID
-                let sender_id: UUID?
-                let sender_name: String
-                let text: String
-                let reaction: String?
-                let is_system_message: Bool
-                let client_id: String
-            }
+            let payload = FriendMessageInsertPayload(
+                friendship_id: friendshipID,
+                sender_id: resolvedSenderID,
+                sender_name: senderName,
+                text: clean,
+                reaction: nil,
+                is_system_message: false,
+                client_id: clientID,
+                message_type: "text",
+                media_url: nil,
+                file_name: nil,
+                file_size_bytes: nil,
+                mime_type: nil,
+                message_status: "sent"
+            )
 
-            let payload = Payload(friendship_id: friendshipID, sender_id: senderID, sender_name: senderName, text: clean, reaction: nil, is_system_message: false, client_id: clientID)
-
-            try await SupabaseManager.shared.client.from("friend_messages").insert(payload).execute()
+            try await SupabaseManager.shared.client
+                .from("friend_messages")
+                .insert(payload)
+                .execute()
 
             let response = try await SupabaseManager.shared.client
                 .from("friend_messages")
@@ -736,43 +850,692 @@ final class FriendStore: ObservableObject {
                 .execute()
 
             let savedDTO = try JSONDecoder().decode(FriendMessageDTO.self, from: response.data)
-            appendFriendMessage(mapDTOToFriendItem(savedDTO, currentUserID: senderID), friendshipID: friendshipID)
-
+            appendFriendMessage(
+                mapDTOToFriendItem(savedDTO, currentUserID: resolvedSenderID),
+                friendshipID: friendshipID
+            )
         } catch {
             print("SEND FRIEND MESSAGE ERROR:", error.localizedDescription)
+            markPendingMessageFailed(clientID: clientID, friendshipID: friendshipID)
+        }
+    }
+    private struct FriendMessageInsertPayload: Encodable {
+        let friendship_id: UUID
+        let sender_id: UUID
+        let sender_name: String
+        let text: String
+        let reaction: String?
+        let is_system_message: Bool
+        let client_id: String
+        let message_type: String
+        let media_url: String?
+        let file_name: String?
+        let file_size_bytes: Int64?
+        let mime_type: String?
+        let message_status: String
+    }
 
-            var failed = friendMessagesByFriendship[friendshipID] ?? []
-            if let index = failed.firstIndex(where: { $0.clientID == clientID }) {
-                let old = failed[index]
-                failed[index] = FriendChatMessageItem(
-                    id: old.id, serverID: old.serverID, clientID: old.clientID,
-                    friendshipID: old.friendshipID, senderID: old.senderID,
-                    senderName: old.senderName, text: old.text, createdAt: old.createdAt,
-                    reaction: old.reaction, isSystemMessage: old.isSystemMessage,
-                    isFromMe: old.isFromMe, isPending: false, isFailed: true, seenAt: old.seenAt
-                )
-                friendMessagesByFriendship[friendshipID] = failed
+    private struct FinalizePayload: Encodable {
+        let message_type: String
+        let media_url: String
+        let file_name: String?
+        let file_size_bytes: Int64?
+        let mime_type: String?
+        let message_status: String
+    }
+
+    private func currentAuthUserID() async throws -> UUID {
+        let session = try await SupabaseManager.shared.client.auth.session
+        return session.user.id
+    }
+
+    private func createBaseMessage(
+        friendshipID: UUID,
+        senderID: UUID,
+        senderName: String,
+        text: String,
+        clientID: String
+    ) async throws -> FriendMessageDTO {
+        let payload = FriendMessageInsertPayload(
+            friendship_id: friendshipID,
+            sender_id: senderID,
+            sender_name: senderName,
+            text: text,
+            reaction: nil,
+            is_system_message: false,
+            client_id: clientID,
+            message_type: "text",
+            media_url: nil,
+            file_name: nil,
+            file_size_bytes: nil,
+            mime_type: nil,
+            message_status: "sending"
+        )
+
+        try await SupabaseManager.shared.client
+            .from("friend_messages")
+            .insert(payload)
+            .execute()
+
+        let response = try await SupabaseManager.shared.client
+            .from("friend_messages")
+            .select()
+            .eq("client_id", value: clientID)
+            .single()
+            .execute()
+
+        return try JSONDecoder().decode(FriendMessageDTO.self, from: response.data)
+    }
+
+    private func finalizeMediaMessage(
+        messageID: UUID,
+        messageType: String,
+        mediaURL: String,
+        fileName: String?,
+        fileSizeBytes: Int64?,
+        mimeType: String?
+    ) async throws -> FriendMessageDTO {
+        let payload = FinalizePayload(
+            message_type: messageType,
+            media_url: mediaURL,
+            file_name: fileName,
+            file_size_bytes: fileSizeBytes,
+            mime_type: mimeType,
+            message_status: "sent"
+        )
+
+        try await SupabaseManager.shared.client
+            .from("friend_messages")
+            .update(payload)
+            .eq("id", value: messageID.uuidString)
+            .execute()
+
+        let response = try await SupabaseManager.shared.client
+            .from("friend_messages")
+            .select()
+            .eq("id", value: messageID.uuidString)
+            .single()
+            .execute()
+
+        return try JSONDecoder().decode(FriendMessageDTO.self, from: response.data)
+    }
+
+    private func updatePendingMessageStatus(
+        clientID: String,
+        friendshipID: UUID,
+        messageStatus: String,
+        mediaURL: String? = nil
+    ) {
+        var items = friendMessagesByFriendship[friendshipID] ?? []
+
+        if let index = items.firstIndex(where: { $0.clientID == clientID }) {
+            let old = items[index]
+            items[index] = FriendChatMessageItem(
+                id: old.id,
+                serverID: old.serverID,
+                clientID: old.clientID,
+                friendshipID: old.friendshipID,
+                senderID: old.senderID,
+                senderName: old.senderName,
+                text: old.text,
+                createdAt: old.createdAt,
+                reaction: old.reaction,
+                isSystemMessage: old.isSystemMessage,
+                isFromMe: old.isFromMe,
+                isPending: messageStatus == "sending" || messageStatus == "uploading",
+                isFailed: messageStatus == "failed",
+                seenAt: old.seenAt,
+                messageType: old.messageType,
+                mediaURL: mediaURL ?? old.mediaURL,
+                fileName: old.fileName,
+                fileSizeBytes: old.fileSizeBytes,
+                mimeType: old.mimeType,
+                messageStatus: messageStatus
+            )
+            friendMessagesByFriendship[friendshipID] = items
+        }
+    }
+
+    private func markPendingMessageFailed(clientID: String, friendshipID: UUID) {
+        var failed = friendMessagesByFriendship[friendshipID] ?? []
+        if let index = failed.firstIndex(where: { $0.clientID == clientID }) {
+            let old = failed[index]
+            failed[index] = FriendChatMessageItem(
+                id: old.id,
+                serverID: old.serverID,
+                clientID: old.clientID,
+                friendshipID: old.friendshipID,
+                senderID: old.senderID,
+                senderName: old.senderName,
+                text: old.text,
+                createdAt: old.createdAt,
+                reaction: old.reaction,
+                isSystemMessage: old.isSystemMessage,
+                isFromMe: old.isFromMe,
+                isPending: false,
+                isFailed: true,
+                seenAt: old.seenAt,
+                messageType: old.messageType,
+                mediaURL: old.mediaURL,
+                fileName: old.fileName,
+                fileSizeBytes: old.fileSizeBytes,
+                mimeType: old.mimeType,
+                messageStatus: "failed"
+            )
+            friendMessagesByFriendship[friendshipID] = failed
+        }
+    }
+    
+    func sendPhotoMessage(
+        imageData: Data,
+        friendshipID: UUID,
+        senderID: UUID?,
+        senderName: String,
+        caption: String? = nil
+    ) async {
+        let resolvedSenderID: UUID
+        do {
+            if let senderID {
+                resolvedSenderID = senderID
+            } else {
+                resolvedSenderID = try await currentAuthUserID()
             }
+        } catch {
+            print("SEND PHOTO MESSAGE ERROR: senderID alınamadı -", error.localizedDescription)
+            return
+        }
+
+        let clientID = UUID().uuidString
+        let fileName = "photo.jpg"
+        let fallbackText = (caption?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
+            ? caption!.trimmingCharacters(in: .whitespacesAndNewlines)
+            : "📷 Fotoğraf"
+
+        let storagePath = "\(friendshipID.uuidString)/images/\(UUID().uuidString).jpg"
+
+        let localItem = FriendChatMessageItem(
+            id: UUID(),
+            serverID: nil,
+            clientID: clientID,
+            friendshipID: friendshipID,
+            senderID: resolvedSenderID,
+            senderName: senderName,
+            text: fallbackText,
+            createdAt: Date(),
+            reaction: nil,
+            isSystemMessage: false,
+            isFromMe: true,
+            isPending: true,
+            isFailed: false,
+            seenAt: nil,
+            messageType: "image",
+            mediaURL: nil,
+            fileName: fileName,
+            fileSizeBytes: Int64(imageData.count),
+            mimeType: "image/jpeg",
+            messageStatus: "sending"
+        )
+
+        appendFriendMessage(localItem, friendshipID: friendshipID)
+
+        do {
+            let baseDTO = try await createBaseMessage(
+                friendshipID: friendshipID,
+                senderID: resolvedSenderID,
+                senderName: senderName,
+                text: fallbackText,
+                clientID: clientID
+            )
+
+            appendFriendMessage(
+                mapDTOToFriendItem(baseDTO, currentUserID: resolvedSenderID),
+                friendshipID: friendshipID
+            )
+
+            updatePendingMessageStatus(
+                clientID: clientID,
+                friendshipID: friendshipID,
+                messageStatus: "uploading"
+            )
+
+            try await SupabaseManager.shared.client.storage
+                .from("friend-chat-media")
+                .upload(
+                    path: storagePath,
+                    file: imageData,
+                    options: FileOptions(
+                        cacheControl: "3600",
+                        contentType: "image/jpeg",
+                        upsert: false
+                    )
+                )
+
+            let mediaURL = publicMediaURL(path: storagePath)
+            guard !mediaURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw NSError(
+                    domain: "FriendStore",
+                    code: 1001,
+                    userInfo: [NSLocalizedDescriptionKey: "mediaURL boş döndü"]
+                )
+            }
+
+            let finalDTO = try await finalizeMediaMessage(
+                messageID: baseDTO.id,
+                messageType: "image",
+                mediaURL: mediaURL,
+                fileName: fileName,
+                fileSizeBytes: Int64(imageData.count),
+                mimeType: "image/jpeg"
+            )
+
+            appendFriendMessage(
+                mapDTOToFriendItem(finalDTO, currentUserID: resolvedSenderID),
+                friendshipID: friendshipID
+            )
+        } catch {
+            print("SEND PHOTO MESSAGE ERROR:", error.localizedDescription)
+            markPendingMessageFailed(clientID: clientID, friendshipID: friendshipID)
+        }
+    }
+    func sendFileMessage(
+        fileURL: URL,
+        friendshipID: UUID,
+        senderID: UUID?,
+        senderName: String,
+        caption: String? = nil
+    ) async {
+        let didStartAccessing = fileURL.startAccessingSecurityScopedResource()
+        defer {
+            if didStartAccessing {
+                fileURL.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        guard let data = try? Data(contentsOf: fileURL) else {
+            print("SEND FILE MESSAGE ERROR: file data could not be read")
+            return
+        }
+
+        let resolvedSenderID: UUID
+        do {
+            if let senderID {
+                resolvedSenderID = senderID
+            } else {
+                resolvedSenderID = try await currentAuthUserID()
+            }
+        } catch {
+            print("SEND FILE MESSAGE ERROR: senderID alınamadı -", error.localizedDescription)
+            return
+        }
+
+        let clientID = UUID().uuidString
+        let fileName = fileURL.lastPathComponent
+        let ext = fileURL.pathExtension.lowercased()
+
+        let mimeType: String = {
+            switch ext {
+            case "pdf": return "application/pdf"
+            case "jpg", "jpeg": return "image/jpeg"
+            case "png": return "image/png"
+            case "heic": return "image/heic"
+            case "txt": return "text/plain"
+            case "doc": return "application/msword"
+            case "docx": return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            default: return "application/octet-stream"
+            }
+        }()
+
+        let fallbackText = (caption?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
+            ? caption!.trimmingCharacters(in: .whitespacesAndNewlines)
+            : "📎 \(fileName)"
+
+        let safeName = "\(UUID().uuidString)-\(fileName)"
+        let storagePath = "\(friendshipID.uuidString)/files/\(safeName)"
+
+        let localItem = FriendChatMessageItem(
+            id: UUID(),
+            serverID: nil,
+            clientID: clientID,
+            friendshipID: friendshipID,
+            senderID: resolvedSenderID,
+            senderName: senderName,
+            text: fallbackText,
+            createdAt: Date(),
+            reaction: nil,
+            isSystemMessage: false,
+            isFromMe: true,
+            isPending: true,
+            isFailed: false,
+            seenAt: nil,
+            messageType: "file",
+            mediaURL: nil,
+            fileName: fileName,
+            fileSizeBytes: Int64(data.count),
+            mimeType: mimeType,
+            messageStatus: "sending"
+        )
+
+        appendFriendMessage(localItem, friendshipID: friendshipID)
+
+        do {
+            let baseDTO = try await createBaseMessage(
+                friendshipID: friendshipID,
+                senderID: resolvedSenderID,
+                senderName: senderName,
+                text: fallbackText,
+                clientID: clientID
+            )
+
+            appendFriendMessage(
+                mapDTOToFriendItem(baseDTO, currentUserID: resolvedSenderID),
+                friendshipID: friendshipID
+            )
+
+            updatePendingMessageStatus(
+                clientID: clientID,
+                friendshipID: friendshipID,
+                messageStatus: "uploading"
+            )
+
+            try await SupabaseManager.shared.client.storage
+                .from("friend-chat-media")
+                .upload(
+                    path: storagePath,
+                    file: data,
+                    options: FileOptions(
+                        cacheControl: "3600",
+                        contentType: mimeType,
+                        upsert: false
+                    )
+                )
+
+            let mediaURL = publicMediaURL(path: storagePath)
+            guard !mediaURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw NSError(
+                    domain: "FriendStore",
+                    code: 1002,
+                    userInfo: [NSLocalizedDescriptionKey: "mediaURL boş döndü"]
+                )
+            }
+
+            let finalDTO = try await finalizeMediaMessage(
+                messageID: baseDTO.id,
+                messageType: "file",
+                mediaURL: mediaURL,
+                fileName: fileName,
+                fileSizeBytes: Int64(data.count),
+                mimeType: mimeType
+            )
+
+            appendFriendMessage(
+                mapDTOToFriendItem(finalDTO, currentUserID: resolvedSenderID),
+                friendshipID: friendshipID
+            )
+        } catch {
+            print("SEND FILE MESSAGE ERROR:", error.localizedDescription)
+            markPendingMessageFailed(clientID: clientID, friendshipID: friendshipID)
+        }
+    }
+    
+    func sendVoiceMessage(
+        audioURL: URL,
+        friendshipID: UUID,
+        senderID: UUID?,
+        senderName: String,
+        durationText: String
+    ) async {
+        let didStartAccessing = audioURL.startAccessingSecurityScopedResource()
+        defer {
+            if didStartAccessing {
+                audioURL.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        guard let data = try? Data(contentsOf: audioURL) else {
+            print("SEND VOICE MESSAGE ERROR: audio data could not be read")
+            return
+        }
+
+        let resolvedSenderID: UUID
+        do {
+            if let senderID {
+                resolvedSenderID = senderID
+            } else {
+                resolvedSenderID = try await currentAuthUserID()
+            }
+        } catch {
+            print("SEND VOICE MESSAGE ERROR: senderID alınamadı -", error.localizedDescription)
+            return
+        }
+
+        let clientID = UUID().uuidString
+        let fileName = "voice-\(UUID().uuidString).m4a"
+        let fallbackText = "🎤 \(durationText)"
+        let storagePath = "\(friendshipID.uuidString)/voice/\(fileName)"
+
+        let localItem = FriendChatMessageItem(
+            id: UUID(),
+            serverID: nil,
+            clientID: clientID,
+            friendshipID: friendshipID,
+            senderID: resolvedSenderID,
+            senderName: senderName,
+            text: fallbackText,
+            createdAt: Date(),
+            reaction: nil,
+            isSystemMessage: false,
+            isFromMe: true,
+            isPending: true,
+            isFailed: false,
+            seenAt: nil,
+            messageType: "voice",
+            mediaURL: nil,
+            fileName: fileName,
+            fileSizeBytes: Int64(data.count),
+            mimeType: "audio/m4a",
+            messageStatus: "sending"
+        )
+
+        appendFriendMessage(localItem, friendshipID: friendshipID)
+
+        do {
+            let baseDTO = try await createBaseMessage(
+                friendshipID: friendshipID,
+                senderID: resolvedSenderID,
+                senderName: senderName,
+                text: fallbackText,
+                clientID: clientID
+            )
+
+            appendFriendMessage(
+                mapDTOToFriendItem(baseDTO, currentUserID: resolvedSenderID),
+                friendshipID: friendshipID
+            )
+
+            updatePendingMessageStatus(
+                clientID: clientID,
+                friendshipID: friendshipID,
+                messageStatus: "uploading"
+            )
+
+            try await SupabaseManager.shared.client.storage
+                .from("friend-chat-media")
+                .upload(
+                    path: storagePath,
+                    file: data,
+                    options: FileOptions(
+                        cacheControl: "3600",
+                        contentType: "audio/m4a",
+                        upsert: false
+                    )
+                )
+
+            let mediaURL = publicMediaURL(path: storagePath)
+            guard !mediaURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw NSError(
+                    domain: "FriendStore",
+                    code: 1003,
+                    userInfo: [NSLocalizedDescriptionKey: "Ses dosyası URL üretilemedi"]
+                )
+            }
+
+            let finalDTO = try await finalizeMediaMessage(
+                messageID: baseDTO.id,
+                messageType: "voice",
+                mediaURL: mediaURL,
+                fileName: fileName,
+                fileSizeBytes: Int64(data.count),
+                mimeType: "audio/m4a"
+            )
+
+            appendFriendMessage(
+                mapDTOToFriendItem(finalDTO, currentUserID: resolvedSenderID),
+                friendshipID: friendshipID
+            )
+        } catch {
+            print("SEND VOICE MESSAGE ERROR:", error.localizedDescription)
+            markPendingMessageFailed(clientID: clientID, friendshipID: friendshipID)
+        }
+    }
+    func retryMessage(_ message: FriendChatMessageItem) async {
+        guard let friendshipID = Optional(message.friendshipID) else { return }
+
+        switch message.messageType {
+        case "text":
+            await sendMessage(
+                text: message.text,
+                friendshipID: friendshipID,
+                senderID: message.senderID,
+                senderName: message.senderName
+            )
+
+        default:
+            print("RETRY MESSAGE: medya retry şu an desteklenmiyor ->", message.messageType)
+        }
+    }
+    
+    private func uploadMediaAndFinalizeMessage(
+        localItem: FriendChatMessageItem,
+        clientID: String,
+        friendshipID: UUID,
+        senderID: UUID,
+        senderName: String,
+        uploadData: Data,
+        storagePath: String,
+        contentType: String,
+        messageType: String,
+        fallbackText: String,
+        fileName: String?,
+        fileSizeBytes: Int64?,
+        mimeType: String?
+    ) async {
+        appendFriendMessage(localItem, friendshipID: friendshipID)
+
+        do {
+            let createdDTO = try await createBaseMessage(
+                friendshipID: friendshipID,
+                senderID: senderID,
+                senderName: senderName,
+                text: fallbackText,
+                clientID: clientID
+            )
+
+            appendFriendMessage(
+                mapDTOToFriendItem(createdDTO, currentUserID: senderID),
+                friendshipID: friendshipID
+            )
+
+            updatePendingMessageStatus(
+                clientID: clientID,
+                friendshipID: friendshipID,
+                messageStatus: "uploading"
+            )
+
+            try await SupabaseManager.shared.client.storage
+                .from("friend-chat-media")
+                .upload(
+                    path: storagePath,
+                    file: uploadData,
+                    options: FileOptions(
+                        cacheControl: "3600",
+                        contentType: contentType,
+                        upsert: false
+                    )
+                )
+
+            let mediaURL = publicMediaURL(path: storagePath)
+            guard !mediaURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw NSError(
+                    domain: "FriendStore",
+                    code: 1999,
+                    userInfo: [NSLocalizedDescriptionKey: "mediaURL boş döndü"]
+                )
+            }
+
+            let finalizedDTO = try await finalizeMediaMessage(
+                messageID: createdDTO.id,
+                messageType: messageType,
+                mediaURL: mediaURL,
+                fileName: fileName,
+                fileSizeBytes: fileSizeBytes,
+                mimeType: mimeType
+            )
+
+            appendFriendMessage(
+                mapDTOToFriendItem(finalizedDTO, currentUserID: senderID),
+                friendshipID: friendshipID
+            )
+        } catch {
+            print("UPLOAD / FINALIZE MEDIA ERROR:", error.localizedDescription)
+            markPendingMessageFailed(clientID: clientID, friendshipID: friendshipID)
+        }
+    }
+    
+    private func publicMediaURL(path: String) -> String {
+        do {
+            return try SupabaseManager.shared.client.storage
+                .from("friend-chat-media")
+                .getPublicURL(path: path)
+                .absoluteString
+        } catch {
+            print("PUBLIC MEDIA URL ERROR:", error.localizedDescription)
+            return ""
         }
     }
 
     // MARK: - Mark Seen
 
     func markMessagesSeen(friendshipID: UUID, currentUserID: UUID?) async {
-        guard let currentUserID else { return }
+        let resolvedCurrentUserID: UUID?
+        if let currentUserID {
+            resolvedCurrentUserID = currentUserID
+        } else {
+            if let session = try? await SupabaseManager.shared.client.auth.session {
+                resolvedCurrentUserID = session.user.id
+            } else {
+                resolvedCurrentUserID = nil
+            }
+        }
+        guard let resolvedCurrentUserID else { return }
+
+        guard activeChatFriendshipID == friendshipID else { return }
+        guard isAppActive else { return }
 
         let hasUnseen = friendMessagesByFriendship[friendshipID]?.contains {
             !$0.isFromMe && $0.seenAt == nil && $0.serverID != nil
         } ?? false
 
-        guard hasUnseen else { return }
+        guard hasUnseen else {
+            recomputeUnreadState(for: friendshipID)
+            return
+        }
 
         do {
             try await SupabaseManager.shared.client
                 .from("friend_messages")
                 .update(["seen_at": ISO8601DateFormatter().string(from: Date())])
                 .eq("friendship_id", value: friendshipID.uuidString)
-                .neq("sender_id", value: currentUserID.uuidString)
+                .neq("sender_id", value: resolvedCurrentUserID.uuidString)
                 .is("seen_at", value: nil)
                 .execute()
 
@@ -781,15 +1544,31 @@ final class FriendStore: ObservableObject {
             items = items.map { msg in
                 guard !msg.isFromMe && msg.seenAt == nil else { return msg }
                 return FriendChatMessageItem(
-                    id: msg.id, serverID: msg.serverID, clientID: msg.clientID,
-                    friendshipID: msg.friendshipID, senderID: msg.senderID,
-                    senderName: msg.senderName, text: msg.text, createdAt: msg.createdAt,
-                    reaction: msg.reaction, isSystemMessage: msg.isSystemMessage,
-                    isFromMe: msg.isFromMe, isPending: msg.isPending,
-                    isFailed: msg.isFailed, seenAt: now
+                    id: msg.id,
+                    serverID: msg.serverID,
+                    clientID: msg.clientID,
+                    friendshipID: msg.friendshipID,
+                    senderID: msg.senderID,
+                    senderName: msg.senderName,
+                    text: msg.text,
+                    createdAt: msg.createdAt,
+                    reaction: msg.reaction,
+                    isSystemMessage: msg.isSystemMessage,
+                    isFromMe: msg.isFromMe,
+                    isPending: msg.isPending,
+                    isFailed: msg.isFailed,
+                    seenAt: now,
+                    messageType: msg.messageType,
+                    mediaURL: msg.mediaURL,
+                    fileName: msg.fileName,
+                    fileSizeBytes: msg.fileSizeBytes,
+                    mimeType: msg.mimeType,
+                    messageStatus: msg.messageStatus
                 )
             }
+
             friendMessagesByFriendship[friendshipID] = items
+            recomputeUnreadState(for: friendshipID)
         } catch {
             print("MARK MESSAGES SEEN ERROR:", error.localizedDescription)
         }
@@ -804,6 +1583,7 @@ final class FriendStore: ObservableObject {
             friendMessagesByFriendship[friendshipID] = items
             return
         }
+        recomputeUnreadState(for: friendshipID)
 
         // Önce local'den sil
         var items = friendMessagesByFriendship[friendshipID] ?? []
@@ -953,7 +1733,9 @@ final class FriendStore: ObservableObject {
                         guard dto.friendship_id == friendshipID else { return }
                         let item = self.mapDTOToFriendItem(dto, currentUserID: currentUserIDCopy)
                         self.appendFriendMessage(item, friendshipID: friendshipID)
-                        if dto.sender_id != currentUserIDCopy {
+                        if dto.sender_id != currentUserIDCopy,
+                           self.activeChatFriendshipID == friendshipID,
+                           self.isAppActive {
                             await self.markMessagesSeen(friendshipID: friendshipID, currentUserID: currentUserIDCopy)
                         }
                     } catch {

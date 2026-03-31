@@ -250,6 +250,7 @@
 		6DD286BB2F7AE6BF005A73FA /* HomeDashboardView+Week.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD286BA2F7AE6BF005A73FA /* HomeDashboardView+Week.swift */; };
 		6DD286BD2F7AE6ED005A73FA /* HomeDashboardView+Styles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD286BC2F7AE6ED005A73FA /* HomeDashboardView+Styles.swift */; };
 		6DD286BF2F7AE88B005A73FA /* NotificationName+Focus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD286BE2F7AE88B005A73FA /* NotificationName+Focus.swift */; };
+		6DD286C22F7C750B005A73FA /* AudioRecorderManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD286C12F7C750B005A73FA /* AudioRecorderManager.swift */; };
 		6DDF5B5B2F5F9DFF003057C9 /* CrewTaskComment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DDF5B5A2F5F9DFE003057C9 /* CrewTaskComment.swift */; };
 		6DDF5B5D2F5F9E21003057C9 /* CrewTaskPoll.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DDF5B5C2F5F9E21003057C9 /* CrewTaskPoll.swift */; };
 		6DDF5B5F2F5FA38A003057C9 /* CreateCrewTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DDF5B5E2F5FA38A003057C9 /* CreateCrewTaskView.swift */; };
@@ -441,7 +442,7 @@
 		6DBE91EE2F6D91B7001DF813 /* CrewDateParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewDateParser.swift; sourceTree = "<group>"; };
 		6DBE91F02F6DD54C001DF813 /* FriendRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendRequest.swift; sourceTree = "<group>"; };
 		6DBE91F22F6DDE82001DF813 /* FriendDTOs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendDTOs.swift; sourceTree = "<group>"; };
-		6DBE91F42F6DDEA4001DF813 /* FriendStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendStore.swift; sourceTree = "<group>"; };
+		6DBE91F42F6DDEA4001DF813 /* FriendStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendStore.swift; sourceTree = "<group>"; usesTabs = 0; };
 		6DBE91F82F6DEE67001DF813 /* FriendMessageDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendMessageDTO.swift; sourceTree = "<group>"; };
 		6DBE91FA2F6DEE90001DF813 /* FriendChatMessageItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendChatMessageItem.swift; sourceTree = "<group>"; };
 		6DBE91FC2F6E1129001DF813 /* FriendTypingStatusDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendTypingStatusDTO.swift; sourceTree = "<group>"; };
@@ -498,6 +499,7 @@
 		6DD286BA2F7AE6BF005A73FA /* HomeDashboardView+Week.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HomeDashboardView+Week.swift"; sourceTree = "<group>"; };
 		6DD286BC2F7AE6ED005A73FA /* HomeDashboardView+Styles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HomeDashboardView+Styles.swift"; sourceTree = "<group>"; };
 		6DD286BE2F7AE88B005A73FA /* NotificationName+Focus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NotificationName+Focus.swift"; sourceTree = "<group>"; };
+		6DD286C12F7C750B005A73FA /* AudioRecorderManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorderManager.swift; sourceTree = "<group>"; };
 		6DDF5B5A2F5F9DFE003057C9 /* CrewTaskComment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewTaskComment.swift; sourceTree = "<group>"; };
 		6DDF5B5C2F5F9E21003057C9 /* CrewTaskPoll.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewTaskPoll.swift; sourceTree = "<group>"; };
 		6DDF5B5E2F5FA38A003057C9 /* CreateCrewTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateCrewTaskView.swift; sourceTree = "<group>"; };
@@ -663,6 +665,7 @@
 				6DBE92082F6EB0B8001DF813 /* SharedWeekView.swift */,
 				6DBE920A2F6EE881001DF813 /* FriendWeekShareItemDTO.swift */,
 				6DBE920C2F6F373C001DF813 /* AddFriendSheetView.swift */,
+				6DD286C12F7C750B005A73FA /* AudioRecorderManager.swift */,
 			);
 			path = Friend;
 			sourceTree = "<group>";
@@ -1217,6 +1220,7 @@
 				6DD2828D2F697DF100B1281A /* WorkoutExerciseItem.swift in Sources */,
 				6DD282932F699C2D00B1281A /* WorkoutExerciseHistoryItem.swift in Sources */,
 				6D2004C92F645D170022C810 /* CountUpText.swift in Sources */,
+				6DD286C22F7C750B005A73FA /* AudioRecorderManager.swift in Sources */,
 				6DB70E792F72ED8400F04B43 /* SharedFocusRunTime.swift in Sources */,
 				6D2004522F61C6FC0022C810 /* EventRow.swift in Sources */,
 				6DBE91DD2F6C8211001DF813 /* CrewTypingStatusDTO.swift in Sources */,
@@ -1449,7 +1453,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = WidgetExtensionExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 2KC59ZZTWK;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WidgetExtension/Info.plist;
@@ -1482,7 +1486,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = WidgetExtensionExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 2KC59ZZTWK;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WidgetExtension/Info.plist;
@@ -1639,7 +1643,7 @@
 				CODE_SIGN_ENTITLEMENTS = DailyTodo/DailyTodo.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 2KC59ZZTWK;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1647,6 +1651,9 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Updo;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Kamerayı kullanarak fotoğraf paylaşabilmek için erişim gerekiyor.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Ses mesajı gönderebilmek için mikrofona erişim gerekiyor.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Sohbet içinde fotoğraf paylaşabilmek için galeriye erişim gerekiyor.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -1680,7 +1687,7 @@
 				CODE_SIGN_ENTITLEMENTS = DailyTodo/DailyTodo.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 2KC59ZZTWK;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1688,6 +1695,9 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Updo;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Kamerayı kullanarak fotoğraf paylaşabilmek için erişim gerekiyor.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Ses mesajı gönderebilmek için mikrofona erişim gerekiyor.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Sohbet içinde fotoğraf paylaşabilmek için galeriye erişim gerekiyor.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
