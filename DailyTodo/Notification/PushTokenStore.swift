@@ -12,8 +12,12 @@ import Supabase
 final class PushTokenStore {
     func saveCurrentToken(currentUserID: UUID?) async {
         guard let currentUserID else { return }
+
         guard let token = UserDefaults.standard.string(forKey: "apns_device_token"),
-              !token.isEmpty else { return }
+              !token.isEmpty else {
+            print("PUSH TOKEN SAVE SKIPPED: token yok")
+            return
+        }
 
         struct Payload: Encodable {
             let user_id: UUID

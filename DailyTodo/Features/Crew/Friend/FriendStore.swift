@@ -537,17 +537,7 @@ final class FriendStore: ObservableObject {
         isAppActive = isActive
     }
 
-    func setActiveChat(_ friendshipID: UUID?) {
-        activeChatFriendshipID = friendshipID
-
-        guard let friendshipID else { return }
-        Task {
-            await markMessagesSeen(
-                friendshipID: friendshipID,
-                currentUserID: nil
-            )
-        }
-    }
+   
 
     private func recomputeUnreadState(for friendshipID: UUID) {
         let items = friendMessagesByFriendship[friendshipID] ?? []
@@ -577,7 +567,7 @@ final class FriendStore: ObservableObject {
     // MARK: - Messages
 
     private func mapDTOToFriendItem(_ dto: FriendMessageDTO, currentUserID: UUID?) -> FriendChatMessageItem {
-        let resolvedStatus = dto.message_status ?? "sent"
+        let resolvedStatus = dto.message_status ?? "sent_to_server"
 
         return FriendChatMessageItem(
             id: dto.id,
@@ -593,6 +583,7 @@ final class FriendStore: ObservableObject {
             isFromMe: dto.sender_id == currentUserID,
             isPending: resolvedStatus == "sending" || resolvedStatus == "uploading",
             isFailed: resolvedStatus == "failed",
+            deliveredAt: dto.delivered_at.flatMap { CrewDateParser.parse($0) },
             seenAt: dto.seen_at.flatMap { CrewDateParser.parse($0) },
             messageType: dto.message_type ?? "text",
             mediaURL: dto.media_url,
@@ -733,6 +724,8 @@ final class FriendStore: ObservableObject {
                 mapDTOToFriendItem($0, currentUserID: currentUserID)
             }
             recomputeUnreadState(for: friendshipID)
+
+            await markMessagesDelivered(friendshipID: friendshipID, currentUserID: currentUserID)
         } catch {
             print("LOAD INITIAL MESSAGES ERROR:", error.localizedDescription)
         }
@@ -770,6 +763,8 @@ final class FriendStore: ObservableObject {
             current.sort { $0.createdAt < $1.createdAt }
             friendMessagesByFriendship[friendshipID] = Array(current.suffix(100))
             recomputeUnreadState(for: friendshipID)
+
+            await markMessagesDelivered(friendshipID: friendshipID, currentUserID: currentUserID)
 
         } catch {
             print("LOAD NEW MESSAGES ERROR:", error.localizedDescription)
@@ -834,7 +829,7 @@ final class FriendStore: ObservableObject {
                 file_name: nil,
                 file_size_bytes: nil,
                 mime_type: nil,
-                message_status: "sent"
+                message_status: "sent_to_server"
             )
 
             try await SupabaseManager.shared.client
@@ -909,7 +904,7 @@ final class FriendStore: ObservableObject {
             file_name: nil,
             file_size_bytes: nil,
             mime_type: nil,
-            message_status: "sending"
+            message_status: "sent_to_server"
         )
 
         try await SupabaseManager.shared.client
@@ -941,7 +936,7 @@ final class FriendStore: ObservableObject {
             file_name: fileName,
             file_size_bytes: fileSizeBytes,
             mime_type: mimeType,
-            message_status: "sent"
+            message_status: "sent_to_server"
         )
 
         try await SupabaseManager.shared.client
@@ -984,6 +979,7 @@ final class FriendStore: ObservableObject {
                 isFromMe: old.isFromMe,
                 isPending: messageStatus == "sending" || messageStatus == "uploading",
                 isFailed: messageStatus == "failed",
+                deliveredAt: old.deliveredAt,
                 seenAt: old.seenAt,
                 messageType: old.messageType,
                 mediaURL: mediaURL ?? old.mediaURL,
@@ -1014,6 +1010,7 @@ final class FriendStore: ObservableObject {
                 isFromMe: old.isFromMe,
                 isPending: false,
                 isFailed: true,
+                deliveredAt: old.deliveredAt,
                 seenAt: old.seenAt,
                 messageType: old.messageType,
                 mediaURL: old.mediaURL,
@@ -1503,7 +1500,77 @@ final class FriendStore: ObservableObject {
         }
     }
 
-    // MARK: - Mark Seen
+    // MARK: - Delivery / Seen
+
+    func markMessagesDelivered(friendshipID: UUID, currentUserID: UUID?) async {
+        let resolvedCurrentUserID: UUID?
+        if let currentUserID {
+            resolvedCurrentUserID = currentUserID
+        } else {
+            if let session = try? await SupabaseManager.shared.client.auth.session {
+                resolvedCurrentUserID = session.user.id
+            } else {
+                resolvedCurrentUserID = nil
+            }
+        }
+        guard let resolvedCurrentUserID else { return }
+
+        let hasUndelivered = friendMessagesByFriendship[friendshipID]?.contains {
+            !$0.isFromMe && $0.serverID != nil && $0.deliveredAt == nil
+        } ?? false
+
+        guard hasUndelivered else { return }
+
+        let nowString = ISO8601DateFormatter().string(from: Date())
+        let nowDate = Date()
+
+        do {
+            try await SupabaseManager.shared.client
+                .from("friend_messages")
+                .update([
+                    "delivered_at": nowString,
+                    "message_status": "delivered"
+                ])
+                .eq("friendship_id", value: friendshipID.uuidString)
+                .neq("sender_id", value: resolvedCurrentUserID.uuidString)
+                .is("delivered_at", value: nil)
+                .execute()
+
+            var items = friendMessagesByFriendship[friendshipID] ?? []
+            items = items.map { msg in
+                guard !msg.isFromMe && msg.serverID != nil && msg.deliveredAt == nil else { return msg }
+
+                return FriendChatMessageItem(
+                    id: msg.id,
+                    serverID: msg.serverID,
+                    clientID: msg.clientID,
+                    friendshipID: msg.friendshipID,
+                    senderID: msg.senderID,
+                    senderName: msg.senderName,
+                    text: msg.text,
+                    createdAt: msg.createdAt,
+                    reaction: msg.reaction,
+                    isSystemMessage: msg.isSystemMessage,
+                    isFromMe: msg.isFromMe,
+                    isPending: msg.isPending,
+                    isFailed: msg.isFailed,
+                    deliveredAt: nowDate,
+                    seenAt: msg.seenAt,
+                    messageType: msg.messageType,
+                    mediaURL: msg.mediaURL,
+                    fileName: msg.fileName,
+                    fileSizeBytes: msg.fileSizeBytes,
+                    mimeType: msg.mimeType,
+                    messageStatus: "delivered"
+                )
+            }
+
+            friendMessagesByFriendship[friendshipID] = items
+            recomputeUnreadState(for: friendshipID)
+        } catch {
+            print("MARK MESSAGES DELIVERED ERROR:", error.localizedDescription)
+        }
+    }
 
     func markMessagesSeen(friendshipID: UUID, currentUserID: UUID?) async {
         let resolvedCurrentUserID: UUID?
@@ -1530,19 +1597,25 @@ final class FriendStore: ObservableObject {
             return
         }
 
+        let nowString = ISO8601DateFormatter().string(from: Date())
+        let nowDate = Date()
+
         do {
             try await SupabaseManager.shared.client
                 .from("friend_messages")
-                .update(["seen_at": ISO8601DateFormatter().string(from: Date())])
+                .update([
+                    "seen_at": nowString,
+                    "message_status": "seen"
+                ])
                 .eq("friendship_id", value: friendshipID.uuidString)
                 .neq("sender_id", value: resolvedCurrentUserID.uuidString)
                 .is("seen_at", value: nil)
                 .execute()
 
-            let now = Date()
             var items = friendMessagesByFriendship[friendshipID] ?? []
             items = items.map { msg in
                 guard !msg.isFromMe && msg.seenAt == nil else { return msg }
+
                 return FriendChatMessageItem(
                     id: msg.id,
                     serverID: msg.serverID,
@@ -1557,13 +1630,14 @@ final class FriendStore: ObservableObject {
                     isFromMe: msg.isFromMe,
                     isPending: msg.isPending,
                     isFailed: msg.isFailed,
-                    seenAt: now,
+                    deliveredAt: msg.deliveredAt ?? nowDate,
+                    seenAt: nowDate,
                     messageType: msg.messageType,
                     mediaURL: msg.mediaURL,
                     fileName: msg.fileName,
                     fileSizeBytes: msg.fileSizeBytes,
                     mimeType: msg.mimeType,
-                    messageStatus: msg.messageStatus
+                    messageStatus: "seen"
                 )
             }
 
@@ -1572,6 +1646,44 @@ final class FriendStore: ObservableObject {
         } catch {
             print("MARK MESSAGES SEEN ERROR:", error.localizedDescription)
         }
+    }
+    
+    func setActiveChat(_ friendshipID: UUID?) {
+        activeChatFriendshipID = friendshipID
+
+        if let friendshipID {
+            UserDefaults.standard.set(friendshipID.uuidString, forKey: "active_friendship_id")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "active_friendship_id")
+        }
+
+        guard let friendshipID else { return }
+
+        Task {
+            await markMessagesDelivered(
+                friendshipID: friendshipID,
+                currentUserID: nil
+            )
+
+            await markMessagesSeen(
+                friendshipID: friendshipID,
+                currentUserID: nil
+            )
+        }
+    }
+    
+    private let activeFriendshipDefaultsKey = "active_friendship_id"
+
+    private func persistActiveChatFriendshipID(_ friendshipID: UUID?) {
+        if let friendshipID {
+            UserDefaults.standard.set(friendshipID.uuidString, forKey: activeFriendshipDefaultsKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: activeFriendshipDefaultsKey)
+        }
+    }
+
+    static func currentActiveFriendshipIDString() -> String? {
+        UserDefaults.standard.string(forKey: "active_friendship_id")
     }
     
     // MARK: - Delete Message
@@ -1733,6 +1845,11 @@ final class FriendStore: ObservableObject {
                         guard dto.friendship_id == friendshipID else { return }
                         let item = self.mapDTOToFriendItem(dto, currentUserID: currentUserIDCopy)
                         self.appendFriendMessage(item, friendshipID: friendshipID)
+
+                        if dto.sender_id != currentUserIDCopy {
+                            await self.markMessagesDelivered(friendshipID: friendshipID, currentUserID: currentUserIDCopy)
+                        }
+
                         if dto.sender_id != currentUserIDCopy,
                            self.activeChatFriendshipID == friendshipID,
                            self.isAppActive {

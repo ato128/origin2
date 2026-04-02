@@ -15,15 +15,22 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        FirebaseApp.configure()
+
         let center = UNUserNotificationCenter.current()
         center.delegate = self
 
-        if let notificationResponse = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
-            handleNotificationPayload(notificationResponse)
+        application.registerForRemoteNotifications()
+
+        if let remotePayload = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
+            handleNotificationPayload(remotePayload)
         }
-        FirebaseApp.configure()
 
         return true
+    }
+
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        application.applicationIconBadgeNumber = 0
     }
 
     func application(
@@ -47,17 +54,57 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
+        let userInfo = notification.request.content.userInfo
+
+        if shouldShowCustomInAppBanner(for: userInfo) {
+            let title = notification.request.content.title.isEmpty
+                ? "Yeni mesaj"
+                : notification.request.content.title
+
+            let body = notification.request.content.body
+
+            Task { @MainActor in
+                InAppBannerCenter.shared.show(
+                    title: title,
+                    message: body,
+                    payload: userInfo
+                )
+            }
+
+            completionHandler([])
+            return
+        }
+
+        if shouldSuppressSystemBanner(for: userInfo) {
+            completionHandler([])
+            return
+        }
+
         completionHandler([.banner, .sound, .badge])
     }
 
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) {
-        let userInfo = response.notification.request.content.userInfo
-        handleNotificationPayload(userInfo)
-        completionHandler()
+    private func shouldSuppressSystemBanner(for userInfo: [AnyHashable: Any]) -> Bool {
+        guard let type = userInfo["type"] as? String else { return false }
+
+        switch type {
+        case "friend_chat":
+            guard let incomingFriendshipID = userInfo["friendship_id"] as? String else { return false }
+            let activeFriendshipID = UserDefaults.standard.string(forKey: "active_friendship_id")
+            return activeFriendshipID == incomingFriendshipID
+
+        case "crew_chat":
+            guard let incomingCrewID = userInfo["crew_id"] as? String else { return false }
+            let activeCrewID = UserDefaults.standard.string(forKey: "active_crew_id")
+            return activeCrewID == incomingCrewID
+
+        default:
+            return false
+        }
+    }
+
+    private func shouldShowCustomInAppBanner(for userInfo: [AnyHashable: Any]) -> Bool {
+        guard UIApplication.shared.applicationState == .active else { return false }
+        return !shouldSuppressSystemBanner(for: userInfo)
     }
 
     private func handleNotificationPayload(_ userInfo: [AnyHashable: Any]) {
@@ -72,10 +119,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
                 }
 
             case "friend_chat":
-                if let friendID = userInfo["friend_id"] as? String {
+                if let friendshipID = userInfo["friendship_id"] as? String {
                     NotificationCenter.default.post(
                         name: .openFriendChatFromNotification,
-                        object: friendID
+                        object: friendshipID
                     )
                 }
 

@@ -21,6 +21,7 @@ struct FriendChatMessageItem: Identifiable, Equatable {
     let isFromMe: Bool
     let isPending: Bool
     let isFailed: Bool
+    let deliveredAt: Date?
     let seenAt: Date?
 
     let messageType: String
@@ -44,13 +45,14 @@ struct FriendChatMessageItem: Identifiable, Equatable {
         isFromMe: Bool,
         isPending: Bool = false,
         isFailed: Bool = false,
+        deliveredAt: Date? = nil,
         seenAt: Date? = nil,
         messageType: String = "text",
         mediaURL: String? = nil,
         fileName: String? = nil,
         fileSizeBytes: Int64? = nil,
         mimeType: String? = nil,
-        messageStatus: String = "sent"
+        messageStatus: String = "sent_to_server"
     ) {
         self.id = id
         self.serverID = serverID
@@ -65,6 +67,7 @@ struct FriendChatMessageItem: Identifiable, Equatable {
         self.isFromMe = isFromMe
         self.isPending = isPending
         self.isFailed = isFailed
+        self.deliveredAt = deliveredAt
         self.seenAt = seenAt
         self.messageType = messageType
         self.mediaURL = mediaURL

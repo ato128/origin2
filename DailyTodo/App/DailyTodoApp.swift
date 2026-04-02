@@ -10,7 +10,6 @@ import SwiftData
 import WidgetKit
 import UserNotifications
 
-
 @main
 struct DailyTodoApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
@@ -93,6 +92,9 @@ struct DailyTodoApp: App {
                 .environmentObject(friendStore)
                 .environmentObject(languageManager)
                 .environment(\.locale, languageManager.activeLocale)
+                .overlay {
+                    InAppBannerOverlay()
+                }
                 .onAppear {
                     let context = ModelContext(container)
 
@@ -153,6 +155,10 @@ struct DailyTodoApp: App {
                 .onOpenURL { url in
                     handleIncomingURL(url)
                 }
+                .onReceive(NotificationCenter.default.publisher(for: .openURLFromNotification)) { output in
+                    guard let url = output.object as? URL else { return }
+                    handleIncomingURL(url)
+                }
         }
     }
 
@@ -171,6 +177,30 @@ struct DailyTodoApp: App {
 
         if url.host == "join-crew" {
             handleIncomingInviteURL(url)
+            return
+        }
+
+        if url.host == "friend-chat" {
+            guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+                  let friendshipID = components.queryItems?.first(where: { $0.name == "friendship_id" })?.value
+            else { return }
+
+            NotificationCenter.default.post(
+                name: .openFriendChatFromNotification,
+                object: friendshipID
+            )
+            return
+        }
+
+        if url.host == "crew-chat" {
+            guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+                  let crewID = components.queryItems?.first(where: { $0.name == "crew_id" })?.value
+            else { return }
+
+            NotificationCenter.default.post(
+                name: .openCrewChatFromNotification,
+                object: crewID
+            )
             return
         }
     }

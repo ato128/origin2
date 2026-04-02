@@ -663,7 +663,12 @@ private extension FriendChatView {
                                 )
 
                                 if let toUserId = friend.backendUserID?.uuidString {
-                                    PushService.shared.send(toUserId: toUserId, message: "🎤 Ses mesajı")
+                                    PushService.shared.sendFriendMessagePush(
+                                        toUserId: toUserId,
+                                        friendshipID: friendshipID.uuidString,
+                                        senderName: senderDisplayName(),
+                                        message: "🎤 Ses mesajı"
+                                    )
                                 }
 
                                 audioRecorder.recordedURL = nil
@@ -780,6 +785,8 @@ private extension FriendChatView {
 
         let clean = draftMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         let toUserId = friend.backendUserID?.uuidString
+        guard let toUserId = toUserId else { return }
+        
         let attachmentToSend = draftAttachment
 
         draftMessage = ""
@@ -808,8 +815,10 @@ private extension FriendChatView {
                         caption: clean.isEmpty ? nil : clean
                     )
 
-                    PushService.shared.send(
-                        toUserId: toUserId ?? "",
+                    PushService.shared.sendFriendMessagePush(
+                        toUserId: toUserId,
+                        friendshipID: friendshipID.uuidString,
+                        senderName: senderDisplayName(),
                         message: clean.isEmpty ? "📷 Fotoğraf" : clean
                     )
                     return
@@ -823,8 +832,10 @@ private extension FriendChatView {
                         caption: clean.isEmpty ? nil : clean
                     )
 
-                    PushService.shared.send(
-                        toUserId: toUserId ?? "",
+                    PushService.shared.sendFriendMessagePush(
+                        toUserId: toUserId,
+                        friendshipID: friendshipID.uuidString,
+                        senderName: senderDisplayName(),
                         message: clean.isEmpty ? "📎 Dosya" : clean
                     )
                     return
@@ -840,7 +851,12 @@ private extension FriendChatView {
                 senderName: senderDisplayName()
             )
 
-            PushService.shared.send(toUserId: toUserId ?? "", message: clean)
+            PushService.shared.sendFriendMessagePush(
+                toUserId: toUserId,
+                friendshipID: friendshipID.uuidString,
+                senderName: senderDisplayName(),
+                message: clean
+            )
         }
     }
     func scrollToBottom(proxy: ScrollViewProxy, animated: Bool) {
@@ -1072,14 +1088,8 @@ private struct ChatMessageRow: View {
                     }
 
                     if message.isFromMe {
-                        HStack(spacing: 4) {
+                        HStack(spacing: 0) {
                             messageStatusSymbol
-
-                            if !messageStatusText.isEmpty {
-                                Text(messageStatusText)
-                                    .font(.system(size: 10, weight: .medium))
-                                    .lineLimit(1)
-                            }
                         }
                         .foregroundStyle(messageStatusColor)
                         .padding(.horizontal, 6)
@@ -1463,41 +1473,21 @@ private struct ChatMessageRow: View {
                 Image(systemName: "checkmark")
             }
             .font(.system(size: 9, weight: .bold))
-        } else if message.serverID != nil {
+        } else if message.deliveredAt != nil {
             HStack(spacing: -3) {
                 Image(systemName: "checkmark")
                 Image(systemName: "checkmark")
             }
             .font(.system(size: 9, weight: .bold))
-        } else {
+        } else if message.serverID != nil {
             Image(systemName: "checkmark")
                 .font(.system(size: 9, weight: .bold))
+        } else {
+            Image(systemName: "clock")
+                .font(.system(size: 9, weight: .medium))
         }
     }
-
-    private var messageStatusText: String {
-        if message.isFailed {
-            return "Gönderilemedi"
-        }
-
-        if message.messageStatus == "uploading" {
-            return "Yükleniyor"
-        }
-
-        if message.isPending {
-            return "Gönderiliyor"
-        }
-
-        if message.seenAt != nil {
-            return "Görüldü"
-        }
-
-        if message.serverID != nil {
-            return "İletildi"
-        }
-
-        return ""
-    }
+   
 
     private var messageStatusColor: Color {
         if message.isFailed {
@@ -1505,7 +1495,7 @@ private struct ChatMessageRow: View {
         }
 
         if message.messageStatus == "uploading" {
-            return Color.orange.opacity(0.95)
+            return Color.white.opacity(0.78)
         }
 
         if message.isPending {
@@ -1514,6 +1504,10 @@ private struct ChatMessageRow: View {
 
         if message.seenAt != nil {
             return Color(red: 0.33, green: 0.62, blue: 1.0)
+        }
+
+        if message.deliveredAt != nil {
+            return Color.white.opacity(0.72)
         }
 
         return Color.white.opacity(0.58)

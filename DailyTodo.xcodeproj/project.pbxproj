@@ -251,6 +251,7 @@
 		6DD286BD2F7AE6ED005A73FA /* HomeDashboardView+Styles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD286BC2F7AE6ED005A73FA /* HomeDashboardView+Styles.swift */; };
 		6DD286BF2F7AE88B005A73FA /* NotificationName+Focus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD286BE2F7AE88B005A73FA /* NotificationName+Focus.swift */; };
 		6DD286C22F7C750B005A73FA /* AudioRecorderManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD286C12F7C750B005A73FA /* AudioRecorderManager.swift */; };
+		6DD286E42F7EEA74005A73FA /* InAppBannerCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD286E32F7EEA74005A73FA /* InAppBannerCenter.swift */; };
 		6DDF5B5B2F5F9DFF003057C9 /* CrewTaskComment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DDF5B5A2F5F9DFE003057C9 /* CrewTaskComment.swift */; };
 		6DDF5B5D2F5F9E21003057C9 /* CrewTaskPoll.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DDF5B5C2F5F9E21003057C9 /* CrewTaskPoll.swift */; };
 		6DDF5B5F2F5FA38A003057C9 /* CreateCrewTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DDF5B5E2F5FA38A003057C9 /* CreateCrewTaskView.swift */; };
@@ -500,6 +501,7 @@
 		6DD286BC2F7AE6ED005A73FA /* HomeDashboardView+Styles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HomeDashboardView+Styles.swift"; sourceTree = "<group>"; };
 		6DD286BE2F7AE88B005A73FA /* NotificationName+Focus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NotificationName+Focus.swift"; sourceTree = "<group>"; };
 		6DD286C12F7C750B005A73FA /* AudioRecorderManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorderManager.swift; sourceTree = "<group>"; };
+		6DD286E32F7EEA74005A73FA /* InAppBannerCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InAppBannerCenter.swift; sourceTree = "<group>"; };
 		6DDF5B5A2F5F9DFE003057C9 /* CrewTaskComment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewTaskComment.swift; sourceTree = "<group>"; };
 		6DDF5B5C2F5F9E21003057C9 /* CrewTaskPoll.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewTaskPoll.swift; sourceTree = "<group>"; };
 		6DDF5B5E2F5FA38A003057C9 /* CreateCrewTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateCrewTaskView.swift; sourceTree = "<group>"; };
@@ -912,6 +914,7 @@
 				6DD282952F69AA5800B1281A /* Notification+Names.swift */,
 				6DBE92042F6E1C8F001DF813 /* PushTokenStore.swift */,
 				6DC8F5292F78A42E00361A6D /* PushService.swift */,
+				6DD286E32F7EEA74005A73FA /* InAppBannerCenter.swift */,
 			);
 			path = Notification;
 			sourceTree = "<group>";
@@ -1318,6 +1321,7 @@
 				6D2004922F6383720022C810 /* HomeDashboardHelpers.swift in Sources */,
 				6D64E0D92F7079D000C68B5B /* IntroHomeMockView.swift in Sources */,
 				6DBE91E12F6C8295001DF813 /* WeekCrewItem.swift in Sources */,
+				6DD286E42F7EEA74005A73FA /* InAppBannerCenter.swift in Sources */,
 				6DBE91BB2F6B69C0001DF813 /* CreateCrewBackendView.swift in Sources */,
 				6DC8F52A2F78A42E00361A6D /* PushService.swift in Sources */,
 				6DBE91D52F6C6948001DF813 /* WeekCrewChatModels.swift in Sources */,
