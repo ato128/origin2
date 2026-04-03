@@ -7,7 +7,7 @@
 
 import UIKit
 import UserNotifications
-import FirebaseCore
+
 
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
@@ -15,18 +15,54 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        FirebaseApp.configure()
+       
 
         let center = UNUserNotificationCenter.current()
         center.delegate = self
 
-        application.registerForRemoteNotifications()
+        print("✅ APP DID FINISH LAUNCHING")
+
+        requestPushPermissionAndRegister(application)
 
         if let remotePayload = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
             handleNotificationPayload(remotePayload)
         }
 
         return true
+    }
+
+    private func requestPushPermissionAndRegister(_ application: UIApplication) {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            switch settings.authorizationStatus {
+            case .authorized, .provisional, .ephemeral:
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    print("📡 REGISTERING FOR REMOTE NOTIFICATIONS...")
+                    application.registerForRemoteNotifications()
+                }
+
+            case .notDetermined:
+                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+                    if let error {
+                        print("🔴 NOTIFICATION PERMISSION ERROR:", error.localizedDescription)
+                    }
+
+                    print("🔔 NOTIFICATION PERMISSION GRANTED:", granted)
+
+                    guard granted else { return }
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        print("📡 REGISTERING FOR REMOTE NOTIFICATIONS...")
+                        application.registerForRemoteNotifications()
+                    }
+                }
+
+            case .denied:
+                print("⛔️ NOTIFICATION PERMISSION DENIED")
+
+            @unknown default:
+                break
+            }
+        }
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
@@ -38,16 +74,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
     ) {
         let token = deviceToken.map { String(format: "%02x", $0) }.joined()
-        print("APNS TOKEN:", token)
+        print("🟢 APNS TOKEN:", token)
+
         UserDefaults.standard.set(token, forKey: "apns_device_token")
+        UserDefaults.standard.synchronize()
+
+        NotificationCenter.default.post(name: .didReceiveAPNSToken, object: nil)
     }
 
-    func application(
-        _ application: UIApplication,
-        didFailToRegisterForRemoteNotificationsWithError error: Error
-    ) {
-        print("APNS REGISTER ERROR:", error.localizedDescription)
-    }
+    
 
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
@@ -81,6 +116,16 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         }
 
         completionHandler([.banner, .sound, .badge])
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let userInfo = response.notification.request.content.userInfo
+        handleNotificationPayload(userInfo)
+        completionHandler()
     }
 
     private func shouldSuppressSystemBanner(for userInfo: [AnyHashable: Any]) -> Bool {
@@ -154,4 +199,5 @@ extension Notification.Name {
     static let openFriendChatFromNotification = Notification.Name("openFriendChatFromNotification")
     static let openCrewFocusFromNotification = Notification.Name("openCrewFocusFromNotification")
     static let openURLFromNotification = Notification.Name("openURLFromNotification")
+    static let didReceiveAPNSToken = Notification.Name("didReceiveAPNSToken")
 }

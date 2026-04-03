@@ -9,6 +9,7 @@ import SwiftUI
 import SwiftData
 import WidgetKit
 import UserNotifications
+import UIKit
 
 @main
 struct DailyTodoApp: App {
@@ -16,7 +17,7 @@ struct DailyTodoApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     private let container: ModelContainer
-    private let appGroupID = "group.Atakan.dailytoDO"
+    private let appGroupID = "group.com.atakan.updo"
 
     @StateObject private var session = SessionStore()
     @StateObject private var crewStore = CrewStore()
@@ -107,6 +108,8 @@ struct DailyTodoApp: App {
                     todoStore.setCurrentUserID(currentUserID)
                     LiveActivityScheduler.shared.setCurrentUserID(currentUserID)
 
+                    syncCurrentUserIDToDefaults(session.currentUser?.id)
+
                     let descriptor = FetchDescriptor<EventItem>(
                         sortBy: [SortDescriptor(\EventItem.startMinute, order: .forward)]
                     )
@@ -116,6 +119,14 @@ struct DailyTodoApp: App {
                     Task {
                         await NotificationManager.shared.requestPermissionIfNeeded()
                         await NotificationManager.shared.rescheduleAll(events: scopedEvents)
+
+                        await MainActor.run {
+                            print("📡 REGISTERING FOR REMOTE NOTIFICATIONS FROM ONAPPEAR...")
+                            UIApplication.shared.registerForRemoteNotifications()
+                        }
+
+                        // Token kaydetmeyi burada YAPMA — user hazır olmayabilir.
+                        // onChange(session.currentUser?.id) ve didReceiveAPNSToken handle edecek.
                     }
                 }
                 .onChange(of: session.currentUser?.id) { _, newID in
@@ -123,6 +134,8 @@ struct DailyTodoApp: App {
 
                     todoStore.setCurrentUserID(userIDString)
                     LiveActivityScheduler.shared.setCurrentUserID(userIDString)
+
+                    syncCurrentUserIDToDefaults(newID)
 
                     let context = ModelContext(container)
                     WidgetAppSync.refreshFromSwiftData(context: context)
@@ -140,6 +153,19 @@ struct DailyTodoApp: App {
                     Task {
                         await NotificationManager.shared.requestPermissionIfNeeded()
                         await NotificationManager.shared.rescheduleAll(events: scopedEvents)
+
+                        await MainActor.run {
+                            print("📡 FORCE REGISTER FROM USER CHANGE...")
+                            UIApplication.shared.registerForRemoteNotifications()
+                        }
+
+                        // APNS token register async — biraz bekle, sonra kaydet
+                        try? await Task.sleep(nanoseconds: 3_000_000_000)
+
+                        if let newID {
+                            print("💾 TOKEN KAYIT DENEMESİ (onChange)...")
+                            await PushTokenStore().saveCurrentToken(currentUserID: newID)
+                        }
                     }
                 }
                 .onChange(of: scenePhase) { _, newPhase in
@@ -147,6 +173,13 @@ struct DailyTodoApp: App {
                         LiveActivityScheduler.shared.startForegroundLoop(container: container)
                         let context = ModelContext(container)
                         WidgetAppSync.refreshFromSwiftData(context: context)
+
+                        // Uygulama açıldığında token yenile
+                        if let userID = session.currentUser?.id {
+                            Task {
+                                await PushTokenStore().saveCurrentToken(currentUserID: userID)
+                            }
+                        }
                     } else if newPhase == .background {
                         LiveActivityScheduler.shared.stopForegroundLoop()
                         LiveActivityScheduler.shared.rescheduleBackgroundTask(container: container)
@@ -159,6 +192,26 @@ struct DailyTodoApp: App {
                     guard let url = output.object as? URL else { return }
                     handleIncomingURL(url)
                 }
+                .onReceive(NotificationCenter.default.publisher(for: .didReceiveAPNSToken)) { _ in
+                    guard let userID = session.currentUser?.id else {
+                        // User henüz hazır değil — onChange zaten handle edecek
+                        print("⚠️ APNS TOKEN GELDİ AMA SESSION HAZIR DEĞİL")
+                        return
+                    }
+
+                    print("💾 TOKEN KAYIT DENEMESİ (didReceiveAPNSToken)...")
+                    Task {
+                        await PushTokenStore().saveCurrentToken(currentUserID: userID)
+                    }
+                }
+        }
+    }
+
+    private func syncCurrentUserIDToDefaults(_ userID: UUID?) {
+        if let userID {
+            UserDefaults.standard.set(userID.uuidString, forKey: "current_user_id")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "current_user_id")
         }
     }
 

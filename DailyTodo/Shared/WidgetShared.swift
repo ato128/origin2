@@ -10,7 +10,7 @@ import Foundation
 // ✅ TEK KAYNAK: Hem App hem Widget bunu kullanacak
 enum WidgetShared {
     // SENİN ID (bunu zaten yazdın)
-    static let appGroupID = "group.Atakan.dailytoDO"
+    static let appGroupID = "group.com.atakan.updo"
 
     // ✅ Tek key — HER YERDE AYNI
     static let payloadKey = "schedule_payload_v1"

@@ -20,7 +20,7 @@ final class LiveActivityScheduler {
     private var timer: Timer?
 
     // Burayı SENİN gerçek App Group id'in ile birebir aynı yap
-    private let appGroupID = "group.Atakan.DailytoDO"
+    private let appGroupID = "group.com.atakan.updo"
 
     private enum Keys {
         static let currentUserID = "liveactivity.currentUserID"

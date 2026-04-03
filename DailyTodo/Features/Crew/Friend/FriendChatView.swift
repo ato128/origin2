@@ -133,6 +133,11 @@ struct FriendChatView: View {
                         for: friendshipID,
                         currentUserID: session.currentUser?.id
                     )
+                } else {
+                    await friendStore.loadNewMessages(
+                        for: friendshipID,
+                        currentUserID: session.currentUser?.id
+                    )
                 }
                 
                 let pushStore = PushTokenStore()
@@ -143,7 +148,7 @@ struct FriendChatView: View {
                     currentUserID: session.currentUser?.id
                 )
                 
-                friendStore.unsubscribeFriendMessagesRealtime()
+                
                 friendStore.subscribeToFriendMessagesRealtime(
                     friendshipID: friendshipID,
                     currentUserID: session.currentUser?.id
