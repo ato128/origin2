@@ -13,9 +13,11 @@ enum HomeHeroKind: String {
     case overdueTask
     case nextClass
     case todayPriorityTask
+    case upcomingExam
     case socialFollowUp
     case crewFollowUp
     case insightsFollowUp
+    case noTaskPrompt
     case wrapUp
 }
 
@@ -125,7 +127,6 @@ extension HomeDashboardView {
         }
     }
 
-  
     var hasRecentFriendConversation: Bool {
         recentChatFriend != nil
     }
@@ -162,6 +163,19 @@ extension HomeDashboardView {
     var nextEventTimeText: String {
         guard let event = nextEvent else { return "Bugün" }
         return "\(hm(event.startMinute)) • \(event.durationMinute) dk"
+    }
+
+    var hasNoTaskAtAllToday: Bool {
+        todayBoardTasks.isEmpty
+    }
+
+    var shouldShowNoTaskPromptHero: Bool {
+        hasNoTaskAtAllToday &&
+        !isFocusActive &&
+        !hasAnyActiveFocusSession &&
+        activeBackendCrewFocusSession == nil &&
+        !hasRecentFriendConversation &&
+        !hasCrewWorkToDo
     }
 
     var wrapUpHeroTitle: String {
@@ -218,6 +232,106 @@ extension HomeDashboardView {
             return "calendar"
         case .evening, .night:
             return "calendar.badge.plus"
+        }
+    }
+
+    var noTaskPromptHeroState: TodayHeroState {
+        switch heroDayPhase {
+        case .morning:
+            return TodayHeroState(
+                eyebrow: "Temiz başlangıç",
+                title: "Bugünü netleştir",
+                subtitle: "Henüz görev görünmüyor. Küçük bir başlangıç günü daha anlamlı hale getirir.",
+                icon: "sparkles",
+                accent: .blue,
+                badge1: HeroBadge(
+                    icon: "sun.max.fill",
+                    text: "Sabah",
+                    tint: .orange
+                ),
+                badge2: HeroBadge(
+                    icon: "checklist",
+                    text: "Plan açık",
+                    tint: .blue
+                ),
+                contextLine: "İlk görevini belirlemek gün içinde neye odaklanacağını netleştirir.",
+                primaryCTA: "Görev Ekle",
+                primaryIcon: "plus",
+                primaryAction: {
+                    onAddTask()
+                },
+                secondaryCTA: HeroCTA(
+                    title: "Haftaya Bak",
+                    icon: "calendar",
+                    action: {
+                        onOpenWeek()
+                    }
+                )
+            )
+
+        case .afternoon:
+            return TodayHeroState(
+                eyebrow: "Henüz plan oluşmadı",
+                title: "Günü hareket ettir",
+                subtitle: "Bugün için görev görünmüyor. Tek bir küçük görev bile ritmi başlatabilir.",
+                icon: "bolt.fill",
+                accent: .green,
+                badge1: HeroBadge(
+                    icon: "clock.fill",
+                    text: "Öğle",
+                    tint: .orange
+                ),
+                badge2: HeroBadge(
+                    icon: "checklist",
+                    text: "Boş akış",
+                    tint: .green
+                ),
+                contextLine: "Kısa ve yönetilebilir bir görev eklemek günün boşa gitmiş hissini azaltır.",
+                primaryCTA: "Görev Ekle",
+                primaryIcon: "plus",
+                primaryAction: {
+                    onAddTask()
+                },
+                secondaryCTA: HeroCTA(
+                    title: "Hafta",
+                    icon: "calendar",
+                    action: {
+                        onOpenWeek()
+                    }
+                )
+            )
+
+        case .evening, .night:
+            return TodayHeroState(
+                eyebrow: "Akşam kapanışı",
+                title: "Yarını boş bırakma",
+                subtitle: "Bugün için görev görünmüyor. Yarın için 1–2 küçük adım belirlemek iyi olabilir.",
+                icon: "calendar.badge.plus",
+                accent: .purple,
+                badge1: HeroBadge(
+                    icon: "moon.stars.fill",
+                    text: "Akşam",
+                    tint: .purple
+                ),
+                badge2: HeroBadge(
+                    icon: "calendar",
+                    text: "Yarın",
+                    tint: .blue
+                ),
+                contextLine: "Şimdi yapılan küçük bir plan, yarın sabah karar yorgunluğunu azaltır.",
+                primaryCTA: "Yarını Planla",
+                primaryIcon: "calendar.badge.plus",
+                primaryAction: {
+                    onOpenWeek()
+                },
+                secondaryCTA: HeroCTA(
+                    title: "Görev Ekle",
+                    icon: "plus",
+                    action: {
+                        onAddTask()
+                    }
+                )
+            )
         }
     }
 
@@ -345,7 +459,7 @@ extension HomeDashboardView {
         let title = socialFollowUpTitle
         let subtitle: String
 
-        if let _ = recentChatFriend {
+        if recentChatFriend != nil {
             subtitle = "Son konuşma hâlâ sıcak. İstersen kaldığın yerden devam et."
         } else {
             subtitle = "Arkadaşlarınla bağlantıda kalmak motivasyonu koruyabilir."
@@ -386,6 +500,7 @@ extension HomeDashboardView {
             )
         )
     }
+
     var hasAnyCompletedTaskToday: Bool {
         completedTodayCount > 0
     }
@@ -395,7 +510,7 @@ extension HomeDashboardView {
     }
 
     var shouldShowNightPlanningHero: Bool {
-        currentHour >= 20 && todayPendingBoardCount == 0
+        currentHour >= 20 && todayPendingBoardCount == 0 && !hasNoTaskAtAllToday
     }
 
     var shouldShowLowMomentumHero: Bool {
@@ -410,7 +525,7 @@ extension HomeDashboardView {
             .first?
             .title
     }
-    
+
     var completionFollowUpHeroStateV2: TodayHeroState {
         let completedTitle = latestCompletedTodayTaskTitle ?? "Görev"
 
@@ -444,11 +559,7 @@ extension HomeDashboardView {
                 title: hasCrewWorkToDo ? "Crew" : "Hafta",
                 icon: hasCrewWorkToDo ? "person.3.fill" : "calendar",
                 action: {
-                    if hasCrewWorkToDo {
-                        onOpenWeek()
-                    } else {
-                        onOpenWeek()
-                    }
+                    onOpenWeek()
                 }
             )
         )
@@ -618,7 +729,6 @@ extension HomeDashboardView {
         }
     }
 
- 
     func buildHeroCandidates() -> [HomeHeroCandidate] {
         var candidates: [HomeHeroCandidate] = []
 
@@ -692,16 +802,6 @@ extension HomeDashboardView {
             )
         }
 
-        if hasCompletedAllPersonalTodayTasks && hasRecentFriendConversation {
-            candidates.append(
-                HomeHeroCandidate(
-                    kind: .socialFollowUp,
-                    priority: 50,
-                    state: socialFollowUpHeroState
-                )
-            )
-        }
-
         if hasCompletedAllPersonalTodayTasks && hasCrewWorkToDo {
             candidates.append(
                 HomeHeroCandidate(
@@ -712,12 +812,32 @@ extension HomeDashboardView {
             )
         }
 
+        if hasCompletedAllPersonalTodayTasks && hasRecentFriendConversation {
+            candidates.append(
+                HomeHeroCandidate(
+                    kind: .socialFollowUp,
+                    priority: 50,
+                    state: socialFollowUpHeroState
+                )
+            )
+        }
+
         if hasCompletedAllPersonalTodayTasks && hasInsightsWorthShowing {
             candidates.append(
                 HomeHeroCandidate(
                     kind: .insightsFollowUp,
                     priority: 45,
                     state: insightsFollowUpHeroState
+                )
+            )
+        }
+
+        if shouldShowNoTaskPromptHero {
+            candidates.append(
+                HomeHeroCandidate(
+                    kind: .noTaskPrompt,
+                    priority: 46,
+                    state: noTaskPromptHeroState
                 )
             )
         }
@@ -747,6 +867,43 @@ extension HomeDashboardView {
         let candidates = buildHeroCandidates()
         let best = candidates.max { $0.priority < $1.priority }
         return best?.state ?? wrapUpHeroState
+    }
+    
+    func upcomingExamHeroState(_ exam: ExamItem) -> TodayHeroState {
+        let accent = examAccentColor(exam)
+        let minutes = suggestedStudyMinutes(for: exam)
+        let label = suggestedStudyLabel(for: exam)
+
+        return TodayHeroState(
+            eyebrow: "Yaklaşan sınav",
+            title: "\(exam.courseName.isEmpty ? exam.title : exam.courseName) \(exam.examType)",
+            subtitle: "\(examCountdownText(exam)) • Bugün \(minutes) dk \(label.lowercased()) iyi olabilir.",
+            icon: "graduationcap.fill",
+            accent: accent,
+            badge1: HeroBadge(
+                icon: "calendar",
+                text: examDateText(exam),
+                tint: accent
+            ),
+            badge2: HeroBadge(
+                icon: "timer",
+                text: "\(minutes) dk",
+                tint: .orange
+            ),
+            contextLine: "Sınava yaklaşırken küçük ama net bir çalışma bloğu stresi azaltır.",
+            primaryCTA: "Başlat",
+            primaryIcon: "play.fill",
+            primaryAction: {
+                startSuggestedExamFocus(for: exam)
+            },
+            secondaryCTA: HeroCTA(
+                title: "Planla",
+                icon: "calendar.badge.plus",
+                action: {
+                    onOpenWeek()
+                }
+            )
+        )
     }
 
     @ViewBuilder

@@ -721,15 +721,12 @@ final class FriendStore: ObservableObject {
                 .execute()
 
             let decoded = try JSONDecoder().decode([FriendMessageDTO].self, from: response.data)
-
-            // YENİ:
-            .sorted { ($0.created_at ?? "") < ($1.created_at ?? "") }
+                .sorted { ($0.created_at ?? "") < ($1.created_at ?? "") }
 
             friendMessagesByFriendship[friendshipID] = decoded.map {
                 mapDTOToFriendItem($0, currentUserID: currentUserID)
             }
             recomputeUnreadState(for: friendshipID)
-
             await markMessagesDelivered(friendshipID: friendshipID, currentUserID: currentUserID)
         } catch {
             print("LOAD INITIAL MESSAGES ERROR:", error.localizedDescription)
@@ -737,7 +734,6 @@ final class FriendStore: ObservableObject {
     }
 
     func loadNewMessages(for friendshipID: UUID, currentUserID: UUID?) async {
-    
         do {
             let response = try await SupabaseManager.shared.client
                 .from("friend_messages")
@@ -748,18 +744,12 @@ final class FriendStore: ObservableObject {
                 .execute()
 
             let decoded = try JSONDecoder().decode([FriendMessageDTO].self, from: response.data)
-
-            // YENİ:
-            .sorted { ($0.created_at ?? "") < ($1.created_at ?? "") }
-
-            
+                .sorted { ($0.created_at ?? "") < ($1.created_at ?? "") }
 
             let serverIDs = Set(decoded.map { $0.id })
-
             var current = friendMessagesByFriendship[friendshipID] ?? []
-  
 
-            // Silinmiş mesajları local'den kaldır
+            // Silinmiş mesajları kaldır
             current.removeAll { msg in
                 guard let sid = msg.serverID else { return false }
                 return !serverIDs.contains(sid)
@@ -770,8 +760,10 @@ final class FriendStore: ObservableObject {
                 let item = mapDTOToFriendItem(dto, currentUserID: currentUserID)
                 if let index = current.firstIndex(where: { $0.serverID == item.serverID }) {
                     current[index] = item
-                } else if let index = current.firstIndex(where: { $0.clientID == dto.client_id && $0.serverID == nil }) {
-                    current[index] = item
+                } else if let cidx = current.firstIndex(where: {
+                    $0.clientID == dto.client_id && $0.serverID == nil
+                }) {
+                    current[cidx] = item
                 } else {
                     current.append(item)
                 }
@@ -780,32 +772,15 @@ final class FriendStore: ObservableObject {
             current.sort { $0.createdAt < $1.createdAt }
             friendMessagesByFriendship[friendshipID] = Array(current.suffix(100))
             recomputeUnreadState(for: friendshipID)
-
             await markMessagesDelivered(friendshipID: friendshipID, currentUserID: currentUserID)
-
         } catch {
             print("LOAD NEW MESSAGES ERROR:", error.localizedDescription)
         }
     }
-    // MARK: - Send Message
 
     func sendMessage(text: String, friendshipID: UUID, senderID: UUID?, senderName: String) async {
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !clean.isEmpty else { return }
-
-        guard let resolvedSenderID = senderID else {
-            print("🔴 SENDER ID NIL")
-            return
-        }
-
-        // Session kontrol
-        do {
-            let session = try await SupabaseManager.shared.client.auth.session
-       
-        } catch {
-            print("🔴 SESSION YOK:", error.localizedDescription)
-            return
-        }
+        guard !clean.isEmpty, let resolvedSenderID = senderID else { return }
 
         let clientID = UUID().uuidString
 
@@ -826,8 +801,6 @@ final class FriendStore: ObservableObject {
         appendFriendMessage(localItem, friendshipID: friendshipID)
 
         do {
-           
-
             let payload = FriendMessageInsertPayload(
                 friendship_id: friendshipID,
                 sender_id: resolvedSenderID,
@@ -849,8 +822,6 @@ final class FriendStore: ObservableObject {
                 .insert(payload)
                 .execute()
 
-       
-
             let response = try await SupabaseManager.shared.client
                 .from("friend_messages")
                 .select()
@@ -858,18 +829,13 @@ final class FriendStore: ObservableObject {
                 .single()
                 .execute()
 
-         
-
             let savedDTO = try JSONDecoder().decode(FriendMessageDTO.self, from: response.data)
             appendFriendMessage(
                 mapDTOToFriendItem(savedDTO, currentUserID: resolvedSenderID),
                 friendshipID: friendshipID
             )
-
-          
         } catch {
-            print("🔴 INSERT ERROR:", error)
-            print("🔴 INSERT ERROR DESC:", error.localizedDescription)
+            print("SEND MESSAGE ERROR:", error.localizedDescription)
             markPendingMessageFailed(clientID: clientID, friendshipID: friendshipID)
         }
     }

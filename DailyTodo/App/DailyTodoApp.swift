@@ -47,6 +47,7 @@ struct DailyTodoApp: App {
                 WorkoutExerciseItem.self,
                 WorkoutExerciseHistoryItem.self,
                 EventItem.self,
+                ExamItem.self,
                 FocusSessionRecord.self,
                 Crew.self,
                 CrewMember.self,

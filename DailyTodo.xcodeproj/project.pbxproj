@@ -87,9 +87,7 @@
 		6D5FE4262F67912E007C124D /* TodoListView+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE4252F67912E007C124D /* TodoListView+Helpers.swift */; };
 		6D5FE4292F6796A9007C124D /* HomeDashboardView+Focus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE4282F6796A8007C124D /* HomeDashboardView+Focus.swift */; };
 		6D5FE42D2F6798A3007C124D /* HomeDashboardView+Header.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE42C2F6798A3007C124D /* HomeDashboardView+Header.swift */; };
-		6D5FE42F2F679A8A007C124D /* HomeDashboardView+Progress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE42E2F679A8A007C124D /* HomeDashboardView+Progress.swift */; };
 		6D5FE4312F679B68007C124D /* HomeDashboardView+Actions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE4302F679B68007C124D /* HomeDashboardView+Actions.swift */; };
-		6D5FE4332F679BE3007C124D /* HomeDashboardView+Cards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE4322F679BE3007C124D /* HomeDashboardView+Cards.swift */; };
 		6D5FE4472F687756007C124D /* CrewFocusRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE4462F687756007C124D /* CrewFocusRecord.swift */; };
 		6D5FE4492F689760007C124D /* CrewBadgeHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE4482F689760007C124D /* CrewBadgeHelpers.swift */; };
 		6D5FE44B2F689BA5007C124D /* CrewBadgeCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE44A2F689BA5007C124D /* CrewBadgeCard.swift */; };
@@ -134,6 +132,10 @@
 		6D8C3D3F2F65B8F700ABF6CA /* AICoachCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D8C3D3E2F65B8F700ABF6CA /* AICoachCard.swift */; };
 		6D8C3D412F65C9C000ABF6CA /* SmartTaskEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D8C3D402F65C9BF00ABF6CA /* SmartTaskEngine.swift */; };
 		6D8C3D432F65C9E900ABF6CA /* SmartTaskSuggestionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D8C3D422F65C9E900ABF6CA /* SmartTaskSuggestionCard.swift */; };
+		6D9E213C2F7FFEE500946892 /* DailyFlowEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E213B2F7FFEE500946892 /* DailyFlowEngine.swift */; };
+		6D9E213E2F80010700946892 /* SuggestedNextActionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E213D2F80010700946892 /* SuggestedNextActionCard.swift */; };
+		6D9E21402F803D9C00946892 /* ExamItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E213F2F803D9C00946892 /* ExamItem.swift */; };
+		6D9E21422F803E1300946892 /* HomeDashboardExamHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21412F803E1300946892 /* HomeDashboardExamHelpers.swift */; };
 		6DB70E712F72D47D00F04B43 /* WeekView+MainContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E702F72D47D00F04B43 /* WeekView+MainContent.swift */; };
 		6DB70E732F72D54B00F04B43 /* WeekView+Sheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E722F72D54B00F04B43 /* WeekView+Sheets.swift */; };
 		6DB70E752F72D56A00F04B43 /* WeekView+Lifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E742F72D56A00F04B43 /* WeekView+Lifecycle.swift */; };
@@ -209,7 +211,6 @@
 		6DC0CA0A2F5F1B0300A875ED /* ScheduleAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA082F5F1AFA00A875ED /* ScheduleAttributes.swift */; };
 		6DC0CAAE2F5F7D0000A875ED /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6DC0CA8F2F5F7D0000A875ED /* Assets.xcassets */; };
 		6DC0CAAF2F5F7D0000A875ED /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA9B2F5F7D0000A875ED /* Haptics.swift */; };
-		6DC0CAB02F5F7D0000A875ED /* NextClassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAA42F5F7D0000A875ED /* NextClassCard.swift */; };
 		6DC0CAB12F5F7D0000A875ED /* ImportScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA9E2F5F7D0000A875ED /* ImportScheduleView.swift */; };
 		6DC0CAB22F5F7D0000A875ED /* TodoListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAAB2F5F7D0000A875ED /* TodoListView.swift */; };
 		6DC0CAB32F5F7D0000A875ED /* FocusSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA9A2F5F7D0000A875ED /* FocusSessionView.swift */; };
@@ -226,11 +227,9 @@
 		6DC0CABE2F5F7D0000A875ED /* TaskNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAAA2F5F7D0000A875ED /* TaskNotifications.swift */; };
 		6DC0CABF2F5F7D0000A875ED /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAA92F5F7D0000A875ED /* SettingsView.swift */; };
 		6DC0CAC02F5F7D0000A875ED /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAA72F5F7D0000A875ED /* NotificationManager.swift */; };
-		6DC0CAC12F5F7D0000A875ED /* NextClassEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAA52F5F7D0000A875ED /* NextClassEngine.swift */; };
 		6DC0CAC22F5F7D0000A875ED /* FocusSessionRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA992F5F7D0000A875ED /* FocusSessionRecord.swift */; };
 		6DC0CAC32F5F7D0000A875ED /* CrewMember.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA942F5F7D0000A875ED /* CrewMember.swift */; };
 		6DC0CAC52F5F7D0000A875ED /* CrewActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA922F5F7D0000A875ED /* CrewActivity.swift */; };
-		6DC0CAC62F5F7D0000A875ED /* NextClassResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAA62F5F7D0000A875ED /* NextClassResult.swift */; };
 		6DC0CAC82F5F7D0000A875ED /* LiveActivityScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAA32F5F7D0000A875ED /* LiveActivityScheduler.swift */; };
 		6DC8F52A2F78A42E00361A6D /* PushService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC8F5292F78A42E00361A6D /* PushService.swift */; };
 		6DD282822F68C0FA00B1281A /* DailyTodo.entitlements.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6D81C1072F59E87500B65AF8 /* DailyTodo.entitlements.plist */; };
@@ -369,9 +368,7 @@
 		6D5FE4252F67912E007C124D /* TodoListView+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TodoListView+Helpers.swift"; sourceTree = "<group>"; };
 		6D5FE4282F6796A8007C124D /* HomeDashboardView+Focus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HomeDashboardView+Focus.swift"; sourceTree = "<group>"; };
 		6D5FE42C2F6798A3007C124D /* HomeDashboardView+Header.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HomeDashboardView+Header.swift"; sourceTree = "<group>"; };
-		6D5FE42E2F679A8A007C124D /* HomeDashboardView+Progress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HomeDashboardView+Progress.swift"; sourceTree = "<group>"; };
 		6D5FE4302F679B68007C124D /* HomeDashboardView+Actions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HomeDashboardView+Actions.swift"; sourceTree = "<group>"; };
-		6D5FE4322F679BE3007C124D /* HomeDashboardView+Cards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HomeDashboardView+Cards.swift"; sourceTree = "<group>"; };
 		6D5FE4462F687756007C124D /* CrewFocusRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewFocusRecord.swift; sourceTree = "<group>"; };
 		6D5FE4482F689760007C124D /* CrewBadgeHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewBadgeHelpers.swift; sourceTree = "<group>"; };
 		6D5FE44A2F689BA5007C124D /* CrewBadgeCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewBadgeCard.swift; sourceTree = "<group>"; };
@@ -391,6 +388,10 @@
 		6D8C3D3E2F65B8F700ABF6CA /* AICoachCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AICoachCard.swift; sourceTree = "<group>"; };
 		6D8C3D402F65C9BF00ABF6CA /* SmartTaskEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartTaskEngine.swift; sourceTree = "<group>"; };
 		6D8C3D422F65C9E900ABF6CA /* SmartTaskSuggestionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartTaskSuggestionCard.swift; sourceTree = "<group>"; };
+		6D9E213B2F7FFEE500946892 /* DailyFlowEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyFlowEngine.swift; sourceTree = "<group>"; };
+		6D9E213D2F80010700946892 /* SuggestedNextActionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestedNextActionCard.swift; sourceTree = "<group>"; };
+		6D9E213F2F803D9C00946892 /* ExamItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExamItem.swift; sourceTree = "<group>"; };
+		6D9E21412F803E1300946892 /* HomeDashboardExamHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDashboardExamHelpers.swift; sourceTree = "<group>"; };
 		6DB70E702F72D47D00F04B43 /* WeekView+MainContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeekView+MainContent.swift"; sourceTree = "<group>"; };
 		6DB70E722F72D54B00F04B43 /* WeekView+Sheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeekView+Sheets.swift"; sourceTree = "<group>"; };
 		6DB70E742F72D56A00F04B43 /* WeekView+Lifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeekView+Lifecycle.swift"; sourceTree = "<group>"; };
@@ -475,9 +476,6 @@
 		6DC0CAA12F5F7D0000A875ED /* InsightsScheduleChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsScheduleChart.swift; sourceTree = "<group>"; };
 		6DC0CAA22F5F7D0000A875ED /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
 		6DC0CAA32F5F7D0000A875ED /* LiveActivityScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityScheduler.swift; sourceTree = "<group>"; };
-		6DC0CAA42F5F7D0000A875ED /* NextClassCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextClassCard.swift; sourceTree = "<group>"; };
-		6DC0CAA52F5F7D0000A875ED /* NextClassEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextClassEngine.swift; sourceTree = "<group>"; };
-		6DC0CAA62F5F7D0000A875ED /* NextClassResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextClassResult.swift; sourceTree = "<group>"; };
 		6DC0CAA72F5F7D0000A875ED /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		6DC0CAA82F5F7D0000A875ED /* ScheduleShare.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleShare.swift; sourceTree = "<group>"; };
 		6DC0CAA92F5F7D0000A875ED /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -693,16 +691,11 @@
 			children = (
 				6D2004912F6383720022C810 /* HomeDashboardHelpers.swift */,
 				6DC0CA9C2F5F7D0000A875ED /* HomeDashboardView.swift */,
-				6DC0CAA42F5F7D0000A875ED /* NextClassCard.swift */,
-				6DC0CAA52F5F7D0000A875ED /* NextClassEngine.swift */,
-				6DC0CAA62F5F7D0000A875ED /* NextClassResult.swift */,
 				6D20048B2F636EB30022C810 /* PlanAheadView.swift */,
 				6D2004DE2F646EB90022C810 /* ScrollOffsetPreference.swift */,
 				6D5FE4282F6796A8007C124D /* HomeDashboardView+Focus.swift */,
 				6D5FE42C2F6798A3007C124D /* HomeDashboardView+Header.swift */,
-				6D5FE42E2F679A8A007C124D /* HomeDashboardView+Progress.swift */,
 				6D5FE4302F679B68007C124D /* HomeDashboardView+Actions.swift */,
-				6D5FE4322F679BE3007C124D /* HomeDashboardView+Cards.swift */,
 				6DB70E722F72D54B00F04B43 /* WeekView+Sheets.swift */,
 				6DB70E742F72D56A00F04B43 /* WeekView+Lifecycle.swift */,
 				6DD286B42F7AE645005A73FA /* HomeDashboardView+Hero.swift */,
@@ -711,6 +704,10 @@
 				6DD286BA2F7AE6BF005A73FA /* HomeDashboardView+Week.swift */,
 				6DD286BC2F7AE6ED005A73FA /* HomeDashboardView+Styles.swift */,
 				6DD286BE2F7AE88B005A73FA /* NotificationName+Focus.swift */,
+				6D9E213B2F7FFEE500946892 /* DailyFlowEngine.swift */,
+				6D9E213D2F80010700946892 /* SuggestedNextActionCard.swift */,
+				6D9E213F2F803D9C00946892 /* ExamItem.swift */,
+				6D9E21412F803E1300946892 /* HomeDashboardExamHelpers.swift */,
 			);
 			path = Home;
 			sourceTree = "<group>";
@@ -1227,6 +1224,7 @@
 				6DB70E792F72ED8400F04B43 /* SharedFocusRunTime.swift in Sources */,
 				6D2004522F61C6FC0022C810 /* EventRow.swift in Sources */,
 				6DBE91DD2F6C8211001DF813 /* CrewTypingStatusDTO.swift in Sources */,
+				6D9E21402F803D9C00946892 /* ExamItem.swift in Sources */,
 				6D215DB52F56427E00F7B9D7 /* ShareSheet.swift in Sources */,
 				6D5FE42D2F6798A3007C124D /* HomeDashboardView+Header.swift in Sources */,
 				6DDF5B632F5FADBB003057C9 /* CrewTaskReaction.swift in Sources */,
@@ -1255,12 +1253,12 @@
 				6DBE91B52F6B6906001DF813 /* CrewDTO.swift in Sources */,
 				6D5FE3F82F6755DA007C124D /* CrewFocusSession.swift in Sources */,
 				6D2004BD2F64505A0022C810 /* StudyHeatMapCard.swift in Sources */,
+				6D9E213E2F80010700946892 /* SuggestedNextActionCard.swift in Sources */,
 				6DBE91CD2F6C4446001DF813 /* CrewFocusRecordDTO.swift in Sources */,
 				6DD282842F68C1FE00B1281A /* TasksView.swift in Sources */,
 				6D5FE3FC2F678771007C124D /* CrewChatView+Header.swift in Sources */,
 				6D5FE3CC2F66CE68007C124D /* MessagesView.swift in Sources */,
 				6DBE91C52F6C33B7001DF813 /* JoinCrewSheet.swift in Sources */,
-				6D5FE42F2F679A8A007C124D /* HomeDashboardView+Progress.swift in Sources */,
 				6D215DA32F55FD7100F7B9D7 /* EditTaskView.swift in Sources */,
 				6DC0CA092F5F1AFA00A875ED /* ScheduleAttributes.swift in Sources */,
 				6DF0C9412F557F730043B887 /* AddTaskView.swift in Sources */,
@@ -1281,6 +1279,7 @@
 				6D2004DF2F646EB90022C810 /* ScrollOffsetPreference.swift in Sources */,
 				6D20049C2F6389460022C810 /* FriendChatView.swift in Sources */,
 				6D20045E2F62148F0022C810 /* WeekView+ModeHeader.swift in Sources */,
+				6D9E213C2F7FFEE500946892 /* DailyFlowEngine.swift in Sources */,
 				6D2004EB2F64EE8A0022C810 /* PermissionOnboardingView.swift in Sources */,
 				6D5FE3FA2F675620007C124D /* CrewFocusRoomView.swift in Sources */,
 				6D5FE4312F679B68007C124D /* HomeDashboardView+Actions.swift in Sources */,
@@ -1291,7 +1290,6 @@
 				6DC0CAAF2F5F7D0000A875ED /* Haptics.swift in Sources */,
 				6D8C3D342F65903B00ABF6CA /* AppTheme.swift in Sources */,
 				6D20045A2F61D73E0022C810 /* WeekView+CrewHelpers.swift in Sources */,
-				6DC0CAB02F5F7D0000A875ED /* NextClassCard.swift in Sources */,
 				6D8C3D362F65905100ABF6CA /* AppBackground.swift in Sources */,
 				6D8C3D412F65C9C000ABF6CA /* SmartTaskEngine.swift in Sources */,
 				6DC0CAB12F5F7D0000A875ED /* ImportScheduleView.swift in Sources */,
@@ -1376,7 +1374,6 @@
 				6D2004982F6387F00022C810 /* FriendMessage.swift in Sources */,
 				6D20048C2F636EB30022C810 /* PlanAheadView.swift in Sources */,
 				6DC0CAC02F5F7D0000A875ED /* NotificationManager.swift in Sources */,
-				6DC0CAC12F5F7D0000A875ED /* NextClassEngine.swift in Sources */,
 				6D5FE4292F6796A9007C124D /* HomeDashboardView+Focus.swift in Sources */,
 				6DBE91D32F6C6826001DF813 /* CrewMessageDTO.swift in Sources */,
 				6DC0CAC22F5F7D0000A875ED /* FocusSessionRecord.swift in Sources */,
@@ -1386,7 +1383,6 @@
 				6D64E0DF2F71BC1B00C68B5B /* IntroCrewMockView.swift in Sources */,
 				6DC0CAC52F5F7D0000A875ED /* CrewActivity.swift in Sources */,
 				6D5FE4202F678FD1007C124D /* TodoListView+Header.swift in Sources */,
-				6DC0CAC62F5F7D0000A875ED /* NextClassResult.swift in Sources */,
 				6DD286B52F7AE645005A73FA /* HomeDashboardView+Hero.swift in Sources */,
 				6D20049A2F6388120022C810 /* SharedWeekItem.swift in Sources */,
 				6D2004CD2F6461B60022C810 /* InsightsAmbientHeader.swift in Sources */,
@@ -1396,6 +1392,7 @@
 				6DBE91F32F6DDE82001DF813 /* FriendDTOs.swift in Sources */,
 				6DBE919A2F6B157B001DF813 /* IntroPageView.swift in Sources */,
 				6D2004BB2F64503C0022C810 /* WeeklyProgressCard.swift in Sources */,
+				6D9E21422F803E1300946892 /* HomeDashboardExamHelpers.swift in Sources */,
 				6DBE91F52F6DDEA4001DF813 /* FriendStore.swift in Sources */,
 				6D5FE3FE2F6787D7007C124D /* CrewChatView+Messages.swift in Sources */,
 				6DB70E7B2F72EE1300F04B43 /* FocusAttributes.swift in Sources */,
@@ -1417,7 +1414,6 @@
 				6D5FE44D2F689D74007C124D /* CrewLeaderboardRow.swift in Sources */,
 				6DBE91D92F6C79F4001DF813 /* CrewMessageReadDTO.swift in Sources */,
 				6DBE91F12F6DD54C001DF813 /* FriendRequest.swift in Sources */,
-				6D5FE4332F679BE3007C124D /* HomeDashboardView+Cards.swift in Sources */,
 				6DD286BB2F7AE6BF005A73FA /* HomeDashboardView+Week.swift in Sources */,
 				6D5FE4022F6788F4007C124D /* CrewChatView+Focus.swift in Sources */,
 				6D215DB72F5642AE00F7B9D7 /* ScheduleExport.swift in Sources */,
