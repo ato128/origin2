@@ -79,7 +79,7 @@ extension HomeDashboardView {
                         .lineLimit(2)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
+            .frame(maxWidth: .infinity, minHeight: 88, alignment: .topLeading)
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -100,8 +100,141 @@ extension HomeDashboardView {
         }
         .buttonStyle(.plain)
     }
+    
+    var hasUpcomingExamQuickActionPriority: Bool {
+        nearestRelevantExam != nil && resolvedHeroKind == .upcomingExam
+    }
+
+    var shouldUseNoTaskQuickActions: Bool {
+        todayBoardTasks.isEmpty && resolvedHeroKind == .noTaskPrompt
+    }
+
+    var shouldUseNightPlanningQuickActions: Bool {
+        resolvedHeroKind == .wrapUp || resolvedHeroKind == .noTaskPrompt
+    }
+
+    var quickActionFocusMinutesText: String {
+        if let exam = nearestRelevantExam {
+            return "\(suggestedStudyMinutes(for: exam)) dk"
+        }
+        return "25 dk"
+    }
+    
+    var quickActionsCardTitle: String {
+        if shouldUseNoTaskQuickActions {
+            return "Başlamak İçin"
+        }
+
+        if hasUpcomingExamQuickActionPriority {
+            return "Sınav İçin"
+        }
+
+        switch homeLayoutMode {
+        case .focusActive:
+            return "Hızlı Geçiş"
+        case .crewFollowUp:
+            return "Sıradaki Adımlar"
+        case .insightsFollowUp:
+            return "Devam Et"
+        case .completionWrapUp:
+            return "Kapanış Hamleleri"
+        case .defaultFlow:
+            return "Hızlı İşlemler"
+        }
+    }
+
+    var quickActionsCardSubtitle: String {
+        if shouldUseNoTaskQuickActions {
+            return "Boş ekranı küçük bir adımla doldur"
+        }
+
+        if hasUpcomingExamQuickActionPriority {
+            return "Yaklaşan sınav için en mantıklı kısa yollar"
+        }
+
+        switch homeLayoutMode {
+        case .focusActive:
+            return "Odak akışını bozmadan ilerle"
+        case .crewFollowUp:
+            return "Takım ve kişisel akış arasında geçiş yap"
+        case .insightsFollowUp:
+            return "Bugünkü ritme göre devam et"
+        case .completionWrapUp:
+            return "Günü kapatırken mantıklı hamleler"
+        case .defaultFlow:
+            return "Öğrenci akışın için kısa yollar"
+        }
+    }
 
     var contextualQuickActions: [HomeQuickAction] {
+        if shouldUseNoTaskQuickActions {
+            return [
+                HomeQuickAction(
+                    title: "Görev",
+                    subtitle: "İlk adımı ekle",
+                    systemImage: "plus",
+                    tint: .green,
+                    isHighlighted: true,
+                    action: onAddTask
+                ),
+                HomeQuickAction(
+                    title: "Yarın",
+                    subtitle: "Önceden planla",
+                    systemImage: "calendar.badge.plus",
+                    tint: .purple,
+                    isHighlighted: true,
+                    action: onOpenWeek
+                ),
+                HomeQuickAction(
+                    title: "Sınav",
+                    subtitle: "Yeni sınav ekle",
+                    systemImage: "graduationcap.fill",
+                    tint: .orange,
+                    isHighlighted: false,
+                    action: {
+                        showTasksShortcut = true
+                    }
+                )
+            ]
+        }
+
+        if hasUpcomingExamQuickActionPriority, let exam = nearestRelevantExam {
+            let courseTitle = exam.courseName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? exam.title
+                : exam.courseName
+
+            return [
+                HomeQuickAction(
+                    title: quickActionFocusMinutesText,
+                    subtitle: "\(courseTitle) çalış",
+                    systemImage: "play.fill",
+                    tint: .orange,
+                    isHighlighted: true,
+                    action: {
+                        startSuggestedExamFocus(for: exam)
+                    }
+                ),
+                HomeQuickAction(
+                    title: "Planla",
+                    subtitle: "Week’e yerleştir",
+                    systemImage: "calendar.badge.plus",
+                    tint: .purple,
+                    isHighlighted: true,
+                    action: onOpenWeek
+                ),
+                HomeQuickAction(
+                    title: "Görevler",
+                    subtitle: "Hazırlıkları gör",
+                    systemImage: "list.bullet",
+                    tint: .blue,
+                    isHighlighted: false,
+                    action: {
+                        showTasksShortcut = true
+                    }
+                )
+            ]
+        }
+
         switch homeLayoutMode {
         case .focusActive:
             return [
@@ -135,7 +268,7 @@ extension HomeDashboardView {
             return [
                 HomeQuickAction(
                     title: "Crew",
-                    subtitle: "Akışa geç",
+                    subtitle: "Takıma dön",
                     systemImage: "person.3.fill",
                     tint: .pink,
                     isHighlighted: true,
@@ -146,12 +279,12 @@ extension HomeDashboardView {
                     subtitle: "Planı aç",
                     systemImage: "calendar.badge.plus",
                     tint: .purple,
-                    isHighlighted: true,
+                    isHighlighted: false,
                     action: onOpenWeek
                 ),
                 HomeQuickAction(
                     title: "Görev",
-                    subtitle: "Yeni ekle",
+                    subtitle: "Kişisel ekle",
                     systemImage: "checklist",
                     tint: .green,
                     isHighlighted: false,
@@ -171,7 +304,7 @@ extension HomeDashboardView {
                 ),
                 HomeQuickAction(
                     title: "Hafta",
-                    subtitle: "Planı aç",
+                    subtitle: "Akışı aç",
                     systemImage: "calendar",
                     tint: .purple,
                     isHighlighted: false,
@@ -191,7 +324,7 @@ extension HomeDashboardView {
             return [
                 HomeQuickAction(
                     title: "Yarın",
-                    subtitle: "Planla",
+                    subtitle: "Planı kur",
                     systemImage: "calendar.badge.plus",
                     tint: .purple,
                     isHighlighted: true,
@@ -202,13 +335,13 @@ extension HomeDashboardView {
                     subtitle: "Günü gör",
                     systemImage: "chart.bar.fill",
                     tint: .orange,
-                    isHighlighted: true,
+                    isHighlighted: false,
                     action: onOpenInsights
                 ),
                 HomeQuickAction(
                     title: "Görev",
-                    subtitle: "Yeni ekle",
-                    systemImage: "checklist",
+                    subtitle: "Küçük ekle",
+                    systemImage: "plus",
                     tint: .green,
                     isHighlighted: false,
                     action: onAddTask
@@ -239,7 +372,7 @@ extension HomeDashboardView {
                     HomeQuickAction(
                         title: "Görev",
                         subtitle: "Yeni ekle",
-                        systemImage: "checklist",
+                        systemImage: "plus",
                         tint: .green,
                         isHighlighted: false,
                         action: onAddTask
@@ -260,7 +393,7 @@ extension HomeDashboardView {
                     HomeQuickAction(
                         title: "Görev",
                         subtitle: "Hızlı ekle",
-                        systemImage: "checklist",
+                        systemImage: "plus",
                         tint: .green,
                         isHighlighted: false,
                         action: onAddTask
@@ -288,7 +421,7 @@ extension HomeDashboardView {
                 HomeQuickAction(
                     title: "Görev",
                     subtitle: "Eklemeyi unutma",
-                    systemImage: "checklist",
+                    systemImage: "plus",
                     tint: .green,
                     isHighlighted: false,
                     action: onAddTask

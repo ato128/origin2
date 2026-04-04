@@ -39,6 +39,23 @@ struct BackendCrewDetailView: View {
     @State private var inviteCopied = false
     @State private var showDeleteCrewConfirm = false
     @State private var isDeletingCrew = false
+    @State private var taskFilter: CrewTaskFilter = .open
+    
+    enum CrewTaskFilter: String, CaseIterable, Identifiable {
+            case open
+            case done
+            case all
+
+            var id: String { rawValue }
+
+            var title: String {
+                switch self {
+                case .open: return "Açık"
+                case .done: return "Biten"
+                case .all: return "Tümü"
+                }
+            }
+        }
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -68,28 +85,22 @@ struct BackendCrewDetailView: View {
                     .opacity(showStatsRow ? 1 : 0)
                     .scaleEffect(showStatsRow ? 1 : 0.985)
 
-                    leaderboardCard
-                        .offset(y: showStatsRow ? 0 : 18)
-                        .opacity(showStatsRow ? 1 : 0)
-                        .scaleEffect(showStatsRow ? 1 : 0.985)
-
-                    backendBadgeCard
-                        .offset(y: showStatsRow ? 0 : 18)
-                        .opacity(showStatsRow ? 1 : 0)
-                        .scaleEffect(showStatsRow ? 1 : 0.985)
+                    performanceCard
+                                            .offset(y: showStatsRow ? 0 : 18)
+                                            .opacity(showStatsRow ? 1 : 0)
+                                            .scaleEffect(showStatsRow ? 1 : 0.985)
 
                     membersSection(crewMembers)
                         .offset(y: showMembersSection ? 0 : 18)
                         .opacity(showMembersSection ? 1 : 0)
                         .scaleEffect(showMembersSection ? 1 : 0.985)
 
-                    tasksSection(sortedCrewTasks)
+                    tasksSection(filteredCrewTasks)
                         .offset(y: showTasksSection ? 0 : 18)
                         .opacity(showTasksSection ? 1 : 0)
                         .scaleEffect(showTasksSection ? 1 : 0.985)
 
-                    focusPlaceholderSection(memberCount: crewMembers.count)
-                        .offset(y: showFocusSection ? 0 : 18)
+                    focusComingSoonStrip(memberCount: crewMembers.count)                        .offset(y: showFocusSection ? 0 : 18)
                         .opacity(showFocusSection ? 1 : 0)
                         .scaleEffect(showFocusSection ? 1 : 0.985)
 
@@ -317,6 +328,169 @@ extension BackendCrewDetailView {
                 return $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
             }
     }
+    
+    var performanceCard: some View {
+            let minutes = totalFocusMinutes
+            let badgeTitle = CrewBadgeHelper.title(for: minutes)
+            let badgeColor = CrewBadgeHelper.color(for: minutes)
+            let nextTarget = CrewBadgeHelper.nextTarget(for: minutes)
+            let topMember = topThreeLeaderboard.first
+
+            return VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Performans")
+                            .font(.headline)
+                            .foregroundStyle(palette.primaryText)
+
+                        Text("Crew ritmi ve bugünkü öne çıkanlar")
+                            .font(.caption)
+                            .foregroundStyle(palette.secondaryText)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "sparkles")
+                        .font(.title3)
+                        .foregroundStyle(badgeColor)
+                }
+
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 10) {
+                            ZStack {
+                                Circle()
+                                    .fill(badgeColor.opacity(0.16))
+                                    .frame(width: 50, height: 50)
+
+                                Image(systemName: "medal.fill")
+                                    .font(.title3)
+                                    .foregroundStyle(badgeColor)
+                            }
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(badgeTitle)
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(palette.primaryText)
+
+                                Text(focusTimeText(minutes))
+                                    .font(.caption)
+                                    .foregroundStyle(palette.secondaryText)
+                            }
+                        }
+
+                        if let nextTarget {
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    Text("Sonraki seviye")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(palette.secondaryText)
+
+                                    Spacer()
+
+                                    Text(focusTimeText(max(0, nextTarget - minutes)))
+                                        .font(.caption2.weight(.bold))
+                                        .foregroundStyle(palette.secondaryText)
+                                }
+
+                                ProgressView(value: CrewBadgeHelper.progress(for: minutes))
+                                    .tint(badgeColor)
+                                    .scaleEffect(y: 1.35)
+                            }
+                        }
+
+                        HStack(spacing: 8) {
+                            Image(systemName: "flame.fill")
+                                .foregroundStyle(.orange)
+
+                            Text("Seri \(currentStreakText)")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(palette.primaryText)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(badgeColor.opacity(0.08))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .stroke(badgeColor.opacity(0.22), lineWidth: 1)
+                            )
+                    )
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text("Bugünün Lideri")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(palette.secondaryText)
+
+                            Spacer()
+                        }
+
+                        if let topMember {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(topMember.name)
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(palette.primaryText)
+
+                                Text("\(topMember.minutes) dk odak")
+                                    .font(.caption)
+                                    .foregroundStyle(palette.secondaryText)
+                            }
+
+                            HStack(spacing: 8) {
+                                ForEach(Array(topThreeLeaderboard.enumerated()), id: \.offset) { index, entry in
+                                    VStack(spacing: 4) {
+                                        Text("#\(index + 1)")
+                                            .font(.caption2.weight(.bold))
+                                            .foregroundStyle(index == 0 ? .yellow : palette.secondaryText)
+
+                                        Text("\(entry.minutes)")
+                                            .font(.caption.weight(.bold))
+                                            .foregroundStyle(palette.primaryText)
+                                            .monospacedDigit()
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 8)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            .fill(palette.secondaryCardFill)
+                                    )
+                                }
+                            }
+                        } else {
+                            Text("Bugün henüz focus kaydı yok")
+                                .font(.caption)
+                                .foregroundStyle(palette.secondaryText)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(palette.secondaryCardFill)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
+                            )
+                    )
+                }
+            }
+            .padding(18)
+            .background(cardBackground)
+        }
+    
+    var filteredCrewTasks: [CrewTaskDTO] {
+            switch taskFilter {
+            case .open:
+                return sortedCrewTasks.filter { !$0.is_done }
+            case .done:
+                return sortedCrewTasks.filter(\.is_done)
+            case .all:
+                return sortedCrewTasks
+            }
+        }
 
     var completedTasksCount: Int {
         sortedCrewTasks.filter(\.is_done).count
@@ -710,97 +884,129 @@ extension BackendCrewDetailView {
     }
 
     func heroCard(memberCount: Int, totalTasks: Int, progress: Double) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(hexColor(crew.color_hex).opacity(0.18))
-                        .frame(width: 64, height: 64)
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .top) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(hexColor(crew.color_hex).opacity(0.18))
+                            .frame(width: 58, height: 58)
 
-                    Image(systemName: crew.icon)
-                        .font(.title2.weight(.semibold))
-                        .foregroundStyle(hexColor(crew.color_hex))
-                }
-
-                Spacer()
-
-                Button {
-                    Task {
-                        guard let user = session.currentUser else { return }
-
-                        do {
-                            let code = try await crewStore.createInvite(
-                                for: crew.id,
-                                userID: user.id
-                            )
-                            inviteCode = code
-                            showShareSheet = true
-                        } catch {
-                            errorMessage = error.localizedDescription
-                        }
+                        Image(systemName: crew.icon)
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(hexColor(crew.color_hex))
                     }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "person.badge.plus")
-                        Text("backend_crew_invite")
-                            .font(.caption.weight(.semibold))
-                    }
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .background(
-                        Capsule()
-                            .fill(hexColor(crew.color_hex))
-                    )
-                }
-                .buttonStyle(.plain)
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(crew.name)
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(palette.primaryText)
-
-                Text("backend_crew_hero_subtitle")
-                    .font(.subheadline)
-                    .foregroundStyle(palette.secondaryText)
-            }
-
-            HStack(spacing: 10) {
-                infoPill(
-                    text: String(format: String(localized: "backend_crew_members_count"), memberCount),
-                    tint: hexColor(crew.color_hex)
-                )
-                infoPill(
-                    text: String(format: String(localized: "backend_crew_tasks_count"), totalTasks),
-                    tint: palette.secondaryText
-                )
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("backend_crew_progress")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(palette.secondaryText)
 
                     Spacer()
 
-                    Text("\(Int(progress * 100))%")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(palette.secondaryText)
+                    HStack(spacing: 8) {
+                        Button {
+                            Task {
+                                guard let user = session.currentUser else { return }
+
+                                do {
+                                    let code = try await crewStore.createInvite(
+                                        for: crew.id,
+                                        userID: user.id
+                                    )
+                                    inviteCode = code
+                                    showInviteSheet = true
+                                } catch {
+                                    errorMessage = error.localizedDescription
+                                }
+                            }
+                        } label: {
+                            Label("Davet Et", systemImage: "person.badge.plus")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(hexColor(crew.color_hex))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 8)
+                                .background(
+                                    Capsule()
+                                        .fill(hexColor(crew.color_hex).opacity(0.12))
+                                )
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            showCreateTask = true
+                        } label: {
+                            Label("Görev", systemImage: "plus")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 8)
+                                .background(
+                                    Capsule()
+                                        .fill(hexColor(crew.color_hex))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
 
-                ProgressView(value: progress)
-                    .tint(hexColor(crew.color_hex))
-                    .scaleEffect(y: 1.8)
-            }
-        }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
-        .shadow(color: hexColor(crew.color_hex).opacity(0.10), radius: 12, y: 6)
-    }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(crew.name)
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
 
+                    Text(heroSubtitle(memberCount: memberCount, totalTasks: totalTasks))
+                        .font(.subheadline)
+                        .foregroundStyle(palette.secondaryText)
+                        .lineLimit(2)
+                }
+
+                HStack(spacing: 8) {
+                    infoPill(
+                        text: "\(memberCount) üye",
+                        tint: hexColor(crew.color_hex)
+                    )
+
+                    infoPill(
+                        text: "\(totalTasks) görev",
+                        tint: palette.secondaryText
+                    )
+
+                    infoPill(
+                        text: "%\(Int(progress * 100)) tamam",
+                        tint: .green
+                    )
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("İlerleme")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(palette.secondaryText)
+
+                        Spacer()
+
+                        Text("\(Int(progress * 100))%")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(palette.secondaryText)
+                    }
+
+                    ProgressView(value: progress)
+                        .tint(hexColor(crew.color_hex))
+                        .scaleEffect(y: 1.6)
+                }
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(cardBackground)
+            .shadow(color: hexColor(crew.color_hex).opacity(0.08), radius: 10, y: 4)
+        }
+    func heroSubtitle(memberCount: Int, totalTasks: Int) -> String {
+            if totalTasks == 0 {
+                return "Crew hazır. İlk ortak görevi ekleyerek akışı başlat."
+            }
+
+            if pendingTasksCount == 0 {
+                return "Bugün için tüm ortak görevler tamamlandı."
+            }
+
+            return "\(pendingTasksCount) açık görev, \(memberCount) üyeyle akış devam ediyor."
+        }
+    
     func quickStatsRow(completed: Int, pending: Int, memberCount: Int) -> some View {
         HStack(spacing: 10) {
             statCard(
@@ -993,83 +1199,119 @@ extension BackendCrewDetailView {
     }
 
     func tasksSection(_ crewTasks: [CrewTaskDTO]) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("backend_crew_shared_tasks")
-                    .font(.headline)
-                    .foregroundStyle(palette.primaryText)
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Text("backend_crew_shared_tasks")
+                        .font(.headline)
+                        .foregroundStyle(palette.primaryText)
 
-                Spacer()
+                    Spacer()
 
-                Button {
-                    showCreateTask = true
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "plus")
-                        Text("common_new")
+                    Button {
+                        showCreateTask = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "plus")
+                            Text("common_new")
+                        }
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(hexColor(crew.color_hex).opacity(0.12))
+                        )
+                        .foregroundStyle(hexColor(crew.color_hex))
                     }
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(hexColor(crew.color_hex).opacity(0.12))
-                    )
-                    .foregroundStyle(hexColor(crew.color_hex))
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-            }
 
-            if crewTasks.isEmpty {
-                emptyMiniState(text: String(localized: "backend_crew_no_shared_tasks"))
-            } else {
-                LazyVStack(spacing: 12) {
-                    ForEach(crewTasks) { task in
-                        taskCardView(task)
-                            .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                            .onTapGesture {
-                                selectedTask = task
+                HStack(spacing: 8) {
+                    ForEach(CrewTaskFilter.allCases) { filter in
+                        let isSelected = taskFilter == filter
+
+                        Button {
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                                taskFilter = filter
                             }
-                            .contextMenu {
-                                Button {
-                                    Task {
-                                        await crewStore.toggleTask(task)
-                                    }
-                                } label: {
-                                    Label(
-                                        task.is_done
-                                        ? String(localized: "backend_crew_reopen_task")
-                                        : String(localized: "backend_crew_mark_done"),
-                                        systemImage: task.is_done
-                                            ? "arrow.uturn.backward.circle"
-                                            : "checkmark.circle"
-                                    )
-                                }
+                        } label: {
+                            Text(filter.title)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(isSelected ? palette.primaryText : palette.secondaryText)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(
+                                    Capsule()
+                                        .fill(
+                                            isSelected
+                                            ? hexColor(crew.color_hex).opacity(0.14)
+                                            : palette.secondaryCardFill
+                                        )
+                                )
+                                .overlay(
+                                    Capsule()
+                                        .stroke(
+                                            isSelected
+                                            ? hexColor(crew.color_hex).opacity(0.22)
+                                            : palette.cardStroke.opacity(0.7),
+                                            lineWidth: 1
+                                        )
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
 
-                                Button(role: .destructive) {
-                                    Task {
-                                        do {
-                                            try await crewStore.deleteTask(
-                                                taskID: task.id,
-                                                crewID: task.crew_id,
-                                                title: task.title
-                                            )
-                                        } catch {
-                                            print("DELETE TASK ERROR:", error.localizedDescription)
+                if crewTasks.isEmpty {
+                    emptyMiniState(text: String(localized: "backend_crew_no_shared_tasks"))
+                } else {
+                    LazyVStack(spacing: 12) {
+                        ForEach(crewTasks) { task in
+                            taskCardView(task)
+                                .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                                .onTapGesture {
+                                    selectedTask = task
+                                }
+                                .contextMenu {
+                                    Button {
+                                        Task {
+                                            await crewStore.toggleTask(task)
                                         }
+                                    } label: {
+                                        Label(
+                                            task.is_done
+                                            ? String(localized: "backend_crew_reopen_task")
+                                            : String(localized: "backend_crew_mark_done"),
+                                            systemImage: task.is_done
+                                                ? "arrow.uturn.backward.circle"
+                                                : "checkmark.circle"
+                                        )
                                     }
-                                } label: {
-                                    Label(String(localized: "backend_crew_delete_task"), systemImage: "trash")
+
+                                    Button(role: .destructive) {
+                                        Task {
+                                            do {
+                                                try await crewStore.deleteTask(
+                                                    taskID: task.id,
+                                                    crewID: task.crew_id,
+                                                    title: task.title
+                                                )
+                                            } catch {
+                                                print("DELETE TASK ERROR:", error.localizedDescription)
+                                            }
+                                        }
+                                    } label: {
+                                        Label(String(localized: "backend_crew_delete_task"), systemImage: "trash")
+                                    }
                                 }
-                            }
+                        }
                     }
                 }
             }
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(cardBackground)
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
-    }
 
     func taskCardView(_ task: CrewTaskDTO) -> some View {
         HStack(alignment: .top, spacing: 10) {
@@ -1213,51 +1455,43 @@ extension BackendCrewDetailView {
         return String(format: "%02d:%02d", h, m)
     }
 
-    func focusPlaceholderSection(memberCount: Int) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("backend_crew_focus_together")
-                    .font(.headline)
-                    .foregroundStyle(palette.primaryText)
+    func focusComingSoonStrip(memberCount: Int) -> some View {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(hexColor(crew.color_hex).opacity(0.14))
+                        .frame(width: 42, height: 42)
+
+                    Image(systemName: "timer")
+                        .foregroundStyle(hexColor(crew.color_hex))
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Birlikte Focus")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(palette.primaryText)
+
+                    Text("\(memberCount) üyeyle ortak odak çok yakında")
+                        .font(.caption)
+                        .foregroundStyle(palette.secondaryText)
+                        .lineLimit(2)
+                }
 
                 Spacer()
 
-                Image(systemName: "timer")
+                Text("Yakında")
+                    .font(.caption2.weight(.bold))
                     .foregroundStyle(hexColor(crew.color_hex))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(
+                        Capsule()
+                            .fill(hexColor(crew.color_hex).opacity(0.12))
+                    )
             }
-
-            Text("backend_crew_focus_subtitle")
-                .font(.subheadline)
-                .foregroundStyle(palette.secondaryText)
-
-            HStack(spacing: 10) {
-                infoPill(
-                    text: String(format: String(localized: "backend_crew_members_count"), memberCount),
-                    tint: hexColor(crew.color_hex)
-                )
-                infoPill(text: String(localized: "backend_crew_soon"), tint: palette.secondaryText)
-            }
-
-            Button {
-            } label: {
-                HStack {
-                    Image(systemName: "hourglass")
-                    Text("backend_crew_coming_soon")
-                }
-                .font(.subheadline.weight(.semibold))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(palette.secondaryCardFill)
-                .foregroundStyle(palette.secondaryText)
-                .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .disabled(true)
+            .padding(16)
+            .background(cardBackground)
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
-    }
 
     func taskPill(text: String, tint: Color) -> some View {
         Text(text)

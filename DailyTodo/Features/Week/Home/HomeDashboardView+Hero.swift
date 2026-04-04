@@ -171,6 +171,7 @@ extension HomeDashboardView {
 
     var shouldShowNoTaskPromptHero: Bool {
         hasNoTaskAtAllToday &&
+        nearestRelevantExam == nil &&
         !isFocusActive &&
         !hasAnyActiveFocusSession &&
         activeBackendCrewFocusSession == nil &&
@@ -630,6 +631,38 @@ extension HomeDashboardView {
             )
         )
     }
+    
+    
+
+    var upcomingActiveExams: [ExamItem] {
+        userScopedExams
+            .filter { !$0.isCompleted && $0.examDate >= Calendar.current.startOfDay(for: Date()) }
+            .sorted { $0.examDate < $1.examDate }
+    }
+
+    var nearestRelevantExam: ExamItem? {
+        upcomingActiveExams.first { exam in
+            let days = daysUntilExam(exam)
+            return days <= 7
+        }
+    }
+
+    func examHeroPriority(for exam: ExamItem) -> Int {
+        let days = daysUntilExam(exam)
+
+        switch days {
+        case ...1:
+            return 88
+        case 2...3:
+            return 80
+        case 4...7:
+            return 68
+        default:
+            return 40
+        }
+    }
+
+    
 
     func overdueTaskHeroState(_ task: DTTaskItem) -> TodayHeroState {
         let accent = Color.red
@@ -768,6 +801,16 @@ extension HomeDashboardView {
                     kind: .nextClass,
                     priority: isNextClassLiveNow ? 82 : 70,
                     state: nextClassHeroState(event)
+                )
+            )
+        }
+        
+        if let exam = nearestRelevantExam {
+            candidates.append(
+                HomeHeroCandidate(
+                    kind: .upcomingExam,
+                    priority: examHeroPriority(for: exam),
+                    state: upcomingExamHeroState(exam)
                 )
             )
         }

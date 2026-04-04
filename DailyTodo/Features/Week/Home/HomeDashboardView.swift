@@ -88,9 +88,25 @@ struct HomeDashboardView: View {
             now: Date()
         )
     }
+    
+    var shouldPrioritizeMomentumBeforeTasks: Bool {
+        switch resolvedHeroKind {
+        case .upcomingExam, .wrapUp, .insightsFollowUp, .crewFollowUp, .socialFollowUp:
+            return true
+        default:
+            return false
+        }
+    }
 
     var shouldShowTodayTasksCard: Bool {
-        !todayBoardTasks.isEmpty
+        if !todayBoardTasks.isEmpty { return true }
+
+        if resolvedHeroKind == .overdueTask { return false }
+        if resolvedHeroKind == .nextClass { return false }
+        if resolvedHeroKind == .upcomingExam { return false}
+        if resolvedHeroKind == .noTaskPrompt { return false }
+
+        return false
     }
 
     var resolvedHeroTitleNormalized: String {
@@ -160,6 +176,136 @@ struct HomeDashboardView: View {
             showTasksShortcut = true
         }
     }
+    
+    @ViewBuilder
+    func smartSuggestedActionStrip(action: SuggestedTaskAction) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(suggestedActionTint(for: action).opacity(0.14))
+                    .frame(width: 42, height: 42)
+
+                Image(systemName: suggestedActionIcon(for: action))
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(suggestedActionTint(for: action))
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(action.title)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(palette.primaryText)
+                    .lineLimit(1)
+
+                Text(action.subtitle)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(palette.secondaryText)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 8)
+
+            Button {
+                handleSuggestedPrimaryAction(action)
+            } label: {
+                HStack(spacing: 5) {
+                    Text(suggestedPrimaryCTA(for: action))
+                        .font(.system(size: 12, weight: .bold))
+
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 10, weight: .bold))
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(
+                    Capsule()
+                        .fill(suggestedActionTint(for: action))
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 13)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(palette.cardFill)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    suggestedActionTint(for: action).opacity(0.10),
+                                    Color.clear
+                                ],
+                                center: .topTrailing,
+                                startRadius: 10,
+                                endRadius: 180
+                            )
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(suggestedActionTint(for: action).opacity(0.16), lineWidth: 1)
+                )
+        )
+    }
+    
+    func suggestedActionTint(for action: SuggestedTaskAction) -> Color {
+        switch action.style {
+        case .planTomorrow:
+            return .purple
+        case .keepMomentum:
+            return .green
+        case .lightenLoad:
+            return .orange
+        case .overdueRecovery:
+            return .red
+        case .quickWin:
+            return .blue
+        case .startFocus:
+            return .blue
+        case .beforeClass:
+            return .indigo
+        }
+    }
+
+    func suggestedActionIcon(for action: SuggestedTaskAction) -> String {
+        switch action.style {
+        case .planTomorrow:
+            return "calendar.badge.plus"
+        case .keepMomentum:
+            return "flame.fill"
+        case .lightenLoad:
+            return "sparkles"
+        case .overdueRecovery:
+            return "exclamationmark.triangle.fill"
+        case .quickWin:
+            return "bolt.fill"
+        case .startFocus:
+            return "play.fill"
+        case .beforeClass:
+            return "clock.fill"
+        }
+    }
+
+    func suggestedPrimaryCTA(for action: SuggestedTaskAction) -> String {
+        switch action.style {
+        case .planTomorrow:
+            return "Planla"
+        case .keepMomentum:
+            return "Ekle"
+        case .lightenLoad:
+            return "Aç"
+        case .overdueRecovery:
+            return "Başla"
+        case .quickWin:
+            return "Yap"
+        case .startFocus:
+            return "Odaklan"
+        case .beforeClass:
+            return "Geç"
+        }
+    }
 
     var body: some View {
         ZStack {
@@ -218,22 +364,22 @@ struct HomeDashboardView: View {
                     case .crewFollowUp:
                         suggestedActionSection
 
-                        if shouldShowTodayTasksCard {
-                            todayTasksCard
-                                .offset(y: showTodayTasksCard ? 0 : 18)
-                                .opacity(showTodayTasksCard ? 1 : 0)
-                                .scaleEffect(showTodayTasksCard ? 1 : 0.985)
-                        }
+                        momentumCard
+                            .offset(y: showMomentumCard ? 0 : 18)
+                            .opacity(showMomentumCard ? 1 : 0)
+                            .scaleEffect(showMomentumCard ? 1 : 0.985)
 
                         homeMiniWeekCalendar
                             .offset(y: showWeekCard ? 0 : 18)
                             .opacity(showWeekCard ? 1 : 0)
                             .scaleEffect(showWeekCard ? 1 : 0.985)
 
-                        momentumCard
-                            .offset(y: showMomentumCard ? 0 : 18)
-                            .opacity(showMomentumCard ? 1 : 0)
-                            .scaleEffect(showMomentumCard ? 1 : 0.985)
+                        if shouldShowTodayTasksCard {
+                            todayTasksCard
+                                .offset(y: showTodayTasksCard ? 0 : 18)
+                                .opacity(showTodayTasksCard ? 1 : 0)
+                                .scaleEffect(showTodayTasksCard ? 1 : 0.985)
+                        }
 
                         quickActionsCard
                             .offset(y: showQuickActionsCard ? 0 : 18)
@@ -293,13 +439,6 @@ struct HomeDashboardView: View {
                     case .defaultFlow:
                         suggestedActionSection
 
-                        if shouldShowTodayTasksCard {
-                            todayTasksCard
-                                .offset(y: showTodayTasksCard ? 0 : 18)
-                                .opacity(showTodayTasksCard ? 1 : 0)
-                                .scaleEffect(showTodayTasksCard ? 1 : 0.985)
-                        }
-
                         momentumCard
                             .offset(y: showMomentumCard ? 0 : 18)
                             .opacity(showMomentumCard ? 1 : 0)
@@ -309,6 +448,13 @@ struct HomeDashboardView: View {
                             .offset(y: showWeekCard ? 0 : 18)
                             .opacity(showWeekCard ? 1 : 0)
                             .scaleEffect(showWeekCard ? 1 : 0.985)
+
+                        if shouldShowTodayTasksCard {
+                            todayTasksCard
+                                .offset(y: showTodayTasksCard ? 0 : 18)
+                                .opacity(showTodayTasksCard ? 1 : 0)
+                                .scaleEffect(showTodayTasksCard ? 1 : 0.985)
+                        }
 
                         quickActionsCard
                             .offset(y: showQuickActionsCard ? 0 : 18)
@@ -414,16 +560,7 @@ struct HomeDashboardView: View {
     var suggestedActionSection: some View {
         if let suggestedAction = dailyFlowSnapshot.suggestedAction,
            shouldShowSecondarySuggestedAction {
-            SuggestedNextActionCard(
-                action: suggestedAction,
-                palette: palette,
-                onPrimaryTap: {
-                    handleSuggestedPrimaryAction(suggestedAction)
-                },
-                onSecondaryTap: {
-                    handleSuggestedSecondaryAction(suggestedAction)
-                }
-            )
+            smartSuggestedActionStrip(action: suggestedAction)
         }
     }
 

@@ -32,6 +32,9 @@ struct InsightsView: View {
     @Query(sort: \EventItem.startMinute, order: .forward)
     private var events: [EventItem]
 
+    @Query(sort: \ExamItem.examDate, order: .forward)
+    private var exams: [ExamItem]
+
     private var currentUserIDString: String? {
         session.currentUser?.id.uuidString
     }
@@ -51,11 +54,17 @@ struct InsightsView: View {
         return events.filter { $0.ownerUserID == currentUserIDString }
     }
 
+    private var filteredExams: [ExamItem] {
+        guard let currentUserIDString else { return [] }
+        return exams.filter { $0.ownerUserID == currentUserIDString }
+    }
+
     private var vm: InsightsViewModel {
         InsightsViewModel(
             tasks: filteredTasks,
             focusSessions: filteredFocusSessions,
             events: filteredEvents,
+            exams: filteredExams,
             userID: currentUserIDString,
             localeIdentifier: locale.identifier
         )
@@ -113,53 +122,46 @@ struct InsightsView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                     InsightsCardContainer(delay: 0.02) {
-                        DailyBoostCard(data: vm.dailyBoost)
+                        StudentInsightHeroCard(data: vm.studentHero) { action in
+                            handleInsightAction(action)
+                        }
                     }
 
                     InsightsCardContainer(delay: 0.05) {
-                        OverviewCard(data: vm.overview)
+                        ExamReadinessCard(data: vm.examReadiness) { action in
+                            handleInsightAction(action)
+                        }
                     }
 
                     InsightsCardContainer(delay: 0.08) {
-                        WeeklyProgressCard(data: vm.weeklyProgress)
+                        CourseBalanceCard(data: vm.courseBalance)
                     }
 
                     InsightsCardContainer(delay: 0.11) {
-                        StudyHeatMapCard(data: vm.heatmap)
+                        WeeklyMomentumCard(data: vm.weeklyMomentum)
                     }
 
                     InsightsCardContainer(delay: 0.14) {
-                        FocusInsightsCard(data: vm.focusInsights)
+                        StudyPatternCard(data: vm.studyPattern)
                     }
 
                     InsightsCardContainer(delay: 0.17) {
-                        ProductivityScoreCard(data: vm.productivityScore)
-                    }
-
-                    InsightsCardContainer(delay: 0.20) {
-                        ConsistencyScoreCard(data: vm.consistencyScore)
-                    }
-
-                    InsightsCardContainer(delay: 0.23) {
-                        MostBusyDayCard(data: vm.mostBusyDay)
-                            .frame(maxWidth: .infinity)
+                        FocusInsightsCard(data: vm.focusInsights)
                     }
 
                     if smartEngineEnabled {
-                        InsightsCardContainer(delay: 0.245) {
+                        InsightsCardContainer(delay: 0.20) {
                             AICoachCard(data: vm.aiCoach) { action in
                                 handleInsightAction(action)
                             }
-                            .frame(maxWidth: .infinity)
                         }
                     }
 
                     if smartEngineEnabled {
-                        InsightsCardContainer(delay: 0.26) {
+                        InsightsCardContainer(delay: 0.23) {
                             SmartSuggestionCard(data: vm.smartSuggestion) { action in
                                 handleInsightAction(action)
                             }
-                            .frame(maxWidth: .infinity)
                         }
                     }
 

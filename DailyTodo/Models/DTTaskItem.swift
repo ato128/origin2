@@ -32,6 +32,9 @@ final class DTTaskItem {
     var scheduledWeekDate: Date?
     var scheduledWeekDurationMinutes: Int?
 
+    var linkedExamID: UUID?
+    var studyTopic: String
+
     var workoutExercises: [WorkoutExerciseItem]? = nil
 
     init(
@@ -49,7 +52,9 @@ final class DTTaskItem {
         workoutDay: String? = nil,
         workoutDurationMinutes: Int? = nil,
         scheduledWeekDate: Date? = nil,
-        scheduledWeekDurationMinutes: Int? = nil
+        scheduledWeekDurationMinutes: Int? = nil,
+        linkedExamID: UUID? = nil,
+        studyTopic: String = ""
     ) {
         self.taskUUID = taskUUID
         self.ownerUserID = ownerUserID
@@ -66,5 +71,7 @@ final class DTTaskItem {
         self.workoutDurationMinutes = workoutDurationMinutes
         self.scheduledWeekDate = scheduledWeekDate
         self.scheduledWeekDurationMinutes = scheduledWeekDurationMinutes
+        self.linkedExamID = linkedExamID
+        self.studyTopic = studyTopic
     }
 }

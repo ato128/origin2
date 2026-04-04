@@ -107,6 +107,57 @@ final class TodoStore: ObservableObject {
         context.insert(newItem)
         saveAndReload()
     }
+    func addExamStudyTask(
+        exam: ExamItem,
+        title: String,
+        topic: String = "",
+        notes: String = "",
+        suggestedMinutes: Int? = nil,
+        dueDate: Date? = nil
+    ) {
+        let item = DTTaskItem(
+            ownerUserID: currentUserID,
+            title: title,
+            isDone: false,
+            dueDate: dueDate ?? exam.examDate,
+            createdAt: Date(),
+            completedAt: nil,
+            notes: notes,
+            taskType: "exam_study",
+            colorName: examColorName(from: exam.colorHex),
+            courseName: exam.courseName,
+            workoutDay: nil,
+            workoutDurationMinutes: suggestedMinutes ?? exam.preferredStudyMinutes,
+            scheduledWeekDate: nil,
+            scheduledWeekDurationMinutes: suggestedMinutes ?? exam.preferredStudyMinutes,
+            linkedExamID: exam.id,
+            studyTopic: topic
+        )
+
+        context.insert(item)
+
+        do {
+            try context.save()
+            reload()
+        } catch {
+            print("❌ addExamStudyTask error:", error.localizedDescription)
+        }
+    }
+
+    private func examColorName(from hex: String) -> String {
+        switch hex.lowercased() {
+        case "#22c55e":
+            return "green"
+        case "#f97316":
+            return "orange"
+        case "#ec4899":
+            return "pink"
+        case "#a855f7":
+            return "purple"
+        default:
+            return "blue"
+        }
+    }
 
     func toggleDone(_ item: DTTaskItem) {
         guard item.ownerUserID == currentUserID else { return }

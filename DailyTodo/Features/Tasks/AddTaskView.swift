@@ -723,6 +723,8 @@ struct AddTaskView: View {
     }
 
     private func addExam() {
+        let currentUserID = session.currentUser?.id.uuidString
+
         let exam = ExamItem(
             title: trimmedTitle,
             courseName: trimmedCourseName,
@@ -733,13 +735,26 @@ struct AddTaskView: View {
             preferredStudyMinutes: preferredExamStudyMinutes,
             isCompleted: false,
             createdAt: Date(),
-            ownerUserID: session.currentUser?.id.uuidString
+            ownerUserID: currentUserID
         )
 
         modelContext.insert(exam)
 
+        store.add(
+            title: trimmedTitle,
+            dueDate: examDate,
+            notes: trimmedNotes,
+            taskType: "exam",
+            colorName: selectedColor.rawValue,
+            courseName: trimmedCourseName,
+            scheduledWeekDate: nil,
+            scheduledWeekDurationMinutes: preferredExamStudyMinutes,
+            workoutDurationMinutes: nil
+        )
+
         do {
             try modelContext.save()
+            print("✅ EXAM + DTTaskItem SAVED")
             dismiss()
         } catch {
             print("❌ EXAM SAVE ERROR:", error.localizedDescription)

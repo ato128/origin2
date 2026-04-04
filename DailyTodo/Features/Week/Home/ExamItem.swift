@@ -22,6 +22,9 @@ final class ExamItem {
     var createdAt: Date
     var ownerUserID: String?
 
+    var targetStudyTaskCount: Int
+    var targetStudyMinutes: Int
+
     init(
         id: UUID = UUID(),
         title: String,
@@ -33,7 +36,9 @@ final class ExamItem {
         preferredStudyMinutes: Int = 40,
         isCompleted: Bool = false,
         createdAt: Date = Date(),
-        ownerUserID: String? = nil
+        ownerUserID: String? = nil,
+        targetStudyTaskCount: Int = 3,
+        targetStudyMinutes: Int = 180
     ) {
         self.id = id
         self.title = title
@@ -46,5 +51,7 @@ final class ExamItem {
         self.isCompleted = isCompleted
         self.createdAt = createdAt
         self.ownerUserID = ownerUserID
+        self.targetStudyTaskCount = targetStudyTaskCount
+        self.targetStudyMinutes = targetStudyMinutes
     }
 }

@@ -19,6 +19,10 @@ extension HomeDashboardView {
                     Text(momentumCardSubtitle)
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(palette.secondaryText)
+
+                    Text(momentumSubtitleText)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(momentumAccentColor.opacity(0.92))
                 }
 
                 Spacer()
@@ -90,6 +94,30 @@ extension HomeDashboardView {
             y: shouldEmphasizeMomentumCard ? 4 : 0
         )
     }
+    
+    var hasVisibleUpcomingExamMomentum: Bool {
+        nearestRelevantExam != nil
+    }
+
+    var todayRemainingCount: Int {
+        max(totalTodayTaskCount - completedTodayCount, 0)
+    }
+
+    var isDayEffectivelyComplete: Bool {
+        totalTodayTaskCount > 0 && todayRemainingCount == 0
+    }
+
+    var shouldUseExamMomentumTone: Bool {
+        resolvedHeroKind == .upcomingExam && nearestRelevantExam != nil
+    }
+
+    var shouldUseNoTaskMomentumTone: Bool {
+        todayBoardTasks.isEmpty && resolvedHeroKind == .noTaskPrompt
+    }
+
+    var shouldUseWrapUpMomentumTone: Bool {
+        resolvedHeroKind == .wrapUp || homeLayoutMode == .completionWrapUp
+    }
 
     var momentumSubtitleText: String {
         if todayTasks.isEmpty && completedTodayCount == 0 {
@@ -107,11 +135,23 @@ extension HomeDashboardView {
         return "Küçük bir adım bile ivme yaratır."
     }
     var momentumCardTitle: String {
+        if shouldUseExamMomentumTone {
+            return "Hazırlık Durumu"
+        }
+
+        if shouldUseNoTaskMomentumTone {
+            return "Bugün İçin Alan Var"
+        }
+
+        if isDayEffectivelyComplete {
+            return "Bugün Tamam"
+        }
+
         switch homeLayoutMode {
         case .focusActive:
             return "Odak Ritmi"
         case .crewFollowUp:
-            return "Bugünkü İlerleme"
+            return "Kişisel Durumun"
         case .insightsFollowUp:
             return "Bugünün Özeti"
         case .completionWrapUp:
@@ -122,21 +162,55 @@ extension HomeDashboardView {
     }
 
     var momentumCardSubtitle: String {
+        if shouldUseExamMomentumTone, let exam = nearestRelevantExam {
+            let courseTitle = exam.courseName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? exam.title
+                : exam.courseName
+            return "\(courseTitle) için ritmini burada takip edebilirsin."
+        }
+
+        if shouldUseNoTaskMomentumTone {
+            switch heroDayPhase {
+            case .morning:
+                return "Bugün hâlâ açık. Küçük bir plan güçlü bir başlangıç yaratır."
+            case .afternoon:
+                return "Henüz görev yok. Tek bir küçük iş bile günü hareket ettirebilir."
+            case .evening, .night:
+                return "Bugün boş geçtiyse bile yarın için küçük bir hazırlık yapabilirsin."
+            }
+        }
+
+        if isDayEffectivelyComplete {
+            return "Bugün için belirlediğin işler tamamlandı."
+        }
+
+        if todayProgressValue >= 0.6 {
+            return "Ritmin oluştu. Birkaç adım daha günü güçlü kapatır."
+        }
+
+        if todayProgressValue > 0 {
+            return "Başlangıç yaptın. Devamı gelirse gün çok daha netleşir."
+        }
+
         switch homeLayoutMode {
         case .focusActive:
             return "Şu an ritmini koruman en önemli şey."
         case .crewFollowUp:
-            return "Kişisel tarafta neredesin, sonra crew’e geç."
+            return "Kişisel tarafı netleştirip sonra crew akışına geçebilirsin."
         case .insightsFollowUp:
-            return "Bugünün akışı burada, detay için içgörülere geçebilirsin."
+            return "Bugünkü akışının kısa özeti burada."
         case .completionWrapUp:
-            return "Bugün büyük ölçüde tamam. Kapanış görünümü."
+            return "Günün kapanış görünümünü tek bakışta gör."
         case .defaultFlow:
             return "Günün durumunu tek bakışta gör."
         }
     }
 
     var shouldEmphasizeMomentumCard: Bool {
+        if shouldUseExamMomentumTone { return true }
+        if shouldUseNoTaskMomentumTone { return true }
+        if isDayEffectivelyComplete { return true }
+
         switch homeLayoutMode {
         case .insightsFollowUp, .completionWrapUp:
             return true
@@ -145,35 +219,6 @@ extension HomeDashboardView {
         }
     }
 
-    var quickActionsCardTitle: String {
-        switch homeLayoutMode {
-        case .focusActive:
-            return "Odak Sonrası"
-        case .crewFollowUp:
-            return "Sonraki Adımlar"
-        case .insightsFollowUp:
-            return "Kısa Yollar"
-        case .completionWrapUp:
-            return "Yarına Hazırlık"
-        case .defaultFlow:
-            return "Hızlı İşlemler"
-        }
-    }
-
-    var quickActionsCardSubtitle: String {
-        switch homeLayoutMode {
-        case .focusActive:
-            return "Odaktan çıkınca yapacağın kısa aksiyonlar"
-        case .crewFollowUp:
-            return "Buradan ekip veya plan tarafına geçebilirsin"
-        case .insightsFollowUp:
-            return "İçgörüden sonra ihtiyacın olacak kısa yollar"
-        case .completionWrapUp:
-            return "Günü kapatırken en mantıklı hamleler"
-        case .defaultFlow:
-            return "Öğrenci akışın için kısa yollar"
-        }
-    }
 
     var shouldEmphasizeQuickActionsCard: Bool {
         switch homeLayoutMode {
@@ -185,15 +230,42 @@ extension HomeDashboardView {
     }
 
     var momentumCTAButtonTitle: String {
-        switch homeLayoutMode {
-        case .insightsFollowUp, .completionWrapUp:
-            return "Detaylar"
-        default:
-            return "İçgörüler"
+        if shouldUseExamMomentumTone {
+            return "Hazırlık"
         }
+
+        if shouldUseNoTaskMomentumTone {
+            return "Plan"
+        }
+
+        if shouldUseWrapUpMomentumTone {
+            return "Detaylar"
+        }
+
+        return "İçgörüler"
     }
 
     var momentumAccentColor: Color {
+        if shouldUseExamMomentumTone {
+            return .orange
+        }
+
+        if shouldUseNoTaskMomentumTone {
+            return .purple
+        }
+
+        if isDayEffectivelyComplete {
+            return .green
+        }
+
+        if todayProgressValue >= 0.6 {
+            return .green
+        }
+
+        if todayProgressValue > 0 {
+            return .blue
+        }
+
         switch homeLayoutMode {
         case .completionWrapUp:
             return .green

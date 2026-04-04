@@ -12,6 +12,9 @@ struct TasksView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var store: TodoStore
+    
+    @EnvironmentObject var session: SessionStore
+    @Query(sort: \ExamItem.examDate, order: .forward) var allExams: [ExamItem]
 
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
 
@@ -23,6 +26,8 @@ struct TasksView: View {
 
     @State private var selectedTask: DTTaskItem?
     @State private var selectedTaskForSchedule: DTTaskItem?
+    @State private var selectedExamForActions: ExamItem?
+    @State private var expandedExamIDs: Set<UUID> = []
 
     private let palette = ThemePalette()
 
@@ -30,6 +35,7 @@ struct TasksView: View {
         case today = "today"
         case all = "all"
         case done = "done"
+        case exams = "exams"
 
         var id: String { rawValue }
 
@@ -41,6 +47,8 @@ struct TasksView: View {
                 return "Tümü"
             case .done:
                 return "Biten"
+            case .exams:
+                return "Sınavlar"
             }
         }
     }
@@ -49,24 +57,52 @@ struct TasksView: View {
         let tasks: [DTTaskItem]
 
         switch selectedFilter {
-        case .today:
-            tasks = store.items
-                .filter { task in
-                    (isToday(task) && !task.isDone) || pendingRemovalTaskKeys.contains(taskKey(task))
-                }
+            case .today:
+                tasks = store.items
+                    .filter { task in
+                        (isToday(task) && !task.isDone) || pendingRemovalTaskKeys.contains(taskKey(task))
+                    }
 
-        case .all:
-            tasks = store.items
-                .filter { task in
-                    !task.isDone || pendingRemovalTaskKeys.contains(taskKey(task))
-                }
+            case .all:
+                tasks = store.items
+                    .filter { task in
+                        !task.isDone || pendingRemovalTaskKeys.contains(taskKey(task))
+                    }
 
-        case .done:
-            tasks = store.items
-                .filter(\.isDone)
-        }
+            case .done:
+                tasks = store.items
+                    .filter(\.isDone)
+
+            case .exams:
+                tasks = []
+            }
 
         return tasks.sorted(by: taskSort)
+    }
+    
+    var userScopedExams: [ExamItem] {
+        let currentUserID = session.currentUser?.id.uuidString
+
+        if let currentUserID {
+            let matched = allExams.filter { $0.ownerUserID == currentUserID }
+            if !matched.isEmpty { return matched }
+        }
+
+        return allExams
+    }
+
+    var upcomingExams: [ExamItem] {
+        userScopedExams
+            .filter { !$0.isCompleted && $0.examDate >= Date() }
+            .sorted { $0.examDate < $1.examDate }
+    }
+
+    var visibleUpcomingExams: [ExamItem] {
+        Array(upcomingExams.prefix(3))
+    }
+
+    var hasVisibleUpcomingExams: Bool {
+        !visibleUpcomingExams.isEmpty
     }
 
     var body: some View {
@@ -79,18 +115,26 @@ struct TasksView: View {
                     heroSummaryCard
                     filterSegment
 
-                    if filteredTasks.isEmpty {
-                        emptyState
+                    if selectedFilter == .exams {
+                        if hasVisibleUpcomingExams {
+                            upcomingExamsSection
+                        } else {
+                            emptyState
+                        }
                     } else {
-                        LazyVStack(spacing: 12) {
-                            ForEach(Array(filteredTasks.enumerated()), id: \.element.taskUUID) { index, task in
-                                taskCard(task, isTopPriority: index == 0 && !task.isDone)
-                                    .transition(.asymmetric(
-                                        insertion: .opacity,
-                                        removal: .opacity
-                                            .combined(with: .offset(y: 18))
-                                            .combined(with: .scale(scale: 0.96))
-                                    ))
+                        if filteredTasks.isEmpty {
+                            emptyState
+                        } else {
+                            LazyVStack(spacing: 12) {
+                                ForEach(Array(filteredTasks.enumerated()), id: \.element.taskUUID) { index, task in
+                                    taskCard(task, isTopPriority: index == 0 && !task.isDone)
+                                        .transition(.asymmetric(
+                                            insertion: .opacity,
+                                            removal: .opacity
+                                                .combined(with: .offset(y: 18))
+                                                .combined(with: .scale(scale: 0.96))
+                                        ))
+                                }
                             }
                         }
                     }
@@ -108,6 +152,7 @@ struct TasksView: View {
         .sheet(isPresented: $showAddTask) {
             AddTaskView()
                 .environmentObject(store)
+                .environmentObject(session)
                 .presentationDetents([.large])
         }
         .sheet(item: $selectedTask) { task in
@@ -122,6 +167,30 @@ struct TasksView: View {
         }
         .onAppear {
             store.reload()
+        }
+        .confirmationDialog(
+            selectedExamForActions?.title ?? "Sınav",
+            isPresented: Binding(
+                get: { selectedExamForActions != nil },
+                set: { if !$0 { selectedExamForActions = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Bu sınav için görev ekle") {
+                showAddTask = true
+            }
+
+            Button("Focus başlat") {
+                // şimdilik placeholder
+            }
+
+            Button("İptal", role: .cancel) {
+                selectedExamForActions = nil
+            }
+        } message: {
+            if let exam = selectedExamForActions {
+                Text("\(exam.courseName.isEmpty ? exam.title : exam.courseName) için hızlı bir işlem seç.")
+            }
         }
     }
 }
@@ -217,6 +286,62 @@ private extension TasksView {
                             RadialGradient(
                                 colors: [
                                     Color.accentColor.opacity(0.08),
+                                    Color.clear
+                                ],
+                                center: .topTrailing,
+                                startRadius: 10,
+                                endRadius: 220
+                            )
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(palette.cardStroke, lineWidth: 1)
+                )
+        )
+    }
+    
+    var upcomingExamsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Yaklaşan Sınavlar")
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
+
+                    Text("Hazırlığını erkenden başlat")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(palette.secondaryText)
+                }
+
+                Spacer()
+
+                Image(systemName: "graduationcap.fill")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(.orange)
+                    .frame(width: 40, height: 40)
+                    .background(
+                        Circle()
+                            .fill(Color.orange.opacity(0.12))
+                    )
+            }
+
+            VStack(spacing: 10) {
+                ForEach(visibleUpcomingExams, id: \.id) { exam in
+                    upcomingExamRow(exam)
+                }
+            }
+        }
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(palette.cardFill)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    Color.orange.opacity(0.08),
                                     Color.clear
                                 ],
                                 center: .topTrailing,
@@ -430,7 +555,398 @@ private extension TasksView {
             }
         }
     }
+    
+    var taskEmptyCompactState: some View {
+        VStack(spacing: 12) {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(palette.cardFill)
+                .frame(width: 64, height: 64)
+                .overlay(
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(palette.secondaryText)
+                )
 
+            Text(emptyTitle)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(palette.primaryText)
+
+            Text(emptySubtitle)
+                .font(.subheadline)
+                .foregroundStyle(palette.secondaryText)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 14)
+    }
+    
+    func examAccent(for exam: ExamItem) -> Color {
+        switch exam.examType.lowercased() {
+        case "final":
+            return .pink
+        case "quiz":
+            return .blue
+        case "vize":
+            return .orange
+        default:
+            return .purple
+        }
+    }
+
+    func examSymbol(for exam: ExamItem) -> String {
+        switch exam.examType.lowercased() {
+        case "final":
+            return "flag.fill"
+        case "quiz":
+            return "pencil.and.list.clipboard"
+        case "vize":
+            return "doc.text.fill"
+        default:
+            return "graduationcap.fill"
+        }
+    }
+
+    func daysUntilExam(_ exam: ExamItem) -> Int {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: Date())
+        let end = calendar.startOfDay(for: exam.examDate)
+        return calendar.dateComponents([.day], from: start, to: end).day ?? 0
+    }
+
+    func examCountdownText(_ exam: ExamItem) -> String {
+        let days = daysUntilExam(exam)
+
+        if days <= 0 {
+            return "Bugün"
+        } else if days == 1 {
+            return "Yarın"
+        } else {
+            return "\(days) gün kaldı"
+        }
+    }
+
+    func examDateText(_ exam: ExamItem) -> String {
+        exam.examDate.formatted(date: .abbreviated, time: .shortened)
+    }
+    
+    func linkedTasks(for exam: ExamItem) -> [DTTaskItem] {
+        store.items
+            .filter { $0.linkedExamID == exam.id }
+            .sorted(by: taskSort)
+    }
+
+    func completedLinkedTaskCount(for exam: ExamItem) -> Int {
+        linkedTasks(for: exam).filter(\.isDone).count
+    }
+
+    func totalLinkedTaskCount(for exam: ExamItem) -> Int {
+        linkedTasks(for: exam).count
+    }
+
+    func completedLinkedMinutes(for exam: ExamItem) -> Int {
+        linkedTasks(for: exam)
+            .filter(\.isDone)
+            .reduce(0) { $0 + ($1.workoutDurationMinutes ?? $1.scheduledWeekDurationMinutes ?? 0) }
+    }
+
+    func examProgressText(for exam: ExamItem) -> String {
+        let done = completedLinkedTaskCount(for: exam)
+        let total = max(exam.targetStudyTaskCount, totalLinkedTaskCount(for: exam))
+        return "\(done)/\(total) adım tamamlandı"
+    }
+
+    func examReadinessText(for exam: ExamItem) -> String {
+        let days = daysUntilExam(exam)
+        let completedMinutes = completedLinkedMinutes(for: exam)
+        let linkedDone = completedLinkedTaskCount(for: exam)
+
+        if days <= 1 && linkedDone >= 2 {
+            return "Sınava hazır görünüyorsun"
+        }
+
+        if completedMinutes >= exam.targetStudyMinutes {
+            return "Hazırlık iyi gidiyor"
+        }
+
+        if linkedDone >= 1 {
+            return "Ritim oluştu, devam et"
+        }
+
+        if days <= 2 {
+            return "Kısa bir tekrar iyi olur"
+        }
+
+        return "Hazırlığını erkenden başlat"
+    }
+
+    func examRowSubtitle(for exam: ExamItem) -> String {
+        let course = exam.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let note = exam.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if !course.isEmpty, !note.isEmpty {
+            return "\(course) • \(note)"
+        }
+
+        if !course.isEmpty {
+            return course
+        }
+
+        if !note.isEmpty {
+            return note
+        }
+
+        return "Yaklaşan sınav"
+    }
+    
+    func examLinkedTaskRow(task: DTTaskItem, accent: Color) -> some View {
+        Button {
+            toggleLinkedExamTask(task)
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(task.isDone ? .green : accent)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(task.title)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(task.isDone ? palette.secondaryText : palette.primaryText)
+                        .strikethrough(task.isDone, color: palette.secondaryText.opacity(0.6))
+                        .lineLimit(1)
+
+                    if !task.studyTopic.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text(task.studyTopic)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(palette.secondaryText.opacity(task.isDone ? 0.7 : 1))
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer()
+
+                if let mins = task.workoutDurationMinutes {
+                    Text("\(mins) dk")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(task.isDone ? palette.secondaryText : .orange)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 11)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(task.isDone ? Color.white.opacity(0.025) : Color.white.opacity(0.05))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(
+                        task.isDone
+                        ? Color.white.opacity(0.03)
+                        : accent.opacity(0.08),
+                        lineWidth: 1
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+    
+    func upcomingExamRow(_ exam: ExamItem) -> some View {
+        let accent = examAccent(for: exam)
+        let linked = linkedTasks(for: exam)
+        let isExpanded = isExamExpanded(exam)
+        let ratio = examProgressRatio(for: exam)
+
+        return VStack(alignment: .leading, spacing: 0) {
+            Button {
+                toggleExamExpanded(exam)
+            } label: {
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(accent.opacity(0.14))
+                            .frame(width: 44, height: 44)
+
+                        Image(systemName: examSymbol(for: exam))
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(accent)
+                    }
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack(spacing: 6) {
+                            Text(exam.title)
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundStyle(palette.primaryText)
+                                .lineLimit(1)
+
+                            smallTag(exam.examType, tint: accent)
+                        }
+
+                        Text(examReadinessText(for: exam))
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(palette.secondaryText)
+                            .lineLimit(1)
+
+                        HStack(spacing: 8) {
+                            miniMeta(icon: "calendar", text: examDateText(exam), tint: accent)
+                            miniMeta(icon: "timer", text: "\(exam.preferredStudyMinutes) dk öneri", tint: .orange)
+                        }
+                    }
+
+                    Spacer()
+
+                    VStack(alignment: .trailing, spacing: 8) {
+                        statusBadge(
+                            icon: "clock.fill",
+                            text: examCountdownText(exam),
+                            tint: accent
+                        )
+
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(palette.secondaryText)
+                    }
+                }
+                .padding(16)
+            }
+            .buttonStyle(.plain)
+            .contextMenu {
+                Button {
+                    addQuickStudyTask(for: exam, title: "Konu tekrarı", topic: exam.courseName)
+                } label: {
+                    Label("Konu tekrarı ekle", systemImage: "book.closed")
+                }
+
+                Button {
+                    addQuickStudyTask(for: exam, title: "Soru çözümü", topic: "Çıkmış sorular")
+                } label: {
+                    Label("Soru çözümü ekle", systemImage: "pencil.and.list.clipboard")
+                }
+
+                Button {
+                    addQuickStudyTask(for: exam, title: "Hızlı tekrar", topic: "Son tekrar")
+                } label: {
+                    Label("Hızlı tekrar ekle", systemImage: "bolt.fill")
+                }
+            }
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text(examProgressText(for: exam))
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(accent)
+
+                            Spacer()
+
+                            Text("\(completedLinkedMinutes(for: exam))/\(exam.targetStudyMinutes) dk")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(palette.secondaryText)
+                        }
+
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Capsule()
+                                    .fill(Color.white.opacity(0.08))
+
+                                Capsule()
+                                    .fill(accent)
+                                    .frame(width: max(12, geo.size.width * ratio))
+                            }
+                        }
+                        .frame(height: 8)
+                    }
+
+                    if linked.isEmpty {
+                        HStack(spacing: 10) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(accent)
+
+                            Text("Henüz çalışma adımı yok. Uzun basıp hızlıca ekleyebilirsin.")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(palette.secondaryText)
+
+                            Spacer()
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color.white.opacity(0.04))
+                        )
+                    } else {
+                        VStack(spacing: 8) {
+                            ForEach(linked, id: \.taskUUID) { task in
+                                examLinkedTaskRow(task: task, accent: accent)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .background(
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(palette.secondaryCardFill)
+
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(accent.opacity(isExpanded ? 0.10 : (0.06 + (0.12 * ratio))))
+            }
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(accent.opacity(isExpanded ? 0.18 : 0.10), lineWidth: 1)
+        )
+    }
+    
+    func isExamExpanded(_ exam: ExamItem) -> Bool {
+        expandedExamIDs.contains(exam.id)
+    }
+
+    func toggleExamExpanded(_ exam: ExamItem) {
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+            if expandedExamIDs.contains(exam.id) {
+                expandedExamIDs.remove(exam.id)
+            } else {
+                expandedExamIDs.insert(exam.id)
+            }
+        }
+    }
+
+    func toggleLinkedExamTask(_ task: DTTaskItem) {
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+            task.isDone.toggle()
+            task.completedAt = task.isDone ? Date() : nil
+
+            do {
+                try modelContext.save()
+                store.reload()
+            } catch {
+                print("❌ linked exam task toggle error:", error.localizedDescription)
+            }
+        }
+    }
+
+    func examProgressRatio(for exam: ExamItem) -> Double {
+        let minuteRatio = Double(completedLinkedMinutes(for: exam)) / Double(max(exam.targetStudyMinutes, 1))
+        let taskRatio = Double(completedLinkedTaskCount(for: exam)) / Double(max(exam.targetStudyTaskCount, 1))
+        return min(1.0, max(minuteRatio, taskRatio))
+    }
+    
+    func addQuickStudyTask(for exam: ExamItem, title: String, topic: String) {
+        store.addExamStudyTask(
+            exam: exam,
+            title: "\(exam.courseName.isEmpty ? exam.title : exam.courseName) • \(title)",
+            topic: topic,
+            notes: "\(exam.title) için çalışma adımı",
+            suggestedMinutes: exam.preferredStudyMinutes,
+            dueDate: nil
+        )
+    }
+    
     var emptyState: some View {
         VStack(spacing: 14) {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -463,6 +979,8 @@ private extension TasksView {
             return "Henüz görev eklenmedi"
         case .done:
             return "Tamamlanan görev görünmüyor"
+        case .exams:
+            return "Yaklaşan sınav yok"
         }
     }
 
@@ -474,6 +992,8 @@ private extension TasksView {
             return "İlk görevi ekleyerek akışını başlat."
         case .done:
             return "Tamamladığın görevler burada görünecek."
+        case .exams:
+            return "Eklediğin sınavlar burada görünecek."
         }
     }
 
@@ -497,6 +1017,8 @@ private extension TasksView {
             return "Tüm görevlerin"
         case .done:
             return "Tamamlananlar"
+        case .exams:
+            return "Sınav Takvimin"
         }
     }
 
@@ -660,6 +1182,7 @@ private extension TasksView {
         case "study": return "Çalışma"
         case "project": return "Proje"
         case "workout": return "Workout"
+        case "exam_study": return "Sınav Çalışması"
         default: return "Görev"
         }
     }
@@ -671,6 +1194,7 @@ private extension TasksView {
         case "study": return "brain.head.profile"
         case "project": return "folder.fill"
         case "workout": return "dumbbell.fill"
+        case "exam_study": return "gradutaioncap.fill"
         default: return "checklist"
         }
     }

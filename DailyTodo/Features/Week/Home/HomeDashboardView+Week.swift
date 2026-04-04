@@ -57,7 +57,8 @@ extension HomeDashboardView {
                     let isSelected = day == selectedDay
                     let isToday = day == weekdayIndexToday()
                     let date = targetDateFor(day: day)
-                    let hasItems = hasEvents(on: day)
+                    let taskCount = tasksCount(on: day)
+                    let hasItems = hasEvents(on: day) || taskCount > 0
                     let isSuggestedDay = suggestedWeekDay == day
 
                     Button {
@@ -90,7 +91,8 @@ extension HomeDashboardView {
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .fill(dayBackgroundColor(
                                     isSelected: isSelected,
-                                    isSuggestedDay: isSuggestedDay
+                                    isSuggestedDay: isSuggestedDay,
+                                    day: day
                                 ))
                         )
                         .overlay(
@@ -131,18 +133,26 @@ extension HomeDashboardView {
     }
 
     var weekCardSubtitle: String {
-        switch homeLayoutMode {
-        case .focusActive:
-            return "Odaktan sonra sıradaki günü gör"
-        case .crewFollowUp:
-            return "Kişisel ve ekip akışını birlikte gör"
-        case .insightsFollowUp:
-            return "Bugünden sonra haftanın ritmi nasıl ilerliyor"
-        case .completionWrapUp:
-            return "Yarın için en doğru günü hızlıca seç"
-        case .defaultFlow:
-            return ""
+        let busyDays = (0..<7).filter { tasksCount(on: $0) >= 3 }.count
+        let emptyDays = (0..<7).filter { tasksCount(on: $0) == 0 }.count
+
+        if shouldUseWrapUpMomentumTone {
+            return "Yarın için en uygun günü seç"
         }
+
+        if hasVisibleUpcomingExamMomentum {
+            return "Sınav yaklaşırken haftanı dengele"
+        }
+
+        if busyDays >= 3 {
+            return "\(busyDays) gün yoğun görünüyor"
+        }
+
+        if emptyDays >= 3 {
+            return "Haftada boş alanların var"
+        }
+
+        return "Haftanın akışını hızlıca gör"
     }
 
     var weekCardButtonIcon: String {
@@ -192,6 +202,15 @@ extension HomeDashboardView {
             return nil
         }
     }
+    func hasExam(on day: Int) -> Bool {
+        let calendar = Calendar.current
+        let targetDate = targetDateFor(day: day)
+
+        return userScopedExams.contains {
+            calendar.isDate($0.examDate, inSameDayAs: targetDate)
+        }
+    }
+    
     func adaptiveWeekCardBackground() -> some View {
         RoundedRectangle(cornerRadius: 24, style: .continuous)
             .fill(palette.cardFill)
@@ -220,13 +239,23 @@ extension HomeDashboardView {
             )
     }
 
-    func dayBackgroundColor(isSelected: Bool, isSuggestedDay: Bool) -> Color {
+    func dayBackgroundColor(isSelected: Bool, isSuggestedDay: Bool, day: Int) -> Color {
+        let count = tasksCount(on: day)
+
         if isSelected {
             return Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.14 : 0.18)
         }
 
         if isSuggestedDay {
             return weekCardAccent.opacity(0.08)
+        }
+
+        if count >= 4 {
+            return Color.red.opacity(0.08)
+        }
+
+        if count >= 2 {
+            return Color.orange.opacity(0.06)
         }
 
         return palette.secondaryCardFill
@@ -245,12 +274,26 @@ extension HomeDashboardView {
     }
 
     func dayIndicatorColor(for day: Int, hasItems: Bool, isToday: Bool, isSuggestedDay: Bool) -> Color {
+        let count = tasksCount(on: day)
+
         if isToday {
             return .accentColor
+        }
+        
+        if hasExam(on: day) {
+            return .orange
         }
 
         if isSuggestedDay {
             return weekCardAccent
+        }
+
+        if count >= 4 {
+            return .red // yoğun gün
+        }
+
+        if count >= 2 {
+            return .orange // orta yoğunluk
         }
 
         if hasItems {
@@ -271,5 +314,19 @@ extension HomeDashboardView {
                 return ev.weekday == day
             }
         }
+    }
+    func tasksCount(on day: Int) -> Int {
+        let calendar = Calendar.current
+        let targetDate = targetDateFor(day: day)
+
+        return userScopedTasks.filter { task in
+            if let due = task.dueDate {
+                return calendar.isDate(due, inSameDayAs: targetDate)
+            }
+            if let week = task.scheduledWeekDate {
+                return calendar.isDate(week, inSameDayAs: targetDate)
+            }
+            return false
+        }.count
     }
 }

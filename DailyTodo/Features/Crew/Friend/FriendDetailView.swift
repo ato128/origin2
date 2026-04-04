@@ -71,6 +71,68 @@ struct FriendDetailView: View {
         guard !isBackendFriend else { return nil }
         return allFocusSessions.first { $0.friendID == friend.id && $0.isActive }
     }
+    
+    private var friendFocusSessions: [FriendFocusSession] {
+            allFocusSessions.filter { $0.friendID == friend.id }
+        }
+
+        private var totalFocusMinutes: Int {
+            friendFocusSessions.reduce(0) { $0 + $1.durationMinute }
+        }
+
+        private var weeklyFocusSessions: [FriendFocusSession] {
+            let calendar = Calendar.current
+            let now = Date()
+            let weekAgo = calendar.date(byAdding: .day, value: -7, to: now) ?? now
+
+            return friendFocusSessions.filter { $0.startedAt >= weekAgo }
+        }
+
+        private var weeklyFocusCount: Int {
+            weeklyFocusSessions.count
+        }
+
+        private var weeklyFocusMinutes: Int {
+            weeklyFocusSessions.reduce(0) { $0 + $1.durationMinute }
+        }
+
+        private var longestFocusMinutes: Int {
+            friendFocusSessions.map(\.durationMinute).max() ?? 0
+        }
+
+        private var lastFocusDate: Date? {
+            friendFocusSessions.map(\.startedAt).max()
+        }
+
+        private var sharedScheduleCount: Int {
+            todaySchedule.count
+        }
+
+        private var friendInsightLine: String {
+            if let activeFocusSession {
+                return localizedInFocusNow(activeFocusSession.durationMinute)
+            }
+
+            if weeklyFocusCount >= 4 {
+                return locale.language.languageCode?.identifier == "tr"
+                    ? "Bu hafta düzenli bir ritim yakalamış görünüyor."
+                    : "Looks consistent this week."
+            }
+
+            if let lastFocusDate {
+                let formatter = RelativeDateTimeFormatter()
+                formatter.locale = Locale.current
+                let relative = formatter.localizedString(for: lastFocusDate, relativeTo: Date())
+
+                return locale.language.languageCode?.identifier == "tr"
+                    ? "Son odak: \(relative)"
+                    : "Last focus: \(relative)"
+            }
+
+            return locale.language.languageCode?.identifier == "tr"
+                ? "Henüz focus verisi görünmüyor."
+                : "No focus data yet."
+        }
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -92,10 +154,10 @@ struct FriendDetailView: View {
                         .opacity(showSchedule ? 1 : 0)
                         .scaleEffect(showSchedule ? 1 : 0.985)
 
-                    recentMessagesCard
-                        .offset(y: showMessagesCard ? 0 : 18)
-                        .opacity(showMessagesCard ? 1 : 0)
-                        .scaleEffect(showMessagesCard ? 1 : 0.985)
+                    friendInsightsCard
+                                            .offset(y: showMessagesCard ? 0 : 18)
+                                            .opacity(showMessagesCard ? 1 : 0)
+                                            .scaleEffect(showMessagesCard ? 1 : 0.985)
 
                     actionsCard
                         .offset(y: showActionsCard ? 0 : 18)
@@ -352,20 +414,26 @@ private extension FriendDetailView {
                         .foregroundStyle(palette.secondaryText)
 
                     if isBackendFriend {
-                        Text("friend_detail_connected_server")
-                            .font(.caption)
-                            .foregroundStyle(.green)
-                    }
+                                            HStack(spacing: 6) {
+                                                Circle()
+                                                    .fill(.green)
+                                                    .frame(width: 7, height: 7)
+
+                                                Text("friend_detail_connected_server")
+                                                    .font(.caption.weight(.semibold))
+                                                    .foregroundStyle(.green)
+                                            }
+                                        }
 
                     HStack(spacing: 8) {
-                        Circle()
-                            .fill(friend.isOnline ? .green : Color.gray.opacity(0.5))
-                            .frame(width: 8, height: 8)
+                                            Circle()
+                                                .fill(friend.isOnline ? .green : Color.gray.opacity(0.5))
+                                                .frame(width: 8, height: 8)
 
-                        Text(friend.isOnline ? "chat_online" : "friend_info_offline")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(palette.secondaryText)
-                    }
+                                            Text(friend.isOnline ? "chat_online" : "friend_info_offline")
+                                                .font(.caption.weight(.semibold))
+                                                .foregroundStyle(palette.secondaryText)
+                                        }
 
                     if let session = activeFocusSession {
                         HStack(spacing: 8) {
@@ -454,77 +522,138 @@ private extension FriendDetailView {
         .background(cardBackground)
     }
 
-    var recentMessagesCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("friend_detail_recent_messages")
+    var friendInsightsCard: some View {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Çalışma Profili")
+                            .font(.headline)
+                            .foregroundStyle(palette.primaryText)
+
+                        Text("Ritmini ve son aktivitesini gör")
+                            .font(.caption)
+                            .foregroundStyle(palette.secondaryText)
+                    }
+
+                    Spacer()
+
+                    ZStack {
+                        Circle()
+                            .fill(hexColor(friend.colorHex).opacity(0.14))
+                            .frame(width: 42, height: 42)
+
+                        Image(systemName: "chart.bar.xaxis")
+                            .foregroundStyle(hexColor(friend.colorHex))
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    insightStatCard(
+                        value: "\(totalFocusMinutes)",
+                        title: locale.language.languageCode?.identifier == "tr" ? "Toplam dk" : "Total min",
+                        tint: hexColor(friend.colorHex)
+                    )
+
+                    insightStatCard(
+                        value: "\(weeklyFocusCount)",
+                        title: locale.language.languageCode?.identifier == "tr" ? "Bu hafta" : "This week",
+                        tint: .blue
+                    )
+
+                    insightStatCard(
+                        value: "\(longestFocusMinutes)",
+                        title: locale.language.languageCode?.identifier == "tr" ? "En uzun" : "Longest",
+                        tint: .green
+                    )
+                }
+
+                HStack(spacing: 10) {
+                    miniInsightPill(
+                        icon: "calendar",
+                        text: locale.language.languageCode?.identifier == "tr"
+                            ? "\(sharedScheduleCount) bugünkü plan"
+                            : "\(sharedScheduleCount) today items",
+                        tint: .orange
+                    )
+
+                    miniInsightPill(
+                        icon: "timer",
+                        text: locale.language.languageCode?.identifier == "tr"
+                            ? "\(weeklyFocusMinutes) dk hafta"
+                            : "\(weeklyFocusMinutes) min week",
+                        tint: .purple
+                    )
+                }
+
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(hexColor(friend.colorHex))
+
+                    Text(friendInsightLine)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(palette.secondaryText)
+                        .lineLimit(2)
+
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(hexColor(friend.colorHex).opacity(0.08))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(hexColor(friend.colorHex).opacity(0.12), lineWidth: 1)
+                )
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(cardBackground)
+        }
+
+    var actionsCard: some View {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("friend_detail_actions")
                     .font(.headline)
                     .foregroundStyle(palette.primaryText)
 
-                Spacer()
+                HStack(spacing: 12) {
+                    NavigationLink {
+                        FriendChatView(friend: friend)
+                            .environmentObject(friendStore)
+                            .environmentObject(session)
+                    } label: {
+                        actionTile(
+                            title: locale.language.languageCode?.identifier == "tr" ? "Sohbet" : "Chat",
+                            systemImage: "message.fill"
+                        )
+                    }
+                    .buttonStyle(.plain)
 
-                Text("\(messages.suffix(3).count)")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(palette.secondaryText)
-            }
+                    actionTile(
+                        title: locale.language.languageCode?.identifier == "tr" ? "Profil" : "Profile",
+                        systemImage: "person.crop.circle.fill"
+                    )
 
-            if messages.isEmpty {
-                Text(isBackendFriend ? String(localized: "friend_detail_no_backend_messages") : String(localized: "chat_no_messages_yet"))
-                    .font(.subheadline)
-                    .foregroundStyle(palette.secondaryText)
-            } else {
-                ForEach(Array(messages.suffix(3))) { message in
-                    HStack {
-                        if message.isFromMe { Spacer(minLength: 40) }
-
-                        Text(message.text)
-                            .font(.subheadline)
-                            .foregroundStyle(message.isFromMe ? .white : palette.primaryText)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .fill(
-                                        message.isFromMe
-                                        ? Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.90 : 0.24)
-                                        : palette.secondaryCardFill
-                                    )
-                            )
-
-                        if !message.isFromMe { Spacer(minLength: 40) }
+                    if activeFocusSession != nil {
+                        actionTile(
+                            title: locale.language.languageCode?.identifier == "tr" ? "Odakta" : "In Focus",
+                            systemImage: "timer"
+                        )
+                    } else {
+                        actionTile(
+                            title: locale.language.languageCode?.identifier == "tr" ? "Durum" : "Status",
+                            systemImage: friend.isOnline ? "circle.fill" : "moon.fill"
+                        )
                     }
                 }
             }
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(cardBackground)
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
-    }
-
-    var actionsCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("friend_detail_actions")
-                .font(.headline)
-                .foregroundStyle(palette.primaryText)
-
-            HStack(spacing: 12) {
-                NavigationLink {
-                    FriendChatView(friend: friend)
-                        .environmentObject(friendStore)
-                        .environmentObject(session)
-                } label: {
-                    actionTile(
-                        title: String(localized: "friend_detail_message"),
-                        systemImage: "message.fill"
-                    )
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
-    }
 
     func actionTile(title: String, systemImage: String) -> some View {
         VStack(spacing: 10) {
@@ -571,6 +700,46 @@ private extension FriendDetailView {
                 )
         )
     }
+    
+    func insightStatCard(value: String, title: String, tint: Color) -> some View {
+            VStack(spacing: 5) {
+                Text(value)
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundStyle(palette.primaryText)
+                    .monospacedDigit()
+
+                Text(title)
+                    .font(.caption2)
+                    .foregroundStyle(tint)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(palette.secondaryCardFill)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
+                    )
+            )
+        }
+
+        func miniInsightPill(icon: String, text: String, tint: Color) -> some View {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                Text(text)
+                    .lineLimit(1)
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(
+                Capsule()
+                    .fill(tint.opacity(0.12))
+            )
+        }
 
     func weekdayIndexToday() -> Int {
         let w = Calendar.current.component(.weekday, from: Date())
