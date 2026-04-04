@@ -744,4 +744,405 @@ struct InsightsViewModel {
                 action: .openTasks
             )
         }
+    // MARK: - Premium Study Insights
+
+        private var activeExamCount: Int {
+            upcomingExams.count
+        }
+
+        private var studyCourseCount: Int {
+            courseNames.count
+        }
+
+        private var strongestCourseRow: CourseBalanceRowData? {
+            courseProgressRows().max(by: { $0.progress < $1.progress })
+        }
+
+        private var weakestCourseRow: CourseBalanceRowData? {
+            courseProgressRows().min(by: { $0.progress < $1.progress })
+        }
+
+        private var averageExamReadiness: Double {
+            guard !upcomingExams.isEmpty else { return 0 }
+            let total = upcomingExams.reduce(0.0) { partial, exam in
+                partial + examReadinessProgress(for: exam)
+            }
+            return total / Double(upcomingExams.count)
+        }
+
+        private var totalPlannedExamMinutes: Int {
+            upcomingExams.reduce(0) { $0 + $1.targetStudyMinutes }
+        }
+
+        private var totalCurrentExamMinutes: Int {
+            upcomingExams.reduce(0) { partial, exam in
+                let related = examRelatedTasks(for: exam)
+                let minutes = related.compactMap(\.workoutDurationMinutes).reduce(0, +)
+                return partial + minutes
+            }
+        }
+
+        private var totalCurrentExamTasks: Int {
+            upcomingExams.reduce(0) { partial, exam in
+                partial + examRelatedTasks(for: exam).filter(\.isDone).count
+            }
+        }
+
+        private var totalTargetExamTasks: Int {
+            max(upcomingExams.reduce(0) { $0 + $1.targetStudyTaskCount }, 1)
+        }
+
+        private var bestFocusDayValue: Int {
+            weeklyCompletedCounts.max() ?? 0
+        }
+
+        private var rhythmScore: Double {
+            let streakComponent = min(Double(streakCount) / 7.0, 1.0)
+            let focusComponent = min(Double(todayFocusMinutes) / 60.0, 1.0)
+            let consistencyComponent = min(Double(weeklyCompletedCounts.filter { $0 > 0 }.count) / 7.0, 1.0)
+            return min(1, (streakComponent * 0.35) + (focusComponent * 0.25) + (consistencyComponent * 0.40))
+        }
+
+        private var hasMeaningfulStudyData: Bool {
+            !upcomingExams.isEmpty || !courseProgressRows().isEmpty || !focusSessions.isEmpty
+        }
+
+    var studyHeroPremium: StudyHeroData {
+            if !upcomingExams.isEmpty {
+                let readiness = Int(averageExamReadiness * 100)
+                let nearest = upcomingExams.first
+                let nearestText = nearest.map { countdownText(for: $0) } ?? (localeIdentifier.hasPrefix("tr") ? "Yakında" : "Soon")
+
+                return StudyHeroData(
+                    mode: .exams,
+                    title: localeIdentifier.hasPrefix("tr") ? "Sınav odağın oluşuyor" : "Your exam focus is forming",
+                    subtitle: localeIdentifier.hasPrefix("tr")
+                        ? "Bugün küçük bir blok yeter."
+                        : "A short block today is enough.",
+                    primaryValue: "\(readiness)",
+                    primaryLabel: localeIdentifier.hasPrefix("tr") ? "hazırlık" : "readiness",
+                    chip1: localeIdentifier.hasPrefix("tr") ? "\(activeExamCount) sınav" : "\(activeExamCount) exams",
+                    chip2: nearestText,
+                    chip3: localeIdentifier.hasPrefix("tr") ? "\(totalCurrentExamMinutes) dk" : "\(totalCurrentExamMinutes) min",
+                    accent: .orange,
+                    actionTitle: localeIdentifier.hasPrefix("tr") ? "Haftayı Aç" : "Open Week",
+                    action: .openWeek
+                )
+            }
+
+            if studyCourseCount > 0 {
+                let weakest = weakestCourseRow
+                return StudyHeroData(
+                    mode: .courses,
+                    title: localeIdentifier.hasPrefix("tr") ? "Ders dengen toparlanabilir" : "Your course balance can improve",
+                    subtitle: localeIdentifier.hasPrefix("tr")
+                        ? "Zayıf dersi biraz öne çek."
+                        : "Push the weaker course forward.",
+                    primaryValue: "\(studyCourseCount)",
+                    primaryLabel: localeIdentifier.hasPrefix("tr") ? "aktif ders" : "courses",
+                    chip1: weakest?.courseName ?? (localeIdentifier.hasPrefix("tr") ? "Ders yok" : "No course"),
+                    chip2: weakest?.statusText ?? (localeIdentifier.hasPrefix("tr") ? "Başlangıç" : "Starting"),
+                    chip3: localeIdentifier.hasPrefix("tr") ? "\(completedTasksCount) tamam" : "\(completedTasksCount) done",
+                    accent: .blue,
+                    actionTitle: localeIdentifier.hasPrefix("tr") ? "Görevleri Aç" : "Open Tasks",
+                    action: .openTasks
+                )
+            }
+
+            if !focusSessions.isEmpty || completedTasksCount > 0 {
+                return StudyHeroData(
+                    mode: .rhythm,
+                    title: localeIdentifier.hasPrefix("tr") ? "Ritmin görünmeye başladı" : "Your rhythm is appearing",
+                    subtitle: localeIdentifier.hasPrefix("tr")
+                        ? "Bir odak daha tabloyu netleştirir."
+                        : "One more focus session sharpens the picture.",
+                    primaryValue: "\(Int(rhythmScore * 100))",
+                    primaryLabel: localeIdentifier.hasPrefix("tr") ? "ritim" : "rhythm",
+                    chip1: localeIdentifier.hasPrefix("tr") ? "\(streakCount) gün" : "\(streakCount) days",
+                    chip2: bestDayLabel,
+                    chip3: averageFocusMinutes > 0 ? minutesText(averageFocusMinutes) : (localeIdentifier.hasPrefix("tr") ? "Kısa başla" : "Start small"),
+                    accent: .green,
+                    actionTitle: localeIdentifier.hasPrefix("tr") ? "Focus Başlat" : "Start Focus",
+                    action: .openFocus
+                )
+            }
+
+            return StudyHeroData(
+                mode: .empty,
+                title: localeIdentifier.hasPrefix("tr") ? "Study Insights seni bekliyor" : "Study Insights is waiting",
+                subtitle: localeIdentifier.hasPrefix("tr")
+                    ? "Bir veri ekle, ekran açılsın."
+                    : "Add one piece of data to unlock it.",
+                primaryValue: "0",
+                primaryLabel: localeIdentifier.hasPrefix("tr") ? "aktif analiz" : "insights",
+                chip1: localeIdentifier.hasPrefix("tr") ? "Sınav ekle" : "Add exam",
+                chip2: localeIdentifier.hasPrefix("tr") ? "Ders etiketi" : "Tag course",
+                chip3: localeIdentifier.hasPrefix("tr") ? "25 dk" : "25 min",
+                accent: .accentColor,
+                actionTitle: localeIdentifier.hasPrefix("tr") ? "Görevleri Aç" : "Open Tasks",
+                action: .openTasks
+            )
+        }
+    
+
+            
+
+        var studyDeck: StudyInsightsDeckData {
+            let pages: [StudyInsightsDeckPageData] = [
+                studyDeckExamsPage,
+                studyDeckCoursesPage,
+                studyDeckRhythmPage
+            ]
+            return StudyInsightsDeckData(pages: pages)
+        }
+
+        private var studyDeckExamsPage: StudyInsightsDeckPageData {
+            guard let nextExam = upcomingExams.first else {
+                return StudyInsightsDeckPageData(
+                    page: .exams,
+                    title: localeIdentifier.hasPrefix("tr") ? "Sınavlar" : "Exams",
+                    subtitle: localeIdentifier.hasPrefix("tr") ? "Hazırlık görünümü" : "Preparation view",
+                    primaryValue: "0",
+                    primaryLabel: localeIdentifier.hasPrefix("tr") ? "yaklaşan sınav" : "upcoming exams",
+                    secondaryValue: "0%",
+                    secondaryLabel: localeIdentifier.hasPrefix("tr") ? "ortalama hazırlık" : "avg readiness",
+                    statusText: localeIdentifier.hasPrefix("tr") ? "Henüz boş" : "Empty",
+                    accent: .orange,
+                    progress: 0,
+                    chips: [
+                        .init(text: localeIdentifier.hasPrefix("tr") ? "Sınav ekle" : "Add exam", tint: .orange),
+                        .init(text: localeIdentifier.hasPrefix("tr") ? "Plan aç" : "Open plan", tint: .blue)
+                    ],
+                    ctaTitle: localeIdentifier.hasPrefix("tr") ? "Haftayı Aç" : "Open Week",
+                    action: .openWeek,
+                    emptyTitle: localeIdentifier.hasPrefix("tr") ? "Henüz sınav eklenmedi" : "No exams added yet",
+                    emptySubtitle: localeIdentifier.hasPrefix("tr")
+                        ? "İlk sınavını eklediğinde hazırlık seviyesi, kalan gün ve risk görünür."
+                        : "Add your first exam to unlock readiness, countdown, and risk.",
+                    emptyButtonTitle: localeIdentifier.hasPrefix("tr") ? "Haftayı Aç" : "Open Week",
+                    isEmpty: true
+                )
+            }
+
+            let readiness = examReadinessProgress(for: nextExam)
+            let studiedMinutes = examRelatedTasks(for: nextExam).compactMap(\.workoutDurationMinutes).reduce(0, +)
+            let doneTasks = examRelatedTasks(for: nextExam).filter(\.isDone).count
+            let targetTasks = max(nextExam.targetStudyTaskCount, 1)
+
+            return StudyInsightsDeckPageData(
+                page: .exams,
+                title: localeIdentifier.hasPrefix("tr") ? "Sınavlar" : "Exams",
+                subtitle: nextExam.courseName.isEmpty ? nextExam.title : "\(nextExam.courseName) \(nextExam.examType)",
+                primaryValue: countdownText(for: nextExam),
+                primaryLabel: localeIdentifier.hasPrefix("tr") ? "en yakın sınav" : "nearest exam",
+                secondaryValue: "%\(Int(readiness * 100))",
+                secondaryLabel: localeIdentifier.hasPrefix("tr") ? "hazırlık" : "readiness",
+                statusText: readinessText(for: readiness),
+                accent: readiness < 0.25 ? .red : (readiness < 0.55 ? .orange : .green),
+                progress: readiness,
+                chips: [
+                    .init(text: localeIdentifier.hasPrefix("tr") ? "\(doneTasks)/\(targetTasks) hedef görev" : "\(doneTasks)/\(targetTasks) target tasks", tint: .orange),
+                    .init(text: minutesText(studiedMinutes), tint: .blue),
+                    .init(text: localeIdentifier.hasPrefix("tr") ? "\(activeExamCount) sınav" : "\(activeExamCount) exams", tint: .green)
+                ],
+                ctaTitle: localeIdentifier.hasPrefix("tr") ? "Çalışma Planını Aç" : "Open Study Plan",
+                action: .openWeek,
+                emptyTitle: nil,
+                emptySubtitle: nil,
+                emptyButtonTitle: nil,
+                isEmpty: false
+            )
+        }
+
+        private var studyDeckCoursesPage: StudyInsightsDeckPageData {
+            let rows = courseProgressRows()
+
+            guard let weakest = weakestCourseRow, let strongest = strongestCourseRow else {
+                return StudyInsightsDeckPageData(
+                    page: .courses,
+                    title: localeIdentifier.hasPrefix("tr") ? "Dersler" : "Courses",
+                    subtitle: localeIdentifier.hasPrefix("tr") ? "Denge görünümü" : "Balance view",
+                    primaryValue: "0",
+                    primaryLabel: localeIdentifier.hasPrefix("tr") ? "etiketlenmiş ders" : "tagged courses",
+                    secondaryValue: "—",
+                    secondaryLabel: localeIdentifier.hasPrefix("tr") ? "en zayıf ders" : "weakest course",
+                    statusText: localeIdentifier.hasPrefix("tr") ? "Henüz boş" : "Empty",
+                    accent: .blue,
+                    progress: 0,
+                    chips: [
+                        .init(text: localeIdentifier.hasPrefix("tr") ? "Ders etiketi ekle" : "Add course tag", tint: .blue),
+                        .init(text: localeIdentifier.hasPrefix("tr") ? "Görev oluştur" : "Create task", tint: .orange)
+                    ],
+                    ctaTitle: localeIdentifier.hasPrefix("tr") ? "Görevleri Aç" : "Open Tasks",
+                    action: .openTasks,
+                    emptyTitle: localeIdentifier.hasPrefix("tr") ? "Henüz ders dengesi oluşmadı" : "No course balance yet",
+                    emptySubtitle: localeIdentifier.hasPrefix("tr")
+                        ? "Görevlere ders adı ekledikçe hangi derse az ya da çok yüklendiğin görünür."
+                        : "As you tag tasks with course names, your effort balance appears here.",
+                    emptyButtonTitle: localeIdentifier.hasPrefix("tr") ? "Görevleri Aç" : "Open Tasks",
+                    isEmpty: true
+                )
+            }
+
+            let balanceScore = rows.isEmpty ? 0 : rows.map(\.progress).reduce(0, +) / Double(rows.count)
+            let status = balanceScore < 0.30
+                ? (localeIdentifier.hasPrefix("tr") ? "Dağınık" : "Uneven")
+                : (balanceScore < 0.65 ? (localeIdentifier.hasPrefix("tr") ? "Toparlanıyor" : "Improving") : (localeIdentifier.hasPrefix("tr") ? "Dengeli" : "Balanced"))
+
+            return StudyInsightsDeckPageData(
+                page: .courses,
+                title: localeIdentifier.hasPrefix("tr") ? "Dersler" : "Courses",
+                subtitle: localeIdentifier.hasPrefix("tr") ? "Çalışma dengen" : "Your study balance",
+                primaryValue: weakest.courseName,
+                primaryLabel: localeIdentifier.hasPrefix("tr") ? "daha çok ilgi isteyen ders" : "needs more attention",
+                secondaryValue: strongest.courseName,
+                secondaryLabel: localeIdentifier.hasPrefix("tr") ? "en güçlü ders" : "strongest course",
+                statusText: status,
+                accent: .blue,
+                progress: balanceScore,
+                chips: [
+                    .init(text: localeIdentifier.hasPrefix("tr") ? "\(studyCourseCount) ders" : "\(studyCourseCount) courses", tint: .blue),
+                    .init(text: weakest.statusText, tint: .orange),
+                    .init(text: strongest.statusText, tint: .green)
+                ],
+                ctaTitle: localeIdentifier.hasPrefix("tr") ? "Görevlere Git" : "Go to Tasks",
+                action: .openTasks,
+                emptyTitle: nil,
+                emptySubtitle: nil,
+                emptyButtonTitle: nil,
+                isEmpty: false
+            )
+        }
+
+        private var studyDeckRhythmPage: StudyInsightsDeckPageData {
+            let progress = rhythmScore
+            let bestTime = bestStudyHourRangeText
+            let avg = averageFocusMinutes
+
+            if completedTasksCount == 0 && focusSessions.isEmpty {
+                return StudyInsightsDeckPageData(
+                    page: .rhythm,
+                    title: localeIdentifier.hasPrefix("tr") ? "Ritim" : "Rhythm",
+                    subtitle: localeIdentifier.hasPrefix("tr") ? "Çalışma deseni" : "Study pattern",
+                    primaryValue: localeIdentifier.hasPrefix("tr") ? "Henüz yok" : "Not yet",
+                    primaryLabel: localeIdentifier.hasPrefix("tr") ? "en iyi zaman" : "best time",
+                    secondaryValue: "0",
+                    secondaryLabel: localeIdentifier.hasPrefix("tr") ? "aktif gün" : "active days",
+                    statusText: localeIdentifier.hasPrefix("tr") ? "Başlamadı" : "Not started",
+                    accent: .green,
+                    progress: 0,
+                    chips: [
+                        .init(text: localeIdentifier.hasPrefix("tr") ? "İlk focus" : "First focus", tint: .green),
+                        .init(text: localeIdentifier.hasPrefix("tr") ? "Görev bitir" : "Finish task", tint: .blue)
+                    ],
+                    ctaTitle: localeIdentifier.hasPrefix("tr") ? "Focus Başlat" : "Start Focus",
+                    action: .openFocus,
+                    emptyTitle: localeIdentifier.hasPrefix("tr") ? "Ritmin henüz oluşmadı" : "Your rhythm has not formed yet",
+                    emptySubtitle: localeIdentifier.hasPrefix("tr")
+                        ? "İlk birkaç görev ve focus oturumu sonrası sana en uygun zaman dilimleri görünür."
+                        : "After a few tasks and focus sessions, your best windows will appear here.",
+                    emptyButtonTitle: localeIdentifier.hasPrefix("tr") ? "Focus Başlat" : "Start Focus",
+                    isEmpty: true
+                )
+            }
+
+            return StudyInsightsDeckPageData(
+                page: .rhythm,
+                title: localeIdentifier.hasPrefix("tr") ? "Ritim" : "Rhythm",
+                subtitle: localeIdentifier.hasPrefix("tr") ? "Gün içi çalışma akışı" : "Your daily study flow",
+                primaryValue: bestTime,
+                primaryLabel: localeIdentifier.hasPrefix("tr") ? "en iyi zaman" : "best time",
+                secondaryValue: bestDayLabel,
+                secondaryLabel: localeIdentifier.hasPrefix("tr") ? "en iyi gün" : "best day",
+                statusText: localeIdentifier.hasPrefix("tr") ? "Kişiselleşiyor" : "Personalizing",
+                accent: .green,
+                progress: progress,
+                chips: [
+                    .init(text: localeIdentifier.hasPrefix("tr") ? "\(streakCount) gün seri" : "\(streakCount) day streak", tint: .orange),
+                    .init(text: minutesText(avg), tint: .blue),
+                    .init(text: localeIdentifier.hasPrefix("tr") ? "\(weeklyCompletedCounts.filter { $0 > 0 }.count) aktif gün" : "\(weeklyCompletedCounts.filter { $0 > 0 }.count) active days", tint: .green)
+                ],
+                ctaTitle: localeIdentifier.hasPrefix("tr") ? "25 dk Başlat" : "Start 25 min",
+                action: .openFocus,
+                emptyTitle: nil,
+                emptySubtitle: nil,
+                emptyButtonTitle: nil,
+                isEmpty: false
+            )
+        }
+
+        var studyQuickActions: [StudyQuickActionData] {
+            [
+                .init(
+                    title: localeIdentifier.hasPrefix("tr") ? "Haftayı Aç" : "Open Week",
+                    icon: "calendar",
+                    tint: .blue,
+                    action: .openWeek
+                ),
+                .init(
+                    title: localeIdentifier.hasPrefix("tr") ? "Focus Başlat" : "Start Focus",
+                    icon: "timer",
+                    tint: .green,
+                    action: .openFocus
+                ),
+                .init(
+                    title: localeIdentifier.hasPrefix("tr") ? "Görevleri Aç" : "Open Tasks",
+                    icon: "checklist",
+                    tint: .orange,
+                    action: .openTasks
+                )
+            ]
+        }
+
+        var studyUnlockPrompt: StudyUnlockPromptData {
+            if !hasMeaningfulStudyData {
+                return StudyUnlockPromptData(
+                    title: localeIdentifier.hasPrefix("tr") ? "İlk akıllı analizini aç" : "Unlock your first smart insight",
+                    subtitle: localeIdentifier.hasPrefix("tr")
+                        ? "Bir sınav ekle ya da kısa bir focus oturumu başlat. Bu ekran hemen canlanır."
+                        : "Add an exam or start a short focus session. This screen wakes up immediately.",
+                    progressText: localeIdentifier.hasPrefix("tr") ? "0/1 adım" : "0/1 step",
+                    progress: 0.08,
+                    actionTitle: localeIdentifier.hasPrefix("tr") ? "Focus Başlat" : "Start Focus",
+                    action: .openFocus
+                )
+            }
+
+            if upcomingExams.isEmpty {
+                return StudyUnlockPromptData(
+                    title: localeIdentifier.hasPrefix("tr") ? "Sınav panelini daha akıllı yap" : "Make the exam panel smarter",
+                    subtitle: localeIdentifier.hasPrefix("tr")
+                        ? "Bir sınav eklediğinde risk, hazırlık ve kalan gün tek yerde görünür."
+                        : "Add an exam to unlock risk, readiness, and countdown in one place.",
+                    progressText: localeIdentifier.hasPrefix("tr") ? "1/2 adım" : "1/2 steps",
+                    progress: 0.45,
+                    actionTitle: localeIdentifier.hasPrefix("tr") ? "Haftayı Aç" : "Open Week",
+                    action: .openWeek
+                )
+            }
+
+            if courseProgressRows().isEmpty {
+                return StudyUnlockPromptData(
+                    title: localeIdentifier.hasPrefix("tr") ? "Ders dengesini aç" : "Unlock course balance",
+                    subtitle: localeIdentifier.hasPrefix("tr")
+                        ? "Görevlerine ders adı ekledikçe hangi derste geri kaldığın görünür."
+                        : "As you tag tasks with course names, your weak and strong courses appear.",
+                    progressText: localeIdentifier.hasPrefix("tr") ? "2/3 adım" : "2/3 steps",
+                    progress: 0.70,
+                    actionTitle: localeIdentifier.hasPrefix("tr") ? "Görevleri Aç" : "Open Tasks",
+                    action: .openTasks
+                )
+            }
+
+            return StudyUnlockPromptData(
+                title: localeIdentifier.hasPrefix("tr") ? "Study Insights artık canlı" : "Study Insights is now alive",
+                subtitle: localeIdentifier.hasPrefix("tr")
+                    ? "Yeni veri geldikçe sana özel öneriler ve durum panelleri daha iyi hale gelir."
+                    : "As more data arrives, your personal recommendations and panels improve.",
+                progressText: localeIdentifier.hasPrefix("tr") ? "Tamamlandı" : "Completed",
+                progress: 1.0,
+                actionTitle: localeIdentifier.hasPrefix("tr") ? "Haftayı Aç" : "Open Week",
+                action: .openWeek
+            )
+        }
 }

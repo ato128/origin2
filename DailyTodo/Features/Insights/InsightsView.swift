@@ -22,6 +22,7 @@ struct InsightsView: View {
     @State private var goTasks = false
     @State private var goWeek = false
     @State private var goFocus = false
+    @State private var isStudyMode = false
 
     @Query(sort: \DTTaskItem.createdAt, order: .reverse)
     private var tasks: [DTTaskItem]
@@ -83,6 +84,34 @@ struct InsightsView: View {
         collapseProgress > 0.12
     }
 
+    private var largeHeaderTitle: String {
+        isStudyMode ? "Study Insights" : String(localized: "insights_title")
+    }
+
+    private var smallHeaderTitle: String {
+        isStudyMode ? "Study Insights" : String(localized: "insights_title")
+    }
+
+    private var contentSpacing: CGFloat {
+        isStudyMode ? 12 : 16
+    }
+
+    private var horizontalPadding: CGFloat {
+        isStudyMode ? 14 : 16
+    }
+
+    private var largeTitleSize: CGFloat {
+        isStudyMode ? 30 : 36
+    }
+
+    private var studyHeaderBottomPadding: CGFloat {
+        isStudyMode ? 10 : 22
+    }
+
+    private var studyHeaderTopPadding: CGFloat {
+        isStudyMode ? 4 : 8
+    }
+
     var body: some View {
         ZStack(alignment: .top) {
             AppBackground()
@@ -110,65 +139,19 @@ struct InsightsView: View {
             ScrollView {
                 ScrollOffsetReader(coordinateSpaceName: "insightsScroll")
 
-                VStack(spacing: 16) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text("insights_title")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundStyle(palette.primaryText)
-                            .padding(.horizontal, 20)
-                            .padding(.top, 8)
-                            .padding(.bottom, 22)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(spacing: contentSpacing) {
+                    headerSection
 
-                    InsightsCardContainer(delay: 0.02) {
-                        StudentInsightHeroCard(data: vm.studentHero) { action in
-                            handleInsightAction(action)
-                        }
+                    if isStudyMode {
+                        studyContent
+                    } else {
+                        classicContent
                     }
 
-                    InsightsCardContainer(delay: 0.05) {
-                        ExamReadinessCard(data: vm.examReadiness) { action in
-                            handleInsightAction(action)
-                        }
-                    }
-
-                    InsightsCardContainer(delay: 0.08) {
-                        CourseBalanceCard(data: vm.courseBalance)
-                    }
-
-                    InsightsCardContainer(delay: 0.11) {
-                        WeeklyMomentumCard(data: vm.weeklyMomentum)
-                    }
-
-                    InsightsCardContainer(delay: 0.14) {
-                        StudyPatternCard(data: vm.studyPattern)
-                    }
-
-                    InsightsCardContainer(delay: 0.17) {
-                        FocusInsightsCard(data: vm.focusInsights)
-                    }
-
-                    if smartEngineEnabled {
-                        InsightsCardContainer(delay: 0.20) {
-                            AICoachCard(data: vm.aiCoach) { action in
-                                handleInsightAction(action)
-                            }
-                        }
-                    }
-
-                    if smartEngineEnabled {
-                        InsightsCardContainer(delay: 0.23) {
-                            SmartSuggestionCard(data: vm.smartSuggestion) { action in
-                                handleInsightAction(action)
-                            }
-                        }
-                    }
-
-                    Spacer(minLength: 90)
+                    Spacer(minLength: isStudyMode ? 74 : 90)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
+                .padding(.horizontal, horizontalPadding)
+                .padding(.top, isStudyMode ? 4 : 8)
             }
             .coordinateSpace(name: "insightsScroll")
             .onPreferenceChange(ScrollOffsetPreference.self) { value in
@@ -176,16 +159,7 @@ struct InsightsView: View {
             }
             .scrollIndicators(.hidden)
 
-            VStack(spacing: 0) {
-                Text("insights_title")
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
-                    .foregroundStyle(palette.primaryText)
-                    .opacity(smallTitleOpacity)
-                    .padding(.top, 10)
-
-                Spacer()
-            }
-            .animation(.spring(response: 0.28, dampingFraction: 0.86), value: collapseProgress)
+            collapsedTopTitle
         }
         .toolbar(.hidden, for: .navigationBar)
         .background(
@@ -211,6 +185,163 @@ struct InsightsView: View {
             }
             .hidden()
         )
+    }
+
+    private var headerSection: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: isStudyMode ? 6 : 8) {
+                if isStudyMode {
+                    HStack(alignment: .center, spacing: 10) {
+                        Text("Study Insights")
+                            .font(.system(size: largeTitleSize, weight: .bold, design: .rounded))
+                            .foregroundStyle(palette.primaryText)
+
+                        Image(systemName: "graduationcap.fill")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(Color.accentColor)
+                            .offset(y: 1)
+                    }
+
+                    Text("Akıllı öğrenci görünümü")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(palette.secondaryText)
+                } else {
+                    Text(String(localized: "insights_title"))
+                        .font(.system(size: largeTitleSize, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
+                }
+            }
+
+            Spacer()
+
+            Button {
+                withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                    isStudyMode.toggle()
+                }
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(palette.secondaryCardFill)
+                        .frame(width: isStudyMode ? 40 : 42, height: isStudyMode ? 40 : 42)
+                        .overlay(
+                            Circle()
+                                .stroke(
+                                    isStudyMode ? Color.accentColor.opacity(0.18) : palette.cardStroke,
+                                    lineWidth: 1
+                                )
+                        )
+
+                    Image(systemName: isStudyMode ? "chart.bar.fill" : "graduationcap.fill")
+                        .font(.system(size: isStudyMode ? 16 : 18, weight: .bold))
+                        .foregroundStyle(isStudyMode ? palette.primaryText : Color.accentColor)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isStudyMode ? "Normal Insights" : "Study Insights")
+        }
+        .padding(.horizontal, isStudyMode ? 4 : 20)
+        .padding(.top, studyHeaderTopPadding)
+        .padding(.bottom, studyHeaderBottomPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var classicContent: some View {
+        Group {
+            InsightsCardContainer(delay: 0.02) {
+                OverviewCard(data: vm.overview)
+            }
+
+            InsightsCardContainer(delay: 0.05) {
+                ProductivityScoreCard(data: vm.productivityScore)
+            }
+
+            InsightsCardContainer(delay: 0.08) {
+                ConsistencyScoreCard(data: vm.consistencyScore)
+            }
+
+            InsightsCardContainer(delay: 0.11) {
+                MostBusyDayCard(data: vm.mostBusyDay)
+            }
+
+            InsightsCardContainer(delay: 0.14) {
+                DailyBoostCard(data: vm.dailyBoost)
+            }
+
+            InsightsCardContainer(delay: 0.17) {
+                StudyHeatMapCard(data: vm.heatmap)
+            }
+
+            InsightsCardContainer(delay: 0.20) {
+                FocusInsightsCard(data: vm.focusInsights)
+            }
+
+            if smartEngineEnabled {
+                InsightsCardContainer(delay: 0.23) {
+                    AICoachCard(data: vm.aiCoach) { action in
+                        handleInsightAction(action)
+                    }
+                }
+            }
+
+            if smartEngineEnabled {
+                InsightsCardContainer(delay: 0.26) {
+                    SmartSuggestionCard(data: vm.smartSuggestion) { action in
+                        handleInsightAction(action)
+                    }
+                }
+            }
+        }
+    }
+
+    private var studyContent: some View {
+        Group {
+            InsightsCardContainer(delay: 0.02) {
+                StudyInsightsHeroCard(data: vm.studyHeroPremium) { action in
+                    handleInsightAction(action)
+                }
+            }
+
+            InsightsCardContainer(delay: 0.04) {
+                StudyInsightsPagerCard(data: vm.studyDeck) { action in
+                    handleInsightAction(action)
+                }
+            }
+
+            InsightsCardContainer(delay: 0.06) {
+                StudyInsightsQuickActionsRow(actions: vm.studyQuickActions) { action in
+                    handleInsightAction(action)
+                }
+            }
+
+            InsightsCardContainer(delay: 0.08) {
+                StudyInsightsUnlockCard(data: vm.studyUnlockPrompt) { action in
+                    handleInsightAction(action)
+                }
+            }
+        }
+    }
+
+    private var collapsedTopTitle: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 6) {
+                Text(smallHeaderTitle)
+                    .font(.system(size: isStudyMode ? 16 : 17, weight: .bold, design: .rounded))
+                    .foregroundStyle(palette.primaryText)
+                    .opacity(smallTitleOpacity)
+
+                if isStudyMode {
+                    Image(systemName: "graduationcap.fill")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(Color.accentColor)
+                        .opacity(smallTitleOpacity)
+                }
+            }
+            .padding(.top, 10)
+
+            Spacer()
+        }
+        .animation(.spring(response: 0.28, dampingFraction: 0.86), value: collapseProgress)
+        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: isStudyMode)
     }
 
     private func handleInsightAction(_ action: SmartSuggestionAction) {

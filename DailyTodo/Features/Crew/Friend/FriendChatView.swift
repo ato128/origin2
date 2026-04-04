@@ -119,7 +119,7 @@ struct FriendChatView: View {
     }
     private var chatLifecycleHandlers: some View {
         EmptyView()
-            .task {
+            .task(id: friendshipID) {
                 guard let friendshipID else { return }
                 
                 FriendStore.sharedRetryBridge = { message in
@@ -140,9 +140,6 @@ struct FriendChatView: View {
                     )
                 }
                 
-                let pushStore = PushTokenStore()
-                await pushStore.saveCurrentToken(currentUserID: session.currentUser?.id)
-                
                 await friendStore.markMessagesSeen(
                     friendshipID: friendshipID,
                     currentUserID: session.currentUser?.id
@@ -154,20 +151,21 @@ struct FriendChatView: View {
                     currentUserID: session.currentUser?.id
                 )
                 
-                friendStore.subscribeToTypingRealtime(
-                    friendshipID: friendshipID,
-                    currentUserID: session.currentUser?.id
-                )
+                // friendStore.subscribeToTypingRealtime(
+                  //  friendshipID: friendshipID,
+                   // currentUserID: session.currentUser?.id
+                //)
                 
-                if let friendUserID = friend.backendUserID {
-                    await friendStore.loadPresence(for: [friendUserID])
-                    friendStore.subscribeToPresenceRealtime(for: [friendUserID])
-                }
+              //  if let friendUserID = friend.backendUserID {
+                //    await friendStore.loadPresence(for: [friendUserID])
+                  //  friendStore.subscribeToPresenceRealtime(for: [friendUserID])
+               // }
                 
                 await friendStore.setPresence(
                     currentUserID: session.currentUser?.id,
                     isOnline: true
                 )
+                
             }
             .onDisappear {
                 friendStore.setActiveChat(nil)
@@ -191,24 +189,6 @@ struct FriendChatView: View {
                             isTyping: false
                         )
                     }
-                }
-            }
-            .onChange(of: scenePhase) { _, newPhase in
-                let isActive = newPhase == .active
-                friendStore.setAppActive(isActive)
-                
-                guard isActive, let friendshipID else { return }
-                
-                Task {
-                    await friendStore.loadNewMessages(
-                        for: friendshipID,
-                        currentUserID: session.currentUser?.id
-                    )
-                    
-                    await friendStore.markMessagesSeen(
-                        friendshipID: friendshipID,
-                        currentUserID: session.currentUser?.id
-                    )
                 }
             }
             .onChange(of: messages.count) { _, _ in
@@ -561,18 +541,18 @@ private extension FriendChatView {
                 attachmentPreviewCard(attachment: draftAttachment)
                     .padding(.horizontal, 16)
             }
-
+            
             if audioRecorder.isRecording {
                 HStack(spacing: 12) {
                     Circle()
                         .fill(Color.red)
                         .frame(width: 10, height: 10)
-
+                    
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Ses kaydı")
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(.white)
-
+                        
                         HStack(spacing: 3) {
                             ForEach(0..<18, id: \.self) { index in
                                 Capsule()
@@ -581,13 +561,13 @@ private extension FriendChatView {
                             }
                         }
                     }
-
+                    
                     Spacer()
-
+                    
                     Text(audioRecorder.durationText())
                         .font(.system(size: 13, weight: .bold, design: .monospaced))
                         .foregroundStyle(.white.opacity(0.9))
-
+                    
                     Button("İptal") {
                         audioRecorder.cancelRecording()
                     }
@@ -606,7 +586,7 @@ private extension FriendChatView {
                 )
                 .padding(.horizontal, 16)
             }
-
+            
             HStack(alignment: .center, spacing: 10) {
                 Menu {
                     PhotosPicker(
@@ -616,13 +596,13 @@ private extension FriendChatView {
                     ) {
                         Label("Fotoğraf", systemImage: "photo")
                     }
-
+                    
                     Button {
                         showCamera = true
                     } label: {
                         Label("Kamera", systemImage: "camera")
                     }
-
+                    
                     Button {
                         showFileImporter = true
                     } label: {
@@ -635,7 +615,7 @@ private extension FriendChatView {
                         .frame(width: 42, height: 42)
                         .background(glassCircleBackground)
                 }
-
+                
                 HStack(spacing: 10) {
                     TextField(tr("chat_message_placeholder"), text: $draftMessage)
                         .focused($isComposerFocused)
@@ -645,20 +625,28 @@ private extension FriendChatView {
                         .tint(Color.accentColor)
                         .submitLabel(.send)
                         .onSubmit { sendMessage() }
-
+                        .onChange(of: draftMessage) { _, newValue in
+                            guard let friendshipID, !newValue.isEmpty else { return }
+                            friendStore.userDidType(
+                                friendshipID: friendshipID,
+                                currentUserID: session.currentUser?.id,
+                                currentUserName: senderDisplayName()
+                            )
+                        }
+                    
                     Button {
                         if hasSendableContent {
                             sendMessage()
                             return
                         }
-
+                        
                         Task {
                             if audioRecorder.isRecording {
                                 audioRecorder.stopRecording()
-
+                                
                                 guard let recordedURL = audioRecorder.recordedURL,
                                       let friendshipID else { return }
-
+                                
                                 await friendStore.sendVoiceMessage(
                                     audioURL: recordedURL,
                                     friendshipID: friendshipID,
@@ -666,7 +654,7 @@ private extension FriendChatView {
                                     senderName: senderDisplayName(),
                                     durationText: audioRecorder.durationText()
                                 )
-
+                                
                                 if let toUserId = friend.backendUserID?.uuidString {
                                     PushService.shared.sendFriendMessagePush(
                                         toUserId: toUserId,
@@ -675,7 +663,7 @@ private extension FriendChatView {
                                         message: "🎤 Ses mesajı"
                                     )
                                 }
-
+                                
                                 audioRecorder.recordedURL = nil
                                 audioRecorder.elapsedSeconds = 0
                             } else {
@@ -684,7 +672,7 @@ private extension FriendChatView {
                                     showMicPermissionAlert = true
                                     return
                                 }
-
+                                
                                 do {
                                     try audioRecorder.startRecording()
                                 } catch {
@@ -694,9 +682,9 @@ private extension FriendChatView {
                         }
                     } label: {
                         Image(systemName:
-                            hasSendableContent
-                            ? "arrow.up.circle.fill"
-                            : (audioRecorder.isRecording ? "stop.circle.fill" : "mic.fill")
+                                hasSendableContent
+                              ? "arrow.up.circle.fill"
+                              : (audioRecorder.isRecording ? "stop.circle.fill" : "mic.fill")
                         )
                         .font(.system(size: hasSendableContent ? 24 : 20, weight: .semibold))
                         .foregroundStyle(

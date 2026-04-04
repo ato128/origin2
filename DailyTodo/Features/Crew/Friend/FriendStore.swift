@@ -1800,16 +1800,17 @@ final class FriendStore: ObservableObject {
 
     // MARK: - Messages Realtime
 
+   
+    
     func subscribeToFriendMessagesRealtime(friendshipID: UUID, currentUserID: UUID?) {
-        guard subscribedFriendshipID != friendshipID else {
-            print("🟡 ALREADY SUBSCRIBED:", friendshipID)
-            return
-        }
-
         let currentUserIDCopy = currentUserID
 
         Task {
-            if let old = friendMessagesChannel { try? await old.unsubscribe() }
+            if let old = friendMessagesChannel {
+                try? await old.unsubscribe()
+                try? await Task.sleep(nanoseconds: 300_000_000)
+            }
+
             await MainActor.run {
                 self.friendMessagesChannel = nil
                 self.subscribedFriendshipID = nil
@@ -1826,18 +1827,12 @@ final class FriendStore: ObservableObject {
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
                     guard let self else { return }
-                    print("🟡 REALTIME INSERT GELDİ")
                     do {
                         let jsonData = try JSONSerialization.data(withJSONObject: action.record)
                         let dto = try JSONDecoder().decode(FriendMessageDTO.self, from: jsonData)
-                        print("🟡 REALTIME DTO TEXT:", dto.text)
-                        guard dto.friendship_id == friendshipID else {
-                            print("🟡 FRIENDSHIP ID UYUŞMUYOR")
-                            return
-                        }
+                        guard dto.friendship_id == friendshipID else { return }
                         let item = self.mapDTOToFriendItem(dto, currentUserID: currentUserIDCopy)
                         self.appendFriendMessage(item, friendshipID: friendshipID)
-                        print("🟡 MESAJ APPEND EDİLDİ")
 
                         if dto.sender_id != currentUserIDCopy {
                             await self.markMessagesDelivered(friendshipID: friendshipID, currentUserID: currentUserIDCopy)

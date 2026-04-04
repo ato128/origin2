@@ -130,11 +130,19 @@
 		6D9E21402F803D9C00946892 /* ExamItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E213F2F803D9C00946892 /* ExamItem.swift */; };
 		6D9E21422F803E1300946892 /* HomeDashboardExamHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21412F803E1300946892 /* HomeDashboardExamHelpers.swift */; };
 		6D9E21442F80B2ED00946892 /* InsightsStudentModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21432F80B2ED00946892 /* InsightsStudentModels.swift */; };
-		6D9E21462F80B6EB00946892 /* StudentInsightsHeroCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21452F80B6EB00946892 /* StudentInsightsHeroCard.swift */; };
-		6D9E21482F80B71B00946892 /* ExamReadinessCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21472F80B71B00946892 /* ExamReadinessCard.swift */; };
-		6D9E214A2F80B75F00946892 /* CourseBalanceCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21492F80B75F00946892 /* CourseBalanceCard.swift */; };
-		6D9E214C2F80B78A00946892 /* WeeklyMomentumCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E214B2F80B78A00946892 /* WeeklyMomentumCard.swift */; };
 		6D9E214E2F80B7AD00946892 /* StudyPatternCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E214D2F80B7AD00946892 /* StudyPatternCard.swift */; };
+		6D9E21602F815E1E00946892 /* InsightsCardStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E215F2F815E1E00946892 /* InsightsCardStyle.swift */; };
+		6D9E21622F81610C00946892 /* InsightsHeroPremiumCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21612F81610C00946892 /* InsightsHeroPremiumCard.swift */; };
+		6D9E21642F816B1300946892 /* ConsistencyScoreCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21632F816B1300946892 /* ConsistencyScoreCard.swift */; };
+		6D9E21662F816B1900946892 /* DailyBoostCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21652F816B1900946892 /* DailyBoostCard.swift */; };
+		6D9E21682F816B2100946892 /* MostBusyCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21672F816B2100946892 /* MostBusyCard.swift */; };
+		6D9E216A2F816B2600946892 /* OverViewCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21692F816B2600946892 /* OverViewCard.swift */; };
+		6D9E216C2F816B2C00946892 /* ProductivityScoreCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E216B2F816B2C00946892 /* ProductivityScoreCard.swift */; };
+		6D9E216E2F816B3400946892 /* StudyHeatMapCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E216D2F816B3400946892 /* StudyHeatMapCard.swift */; };
+		6D9E21722F81775B00946892 /* StudyInsightsHeroCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21712F81775B00946892 /* StudyInsightsHeroCard.swift */; };
+		6D9E21742F81778300946892 /* StudyInsightsPagerCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21732F81778300946892 /* StudyInsightsPagerCard.swift */; };
+		6D9E21762F8177F600946892 /* StudyInsightsQuickActionsRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21752F8177F600946892 /* StudyInsightsQuickActionsRow.swift */; };
+		6D9E21782F81781500946892 /* StudyInsightsUnlockedCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21772F81781500946892 /* StudyInsightsUnlockedCard.swift */; };
 		6DB70E712F72D47D00F04B43 /* WeekView+MainContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E702F72D47D00F04B43 /* WeekView+MainContent.swift */; };
 		6DB70E732F72D54B00F04B43 /* WeekView+Sheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E722F72D54B00F04B43 /* WeekView+Sheets.swift */; };
 		6DB70E752F72D56A00F04B43 /* WeekView+Lifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E742F72D56A00F04B43 /* WeekView+Lifecycle.swift */; };
@@ -385,11 +393,19 @@
 		6D9E213F2F803D9C00946892 /* ExamItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExamItem.swift; sourceTree = "<group>"; };
 		6D9E21412F803E1300946892 /* HomeDashboardExamHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDashboardExamHelpers.swift; sourceTree = "<group>"; };
 		6D9E21432F80B2ED00946892 /* InsightsStudentModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsStudentModels.swift; sourceTree = "<group>"; };
-		6D9E21452F80B6EB00946892 /* StudentInsightsHeroCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudentInsightsHeroCard.swift; sourceTree = "<group>"; };
-		6D9E21472F80B71B00946892 /* ExamReadinessCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExamReadinessCard.swift; sourceTree = "<group>"; };
-		6D9E21492F80B75F00946892 /* CourseBalanceCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourseBalanceCard.swift; sourceTree = "<group>"; };
-		6D9E214B2F80B78A00946892 /* WeeklyMomentumCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyMomentumCard.swift; sourceTree = "<group>"; };
 		6D9E214D2F80B7AD00946892 /* StudyPatternCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyPatternCard.swift; sourceTree = "<group>"; };
+		6D9E215F2F815E1E00946892 /* InsightsCardStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsCardStyle.swift; sourceTree = "<group>"; };
+		6D9E21612F81610C00946892 /* InsightsHeroPremiumCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsHeroPremiumCard.swift; sourceTree = "<group>"; };
+		6D9E21632F816B1300946892 /* ConsistencyScoreCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsistencyScoreCard.swift; sourceTree = "<group>"; };
+		6D9E21652F816B1900946892 /* DailyBoostCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyBoostCard.swift; sourceTree = "<group>"; };
+		6D9E21672F816B2100946892 /* MostBusyCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MostBusyCard.swift; sourceTree = "<group>"; };
+		6D9E21692F816B2600946892 /* OverViewCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverViewCard.swift; sourceTree = "<group>"; };
+		6D9E216B2F816B2C00946892 /* ProductivityScoreCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductivityScoreCard.swift; sourceTree = "<group>"; };
+		6D9E216D2F816B3400946892 /* StudyHeatMapCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyHeatMapCard.swift; sourceTree = "<group>"; };
+		6D9E21712F81775B00946892 /* StudyInsightsHeroCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyInsightsHeroCard.swift; sourceTree = "<group>"; };
+		6D9E21732F81778300946892 /* StudyInsightsPagerCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyInsightsPagerCard.swift; sourceTree = "<group>"; };
+		6D9E21752F8177F600946892 /* StudyInsightsQuickActionsRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyInsightsQuickActionsRow.swift; sourceTree = "<group>"; };
+		6D9E21772F81781500946892 /* StudyInsightsUnlockedCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyInsightsUnlockedCard.swift; sourceTree = "<group>"; };
 		6DB70E702F72D47D00F04B43 /* WeekView+MainContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeekView+MainContent.swift"; sourceTree = "<group>"; };
 		6DB70E722F72D54B00F04B43 /* WeekView+Sheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeekView+Sheets.swift"; sourceTree = "<group>"; };
 		6DB70E742F72D56A00F04B43 /* WeekView+Lifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeekView+Lifecycle.swift"; sourceTree = "<group>"; };
@@ -595,11 +611,11 @@
 				6D2004D22F6463720022C810 /* ShimmerModifier.swift */,
 				6D2004D82F6469B20022C810 /* InsightsRevealStyle.swift */,
 				6D2004DC2F646DEC0022C810 /* ScrollOffsetReader.swift */,
-				6D9E21452F80B6EB00946892 /* StudentInsightsHeroCard.swift */,
-				6D9E21472F80B71B00946892 /* ExamReadinessCard.swift */,
-				6D9E21492F80B75F00946892 /* CourseBalanceCard.swift */,
-				6D9E214B2F80B78A00946892 /* WeeklyMomentumCard.swift */,
 				6D9E214D2F80B7AD00946892 /* StudyPatternCard.swift */,
+				6D9E21712F81775B00946892 /* StudyInsightsHeroCard.swift */,
+				6D9E21732F81778300946892 /* StudyInsightsPagerCard.swift */,
+				6D9E21752F8177F600946892 /* StudyInsightsQuickActionsRow.swift */,
+				6D9E21772F81781500946892 /* StudyInsightsUnlockedCard.swift */,
 			);
 			path = InsgihtsComponents;
 			sourceTree = "<group>";
@@ -814,6 +830,12 @@
 		6DC0CACC2F5F7FA000A875ED /* Insights */ = {
 			isa = PBXGroup;
 			children = (
+				6D9E216D2F816B3400946892 /* StudyHeatMapCard.swift */,
+				6D9E216B2F816B2C00946892 /* ProductivityScoreCard.swift */,
+				6D9E21692F816B2600946892 /* OverViewCard.swift */,
+				6D9E21672F816B2100946892 /* MostBusyCard.swift */,
+				6D9E21652F816B1900946892 /* DailyBoostCard.swift */,
+				6D9E21632F816B1300946892 /* ConsistencyScoreCard.swift */,
 				6D02C9D62F5B4D95008193F3 /* SmartInsights.swift */,
 				6D02C9D22F5B4D1F008193F3 /* StreakEngine.swift */,
 				6D02C9D42F5B4D63008193F3 /* FocusTimerView.swift */,
@@ -824,6 +846,8 @@
 				6D2004B12F644F300022C810 /* InsightsModels.swift */,
 				6D2004B32F644F650022C810 /* InsightsViewModel.swift */,
 				6D9E21432F80B2ED00946892 /* InsightsStudentModels.swift */,
+				6D9E215F2F815E1E00946892 /* InsightsCardStyle.swift */,
+				6D9E21612F81610C00946892 /* InsightsHeroPremiumCard.swift */,
 			);
 			path = Insights;
 			sourceTree = "<group>";
@@ -1217,6 +1241,7 @@
 				6D2004C92F645D170022C810 /* CountUpText.swift in Sources */,
 				6DD286C22F7C750B005A73FA /* AudioRecorderManager.swift in Sources */,
 				6DB70E792F72ED8400F04B43 /* SharedFocusRunTime.swift in Sources */,
+				6D9E216C2F816B2C00946892 /* ProductivityScoreCard.swift in Sources */,
 				6D2004522F61C6FC0022C810 /* EventRow.swift in Sources */,
 				6D9E21442F80B2ED00946892 /* InsightsStudentModels.swift in Sources */,
 				6DBE91DD2F6C8211001DF813 /* CrewTypingStatusDTO.swift in Sources */,
@@ -1226,9 +1251,11 @@
 				6DDF5B632F5FADBB003057C9 /* CrewTaskReaction.swift in Sources */,
 				6DBE91E52F6C9612001DF813 /* CrewChatView+Models.swift in Sources */,
 				6D2004622F62265D0022C810 /* WeekView+ScrollTracking.swift in Sources */,
+				6D9E21722F81775B00946892 /* StudyInsightsHeroCard.swift in Sources */,
 				6DF0C91D2F557AA50043B887 /* DailyTodoApp.swift in Sources */,
 				6DB70E732F72D54B00F04B43 /* WeekView+Sheets.swift in Sources */,
 				6D8C3D432F65C9E900ABF6CA /* SmartTaskSuggestionCard.swift in Sources */,
+				6D9E216E2F816B3400946892 /* StudyHeatMapCard.swift in Sources */,
 				6D215DB12F5617BF00F7B9D7 /* TodoStore.swift in Sources */,
 				6DBE91CB2F6C4429001DF813 /* CrewActivityDTO.swift in Sources */,
 				6D8C3D3D2F65B83A00ABF6CA /* AICoachData.swift in Sources */,
@@ -1252,7 +1279,6 @@
 				6DBE91CD2F6C4446001DF813 /* CrewFocusRecordDTO.swift in Sources */,
 				6DD282842F68C1FE00B1281A /* TasksView.swift in Sources */,
 				6D5FE3FC2F678771007C124D /* CrewChatView+Header.swift in Sources */,
-				6D9E21482F80B71B00946892 /* ExamReadinessCard.swift in Sources */,
 				6D5FE3CC2F66CE68007C124D /* MessagesView.swift in Sources */,
 				6DBE91C52F6C33B7001DF813 /* JoinCrewSheet.swift in Sources */,
 				6D215DA32F55FD7100F7B9D7 /* EditTaskView.swift in Sources */,
@@ -1264,6 +1290,7 @@
 				6DB70E902F76F2A600F04B43 /* LocalizedString.swift in Sources */,
 				6D2004942F63862E0022C810 /* FriendDetailView.swift in Sources */,
 				6D215DA92F5603B100F7B9D7 /* WeekView.swift in Sources */,
+				6D9E21782F81781500946892 /* StudyInsightsUnlockedCard.swift in Sources */,
 				6D2004862F63334D0022C810 /* AddMemberView.swift in Sources */,
 				6DF8FB992F5B918100D548E4 /* HeatmapView.swift in Sources */,
 				6D02C9D32F5B4D1F008193F3 /* StreakEngine.swift in Sources */,
@@ -1282,12 +1309,14 @@
 				6D8C3D3F2F65B8F700ABF6CA /* AICoachCard.swift in Sources */,
 				6DBE91E72F6D6A27001DF813 /* CrewChatMessageItem.swift in Sources */,
 				6DBE920B2F6EE881001DF813 /* FriendWeekShareItemDTO.swift in Sources */,
+				6D9E21682F816B2100946892 /* MostBusyCard.swift in Sources */,
 				6DC0CAAF2F5F7D0000A875ED /* Haptics.swift in Sources */,
 				6D8C3D342F65903B00ABF6CA /* AppTheme.swift in Sources */,
 				6D20045A2F61D73E0022C810 /* WeekView+CrewHelpers.swift in Sources */,
 				6D8C3D362F65905100ABF6CA /* AppBackground.swift in Sources */,
 				6D8C3D412F65C9C000ABF6CA /* SmartTaskEngine.swift in Sources */,
 				6DC0CAB12F5F7D0000A875ED /* ImportScheduleView.swift in Sources */,
+				6D9E21662F816B1900946892 /* DailyBoostCard.swift in Sources */,
 				6DBE91E92F6D888A001DF813 /* CrewFocusSessionDTO.swift in Sources */,
 				6DB70E862F7321A700F04B43 /* LanguageManager.swift in Sources */,
 				6DD286B72F7AE67D005A73FA /* HomeDashboardView+Tasks.swift in Sources */,
@@ -1299,10 +1328,10 @@
 				6D2004BF2F6450860022C810 /* FocusInsightsCard.swift in Sources */,
 				6DC0CAB22F5F7D0000A875ED /* TodoListView.swift in Sources */,
 				6DBE91FB2F6DEE90001DF813 /* FriendChatMessageItem.swift in Sources */,
+				6D9E21622F81610C00946892 /* InsightsHeroPremiumCard.swift in Sources */,
 				6DC0CAB32F5F7D0000A875ED /* FocusSessionView.swift in Sources */,
 				6DC0CAB42F5F7D0000A875ED /* HomeDashboardView.swift in Sources */,
 				6DBE92012F6E1BA7001DF813 /* AppDelegate.swift in Sources */,
-				6D9E21462F80B6EB00946892 /* StudentInsightsHeroCard.swift in Sources */,
 				6DBE91DB2F6C7A31001DF813 /* TypingPayload.swift in Sources */,
 				6DC0CAB52F5F7D0000A875ED /* Crew.swift in Sources */,
 				6D5FE3CE2F66CF29007C124D /* CrewMessage.swift in Sources */,
@@ -1335,7 +1364,6 @@
 				6D2004CF2F6461D70022C810 /* InsightsCardContainer.swift in Sources */,
 				6DBE91A02F6B2F43001DF813 /* SignInView.swift in Sources */,
 				6D64E0DD2F71BBB000C68B5B /* IntroWeekMockView.swift in Sources */,
-				6D9E214C2F80B78A00946892 /* WeeklyMomentumCard.swift in Sources */,
 				6DBE91EF2F6D91B7001DF813 /* CrewDateParser.swift in Sources */,
 				6DBE919C2F6B2EFD001DF813 /* SessionStore.swift in Sources */,
 				6DC0CABA2F5F7D0000A875ED /* CreateCrewView.swift in Sources */,
@@ -1354,6 +1382,7 @@
 				6D9E214E2F80B7AD00946892 /* StudyPatternCard.swift in Sources */,
 				6DDF5B5B2F5F9DFF003057C9 /* CrewTaskComment.swift in Sources */,
 				6DBE91A22F6B2F5D001DF813 /* SignUpView.swift in Sources */,
+				6D9E216A2F816B2600946892 /* OverViewCard.swift in Sources */,
 				6D2004E92F64E7210022C810 /* OnboardingPageView.swift in Sources */,
 				6D2004562F61CF550022C810 /* WeekView+CrewCardHelpers.swift in Sources */,
 				6DBE91C12F6B75D5001DF813 /* AddCrewMemberView.swift in Sources */,
@@ -1373,8 +1402,8 @@
 				6DC0CAC02F5F7D0000A875ED /* NotificationManager.swift in Sources */,
 				6D5FE4292F6796A9007C124D /* HomeDashboardView+Focus.swift in Sources */,
 				6DBE91D32F6C6826001DF813 /* CrewMessageDTO.swift in Sources */,
-				6D9E214A2F80B75F00946892 /* CourseBalanceCard.swift in Sources */,
 				6DC0CAC22F5F7D0000A875ED /* FocusSessionRecord.swift in Sources */,
+				6D9E21642F816B1300946892 /* ConsistencyScoreCard.swift in Sources */,
 				6DC0CAC32F5F7D0000A875ED /* CrewMember.swift in Sources */,
 				6D2004C52F6450E10022C810 /* SmartSuggestionCard.swift in Sources */,
 				6D64E0DF2F71BC1B00C68B5B /* IntroCrewMockView.swift in Sources */,
@@ -1396,7 +1425,9 @@
 				6DBE92092F6EB0B8001DF813 /* SharedWeekView.swift in Sources */,
 				6D775B852F5F81CF0009D660 /* Color+Hex.swift in Sources */,
 				6D2004882F6336A20022C810 /* EditCrewTaskView.swift in Sources */,
+				6D9E21762F8177F600946892 /* StudyInsightsQuickActionsRow.swift in Sources */,
 				6D02C9D12F5B4718008193F3 /* InsightsView.swift in Sources */,
+				6D9E21602F815E1E00946892 /* InsightsCardStyle.swift in Sources */,
 				6DBE91BF2F6B73E0001DF813 /* BackendCrewDetailView.swift in Sources */,
 				6DBE91982F6B1556001DF813 /* IntroFlowView.swift in Sources */,
 				6DBE920D2F6F373C001DF813 /* AddFriendSheetView.swift in Sources */,
@@ -1414,6 +1445,7 @@
 				6D5FE4022F6788F4007C124D /* CrewChatView+Focus.swift in Sources */,
 				6D215DB72F5642AE00F7B9D7 /* ScheduleExport.swift in Sources */,
 				6D5FE4002F67886F007C124D /* CrewChatView+Composer.swift in Sources */,
+				6D9E21742F81778300946892 /* StudyInsightsPagerCard.swift in Sources */,
 				6D215DB32F56342E00F7B9D7 /* EditEventView.swift in Sources */,
 				6DDF5B5F2F5FA38A003057C9 /* CreateCrewTaskView.swift in Sources */,
 			);

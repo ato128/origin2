@@ -1,0 +1,189 @@
+//
+//  StudyHeatMapCard.swift
+//  DailyTodo
+//
+//  Created by Atakan Ortaç on 13.03.2026.
+//
+
+import SwiftUI
+
+struct StudyHeatMapCard: View {
+    let data: StudyHeatmapData
+
+    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
+    private let palette = ThemePalette()
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 7)
+
+    @State private var isVisible = false
+    @State private var isExpanded = false
+
+    private var hasActivity: Bool { data.cells.contains { $0.level > 0 } }
+
+    private var fallbackText: String { tr("insights_heatmap_fallback_text") }
+    private var subtitleText: String {
+        hasActivity ? tr("insights_heatmap_subtitle_active") : tr("insights_heatmap_subtitle_empty")
+    }
+    private var lowText: String { tr("insights_heatmap_low") }
+    private var highText: String { tr("insights_heatmap_high") }
+    private var densityInfoText: String { tr("insights_heatmap_density_info") }
+    private var fillHintText: String { tr("insights_heatmap_fill_hint") }
+
+    var body: some View {
+        Button {
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.84)) { isExpanded.toggle() }
+        } label: { content }
+        .buttonStyle(.plain)
+        .opacity(isVisible ? 1 : 0)
+        .scaleEffect(isVisible ? 1 : 0.985)
+        .offset(y: isVisible ? 0 : 12)
+        .animation(.spring(response: 0.48, dampingFraction: 0.86), value: isVisible)
+        .animateWhenVisible($isVisible)
+    }
+
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            headerSection
+            heatmapSection
+            if isExpanded {
+                expandedSection
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .top).combined(with: .opacity),
+                        removal: .opacity
+                    ))
+            }
+        }
+        .padding(18)
+        .background(cardBackground)
+    }
+
+    private var headerSection: some View {
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(data.title)
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundStyle(palette.primaryText)
+                Text(subtitleText)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(palette.secondaryText)
+            }
+            Spacer()
+            HStack(spacing: 10) {
+                Text(data.subtitle)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(palette.secondaryText)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(palette.secondaryText)
+                    .rotationEffect(.degrees(isExpanded ? 180 : 0))
+            }
+        }
+    }
+
+    private var heatmapSection: some View {
+        LazyVGrid(columns: columns, spacing: 10) {
+            ForEach(Array(data.cells.enumerated()), id: \.element.id) { index, cell in
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(fillColor(for: cell))
+                    .frame(height: 18)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .stroke(
+                                cell.isSelected
+                                ? (palette.isLight ? Color.black.opacity(0.10) : Color.white.opacity(0.28))
+                                : .clear,
+                                lineWidth: 1
+                            )
+                    )
+                    .overlay {
+                        if cell.isSelected {
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(Color.accentColor.opacity(0.16))
+                                .blur(radius: 8)
+                                .scaleEffect(isVisible ? 1.08 : 0.92)
+                        }
+                    }
+                    .opacity(isVisible ? 1 : 0)
+                    .scaleEffect(isVisible ? (cell.isSelected ? 1.03 : 1.0) : 0.90)
+                    .offset(y: isVisible ? 0 : 8)
+                    .animation(
+                        .spring(response: 0.46, dampingFraction: 0.84).delay(Double(index) * 0.01),
+                        value: isVisible
+                    )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var expandedSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
+                Text(lowText)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(palette.secondaryText)
+                ForEach(0..<4, id: \.self) { level in
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(legendColor(for: level))
+                        .frame(width: 30, height: 16)
+                }
+                Text(highText)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(palette.secondaryText)
+            }
+
+            if hasActivity {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(data.selectedDayText)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(palette.primaryText)
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkles").foregroundStyle(Color.accentColor)
+                        Text(densityInfoText)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(palette.secondaryText)
+                    }
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(fallbackText)
+                        .font(.system(size: 14))
+                        .foregroundStyle(palette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkles").foregroundStyle(Color.accentColor)
+                        Text(fillHintText)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 9)
+                    .background(Capsule().fill(Color.accentColor.opacity(0.14)))
+                }
+            }
+        }
+    }
+
+    func fillColor(for cell: InsightsHeatmapCell) -> Color {
+        switch cell.level {
+        case 0: return palette.secondaryCardFill
+        case 1: return Color.accentColor.opacity(palette.isLight ? 0.20 : 0.28)
+        case 2: return Color.accentColor.opacity(palette.isLight ? 0.40 : 0.55)
+        default: return Color.accentColor
+        }
+    }
+
+    func legendColor(for level: Int) -> Color {
+        switch level {
+        case 0: return palette.secondaryCardFill
+        case 1: return Color.accentColor.opacity(palette.isLight ? 0.20 : 0.28)
+        case 2: return Color.accentColor.opacity(palette.isLight ? 0.40 : 0.55)
+        default: return Color.accentColor
+        }
+    }
+
+    private var cardBackground: some View {
+        RoundedRectangle(cornerRadius: 24, style: .continuous)
+            .fill(palette.cardFill)
+            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(palette.cardStroke, lineWidth: 1))
+    }
+}
