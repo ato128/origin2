@@ -84,32 +84,24 @@ struct InsightsView: View {
         collapseProgress > 0.12
     }
 
+    private var screenHorizontalPadding: CGFloat {
+        isStudyMode ? 14 : 16
+    }
+
+    private var contentTopPadding: CGFloat {
+        isStudyMode ? 4 : 8
+    }
+
+    private var contentSpacing: CGFloat {
+        isStudyMode ? 14 : 16
+    }
+
     private var largeHeaderTitle: String {
         isStudyMode ? "Study Insights" : String(localized: "insights_title")
     }
 
     private var smallHeaderTitle: String {
         isStudyMode ? "Study Insights" : String(localized: "insights_title")
-    }
-
-    private var contentSpacing: CGFloat {
-        isStudyMode ? 12 : 16
-    }
-
-    private var horizontalPadding: CGFloat {
-        isStudyMode ? 14 : 16
-    }
-
-    private var largeTitleSize: CGFloat {
-        isStudyMode ? 30 : 36
-    }
-
-    private var studyHeaderBottomPadding: CGFloat {
-        isStudyMode ? 10 : 22
-    }
-
-    private var studyHeaderTopPadding: CGFloat {
-        isStudyMode ? 4 : 8
     }
 
     var body: some View {
@@ -148,10 +140,10 @@ struct InsightsView: View {
                         classicContent
                     }
 
-                    Spacer(minLength: isStudyMode ? 74 : 90)
+                    Spacer(minLength: isStudyMode ? 72 : 90)
                 }
-                .padding(.horizontal, horizontalPadding)
-                .padding(.top, isStudyMode ? 4 : 8)
+                .padding(.horizontal, screenHorizontalPadding)
+                .padding(.top, contentTopPadding)
             }
             .coordinateSpace(name: "insightsScroll")
             .onPreferenceChange(ScrollOffsetPreference.self) { value in
@@ -193,11 +185,11 @@ struct InsightsView: View {
                 if isStudyMode {
                     HStack(alignment: .center, spacing: 10) {
                         Text("Study Insights")
-                            .font(.system(size: largeTitleSize, weight: .bold, design: .rounded))
+                            .font(.system(size: 30, weight: .bold, design: .rounded))
                             .foregroundStyle(palette.primaryText)
 
                         Image(systemName: "graduationcap.fill")
-                            .font(.system(size: 18, weight: .bold))
+                            .font(.system(size: 17, weight: .bold))
                             .foregroundStyle(Color.accentColor)
                             .offset(y: 1)
                     }
@@ -207,7 +199,7 @@ struct InsightsView: View {
                         .foregroundStyle(palette.secondaryText)
                 } else {
                     Text(String(localized: "insights_title"))
-                        .font(.system(size: largeTitleSize, weight: .bold, design: .rounded))
+                        .font(.system(size: 36, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
                 }
             }
@@ -222,17 +214,19 @@ struct InsightsView: View {
                 ZStack {
                     Circle()
                         .fill(palette.secondaryCardFill)
-                        .frame(width: isStudyMode ? 40 : 42, height: isStudyMode ? 40 : 42)
+                        .frame(width: 42, height: 42)
                         .overlay(
                             Circle()
                                 .stroke(
-                                    isStudyMode ? Color.accentColor.opacity(0.18) : palette.cardStroke,
+                                    isStudyMode
+                                    ? Color.accentColor.opacity(0.18)
+                                    : palette.cardStroke,
                                     lineWidth: 1
                                 )
                         )
 
                     Image(systemName: isStudyMode ? "chart.bar.fill" : "graduationcap.fill")
-                        .font(.system(size: isStudyMode ? 16 : 18, weight: .bold))
+                        .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(isStudyMode ? palette.primaryText : Color.accentColor)
                 }
             }
@@ -240,8 +234,8 @@ struct InsightsView: View {
             .accessibilityLabel(isStudyMode ? "Normal Insights" : "Study Insights")
         }
         .padding(.horizontal, isStudyMode ? 4 : 20)
-        .padding(.top, studyHeaderTopPadding)
-        .padding(.bottom, studyHeaderBottomPadding)
+        .padding(.top, isStudyMode ? 4 : 8)
+        .padding(.bottom, isStudyMode ? 10 : 22)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -301,20 +295,14 @@ struct InsightsView: View {
                 }
             }
 
-            InsightsCardContainer(delay: 0.04) {
+            InsightsCardContainer(delay: 0.05) {
                 StudyInsightsPagerCard(data: vm.studyDeck) { action in
                     handleInsightAction(action)
                 }
             }
 
-            InsightsCardContainer(delay: 0.06) {
-                StudyInsightsQuickActionsRow(actions: vm.studyQuickActions) { action in
-                    handleInsightAction(action)
-                }
-            }
-
             InsightsCardContainer(delay: 0.08) {
-                StudyInsightsUnlockCard(data: vm.studyUnlockPrompt) { action in
+                StudyInsightsQuickActionsRow(actions: vm.studyQuickActions) { action in
                     handleInsightAction(action)
                 }
             }

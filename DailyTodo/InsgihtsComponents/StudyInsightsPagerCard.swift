@@ -16,10 +16,10 @@ struct StudyInsightsPagerCard: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(spacing: 14) {
+            LazyHStack(spacing: 12) {
                 ForEach(data.pages) { page in
                     pageSurface(page)
-                        .frame(width: 318)
+                        .frame(width: 306)
                 }
             }
             .padding(.horizontal, 2)
@@ -56,18 +56,18 @@ struct StudyInsightsPagerCard: View {
     // MARK: - Exams
 
     private func examsFilledPage(_ page: StudyInsightsDeckPageData) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             topLabel(title: "Sınavlar", tint: softAmber)
 
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(page.subtitle)
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundStyle(palette.secondaryText)
                         .lineLimit(1)
 
                     Text("En yakın sınav")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .font(.system(size: 21, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
                 }
 
@@ -77,67 +77,38 @@ struct StudyInsightsPagerCard: View {
             }
 
             HStack(spacing: 10) {
-                infoMetricCard(
+                compactMetricCard(
                     value: page.primaryValue,
-                    label: "sınava kalan süre",
+                    label: "kalan süre",
                     tint: softRed
                 )
 
-                infoMetricCard(
+                compactMetricCard(
                     value: page.secondaryValue,
-                    label: "hazırlık seviyesi",
+                    label: "hazırlık",
                     tint: softAmber
                 )
             }
 
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("Hazırlık çizgisi")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(softRed)
-
-                    Spacer()
-
-                    Text("Bu hafta")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(palette.secondaryText)
-                }
-
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(Color.white.opacity(0.05))
-                            .frame(height: 7)
-
-                        Capsule()
-                            .fill(
-                                LinearGradient(
-                                    colors: [softPink.opacity(0.95), softRed],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .frame(width: max(16, geo.size.width * max(page.progress, 0.06)), height: 7)
-                    }
-                }
-                .frame(height: 7)
-
-                HStack(spacing: 8) {
-                    weekStripCell(label: "Pzt", value: max(page.progress * 0.32, 0.10), tint: softPink)
-                    weekStripCell(label: "Sal", value: max(page.progress * 0.48, 0.10), tint: softPink)
-                    weekStripCell(label: "Çar", value: max(page.progress * 0.44, 0.10), tint: softPink)
-                    weekStripCell(label: "Per", value: max(page.progress * 0.50, 0.10), tint: softPink)
-                    weekStripCell(label: "Cum", value: max(page.progress * 0.56, 0.10), tint: softPink)
-                    weekStripCell(label: "Cmt", value: max(page.progress * 0.60, 0.10), tint: softPink)
-                    weekStripCell(label: "Paz", value: max(page.progress * 0.36, 0.10), tint: softPink)
-                }
-            }
-            .padding(14)
-            .background(innerPanel)
+            compactProgressPanel(
+                title: "Hazırlık çizgisi",
+                trailing: "Bu hafta",
+                tint: softPink,
+                progress: page.progress,
+                stripValues: [
+                    max(page.progress * 0.32, 0.10),
+                    max(page.progress * 0.48, 0.10),
+                    max(page.progress * 0.44, 0.10),
+                    max(page.progress * 0.50, 0.10),
+                    max(page.progress * 0.56, 0.10),
+                    max(page.progress * 0.60, 0.10),
+                    max(page.progress * 0.36, 0.10)
+                ]
+            )
 
             chipsRow(page.chips)
 
-            secondaryCTA(title: page.ctaTitle, tint: softPink) {
+            compactCTA(title: page.ctaTitle, tint: softPink) {
                 onTap(page.action)
             }
         }
@@ -146,13 +117,13 @@ struct StudyInsightsPagerCard: View {
     }
 
     private func examsEmptyPage(_ page: StudyInsightsDeckPageData) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             topLabel(title: "Sınavlar", tint: softAmber)
 
-            HStack {
+            HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Henüz sınav görünümü yok")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .font(.system(size: 21, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
 
                     Text(page.emptySubtitle ?? "")
@@ -176,9 +147,7 @@ struct StudyInsightsPagerCard: View {
                 chipPill("Plan aç", tint: softBlue)
             }
 
-            Spacer(minLength: 0)
-
-            secondaryCTA(title: page.emptyButtonTitle ?? page.ctaTitle, tint: softAmber) {
+            compactCTA(title: page.emptyButtonTitle ?? page.ctaTitle, tint: softAmber) {
                 onTap(page.action)
             }
         }
@@ -189,17 +158,17 @@ struct StudyInsightsPagerCard: View {
     // MARK: - Courses
 
     private func coursesFilledPage(_ page: StudyInsightsDeckPageData) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             topLabel(title: "Dersler", tint: softBlue)
 
-            HStack {
+            HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Ders yükü görünümü")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundStyle(palette.secondaryText)
 
                     Text("Ders dengesi")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .font(.system(size: 21, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
                 }
 
@@ -209,36 +178,36 @@ struct StudyInsightsPagerCard: View {
             }
 
             HStack(spacing: 10) {
-                infoMetricCard(
+                compactMetricCard(
                     value: page.primaryValue,
-                    label: "daha çok ilgi isteyen",
+                    label: "ilgisi azalan",
                     tint: softBlue
                 )
 
-                infoMetricCard(
+                compactMetricCard(
                     value: page.secondaryValue,
-                    label: "en güçlü ders",
+                    label: "öne çıkan",
                     tint: softGreen
                 )
             }
 
             VStack(alignment: .leading, spacing: 10) {
                 Text("Ders dağılımı")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(palette.secondaryText)
 
-                VStack(spacing: 10) {
+                VStack(spacing: 9) {
                     courseBar(label: "Öncelik", value: max(page.progress, 0.16), tint: softBlue)
                     courseBar(label: "Denge", value: max(page.progress * 0.82, 0.12), tint: softCyan)
                     courseBar(label: "Derinlik", value: max(page.progress * 0.58, 0.10), tint: softAmber)
                 }
             }
-            .padding(14)
+            .padding(13)
             .background(innerPanel)
 
             chipsRow(page.chips)
 
-            secondaryCTA(title: page.ctaTitle, tint: softBlue) {
+            compactCTA(title: page.ctaTitle, tint: softBlue) {
                 onTap(page.action)
             }
         }
@@ -247,12 +216,12 @@ struct StudyInsightsPagerCard: View {
     }
 
     private func coursesEmptyPage(_ page: StudyInsightsDeckPageData) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             topLabel(title: "Dersler", tint: softBlue)
 
-            HStack {
+            HStack(alignment: .top) {
                 Text("Henüz ders dengesi oluşmadı")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .font(.system(size: 21, weight: .bold, design: .rounded))
                     .foregroundStyle(palette.primaryText)
 
                 Spacer()
@@ -266,7 +235,7 @@ struct StudyInsightsPagerCard: View {
                 .lineLimit(3)
 
             HStack(spacing: 8) {
-                chipPill("Ders etiketi ekle", tint: softBlue)
+                chipPill("Ders etiketi", tint: softBlue)
                 chipPill("Görev oluştur", tint: softAmber)
             }
 
@@ -277,7 +246,7 @@ struct StudyInsightsPagerCard: View {
                 ghostCourseCard(label: "Calc", tint: softAmber)
             }
 
-            secondaryCTA(title: page.emptyButtonTitle ?? page.ctaTitle, tint: softBlue, icon: "plus") {
+            compactCTA(title: page.emptyButtonTitle ?? page.ctaTitle, tint: softBlue, icon: "plus") {
                 onTap(page.action)
             }
         }
@@ -288,19 +257,19 @@ struct StudyInsightsPagerCard: View {
     // MARK: - Rhythm
 
     private func rhythmFilledPage(_ page: StudyInsightsDeckPageData) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             topLabel(title: "Ritim", tint: softGreen)
 
-            HStack {
-                HStack(spacing: 8) {
+            HStack(alignment: .top) {
+                HStack(spacing: 7) {
                     Text("Ritim")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .font(.system(size: 21, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
 
                     Circle()
                         .fill(softGreen)
                         .frame(width: 8, height: 8)
-                        .shadow(color: softGreen.opacity(0.28), radius: 6)
+                        .shadow(color: softGreen.opacity(0.24), radius: 5)
                 }
 
                 Spacer()
@@ -308,18 +277,18 @@ struct StudyInsightsPagerCard: View {
                 softBadge(text: "Aktif", tint: softGreen)
             }
 
-            Text("Çalışma ritminin gün içi akışı")
-                .font(.system(size: 14, weight: .medium))
+            Text("Gün içi çalışma akışı")
+                .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(palette.secondaryText)
 
             HStack(spacing: 10) {
-                infoMetricCard(
+                compactMetricCard(
                     value: page.primaryValue,
                     label: "en iyi zaman",
                     tint: softGreen
                 )
 
-                infoMetricCard(
+                compactMetricCard(
                     value: page.secondaryValue,
                     label: "en iyi gün",
                     tint: softBlue
@@ -327,32 +296,31 @@ struct StudyInsightsPagerCard: View {
             }
 
             VStack(alignment: .leading, spacing: 10) {
-                Text("Haftalık aktivite haritası")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                Text("Haftalık aktivite")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(palette.secondaryText)
 
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 6), spacing: 8) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 7), count: 6), spacing: 7) {
                     ForEach(0..<18, id: \.self) { idx in
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
                             .fill(idx == 8 ? softGreen.opacity(0.14) : palette.secondaryCardFill.opacity(0.85))
                             .overlay(
                                 Text("\(idx + 6)")
-                                    .font(.system(size: 11, weight: .medium))
+                                    .font(.system(size: 10, weight: .medium))
                                     .foregroundStyle(idx == 8 ? softGreen : palette.secondaryText)
                             )
-                            .frame(height: 42)
+                            .frame(height: 38)
                     }
                 }
             }
-            .padding(14)
+            .padding(13)
             .background(innerPanel)
 
             HStack(spacing: 8) {
                 chipPill(page.chips.first?.text ?? "İlk focus", tint: softBlue)
                 chipPill(page.chips.dropFirst().first?.text ?? "Görev bitir", tint: softGreen)
             }
-
-            secondaryCTA(title: page.ctaTitle, tint: softGreen, icon: "plus") {
+            compactCTA(title: page.ctaTitle, tint: softGreen, icon: "plus") {
                 onTap(page.action)
             }
         }
@@ -361,12 +329,12 @@ struct StudyInsightsPagerCard: View {
     }
 
     private func rhythmEmptyPage(_ page: StudyInsightsDeckPageData) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             topLabel(title: "Ritim", tint: softGreen)
 
-            HStack {
+            HStack(alignment: .top) {
                 Text("Ritmin henüz oluşmadı")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .font(.system(size: 21, weight: .bold, design: .rounded))
                     .foregroundStyle(palette.primaryText)
 
                 Spacer()
@@ -384,7 +352,7 @@ struct StudyInsightsPagerCard: View {
                 chipPill("Görev bitir", tint: softGreen)
             }
 
-            secondaryCTA(title: page.emptyButtonTitle ?? page.ctaTitle, tint: softGreen, icon: "plus") {
+            compactCTA(title: page.emptyButtonTitle ?? page.ctaTitle, tint: softGreen, icon: "plus") {
                 onTap(page.action)
             }
         }
@@ -410,26 +378,26 @@ struct StudyInsightsPagerCard: View {
         }
     }
 
-    private func infoMetricCard(value: String, label: String, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
+    private func compactMetricCard(value: String, label: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
             Text(value)
-                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
-                .minimumScaleFactor(0.76)
+                .minimumScaleFactor(0.78)
                 .lineLimit(2)
 
             Text(label)
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(tint)
                 .lineLimit(2)
         }
-        .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
-        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 90, alignment: .topLeading)
+        .padding(13)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.028))
+            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                .fill(Color.white.opacity(0.026))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    RoundedRectangle(cornerRadius: 17, style: .continuous)
                         .stroke(tint.opacity(0.08), lineWidth: 1)
                 )
         )
@@ -439,78 +407,136 @@ struct StudyInsightsPagerCard: View {
         VStack(alignment: .leading, spacing: 8) {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(palette.secondaryCardFill)
-                .frame(width: 70, height: 16)
+                .frame(width: 64, height: 14)
 
             Text(title)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(palette.secondaryText)
         }
-        .frame(maxWidth: .infinity, minHeight: 92, alignment: .topLeading)
-        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 84, alignment: .topLeading)
+        .padding(13)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.028))
+            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                .fill(Color.white.opacity(0.026))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(palette.cardStroke.opacity(0.9), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                        .stroke(palette.cardStroke.opacity(0.84), lineWidth: 1)
                 )
         )
     }
 
+    private func compactProgressPanel(
+        title: String,
+        trailing: String,
+        tint: Color,
+        progress: Double,
+        stripValues: [Double]
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(title)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(tint)
+
+                Spacer()
+
+                Text(trailing)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(palette.secondaryText)
+            }
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.05))
+                        .frame(height: 6)
+
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [tint.opacity(0.95), tint],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: max(14, geo.size.width * max(progress, 0.06)), height: 6)
+                }
+            }
+            .frame(height: 6)
+
+            HStack(spacing: 7) {
+                ForEach(Array(stripValues.enumerated()), id: \.offset) { index, value in
+                    weekStripCell(
+                        label: dayLabel(index),
+                        value: value,
+                        tint: tint
+                    )
+                }
+            }
+        }
+        .padding(13)
+        .background(innerPanel)
+    }
+
+    private func dayLabel(_ index: Int) -> String {
+        let labels = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
+        return labels[index]
+    }
+
     private func weekStripCell(label: String, value: Double, tint: Color) -> some View {
-        VStack(spacing: 7) {
+        VStack(spacing: 6) {
             RoundedRectangle(cornerRadius: 7, style: .continuous)
                 .fill(tint)
-                .frame(height: max(8, value * 34))
+                .frame(height: max(7, value * 28))
 
             Text(label)
-                .font(.system(size: 11, weight: .medium))
+                .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(palette.secondaryText)
         }
         .frame(maxWidth: .infinity, alignment: .bottom)
     }
 
     private func courseBar(label: String, value: Double, tint: Color) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 9) {
             Text(label)
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .foregroundStyle(tint)
-                .frame(width: 52, alignment: .leading)
+                .frame(width: 50, alignment: .leading)
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
                         .fill(Color.white.opacity(0.05))
-                        .frame(height: 7)
+                        .frame(height: 6)
 
                     Capsule()
                         .fill(tint)
-                        .frame(width: max(12, geo.size.width * value), height: 7)
+                        .frame(width: max(12, geo.size.width * value), height: 6)
                 }
             }
-            .frame(height: 7)
+            .frame(height: 6)
         }
     }
 
     private func ghostCourseCard(label: String, tint: Color) -> some View {
-        VStack(spacing: 9) {
+        VStack(spacing: 8) {
             Text(label)
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(palette.secondaryText)
 
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(palette.secondaryCardFill.opacity(0.9))
-                .frame(height: 38)
+                .fill(palette.secondaryCardFill.opacity(0.88))
+                .frame(height: 32)
 
             Capsule()
                 .fill(tint)
                 .frame(width: 14, height: 3)
         }
         .frame(maxWidth: .infinity)
-        .padding(10)
+        .padding(9)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.024))
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .fill(Color.white.opacity(0.022))
         )
     }
 
@@ -524,10 +550,10 @@ struct StudyInsightsPagerCard: View {
 
     private func chipPill(_ text: String, tint: Color) -> some View {
         Text(text)
-            .font(.system(size: 11, weight: .semibold, design: .rounded))
+            .font(.system(size: 10, weight: .semibold, design: .rounded))
             .foregroundStyle(tint)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 11)
+            .padding(.vertical, 7)
             .background(
                 Capsule()
                     .fill(tint.opacity(0.10))
@@ -538,7 +564,7 @@ struct StudyInsightsPagerCard: View {
             )
     }
 
-    private func secondaryCTA(title: String, tint: Color, icon: String = "arrow.right", action: @escaping () -> Void) -> some View {
+    private func compactCTA(title: String, tint: Color, icon: String = "arrow.right", action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack {
                 Text(title)
@@ -547,9 +573,9 @@ struct StudyInsightsPagerCard: View {
                 Spacer()
 
                 ZStack {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: 13, style: .continuous)
                         .fill(Color.white.opacity(0.10))
-                        .frame(width: 44, height: 44)
+                        .frame(width: 42, height: 42)
 
                     Image(systemName: icon)
                         .font(.system(size: 15, weight: .bold))
@@ -557,18 +583,18 @@ struct StudyInsightsPagerCard: View {
             }
             .foregroundStyle(.white)
             .padding(.horizontal, 16)
-            .padding(.vertical, 16)
+            .padding(.vertical, 14)
             .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(
                         LinearGradient(
-                            colors: [tint.opacity(0.88), tint.opacity(0.78)],
+                            colors: [tint.opacity(0.86), tint.opacity(0.76)],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
                     )
             )
-            .shadow(color: tint.opacity(0.10), radius: 10, y: 5)
+            .shadow(color: tint.opacity(0.08), radius: 8, y: 4)
         }
         .buttonStyle(.plain)
     }
@@ -589,10 +615,10 @@ struct StudyInsightsPagerCard: View {
         ZStack {
             Circle()
                 .fill(tint.opacity(0.10))
-                .frame(width: 38, height: 38)
+                .frame(width: 36, height: 36)
 
             Image(systemName: systemName)
-                .font(.system(size: 17, weight: .bold))
+                .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(tint)
         }
     }
@@ -607,11 +633,11 @@ struct StudyInsightsPagerCard: View {
     }
 
     private var innerPanel: some View {
-        RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(Color.white.opacity(0.028))
+        RoundedRectangle(cornerRadius: 17, style: .continuous)
+            .fill(Color.white.opacity(0.024))
             .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(palette.cardStroke.opacity(0.85), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 17, style: .continuous)
+                    .stroke(palette.cardStroke.opacity(0.80), lineWidth: 1)
             )
     }
 

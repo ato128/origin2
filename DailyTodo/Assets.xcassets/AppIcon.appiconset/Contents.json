@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "Yükselen ok simgesi (1) 1.png",
+      "filename" : "Şık ok simgesiyle modern ikon (1) 1 (1).png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -13,7 +13,6 @@
           "value" : "dark"
         }
       ],
-      "filename" : "Yükselen ok simgesi (1).png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -25,7 +24,6 @@
           "value" : "tinted"
         }
       ],
-      "filename" : "Yükselen ok simgesi (1) 2.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
