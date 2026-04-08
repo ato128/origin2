@@ -14,6 +14,7 @@ struct TodoListView: View {
     @Binding var selectedTab: AppTab
     @EnvironmentObject var store: TodoStore
     @EnvironmentObject var session: SessionStore
+    @EnvironmentObject var languageManager: LanguageManager
 
     @AppStorage("appTheme") var appTheme = AppTheme.gradient.rawValue
 
@@ -48,6 +49,8 @@ struct TodoListView: View {
     @State var now = Date()
     @State var showTasksShortcut = false
 
+    @State var showProfileHub = false
+    
     let chipTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     var unreadCount: Int {
@@ -182,6 +185,14 @@ struct TodoListView: View {
             NavigationStack {
                 TasksView()
                     .environmentObject(store)
+            }
+        }
+        .sheet(isPresented: $showProfileHub) {
+            NavigationStack {
+                ProfileHubView()
+                    .environmentObject(store)
+                    .environmentObject(session)
+                    .environmentObject(languageManager)
             }
         }
         .onChange(of: userScopedCrews.map { "\($0.id.uuidString)-\($0.totalFocusMinutes)" }) { _, _ in

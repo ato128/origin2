@@ -14,8 +14,8 @@ enum AppTab: Hashable {
     case tasks
     case week
     case crew
+    case focus
     case insights
-    case settings
 }
 
 struct MainTabView: View {
@@ -47,17 +47,18 @@ struct MainTabView: View {
             .tag(AppTab.crew)
 
             NavigationStack {
+                FocusView()
+                    .environmentObject(session)
+            }
+            .tabItem { Label("Focus", systemImage: "timer") }
+            .tag(AppTab.focus)
+
+            NavigationStack {
                 InsightsView()
                     .environmentObject(store)
             }
             .tabItem { Label("Insights", systemImage: "chart.bar") }
             .tag(AppTab.insights)
-
-            NavigationStack {
-                SettingsView()
-            }
-            .tabItem { Label("Settings", systemImage: "gearshape") }
-            .tag(AppTab.settings)
         }
         .onAppear {
             print("MAIN TAB CURRENT USER:", session.currentUser?.id.uuidString ?? "nil")
@@ -75,6 +76,33 @@ struct MainTabView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .openWeekFromWidget)) { _ in
             tab = .week
+        }
+    }
+}
+
+struct FocusPlaceholderView: View {
+    var body: some View {
+        ZStack {
+            AppBackground()
+
+            VStack(spacing: 14) {
+                Spacer()
+
+                Image(systemName: "timer")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundStyle(.blue)
+
+                Text("Focus")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+
+                Text("Buraya odak ekranını yerleştireceğiz.")
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.7))
+
+                Spacer()
+            }
+            .padding()
         }
     }
 }

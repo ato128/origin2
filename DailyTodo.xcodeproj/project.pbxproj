@@ -62,6 +62,8 @@
 		6D215DD92F5645F200F7B9D7 /* WidgetShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DD82F5645F200F7B9D7 /* WidgetShared.swift */; };
 		6D215DDA2F56477500F7B9D7 /* WidgetShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DD82F5645F200F7B9D7 /* WidgetShared.swift */; };
 		6D215DDC2F564C4100F7B9D7 /* WidgetSync+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DDB2F564C4100F7B9D7 /* WidgetSync+App.swift */; };
+		6D2A2A9D2F86E3710051459D /* ProfileHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2A2A9C2F86E3710051459D /* ProfileHubView.swift */; };
+		6D2A2A9F2F86E7F40051459D /* FocusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2A2A9E2F86E7F40051459D /* FocusView.swift */; };
 		6D5FE3CC2F66CE68007C124D /* MessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3CB2F66CE68007C124D /* MessagesView.swift */; };
 		6D5FE3CE2F66CF29007C124D /* CrewMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3CD2F66CF29007C124D /* CrewMessage.swift */; };
 		6D5FE3D02F66D034007C124D /* CrewChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3CF2F66D034007C124D /* CrewChatView.swift */; };
@@ -233,7 +235,6 @@
 		6DC0CABC2F5F7D0000A875ED /* CrewTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA952F5F7D0000A875ED /* CrewTask.swift */; };
 		6DC0CABD2F5F7D0000A875ED /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAA22F5F7D0000A875ED /* LiveActivityManager.swift */; };
 		6DC0CABE2F5F7D0000A875ED /* TaskNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAAA2F5F7D0000A875ED /* TaskNotifications.swift */; };
-		6DC0CABF2F5F7D0000A875ED /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAA92F5F7D0000A875ED /* SettingsView.swift */; };
 		6DC0CAC02F5F7D0000A875ED /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAA72F5F7D0000A875ED /* NotificationManager.swift */; };
 		6DC0CAC22F5F7D0000A875ED /* FocusSessionRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA992F5F7D0000A875ED /* FocusSessionRecord.swift */; };
 		6DC0CAC32F5F7D0000A875ED /* CrewMember.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA942F5F7D0000A875ED /* CrewMember.swift */; };
@@ -351,6 +352,8 @@
 		6D215DD72F5645B100F7B9D7 /* WidgetExtensionExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WidgetExtensionExtension.entitlements; sourceTree = "<group>"; };
 		6D215DD82F5645F200F7B9D7 /* WidgetShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetShared.swift; sourceTree = "<group>"; };
 		6D215DDB2F564C4100F7B9D7 /* WidgetSync+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WidgetSync+App.swift"; sourceTree = "<group>"; };
+		6D2A2A9C2F86E3710051459D /* ProfileHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileHubView.swift; sourceTree = "<group>"; };
+		6D2A2A9E2F86E7F40051459D /* FocusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusView.swift; sourceTree = "<group>"; };
 		6D5FE3CB2F66CE68007C124D /* MessagesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagesView.swift; sourceTree = "<group>"; };
 		6D5FE3CD2F66CF29007C124D /* CrewMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewMessage.swift; sourceTree = "<group>"; };
 		6D5FE3CF2F66D034007C124D /* CrewChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewChatView.swift; sourceTree = "<group>"; };
@@ -494,7 +497,6 @@
 		6DC0CAA32F5F7D0000A875ED /* LiveActivityScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityScheduler.swift; sourceTree = "<group>"; };
 		6DC0CAA72F5F7D0000A875ED /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		6DC0CAA82F5F7D0000A875ED /* ScheduleShare.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleShare.swift; sourceTree = "<group>"; };
-		6DC0CAA92F5F7D0000A875ED /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		6DC0CAAA2F5F7D0000A875ED /* TaskNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskNotifications.swift; sourceTree = "<group>"; };
 		6DC0CAAB2F5F7D0000A875ED /* TodoListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoListView.swift; sourceTree = "<group>"; };
 		6DC8F5292F78A42E00361A6D /* PushService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushService.swift; sourceTree = "<group>"; };
@@ -696,6 +698,7 @@
 				6DD282852F68CBC100B1281A /* TaskCompleteAnimation.swift */,
 				6DD282872F69751D00B1281A /* TaskDetailView.swift */,
 				6DD282892F6979E500B1281A /* TasksScheduleSheet.swift */,
+				6D2A2A9C2F86E3710051459D /* ProfileHubView.swift */,
 			);
 			path = Todo;
 			sourceTree = "<group>";
@@ -895,7 +898,6 @@
 		6DC0CACF2F5F809300A875ED /* Settings */ = {
 			isa = PBXGroup;
 			children = (
-				6DC0CAA92F5F7D0000A875ED /* SettingsView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -995,6 +997,7 @@
 				6DBE92002F6E1BA7001DF813 /* AppDelegate.swift */,
 				6DBE921E2F703864001DF813 /* BackendCreateCrewTaskSheet.swift */,
 				6D64E0DA2F70815C00C68B5B /* AuthFormSheetView.swift */,
+				6D2A2A9E2F86E7F40051459D /* FocusView.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -1281,6 +1284,7 @@
 				6D9E213E2F80010700946892 /* SuggestedNextActionCard.swift in Sources */,
 				6DBE91CD2F6C4446001DF813 /* CrewFocusRecordDTO.swift in Sources */,
 				6DD282842F68C1FE00B1281A /* TasksView.swift in Sources */,
+				6D2A2A9F2F86E7F40051459D /* FocusView.swift in Sources */,
 				6D5FE3FC2F678771007C124D /* CrewChatView+Header.swift in Sources */,
 				6D5FE3CC2F66CE68007C124D /* MessagesView.swift in Sources */,
 				6DBE91C52F6C33B7001DF813 /* JoinCrewSheet.swift in Sources */,
@@ -1372,6 +1376,7 @@
 				6DC0CABA2F5F7D0000A875ED /* CreateCrewView.swift in Sources */,
 				6DB70E842F73217400F04B43 /* AppLanguage.swift in Sources */,
 				6D2004D12F6462130022C810 /* ParallaxCardModifier.swift in Sources */,
+				6D2A2A9D2F86E3710051459D /* ProfileHubView.swift in Sources */,
 				6DC0CABB2F5F7D0000A875ED /* InsightsEngine.swift in Sources */,
 				6DBE91DF2F6C8277001DF813 /* WeekCrewMemberItem.swift in Sources */,
 				6DD282882F69751D00B1281A /* TaskDetailView.swift in Sources */,
@@ -1398,7 +1403,6 @@
 				6D2004B22F644F300022C810 /* InsightsModels.swift in Sources */,
 				6DD282862F68CBC100B1281A /* TaskCompleteAnimation.swift in Sources */,
 				6D5FE4242F6790EA007C124D /* TodoListView+Cards.swift in Sources */,
-				6DC0CABF2F5F7D0000A875ED /* SettingsView.swift in Sources */,
 				6D5FE4262F67912E007C124D /* TodoListView+Helpers.swift in Sources */,
 				6DDF5B5D2F5F9E21003057C9 /* CrewTaskPoll.swift in Sources */,
 				6D2004982F6387F00022C810 /* FriendMessage.swift in Sources */,

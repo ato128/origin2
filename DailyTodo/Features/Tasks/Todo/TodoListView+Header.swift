@@ -19,9 +19,40 @@ extension TodoListView {
         }.count
     }
 
+   
     var tasksHeader: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
+                Button {
+                    showProfileHub = true
+                    haptic(.light)
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.blue.opacity(0.42),
+                                        Color.purple.opacity(0.28)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 46, height: 46)
+
+                        Circle()
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            .frame(width: 46, height: 46)
+
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.95))
+                    }
+                    .shadow(color: .black.opacity(0.18), radius: 8, y: 4)
+                }
+                .buttonStyle(.plain)
+
                 Text(todoHeroTitle)
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundStyle(palette.primaryText)
