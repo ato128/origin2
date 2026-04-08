@@ -10,10 +10,7 @@ import SwiftData
 
 extension HomeDashboardView {
 
-    var userScopedExams: [ExamItem] {
-        let currentUserID = session.currentUser?.id.uuidString
-        return allExams.filter { $0.ownerUserID == currentUserID }
-    }
+    
 
     var upcomingExams: [ExamItem] {
         userScopedExams

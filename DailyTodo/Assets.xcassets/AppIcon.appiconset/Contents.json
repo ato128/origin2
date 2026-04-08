@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "Şık ok simgesiyle modern ikon (1) 1 (1).png",
+      "filename" : "Neon navigation target icon (1).png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -13,6 +13,7 @@
           "value" : "dark"
         }
       ],
+      "filename" : "Neon navigation target icon (1) 1.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -24,6 +25,7 @@
           "value" : "tinted"
         }
       ],
+      "filename" : "Neon navigation target icon (1) 2.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"

@@ -61,7 +61,7 @@ extension HomeDashboardView {
         case .insightsFollowUp, .completionWrapUp:
             return 3
         case .defaultFlow:
-            return 5
+            return 4
         }
     }
 
@@ -72,9 +72,9 @@ extension HomeDashboardView {
         case .crewFollowUp:
             return 2
         case .insightsFollowUp, .completionWrapUp:
-            return 3
+            return 2
         case .defaultFlow:
-            return 3
+            return 2
         }
     }
 
@@ -87,88 +87,103 @@ extension HomeDashboardView {
         }
     }
 
+    var todayTasksAccent: Color {
+        if todayBoardTasks.isEmpty { return Color.white.opacity(0.35) }
+        if todayPendingBoardCount == 0 { return .green }
+        if todayPendingBoardCount <= 2 { return .blue }
+        return .orange
+    }
+
     var adaptiveTasksBackground: some View {
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(palette.cardFill)
+        RoundedRectangle(cornerRadius: 30, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        palette.cardFill,
+                        palette.cardFill.opacity(0.97)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
             .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .fill(
                         RadialGradient(
                             colors: [
-                                shouldEmphasizeCompletedSection ? Color.green.opacity(0.08) : Color.clear,
+                                todayTasksAccent.opacity(todayPendingBoardCount == 0 ? 0.14 : 0.08),
                                 Color.clear
                             ],
-                            center: .topTrailing,
-                            startRadius: 12,
-                            endRadius: 220
+                            center: .topLeading,
+                            startRadius: 8,
+                            endRadius: 180
                         )
                     )
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                (todayPendingBoardCount == 0 ? Color.green : todayTasksAccent).opacity(0.08),
+                                Color.clear
+                            ],
+                            center: .bottomTrailing,
+                            startRadius: 10,
+                            endRadius: 220
+                        )
+                    )
+                    .blur(radius: 10)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .stroke(
-                        shouldEmphasizeCompletedSection
-                        ? Color.green.opacity(0.16)
-                        : palette.cardStroke,
+                        todayPendingBoardCount == 0
+                        ? Color.green.opacity(0.14)
+                        : palette.cardStroke.opacity(0.86),
                         lineWidth: 1
                     )
             )
     }
 
     var todayTasksCard: some View {
-        VStack(alignment: .leading, spacing: taskCardIsCompactMode ? 12 : 14) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Bugünün Görevleri")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Bugün")
+                        .font(.system(size: 21, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
+                        .shadow(color: .white.opacity(0.04), radius: 2, y: 1)
 
                     Text(todayTaskHeaderText)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                         .foregroundStyle(palette.secondaryText)
+                        .lineLimit(2)
                 }
 
                 Spacer()
 
-                HStack(spacing: 8) {
-                    Menu {
-                        Button { onAddTask() } label: {
-                            Label("Yeni Görev", systemImage: "checklist")
-                        }
-                        Button { onAddTask() } label: {
-                            Label("Yeni Ödev", systemImage: "book.closed.fill")
-                        }
-                        Button { onAddTask() } label: {
-                            Label("Yeni Sınav", systemImage: "doc.text.fill")
-                        }
-                        Button { onOpenWeek() } label: {
-                            Label("Haftaya Ekle", systemImage: "calendar.badge.plus")
-                        }
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(palette.primaryText)
-                            .padding(10)
-                            .background(Circle().fill(palette.secondaryCardFill))
-                            .overlay(Circle().stroke(palette.cardStroke, lineWidth: 1))
-                    }
-
-                    Button {
-                        showTasksShortcut = true
-                    } label: {
-                        HStack(spacing: 6) {
-                            Text("Tümü")
-                                .font(.system(size: 12, weight: .bold))
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 11, weight: .bold))
-                        }
-                        .foregroundStyle(palette.primaryText)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(Capsule().fill(palette.secondaryCardFill))
-                        .overlay(Capsule().stroke(palette.cardStroke, lineWidth: 1))
-                    }
-                    .buttonStyle(.plain)
+                if !todayBoardTasks.isEmpty {
+                    Text("\(todayPendingBoardCount) açık")
+                        .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                        .foregroundStyle(todayPendingBoardCount == 0 ? .green : todayTasksAccent)
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 7)
+                        .background(
+                            Capsule()
+                                .fill(
+                                    (todayPendingBoardCount == 0 ? Color.green : todayTasksAccent)
+                                        .opacity(0.13)
+                                )
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(
+                                    (todayPendingBoardCount == 0 ? Color.green : todayTasksAccent)
+                                        .opacity(0.14),
+                                    lineWidth: 1
+                                )
+                        )
                 }
             }
 
@@ -179,18 +194,25 @@ extension HomeDashboardView {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
                             Text(taskCardPendingSectionTitle)
-                                .font(.system(size: 12, weight: .bold))
+                                .font(.system(size: 10.5, weight: .bold, design: .rounded))
                                 .foregroundStyle(palette.secondaryText)
 
                             Spacer()
 
-                            if taskCardIsCompactMode && todayPendingTasks.count > taskCardPendingLimit {
+                            if todayPendingTasks.count > taskCardPendingLimit {
                                 Text("+\(todayPendingTasks.count - taskCardPendingLimit)")
-                                    .font(.system(size: 11, weight: .bold))
+                                    .font(.system(size: 10, weight: .bold, design: .rounded))
                                     .foregroundStyle(.blue)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
-                                    .background(Capsule().fill(Color.blue.opacity(0.12)))
+                                    .background(
+                                        Capsule()
+                                            .fill(Color.blue.opacity(0.10))
+                                    )
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(Color.blue.opacity(0.12), lineWidth: 1)
+                                    )
                             }
                         }
 
@@ -207,28 +229,31 @@ extension HomeDashboardView {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
                             Text("Tamamlananlar")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(
-                                    shouldEmphasizeCompletedSection
-                                    ? .green
-                                    : .green.opacity(0.9)
-                                )
+                                .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                                .foregroundStyle(.green)
 
                             Spacer()
 
                             Text("\(todayCompletedTasks.count)")
-                                .font(.system(size: 11, weight: .bold))
+                                .font(.system(size: 10, weight: .bold, design: .rounded))
                                 .foregroundStyle(.green)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
-                                .background(Capsule().fill(Color.green.opacity(0.12)))
+                                .background(
+                                    Capsule()
+                                        .fill(Color.green.opacity(0.10))
+                                )
+                                .overlay(
+                                    Capsule()
+                                        .stroke(Color.green.opacity(0.12), lineWidth: 1)
+                                )
                         }
-                        .padding(.top, todayPendingTasks.isEmpty ? 0 : 4)
+                        .padding(.top, todayPendingTasks.isEmpty ? 0 : 2)
 
                         ForEach(Array(todayCompletedTasks.prefix(taskCardCompletedLimit)), id: \.taskUUID) { task in
                             todayTaskBoardRow(
                                 task: task,
-                                compact: homeLayoutMode == .focusActive || homeLayoutMode == .completionWrapUp
+                                compact: true
                             )
                         }
                     }
@@ -246,24 +271,24 @@ extension HomeDashboardView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(adaptiveTasksBackground)
         .shadow(
-            color: shouldEmphasizeCompletedSection ? Color.green.opacity(0.08) : .clear,
-            radius: shouldEmphasizeCompletedSection ? 10 : 0,
-            y: shouldEmphasizeCompletedSection ? 4 : 0
+            color: todayPendingBoardCount == 0 ? Color.green.opacity(0.06) : .clear,
+            radius: todayPendingBoardCount == 0 ? 10 : 0,
+            y: todayPendingBoardCount == 0 ? 4 : 0
         )
     }
 
     var emptyTodayTasksState: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Text("Bugün için görev görünmüyor")
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 14.5, weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
 
             Text(
                 homeLayoutMode == .completionWrapUp || homeLayoutMode == .insightsFollowUp
                 ? "Bugünkü liste temiz görünüyor."
-                : "İstersen yeni bir görev ekleyebilir ya da haftayı düzenleyebilirsin."
+                : "Şimdilik boş. İlk küçük görevi ekleyerek başlayabilirsin."
             )
-            .font(.system(size: 13, weight: .medium))
+            .font(.system(size: 12.5, weight: .semibold, design: .rounded))
             .foregroundStyle(palette.secondaryText)
 
             HStack(spacing: 8) {
@@ -275,12 +300,12 @@ extension HomeDashboardView {
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(palette.secondaryCardFill)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(palette.secondaryCardFill.opacity(0.94))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(palette.cardStroke, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(palette.cardStroke.opacity(0.82), lineWidth: 1)
         )
     }
 
@@ -310,7 +335,10 @@ extension HomeDashboardView {
             HStack(spacing: compact ? 10 : 12) {
                 ZStack {
                     Circle()
-                        .stroke(task.isDone ? Color.green.opacity(0.28) : accent, lineWidth: 2.4)
+                        .stroke(
+                            task.isDone ? Color.green.opacity(0.28) : accent.opacity(0.92),
+                            lineWidth: 2.1
+                        )
                         .frame(width: compact ? 24 : 28, height: compact ? 24 : 28)
 
                     if task.isDone {
@@ -327,24 +355,27 @@ extension HomeDashboardView {
                 VStack(alignment: .leading, spacing: compact ? 3 : 4) {
                     HStack(spacing: 6) {
                         Text(task.title)
-                            .font(.system(size: compact ? 14 : 15, weight: .bold))
+                            .font(.system(size: compact ? 13.5 : 14.5, weight: .bold, design: .rounded))
                             .foregroundStyle(task.isDone ? palette.secondaryText : palette.primaryText)
                             .strikethrough(task.isDone, color: palette.secondaryText.opacity(0.75))
                             .lineLimit(1)
 
                         if isFocused && !task.isDone {
                             Text("Odakta")
-                                .font(.system(size: 10, weight: .bold))
+                                .font(.system(size: 9.5, weight: .bold, design: .rounded))
                                 .foregroundStyle(accent)
                                 .padding(.horizontal, 7)
                                 .padding(.vertical, 4)
-                                .background(Capsule().fill(accent.opacity(0.14)))
+                                .background(
+                                    Capsule()
+                                        .fill(accent.opacity(0.12))
+                                )
                         }
                     }
 
                     if !compact || !task.isDone {
                         Text(taskRowSubtitle(for: task))
-                            .font(.system(size: compact ? 11 : 12, weight: .medium))
+                            .font(.system(size: compact ? 10.5 : 11.5, weight: .semibold, design: .rounded))
                             .foregroundStyle(palette.secondaryText)
                             .lineLimit(1)
                     }
@@ -359,26 +390,51 @@ extension HomeDashboardView {
                         tint: .green
                     )
                 } else if isOverdue {
-                    miniBadge(icon: "exclamationmark.triangle.fill", text: dueText, tint: .red)
+                    miniBadge(
+                        icon: "exclamationmark.triangle.fill",
+                        text: dueText,
+                        tint: .red
+                    )
                 } else if isFocused {
-                    miniBadge(icon: "scope", text: "Odak aktif", tint: accent)
+                    miniBadge(
+                        icon: "scope",
+                        text: "Odak aktif",
+                        tint: accent
+                    )
                 } else if isUpcoming {
-                    miniBadge(icon: taskTypeBadgeIcon(for: task), text: dueText, tint: accent)
+                    miniBadge(
+                        icon: taskTypeBadgeIcon(for: task),
+                        text: dueText,
+                        tint: accent
+                    )
                 } else {
-                    miniBadge(icon: taskTypeBadgeIcon(for: task), text: dueText, tint: accent.opacity(0.95))
+                    miniBadge(
+                        icon: taskTypeBadgeIcon(for: task),
+                        text: dueText,
+                        tint: accent.opacity(0.92)
+                    )
                 }
             }
-            .padding(compact ? 12 : 14)
+            .padding(compact ? 12 : 13)
             .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(palette.secondaryCardFill)
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                palette.secondaryCardFill.opacity(0.97),
+                                palette.secondaryCardFill.opacity(0.92)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .stroke(
                         shouldEmphasizeCompletedSection && task.isDone
-                        ? Color.green.opacity(0.14)
-                        : palette.cardStroke,
+                        ? Color.green.opacity(0.12)
+                        : palette.cardStroke.opacity(0.82),
                         lineWidth: 1
                     )
             )
@@ -419,12 +475,12 @@ extension HomeDashboardView {
         switch homeLayoutMode {
         case .insightsFollowUp, .completionWrapUp:
             if todayPendingBoardCount == 0 {
-                return "Bugün tamamlananları burada görebilirsin"
+                return "Bugünün tüm görevleri tamamlandı"
             }
-            return "\(todayPendingBoardCount) açık görev • \(completedTodayBoardCount) tamamlandı"
+            return "\(todayPendingBoardCount) açık • \(completedTodayBoardCount) tamamlandı"
 
         case .crewFollowUp:
-            return "\(todayPendingBoardCount) kişisel görev kaldı • crew seni bekliyor"
+            return "\(todayPendingBoardCount) kişisel görev kaldı"
 
         case .focusActive:
             return "\(todayPendingBoardCount) görev kaldı • odak sürüyor"
@@ -566,10 +622,13 @@ extension HomeDashboardView {
                 .font(.caption2)
             Text(text)
         }
-        .font(.system(size: 11, weight: .semibold))
+        .font(.system(size: 10.5, weight: .semibold, design: .rounded))
         .padding(.horizontal, 9)
         .padding(.vertical, 5)
-        .background(Capsule().fill(tint.opacity(0.14)))
+        .background(
+            Capsule()
+                .fill(tint.opacity(0.14))
+        )
         .foregroundStyle(tint)
     }
 
@@ -580,11 +639,18 @@ extension HomeDashboardView {
                 .frame(width: 7, height: 7)
 
             Text("\(title) \(value)")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 11.5, weight: .semibold, design: .rounded))
                 .foregroundStyle(tint)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
-        .background(Capsule().fill(tint.opacity(0.12)))
+        .background(
+            Capsule()
+                .fill(tint.opacity(0.12))
+        )
+        .overlay(
+            Capsule()
+                .stroke(tint.opacity(0.10), lineWidth: 1)
+        )
     }
 }

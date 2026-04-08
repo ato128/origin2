@@ -9,49 +9,46 @@ import SwiftUI
 import SwiftData
 import Combine
 
-struct HomeQuickAction: Identifiable {
-    let id = UUID()
-    let title: String
-    let subtitle: String
-    let systemImage: String
-    let tint: Color
-    let isHighlighted: Bool
-    let action: () -> Void
-}
-
 extension HomeDashboardView {
     var currentUserID: String? {
         session.currentUser?.id.uuidString
     }
-    
+
     var allTasks: [DTTaskItem] {
         store.items
     }
-    
+
     var userScopedEvents: [EventItem] {
         guard let currentUserID else { return [] }
         return allEvents.filter { $0.ownerUserID == currentUserID }
     }
-    
+
     var userScopedFriends: [Friend] {
         guard let currentUserID else { return [] }
         return friends.filter { $0.ownerUserID == currentUserID }
     }
-    
+
     var userScopedTasks: [DTTaskItem] {
         guard let currentUserID else { return [] }
         return allTasks.filter { $0.ownerUserID == currentUserID }
     }
-    
+
+    var userScopedExams: [ExamItem] {
+        guard let currentUserID else { return [] }
+        return allExams.filter { $0.ownerUserID == currentUserID }
+    }
+
     var smartSuggestions: [SmartTaskSuggestion] {
         guard smartEngineEnabled else { return [] }
         return SmartTaskEngine.suggestions(tasks: userScopedTasks, events: userScopedEvents)
     }
-    
+
     var overdueTaskCount: Int {
-        userScopedTasks.filter { task in !task.isDone && store.isOverdue(task) }.count
+        userScopedTasks.filter { task in
+            !task.isDone && store.isOverdue(task)
+        }.count
     }
-    
+
     var todayTasks: [DTTaskItem] {
         let cal = Calendar.current
         return userScopedTasks
@@ -62,7 +59,7 @@ extension HomeDashboardView {
             }
             .sorted { ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture) }
     }
-    
+
     var completedTodayCount: Int {
         let cal = Calendar.current
         return userScopedTasks.filter { task in
@@ -70,67 +67,67 @@ extension HomeDashboardView {
             return cal.isDateInToday(completedAt)
         }.count
     }
-    
+
     var totalTodayTaskCount: Int {
         completedTodayCount + todayTasks.count
     }
-    
+
     var streakCount: Int {
         StreakEngine.currentStreak(tasks: userScopedTasks)
     }
-    
+
     var todayProgressValue: Double {
         guard totalTodayTaskCount > 0 else { return 0 }
         return Double(completedTodayCount) / Double(totalTodayTaskCount)
     }
-    
+
     var focusTask: DTTaskItem? {
         let now = Date()
         let active = userScopedTasks.filter { !$0.isDone }
-        
+
         var nearestUpcoming: DTTaskItem?
         var nearestUpcomingDate: Date?
-        
+
         var nearestOverall: DTTaskItem?
         var nearestOverallDistance: TimeInterval?
-        
+
         for task in active {
             let due = task.dueDate ?? .distantFuture
-            
+
             if due >= now {
                 if nearestUpcomingDate == nil || due < nearestUpcomingDate! {
                     nearestUpcoming = task
                     nearestUpcomingDate = due
                 }
             }
-            
+
             let distance = abs(due.timeIntervalSince(now))
             if nearestOverallDistance == nil || distance < nearestOverallDistance! {
                 nearestOverall = task
                 nearestOverallDistance = distance
             }
         }
-        
+
         return nearestUpcoming ?? nearestOverall
     }
-    
+
     var recentChatFriend: Friend? {
         guard let latestMessage = allFriendMessages.max(by: { $0.createdAt < $1.createdAt }) else {
             return nil
         }
         return userScopedFriends.first(where: { $0.id == latestMessage.friendID })
     }
-    
+
     var nextEvent: EventItem? {
         let calendar = Calendar.current
         let today = Date()
         let todayWeekday = weekdayIndexToday()
         let now = currentMinuteOfDay()
-        
+
         let todaysEvents = userScopedEvents
             .filter { event in
                 guard !event.isCompleted else { return false }
-                
+
                 if let scheduledDate = event.scheduledDate {
                     return calendar.isDate(scheduledDate, inSameDayAs: today)
                 } else {
@@ -138,7 +135,7 @@ extension HomeDashboardView {
                 }
             }
             .sorted { $0.startMinute < $1.startMinute }
-        
+
         if let live = todaysEvents.first(where: { event in
             let start = event.startMinute
             let end = event.startMinute + event.durationMinute
@@ -146,31 +143,31 @@ extension HomeDashboardView {
         }) {
             return live
         }
-        
+
         return todaysEvents.first(where: { $0.startMinute > now })
     }
-    
+
     var activeBackendCrewFocusSession: CrewFocusSessionDTO? {
         crewStore.activeFocusSessionByCrew.values.first(where: { $0.is_active })
     }
-    
+
     var hasAnyActiveFocusSession: Bool {
         guard let timestamp = UserDefaults.standard.object(forKey: "focus_end_date") as? Double else {
             return false
         }
-        
+
         let endDate = Date(timeIntervalSince1970: timestamp)
         return endDate.timeIntervalSinceNow > 0
     }
-    
+
     var isSharedFocusActive: Bool {
         UserDefaults.standard.string(forKey: "focus_mode") == "shared" && hasAnyActiveFocusSession
     }
-    
+
     var activeSharedFriendName: String? {
         UserDefaults.standard.string(forKey: "focus_friend_name")
     }
-    
+
     var latestRelevantCrewFocusSession: CrewFocusSession? {
         focusSessions
             .filter { session in
@@ -180,7 +177,7 @@ extension HomeDashboardView {
             .sorted { $0.startedAt > $1.startedAt }
             .first
     }
-    
+
     var hasCompletedAllPersonalTodayTasks: Bool {
         !todayBoardTasks.isEmpty && todayPendingBoardCount == 0
     }
@@ -196,115 +193,7 @@ extension HomeDashboardView {
     var hasInsightsWorthShowing: Bool {
         completedTodayCount > 0 || streakCount > 0
     }
-    
-    var crewFollowUpHeroState: TodayHeroState {
-        TodayHeroState(
-            eyebrow: "Sıradaki alan",
-            title: "Crew seni bekliyor",
-            subtitle: "Kişisel tarafı bitirdin. Şimdi ekip tarafında devam edebilirsin.",
-            icon: "person.3.fill",
-            accent: .pink,
-            badge1: HeroBadge(
-                icon: "checklist",
-                text: "\(activeCrewTaskCount) açık iş",
-                tint: .pink
-            ),
-            badge2: HeroBadge(
-                icon: "bolt.fill",
-                text: "Crew",
-                tint: .orange
-            ),
-            contextLine: "Bugünü tek başına değil, ekip akışını da kapatarak tamamlayabilirsin.",
-            primaryCTA: "Crew’e Git",
-            primaryIcon: "person.3.fill",
-            primaryAction: {
-                onOpenWeek()
-            },
-            secondaryCTA: HeroCTA(
-                title: "Sohbet",
-                icon: "bubble.left.and.bubble.right.fill",
-                action: {
-                    showFriendsShortcut = true
-                }
-            )
-        )
-    }
 
-    var insightsFollowUpHeroState: TodayHeroState {
-        TodayHeroState(
-            eyebrow: "Bugün bitti",
-            title: "Akışını kontrol et",
-            subtitle: "Bugünkü ilerlemeni ve ritmini içgörülerden görebilirsin.",
-            icon: "chart.bar.fill",
-            accent: .blue,
-            badge1: HeroBadge(
-                icon: "flame.fill",
-                text: "Seri \(streakCount)",
-                tint: .orange
-            ),
-            badge2: HeroBadge(
-                icon: "chart.bar.fill",
-                text: "Insights",
-                tint: .blue
-            ),
-            contextLine: "Hangi saatlerde daha iyi ilerlediğini görmek yarını daha iyi kurmana yardım eder.",
-            primaryCTA: "İçgörülere Git",
-            primaryIcon: "chart.bar.fill",
-            primaryAction: {
-                onOpenInsights()
-            },
-            secondaryCTA: HeroCTA(
-                title: "Hafta",
-                icon: "calendar",
-                action: {
-                    onOpenWeek()
-                }
-            )
-        )
-    }
-
-    var wrapUpHeroState: TodayHeroState {
-        TodayHeroState(
-            eyebrow: "Gün tamamlandı",
-            title: "Yarını hazırlayabilirsin",
-            subtitle: "Bugün sakin kapandı. İstersen yarın için küçük bir plan yap.",
-            icon: "calendar.badge.plus",
-            accent: .green,
-            badge1: HeroBadge(
-                icon: "checkmark.circle.fill",
-                text: "Tamam",
-                tint: .green
-            ),
-            badge2: HeroBadge(
-                icon: "calendar",
-                text: "Yarın",
-                tint: .blue
-            ),
-            contextLine: "Kısa bir plan, yarın başlarken sürtünmeyi azaltır.",
-            primaryCTA: "Haftayı Aç",
-            primaryIcon: "calendar",
-            primaryAction: {
-                onOpenWeek()
-            },
-            secondaryCTA: HeroCTA(
-                title: "Görev Ekle",
-                icon: "plus",
-                action: {
-                    onAddTask()
-                }
-            )
-        )
-    }
-    
-    
-
-        func formatSeconds(_ seconds: Int) -> String {
-            let safe = max(0, seconds)
-            let minutes = safe / 60
-            let secs = safe % 60
-            return String(format: "%02d:%02d", minutes, secs)
-        }
-    
     var shouldShowFocusCard: Bool {
         activeBackendCrewFocusSession != nil || isFocusActive || hasAnyActiveFocusSession
     }
@@ -316,168 +205,6 @@ extension HomeDashboardView {
         } else if isFocusActive || hasAnyActiveFocusSession {
             activeFocusCard
         }
-    }
-
-    var todayHeroState: TodayHeroState {
-        if shouldShowFocusCard {
-            return postFocusHeroState
-        } else {
-            return preFocusHeroState
-        }
-    }
-
-    var preFocusHeroState: TodayHeroState {
-        if let activeSession = activeBackendCrewFocusSession {
-            return TodayHeroState(
-                eyebrow: "Ortak odak aktif",
-                title: activeSession.title,
-                subtitle: "\(activeSession.host_name) ile oturum devam ediyor.",
-                icon: activeSession.is_paused ? "pause.fill" : "person.2.fill",
-                accent: activeSession.is_paused ? .orange : .blue,
-                badge1: HeroBadge(
-                    icon: "timer",
-                    text: backendCrewFocusTimeText(for: activeSession, now: Date()),
-                    tint: activeSession.is_paused ? .orange : .blue
-                ),
-                badge2: HeroBadge(
-                    icon: "person.2.fill",
-                    text: "Crew",
-                    tint: .pink
-                ),
-                contextLine: activeSession.is_paused
-                    ? "Ortak oturum duraklatılmış. Devam ettirip akışı geri kazan."
-                    : "Şu an ekip odağı aktif. Odaya girip birlikte devam edebilirsin.",
-                primaryCTA: "Odayı Aç",
-                primaryIcon: "arrow.right.circle.fill",
-                primaryAction: {
-                    focusRoomSession = activeSession
-                },
-                secondaryCTA: HeroCTA(
-                    title: "Crew",
-                    icon: "person.3.fill",
-                    action: {
-                        onOpenWeek()
-                    }
-                )
-            )
-        }
-
-        if let task = focusTask {
-            let accent = focusAccentColor(for: task)
-            let course = task.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
-
-            return TodayHeroState(
-                eyebrow: "Bugünün önceliği",
-                title: task.title,
-                subtitle: focusCardStatusTextStudent,
-                icon: focusSymbol(for: task),
-                accent: accent,
-                badge1: HeroBadge(
-                    icon: "scope",
-                    text: dueBadgeText(for: task),
-                    tint: accent
-                ),
-                badge2: course.isEmpty ? nil : HeroBadge(
-                    icon: "book.closed.fill",
-                    text: course,
-                    tint: accent
-                ),
-                contextLine: store.isOverdue(task)
-                    ? "Bunu bitirmen günün geri kalanını rahatlatır."
-                    : "Şimdi başlarsan gün dağılmadan momentum kazanırsın.",
-                primaryCTA: "Başla",
-                primaryIcon: "play.fill",
-                primaryAction: {
-                    startInlineFocus()
-                },
-                secondaryCTA: HeroCTA(
-                    title: "Tüm Görevler",
-                    icon: "list.bullet",
-                    action: {
-                        showTasksShortcut = true
-                    }
-                )
-            )
-        }
-
-        if hasCompletedAllPersonalTodayTasks && hasCrewWorkToDo {
-            return crewFollowUpHeroState
-        }
-
-        if hasCompletedAllPersonalTodayTasks && hasInsightsWorthShowing {
-            return insightsFollowUpHeroState
-        }
-
-        return wrapUpHeroState
-    }
-
-    var postFocusHeroState: TodayHeroState {
-        if let nextTask = nextSuggestedTaskAfterFocus {
-            let accent = todayTaskAccent(for: nextTask)
-            let course = nextTask.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
-
-            return TodayHeroState(
-                eyebrow: "Sonraki adım",
-                title: nextTask.title,
-                subtitle: "Odaktan sonra sıradaki en mantıklı iş bu görünüyor.",
-                icon: taskTypeBadgeIcon(for: nextTask),
-                accent: accent,
-                badge1: HeroBadge(
-                    icon: "clock.fill",
-                    text: dueBadgeText(for: nextTask),
-                    tint: accent
-                ),
-                badge2: course.isEmpty ? nil : HeroBadge(
-                    icon: "book.closed.fill",
-                    text: course,
-                    tint: accent
-                ),
-                contextLine: "Aktif odak bitince hazır şekilde seni beklesin.",
-                primaryCTA: "Görevleri Gör",
-                primaryIcon: "list.bullet",
-                primaryAction: {
-                    showTasksShortcut = true
-                },
-                secondaryCTA: HeroCTA(
-                    title: "Hafta",
-                    icon: "calendar",
-                    action: {
-                        onOpenWeek()
-                    }
-                )
-            )
-        }
-
-        return TodayHeroState(
-            eyebrow: "Akış sürüyor",
-            title: "Odaktan sonra yolun hazır",
-            subtitle: "Şimdilik sadece ritmi koru. Sonraki adımı sonra seçersin.",
-            icon: "sparkles",
-            accent: .blue,
-            badge1: HeroBadge(
-                icon: "scope",
-                text: "Odak açık",
-                tint: .blue
-            ),
-            badge2: HeroBadge(
-                icon: "calendar",
-                text: "Bugün",
-                tint: .blue
-            ),
-            contextLine: "İstersen görevlerini ya da haftayı hızlıca gözden geçirebilirsin.",
-            primaryCTA: "Görevleri Gör",
-            primaryIcon: "list.bullet",
-            primaryAction: {
-                showTasksShortcut = true
-            },
-            secondaryCTA: HeroCTA(
-                title: "Hafta",
-                icon: "calendar",
-                action: {
-                    onOpenWeek()
-                }
-            )
-        )
     }
 
     var nextSuggestedTaskAfterFocus: DTTaskItem? {
@@ -493,7 +220,44 @@ extension HomeDashboardView {
             return true
         }
     }
-    
+
+    func formatSeconds(_ seconds: Int) -> String {
+        let safe = max(0, seconds)
+        let minutes = safe / 60
+        let secs = safe % 60
+        return String(format: "%02d:%02d", minutes, secs)
+    }
+
+    func sessionStoreSafeEmailPrefix() -> String? {
+        if let email = session.currentUser?.email, !email.isEmpty {
+            return email.components(separatedBy: "@").first ?? email
+        }
+        return nil
+    }
+
+    func weekdayIndexToday() -> Int {
+        let weekday = Calendar.current.component(.weekday, from: Date())
+        return (weekday + 5) % 7
+    }
+
+    func currentMinuteOfDay() -> Int {
+        let comps = Calendar.current.dateComponents([.hour, .minute], from: Date())
+        return (comps.hour ?? 0) * 60 + (comps.minute ?? 0)
+    }
+
+    func hm(_ minute: Int) -> String {
+        let h = max(0, minute / 60)
+        let m = max(0, minute % 60)
+        return String(format: "%02d:%02d", h, m)
+    }
+
+    func targetDateFor(day: Int) -> Date {
+        let calendar = Calendar.current
+        let today = Date()
+        let current = weekdayIndexToday()
+        let delta = day - current
+        return calendar.date(byAdding: .day, value: delta, to: today) ?? today
+    }
 
     func weekCrewItem(for crewID: UUID) -> WeekCrewItem? {
         guard let crew = crewStore.crews.first(where: { $0.id == crewID }) else { return nil }
@@ -765,36 +529,5 @@ extension HomeDashboardView {
     func backendCrewFocusTimeText(for session: CrewFocusSessionDTO, now: Date) -> String {
         let remaining = backendCrewFocusRemainingSeconds(for: session, now: now)
         return String(format: "%02d:%02d", remaining / 60, remaining % 60)
-    }
-
-    func sessionStoreSafeEmailPrefix() -> String? {
-        if let email = session.currentUser?.email, !email.isEmpty {
-            return email.components(separatedBy: "@").first ?? email
-        }
-        return nil
-    }
-
-    func weekdayIndexToday() -> Int {
-        let weekday = Calendar.current.component(.weekday, from: Date())
-        return (weekday + 5) % 7
-    }
-
-    func currentMinuteOfDay() -> Int {
-        let comps = Calendar.current.dateComponents([.hour, .minute], from: Date())
-        return (comps.hour ?? 0) * 60 + (comps.minute ?? 0)
-    }
-
-    func hm(_ minute: Int) -> String {
-        let h = max(0, minute / 60)
-        let m = max(0, minute % 60)
-        return String(format: "%02d:%02d", h, m)
-    }
-
-    func targetDateFor(day: Int) -> Date {
-        let calendar = Calendar.current
-        let today = Date()
-        let current = weekdayIndexToday()
-        let delta = day - current
-        return calendar.date(byAdding: .day, value: delta, to: today) ?? today
     }
 }

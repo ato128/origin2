@@ -9,6 +9,16 @@ import SwiftUI
 import SwiftData
 import Combine
 
+struct HomeQuickAction: Identifiable {
+    let id = UUID()
+    let title: String
+    let subtitle: String
+    let systemImage: String
+    let tint: Color
+    let isHighlighted: Bool
+    let action: () -> Void
+}
+
 extension HomeDashboardView {
     var quickActionsCard: some View {
         let actions = contextualQuickActions
@@ -100,7 +110,7 @@ extension HomeDashboardView {
         }
         .buttonStyle(.plain)
     }
-    
+
     var hasUpcomingExamQuickActionPriority: Bool {
         nearestRelevantExam != nil && resolvedHeroKind == .upcomingExam
     }
@@ -119,7 +129,7 @@ extension HomeDashboardView {
         }
         return "25 dk"
     }
-    
+
     var quickActionsCardTitle: String {
         if shouldUseNoTaskQuickActions {
             return "Başlamak İçin"

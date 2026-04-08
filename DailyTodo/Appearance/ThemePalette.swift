@@ -10,11 +10,11 @@ import SwiftUI
 struct ThemePalette {
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
 
-     var isLight: Bool {
+    var isLight: Bool {
         appTheme == AppTheme.light.rawValue
     }
 
-     var isGradient: Bool {
+    var isGradient: Bool {
         appTheme == AppTheme.gradient.rawValue
     }
 
@@ -34,11 +34,11 @@ struct ThemePalette {
         case AppTheme.light.rawValue:
             return .white
         case AppTheme.dark.rawValue:
-            return Color.white.opacity(0.05)
+            return Color.white.opacity(0.050)
         case AppTheme.amoled.rawValue:
-            return Color.white.opacity(0.04)
+            return Color.white.opacity(0.038)
         default:
-            return Color.white.opacity(0.06)
+            return Color.white.opacity(0.055)
         }
     }
 
@@ -47,11 +47,11 @@ struct ThemePalette {
         case AppTheme.light.rawValue:
             return Color.black.opacity(0.04)
         case AppTheme.dark.rawValue:
-            return Color.white.opacity(0.04)
+            return Color.white.opacity(0.040)
         case AppTheme.amoled.rawValue:
-            return Color.white.opacity(0.035)
+            return Color.white.opacity(0.032)
         default:
-            return Color.white.opacity(0.04)
+            return Color.white.opacity(0.038)
         }
     }
 
@@ -60,11 +60,11 @@ struct ThemePalette {
         case AppTheme.light.rawValue:
             return Color.black.opacity(0.07)
         case AppTheme.dark.rawValue:
-            return Color.white.opacity(0.06)
+            return Color.white.opacity(0.055)
         case AppTheme.amoled.rawValue:
-            return Color.white.opacity(0.05)
+            return Color.white.opacity(0.045)
         default:
-            return Color.white.opacity(0.08)
+            return Color.white.opacity(0.070)
         }
     }
 
@@ -99,6 +99,7 @@ struct ThemePalette {
     var shadowColor: Color {
         isLight ? Color.black.opacity(0.08) : Color.black.opacity(0.18)
     }
+
     var accent: Color {
         Color.accentColor
     }
@@ -106,6 +107,4 @@ struct ThemePalette {
     var cardShadow: Color {
         Color.black.opacity(0.18)
     }
-
-   
 }

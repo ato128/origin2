@@ -11,43 +11,55 @@ import Combine
 
 extension HomeDashboardView {
     var homeMiniWeekCalendar: some View {
-        VStack(spacing: 10) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 5) {
                     Text(weekCardTitle)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(palette.secondaryText)
+                        .font(.system(size: 21, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
+                        .shadow(color: .white.opacity(0.04), radius: 2, y: 1)
 
-                    if !weekCardSubtitle.isEmpty {
-                        Text(weekCardSubtitle)
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(palette.secondaryText.opacity(0.9))
-                            .lineLimit(1)
-                    }
+                    Text(weekCardSubtitle)
+                        .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(palette.secondaryText)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Spacer()
+                Spacer(minLength: 10)
 
                 Button {
                     onOpenWeek()
                 } label: {
-                    Image(systemName: weekCardButtonIcon)
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(palette.primaryText)
-                        .padding(8)
-                        .background(
-                            Circle()
-                                .fill(palette.secondaryCardFill)
-                        )
-                        .overlay(
-                            Circle()
-                                .stroke(
-                                    shouldEmphasizeWeekCard
-                                    ? weekCardAccent.opacity(0.22)
-                                    : palette.cardStroke,
-                                    lineWidth: 1
-                                )
-                        )
+                    HStack(spacing: 7) {
+                        Image(systemName: weekCardButtonIcon)
+                            .font(.system(size: 11.5, weight: .bold))
+
+                        Text(weekCTAButtonTitle)
+                            .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                    }
+                    .foregroundStyle(
+                        shouldEmphasizeWeekCard ? weekCardAccent : palette.primaryText
+                    )
+                    .padding(.horizontal, 13)
+                    .padding(.vertical, 9)
+                    .background(
+                        Capsule()
+                            .fill(
+                                shouldEmphasizeWeekCard
+                                ? weekCardAccent.opacity(0.10)
+                                : palette.secondaryCardFill.opacity(0.96)
+                            )
+                    )
+                    .overlay(
+                        Capsule()
+                            .stroke(
+                                shouldEmphasizeWeekCard
+                                ? weekCardAccent.opacity(0.14)
+                                : palette.cardStroke.opacity(0.88),
+                                lineWidth: 1
+                            )
+                    )
                 }
                 .buttonStyle(.plain)
             }
@@ -60,35 +72,50 @@ extension HomeDashboardView {
                     let taskCount = tasksCount(on: day)
                     let hasItems = hasEvents(on: day) || taskCount > 0
                     let isSuggestedDay = suggestedWeekDay == day
+                    let hasExamDay = hasExam(on: day)
 
                     Button {
                         withAnimation(.spring(response: 0.30, dampingFraction: 0.86)) {
                             selectedDay = day
                         }
                     } label: {
-                        VStack(spacing: 4) {
+                        VStack(spacing: 7) {
                             Text(dayTitles[day])
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(isSelected ? palette.primaryText : palette.secondaryText)
+                                .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                                .foregroundStyle(
+                                    isSelected ? palette.primaryText : palette.secondaryText
+                                )
 
                             Text("\(Calendar.current.component(.day, from: date))")
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .font(.system(size: 17, weight: .bold, design: .rounded))
                                 .foregroundStyle(palette.primaryText)
                                 .monospacedDigit()
 
-                            Circle()
-                                .fill(dayIndicatorColor(for: day, hasItems: hasItems, isToday: isToday, isSuggestedDay: isSuggestedDay))
-                                .frame(
-                                    width: (hasItems || isSuggestedDay || isToday) ? 6 : 4,
-                                    height: (hasItems || isSuggestedDay || isToday) ? 6 : 4
-                                )
-                                .opacity(isToday || hasItems || isSuggestedDay ? 1 : 0.7)
-                                .padding(.top, 1)
+                            HStack(spacing: 4) {
+                                Circle()
+                                    .fill(dayIndicatorColor(
+                                        for: day,
+                                        hasItems: hasItems,
+                                        isToday: isToday,
+                                        isSuggestedDay: isSuggestedDay
+                                    ))
+                                    .frame(
+                                        width: hasItems || isToday || isSuggestedDay || hasExamDay ? 6 : 4,
+                                        height: hasItems || isToday || isSuggestedDay || hasExamDay ? 6 : 4
+                                    )
+
+                                if hasExamDay {
+                                    Capsule()
+                                        .fill(Color.orange.opacity(0.92))
+                                        .frame(width: 10, height: 4)
+                                }
+                            }
+                            .frame(height: 8)
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
+                        .padding(.vertical, 11)
                         .background(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
                                 .fill(dayBackgroundColor(
                                     isSelected: isSelected,
                                     isSuggestedDay: isSuggestedDay,
@@ -96,7 +123,7 @@ extension HomeDashboardView {
                                 ))
                         )
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
                                 .stroke(
                                     dayStrokeColor(
                                         isSelected: isSelected,
@@ -105,16 +132,55 @@ extension HomeDashboardView {
                                     lineWidth: 1
                                 )
                         )
+                        .shadow(
+                            color: isSelected ? weekCardAccent.opacity(0.12) : .clear,
+                            radius: isSelected ? 8 : 0,
+                            y: isSelected ? 4 : 0
+                        )
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 10)
-            .background {
-                adaptiveWeekCardBackground()
-            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.030),
+                                Color.white.opacity(0.018)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(
+                                RadialGradient(
+                                    colors: [
+                                        weekCardAccent.opacity(shouldEmphasizeWeekCard ? 0.08 : 0.04),
+                                        Color.clear
+                                    ],
+                                    center: .topLeading,
+                                    startRadius: 6,
+                                    endRadius: 140
+                                )
+                            )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(
+                                shouldEmphasizeWeekCard
+                                ? weekCardAccent.opacity(0.08)
+                                : palette.cardStroke.opacity(0.76),
+                                lineWidth: 1
+                            )
+                    )
+            )
         }
+        .padding(20)
+        .background(adaptiveWeekCardBackground())
     }
 
     var weekCardTitle: String {
@@ -137,22 +203,31 @@ extension HomeDashboardView {
         let emptyDays = (0..<7).filter { tasksCount(on: $0) == 0 }.count
 
         if shouldUseWrapUpMomentumTone {
-            return "Yarın için en uygun günü seç"
+            return "Yarın için uygun günü hızlıca seç."
         }
 
         if hasVisibleUpcomingExamMomentum {
-            return "Sınav yaklaşırken haftanı dengele"
+            return "Sınav yaklaşırken haftanı dengede tut."
         }
 
         if busyDays >= 3 {
-            return "\(busyDays) gün yoğun görünüyor"
+            return "\(busyDays) gün yoğun görünüyor."
         }
 
         if emptyDays >= 3 {
-            return "Haftada boş alanların var"
+            return "Haftada boş alanların var."
         }
 
-        return "Haftanın akışını hızlıca gör"
+        return "Haftanın akışını tek bakışta gör."
+    }
+
+    var weekCTAButtonTitle: String {
+        switch homeLayoutMode {
+        case .completionWrapUp:
+            return "Planla"
+        default:
+            return "Aç"
+        }
     }
 
     var weekCardButtonIcon: String {
@@ -194,14 +269,13 @@ extension HomeDashboardView {
             let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
             let weekday = Calendar.current.component(.weekday, from: tomorrow)
             return (weekday + 5) % 7
-
         case .crewFollowUp:
             return nil
-
         default:
             return nil
         }
     }
+
     func hasExam(on day: Int) -> Bool {
         let calendar = Calendar.current
         let targetDate = targetDateFor(day: day)
@@ -210,30 +284,54 @@ extension HomeDashboardView {
             calendar.isDate($0.examDate, inSameDayAs: targetDate)
         }
     }
-    
+
     func adaptiveWeekCardBackground() -> some View {
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(palette.cardFill)
+        RoundedRectangle(cornerRadius: 30, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        palette.cardFill,
+                        palette.cardFill.opacity(0.97)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
             .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .fill(
                         RadialGradient(
                             colors: [
-                                shouldEmphasizeWeekCard ? weekCardAccent.opacity(0.08) : Color.clear,
+                                shouldEmphasizeWeekCard ? weekCardAccent.opacity(0.10) : weekCardAccent.opacity(0.04),
                                 Color.clear
                             ],
                             center: .topTrailing,
-                            startRadius: 12,
-                            endRadius: 220
+                            startRadius: 8,
+                            endRadius: 180
                         )
                     )
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                weekCardAccent.opacity(0.06),
+                                Color.clear
+                            ],
+                            center: .bottomLeading,
+                            startRadius: 10,
+                            endRadius: 220
+                        )
+                    )
+                    .blur(radius: 10)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .stroke(
                         shouldEmphasizeWeekCard
-                        ? weekCardAccent.opacity(0.18)
-                        : palette.cardStroke,
+                        ? weekCardAccent.opacity(0.14)
+                        : palette.cardStroke.opacity(0.86),
                         lineWidth: 1
                     )
             )
@@ -243,7 +341,7 @@ extension HomeDashboardView {
         let count = tasksCount(on: day)
 
         if isSelected {
-            return Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.14 : 0.18)
+            return weekCardAccent.opacity(appTheme == AppTheme.light.rawValue ? 0.15 : 0.20)
         }
 
         if isSuggestedDay {
@@ -251,35 +349,35 @@ extension HomeDashboardView {
         }
 
         if count >= 4 {
-            return Color.red.opacity(0.08)
+            return Color.red.opacity(0.09)
         }
 
         if count >= 2 {
-            return Color.orange.opacity(0.06)
+            return Color.orange.opacity(0.07)
         }
 
-        return palette.secondaryCardFill
+        return palette.secondaryCardFill.opacity(0.94)
     }
 
     func dayStrokeColor(isSelected: Bool, isSuggestedDay: Bool) -> Color {
         if isSelected {
-            return Color.accentColor.opacity(0.28)
-        }
-
-        if isSuggestedDay {
             return weekCardAccent.opacity(0.22)
         }
 
-        return palette.cardStroke
+        if isSuggestedDay {
+            return weekCardAccent.opacity(0.18)
+        }
+
+        return palette.cardStroke.opacity(0.82)
     }
 
     func dayIndicatorColor(for day: Int, hasItems: Bool, isToday: Bool, isSuggestedDay: Bool) -> Color {
         let count = tasksCount(on: day)
 
         if isToday {
-            return .accentColor
+            return weekCardAccent
         }
-        
+
         if hasExam(on: day) {
             return .orange
         }
@@ -289,15 +387,15 @@ extension HomeDashboardView {
         }
 
         if count >= 4 {
-            return .red // yoğun gün
+            return .red
         }
 
         if count >= 2 {
-            return .orange // orta yoğunluk
+            return .orange
         }
 
         if hasItems {
-            return .accentColor
+            return .blue
         }
 
         return palette.cardStroke
@@ -315,6 +413,7 @@ extension HomeDashboardView {
             }
         }
     }
+
     func tasksCount(on day: Int) -> Int {
         let calendar = Calendar.current
         let targetDate = targetDateFor(day: day)

@@ -4,96 +4,59 @@
 //
 //  Created by Atakan Ortaç on 16.03.2026.
 //
-
 import SwiftUI
 import SwiftData
 import Combine
 
 extension HomeDashboardView {
     var headerCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("\(adaptiveGreetingText) \(headerEmoji)")
-                        .font(.system(size: 30, weight: .bold, design: .rounded))
-                        .foregroundStyle(palette.primaryText)
+        HStack(alignment: .center, spacing: 12) {
+            HStack(spacing: 8) {
+                Text(todayDateText)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(palette.secondaryText)
+                    .lineLimit(1)
 
-                    Text(todayDateText)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(palette.secondaryText)
+                Circle()
+                    .fill(headerAccentColor.opacity(0.85))
+                    .frame(width: 4, height: 4)
 
-                    Text(homePriorityLine)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(headerAccentColor.opacity(0.95))
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: 12)
-
-                Button {
-                    if recentChatFriend != nil {
-                        showRecentFriendChat = true
-                    } else {
-                        showFriendsShortcut = true
-                    }
-                } label: {
-                    HStack(spacing: 7) {
-                        Image(systemName: headerPeopleButtonIcon)
-                            .font(.system(size: 12, weight: .bold))
-
-                        Text(headerPeopleButtonTitle)
-                            .font(.system(size: 13, weight: .bold))
-                    }
-                    .foregroundStyle(palette.primaryText)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(
-                        Capsule()
-                            .fill(headerPeopleButtonFill)
-                    )
-                    .overlay(
-                        Capsule()
-                            .stroke(headerPeopleButtonStroke, lineWidth: 1)
-                    )
-                }
-                .buttonStyle(.plain)
+                Text(homePriorityLine)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(headerAccentColor.opacity(0.95))
+                    .lineLimit(1)
             }
+
+            Spacer()
         }
-        .padding(.horizontal, 4)
-        .padding(.top, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 2)
+        .padding(.top, 2)
     }
 
     var adaptiveGreetingText: String {
         switch homeLayoutMode {
         case .focusActive:
             return "Akıştasın"
+
         case .crewFollowUp:
-            return greetingText
+            return "Ekip seni bekliyor"
+
         case .insightsFollowUp:
             return "İyi gidiyorsun"
-        case .completionWrapUp:
-            return currentHour >= 20 ? "Günü kapat" : greetingText
-        case .defaultFlow:
-            return greetingText
-        }
-    }
 
-    var headerEmoji: String {
-        switch homeLayoutMode {
-        case .focusActive:
-            return "🎯"
-        case .crewFollowUp:
-            return "👥"
-        case .insightsFollowUp:
-            return "✨"
         case .completionWrapUp:
-            return currentHour >= 20 ? "🌙" : "✅"
+            return currentHour >= 20 ? "Günü iyi kapatıyorsun" : "İyi gidiyorsun"
+
         case .defaultFlow:
-            if currentHour < 12 { return "☀️" }
-            if currentHour < 18 { return "👋" }
-            return "🌆"
+            switch heroDayPhase {
+            case .morning:
+                return "Günaydın"
+            case .afternoon:
+                return "İyi gidiyor"
+            case .evening, .night:
+                return "İyi akşamlar"
+            }
         }
     }
 
@@ -108,49 +71,7 @@ extension HomeDashboardView {
         case .completionWrapUp:
             return .green
         case .defaultFlow:
-            return palette.secondaryText
-        }
-    }
-
-    var headerPeopleButtonTitle: String {
-        switch homeLayoutMode {
-        case .crewFollowUp:
-            return "Crew"
-        case .focusActive:
-            return recentChatFriend != nil ? "Sohbet" : "Arkadaşlar"
-        default:
-            return "Arkadaşlar"
-        }
-    }
-
-    var headerPeopleButtonIcon: String {
-        switch homeLayoutMode {
-        case .crewFollowUp:
-            return "person.3.fill"
-        default:
-            return "person.2.fill"
-        }
-    }
-
-    var headerPeopleButtonFill: Color {
-        switch homeLayoutMode {
-        case .crewFollowUp:
-            return Color.pink.opacity(0.10)
-        case .insightsFollowUp:
-            return Color.orange.opacity(0.08)
-        default:
-            return palette.secondaryCardFill
-        }
-    }
-
-    var headerPeopleButtonStroke: Color {
-        switch homeLayoutMode {
-        case .crewFollowUp:
-            return Color.pink.opacity(0.20)
-        case .insightsFollowUp:
-            return Color.orange.opacity(0.18)
-        default:
-            return palette.cardStroke
+            return .blue
         }
     }
 
@@ -183,33 +104,33 @@ extension HomeDashboardView {
                 if let task = focusTask {
                     let course = task.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
                     if !course.isEmpty {
-                        return "\(course) odağındasın. Ritmi bozma."
+                        return "\(course) odağındasın"
                     }
                 }
-                return "Odak açık. Küçük ama net devam et."
+                return "Odak açık"
             }
-            return "Akışı koru."
+            return "Ritmini koru"
 
         case .crewFollowUp:
             if let activeSession = activeBackendCrewFocusSession {
-                return "\(activeSession.title) için crew akışı aktif."
+                return "\(activeSession.title) aktif"
             }
             if activeCrewTaskCount > 0 {
-                return "Kişisel taraf tamamlanınca crew tarafına geç."
+                return "Crew tarafında açık işler var"
             }
-            return "Ekip tarafında kontrol edilecek şeyler olabilir."
+            return "Crew akışına göz at"
 
         case .insightsFollowUp:
             if completedTodayCount > 0 {
-                return "Bugünkü ritmini içgörülerden daha net görebilirsin."
+                return "Bugünkü ritmini görebilirsin"
             }
-            return "Bugünün akışını hızlıca gözden geçirebilirsin."
+            return "Bugünün akışına göz at"
 
         case .completionWrapUp:
             if currentHour >= 20 {
-                return "Bugün sakin görünüyor. İstersen yarını planla."
+                return "Günü sakin kapatabilirsin"
             }
-            return "Bugünün yükü büyük ölçüde tamam."
+            return "Bugün iyi ilerliyorsun"
 
         case .defaultFlow:
             if let nextEvent {
@@ -218,23 +139,23 @@ extension HomeDashboardView {
                 let end = nextEvent.startMinute + nextEvent.durationMinute
 
                 if now >= start && now < end {
-                    return "\(nextEvent.title) aktif. Odağını koru."
+                    return "\(nextEvent.title) şu an aktif"
                 }
 
                 let diff = start - now
                 if diff > 0 && diff <= 45 {
-                    return "\(nextEvent.title) \(diff) dk sonra başlıyor."
+                    return "\(nextEvent.title) \(diff) dk sonra"
                 }
             }
 
             if let topTask = todayPendingTasks.first {
                 if store.isOverdue(topTask) {
-                    return "Önce geciken görevi temizlemek iyi olur."
+                    return "Önce geciken görevi temizle"
                 }
-                return "Bugün önce \(topTask.title) ile başla."
+                return "Bugün önce \(topTask.title)"
             }
 
-            return "Bugün sakin görünüyor. İstersen yarını planla."
+            return "Bugün sakin görünüyor"
         }
     }
 }

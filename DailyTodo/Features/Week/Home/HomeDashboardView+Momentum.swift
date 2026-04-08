@@ -9,20 +9,22 @@ import SwiftUI
 
 extension HomeDashboardView {
     var momentumCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(momentumCardTitle)
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Bugünkü İlerleme")
+                        .font(.system(size: 21, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
+                        .shadow(color: .white.opacity(0.04), radius: 2, y: 1)
 
                     Text(momentumCardSubtitle)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                         .foregroundStyle(palette.secondaryText)
+                        .lineLimit(2)
 
                     Text(momentumSubtitleText)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(momentumAccentColor.opacity(0.92))
+                        .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                        .foregroundStyle(momentumAccentColor.opacity(0.94))
                 }
 
                 Spacer()
@@ -31,21 +33,25 @@ extension HomeDashboardView {
                     onOpenInsights()
                 } label: {
                     HStack(spacing: 6) {
-                        Text(momentumCTAButtonTitle)
-                            .font(.system(size: 12, weight: .bold))
+                        Text("İçgörüler")
+                            .font(.system(size: 11.5, weight: .bold, design: .rounded))
+
                         Image(systemName: "arrow.right")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.system(size: 9.5, weight: .bold))
                     }
                     .foregroundStyle(palette.primaryText)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Capsule().fill(palette.secondaryCardFill))
+                    .padding(.horizontal, 13)
+                    .padding(.vertical, 9)
+                    .background(
+                        Capsule()
+                            .fill(palette.secondaryCardFill.opacity(0.96))
+                    )
                     .overlay(
                         Capsule()
                             .stroke(
                                 shouldEmphasizeMomentumCard
-                                ? Color.accentColor.opacity(0.24)
-                                : palette.cardStroke,
+                                ? momentumAccentColor.opacity(0.14)
+                                : palette.cardStroke.opacity(0.88),
                                 lineWidth: 1
                             )
                     )
@@ -53,58 +59,84 @@ extension HomeDashboardView {
                 .buttonStyle(.plain)
             }
 
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("\(Int(todayProgressValue * 100))%")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(momentumAccentColor)
+            HStack(alignment: .bottom) {
+                Text(momentumPercentageText)
+                    .font(.system(size: 38, weight: .bold, design: .rounded))
+                    .foregroundStyle(momentumAccentColor)
+                    .monospacedDigit()
+                    .shadow(color: momentumAccentColor.opacity(0.12), radius: 6)
 
-                    Spacer()
+                Spacer()
 
-                    Text("\(completedTodayCount)/\(max(totalTodayTaskCount, 1))")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(palette.primaryText)
-                }
-
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(palette.secondaryCardFill)
-
-                        Capsule()
-                            .fill(momentumAccentColor)
-                            .frame(width: max(10, geo.size.width * todayProgressValue))
-                    }
-                }
-                .frame(height: 10)
+                Text("\(completedTodayBoardCount)/\(max(todayBoardTasks.count, 1))")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(palette.primaryText)
+                    .monospacedDigit()
             }
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    palette.secondaryCardFill.opacity(0.96),
+                                    palette.secondaryCardFill.opacity(0.88)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    momentumAccentColor.opacity(0.92),
+                                    momentumAccentColor.opacity(0.76)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: max(12, geo.size.width * boardTodayProgressValue))
+                        .shadow(color: momentumAccentColor.opacity(0.20), radius: 8, y: 2)
+                }
+            }
+            .frame(height: 12)
 
             HStack(spacing: 8) {
                 smallStatsChip(title: "Seri", value: "\(streakCount)", tint: .orange)
-                smallStatsChip(title: "Biten", value: "\(completedTodayCount)", tint: .green)
-                smallStatsChip(title: "Kalan", value: "\(todayTasks.count)", tint: .blue)
+                smallStatsChip(title: "Biten", value: "\(completedTodayBoardCount)", tint: .green)
+                smallStatsChip(title: "Kalan", value: "\(todayPendingBoardCount)", tint: .blue)
             }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(adaptiveMomentumBackground)
         .shadow(
-            color: shouldEmphasizeMomentumCard ? Color.accentColor.opacity(0.10) : .clear,
-            radius: shouldEmphasizeMomentumCard ? 12 : 0,
+            color: shouldEmphasizeMomentumCard ? momentumAccentColor.opacity(0.07) : .clear,
+            radius: shouldEmphasizeMomentumCard ? 10 : 0,
             y: shouldEmphasizeMomentumCard ? 4 : 0
         )
     }
-    
+
     var hasVisibleUpcomingExamMomentum: Bool {
         nearestRelevantExam != nil
     }
 
-    var todayRemainingCount: Int {
-        max(totalTodayTaskCount - completedTodayCount, 0)
+    var boardTodayProgressValue: CGFloat {
+        guard !todayBoardTasks.isEmpty else { return 0 }
+        let value = Double(completedTodayBoardCount) / Double(todayBoardTasks.count)
+        return CGFloat(min(max(value, 0), 1))
+    }
+
+    var boardTodayRemainingCount: Int {
+        max(todayBoardTasks.count - completedTodayBoardCount, 0)
     }
 
     var isDayEffectivelyComplete: Bool {
-        totalTodayTaskCount > 0 && todayRemainingCount == 0
+        !todayBoardTasks.isEmpty && boardTodayRemainingCount == 0
     }
 
     var shouldUseExamMomentumTone: Bool {
@@ -119,46 +151,28 @@ extension HomeDashboardView {
         resolvedHeroKind == .wrapUp || homeLayoutMode == .completionWrapUp
     }
 
+    var momentumPercentageText: String {
+        "\(Int((boardTodayProgressValue * 100).rounded()))%"
+    }
+
     var momentumSubtitleText: String {
-        if todayTasks.isEmpty && completedTodayCount == 0 {
+        if todayBoardTasks.isEmpty {
             return "Bugün sakin. İstersen küçük bir başlangıç yap."
         }
 
-        if todayProgressValue >= 1 {
+        if boardTodayProgressValue >= 1 {
             return "Bugünü temiz kapattın. Harika."
         }
 
-        if todayProgressValue >= 0.6 {
+        if boardTodayProgressValue >= 0.6 {
             return "İyi gidiyorsun. Bir adım daha var."
         }
 
+        if boardTodayProgressValue > 0 {
+            return "Başladın. Birkaç görev daha günü güçlendirir."
+        }
+
         return "Küçük bir adım bile ivme yaratır."
-    }
-    var momentumCardTitle: String {
-        if shouldUseExamMomentumTone {
-            return "Hazırlık Durumu"
-        }
-
-        if shouldUseNoTaskMomentumTone {
-            return "Bugün İçin Alan Var"
-        }
-
-        if isDayEffectivelyComplete {
-            return "Bugün Tamam"
-        }
-
-        switch homeLayoutMode {
-        case .focusActive:
-            return "Odak Ritmi"
-        case .crewFollowUp:
-            return "Kişisel Durumun"
-        case .insightsFollowUp:
-            return "Bugünün Özeti"
-        case .completionWrapUp:
-            return "Gün Özeti"
-        case .defaultFlow:
-            return "Bugünkü İlerleme"
-        }
     }
 
     var momentumCardSubtitle: String {
@@ -166,7 +180,7 @@ extension HomeDashboardView {
             let courseTitle = exam.courseName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 ? exam.title
                 : exam.courseName
-            return "\(courseTitle) için ritmini burada takip edebilirsin."
+            return "\(courseTitle) yaklaşırken bugünkü ritmini takip et."
         }
 
         if shouldUseNoTaskMomentumTone {
@@ -184,19 +198,19 @@ extension HomeDashboardView {
             return "Bugün için belirlediğin işler tamamlandı."
         }
 
-        if todayProgressValue >= 0.6 {
+        if boardTodayProgressValue >= 0.6 {
             return "Ritmin oluştu. Birkaç adım daha günü güçlü kapatır."
         }
 
-        if todayProgressValue > 0 {
-            return "Başlangıç yaptın. Devamı gelirse gün çok daha netleşir."
+        if boardTodayProgressValue > 0 {
+            return "Başlangıç yaptın. Devam edersen gün çok daha netleşir."
         }
 
         switch homeLayoutMode {
         case .focusActive:
             return "Şu an ritmini koruman en önemli şey."
         case .crewFollowUp:
-            return "Kişisel tarafı netleştirip sonra crew akışına geçebilirsin."
+            return "Önce kişisel tarafı toparlayıp sonra crew akışına geçebilirsin."
         case .insightsFollowUp:
             return "Bugünkü akışının kısa özeti burada."
         case .completionWrapUp:
@@ -219,7 +233,6 @@ extension HomeDashboardView {
         }
     }
 
-
     var shouldEmphasizeQuickActionsCard: Bool {
         switch homeLayoutMode {
         case .completionWrapUp, .crewFollowUp:
@@ -227,22 +240,6 @@ extension HomeDashboardView {
         default:
             return false
         }
-    }
-
-    var momentumCTAButtonTitle: String {
-        if shouldUseExamMomentumTone {
-            return "Hazırlık"
-        }
-
-        if shouldUseNoTaskMomentumTone {
-            return "Plan"
-        }
-
-        if shouldUseWrapUpMomentumTone {
-            return "Detaylar"
-        }
-
-        return "İçgörüler"
     }
 
     var momentumAccentColor: Color {
@@ -258,11 +255,11 @@ extension HomeDashboardView {
             return .green
         }
 
-        if todayProgressValue >= 0.6 {
+        if boardTodayProgressValue >= 0.6 {
             return .green
         }
 
-        if todayProgressValue > 0 {
+        if boardTodayProgressValue > 0 {
             return .blue
         }
 
@@ -281,28 +278,52 @@ extension HomeDashboardView {
     }
 
     var adaptiveMomentumBackground: some View {
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(palette.cardFill)
+        RoundedRectangle(cornerRadius: 30, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        palette.cardFill,
+                        palette.cardFill.opacity(0.97)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
             .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .fill(
                         RadialGradient(
                             colors: [
-                                shouldEmphasizeMomentumCard ? momentumAccentColor.opacity(0.10) : Color.clear,
+                                shouldEmphasizeMomentumCard ? momentumAccentColor.opacity(0.10) : momentumAccentColor.opacity(0.04),
                                 Color.clear
                             ],
                             center: .topLeading,
-                            startRadius: 12,
-                            endRadius: 220
+                            startRadius: 8,
+                            endRadius: 180
                         )
                     )
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                momentumAccentColor.opacity(0.06),
+                                Color.clear
+                            ],
+                            center: .bottomTrailing,
+                            startRadius: 10,
+                            endRadius: 220
+                        )
+                    )
+                    .blur(radius: 10)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .stroke(
                         shouldEmphasizeMomentumCard
-                        ? momentumAccentColor.opacity(0.24)
-                        : palette.cardStroke,
+                        ? momentumAccentColor.opacity(0.14)
+                        : palette.cardStroke.opacity(0.86),
                         lineWidth: 1
                     )
             )
