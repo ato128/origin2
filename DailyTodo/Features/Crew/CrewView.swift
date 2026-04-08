@@ -245,7 +245,7 @@ private extension CrewView {
             ZStack(alignment: .leading) {
                 if appTheme == AppTheme.gradient.rawValue {
                     Text("crew_title")
-                        .font(.system(size: 68, weight: .black, design: .rounded))
+                        .font(.system(size: 56, weight: .black, design: .rounded))
                         .foregroundStyle(
                             LinearGradient(
                                 colors: [
@@ -256,9 +256,9 @@ private extension CrewView {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .blur(radius: 3)
-                        .opacity(0.55)
-                        .offset(x: 2, y: -6)
+                        .blur(radius: 2)
+                        .opacity(0.34)
+                        .offset(x: 2, y: -4)
                 }
 
                 Text("crew_title")
@@ -267,7 +267,7 @@ private extension CrewView {
             }
 
             HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text("crew_your_space")
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
@@ -275,6 +275,16 @@ private extension CrewView {
                     Text("crew_header_subtitle")
                         .font(.subheadline)
                         .foregroundStyle(palette.secondaryText)
+
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color.blue)
+                            .frame(width: 6, height: 6)
+
+                        Text("Aktif alan")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(palette.secondaryText)
+                    }
                 }
 
                 Spacer()
@@ -365,8 +375,8 @@ private extension CrewView {
                                     isSelected
                                     ? LinearGradient(
                                         colors: [
-                                            Color.accentColor.opacity(0.22),
-                                            Color.accentColor.opacity(0.12)
+                                            Color.blue.opacity(0.40),
+                                            Color.purple.opacity(0.28)
                                         ],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
@@ -402,10 +412,10 @@ private extension CrewView {
         .padding(6)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(palette.cardFill)
+                .fill(.ultraThinMaterial)
                 .overlay(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(palette.cardStroke, lineWidth: 1)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
                 )
         )
     }
@@ -436,34 +446,54 @@ private extension CrewView {
         let totalMembers = crewStore.memberCountByCrew.values.reduce(0, +)
         let totalTasks = crewStore.taskCountByCrew.values.reduce(0, +)
 
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack {
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("crew_overview")
-                        .font(.headline)
+                    Text("Genel Bakış")
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
 
-                    Text("crew_overview_subtitle")
-                        .font(.caption)
+                    Text("Takım üretkenliğine hızlı bakış")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundStyle(palette.secondaryText)
                 }
 
                 Spacer()
 
-                Image(systemName: "person.3.sequence.fill")
-                    .font(.title3)
-                    .foregroundStyle(Color.accentColor)
+                ZStack {
+                    Circle()
+                        .fill(Color.blue.opacity(0.14))
+                        .frame(width: 42, height: 42)
+
+                    Image(systemName: "person.3.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Color.blue)
+                }
             }
 
-            HStack(spacing: 10) {
-                statPill(title: "\(totalCrews)", subtitle: String(localized: "crew_tab_crews"))
-                statPill(title: "\(totalMembers)", subtitle: String(localized: "crew_members"))
-                statPill(title: "\(totalTasks)", subtitle: String(localized: "crew_tasks"))
+            HStack(spacing: 12) {
+                premiumOverviewStatPill(
+                    value: "\(totalCrews)",
+                    title: "Crewler",
+                    tint: Color.blue
+                )
+
+                premiumOverviewStatPill(
+                    value: "\(totalMembers)",
+                    title: "Üyeler",
+                    tint: Color.purple
+                )
+
+                premiumOverviewStatPill(
+                    value: "\(totalTasks)",
+                    title: "Görevler",
+                    tint: Color.orange
+                )
             }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
+        .background(overviewCardBackground(iconTint: Color.blue))
     }
     func localizedCrewMembersTasks(memberCount: Int, taskCount: Int) -> String {
         if locale.language.languageCode?.identifier == "tr" {
@@ -536,109 +566,158 @@ private extension CrewView {
         let pendingCount = max(0, taskCount - completedTasks)
         let progress = taskCount == 0 ? 0.0 : Double(completedTasks) / Double(taskCount)
 
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 12) {
+        let accent = hexColor(crew.color_hex)
+        let warmTint = crewWarmTint(for: accent)
+        let coolTint = crewCoolTint(for: accent)
+
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 12) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(hexColor(crew.color_hex).opacity(0.18))
-                        .frame(width: 52, height: 52)
+                        .fill(accent.opacity(0.18))
+                        .frame(width: 48, height: 48)
+
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                        .frame(width: 48, height: 48)
 
                     Image(systemName: crew.icon)
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(hexColor(crew.color_hex))
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(accent)
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(crew.name)
-                        .font(.headline)
-                        .foregroundStyle(palette.primaryText)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.98))
                         .lineLimit(1)
 
                     Text(localizedCrewMembersTasks(memberCount: memberCount, taskCount: taskCount))
-                        .font(.caption)
-                        .foregroundStyle(palette.secondaryText)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.70))
+                        .lineLimit(1)
                 }
 
-                Spacer()
+                Spacer(minLength: 10)
 
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(palette.tertiaryText)
-            }
+                VStack(alignment: .trailing, spacing: 3) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.36))
 
-            HStack(alignment: .center) {
-                backendAvatarStack(memberCount: memberCount, tint: hexColor(crew.color_hex))
+                    Spacer(minLength: 8)
 
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 2) {
                     Text("\(Int(progress * 100))%")
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(palette.primaryText)
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .monospacedDigit()
 
-                    Text("crew_completed")
-                        .font(.caption2)
-                        .foregroundStyle(palette.secondaryText)
+                    Text("tamamlandı")
+                        .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.62))
                 }
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("crew_progress")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(palette.secondaryText)
+            Spacer(minLength: 11)
 
-                    Spacer()
+            HStack(alignment: .bottom) {
+                VStack(alignment: .leading, spacing: 9) {
+                    backendAvatarStack(memberCount: memberCount, tint: accent)
 
-                    Text(localizedDoneLeft(done: completedTasks, left: pendingCount))
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(palette.secondaryText)
+                    Text("İlerleme")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.74))
                 }
 
-                ProgressView(value: progress)
-                    .tint(hexColor(crew.color_hex))
-                    .scaleEffect(y: 1.7)
-                    .animation(.easeInOut, value: progress)
+                Spacer()
+
+                Text(localizedDoneLeft(done: completedTasks, left: pendingCount))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.72))
+                    .multilineTextAlignment(.trailing)
             }
+
+            Spacer(minLength: 10)
+
+            if progress == 1 {
+                Text("Tüm görevler tamamlandı")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.green)
+            } else {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color.white.opacity(0.14))
+                            .frame(height: 9)
+
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        warmTint,
+                                        accent,
+                                        coolTint
+                                    ],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .frame(
+                                width: max(36, geo.size.width * progress),
+                                height: 9
+                            )
+                    }
+                }
+                .frame(height: 9)
+            }
+            Spacer(minLength: 10)
 
             HStack(spacing: 10) {
                 miniPill(
                     icon: "checkmark.circle.fill",
                     text: localizedCompletedTasksText(done: completedTasks, total: taskCount),
-                    tint: hexColor(crew.color_hex)
+                    tint: accent
                 )
 
                 miniPill(
                     icon: "person.crop.circle.fill",
                     text: memberCount > 0 ? localizedMembersOnly(memberCount) : String(localized: "crew_no_members"),
-                    tint: .secondary
+                    tint: .white.opacity(0.72)
                 )
             }
 
+            Spacer(minLength: 12)
+
             HStack(spacing: 8) {
                 Image(systemName: "bolt.horizontal.circle.fill")
-                    .foregroundStyle(hexColor(crew.color_hex))
+                    .foregroundStyle(accent)
 
-                Text(taskCount > 0 ? String(localized: "crew_shared_tasks_active") : String(localized: "crew_ready_for_shared_tasks"))
-                    .font(.caption)
-                    .foregroundStyle(palette.secondaryText)
+                Text(taskCount > 0 ? "Paylaşılan görevler aktif" : "Crew hazır")
+                    .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.70))
                     .lineLimit(1)
 
                 Spacer()
 
-                Text("week_now")
-                    .font(.caption2)
-                    .foregroundStyle(palette.tertiaryText)
+                Text("Şimdi")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.44))
             }
-            .padding(.top, 2)
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
-        .shadow(
-            color: hexColor(crew.color_hex).opacity(0.12),
-            radius: 10,
-            y: 6
+        .padding(.horizontal, 18)
+        .padding(.top, 17)
+        .padding(.bottom, 15)
+        .frame(maxWidth: .infinity, minHeight: 214, alignment: .topLeading)
+        .background(
+            crewPremiumCardBackground(
+                accent: accent,
+                warmTint: warmTint,
+                coolTint: coolTint
+            )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .stroke(Color.white.opacity(0.07), lineWidth: 1)
         )
     }
     
@@ -653,35 +732,35 @@ private extension CrewView {
 
     func backendAvatarStack(memberCount: Int, tint: Color) -> some View {
         HStack(spacing: -10) {
-            ForEach(0..<min(memberCount, 4), id: \.self) { _ in
+            ForEach(0..<min(memberCount, 3), id: \.self) { _ in
                 ZStack {
                     Circle()
-                        .fill(palette.cardFill)
+                        .fill(Color.white.opacity(0.08))
                         .frame(width: 30, height: 30)
 
                     Circle()
-                        .fill(palette.secondaryCardFill)
-                        .frame(width: 26, height: 26)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                        .frame(width: 30, height: 30)
 
                     Image(systemName: "person.fill")
-                        .font(.caption.weight(.semibold))
+                        .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(tint)
                 }
             }
 
-            if memberCount > 4 {
+            if memberCount > 3 {
                 ZStack {
                     Circle()
-                        .fill(palette.cardFill)
+                        .fill(Color.white.opacity(0.08))
                         .frame(width: 30, height: 30)
 
                     Circle()
-                        .fill(Color.accentColor.opacity(0.14))
-                        .frame(width: 26, height: 26)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                        .frame(width: 30, height: 30)
 
-                    Text("+\(memberCount - 4)")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(Color.accentColor)
+                    Text("+\(memberCount - 3)")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.88))
                 }
             }
         }
@@ -728,6 +807,8 @@ private extension CrewView {
                     Text("crew_your_friends")
                         .font(.headline)
                         .foregroundStyle(palette.primaryText)
+                        .padding(.top, 6)
+                        .padding(.bottom, 4)
 
                     ForEach(backendFriends) { friend in
                         friendRow(friend)
@@ -1135,39 +1216,59 @@ private extension CrewView {
     }
 
     var friendsOverviewCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("crew_tab_friends")
-                        .font(.headline)
+                    Text("Arkadaşlar")
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
 
-                    Text("crew_friends_overview_subtitle")
-                        .font(.caption)
+                    Text("Paylaşılan programlar ve direkt iş birliği")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundStyle(palette.secondaryText)
                 }
 
                 Spacer()
 
-                Image(systemName: "person.2.fill")
-                    .font(.title3)
-                    .foregroundStyle(Color.accentColor)
+                ZStack {
+                    Circle()
+                        .fill(Color.blue.opacity(0.14))
+                        .frame(width: 42, height: 42)
+
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Color.blue)
+                }
             }
 
-            HStack(spacing: 10) {
-                statPill(title: "\(backendFriends.count)", subtitle: String(localized: "crew_tab_friends"))
-                statPill(title: "\(incomingRequests.count + sentRequests.count)", subtitle: String(localized: "crew_requests"))
-                statPill(title: "\(activeFriendFocusCount)", subtitle: String(localized: "crew_in_focus"))
+            HStack(spacing: 12) {
+                premiumOverviewStatPill(
+                    value: "\(backendFriends.count)",
+                    title: "Arkadaşlar",
+                    tint: Color.blue
+                )
+
+                premiumOverviewStatPill(
+                    value: "\(incomingRequests.count + sentRequests.count)",
+                    title: "İstekler",
+                    tint: Color.orange
+                )
+
+                premiumOverviewStatPill(
+                    value: "\(activeFriendFocusCount)",
+                    title: "Odakta",
+                    tint: Color.green
+                )
             }
 
             if activeFriendFocusCount > 0 {
                 HStack(spacing: 8) {
                     Circle()
                         .fill(.green)
-                        .frame(width: 8, height: 8)
+                        .frame(width: 7, height: 7)
 
                     Text(localizedFriendsStudyingNow(activeFriendFocusCount))
-                        .font(.caption.weight(.semibold))
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .foregroundStyle(palette.secondaryText)
 
                     Spacer()
@@ -1177,10 +1278,10 @@ private extension CrewView {
                 HStack(spacing: 8) {
                     Circle()
                         .fill(.orange)
-                        .frame(width: 8, height: 8)
+                        .frame(width: 7, height: 7)
 
                     Text(localizedPendingFriendRequests(incomingRequests.count))
-                        .font(.caption.weight(.semibold))
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .foregroundStyle(palette.secondaryText)
 
                     Spacer()
@@ -1190,7 +1291,7 @@ private extension CrewView {
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
+        .background(overviewCardBackground(iconTint: Color.blue))
     }
     
   
@@ -1234,21 +1335,38 @@ private extension CrewView {
         .background(cardBackground)
     }
 
-    func statPill(title: String, subtitle: String) -> some View {
-        VStack(spacing: 4) {
-            Text(title)
-                .font(.headline.weight(.bold))
+    func premiumOverviewStatPill(value: String, title: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(value)
+                .font(.system(size: 24, weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
+                .monospacedDigit()
 
-            Text(subtitle)
-                .font(.caption2)
+            Text(title)
+                .font(.system(size: 11.5, weight: .semibold, design: .rounded))
                 .foregroundStyle(palette.secondaryText)
+                .lineLimit(1)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 14)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(palette.secondaryCardFill)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            tint.opacity(0.10),
+                            tint.opacity(0.05),
+                            Color.white.opacity(0.02)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(tint.opacity(0.10), lineWidth: 1)
         )
     }
 
@@ -1326,7 +1444,16 @@ private extension CrewView {
             HStack(spacing: 12) {
                 ZStack {
                     Circle()
-                        .fill(hexColor(friend.colorHex).opacity(0.16))
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.blue.opacity(0.45),
+                                    Color.purple.opacity(0.30)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
                         .frame(width: 46, height: 46)
 
                     Image(systemName: friend.avatarSymbol)
@@ -1367,6 +1494,10 @@ private extension CrewView {
                         Circle()
                             .fill(isOnline ? Color.green : Color.gray.opacity(0.5))
                             .frame(width: 8, height: 8)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.black.opacity(0.85), lineWidth: 2)
+                            )
 
                         Text(isOnline ? String(localized: "chat_online") : String(localized: "friend_info_offline"))
                             .font(.caption2)
@@ -1387,6 +1518,7 @@ private extension CrewView {
                             .stroke(palette.cardStroke, lineWidth: 1)
                     )
             )
+            .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
         }
         .buttonStyle(.plain)
         .simultaneousGesture(
@@ -1443,12 +1575,16 @@ private extension CrewView {
             Image(systemName: icon)
             Text(text)
         }
-        .font(.caption.weight(.semibold))
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .font(.system(size: 11, weight: .semibold, design: .rounded))
+        .padding(.horizontal, 11)
+        .padding(.vertical, 7)
         .background(
             Capsule()
-                .fill(tint.opacity(0.12))
+                .fill(Color.white.opacity(0.08))
+        )
+        .overlay(
+            Capsule()
+                .stroke(tint.opacity(0.16), lineWidth: 1)
         )
         .foregroundStyle(tint)
     }
@@ -1483,6 +1619,121 @@ private extension CrewView {
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(palette.cardStroke, lineWidth: 1)
+            )
+    }
+    func crewWarmTint(for accent: Color) -> Color {
+        Color(red: 0.98, green: 0.52, blue: 0.34)
+    }
+
+    func crewCoolTint(for accent: Color) -> Color {
+        Color(red: 0.46, green: 0.22, blue: 0.88)
+    }
+
+    func crewPremiumCardBackground(
+        accent: Color,
+        warmTint: Color,
+        coolTint: Color
+    ) -> some View {
+        RoundedRectangle(cornerRadius: 30, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        warmTint.opacity(0.20),
+                        accent.opacity(0.14),
+                        coolTint.opacity(0.20),
+                        Color(red: 0.11, green: 0.04, blue: 0.12)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.11),
+                                Color.clear,
+                                Color.clear
+                            ],
+                            startPoint: .top,
+                            endPoint: .center
+                        )
+                    )
+                    .blendMode(.screen)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                warmTint.opacity(0.14),
+                                Color.clear
+                            ],
+                            center: .topLeading,
+                            startRadius: 8,
+                            endRadius: 120
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                coolTint.opacity(0.18),
+                                Color.clear
+                            ],
+                            center: .bottomTrailing,
+                            startRadius: 8,
+                            endRadius: 160
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.black.opacity(0.00),
+                                Color.black.opacity(0.07),
+                                Color.black.opacity(0.16)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+            )
+    }
+    func overviewCardBackground(iconTint: Color) -> some View {
+        RoundedRectangle(cornerRadius: 24, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        palette.cardFill,
+                        palette.cardFill.opacity(0.97)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.035),
+                                iconTint.opacity(0.03),
+                                Color.clear
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
             )
     }
 }

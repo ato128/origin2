@@ -17,150 +17,334 @@ extension WeekView {
     var pickerSection: some View {
         Section {
             VStack(spacing: 10) {
-                personalWeekHeroCard
                 personalDayPickerSection
             }
         }
-        .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 6, trailing: 16))
+        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 6, trailing: 16))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
 
-    var personalWeekHeroCard: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Haftalık Plan")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(palette.secondaryText)
-
-                Text(heroTitleText)
-                    .font(.system(size: 23, weight: .bold, design: .rounded))
-                    .foregroundStyle(palette.primaryText)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-
-                Text(heroSubtitleText)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(palette.secondaryText)
-                    .lineLimit(1)
-            }
-
-            Spacer(minLength: 10)
-
-            ZStack {
-                Circle()
-                    .fill(heroAccentColor.opacity(0.12))
-                    .frame(width: 42, height: 42)
-
-                Image(systemName: heroSymbolName)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(heroAccentColor)
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(palette.cardFill)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(
-                            RadialGradient(
-                                colors: [
-                                    heroAccentColor.opacity(0.08),
-                                    Color.clear
-                                ],
-                                center: .topTrailing,
-                                startRadius: 10,
-                                endRadius: 180
-                            )
-                        )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(heroAccentColor.opacity(0.12), lineWidth: 1)
-                )
-        )
-        .shadow(color: heroAccentColor.opacity(0.06), radius: 8, y: 3)
-    }
-
-
     var personalDayPickerSection: some View {
-        HStack(spacing: 7) {
+        HStack(spacing: 6) {
             ForEach(dayTitles.indices, id: \.self) { day in
-                let tint = dayIndicatorColor(for: day)
-                let isSelected = selectedDay == day
-                let isToday = day == weekdayIndexToday()
-
-                Button {
-                    withAnimation(.spring(response: 0.26, dampingFraction: 0.86)) {
-                        selectedDay = day
-                    }
-                } label: {
-                    VStack(spacing: 4) {
-                        Text(localizedDayTitle(day))
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(isSelected ? palette.primaryText : palette.secondaryText)
-
-                        Text("\(Calendar.current.component(.day, from: targetDateFor(day: day)))")
-                            .font(.system(size: 15, weight: .bold, design: .rounded))
-                            .foregroundStyle(palette.primaryText)
-                            .monospacedDigit()
-
-                        ZStack {
-                            if isSelected {
-                                Capsule()
-                                    .fill(tint)
-                                    .frame(width: 14, height: 3.5)
-                            } else {
-                                Circle()
-                                    .fill(isToday ? tint : Color.white.opacity(0.12))
-                                    .frame(width: isToday ? 5.5 : 4, height: isToday ? 5.5 : 4)
-                            }
-                        }
-                        .frame(height: 7)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(
-                                isSelected
-                                ? tint.opacity(0.13)
-                                : Color.white.opacity(0.025)
-                            )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(
-                                isSelected
-                                ? tint.opacity(0.20)
-                                : Color.white.opacity(0.05),
-                                lineWidth: 1
-                            )
-                    )
-                    .shadow(
-                        color: isSelected ? tint.opacity(0.06) : .clear,
-                        radius: isSelected ? 6 : 0,
-                        y: isSelected ? 2 : 0
-                    )
-                }
-                .buttonStyle(.plain)
+                dayPickerButton(for: day)
             }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(palette.cardFill)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            palette.cardFill,
+                            palette.cardFill.opacity(0.96)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .overlay(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .stroke(Color.white.opacity(0.06), lineWidth: 1)
                 )
         )
+        .padding(.horizontal, 2)
     }
-    
-    
+
+    @ViewBuilder
+    func dayPickerButton(for day: Int) -> some View {
+        let tint = dayAccent(for: day)
+        let isSelected = selectedDay == day
+        let isToday = day == weekdayIndexToday()
+        let hasItems = hasItemsOnDay(day)
+        let isLiveDay = liveEventFor(day: day) != nil
+        let indicatorColor = isLiveDay ? Color.green : tint
+        let dotColor = isLiveDay ? Color.green : (hasItems ? tint.opacity(0.95) : Color.white.opacity(0.10))
+        let backgroundColor = isSelected ? indicatorColor.opacity(0.13) : Color.white.opacity(0.018)
+        let strokeColor = isSelected ? indicatorColor.opacity(0.20) : Color.white.opacity(0.05)
+        let shadowColor = isSelected ? indicatorColor.opacity(0.05) : .clear
+        let dotSize: CGFloat = (isToday || isLiveDay) ? 5.5 : 4
+
+        Button {
+            withAnimation(.spring(response: 0.24, dampingFraction: 0.86)) {
+                selectedDay = day
+            }
+        } label: {
+            VStack(spacing: 4) {
+                Text(localizedDayTitle(day))
+                    .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                    .foregroundStyle(isSelected ? palette.primaryText : palette.secondaryText)
+                    .lineLimit(1)
+
+                Text("\(Calendar.current.component(.day, from: targetDateFor(day: day)))")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(palette.primaryText)
+                    .monospacedDigit()
+
+                ZStack {
+                    if isSelected {
+                        Capsule()
+                            .fill(indicatorColor)
+                            .frame(width: 14, height: 3.5)
+                    } else {
+                        Circle()
+                            .fill(dotColor)
+                            .frame(width: dotSize, height: dotSize)
+                    }
+                }
+                .frame(height: 7)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 7)
+            .background(
+                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    .fill(backgroundColor)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    .stroke(strokeColor, lineWidth: 1)
+            )
+            .shadow(
+                color: shadowColor,
+                radius: isSelected ? 5 : 0,
+                y: isSelected ? 2 : 0
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    func eventsFor(day: Int) -> [EventItem] {
+        let calendar = Calendar.current
+        let targetDate = targetDateFor(day: day)
+
+        return userScopedEvents
+            .filter { ev in
+                guard !ev.isCompleted else { return false }
+
+                if let scheduledDate = ev.scheduledDate {
+                    return calendar.isDate(scheduledDate, inSameDayAs: targetDate)
+                } else {
+                    return ev.weekday == day
+                }
+            }
+            .sorted { $0.startMinute < $1.startMinute }
+    }
+
+    func liveEventFor(day: Int) -> EventItem? {
+        guard day == weekdayIndexToday() else { return nil }
+
+        let now = currentMinuteOfDay()
+        return eventsFor(day: day).first(where: { ev in
+            now >= ev.startMinute && now < (ev.startMinute + ev.durationMinute)
+        })
+    }
+
+    func dayAccent(for day: Int) -> Color {
+        if liveEventFor(day: day) != nil {
+            return .green
+        }
+
+        let items = eventsFor(day: day)
+
+        if items.isEmpty {
+            return Color.white.opacity(0.16)
+        }
+
+        if let first = items.first {
+            return hexColor(first.colorHex)
+        }
+
+        return .blue
+    }
+
+    func hasItemsOnDay(_ day: Int) -> Bool {
+        !eventsFor(day: day).isEmpty
+    }
+
+    var daySummaryCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(localizedDayTitle(selectedDay))
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .foregroundStyle(palette.primaryText)
+
+                        if isTodaySelected {
+                            capsuleMicroTag("Bugün", tint: .orange)
+                        }
+
+                        if liveEventForDay != nil {
+                            capsuleMicroTag("Canlı", tint: .green)
+                        }
+                    }
+
+                    Text(summarySubtitle)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(palette.secondaryText)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 8)
+
+                if totalMinutesForDay > 0 {
+                    Text(durationText(totalMinutesForDay))
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
+                        .monospacedDigit()
+                }
+            }
+
+            HStack(spacing: 8) {
+                summaryChip(
+                    title: "Ders",
+                    value: "\(eventsForDay.count)",
+                    icon: "book.closed.fill",
+                    tint: liveEventForDay != nil ? .green : heroAccentColor
+                )
+
+                summaryChip(
+                    title: "İlk",
+                    value: firstEventOfDay.map { hm($0.startMinute) } ?? "--:--",
+                    icon: "sunrise.fill",
+                    tint: .orange
+                )
+
+                summaryChip(
+                    title: "Son",
+                    value: lastEventOfDay.map { hm($0.startMinute + $0.durationMinute) } ?? "--:--",
+                    icon: "moon.stars.fill",
+                    tint: .purple
+                )
+            }
+
+            if let live = liveEventForDay {
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(.green)
+                        .frame(width: 6, height: 6)
+
+                    Text(localizedLiveClassText(live.title))
+                        .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
+                        .lineLimit(1)
+
+                    Spacer()
+
+                    Text(timeText(for: live))
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(palette.secondaryText)
+                        .lineLimit(1)
+                }
+                .padding(.top, 1)
+            } else if let info = currentTimeIndicatorText {
+                HStack(spacing: 8) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 10.5, weight: .bold))
+                        .foregroundStyle(palette.secondaryText)
+
+                    Text(info)
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(palette.secondaryText)
+                        .lineLimit(1)
+
+                    Spacer()
+                }
+                .padding(.top, 1)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 13)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            palette.cardFill,
+                            palette.cardFill.opacity(0.97)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.03),
+                                    heroAccentColor.opacity(0.028),
+                                    Color.clear
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                )
+        )
+        .shadow(color: heroAccentColor.opacity(0.04), radius: 7, y: 2)
+        .padding(.horizontal, 2)
+    }
+
+    func summaryChip(title: String, value: String, icon: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label(title, systemImage: icon)
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .foregroundStyle(tint)
+                .lineLimit(1)
+
+            Text(value)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(palette.primaryText)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            tint.opacity(0.10),
+                            tint.opacity(0.06)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                .stroke(tint.opacity(0.10), lineWidth: 1)
+        )
+    }
+
+    func personalTimelineSectionHeader(_ title: String, systemImage: String) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: systemImage)
+                .font(.system(size: 10.5, weight: .bold))
+                .foregroundStyle(palette.secondaryText)
+
+            Text(title)
+                .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                .foregroundStyle(palette.secondaryText)
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 4)
+        .padding(.bottom, 3)
+    }
+
     var summarySection: some View {
         daySummaryCard
             .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 10, trailing: 16))
@@ -173,12 +357,12 @@ extension WeekView {
             HStack(spacing: 10) {
                 ZStack {
                     Circle()
-                        .fill(Color.accentColor.opacity(0.14))
+                        .fill(heroAccentColor.opacity(0.14))
                         .frame(width: 38, height: 38)
 
-                    Image(systemName: "calendar.badge.exclamationmark")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(Color.accentColor)
+                    Image(systemName: "calendar")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(heroAccentColor)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -187,7 +371,7 @@ extension WeekView {
                         .foregroundStyle(palette.primaryText)
 
                     Text("Bugün için planlı bir ders ya da etkinlik görünmüyor.")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundStyle(palette.secondaryText)
                 }
 
@@ -199,7 +383,7 @@ extension WeekView {
                     .foregroundStyle(Color.accentColor)
 
                 Text("Sağ üstten yeni ders veya etkinlik ekleyebilirsin")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.accentColor)
             }
             .padding(.horizontal, 12)
@@ -213,7 +397,16 @@ extension WeekView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(palette.cardFill)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            palette.cardFill,
+                            palette.cardFill.opacity(0.97)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .overlay(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .stroke(palette.cardStroke, lineWidth: 1)
@@ -323,141 +516,6 @@ extension WeekView {
         .padding(.top, 2)
     }
 
-    var daySummaryCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: 8) {
-                        Text(localizedDayTitle(selectedDay))
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
-                            .foregroundStyle(palette.primaryText)
-
-                        if isTodaySelected {
-                            capsuleMicroTag("Bugün", tint: .orange)
-                        }
-
-                        if liveEventForDay != nil {
-                            capsuleMicroTag("Canlı", tint: .green)
-                        }
-                    }
-
-                    Text(summarySubtitle)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(palette.secondaryText)
-                        .lineLimit(2)
-                }
-
-                Spacer()
-
-                if totalMinutesForDay > 0 {
-                    Text(durationText(totalMinutesForDay))
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
-                        .foregroundStyle(palette.primaryText)
-                        .monospacedDigit()
-                }
-            }
-
-            HStack(spacing: 10) {
-                summaryChip(
-                    title: "Ders",
-                    value: "\(eventsForDay.count)",
-                    icon: "book.closed.fill"
-                )
-
-                summaryChip(
-                    title: "İlk",
-                    value: firstEventOfDay.map { hm($0.startMinute) } ?? "--:--",
-                    icon: "sunrise.fill"
-                )
-
-                summaryChip(
-                    title: "Son",
-                    value: lastEventOfDay.map { hm($0.startMinute + $0.durationMinute) } ?? "--:--",
-                    icon: "moon.stars.fill"
-                )
-            }
-
-            if let live = liveEventForDay {
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(.green)
-                        .frame(width: 7, height: 7)
-
-                    Text(localizedLiveClassText(live.title))
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(palette.primaryText)
-
-                    Spacer()
-
-                    Text(timeText(for: live))
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(palette.secondaryText)
-                }
-            } else if let info = currentTimeIndicatorText {
-                HStack(spacing: 8) {
-                    Image(systemName: "clock")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(palette.secondaryText)
-
-                    Text(info)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(palette.secondaryText)
-                        .lineLimit(1)
-                }
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(palette.cardFill)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.04),
-                                    heroAccentColor.opacity(0.035),
-                                    Color.clear
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
-                )
-        )
-        .shadow(color: heroAccentColor.opacity(0.05), radius: 10, y: 3)
-    }
-    func summaryChip(title: String, value: String, icon: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label(title, systemImage: icon)
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(palette.secondaryText)
-
-            Text(value)
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(palette.primaryText)
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(0.035))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.white.opacity(0.06), lineWidth: 1)
-        )
-    }
-
     func personalEventGroup(_ items: [EventItem], title: String, systemImage: String, startIndex: Int = 0) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             personalTimelineSectionHeader(title, systemImage: systemImage)
@@ -555,23 +613,6 @@ extension WeekView {
 
     func workoutDayText(for event: EventItem) -> String? {
         sourceTask(for: event)?.workoutDay
-    }
-
-    func personalTimelineSectionHeader(_ title: String, systemImage: String) -> some View {
-        HStack(spacing: 7) {
-            Image(systemName: systemImage)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(palette.secondaryText)
-
-            Text(title)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(palette.secondaryText)
-
-            Spacer()
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 6)
-        .padding(.bottom, 4)
     }
 
     func compactSummaryChip(title: String, value: String, icon: String) -> some View {

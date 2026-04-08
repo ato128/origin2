@@ -67,6 +67,10 @@ struct BackendCrewDetailView: View {
 
                     customHeader
 
+                    crewContextLine
+                        .offset(y: showHeroCard ? 0 : 10)
+                        .opacity(showHeroCard ? 1 : 0)
+
                     heroCard(
                         memberCount: crewMembers.count,
                         totalTasks: sortedCrewTasks.count,
@@ -329,157 +333,182 @@ extension BackendCrewDetailView {
             }
     }
     
+    var crewContextLine: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(hexColor(crew.color_hex))
+                .frame(width: 8, height: 8)
+
+            Text("Crew alanı • ortak görevler, üyeler ve takım akışı")
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundStyle(palette.secondaryText)
+
+            Spacer()
+        }
+        .padding(.horizontal, 4)
+        .padding(.top, 2)
+    }
+    
     var performanceCard: some View {
-            let minutes = totalFocusMinutes
-            let badgeTitle = CrewBadgeHelper.title(for: minutes)
-            let badgeColor = CrewBadgeHelper.color(for: minutes)
-            let nextTarget = CrewBadgeHelper.nextTarget(for: minutes)
-            let topMember = topThreeLeaderboard.first
+        let minutes = totalFocusMinutes
+        let badgeTitle = CrewBadgeHelper.title(for: minutes)
+        let badgeColor = CrewBadgeHelper.color(for: minutes)
+        let nextTarget = CrewBadgeHelper.nextTarget(for: minutes)
+        let topMember = topThreeLeaderboard.first
 
-            return VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Performans")
-                            .font(.headline)
-                            .foregroundStyle(palette.primaryText)
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Performans")
+                        .font(.headline)
+                        .foregroundStyle(palette.primaryText)
 
-                        Text("Crew ritmi ve bugünkü öne çıkanlar")
-                            .font(.caption)
-                            .foregroundStyle(palette.secondaryText)
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "sparkles")
-                        .font(.title3)
-                        .foregroundStyle(badgeColor)
+                    Text("Crew ritmi ve bugünkü öne çıkanlar")
+                        .font(.caption)
+                        .foregroundStyle(palette.secondaryText)
                 }
 
-                HStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack(spacing: 10) {
-                            ZStack {
-                                Circle()
-                                    .fill(badgeColor.opacity(0.16))
-                                    .frame(width: 50, height: 50)
+                Spacer()
 
-                                Image(systemName: "medal.fill")
-                                    .font(.title3)
-                                    .foregroundStyle(badgeColor)
-                            }
+                Image(systemName: "sparkles")
+                    .font(.title3)
+                    .foregroundStyle(badgeColor)
+            }
 
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(badgeTitle)
-                                    .font(.subheadline.weight(.bold))
-                                    .foregroundStyle(palette.primaryText)
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 10) {
+                        ZStack {
+                            Circle()
+                                .fill(badgeColor.opacity(0.16))
+                                .frame(width: 48, height: 48)
 
-                                Text(focusTimeText(minutes))
-                                    .font(.caption)
-                                    .foregroundStyle(palette.secondaryText)
-                            }
+                            Image(systemName: "medal.fill")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(badgeColor)
                         }
 
-                        if let nextTarget {
-                            VStack(alignment: .leading, spacing: 6) {
-                                HStack {
-                                    Text("Sonraki seviye")
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(palette.secondaryText)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(badgeTitle)
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .foregroundStyle(palette.primaryText)
 
-                                    Spacer()
+                            Text(focusTimeText(minutes))
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundStyle(palette.secondaryText)
+                        }
+                    }
 
-                                    Text(focusTimeText(max(0, nextTarget - minutes)))
-                                        .font(.caption2.weight(.bold))
-                                        .foregroundStyle(palette.secondaryText)
-                                }
+                    if let nextTarget {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text("Sonraki seviye")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(palette.secondaryText)
 
-                                ProgressView(value: CrewBadgeHelper.progress(for: minutes))
-                                    .tint(badgeColor)
-                                    .scaleEffect(y: 1.35)
+                                Spacer()
+
+                                Text(focusTimeText(max(0, nextTarget - minutes)))
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(palette.secondaryText)
                             }
+
+                            ProgressView(value: CrewBadgeHelper.progress(for: minutes))
+                                .tint(badgeColor)
+                                .scaleEffect(y: 1.25)
+                        }
+                    }
+
+                    HStack(spacing: 6) {
+                        Image(systemName: "flame.fill")
+                            .foregroundStyle(.orange)
+
+                        Text("Seri \(currentStreakText)")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(palette.primaryText)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    badgeColor.opacity(0.10),
+                                    badgeColor.opacity(0.05),
+                                    Color.white.opacity(0.02)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(badgeColor.opacity(0.16), lineWidth: 1)
+                )
+
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("Bugünün Lideri")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(palette.secondaryText)
+                        Spacer()
+                    }
+
+                    if let topMember {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(topMember.name)
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .foregroundStyle(palette.primaryText)
+
+                            Text("\(topMember.minutes) dk odak")
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundStyle(palette.secondaryText)
                         }
 
                         HStack(spacing: 8) {
-                            Image(systemName: "flame.fill")
-                                .foregroundStyle(.orange)
+                            ForEach(Array(topThreeLeaderboard.enumerated()), id: \.offset) { index, entry in
+                                VStack(spacing: 4) {
+                                    Text("#\(index + 1)")
+                                        .font(.caption2.weight(.bold))
+                                        .foregroundStyle(index == 0 ? .yellow : palette.secondaryText)
 
-                            Text("Seri \(currentStreakText)")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(palette.primaryText)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(badgeColor.opacity(0.08))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .stroke(badgeColor.opacity(0.22), lineWidth: 1)
-                            )
-                    )
-
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Text("Bugünün Lideri")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(palette.secondaryText)
-
-                            Spacer()
-                        }
-
-                        if let topMember {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(topMember.name)
-                                    .font(.subheadline.weight(.bold))
-                                    .foregroundStyle(palette.primaryText)
-
-                                Text("\(topMember.minutes) dk odak")
-                                    .font(.caption)
-                                    .foregroundStyle(palette.secondaryText)
-                            }
-
-                            HStack(spacing: 8) {
-                                ForEach(Array(topThreeLeaderboard.enumerated()), id: \.offset) { index, entry in
-                                    VStack(spacing: 4) {
-                                        Text("#\(index + 1)")
-                                            .font(.caption2.weight(.bold))
-                                            .foregroundStyle(index == 0 ? .yellow : palette.secondaryText)
-
-                                        Text("\(entry.minutes)")
-                                            .font(.caption.weight(.bold))
-                                            .foregroundStyle(palette.primaryText)
-                                            .monospacedDigit()
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 8)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                            .fill(palette.secondaryCardFill)
-                                    )
+                                    Text("\(entry.minutes)")
+                                        .font(.caption.weight(.bold))
+                                        .foregroundStyle(palette.primaryText)
+                                        .monospacedDigit()
                                 }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .fill(Color.white.opacity(0.05))
+                                )
                             }
-                        } else {
-                            Text("Bugün henüz focus kaydı yok")
-                                .font(.caption)
-                                .foregroundStyle(palette.secondaryText)
                         }
+                    } else {
+                        Text("Bugün henüz focus kaydı yok")
+                            .font(.caption)
+                            .foregroundStyle(palette.secondaryText)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(palette.secondaryCardFill)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
-                            )
-                    )
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(Color.white.opacity(0.04))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                        )
+                )
             }
-            .padding(18)
-            .background(cardBackground)
         }
+        .padding(18)
+        .background(cardBackground)
+    }
     
     var filteredCrewTasks: [CrewTaskDTO] {
             switch taskFilter {
@@ -726,46 +755,45 @@ extension BackendCrewDetailView {
     }
 
     func backendActivityRow(title: String, subtitle: String, time: String, isLast: Bool) -> some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: 14) {
             VStack(spacing: 0) {
                 ZStack {
                     Circle()
                         .fill(hexColor(crew.color_hex).opacity(0.16))
-                        .frame(width: 34, height: 34)
+                        .frame(width: 38, height: 38)
 
                     Image(systemName: activityIcon(for: subtitle))
-                        .font(.caption.weight(.bold))
+                        .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(hexColor(crew.color_hex))
                 }
 
                 if !isLast {
-                    Rectangle()
-                        .fill(palette.secondaryCardFill)
-                        .frame(width: 2)
-                        .frame(maxHeight: .infinity)
-                        .padding(.top, 6)
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color.white.opacity(0.05))
+                        .frame(width: 2, height: 38)
+                        .padding(.top, 8)
                 }
             }
-            .frame(width: 34)
+            .frame(width: 38)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 5) {
                 Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(palette.primaryText)
 
                 Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(palette.primaryText)
+                    .font(.system(size: 13.5, weight: .medium, design: .rounded))
+                    .foregroundStyle(palette.secondaryText)
                     .lineLimit(2)
 
                 Text(time)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(palette.tertiaryText)
             }
 
             Spacer()
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 4)
     }
 
     var backendActivitySection: some View {
@@ -776,9 +804,9 @@ extension BackendCrewDetailView {
                 Text("backend_crew_activity")
                     .font(.headline)
 
-                Text("backend_crew_activity_subtitle")
+                Text("Son takım güncellemeleri")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText)
 
                 Spacer()
 
@@ -828,27 +856,27 @@ extension BackendCrewDetailView {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(palette.primaryText)
-                    .frame(width: 56, height: 56)
-                    .background(
-                        Circle()
-                            .fill(palette.cardFill)
-                            .overlay(
-                                Circle()
-                                    .stroke(palette.cardStroke, lineWidth: 1)
-                            )
-                    )
-                    .shadow(color: palette.shadowColor, radius: 10, y: 4)
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.05))
+
+                    Circle()
+                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
+
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(palette.primaryText)
+                }
+                .frame(width: 52, height: 52)
             }
             .buttonStyle(.plain)
 
             Spacer()
 
             Text(crew.name)
-                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .font(.system(size: 21, weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
+                .lineLimit(1)
 
             Spacer()
 
@@ -861,217 +889,119 @@ extension BackendCrewDetailView {
             } label: {
                 ZStack {
                     Circle()
-                        .fill(palette.cardFill)
-                        .overlay(
-                            Circle()
-                                .stroke(palette.cardStroke, lineWidth: 1)
-                        )
+                        .fill(Color.white.opacity(0.05))
+
+                    Circle()
+                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
 
                     if isDeletingCrew {
                         ProgressView()
                             .tint(palette.primaryText)
                     } else {
                         Image(systemName: "ellipsis")
-                            .font(.system(size: 18, weight: .bold))
+                            .font(.system(size: 17, weight: .bold))
                             .foregroundStyle(palette.primaryText)
                     }
                 }
-                .frame(width: 56, height: 56)
-                .shadow(color: palette.shadowColor, radius: 10, y: 4)
+                .frame(width: 52, height: 52)
             }
             .disabled(isDeletingCrew)
         }
     }
 
     func heroCard(memberCount: Int, totalTasks: Int, progress: Double) -> some View {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .top) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(hexColor(crew.color_hex).opacity(0.18))
-                            .frame(width: 58, height: 58)
+        let accent = hexColor(crew.color_hex)
+        let warmTint = Color(red: 0.98, green: 0.52, blue: 0.34)
+        let coolTint = Color(red: 0.46, green: 0.22, blue: 0.88)
 
-                        Image(systemName: crew.icon)
-                            .font(.title3.weight(.semibold))
-                            .foregroundStyle(hexColor(crew.color_hex))
-                    }
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(accent.opacity(0.18))
+                        .frame(width: 58, height: 58)
 
-                    Spacer()
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                        .frame(width: 58, height: 58)
 
-                    HStack(spacing: 8) {
-                        Button {
-                            Task {
-                                guard let user = session.currentUser else { return }
-
-                                do {
-                                    let code = try await crewStore.createInvite(
-                                        for: crew.id,
-                                        userID: user.id
-                                    )
-                                    inviteCode = code
-                                    showInviteSheet = true
-                                } catch {
-                                    errorMessage = error.localizedDescription
-                                }
-                            }
-                        } label: {
-                            Label("Davet Et", systemImage: "person.badge.plus")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(hexColor(crew.color_hex))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 8)
-                                .background(
-                                    Capsule()
-                                        .fill(hexColor(crew.color_hex).opacity(0.12))
-                                )
-                        }
-                        .buttonStyle(.plain)
-
-                        Button {
-                            showCreateTask = true
-                        } label: {
-                            Label("Görev", systemImage: "plus")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 8)
-                                .background(
-                                    Capsule()
-                                        .fill(hexColor(crew.color_hex))
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    }
+                    Image(systemName: crew.icon)
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(accent)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(crew.name)
-                        .font(.system(size: 26, weight: .bold, design: .rounded))
-                        .foregroundStyle(palette.primaryText)
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.98))
+                        .lineLimit(1)
 
                     Text(heroSubtitle(memberCount: memberCount, totalTasks: totalTasks))
-                        .font(.subheadline)
-                        .foregroundStyle(palette.secondaryText)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.72))
                         .lineLimit(2)
                 }
 
-                HStack(spacing: 8) {
-                    infoPill(
-                        text: "\(memberCount) üye",
-                        tint: hexColor(crew.color_hex)
-                    )
+                Spacer(minLength: 8)
+            }
 
-                    infoPill(
-                        text: "\(totalTasks) görev",
-                        tint: palette.secondaryText
-                    )
+            Spacer(minLength: 14)
 
-                    infoPill(
-                        text: "%\(Int(progress * 100)) tamam",
-                        tint: .green
-                    )
+            HStack(spacing: 8) {
+                infoPill(text: "\(memberCount) üye", tint: accent)
+                infoPill(text: "\(totalTasks) görev", tint: .white.opacity(0.76))
+                infoPill(text: "%\(Int(progress * 100)) tamam", tint: .green)
+            }
+
+            Spacer(minLength: 14)
+
+            HStack(alignment: .bottom) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("İlerleme")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.74))
+
+                    Text(progress == 1 ? "Bugün temiz kapattınız" : "\(pendingTasksCount) açık görev kaldı")
+                        .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.64))
                 }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("İlerleme")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(palette.secondaryText)
-
-                        Spacer()
-
-                        Text("\(Int(progress * 100))%")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(palette.secondaryText)
-                    }
-
-                    ProgressView(value: progress)
-                        .tint(hexColor(crew.color_hex))
-                        .scaleEffect(y: 1.6)
-                }
-            }
-            .padding(18)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(cardBackground)
-            .shadow(color: hexColor(crew.color_hex).opacity(0.08), radius: 10, y: 4)
-        }
-    func heroSubtitle(memberCount: Int, totalTasks: Int) -> String {
-            if totalTasks == 0 {
-                return "Crew hazır. İlk ortak görevi ekleyerek akışı başlat."
-            }
-
-            if pendingTasksCount == 0 {
-                return "Bugün için tüm ortak görevler tamamlandı."
-            }
-
-            return "\(pendingTasksCount) açık görev, \(memberCount) üyeyle akış devam ediyor."
-        }
-    
-    func quickStatsRow(completed: Int, pending: Int, memberCount: Int) -> some View {
-        HStack(spacing: 10) {
-            statCard(
-                value: "\(completed)",
-                title: String(localized: "backend_crew_done"),
-                icon: "checkmark.circle.fill",
-                tint: .green
-            )
-
-            statCard(
-                value: "\(pending)",
-                title: String(localized: "backend_crew_pending"),
-                icon: "clock.fill",
-                tint: .orange
-            )
-
-            statCard(
-                value: "\(memberCount)",
-                title: String(localized: "backend_crew_members"),
-                icon: "person.3.fill",
-                tint: hexColor(crew.color_hex)
-            )
-        }
-    }
-
-    func statCard(value: String, title: String, icon: String, tint: Color) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(tint)
-
-            Text(value)
-                .font(.title3.bold())
-                .foregroundStyle(palette.primaryText)
-                .monospacedDigit()
-
-            Text(title)
-                .font(.caption2)
-                .foregroundStyle(palette.secondaryText)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(palette.secondaryCardFill)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
-                )
-        )
-    }
-
-    var memberProfilesByID: [UUID: ProfileDTO] {
-        Dictionary(uniqueKeysWithValues: crewStore.memberProfiles.map { ($0.id, $0) })
-    }
-
-    func membersSection(_ crewMembers: [CrewMemberDTO]) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("backend_crew_members")
-                    .font(.headline)
-                    .foregroundStyle(palette.primaryText)
 
                 Spacer()
 
+                Text("%\(Int(progress * 100))")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .monospacedDigit()
+            }
+
+            Spacer(minLength: 10)
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.14))
+                        .frame(height: 10)
+
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    warmTint,
+                                    accent,
+                                    coolTint
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: max(36, geo.size.width * progress), height: 10)
+                }
+            }
+            .frame(height: 10)
+
+            Spacer(minLength: 14)
+
+            HStack(spacing: 10) {
                 Button {
                     Task {
                         guard let user = session.currentUser else { return }
@@ -1088,105 +1018,286 @@ extension BackendCrewDetailView {
                         }
                     }
                 } label: {
-                    Image(systemName: "person.badge.plus")
-                        .font(.caption.bold())
-                        .foregroundStyle(.green)
-                        .frame(width: 30, height: 30)
+                    Label("Davet Et", systemImage: "person.badge.plus")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(accent)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
                         .background(
-                            Circle()
-                                .fill(Color.green.opacity(0.14))
+                            Capsule()
+                                .fill(Color.white.opacity(0.08))
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(accent.opacity(0.16), lineWidth: 1)
                         )
                 }
                 .buttonStyle(.plain)
 
                 Button {
-                    showAddMember = true
+                    showCreateTask = true
                 } label: {
-                    Image(systemName: "plus")
-                        .font(.caption.bold())
-                        .foregroundStyle(.blue)
-                        .frame(width: 30, height: 30)
+                    Label("Görev", systemImage: "plus")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
                         .background(
-                            Circle()
-                                .fill(Color.blue.opacity(0.14))
+                            Capsule()
+                                .fill(accent.opacity(0.92))
                         )
                 }
                 .buttonStyle(.plain)
 
-                Text("\(crewMembers.count)")
-                    .font(.caption.weight(.bold))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule()
-                            .fill(palette.secondaryCardFill)
+                Spacer()
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 18)
+        .padding(.bottom, 16)
+        .frame(maxWidth: .infinity, minHeight: 228, alignment: .topLeading)
+        .background(
+            premiumCrewHeroBackground(accent: accent)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .stroke(Color.white.opacity(0.07), lineWidth: 1)
+        )
+    }
+    func heroSubtitle(memberCount: Int, totalTasks: Int) -> String {
+            if totalTasks == 0 {
+                return "Crew hazır. İlk ortak görevi ekleyerek akışı başlat."
+            }
+
+            if pendingTasksCount == 0 {
+                return "Bugün için tüm ortak görevler tamamlandı."
+            }
+
+            return "\(pendingTasksCount) açık görev, \(memberCount) üyeyle akış devam ediyor."
+        }
+    
+    func quickStatsRow(completed: Int, pending: Int, memberCount: Int) -> some View {
+        HStack(spacing: 12) {
+            detailMiniStatCard(
+                title: "Biten",
+                value: "\(completed)",
+                icon: "checkmark.circle.fill",
+                tint: .green
+            )
+
+            detailMiniStatCard(
+                title: "Açık",
+                value: "\(pending)",
+                icon: "clock.fill",
+                tint: .orange
+            )
+
+            detailMiniStatCard(
+                title: "Üye",
+                value: "\(memberCount)",
+                icon: "person.3.fill",
+                tint: hexColor(crew.color_hex)
+            )
+        }
+    }
+
+    func detailMiniStatCard(title: String, value: String, icon: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(tint)
+
+                Spacer()
+            }
+
+            Text(value)
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundStyle(palette.primaryText)
+                .monospacedDigit()
+
+            Text(title)
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundStyle(palette.secondaryText)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            tint.opacity(0.10),
+                            tint.opacity(0.05),
+                            Color.white.opacity(0.02)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
-                    .foregroundStyle(palette.secondaryText)
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(tint.opacity(0.12), lineWidth: 1)
+        )
+    }
+    var memberProfilesByID: [UUID: ProfileDTO] {
+        Dictionary(uniqueKeysWithValues: crewStore.memberProfiles.map { ($0.id, $0) })
+    }
+
+    func membersSection(_ crewMembers: [CrewMemberDTO]) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Üyeler")
+                        .font(.headline)
+                        .foregroundStyle(palette.primaryText)
+
+                    Text("Takımda kimler var")
+                        .font(.caption)
+                        .foregroundStyle(palette.secondaryText)
+                }
+
+                Spacer()
+
+                HStack(spacing: 10) {
+                    Button {
+                        Task {
+                            guard let user = session.currentUser else { return }
+
+                            do {
+                                let code = try await crewStore.createInvite(
+                                    for: crew.id,
+                                    userID: user.id
+                                )
+                                inviteCode = code
+                                showInviteSheet = true
+                            } catch {
+                                errorMessage = error.localizedDescription
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "person.badge.plus")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.green)
+                            .frame(width: 36, height: 36)
+                            .background(
+                                Circle()
+                                    .fill(Color.green.opacity(0.14))
+                            )
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        showAddMember = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.blue)
+                            .frame(width: 36, height: 36)
+                            .background(
+                                Circle()
+                                    .fill(Color.blue.opacity(0.14))
+                            )
+                    }
+                    .buttonStyle(.plain)
+
+                    Text("\(crewMembers.count)")
+                        .font(.caption.weight(.bold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(
+                            Capsule()
+                                .fill(Color.white.opacity(0.06))
+                        )
+                        .foregroundStyle(palette.primaryText)
+                }
             }
 
             if crewMembers.isEmpty {
                 emptyMiniState(text: String(localized: "backend_crew_no_members"))
             } else {
-                ForEach(crewMembers) { member in
-                    let profile = memberProfilesByID[member.user_id]
+                VStack(spacing: 12) {
+                    ForEach(crewMembers) { member in
+                        let profile = memberProfilesByID[member.user_id]
 
-                    HStack(spacing: 12) {
-                        ZStack {
-                            Circle()
-                                .fill(hexColor(crew.color_hex).opacity(0.14))
-                                .frame(width: 42, height: 42)
-
-                            Text(memberInitial(from: profile))
-                                .font(.headline)
-                                .foregroundStyle(hexColor(crew.color_hex))
-                        }
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(memberName(from: profile))
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(palette.primaryText)
-
-                            Text("@\(memberUsername(from: profile))")
-                                .font(.caption)
-                                .foregroundStyle(palette.secondaryText)
-                        }
-
-                        Spacer()
-
-                        Text(localizedRole(member.role))
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(
-                                Capsule()
+                        HStack(spacing: 14) {
+                            ZStack {
+                                Circle()
                                     .fill(
-                                        member.role.lowercased() == "owner"
-                                        ? Color.accentColor.opacity(0.16)
-                                        : Color.white.opacity(0.08)
+                                        LinearGradient(
+                                            colors: [
+                                                hexColor(crew.color_hex).opacity(0.22),
+                                                hexColor(crew.color_hex).opacity(0.10)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
                                     )
-                            )
-                            .foregroundStyle(
-                                member.role.lowercased() == "owner"
-                                ? Color.accentColor
-                                : palette.secondaryText
-                            )
-                    }
-                    .padding(12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(palette.secondaryCardFill)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
-                            )
-                    )
-                    .contextMenu {
-                        if member.role.lowercased() != "owner" {
-                            Button(role: .destructive) {
-                                memberToRemove = member
-                                showRemoveMemberConfirm = true
-                            } label: {
-                                Label(String(localized: "backend_crew_remove_member_action"), systemImage: "person.crop.circle.badge.minus")
+                                    .frame(width: 50, height: 50)
+
+                                Text(memberInitial(from: profile))
+                                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                                    .foregroundStyle(hexColor(crew.color_hex))
+                            }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(memberName(from: profile))
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                    .foregroundStyle(palette.primaryText)
+
+                                Text("@\(memberUsername(from: profile))")
+                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(palette.secondaryText)
+                            }
+
+                            Spacer()
+
+                            Text(localizedRole(member.role))
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(
+                                    Capsule()
+                                        .fill(
+                                            member.role.lowercased() == "owner"
+                                            ? Color.accentColor.opacity(0.18)
+                                            : Color.white.opacity(0.07)
+                                        )
+                                )
+                                .foregroundStyle(
+                                    member.role.lowercased() == "owner"
+                                    ? Color.accentColor
+                                    : palette.secondaryText
+                                )
+                        }
+                        .padding(14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(0.05),
+                                            Color.white.opacity(0.025)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                        )
+                        .contextMenu {
+                            if member.role.lowercased() != "owner" {
+                                Button(role: .destructive) {
+                                    memberToRemove = member
+                                    showRemoveMemberConfirm = true
+                                } label: {
+                                    Label(String(localized: "backend_crew_remove_member_action"), systemImage: "person.crop.circle.badge.minus")
+                                }
                             }
                         }
                     }
@@ -1314,28 +1425,36 @@ extension BackendCrewDetailView {
         }
 
     func taskCardView(_ task: CrewTaskDTO) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Circle()
-                .fill(task.is_done ? Color.green.opacity(0.18) : Color.orange.opacity(0.18))
-                .frame(width: 34, height: 34)
-                .overlay(
-                    Image(systemName: task.is_done ? "checkmark.circle.fill" : "circle.fill")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(task.is_done ? .green : .orange)
-                )
+        let priorityTint = priorityColor(task.priority)
+        let stateTint = task.is_done ? Color.green : Color.orange
 
-            VStack(alignment: .leading, spacing: 4) {
+        return HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(priorityTint.opacity(0.18))
+                    .frame(width: 42, height: 42)
+
+                Circle()
+                    .stroke(priorityTint.opacity(0.14), lineWidth: 1)
+                    .frame(width: 42, height: 42)
+
+                Circle()
+                    .fill(priorityTint)
+                    .frame(width: 16, height: 16)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
                 Text(task.title)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundStyle(palette.primaryText)
                     .strikethrough(task.is_done, color: palette.secondaryText)
-                    .opacity(task.is_done ? 0.65 : 1.0)
+                    .opacity(task.is_done ? 0.62 : 1.0)
                     .lineLimit(2)
 
                 if let details = task.details,
                    !details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Text(details)
-                        .font(.caption)
+                        .font(.system(size: 12.5, weight: .medium, design: .rounded))
                         .foregroundStyle(palette.secondaryText)
                         .lineLimit(2)
                 }
@@ -1364,28 +1483,43 @@ extension BackendCrewDetailView {
                 }
             }
 
-            Spacer()
+            Spacer(minLength: 8)
 
             Button {
                 Task {
                     await crewStore.toggleTask(task)
                 }
             } label: {
-                Image(systemName: task.is_done ? "arrow.uturn.backward.circle" : "checkmark.circle")
-                    .font(.title3)
-                    .foregroundStyle(task.is_done ? palette.secondaryText : .green)
+                ZStack {
+                    Circle()
+                        .fill(stateTint.opacity(0.12))
+                        .frame(width: 42, height: 42)
+
+                    Image(systemName: task.is_done ? "arrow.uturn.backward.circle.fill" : "checkmark.circle.fill")
+                        .font(.system(size: 26))
+                        .foregroundStyle(task.is_done ? palette.secondaryText : .green)
+                }
             }
             .buttonStyle(.plain)
         }
-        .padding(14)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(palette.secondaryCardFill)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.05),
+                            Color.white.opacity(0.025)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.white.opacity(0.05), lineWidth: 1)
         )
     }
 
@@ -1546,10 +1680,33 @@ extension BackendCrewDetailView {
 
     var cardBackground: some View {
         RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(palette.cardFill)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        palette.cardFill,
+                        palette.cardFill.opacity(0.97)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(palette.cardStroke, lineWidth: 1)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.035),
+                                Color.clear,
+                                Color.black.opacity(0.05)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
             )
     }
 
@@ -1625,5 +1782,77 @@ extension BackendCrewDetailView {
                 showActivitySection = true
             }
         }
+    }
+    func premiumCrewHeroBackground(accent: Color) -> some View {
+        RoundedRectangle(cornerRadius: 30, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.98, green: 0.52, blue: 0.34).opacity(0.18),
+                        accent.opacity(0.14),
+                        Color(red: 0.46, green: 0.22, blue: 0.88).opacity(0.20),
+                        Color(red: 0.11, green: 0.04, blue: 0.12)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.10),
+                                Color.clear,
+                                Color.clear
+                            ],
+                            startPoint: .top,
+                            endPoint: .center
+                        )
+                    )
+                    .blendMode(.screen)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                accent.opacity(0.16),
+                                Color.clear
+                            ],
+                            center: .topLeading,
+                            startRadius: 10,
+                            endRadius: 140
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Color(red: 0.46, green: 0.22, blue: 0.88).opacity(0.18),
+                                Color.clear
+                            ],
+                            center: .bottomTrailing,
+                            startRadius: 12,
+                            endRadius: 170
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.black.opacity(0.00),
+                                Color.black.opacity(0.07),
+                                Color.black.opacity(0.16)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+            )
     }
 }

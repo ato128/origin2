@@ -27,17 +27,19 @@ struct AppBackground: View {
 }
 
 private extension AppBackground {
+
     var darkBackground: some View {
         ZStack {
-            Color(red: 0.038, green: 0.042, blue: 0.058)
+            Color(red: 0.030, green: 0.032, blue: 0.050)
                 .ignoresSafeArea()
 
-            stableAmbientBackground(
-                magentaOpacity: 0.14,
-                blueOpacity: 0.12,
-                tealOpacity: 0.04,
-                violetOpacity: 0.05,
-                amberOpacity: 0.025
+            edgeLitField(
+                topBase: Color(red: 0.024, green: 0.020, blue: 0.050),
+                bottomBase: Color(red: 0.010, green: 0.012, blue: 0.022),
+                leftPinkOpacity: 0.12,
+                leftPurpleOpacity: 0.10,
+                rightBlueOpacity: 0.09,
+                rightVioletOpacity: 0.08
             )
         }
         .ignoresSafeArea()
@@ -48,12 +50,13 @@ private extension AppBackground {
             Color.black
                 .ignoresSafeArea()
 
-            stableAmbientBackground(
-                magentaOpacity: 0.12,
-                blueOpacity: 0.10,
-                tealOpacity: 0.035,
-                violetOpacity: 0.045,
-                amberOpacity: 0.02
+            edgeLitField(
+                topBase: Color(red: 0.018, green: 0.016, blue: 0.038),
+                bottomBase: Color(red: 0.004, green: 0.006, blue: 0.014),
+                leftPinkOpacity: 0.10,
+                leftPurpleOpacity: 0.09,
+                rightBlueOpacity: 0.08,
+                rightVioletOpacity: 0.07
             )
         }
         .ignoresSafeArea()
@@ -73,120 +76,125 @@ private extension AppBackground {
 
     var gradientBackground: some View {
         ZStack {
-            Color(red: 0.010, green: 0.012, blue: 0.022)
+            Color(red: 0.008, green: 0.010, blue: 0.020)
                 .ignoresSafeArea()
 
+            edgeLitField(
+                topBase: Color(red: 0.030, green: 0.020, blue: 0.070),
+                bottomBase: Color(red: 0.008, green: 0.010, blue: 0.020),
+                leftPinkOpacity: 0.18,
+                leftPurpleOpacity: 0.16,
+                rightBlueOpacity: 0.14,
+                rightVioletOpacity: 0.12
+            )
+        }
+        .ignoresSafeArea()
+    }
+
+    func edgeLitField(
+        topBase: Color,
+        bottomBase: Color,
+        leftPinkOpacity: Double,
+        leftPurpleOpacity: Double,
+        rightBlueOpacity: Double,
+        rightVioletOpacity: Double
+    ) -> some View {
+        ZStack {
             LinearGradient(
                 colors: [
-                    Color(red: 0.020, green: 0.018, blue: 0.040),
-                    Color(red: 0.014, green: 0.016, blue: 0.030),
-                    Color(red: 0.010, green: 0.012, blue: 0.024)
+                    topBase,
+                    Color(red: 0.015, green: 0.016, blue: 0.032),
+                    bottomBase
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
 
-            stableAmbientBackground(
-                magentaOpacity: 0.18,
-                blueOpacity: 0.16,
-                tealOpacity: 0.055,
-                violetOpacity: 0.07,
-                amberOpacity: 0.03
-            )
-        }
-        .ignoresSafeArea()
-    }
-
-    func stableAmbientBackground(
-        magentaOpacity: Double,
-        blueOpacity: Double,
-        tealOpacity: Double,
-        violetOpacity: Double,
-        amberOpacity: Double
-    ) -> some View {
-        ZStack {
-            // sol üst magenta
+            // Sol alt peach/pink edge glow
             RadialGradient(
                 colors: [
-                    Color(red: 0.96, green: 0.34, blue: 0.80).opacity(magentaOpacity),
+                    Color(red: 1.00, green: 0.82, blue: 0.86).opacity(leftPinkOpacity * 0.95),
+                    Color(red: 0.95, green: 0.42, blue: 0.74).opacity(leftPinkOpacity * 0.68),
                     Color.clear
                 ],
-                center: .topLeading,
-                startRadius: 0,
+                center: UnitPoint(x: -0.08, y: 1.04),
+                startRadius: 10,
+                endRadius: 300
+            )
+            .ignoresSafeArea()
+
+            // Sol orta/alt violet lift
+            RadialGradient(
+                colors: [
+                    Color(red: 0.78, green: 0.22, blue: 0.88).opacity(leftPurpleOpacity * 0.86),
+                    Color(red: 0.34, green: 0.08, blue: 0.76).opacity(leftPurpleOpacity * 0.58),
+                    Color.clear
+                ],
+                center: UnitPoint(x: -0.05, y: 0.78),
+                startRadius: 30,
                 endRadius: 260
             )
             .ignoresSafeArea()
 
-            // sağ üst blue/cyan
+            // Sağ üst blue edge glow
             RadialGradient(
                 colors: [
-                    Color(red: 0.20, green: 0.66, blue: 1.00).opacity(blueOpacity),
+                    Color(red: 0.20, green: 0.66, blue: 1.00).opacity(rightBlueOpacity),
+                    Color(red: 0.10, green: 0.20, blue: 0.76).opacity(rightBlueOpacity * 0.62),
                     Color.clear
                 ],
-                center: .topTrailing,
-                startRadius: 20,
-                endRadius: 290
+                center: UnitPoint(x: 1.05, y: -0.02),
+                startRadius: 30,
+                endRadius: 280
             )
             .ignoresSafeArea()
 
-            // orta hafif violet bağlayıcı
+            // Sağ alt indigo/violet edge glow
             RadialGradient(
                 colors: [
-                    Color(red: 0.46, green: 0.32, blue: 0.96).opacity(violetOpacity),
+                    Color(red: 0.42, green: 0.28, blue: 0.96).opacity(rightVioletOpacity * 0.90),
+                    Color(red: 0.20, green: 0.08, blue: 0.44).opacity(rightVioletOpacity * 0.56),
                     Color.clear
                 ],
-                center: .center,
-                startRadius: 60,
+                center: UnitPoint(x: 1.06, y: 0.96),
+                startRadius: 30,
                 endRadius: 240
             )
             .ignoresSafeArea()
 
-            // alt sol teal
-            RadialGradient(
-                colors: [
-                    Color(red: 0.20, green: 0.84, blue: 0.70).opacity(tealOpacity),
-                    Color.clear
-                ],
-                center: .bottomLeading,
-                startRadius: 40,
-                endRadius: 220
-            )
-            .ignoresSafeArea()
-
-            // alt sağ violet
-            RadialGradient(
-                colors: [
-                    Color(red: 0.36, green: 0.28, blue: 0.96).opacity(violetOpacity * 0.9),
-                    Color.clear
-                ],
-                center: .bottomTrailing,
-                startRadius: 40,
-                endRadius: 220
-            )
-            .ignoresSafeArea()
-
-            // hafif sıcak amber
-            RadialGradient(
-                colors: [
-                    Color(red: 1.00, green: 0.58, blue: 0.26).opacity(amberOpacity),
-                    Color.clear
-                ],
-                center: .top,
-                startRadius: 20,
-                endRadius: 150
-            )
-            .ignoresSafeArea()
-
-            // üstten çok hafif ışık
+            // Üstte hafif koyu perde, header rahat okusun
             LinearGradient(
                 colors: [
-                    Color.white.opacity(0.018),
+                    Color.black.opacity(0.14),
                     Color.clear,
-                    Color.black.opacity(0.025)
+                    Color.clear
                 ],
                 startPoint: .top,
                 endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            // Alt derinlik
+            LinearGradient(
+                colors: [
+                    Color.clear,
+                    Color.black.opacity(0.05)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            // Çok hafif genel polish
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(0.010),
+                    Color.clear,
+                    Color.black.opacity(0.018)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
         }

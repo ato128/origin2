@@ -14,10 +14,10 @@ extension WeekView {
 
         let collapseProgress = min(max(activeOffset / 80, 0), 1)
 
-        let titleFont: CGFloat = 32 - (5 * collapseProgress)
-        let subtitleOpacity: CGFloat = 1 - (collapseProgress * 1.35)
-        let topPadding: CGFloat = 6 - (2 * collapseProgress)
-        let blurOpacity: CGFloat = 0.10 + (0.82 * collapseProgress)
+        let titleFont: CGFloat = 34 - (4 * collapseProgress)
+        let subtitleOpacity: CGFloat = 1 - (collapseProgress * 1.2)
+        let topPadding: CGFloat = 4 - (1.5 * collapseProgress)
+        let blurOpacity: CGFloat = 0.08 + (0.72 * collapseProgress)
 
         let activeTitle = weekMode == .personal ? "Week" : "Crew"
         let subtitle = weekMode == .personal
@@ -32,19 +32,14 @@ extension WeekView {
                     .opacity(blurOpacity)
 
                 HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 3) {
                         Text(activeTitle)
                             .font(.system(size: titleFont, weight: .black, design: .rounded))
                             .foregroundStyle(palette.primaryText)
-                            .shadow(
-                                color: Color.black.opacity(0.05),
-                                radius: 4,
-                                y: 1
-                            )
 
                         if subtitleOpacity > 0.08 {
                             Text(subtitle)
-                                .font(.system(size: 12, weight: .medium))
+                                .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                                 .foregroundStyle(palette.secondaryText)
                                 .lineLimit(1)
                                 .opacity(subtitleOpacity)
@@ -56,7 +51,7 @@ extension WeekView {
                 .padding(.horizontal, 20)
                 .padding(.top, topPadding)
             }
-            .frame(height: subtitleOpacity > 0.08 ? 68 : 54)
+            .frame(height: subtitleOpacity > 0.08 ? 62 : 48)
 
             modeSegmentedControl
                 .padding(.horizontal, 20)
@@ -64,12 +59,12 @@ extension WeekView {
         .padding(.bottom, 2)
         .overlay(
             Rectangle()
-                .fill(Color.black.opacity(0.035 * blurOpacity))
+                .fill(Color.white.opacity(0.035 * blurOpacity))
                 .frame(height: 0.5),
             alignment: .bottom
         )
-        .animation(.spring(response: 0.32, dampingFraction: 0.86), value: activeOffset)
-        .animation(.interactiveSpring(response: 0.25, dampingFraction: 0.88), value: weekMode)
+        .animation(.spring(response: 0.30, dampingFraction: 0.86), value: activeOffset)
+        .animation(.interactiveSpring(response: 0.24, dampingFraction: 0.88), value: weekMode)
     }
 
     var modeSegmentedControl: some View {
@@ -77,7 +72,8 @@ extension WeekView {
             modeSegmentButton(
                 title: "Personal",
                 icon: "calendar",
-                isSelected: weekMode == .personal
+                isSelected: weekMode == .personal,
+                accent: Color(red: 0.24, green: 0.56, blue: 1.00)
             ) {
                 withAnimation(.interactiveSpring(response: 0.26, dampingFraction: 0.88)) {
                     weekMode = .personal
@@ -87,7 +83,8 @@ extension WeekView {
             modeSegmentButton(
                 title: "Crew",
                 icon: "person.3.fill",
-                isSelected: weekMode == .crew
+                isSelected: weekMode == .crew,
+                accent: Color(red: 0.62, green: 0.44, blue: 0.96)
             ) {
                 withAnimation(.interactiveSpring(response: 0.26, dampingFraction: 0.88)) {
                     weekMode = .crew
@@ -96,11 +93,20 @@ extension WeekView {
         }
         .padding(5)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(palette.cardFill)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            palette.cardFill,
+                            palette.cardFill.opacity(0.96)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(palette.cardStroke, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
                 )
         )
     }
@@ -109,39 +115,62 @@ extension WeekView {
         title: String,
         icon: String,
         isSelected: Bool,
+        accent: Color,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             HStack(spacing: 7) {
-                Image(systemName: icon)
-                    .font(.system(size: 11, weight: .bold))
+                ZStack {
+                    if isSelected {
+                        Circle()
+                            .fill(accent.opacity(0.16))
+                            .frame(width: 20, height: 20)
+                    }
+
+                    Image(systemName: icon)
+                        .font(.system(size: 10.5, weight: .bold))
+                        .foregroundStyle(isSelected ? accent : palette.secondaryText)
+                }
 
                 Text(title)
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(isSelected ? palette.primaryText : palette.secondaryText)
+
+                Spacer(minLength: 0)
             }
-            .foregroundStyle(isSelected ? palette.primaryText : palette.secondaryText)
             .frame(maxWidth: .infinity)
+            .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .background(
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(
                         isSelected
-                        ? Color.accentColor.opacity(0.15)
-                        : Color.clear
+                        ? AnyShapeStyle(
+                            LinearGradient(
+                                colors: [
+                                    accent.opacity(0.16),
+                                    accent.opacity(0.09),
+                                    Color.white.opacity(0.015)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        : AnyShapeStyle(Color.white.opacity(0.01))
                     )
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .stroke(
                         isSelected
-                        ? Color.accentColor.opacity(0.24)
-                        : Color.clear,
+                        ? accent.opacity(0.18)
+                        : Color.white.opacity(0.04),
                         lineWidth: 1
                     )
             )
             .shadow(
-                color: isSelected ? Color.accentColor.opacity(0.06) : .clear,
-                radius: isSelected ? 6 : 0,
+                color: isSelected ? accent.opacity(0.05) : .clear,
+                radius: isSelected ? 5 : 0,
                 y: isSelected ? 2 : 0
             )
         }
