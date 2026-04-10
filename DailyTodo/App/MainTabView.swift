@@ -49,6 +49,7 @@ struct MainTabView: View {
             NavigationStack {
                 FocusView()
                     .environmentObject(session)
+                    .environmentObject(crewStore)
             }
             .tabItem { Label("Focus", systemImage: "timer") }
             .tag(AppTab.focus)

@@ -24,6 +24,7 @@ struct DailyTodoApp: App {
     @StateObject private var friendStore = FriendStore()
     @StateObject private var todoStore: TodoStore
     @StateObject private var languageManager = LanguageManager()
+    @StateObject private var focusSession = FocusSessionManager.shared
 
     init() {
         do {
@@ -93,9 +94,15 @@ struct DailyTodoApp: App {
                 .environmentObject(crewStore)
                 .environmentObject(friendStore)
                 .environmentObject(languageManager)
+                .environmentObject(focusSession)
                 .environment(\.locale, languageManager.activeLocale)
                 .overlay {
-                    InAppBannerOverlay()
+                    ZStack {
+                        InAppBannerOverlay()
+
+                        FloatingFocusBubble()
+                            .environmentObject(focusSession)
+                    }
                 }
                 .onAppear {
                     let context = ModelContext(container)
