@@ -17,14 +17,16 @@ struct FocusView: View {
     @State private var selectedMode: FocusMode = .personal
     @State private var selectedPreset: FocusDurationPreset = .medium
     @State private var customMinutes: Int = 60
-    @State private var showCustomDurationSheet = false
-    @State private var pageAppeared = false
-    
+
     @State private var selectedGoal: FocusGoal = .study
     @State private var selectedStyle: FocusStyle = .silent
-    
+
+    @State private var showCustomDurationSheet = false
     @State private var showGoalPicker = false
     @State private var showStylePicker = false
+
+    @State private var pageAppeared = false
+    @State private var isLaunchingFocus = false
 
     var body: some View {
         ZStack {
@@ -34,59 +36,41 @@ struct FocusView: View {
             GeometryReader { geo in
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 12) {
-                        Color.clear
-                            .frame(height: 2)
+                        Color.clear.frame(height: 2)
 
                         pageHeader
 
                         FocusModeSwitcherV3(selectedMode: $selectedMode)
 
-                        if focusSession.isSessionActive {
-                            activeSessionBanner
-                        }
-                        
-                      
-
-                        FocusHeroCardV3(
+                        FocusFullPageStageV7(
                             mode: selectedMode,
-                            selectedPreset: selectedPreset,
-                            customMinutes: customMinutes,
-                            progress: heroProgress,
+                            durationText: durationText,
                             statusText: heroStatusText,
-                            supportText: heroSupportText,
-                            selectedGoal: selectedGoal,
-                            selectedStyle: selectedStyle,
-                            preSessionTitle: preSessionTitle,
-                            preSessionSubtitle: preSessionSubtitle,
-                            preSessionParticipants: preSessionParticipants,
-                            preSessionCanStart: preSessionCanStart,
-                            onSelectPreset: { preset in
-                                if preset == .custom {
-                                    showCustomDurationSheet = true
-                                } else {
-                                    selectedPreset = preset
-                                }
-                            },
-                            onTapGoal: {
-                                showGoalPicker = true
-                            },
-                            onTapStyle: {
-                                showStylePicker = true
-                            },
-                            onTapCTA: {
-                                startFocusSession()
-                            }
+                            metaText: "\(selectedGoal.title) • \(selectedStyle.title)",
+                            progress: heroProgress,
+                            isLaunching: isLaunchingFocus
                         )
 
-                        FocusDetailSectionV3(mode: selectedMode)
+                        compactControlsSection
+
+                        bigStartButton
 
                         Color.clear
-                            .frame(height: 88)
+                            .frame(height: 110)
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 14)
                     .frame(minHeight: geo.size.height, alignment: .top)
+                    .blur(radius: isLaunchingFocus ? 1.5 : 0)
+                    .scaleEffect(isLaunchingFocus ? 0.992 : 1)
+                    .animation(.easeInOut(duration: 0.28), value: isLaunchingFocus)
                 }
+                .disabled(isLaunchingFocus)
+            }
+
+            if isLaunchingFocus {
+                launchOverlay
+                    .transition(.opacity)
             }
         }
         .sheet(isPresented: $showCustomDurationSheet) {
@@ -128,40 +112,276 @@ private extension FocusView {
         .animation(.spring(response: 0.65, dampingFraction: 0.86), value: pageAppeared)
     }
 
-    var activeSessionBanner: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(Color.green)
-                .frame(width: 8, height: 8)
+    var compactControlsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Ayarlar")
+                .font(.system(size: 14, weight: .heavy, design: .rounded))
+                .foregroundStyle(palette.primaryText.opacity(0.94))
 
-            Text(focusSession.statusLine)
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(palette.primaryText.opacity(0.9))
+            durationRow
 
-            Spacer()
-
-            Button("Devam Et") {
-                focusSession.expandSession()
-            }
-            .font(.system(size: 12, weight: .bold, design: .rounded))
-            .foregroundStyle(.white.opacity(0.92))
-            .padding(.horizontal, 12)
-            .frame(height: 32)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(Color.white.opacity(0.08))
-            )
-        }
-        .padding(.horizontal, 14)
-        .frame(height: 42)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.03))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color.white.opacity(0.05), lineWidth: 1)
+            HStack(spacing: 10) {
+                compactInfoCard(
+                    title: "Goal",
+                    value: selectedGoal.title,
+                    subtitle: selectedGoal.subtitle,
+                    icon: selectedGoal.icon,
+                    action: { showGoalPicker = true }
                 )
-        )
+
+                compactInfoCard(
+                    title: "Sound",
+                    value: selectedStyle.title,
+                    subtitle: selectedStyle.subtitle,
+                    icon: selectedStyle.icon,
+                    action: { showStylePicker = true }
+                )
+            }
+        }
+        .opacity(isLaunchingFocus ? 0.0 : 1)
+        .offset(y: isLaunchingFocus ? 10 : 0)
+        .animation(.easeInOut(duration: 0.22), value: isLaunchingFocus)
+    }
+
+    var durationRow: some View {
+        HStack(spacing: 10) {
+            durationChip(.short, text: "15 dk")
+            durationChip(.medium, text: "25 dk")
+            durationChip(.long, text: "45 dk")
+            customDurationChip
+        }
+    }
+
+    func durationChip(_ preset: FocusDurationPreset, text: String) -> some View {
+        Button {
+            selectedPreset = preset
+        } label: {
+            Text(text)
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundStyle(selectedPreset == preset ? Color.white : palette.secondaryText.opacity(0.84))
+                .frame(maxWidth: .infinity)
+                .frame(height: 40)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(
+                            selectedPreset == preset
+                            ? LinearGradient(
+                                colors: [
+                                    selectedModeAccent.opacity(0.30),
+                                    Color.white.opacity(0.10)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                            : LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.05),
+                                    Color.white.opacity(0.025)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .overlay(
+                            Capsule(style: .continuous)
+                                .stroke(Color.white.opacity(selectedPreset == preset ? 0.11 : 0.05), lineWidth: 1)
+                        )
+                )
+                .shadow(color: selectedPreset == preset ? selectedModeAccent.opacity(0.18) : .clear, radius: 12, x: 0, y: 7)
+        }
+        .buttonStyle(.plain)
+    }
+
+    var customDurationChip: some View {
+        Button {
+            showCustomDurationSheet = true
+        } label: {
+            Text(selectedPreset == .custom ? "\(customMinutes) dk" : "Özel")
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundStyle(selectedPreset == .custom ? Color.white : palette.secondaryText.opacity(0.84))
+                .frame(maxWidth: .infinity)
+                .frame(height: 40)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(
+                            selectedPreset == .custom
+                            ? LinearGradient(
+                                colors: [
+                                    selectedModeAccent.opacity(0.30),
+                                    Color.white.opacity(0.10)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                            : LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.05),
+                                    Color.white.opacity(0.025)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .overlay(
+                            Capsule(style: .continuous)
+                                .stroke(Color.white.opacity(selectedPreset == .custom ? 0.11 : 0.05), lineWidth: 1)
+                        )
+                )
+                .shadow(color: selectedPreset == .custom ? selectedModeAccent.opacity(0.18) : .clear, radius: 12, x: 0, y: 7)
+        }
+        .buttonStyle(.plain)
+    }
+
+    func compactInfoCard(
+        title: String,
+        value: String,
+        subtitle: String,
+        icon: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color.white.opacity(0.03))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                    )
+
+                Circle()
+                    .fill(selectedModeAccent.opacity(0.14))
+                    .frame(width: 90, height: 90)
+                    .blur(radius: 24)
+                    .offset(x: -48, y: 0)
+
+                HStack(alignment: .center, spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.white.opacity(0.08))
+
+                        Image(systemName: icon)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(Color.white.opacity(0.9))
+                    }
+                    .frame(width: 34, height: 34)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(title.uppercased())
+                            .font(.system(size: 9, weight: .bold, design: .rounded))
+                            .foregroundStyle(Color.white.opacity(0.56))
+                            .tracking(1)
+
+                        Text(value)
+                            .font(.system(size: 16, weight: .heavy, design: .rounded))
+                            .foregroundStyle(Color.white.opacity(0.96))
+                            .lineLimit(1)
+
+                        Text(subtitle)
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Color.white.opacity(0.62))
+                            .lineLimit(1)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Color.white.opacity(0.34))
+                }
+                .padding(.horizontal, 14)
+            }
+            .frame(height: 84)
+        }
+        .buttonStyle(.plain)
+    }
+
+    var bigStartButton: some View {
+        Button {
+            triggerFocusLaunch()
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "play.fill")
+                    .font(.system(size: 15, weight: .bold))
+
+                Text(modeCTA)
+                    .font(.system(size: 18, weight: .heavy, design: .rounded))
+
+                Spacer()
+
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 14, weight: .bold))
+                    .opacity(0.86)
+            }
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, 22)
+            .frame(height: 60)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                selectedModeAccent.opacity(1.0),
+                                selectedModeAccent.opacity(0.80)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                    )
+            )
+            .shadow(color: selectedModeAccent.opacity(0.34), radius: 22, x: 0, y: 12)
+        }
+        .buttonStyle(PressScaleButtonStyle())
+        .padding(.top, 2)
+        .opacity(isLaunchingFocus ? 0.0 : 1)
+        .offset(y: isLaunchingFocus ? 8 : 0)
+        .animation(.easeInOut(duration: 0.18), value: isLaunchingFocus)
+    }
+
+    var launchOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.24)
+                .ignoresSafeArea()
+
+            Circle()
+                .fill(selectedModeAccent.opacity(0.22))
+                .frame(width: 280, height: 280)
+                .blur(radius: 36)
+
+            Circle()
+                .stroke(Color.white.opacity(0.16), lineWidth: 14)
+                .frame(width: 236, height: 236)
+
+            Circle()
+                .trim(from: 0, to: heroProgress)
+                .stroke(
+                    AngularGradient(
+                        gradient: Gradient(colors: [
+                            Color.white.opacity(0.98),
+                            selectedModeAccent.opacity(0.95),
+                            Color.white.opacity(0.98)
+                        ]),
+                        center: .center
+                    ),
+                    style: StrokeStyle(lineWidth: 14, lineCap: .round)
+                )
+                .rotationEffect(.degrees(-90))
+                .frame(width: 236, height: 236)
+
+            VStack(spacing: 8) {
+                Text(durationText)
+                    .font(.system(size: 34, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
+
+                Text("Focus hazırlanıyor")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.white.opacity(0.72))
+            }
+        }
     }
 
     var ambientBackground: some View {
@@ -169,7 +389,7 @@ private extension FocusView {
             LinearGradient(
                 colors: [
                     Color.black,
-                    Color(red: 0.015, green: 0.02, blue: 0.07),
+                    Color(red: 0.01, green: 0.02, blue: 0.07),
                     Color.black
                 ],
                 startPoint: .top,
@@ -178,29 +398,44 @@ private extension FocusView {
             .ignoresSafeArea()
 
             Circle()
-                .fill(Color.blue.opacity(0.08))
-                .frame(width: 270, height: 270)
-                .blur(radius: 70)
-                .offset(x: 128, y: -220)
+                .fill(selectedModeAccent.opacity(0.16))
+                .frame(width: 320, height: 320)
+                .blur(radius: 90)
+                .offset(x: 135, y: -220)
 
             Circle()
-                .fill(Color.purple.opacity(0.05))
-                .frame(width: 230, height: 230)
-                .blur(radius: 78)
-                .offset(x: -145, y: 380)
+                .fill(selectedModeSecondaryAccent.opacity(0.12))
+                .frame(width: 260, height: 260)
+                .blur(radius: 96)
+                .offset(x: -150, y: 380)
         }
         .ignoresSafeArea()
     }
 
     var resolvedMinutes: Int {
-        if selectedPreset == .custom {
+        switch selectedPreset {
+        case .short:
+            return 15
+        case .medium:
+            return 25
+        case .long:
+            return 45
+        case .custom:
             return customMinutes
         }
-        return selectedPreset.minuteValue ?? customMinutes
     }
 
-    var heroPreset: FocusDurationPreset {
-        selectedPreset
+    var durationText: String {
+        switch selectedPreset {
+        case .short:
+            return "15 dk"
+        case .medium:
+            return "25 dk"
+        case .long:
+            return "45 dk"
+        case .custom:
+            return "\(customMinutes) dk"
+        }
     }
 
     var heroProgress: Double {
@@ -209,7 +444,7 @@ private extension FocusView {
         }
 
         switch resolvedMinutes {
-        case 0..<20: return 0.57
+        case 0..<20: return 0.56
         case 20..<40: return 0.72
         default: return 0.84
         }
@@ -237,28 +472,164 @@ private extension FocusView {
         }
     }
 
-    var heroSupportText: String {
+    var selectedModeAccent: Color {
         switch selectedMode {
         case .personal:
-            if focusSession.isSessionActive && focusSession.selectedMode == .personal {
-                return focusSession.isPaused ? "devam etmeyi bekliyor" : "şu an çalışıyor"
-            }
-            return resolvedMinutes >= 60 ? "uzun süreli derin çalışma" : "başlamaya uygun"
-
+            return Color(red: 0.40, green: 0.62, blue: 1.00)
         case .crew:
-            if let hostName = focusSession.hostName, focusSession.selectedMode == .crew, focusSession.isSessionActive {
-                return "host: \(hostName) • \(focusSession.readyCount)/\(focusSession.participantCount) hazır"
-            }
-            return "host ve katılımcılarla başlatılabilir"
-
+            return Color(red: 1.00, green: 0.42, blue: 0.50)
         case .friend:
-            if focusSession.selectedMode == .friend, focusSession.isSessionActive {
-                return "eşleşme aktif • birlikte odaklanıyorsunuz"
-            }
-            return "beraber odaklanmaya hazır"
+            return Color(red: 0.86, green: 0.52, blue: 1.00)
         }
     }
-    
+
+    var selectedModeSecondaryAccent: Color {
+        switch selectedMode {
+        case .personal:
+            return Color(red: 0.56, green: 0.44, blue: 1.00)
+        case .crew:
+            return Color(red: 1.00, green: 0.62, blue: 0.46)
+        case .friend:
+            return Color(red: 0.58, green: 0.50, blue: 1.00)
+        }
+    }
+
+    var modeCTA: String {
+        switch selectedMode {
+        case .personal:
+            return "Kişisel Focus Başlat"
+        case .crew:
+            return "Crew Focus Başlat"
+        case .friend:
+            return "Friend Focus Başlat"
+        }
+    }
+
+    func triggerFocusLaunch() {
+        withAnimation(.easeInOut(duration: 0.24)) {
+            isLaunchingFocus = true
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) {
+            startFocusSession()
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.60) {
+            isLaunchingFocus = false
+        }
+    }
+
+    func startFocusSession() {
+        let participants: [FocusParticipant]
+        switch selectedMode {
+        case .personal:
+            participants = []
+        case .crew:
+            participants = FocusParticipant.mockCrew
+        case .friend:
+            participants = FocusParticipant.mockFriend
+        }
+
+        focusSession.startSession(
+            mode: selectedMode,
+            durationMinutes: resolvedMinutes,
+            goal: selectedGoal,
+            style: selectedStyle,
+            participants: participants
+        )
+    }
+
+    var customDurationSheet: some View {
+        NavigationStack {
+            VStack(spacing: 18) {
+                VStack(spacing: 8) {
+                    Text("Özel Süre")
+                        .font(.system(size: 28, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.primary)
+
+                    Text("Focus oturumun için istediğin süreyi seç.")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+
+                ZStack {
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .fill(Color.white.opacity(0.05))
+
+                    Picker("Dakika", selection: $customMinutes) {
+                        ForEach(5...180, id: \.self) { minute in
+                            Text("\(minute) dk").tag(minute)
+                        }
+                    }
+                    .pickerStyle(.wheel)
+                    .frame(height: 180)
+                    .padding(.horizontal, 8)
+                }
+                .frame(height: 200)
+
+                HStack(spacing: 10) {
+                    quickMinuteChip(10)
+                    quickMinuteChip(25)
+                    quickMinuteChip(45)
+                    quickMinuteChip(60)
+                    quickMinuteChip(90)
+                }
+
+                Button {
+                    selectedPreset = .custom
+                    showCustomDurationSheet = false
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "timer")
+                            .font(.system(size: 15, weight: .bold))
+
+                        Text("\(customMinutes) dk Kullan")
+                            .font(.system(size: 16, weight: .heavy, design: .rounded))
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 54)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.blue.opacity(0.95),
+                                        Color.indigo.opacity(0.80)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+            }
+            .padding(20)
+        }
+        .presentationDetents([.medium])
+    }
+
+    func quickMinuteChip(_ minute: Int) -> some View {
+        Button {
+            customMinutes = minute
+        } label: {
+            Text("\(minute) dk")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(customMinutes == minute ? .white : .primary.opacity(0.8))
+                .padding(.horizontal, 12)
+                .frame(height: 34)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(customMinutes == minute ? Color.blue.opacity(0.9) : Color.white.opacity(0.06))
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
     var goalPickerSheet: some View {
         NavigationStack {
             VStack(spacing: 16) {
@@ -355,7 +726,13 @@ private extension FocusView {
                                         .frame(width: 38, height: 38)
                                         .background(
                                             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                                .fill(Color.purple.opacity(0.85))
+                                                .fill(
+                                                    LinearGradient(
+                                                        colors: [Color.purple.opacity(0.95), Color.blue.opacity(0.75)],
+                                                        startPoint: .topLeading,
+                                                        endPoint: .bottomTrailing
+                                                    )
+                                                )
                                         )
 
                                     VStack(alignment: .leading, spacing: 4) {
@@ -379,13 +756,7 @@ private extension FocusView {
                                 .padding(14)
                                 .background(
                                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [Color.purple.opacity(0.95), Color.blue.opacity(0.75)],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
+                                        .fill(Color.white.opacity(0.05))
                                 )
                             }
                             .buttonStyle(.plain)
@@ -400,242 +771,12 @@ private extension FocusView {
         }
         .presentationDetents([.medium, .large])
     }
-    
-    var preSessionParticipants: [FocusParticipant] {
-        switch selectedMode {
-        case .personal:
-            return []
-        case .crew:
-            return FocusParticipant.mockCrew
-        case .friend:
-            return FocusParticipant.mockFriend
-        }
-    }
+}
 
-    var preSessionHostName: String {
-        preSessionParticipants.first(where: { $0.isHost })?.name ?? "Atakan"
-    }
-
-    var preSessionReadyCount: Int {
-        preSessionParticipants.filter(\.isReady).count
-    }
-
-    var preSessionParticipantCount: Int {
-        preSessionParticipants.count
-    }
-
-    var preSessionCanStart: Bool {
-        switch selectedMode {
-        case .personal:
-            return true
-        case .crew:
-            return preSessionReadyCount >= 2
-        case .friend:
-            return preSessionReadyCount == preSessionParticipantCount && preSessionParticipantCount >= 2
-        }
-    }
-
-    var preSessionTitle: String {
-        switch selectedMode {
-        case .personal:
-            return "Hazırsın"
-        case .crew:
-            return "Crew lobby"
-        case .friend:
-            return "Pair lobby"
-        }
-    }
-
-    var preSessionSubtitle: String {
-        switch selectedMode {
-        case .personal:
-            return "Kişisel odak için her şey hazır."
-        case .crew:
-            return "\(preSessionHostName) host olarak bekliyor • \(preSessionReadyCount)/\(preSessionParticipantCount) hazır"
-        case .friend:
-            return "\(preSessionReadyCount)/\(preSessionParticipantCount) kişi hazır • birlikte başlayabilirsiniz"
-        }
-    }
-
-    func startFocusSession() {
-        guard preSessionCanStart else { return }
-
-        let participants: [FocusParticipant]
-        switch selectedMode {
-        case .personal:
-            participants = []
-        case .crew:
-            participants = FocusParticipant.mockCrew
-        case .friend:
-            participants = FocusParticipant.mockFriend
-        }
-
-        focusSession.startSession(
-            mode: selectedMode,
-            durationMinutes: resolvedMinutes,
-            goal: selectedGoal,
-            style: selectedStyle,
-            participants: participants
-        )
-    }
-    
-    var focusSetupSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Session Setup")
-                    .font(.system(size: 18, weight: .heavy, design: .rounded))
-                    .foregroundStyle(palette.primaryText)
-
-                Spacer()
-            }
-
-            HStack(spacing: 10) {
-                setupCard(
-                    title: "Goal",
-                    value: selectedGoal.title,
-                    subtitle: selectedGoal.subtitle,
-                    icon: selectedGoal.icon
-                )
-
-                setupCard(
-                    title: "Sound",
-                    value: selectedStyle.title,
-                    subtitle: selectedStyle.subtitle,
-                    icon: selectedStyle.icon
-                )
-            }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(FocusGoal.allCases) { goal in
-                        choiceChip(
-                            title: goal.title,
-                            isSelected: selectedGoal == goal
-                        ) {
-                            selectedGoal = goal
-                        }
-                    }
-                }
-            }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(FocusStyle.allCases) { style in
-                        choiceChip(
-                            title: style.title,
-                            isSelected: selectedStyle == style
-                        ) {
-                            selectedStyle = style
-                        }
-                    }
-                }
-            }
-        }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.white.opacity(0.025))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(Color.white.opacity(0.05), lineWidth: 1)
-                )
-        )
-    }
-
-    func setupCard(title: String, value: String, subtitle: String, icon: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(Color.white.opacity(0.9))
-
-                Text(title.uppercased())
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundStyle(palette.secondaryText.opacity(0.7))
-                    .tracking(1)
-            }
-
-            Text(value)
-                .font(.system(size: 16, weight: .heavy, design: .rounded))
-                .foregroundStyle(palette.primaryText)
-
-            Text(subtitle)
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(palette.secondaryText.opacity(0.75))
-                .lineLimit(2)
-
-            Spacer(minLength: 0)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, minHeight: 92, alignment: .topLeading)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.035))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.05), lineWidth: 1)
-                )
-        )
-    }
-
-    func choiceChip(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(isSelected ? Color.white.opacity(0.96) : palette.secondaryText.opacity(0.82))
-                .padding(.horizontal, 14)
-                .frame(height: 34)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(isSelected ? Color.white.opacity(0.10) : Color.white.opacity(0.04))
-                        .overlay(
-                            Capsule(style: .continuous)
-                                .stroke(Color.white.opacity(isSelected ? 0.10 : 0.05), lineWidth: 1)
-                        )
-                )
-        }
-        .buttonStyle(.plain)
-    }
-
-    var customDurationSheet: some View {
-        NavigationStack {
-            VStack(spacing: 20) {
-                Text("Özel Focus Süresi")
-                    .font(.system(size: 26, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.primary)
-
-                Text("5 ile 180 dakika arasında istediğin süreyi seç.")
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-
-                Picker("Süre", selection: $customMinutes) {
-                    ForEach(5...180, id: \.self) { minute in
-                        Text("\(minute) dk").tag(minute)
-                    }
-                }
-                .pickerStyle(.wheel)
-                .frame(height: 220)
-
-                Button {
-                    selectedPreset = .custom
-                    showCustomDurationSheet = false
-                } label: {
-                    Text("Bu Süreyi Kullan")
-                        .font(.system(size: 16, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 54)
-                        .background(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(Color.blue)
-                        )
-                }
-
-                Spacer()
-            }
-            .padding(24)
-        }
-        .presentationDetents([.medium])
+private struct PressScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.985 : 1.0)
+            .animation(.spring(response: 0.22, dampingFraction: 0.82), value: configuration.isPressed)
     }
 }
