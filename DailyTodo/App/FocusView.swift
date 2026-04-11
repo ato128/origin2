@@ -279,7 +279,8 @@ private extension FocusView {
                         Text(subtitle)
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
                             .foregroundStyle(Color.white.opacity(0.62))
-                            .lineLimit(1)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.85)
                     }
 
                     Spacer()
@@ -290,7 +291,7 @@ private extension FocusView {
                 }
                 .padding(.horizontal, 14)
             }
-            .frame(height: 84)
+            .frame(height: 88)
         }
         .buttonStyle(.plain)
     }
@@ -322,7 +323,7 @@ private extension FocusView {
                         LinearGradient(
                             colors: [
                                 selectedModeAccent.opacity(1.0),
-                                selectedModeAccent.opacity(0.80)
+                                selectedModeSecondaryAccent.opacity(0.92)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -333,7 +334,7 @@ private extension FocusView {
                             .stroke(Color.white.opacity(0.11), lineWidth: 1)
                     )
             )
-            .shadow(color: selectedModeAccent.opacity(0.34), radius: 22, x: 0, y: 12)
+            .shadow(color: selectedModeAccent.opacity(0.38), radius: 26, x: 0, y: 14)
         }
         .buttonStyle(PressScaleButtonStyle())
         .padding(.top, 2)
@@ -475,22 +476,22 @@ private extension FocusView {
     var selectedModeAccent: Color {
         switch selectedMode {
         case .personal:
-            return Color(red: 0.40, green: 0.62, blue: 1.00)
+            return Color(red: 0.42, green: 0.66, blue: 1.00)
         case .crew:
-            return Color(red: 1.00, green: 0.42, blue: 0.50)
+            return Color(red: 1.00, green: 0.46, blue: 0.54)
         case .friend:
-            return Color(red: 0.86, green: 0.52, blue: 1.00)
+            return Color(red: 0.88, green: 0.56, blue: 1.00)
         }
     }
 
     var selectedModeSecondaryAccent: Color {
         switch selectedMode {
         case .personal:
-            return Color(red: 0.56, green: 0.44, blue: 1.00)
+            return Color(red: 0.66, green: 0.54, blue: 1.00)
         case .crew:
-            return Color(red: 1.00, green: 0.62, blue: 0.46)
+            return Color(red: 1.00, green: 0.72, blue: 0.58)
         case .friend:
-            return Color(red: 0.58, green: 0.50, blue: 1.00)
+            return Color(red: 0.72, green: 0.60, blue: 1.00)
         }
     }
 

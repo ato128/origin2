@@ -6,8 +6,6 @@
 //
 
 import SwiftUI
-import AudioToolbox
-import Combine
 
 struct ActiveFocusView: View {
     @EnvironmentObject var focusSession: FocusSessionManager
@@ -15,10 +13,32 @@ struct ActiveFocusView: View {
 
     @State private var appeared = false
     @State private var pulse = false
-    @State private var ringBreathing = false
+    @State private var showParticipantsSheet = false
 
-    private var theme: FocusHeroTheme {
-        FocusHeroTheme.forMode(focusSession.selectedMode)
+    private var mode: FocusMode { focusSession.selectedMode }
+
+    private var theme: ActiveFocusTheme {
+        ActiveFocusTheme.forMode(mode)
+    }
+
+    private var participants: [FocusParticipant] {
+        focusSession.currentSession?.participants ?? []
+    }
+
+    private var hostParticipant: FocusParticipant? {
+        participants.first(where: { $0.isHost })
+    }
+
+    private var readyCount: Int {
+        participants.filter { $0.isReady || $0.isActive }.count
+    }
+
+    private var visibleParticipants: [FocusParticipant] {
+        Array(participants.prefix(3))
+    }
+
+    private var hiddenParticipantCount: Int {
+        max(participants.count - visibleParticipants.count, 0)
     }
 
     var body: some View {
@@ -28,701 +48,259 @@ struct ActiveFocusView: View {
             VStack(spacing: 0) {
                 topBar
 
-                Spacer()
+                Spacer(minLength: 8)
 
-                centerRing
+                centerStage
 
-                Spacer()
+                Spacer(minLength: mode == .personal ? 18 : 10)
 
-                participantSection
-                bottomInfo
-                controls
+                if mode == .personal {
+                    personalSupport
+                        .padding(.horizontal, 28)
+                        .padding(.bottom, 12)
+                } else {
+                    minimalSharedPanel
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 12)
+                }
+
+                footerCaption
+                    .padding(.horizontal, 28)
+                    .padding(.bottom, 14)
+
+                bottomControls
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 22)
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 18)
-            .padding(.bottom, 34)
-
-            if let summary = focusSession.completionSummary {
-                completionOverlay(summary: summary)
-            }
+        }
+        .ignoresSafeArea()
+        .toolbar(.hidden, for: .navigationBar)
+        .sheet(isPresented: $showParticipantsSheet) {
+            participantsSheet
         }
         .onAppear {
             appeared = true
             pulse = true
-            ringBreathing = true
-            playSoftTapSound()
-            hapticSoft()
         }
     }
 }
 
+// MARK: - Main Sections
 private extension ActiveFocusView {
-    var sessionLabel: String {
-        switch focusSession.selectedMode {
-        case .personal:
-            return "Kişisel Focus"
-        case .crew:
-            return "Crew Focus"
-        case .friend:
-            return "Friend Focus"
-        }
-    }
-
-    var durationTitle: String {
-        "\(focusSession.durationMinutes) dk"
-    }
-
-    var bottomStatusText: String {
-        if focusSession.isPaused {
-            return "Oturum duraklatıldı"
-        }
-        return "Odak akışı devam ediyor"
-    }
-
-    var supportText: String {
-        switch focusSession.selectedMode {
-        case .personal:
-            return "Derin odakta kalmaya devam et"
-        case .crew:
-            return "Host, hazır katılımcılar ve ortak süre aynı akışta"
-        case .friend:
-            return "Eşleşme aktif, ritmi birlikte sürdürün"
-        }
-    }
-
-    var participantSection: some View {
-        Group {
-            if focusSession.selectedMode != .personal,
-               let session = focusSession.currentSession {
-                VStack(alignment: .leading, spacing: 14) {
-                    sessionContextHeader(session: session)
-
-                    HStack(spacing: 10) {
-                        sessionPill(
-                            title: "Host",
-                            value: focusSession.hostName ?? "Atakan",
-                            icon: "person.crop.circle.fill"
-                        )
-
-                        sessionPill(
-                            title: "Hazır",
-                            value: "\(focusSession.readyCount)/\(max(focusSession.participantCount, 1))",
-                            icon: "checkmark.circle.fill"
-                        )
-                    }
-
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(focusSession.selectedMode == .crew ? "Katılımcılar" : "Eşleşme")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundStyle(Color.white.opacity(0.58))
-
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 10) {
-                                ForEach(session.participants) { participant in
-                                    participantChip(participant)
-                                }
-                            }
-                        }
-                    }
-                }
-                .padding(16)
-                .background(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(Color.white.opacity(0.045))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .stroke(Color.white.opacity(0.06), lineWidth: 1)
-                        )
-                )
-                .padding(.bottom, 18)
-            }
-        }
-    }
-    
-    func sessionContextHeader(session: FocusSessionState) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(sessionContextTitle)
-                .font(.system(size: 18, weight: .heavy, design: .rounded))
-                .foregroundStyle(Color.white.opacity(0.96))
-
-            Text(sessionContextSubtitle)
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(Color.white.opacity(0.68))
-                .lineLimit(2)
-        }
-    }
-
-    func sessionPill(title: String, value: String, icon: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(Color.white.opacity(0.88))
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title.uppercased())
-                    .font(.system(size: 9, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.white.opacity(0.48))
-                    .tracking(1.0)
-
-                Text(value)
-                    .font(.system(size: 12, weight: .heavy, design: .rounded))
-                    .foregroundStyle(Color.white.opacity(0.92))
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 12)
-        .frame(height: 42)
-        .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.06))
-        )
-    }
-
-    func participantChip(_ participant: FocusParticipant) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(participantStatusColor(participant))
-                    .frame(width: 8, height: 8)
-
-                if participant.isHost {
-                    Text("HOST")
-                        .font(.system(size: 9, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color.white.opacity(0.52))
-                        .tracking(1)
-                } else {
-                    Text(participant.isActive ? "AKTİF" : (participant.isReady ? "HAZIR" : "BEKLİYOR"))
-                        .font(.system(size: 9, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color.white.opacity(0.52))
-                        .tracking(1)
-                }
-            }
-
-            Text(participant.name)
-                .font(.system(size: 14, weight: .heavy, design: .rounded))
-                .foregroundStyle(Color.white.opacity(0.96))
-                .lineLimit(1)
-
-            Text(participantStatusText(participant))
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundStyle(Color.white.opacity(0.64))
-                .lineLimit(2)
-
-            Spacer(minLength: 0)
-        }
-        .padding(12)
-        .frame(width: 132)
-        .frame(minHeight: 88, alignment: .topLeading)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.05))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
-                )
-        )
-    }
-
-    func participantStatusColor(_ participant: FocusParticipant) -> Color {
-        if participant.isActive {
-            return .green
-        } else if participant.isReady {
-            return .yellow
-        } else {
-            return .gray.opacity(0.8)
-        }
-    }
-
-    func participantStatusText(_ participant: FocusParticipant) -> String {
-        if participant.isHost {
-            return "Oturumu yönetiyor"
-        } else if participant.isActive {
-            return "Şu an odakta"
-        } else if participant.isReady {
-            return "Başlamaya hazır"
-        } else {
-            return "Henüz hazır değil"
-        }
-    }
-    
-    var sessionContextTitle: String {
-        switch focusSession.selectedMode {
-        case .personal:
-            return "Kişisel odak"
-        case .crew:
-            return "Crew ile ortak odak"
-        case .friend:
-            return "Birlikte odaklanıyorsunuz"
-        }
-    }
-
-    var sessionContextSubtitle: String {
-        switch focusSession.selectedMode {
-        case .personal:
-            return "Sessiz akış devam ediyor"
-        case .crew:
-            if let host = focusSession.hostName {
-                return "\(host) host olarak oturumu yürütüyor. Ekip senkron halde devam ediyor."
-            }
-            return "Ekip odak akışı devam ediyor"
-        case .friend:
-            return "Eşleşmiş focus aktif. Birlikte ritmi koruyun."
-        }
-    }
-    
-    func completionOverlay(summary: FocusCompletionSummary) -> some View {
+    var backgroundLayer: some View {
         ZStack {
-            Color.black.opacity(0.50)
-                .ignoresSafeArea()
+            Color.black
 
-            VStack(spacing: 18) {
-                ZStack {
-                    Circle()
-                        .fill(completionAccent.opacity(0.18))
-                        .frame(width: 120, height: 120)
-                        .blur(radius: 24)
-
-                    Circle()
-                        .fill(Color.white.opacity(0.06))
-                        .frame(width: 86, height: 86)
-                        .overlay(
-                            Circle()
-                                .stroke(Color.white.opacity(0.10), lineWidth: 1)
-                        )
-
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 30, weight: .heavy))
-                        .foregroundStyle(Color.white.opacity(0.96))
-                }
-                .padding(.top, 6)
-
-                VStack(spacing: 8) {
-                    Text(completionTitle(for: summary))
-                        .font(.system(size: 30, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Color.white)
-                        .multilineTextAlignment(.center)
-
-                    Text(completionSubtitle(for: summary))
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Color.white.opacity(0.74))
-                        .multilineTextAlignment(.center)
-                }
-
-                HStack(spacing: 10) {
-                    completionMetricCard(
-                        title: "Bugün",
-                        value: "\(summary.totalTodayMinutes) dk"
-                    )
-
-                    completionMetricCard(
-                        title: "Seri",
-                        value: "\(summary.streakDays) gün"
-                    )
-
-                    completionMetricCard(
-                        title: "Oturum",
-                        value: "\(summary.completedSessionsToday)"
-                    )
-                }
-
-                VStack(spacing: 10) {
-                    completionInfoRow(
-                        title: "Goal",
-                        value: summary.goal.title,
-                        icon: summary.goal.icon
-                    )
-
-                    completionInfoRow(
-                        title: "Sound",
-                        value: summary.style.title,
-                        icon: summary.style.icon
-                    )
-
-                    if summary.mode != .personal {
-                        completionInfoRow(
-                            title: "Katılımcı",
-                            value: "\(max(summary.participantCount, 2)) kişi",
-                            icon: "person.2.fill"
-                        )
-                    }
-                }
-
-                HStack(spacing: 12) {
-                    Button {
-                        hapticMedium()
-                        playSoftTapSound()
-                        focusSession.restartLastFinishedSession()
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 14, weight: .bold))
-
-                            Text("Bir Session Daha")
-                                .font(.system(size: 15, weight: .heavy, design: .rounded))
-                        }
-                        .foregroundStyle(Color.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            completionAccent.opacity(0.95),
-                                            completionAccent.opacity(0.72)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                        )
-                    }
-                    .buttonStyle(.plain)
-
-                    Button {
-                        hapticSoft()
-                        playSoftTapSound()
-                        focusSession.dismissCompletionSummary()
-                        dismiss()
-                    } label: {
-                        Text("Kapat")
-                            .font(.system(size: 15, weight: .heavy, design: .rounded))
-                            .foregroundStyle(Color.white.opacity(0.95))
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 52)
-                            .background(
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .fill(Color.white.opacity(0.06))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                                    )
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(22)
-            .background(
-                ZStack {
-                    RoundedRectangle(cornerRadius: 30, style: .continuous)
-                        .fill(Color.black.opacity(0.72))
-
-                    RoundedRectangle(cornerRadius: 30, style: .continuous)
-                        .fill(.ultraThinMaterial.opacity(0.22))
-
-                    RoundedRectangle(cornerRadius: 30, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.05),
-                                    Color.clear,
-                                    Color.black.opacity(0.08)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                }
-                .overlay(
-                    RoundedRectangle(cornerRadius: 30, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                )
+            RadialGradient(
+                colors: [
+                    theme.primaryGlow.opacity(0.55),
+                    Color.clear
+                ],
+                center: .center,
+                startRadius: 80,
+                endRadius: 420
             )
-            .shadow(color: .black.opacity(0.24), radius: 22, x: 0, y: 14)
-            .padding(.horizontal, 22)
-            .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            .blur(radius: 60)
+
+            RadialGradient(
+                colors: [
+                    theme.secondaryGlow.opacity(0.42),
+                    Color.clear
+                ],
+                center: .topTrailing,
+                startRadius: 40,
+                endRadius: 360
+            )
+            .blur(radius: 80)
+
+            RadialGradient(
+                colors: [
+                    theme.coreGlow.opacity(0.32),
+                    Color.clear
+                ],
+                center: .center,
+                startRadius: 30,
+                endRadius: 260
+            )
+            .blur(radius: 50)
         }
+        .ignoresSafeArea()
     }
 
-    func completionMetricCard(title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title.uppercased())
-                .font(.system(size: 10, weight: .bold, design: .rounded))
-                .foregroundStyle(Color.white.opacity(0.52))
-                .tracking(1)
-
-            Text(value)
-                .font(.system(size: 17, weight: .heavy, design: .rounded))
-                .foregroundStyle(Color.white.opacity(0.97))
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-
-            Spacer(minLength: 0)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, minHeight: 80, alignment: .topLeading)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.06))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
-                )
-        )
-    }
-
-    func completionInfoRow(title: String, value: String, icon: String) -> some View {
-        HStack(spacing: 10) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.white.opacity(0.08))
-
-                Image(systemName: icon)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(Color.white.opacity(0.9))
-            }
-            .frame(width: 28, height: 28)
-
-            Text(title)
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(Color.white.opacity(0.58))
-
-            Spacer()
-
-            Text(value)
-                .font(.system(size: 14, weight: .heavy, design: .rounded))
-                .foregroundStyle(Color.white.opacity(0.94))
-        }
-        .padding(.horizontal, 12)
-        .frame(height: 42)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.05))
-        )
-    }
-    
-    var completionAccent: Color {
-        switch focusSession.selectedMode {
-        case .personal:
-            return Color.blue
-        case .crew:
-            return Color.red
-        case .friend:
-            return Color.purple
-        }
-    }
-
-    func completionTitle(for summary: FocusCompletionSummary) -> String {
-        switch summary.mode {
-        case .personal:
-            return "Harika iş çıkardın"
-        case .crew:
-            return "Crew session tamamlandı"
-        case .friend:
-            return "Ortak odak tamamlandı"
-        }
-    }
-
-    func completionSubtitle(for summary: FocusCompletionSummary) -> String {
-        switch summary.mode {
-        case .personal:
-            return "\(summary.durationMinutes) dakikalık \(summary.goal.title) oturumu başarıyla bitti."
-        case .crew:
-            return "\(summary.durationMinutes) dakikalık ekip focus oturumu tamamlandı. Katılımcılar ortak ritmi korudu."
-        case .friend:
-            return "\(summary.durationMinutes) dakikalık eşleşmiş focus tamamlandı. Birlikte odak akışı başarıyla sürdü."
-        }
-    }
-    func infoPill(title: String, value: String) -> some View {
-        HStack(spacing: 6) {
-            Text(title)
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.58))
-
-            Text(value)
-                .font(.system(size: 12, weight: .heavy, design: .rounded))
-                .foregroundStyle(.white.opacity(0.92))
-        }
-        .padding(.horizontal, 12)
-        .frame(height: 34)
-        .background(
-            Capsule(style: .continuous)
-                .fill(Color.white.opacity(0.06))
-        )
-    }
-}
-
-private extension ActiveFocusView {
     var topBar: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(sessionLabel)
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.white.opacity(0.82))
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(headerTitle)
+                    .font(.system(size: 19, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.white.opacity(0.94))
 
-                Text(durationTitle)
-                    .font(.system(size: 28, weight: .heavy, design: .rounded))
-                    .foregroundStyle(Color.white.opacity(0.98))
+                Text(durationHeaderText)
+                    .font(.system(size: 29, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
             }
 
             Spacer()
 
-            HStack(spacing: 10) {
-                Button {
-                    hapticSoft()
-                    playSoftTapSound()
-                    withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
-                        focusSession.minimizeSession()
-                    }
-                    dismiss()
-                } label: {
-                    Image(systemName: "minus")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(Color.white.opacity(0.92))
-                        .frame(width: 42, height: 42)
-                        .background(
-                            Circle()
-                                .fill(Color.white.opacity(0.08))
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                                )
-                        )
+            HStack(spacing: 12) {
+                circleIconButton(systemName: "minus") {
+                    focusSession.minimizeSession()
                 }
-                .buttonStyle(.plain)
 
-                Button {
-                    hapticMedium()
-                    playSoftTapSound()
+                circleIconButton(systemName: "xmark") {
                     focusSession.closeSession()
                     dismiss()
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(Color.white.opacity(0.92))
-                        .frame(width: 42, height: 42)
-                        .background(
-                            Circle()
-                                .fill(Color.white.opacity(0.08))
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                                )
-                        )
                 }
-                .buttonStyle(.plain)
             }
         }
+        .padding(.horizontal, 20)
+        .padding(.top, 58)
+        .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : -8)
+        .animation(.spring(response: 0.58, dampingFraction: 0.84), value: appeared)
     }
 
-    var centerRing: some View {
+    var centerStage: some View {
         ZStack {
             Circle()
-                .fill(Color.black.opacity(0.18))
-                .frame(width: 288, height: 288)
-                .blur(radius: 26)
+                .fill(theme.ringGlow.opacity(0.20))
+                .frame(width: 304, height: 304)
+                .blur(radius: 40)
 
             Circle()
-                .stroke(Color.white.opacity(0.06), lineWidth: 18)
+                .stroke(Color.white.opacity(0.08), lineWidth: 16)
+                .frame(width: 304, height: 304)
 
             Circle()
-                .trim(from: 0, to: focusSession.progress)
+                .trim(from: 0, to: ringTrimValue)
                 .stroke(
-                    LinearGradient(
-                        colors: [
+                    AngularGradient(
+                        gradient: Gradient(colors: [
                             Color.white.opacity(0.98),
-                            theme.ringTint.opacity(0.90)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+                            theme.ringTint.opacity(0.96),
+                            Color.white.opacity(0.98)
+                        ]),
+                        center: .center
                     ),
-                    style: StrokeStyle(lineWidth: 18, lineCap: .round)
+                    style: StrokeStyle(lineWidth: 16, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
-                .shadow(color: theme.ringTint.opacity(0.18), radius: 12, x: 0, y: 0)
-                .animation(.easeInOut(duration: 0.5), value: focusSession.progress)
+                .frame(width: 304, height: 304)
+                .shadow(color: theme.ringTint.opacity(0.18), radius: 14, x: 0, y: 0)
+                .animation(.linear(duration: 1), value: focusSession.progress)
 
             Circle()
-                .stroke(Color.white.opacity(0.025), lineWidth: 1)
-                .padding(11)
+                .stroke(Color.white.opacity(0.03), lineWidth: 1)
+                .frame(width: 258, height: 258)
 
-            VStack(spacing: 6) {
+            movingOrb
+
+            VStack(spacing: 8) {
                 Text(focusSession.timeString)
-                    .font(.system(size: 46, weight: .heavy, design: .rounded))
-                    .foregroundStyle(Color.white.opacity(0.99))
+                    .font(.system(size: 45, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
                     .contentTransition(.numericText())
 
-                Text(focusSession.selectedMode.statusText.uppercased())
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.white.opacity(0.60))
-                    .tracking(1.3)
+                Text(statusHeadline)
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .tracking(2.2)
+                    .foregroundStyle(Color.white.opacity(0.72))
 
-                Text(bottomStatusText)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Color.white.opacity(0.42))
-                    .padding(.top, 2)
+                Text("Odak akışı devam ediyor")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.white.opacity(0.48))
             }
         }
-        .frame(width: 270, height: 270)
-        .scaleEffect(ringBreathing && !focusSession.isPaused ? 1.018 : 1.0)
-        .animation(
-            !focusSession.isPaused
-            ? .easeInOut(duration: 3.2).repeatForever(autoreverses: true)
-            : .easeOut(duration: 0.25),
-            value: ringBreathing
-        )
+        .scaleEffect(appeared ? 1 : 0.965)
         .opacity(appeared ? 1 : 0)
-        .scaleEffect(appeared ? 1 : 0.94)
-        .animation(.spring(response: 0.8, dampingFraction: 0.86), value: appeared)
+        .animation(.spring(response: 0.72, dampingFraction: 0.84), value: appeared)
     }
 
-    var bottomInfo: some View {
-        VStack(spacing: 8) {
-            Text(primaryBottomTitle)
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundStyle(Color.white.opacity(0.92))
+    var personalSupport: some View {
+        VStack(spacing: 6) {
+            Text(personalMainTitle)
+                .font(.system(size: 17, weight: .heavy, design: .rounded))
+                .foregroundStyle(Color.white.opacity(0.97))
+                .multilineTextAlignment(.center)
 
-            Text(supportText)
+            Text(personalMainSubtitle)
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(Color.white.opacity(0.56))
+                .foregroundStyle(Color.white.opacity(0.58))
                 .multilineTextAlignment(.center)
         }
-        .padding(.bottom, 22)
     }
-    
-    var primaryBottomTitle: String {
-        if focusSession.isPaused {
-            return "Session paused"
-        }
 
-        switch focusSession.selectedMode {
-        case .personal:
-            return "Deep focus in progress"
-        case .crew:
-            return "Crew session in sync"
-        case .friend:
-            return "Shared focus in progress"
+    var minimalSharedPanel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(sharedPanelTitle)
+                .font(.system(size: 17, weight: .heavy, design: .rounded))
+                .foregroundStyle(Color.white.opacity(0.97))
+
+            sharedTopPills
+
+            Button {
+                showParticipantsSheet = true
+            } label: {
+                VStack(alignment: .leading, spacing: 10) {
+                    participantPreviewHeader
+                    participantPreviewRow
+                }
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.white.opacity(0.045))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                        )
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color.white.opacity(0.055))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
+        )
+    }
+
+    var footerCaption: some View {
+        VStack(spacing: 6) {
+            Text(footerTitle)
+                .font(.system(size: 16, weight: .heavy, design: .rounded))
+                .foregroundStyle(Color.white.opacity(0.94))
+                .multilineTextAlignment(.center)
+
+            Text(footerSubtitle)
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundStyle(Color.white.opacity(0.52))
+                .multilineTextAlignment(.center)
         }
     }
-    var controls: some View {
-        HStack(spacing: 20) {
+
+    var bottomControls: some View {
+        HStack(spacing: 14) {
             Button {
                 focusSession.togglePause()
-                hapticMedium()
-                playSoftTapSound()
-
-                if !focusSession.isPaused {
-                    ringBreathing = true
-                }
             } label: {
-                HStack(spacing: 10) {
+                HStack(spacing: 12) {
                     Image(systemName: focusSession.isPaused ? "play.fill" : "pause.fill")
-                        .font(.system(size: 16, weight: .bold))
+                        .font(.system(size: 19, weight: .bold))
 
                     Text(focusSession.isPaused ? "Devam Et" : "Duraklat")
-                        .font(.system(size: 15, weight: .heavy, design: .rounded))
+                        .font(.system(size: 18, weight: .heavy, design: .rounded))
                 }
-                .foregroundStyle(Color.white.opacity(0.96))
+                .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
-                .frame(height: 54)
+                .frame(height: 66)
                 .background(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(Color.white.opacity(0.08))
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(Color.white.opacity(0.07))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
                                 .stroke(Color.white.opacity(0.08), lineWidth: 1)
                         )
                 )
@@ -730,134 +308,433 @@ private extension ActiveFocusView {
             .buttonStyle(.plain)
 
             Button {
-                hapticWarning()
-                playEndTapSound()
                 focusSession.closeSession()
                 dismiss()
             } label: {
-                Image(systemName: "stop.fill")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(Color.white.opacity(0.95))
-                    .frame(width: 54, height: 54)
-                    .background(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .fill(Color.red.opacity(0.18))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.76, green: 0.08, blue: 0.12),
+                                    Color(red: 0.50, green: 0.03, blue: 0.06)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
                             )
-                    )
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        )
+
+                    Image(systemName: "stop.fill")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 84, height: 66)
             }
             .buttonStyle(.plain)
         }
     }
 
-    var backgroundLayer: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    Color.black,
-                    theme.bottomColor,
-                    Color.black
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+    var participantsSheet: some View {
+        NavigationStack {
+            ZStack {
+                Color.black.ignoresSafeArea()
 
-            Circle()
-                .fill(theme.highlightColor.opacity(pulse ? 0.18 : 0.10))
-                .frame(width: 320, height: 320)
-                .blur(radius: 84)
-                .offset(x: 70, y: -120)
-                .animation(.easeInOut(duration: 4.4).repeatForever(autoreverses: true), value: pulse)
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text("Katılımcılar")
+                            .font(.system(size: 28, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white)
 
-            Circle()
-                .fill(theme.secondaryGlow.opacity(pulse ? 0.14 : 0.08))
-                .frame(width: 280, height: 280)
-                .blur(radius: 90)
-                .offset(x: -110, y: 220)
-                .animation(.easeInOut(duration: 5.6).repeatForever(autoreverses: true), value: pulse)
-
-            Ellipse()
-                .fill(Color.black.opacity(0.24))
-                .frame(width: 320, height: 180)
-                .blur(radius: 34)
-                .offset(y: 120)
+                        ForEach(participants) { participant in
+                            participantSheetRow(participant)
+                        }
+                    }
+                    .padding(20)
+                }
+            }
         }
-    }
-
-    func hapticSoft() {
-        let generator = UIImpactFeedbackGenerator(style: .soft)
-        generator.prepare()
-        generator.impactOccurred()
-    }
-
-    func hapticMedium() {
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.prepare()
-        generator.impactOccurred()
-    }
-
-    func hapticWarning() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.prepare()
-        generator.notificationOccurred(.warning)
-    }
-
-    func playSoftTapSound() {
-        AudioServicesPlaySystemSound(1104)
-    }
-
-    func playEndTapSound() {
-        AudioServicesPlaySystemSound(1155)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 }
 
-private struct FocusHeroTheme {
-    let topColor: Color
-    let midColor: Color
-    let bottomColor: Color
-    let highlightColor: Color
-    let secondaryGlow: Color
-    let ringTint: Color
-    let shadowColor: Color
-    let badgeDotColor: Color
+// MARK: - Derived Values
+private extension ActiveFocusView {
+    var durationHeaderText: String {
+        "\(focusSession.durationMinutes) dk"
+    }
 
-    static func forMode(_ mode: FocusMode) -> FocusHeroTheme {
+    var ringTrimValue: Double {
+        max(focusSession.progress, 0.01)
+    }
+
+    var hostNameText: String {
+        hostParticipant?.name ?? "Atakan"
+    }
+
+    var readyCountText: String {
+        "\(readyCount)/\(max(participants.count, 1))"
+    }
+
+    var headerTitle: String {
+        switch mode {
+        case .personal: return "Kişisel Focus"
+        case .crew: return "Crew Focus"
+        case .friend: return "Friend Focus"
+        }
+    }
+
+    var statusHeadline: String {
+        if focusSession.isPaused { return "DURAKLATILDI" }
+
         switch mode {
         case .personal:
-            return FocusHeroTheme(
-                topColor: Color(red: 0.20, green: 0.28, blue: 0.62),
-                midColor: Color(red: 0.07, green: 0.15, blue: 0.40),
-                bottomColor: Color(red: 0.02, green: 0.05, blue: 0.14),
-                highlightColor: Color(red: 0.25, green: 0.48, blue: 0.92),
-                secondaryGlow: Color(red: 0.15, green: 0.28, blue: 0.72),
-                ringTint: Color(red: 0.86, green: 0.91, blue: 1.00),
-                shadowColor: Color(red: 0.08, green: 0.18, blue: 0.55),
-                badgeDotColor: Color(red: 0.74, green: 0.86, blue: 1.00)
+            return "HAZIR"
+        case .crew:
+            return "TAKIM HAZIR"
+        case .friend:
+            return "EŞLEŞTİ"
+        }
+    }
+
+    var personalMainTitle: String {
+        switch focusSession.selectedGoal {
+        case .study: return "Study focus in progress"
+        case .deepWork: return "Deep focus in progress"
+        case .reading: return "Reading flow in progress"
+        case .planning: return "Planning session in progress"
+        case .workout: return "Workout flow in progress"
+        }
+    }
+
+    var personalMainSubtitle: String {
+        switch focusSession.selectedGoal {
+        case .study: return "Ders odağını koru ve ritmini sürdür"
+        case .deepWork: return "Derin odakta kalmaya devam et"
+        case .reading: return "Okuma ritmini bölmeden devam et"
+        case .planning: return "Planını sakin biçimde ilerlet"
+        case .workout: return "Akışı bozmadan devam et"
+        }
+    }
+
+    var sharedPanelTitle: String {
+        switch mode {
+        case .crew: return "Crew ile ortak odak"
+        case .friend: return "Birlikte odaklanıyorsunuz"
+        case .personal: return ""
+        }
+    }
+
+    var sharedMembersTitle: String {
+        switch mode {
+        case .crew: return "Katılımcılar"
+        case .friend: return "Eşleşme"
+        case .personal: return ""
+        }
+    }
+
+    var footerTitle: String {
+        switch mode {
+        case .personal:
+            switch focusSession.selectedGoal {
+            case .study: return "Study session in progress"
+            case .deepWork: return "Deep focus in progress"
+            case .reading: return "Reading flow in progress"
+            case .planning: return "Planning session in progress"
+            case .workout: return "Workout flow in progress"
+            }
+        case .crew:
+            return "Crew session in sync"
+        case .friend:
+            return "Shared focus in progress"
+        }
+    }
+
+    var footerSubtitle: String {
+        switch mode {
+        case .personal:
+            return "Odağı koru ve akışı bozmadan devam et"
+        case .crew:
+            return "Host, hazır katılımcılar ve ortak süre aynı akışta"
+        case .friend:
+            return "Eşleşme aktif, ritmi birlikte sürdürün"
+        }
+    }
+}
+
+// MARK: - Small Components
+private extension ActiveFocusView {
+    func circleIconButton(systemName: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(Color.white.opacity(0.06))
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                    )
+
+                Image(systemName: systemName)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(Color.white.opacity(0.96))
+            }
+            .frame(width: 58, height: 58)
+        }
+        .buttonStyle(.plain)
+    }
+
+    var movingOrb: some View {
+        let orbitRadius: CGFloat = 152
+        let angle = Angle.degrees(-90 + ringTrimValue * 360)
+
+        return Circle()
+            .fill(theme.ringTint)
+            .frame(width: 28, height: 28)
+            .shadow(color: Color.white.opacity(0.18), radius: 12, x: 0, y: 0)
+            .overlay(
+                Circle()
+                    .fill(Color.white.opacity(0.16))
+                    .blur(radius: 10)
+            )
+            .offset(
+                x: CGFloat(cos(angle.radians)) * orbitRadius,
+                y: CGFloat(sin(angle.radians)) * orbitRadius
+            )
+            .animation(.linear(duration: 1), value: focusSession.progress)
+    }
+
+    var sharedTopPills: some View {
+        HStack(spacing: 8) {
+            infoPill(
+                icon: "person.crop.circle",
+                title: "Host",
+                value: hostNameText
+            )
+
+            infoPill(
+                icon: "checkmark.circle.fill",
+                title: "Hazır",
+                value: readyCountText
+            )
+        }
+    }
+
+    var participantPreviewHeader: some View {
+        HStack {
+            Text(sharedMembersTitle)
+                .font(.system(size: 14, weight: .heavy, design: .rounded))
+                .foregroundStyle(Color.white.opacity(0.88))
+
+            Spacer()
+
+            HStack(spacing: 6) {
+                if hiddenParticipantCount > 0 {
+                    Text("+\(hiddenParticipantCount)")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color.white.opacity(0.82))
+                        .padding(.horizontal, 8)
+                        .frame(height: 24)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(Color.white.opacity(0.08))
+                        )
+                }
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Color.white.opacity(0.40))
+            }
+        }
+    }
+
+    var participantPreviewRow: some View {
+        HStack(spacing: 8) {
+            ForEach(visibleParticipants) { participant in
+                compactParticipantPill(participant)
+            }
+        }
+    }
+
+    func infoPill(icon: String, title: String, value: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(Color.white.opacity(0.9))
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text(title.uppercased())
+                    .font(.system(size: 7, weight: .bold, design: .rounded))
+                    .tracking(1.5)
+                    .foregroundStyle(Color.white.opacity(0.48))
+
+                Text(value)
+                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Color.white.opacity(0.96))
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 42)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                .fill(Color.white.opacity(0.05))
+        )
+    }
+
+    func compactParticipantPill(_ participant: FocusParticipant) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                ZStack {
+                    Circle()
+                        .fill(participantColor(participant).opacity(0.20))
+                        .frame(width: 28, height: 28)
+
+                    Circle()
+                        .fill(participantColor(participant))
+                        .frame(width: 10, height: 10)
+                }
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(participant.name)
+                        .font(.system(size: 13, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Color.white.opacity(0.96))
+                        .lineLimit(1)
+
+                    Text(participantRole(participant))
+                        .font(.system(size: 8, weight: .bold, design: .rounded))
+                        .tracking(1.6)
+                        .foregroundStyle(Color.white.opacity(0.45))
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 0)
+            }
+
+            Text(participantSubtitle(participant))
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundStyle(Color.white.opacity(0.58))
+                .lineLimit(2)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, minHeight: 74, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.white.opacity(0.04))
+        )
+    }
+
+    func participantSheetRow(_ participant: FocusParticipant) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(participantColor(participant).opacity(0.20))
+                    .frame(width: 40, height: 40)
+
+                Circle()
+                    .fill(participantColor(participant))
+                    .frame(width: 12, height: 12)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(participant.name)
+                    .font(.system(size: 16, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
+
+                Text(participantSubtitle(participant))
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.white.opacity(0.62))
+            }
+
+            Spacer()
+
+            Text(participantRole(participant))
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .tracking(1.6)
+                .foregroundStyle(Color.white.opacity(0.55))
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.05))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                )
+        )
+    }
+}
+
+// MARK: - Participant Helpers
+private extension ActiveFocusView {
+    func participantColor(_ participant: FocusParticipant) -> Color {
+        if participant.isActive {
+            return .green
+        } else if participant.isReady {
+            return .yellow
+        } else {
+            return .gray.opacity(0.85)
+        }
+    }
+
+    func participantRole(_ participant: FocusParticipant) -> String {
+        if participant.isHost { return "HOST" }
+        if participant.isActive { return "AKTİF" }
+        if participant.isReady { return "HAZIR" }
+        return "BEKLİYOR"
+    }
+
+    func participantSubtitle(_ participant: FocusParticipant) -> String {
+        if participant.isHost { return "Oturumu yönetiyor" }
+        if participant.isActive { return "Şu an odakta" }
+        if participant.isReady { return "Başlamaya hazır" }
+        return "Henüz bağlanmadı"
+    }
+}
+
+// MARK: - Theme
+private struct ActiveFocusTheme {
+    let backgroundMid: Color
+    let primaryGlow: Color
+    let secondaryGlow: Color
+    let coreGlow: Color
+    let ringGlow: Color
+    let ringTint: Color
+
+    static func forMode(_ mode: FocusMode) -> ActiveFocusTheme {
+        switch mode {
+        case .personal:
+            return ActiveFocusTheme(
+                backgroundMid: Color(red: 0.01, green: 0.03, blue: 0.10),
+                primaryGlow: Color(red: 0.22, green: 0.42, blue: 1.00),
+                secondaryGlow: Color(red: 0.16, green: 0.26, blue: 0.84),
+                coreGlow: Color(red: 0.14, green: 0.30, blue: 0.92),
+                ringGlow: Color(red: 0.44, green: 0.62, blue: 1.00),
+                ringTint: Color(red: 0.92, green: 0.96, blue: 1.00)
             )
         case .crew:
-            return FocusHeroTheme(
-                topColor: Color(red: 0.56, green: 0.18, blue: 0.22),
-                midColor: Color(red: 0.36, green: 0.06, blue: 0.10),
-                bottomColor: Color(red: 0.12, green: 0.02, blue: 0.04),
-                highlightColor: Color(red: 0.88, green: 0.28, blue: 0.34),
-                secondaryGlow: Color(red: 0.58, green: 0.10, blue: 0.14),
-                ringTint: Color(red: 1.00, green: 0.90, blue: 0.92),
-                shadowColor: Color(red: 0.45, green: 0.06, blue: 0.10),
-                badgeDotColor: Color(red: 1.00, green: 0.80, blue: 0.82)
+            return ActiveFocusTheme(
+                backgroundMid: Color(red: 0.08, green: 0.01, blue: 0.03),
+                primaryGlow: Color(red: 0.84, green: 0.16, blue: 0.24),
+                secondaryGlow: Color(red: 1.00, green: 0.40, blue: 0.44),
+                coreGlow: Color(red: 0.78, green: 0.12, blue: 0.18),
+                ringGlow: Color(red: 1.00, green: 0.46, blue: 0.50),
+                ringTint: Color(red: 1.00, green: 0.92, blue: 0.94)
             )
         case .friend:
-            return FocusHeroTheme(
-                topColor: Color(red: 0.42, green: 0.24, blue: 0.62),
-                midColor: Color(red: 0.24, green: 0.10, blue: 0.38),
-                bottomColor: Color(red: 0.08, green: 0.04, blue: 0.14),
-                highlightColor: Color(red: 0.66, green: 0.36, blue: 0.88),
-                secondaryGlow: Color(red: 0.38, green: 0.16, blue: 0.62),
-                ringTint: Color(red: 0.95, green: 0.88, blue: 1.00),
-                shadowColor: Color(red: 0.24, green: 0.10, blue: 0.42),
-                badgeDotColor: Color(red: 0.92, green: 0.84, blue: 1.00)
+            return ActiveFocusTheme(
+                backgroundMid: Color(red: 0.05, green: 0.02, blue: 0.10),
+                primaryGlow: Color(red: 0.54, green: 0.22, blue: 0.92),
+                secondaryGlow: Color(red: 0.84, green: 0.52, blue: 1.00),
+                coreGlow: Color(red: 0.48, green: 0.18, blue: 0.84),
+                ringGlow: Color(red: 0.88, green: 0.56, blue: 1.00),
+                ringTint: Color(red: 0.97, green: 0.91, blue: 1.00)
             )
         }
     }
