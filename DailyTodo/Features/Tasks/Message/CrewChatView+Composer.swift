@@ -16,16 +16,6 @@ extension CrewChatView {
             }
 
             HStack(alignment: .center, spacing: 10) {
-                Button {
-                    showFocusDurationSheet = true
-                } label: {
-                    Image(systemName: "timer")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.95))
-                        .frame(width: 42, height: 42)
-                        .background(glassCircleBackground)
-                }
-                .buttonStyle(.plain)
 
                 HStack(spacing: 10) {
                     TextField(

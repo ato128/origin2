@@ -63,13 +63,24 @@ extension HomeDashboardView {
     var headerAccentColor: Color {
         switch homeLayoutMode {
         case .focusActive:
-            return .blue
+            switch focusSession.selectedMode {
+            case .personal:
+                return .blue
+            case .crew:
+                return .pink
+            case .friend:
+                return .purple
+            }
+
         case .crewFollowUp:
             return .pink
+
         case .insightsFollowUp:
             return .orange
+
         case .completionWrapUp:
             return .green
+
         case .defaultFlow:
             return .blue
         }
@@ -77,6 +88,7 @@ extension HomeDashboardView {
 
     var greetingText: String {
         let hour = Calendar.current.component(.hour, from: Date())
+
         switch hour {
         case 5..<12:
             return "Günaydın"
@@ -100,36 +112,58 @@ extension HomeDashboardView {
     var homePriorityLine: String {
         switch homeLayoutMode {
         case .focusActive:
-            if isFocusActive || hasAnyActiveFocusSession {
-                if let task = focusTask {
-                    let course = task.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !course.isEmpty {
-                        return "\(course) odağındasın"
+            if focusSession.isSessionActive {
+                switch focusSession.selectedMode {
+                case .personal:
+                    if let task = focusTask {
+                        let course = task.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !course.isEmpty {
+                            return "\(course) odağındasın"
+                        }
+                        return task.title
                     }
+                    return "Odak açık"
+
+                case .crew:
+                    if let host = focusSession.hostName, !host.isEmpty {
+                        return "\(host) ile ortak focus"
+                    }
+                    return "Crew focus aktif"
+
+                case .friend:
+                    return "Birlikte focus aktif"
                 }
-                return "Odak açık"
             }
+
+            if let activeSession = activeBackendCrewFocusSession {
+                return "\(activeSession.title) aktif"
+            }
+
             return "Ritmini koru"
 
         case .crewFollowUp:
             if let activeSession = activeBackendCrewFocusSession {
                 return "\(activeSession.title) aktif"
             }
+
             if activeCrewTaskCount > 0 {
                 return "Crew tarafında açık işler var"
             }
+
             return "Crew akışına göz at"
 
         case .insightsFollowUp:
             if completedTodayCount > 0 {
                 return "Bugünkü ritmini görebilirsin"
             }
+
             return "Bugünün akışına göz at"
 
         case .completionWrapUp:
             if currentHour >= 20 {
                 return "Günü sakin kapatabilirsin"
             }
+
             return "Bugün iyi ilerliyorsun"
 
         case .defaultFlow:
@@ -152,6 +186,7 @@ extension HomeDashboardView {
                 if store.isOverdue(topTask) {
                     return "Önce geciken görevi temizle"
                 }
+
                 return "Bugün önce \(topTask.title)"
             }
 

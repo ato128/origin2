@@ -8,14 +8,12 @@
 import UIKit
 import UserNotifications
 
-
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-       
 
         let center = UNUserNotificationCenter.current()
         center.delegate = self
@@ -82,8 +80,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         NotificationCenter.default.post(name: .didReceiveAPNSToken, object: nil)
     }
 
-    
-
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
@@ -93,7 +89,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 
         if shouldShowCustomInAppBanner(for: userInfo) {
             let title = notification.request.content.title.isEmpty
-                ? "Yeni mesaj"
+                ? "Yeni bildirim"
                 : notification.request.content.title
 
             let body = notification.request.content.body
@@ -142,6 +138,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             let activeCrewID = UserDefaults.standard.string(forKey: "active_crew_id")
             return activeCrewID == incomingCrewID
 
+        case "crew_focus_invite":
+            return false
+
+        case "focus_room":
+            return false
+
         default:
             return false
         }
@@ -174,10 +176,16 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             case "focus_room":
                 if let crewID = userInfo["crew_id"] as? String {
                     NotificationCenter.default.post(
-                        name: .openCrewFocusFromNotification,
+                        name: .openCrewFocusInviteFromNotification,
                         object: crewID
                     )
                 }
+
+            case "crew_focus_invite":
+                NotificationCenter.default.post(
+                    name: .openCrewFocusInviteFromNotification,
+                    object: userInfo
+                )
 
             default:
                 break
@@ -197,7 +205,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 extension Notification.Name {
     static let openCrewChatFromNotification = Notification.Name("openCrewChatFromNotification")
     static let openFriendChatFromNotification = Notification.Name("openFriendChatFromNotification")
-    static let openCrewFocusFromNotification = Notification.Name("openCrewFocusFromNotification")
     static let openURLFromNotification = Notification.Name("openURLFromNotification")
     static let didReceiveAPNSToken = Notification.Name("didReceiveAPNSToken")
+
+    static let presentCrewFocusInviteSheet = Notification.Name("presentCrewFocusInviteSheet")
+    static let presentActiveCrewFocusFromNotification = Notification.Name("presentActiveCrewFocusFromNotification")
+    static let openCrewFocusInviteFromNotification = Notification.Name("openCrewFocusInviteFromNotification")
+    static let openCrewFocusFromNotification = Notification.Name("openCrewFocusFromNotification")
+    
 }

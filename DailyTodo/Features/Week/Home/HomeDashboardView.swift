@@ -17,7 +17,7 @@ struct HomeDashboardView: View {
     @AppStorage("focus_workout_current_set") var focusWorkoutCurrentSet: Int = 0
     @AppStorage("focus_workout_total_sets") var focusWorkoutTotalSets: Int = 0
     @AppStorage("focus_workout_is_resting") var focusWorkoutIsResting: Bool = false
-    
+
     @AppStorage("homeDashboardAnimatedAppearCount") private var homeDashboardAnimatedAppearCount: Int = 0
 
     let palette = ThemePalette()
@@ -26,6 +26,7 @@ struct HomeDashboardView: View {
     @EnvironmentObject var store: TodoStore
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var session: SessionStore
+    @EnvironmentObject var focusSession: FocusSessionManager
     @Environment(\.locale) var locale
 
     @Query(sort: \EventItem.startMinute, order: .forward) var allEvents: [EventItem]
@@ -39,13 +40,6 @@ struct HomeDashboardView: View {
     let onOpenWeek: () -> Void
     let onOpenInsights: () -> Void
 
-    @State var isFocusActive: Bool = false
-    @State var activeFocusTaskTitle: String = ""
-    @State var activeFocusRemainingSeconds: Int = 25 * 60
-    @State var activeFocusStartedAt: Date? = nil
-    @State var activeFocusTotalSeconds: Int = 25 * 60
-    @State var pulseActiveFocus: Bool = false
-    @State var liveDotPulse: Bool = false
     @State var selectedDay: Int = 0
     @State var showFriendsShortcut = false
     @State var showRecentFriendChat = false
@@ -141,17 +135,6 @@ struct HomeDashboardView: View {
         default:
             return .defaultFlow
         }
-    }
-
-    func startSuggestedExamFocus(for exam: ExamItem) {
-        let minutes = suggestedStudyMinutes(for: exam)
-
-        activeFocusTaskTitle = "\(exam.courseName.isEmpty ? exam.title : exam.courseName) \(exam.examType)"
-        activeFocusTotalSeconds = minutes * 60
-        activeFocusRemainingSeconds = minutes * 60
-        activeFocusStartedAt = Date()
-        isFocusActive = true
-        pulseActiveFocus = true
     }
 
     func handleSuggestedSecondaryAction(_ action: SuggestedTaskAction) {
@@ -299,6 +282,7 @@ struct HomeDashboardView: View {
                 )
         )
     }
+
     private func runEntranceSequence(animated: Bool) {
         if animated {
             showHeaderCard = false
@@ -432,7 +416,7 @@ struct HomeDashboardView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 6)
                 .padding(.bottom, 36)
-                .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocusActive)
+                .animation(.spring(response: 0.38, dampingFraction: 0.86), value: focusSession.isSessionActive)
             }
             .safeAreaInset(edge: .bottom) {
                 Color.clear.frame(height: 90)
@@ -469,8 +453,7 @@ struct HomeDashboardView: View {
             }
             .onAppear {
                 selectedDay = weekdayIndexToday()
-                syncActiveFocusCountdown()
-                
+
                 if !didLoadCrewFocusSessions {
                     didLoadCrewFocusSessions = true
                     Task {
@@ -480,22 +463,18 @@ struct HomeDashboardView: View {
                         }
                     }
                 }
-                
+
                 let shouldAnimateEntrance = homeDashboardAnimatedAppearCount < 2
-                
+
                 if shouldAnimateEntrance {
                     homeDashboardAnimatedAppearCount += 1
                 }
-                
+
                 crewFocusGlowPulse = false
                 runEntranceSequence(animated: shouldAnimateEntrance)
             }
-            .onChange(of: isFocusActive) { _, newValue in
-                pulseActiveFocus = newValue
-            }
             .onReceive(dashboardTimer) { value in
                 crewFocusNow = value
-                syncActiveFocusCountdown()
                 selectedDay = weekdayIndexToday()
             }
         }

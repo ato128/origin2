@@ -179,3 +179,79 @@ struct FocusCompletionSummary: Identifiable, Codable {
     let style: FocusStyle
     let participantCount: Int
 }
+
+enum FocusGoal: String, CaseIterable, Identifiable, Codable {
+    case study
+    case deepWork
+    case reading
+    case planning
+    case workout
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .study: return "Study"
+        case .deepWork: return "Deep Work"
+        case .reading: return "Reading"
+        case .planning: return "Planning"
+        case .workout: return "Workout"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .study: return "Ders ve tekrar"
+        case .deepWork: return "Kesintisiz çalışma"
+        case .reading: return "Okuma akışı"
+        case .planning: return "Planlama zamanı"
+        case .workout: return "Aktif odak modu"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .study: return "book.closed.fill"
+        case .deepWork: return "brain.head.profile"
+        case .reading: return "text.book.closed.fill"
+        case .planning: return "calendar"
+        case .workout: return "figure.run"
+        }
+    }
+}
+
+enum FocusStyle: String, CaseIterable, Identifiable, Codable {
+    case silent
+    case ambient
+    case rain
+    case library
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .silent: return "Silent"
+        case .ambient: return "Ambient"
+        case .rain: return "Rain"
+        case .library: return "Library"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .silent: return "Sessiz mod"
+        case .ambient: return "Yumuşak arka plan"
+        case .rain: return "Yağmur sesi hissi"
+        case .library: return "Kütüphane atmosferi"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .silent: return "speaker.slash.fill"
+        case .ambient: return "waveform"
+        case .rain: return "cloud.rain.fill"
+        case .library: return "building.columns.fill"
+        }
+    }
+}

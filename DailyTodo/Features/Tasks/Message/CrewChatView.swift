@@ -20,12 +20,7 @@ struct CrewChatView: View {
     @State var showCrewInfo = false
     @State var replyingTo: CrewChatMessageItem?
 
-    @State var showFocusDurationSheet = false
-    @State var customFocusMinutes: Int = 25
-
-    @State var selectedFocusMinutes: Int = 25
-    @State var selectedFocusTask: CrewTaskDTO?
-    @State var showFocusTaskPicker = false
+   
     @State var focusRoomSession: CrewFocusSessionDTO?
 
     @State var typingStopTask: Task<Void, Never>?
@@ -150,12 +145,7 @@ struct CrewChatView: View {
                 }
             }
         }
-        .sheet(isPresented: $showFocusDurationSheet) {
-            focusDurationSheet
-        }
-        .sheet(isPresented: $showFocusTaskPicker) {
-            focusTaskPickerSheet
-        }
+       
         .sheet(item: $focusRoomSession) { openedSession in
             NavigationStack {
                 CrewFocusRoomBackendView(

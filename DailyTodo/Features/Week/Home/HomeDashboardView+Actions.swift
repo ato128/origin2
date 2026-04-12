@@ -447,6 +447,19 @@ extension HomeDashboardView {
             ]
         }
     }
+    
+    func startSuggestedExamFocus(for exam: ExamItem) {
+        let minutes = suggestedStudyMinutes(for: exam)
+
+        Task {
+            _ = await focusSession.startRequestedSession(
+                mode: .personal,
+                durationMinutes: minutes,
+                goal: .study,
+                style: .silent
+            )
+        }
+    }
 
     var adaptiveQuickActionsBackground: some View {
         RoundedRectangle(cornerRadius: 24, style: .continuous)

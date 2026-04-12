@@ -470,7 +470,7 @@ extension HomeDashboardView {
     var shouldShowNoTaskPromptHero: Bool {
         hasNoTaskAtAllToday &&
         nearestRelevantExam == nil &&
-        !isFocusActive &&
+        !focusSession.isSessionActive &&
         !hasAnyActiveFocusSession &&
         activeBackendCrewFocusSession == nil &&
         !hasRecentFriendConversation &&
@@ -551,7 +551,7 @@ extension HomeDashboardView {
     }
 
     var personalFocusFollowUpHeroState: TodayHeroState {
-        let title = activeFocusTaskTitle.isEmpty ? "Odak devam ediyor" : activeFocusTaskTitle
+        let title = homeLiveFocusMainTitle.isEmpty ? "Odak devam ediyor" : homeLiveFocusMainTitle
 
         return TodayHeroState(
             eyebrow: "Akış sürüyor",
@@ -858,7 +858,7 @@ extension HomeDashboardView {
             candidates.append(.init(kind: .sharedFocusActive, priority: 100, state: sharedFocusHeroState(activeSession)))
         }
 
-        if isFocusActive || hasAnyActiveFocusSession {
+        if focusSession.isSessionActive || hasAnyActiveFocusSession {
             candidates.append(.init(kind: .personalFocusActive, priority: 95, state: personalFocusFollowUpHeroState))
         }
 
@@ -932,7 +932,7 @@ extension HomeDashboardView {
             contextLine: "Sınava yaklaşırken küçük ama net bir çalışma bloğu stresi azaltır.",
             primaryCTA: "Başlat",
             primaryIcon: "play.fill",
-            primaryAction: { startSuggestedExamFocus(for: exam) },
+            primaryAction: { startInlineFocus() },
             secondaryCTA: HeroCTA(title: "Planla", icon: "calendar.badge.plus", action: { onOpenWeek() })
         )
     }

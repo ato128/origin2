@@ -9,6 +9,8 @@ import SwiftUI
 import SwiftData
 
 struct RootView: View {
+    @Binding var openFocusFromNotification: Bool
+
     @AppStorage("didFinishOnboarding") private var didFinishOnboarding = false
     @AppStorage("didFinishPermissionOnboarding") private var didFinishPermissionOnboarding = false
     @AppStorage("didFinishIntroFlow") private var didFinishIntroFlow = false
@@ -35,15 +37,17 @@ struct RootView: View {
                 IntroFlowView()
 
             } else {
-                MainTabView()
-                    .onOpenURL { url in
-                        handleIncomingFileURL(url)
+                MainTabView(
+                    openFocusFromNotification: $openFocusFromNotification
+                )
+                .onOpenURL { url in
+                    handleIncomingFileURL(url)
+                }
+                .sheet(isPresented: $showImportSheet) {
+                    if let export = importExport {
+                        ImportScheduleView(export: export)
                     }
-                    .sheet(isPresented: $showImportSheet) {
-                        if let export = importExport {
-                            ImportScheduleView(export: export)
-                        }
-                    }
+                }
             }
         }
     }

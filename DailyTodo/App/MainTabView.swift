@@ -19,10 +19,12 @@ enum AppTab: Hashable {
 }
 
 struct MainTabView: View {
-    
+    @Binding var openFocusFromNotification: Bool
+
     @EnvironmentObject var store: TodoStore
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var crewStore: CrewStore
+
     @State private var tab: AppTab = .tasks
 
     var body: some View {
@@ -75,6 +77,15 @@ struct MainTabView: View {
             crewStore.setCurrentUser(newUserID)
             crewStore.resetForUserChange()
         }
+        .onChange(of: openFocusFromNotification) { _, newValue in
+            guard newValue else { return }
+
+            tab = .focus
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                openFocusFromNotification = false
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .openWeekFromWidget)) { _ in
             tab = .week
         }
@@ -107,3 +118,5 @@ struct FocusPlaceholderView: View {
         }
     }
 }
+
+

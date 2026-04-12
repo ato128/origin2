@@ -2030,14 +2030,34 @@ final class CrewStore: ObservableObject {
                 .eq("crew_id", value: crewID.uuidString)
                 .eq("is_active", value: true)
                 .order("created_at", ascending: false)
-                .limit(1)
+                .limit(3)
                 .execute()
 
             let decoded = try JSONDecoder().decode([CrewFocusSessionDTO].self, from: response.data)
-            activeFocusSessionByCrew[crewID] = decoded.first
+
+            let now = Date()
+
+            let validSession = decoded.first(where: { session in
+                guard session.is_active else { return false }
+                if session.ended_at != nil { return false }
+
+                if session.is_paused {
+                    return (session.paused_remaining_seconds ?? 0) > 0
+                }
+
+                guard let startedAt = CrewDateParser.parse(session.started_at) else { return false }
+                let endDate = startedAt.addingTimeInterval(TimeInterval(session.duration_minutes * 60))
+                return endDate > now
+            })
+
+            if let validSession {
+                activeFocusSessionByCrew[crewID] = validSession
+            } else {
+                activeFocusSessionByCrew.removeValue(forKey: crewID)
+            }
         } catch {
             print("LOAD ACTIVE FOCUS SESSION ERROR:", error.localizedDescription)
-            activeFocusSessionByCrew[crewID] = nil
+            activeFocusSessionByCrew.removeValue(forKey: crewID)
         }
     }
     func loadFocusParticipants(sessionID: UUID) async {
@@ -2130,6 +2150,51 @@ final class CrewStore: ObservableObject {
         userID: UUID?,
         memberName: String
     ) async throws {
+        let response = try await SupabaseManager.shared.client
+            .from("crew_focus_sessions")
+            .select()
+            .eq("id", value: sessionID.uuidString)
+            .eq("crew_id", value: crewID.uuidString)
+            .limit(1)
+            .execute()
+
+        let sessions = try JSONDecoder().decode([CrewFocusSessionDTO].self, from: response.data)
+
+        guard let session = sessions.first else {
+            activeFocusSessionByCrew.removeValue(forKey: crewID)
+            throw NSError(
+                domain: "CrewStore",
+                code: 404,
+                userInfo: [NSLocalizedDescriptionKey: "Focus session bulunamadı."]
+            )
+        }
+
+        let now = Date()
+
+        let isStillValid: Bool = {
+            guard session.is_active else { return false }
+            if session.ended_at != nil { return false }
+
+            if session.is_paused {
+                return (session.paused_remaining_seconds ?? 0) > 0
+            }
+
+            guard let startedAt = CrewDateParser.parse(session.started_at) else { return false }
+            let endDate = startedAt.addingTimeInterval(TimeInterval(session.duration_minutes * 60))
+            return endDate > now
+        }()
+
+        guard isStillValid else {
+            activeFocusSessionByCrew.removeValue(forKey: crewID)
+            focusParticipantsBySession.removeValue(forKey: sessionID)
+
+            throw NSError(
+                domain: "CrewStore",
+                code: 410,
+                userInfo: [NSLocalizedDescriptionKey: "Bu focus oturumu sona ermiş."]
+            )
+        }
+
         struct Payload: Encodable {
             let session_id: UUID
             let crew_id: UUID
@@ -2148,9 +2213,10 @@ final class CrewStore: ObservableObject {
 
         try await SupabaseManager.shared.client
             .from("crew_focus_participants")
-            .insert(payload)
+            .upsert(payload, onConflict: "session_id,crew_id,user_id")
             .execute()
 
+        await loadActiveFocusSession(for: crewID)
         await loadFocusParticipants(sessionID: sessionID)
 
         try await createCrewMessage(
@@ -2368,6 +2434,10 @@ final class CrewStore: ObservableObject {
             actionText: "completed a shared focus session"
         )
 
+        activeFocusSessionByCrew.removeValue(forKey: crewID)
+        focusParticipantsBySession.removeValue(forKey: sessionID)
+
+        await loadActiveFocusSession(for: crewID)
         await loadFocusParticipants(sessionID: sessionID)
         await loadFocusRecords(for: crewID)
     }

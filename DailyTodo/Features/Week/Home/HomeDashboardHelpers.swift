@@ -152,20 +152,17 @@ extension HomeDashboardView {
     }
 
     var hasAnyActiveFocusSession: Bool {
-        guard let timestamp = UserDefaults.standard.object(forKey: "focus_end_date") as? Double else {
-            return false
-        }
-
-        let endDate = Date(timeIntervalSince1970: timestamp)
-        return endDate.timeIntervalSinceNow > 0
+        focusSession.isSessionActive
     }
 
     var isSharedFocusActive: Bool {
-        UserDefaults.standard.string(forKey: "focus_mode") == "shared" && hasAnyActiveFocusSession
+        focusSession.isSessionActive && focusSession.selectedMode != .personal
     }
 
     var activeSharedFriendName: String? {
-        UserDefaults.standard.string(forKey: "focus_friend_name")
+        focusSession.selectedMode == .friend
+            ? focusSession.currentSession?.participants.first(where: { !$0.isHost })?.name
+            : nil
     }
 
     var latestRelevantCrewFocusSession: CrewFocusSession? {
@@ -195,29 +192,21 @@ extension HomeDashboardView {
     }
 
     var shouldShowFocusCard: Bool {
-        activeBackendCrewFocusSession != nil || isFocusActive || hasAnyActiveFocusSession
+        activeBackendCrewFocusSession != nil || focusSession.isSessionActive
     }
 
     @ViewBuilder
     var currentFocusCard: some View {
         if let activeSession = activeBackendCrewFocusSession {
             crewSharedFocusCard(session: activeSession)
-        } else if isFocusActive || hasAnyActiveFocusSession {
-            activeFocusCard
+        } else if focusSession.isSessionActive {
+            homeLiveFocusCard
         }
     }
 
     var nextSuggestedTaskAfterFocus: DTTaskItem? {
-        let activeTitle = activeFocusTaskTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        return todayBoardTasks.first { task in
-            guard !task.isDone else { return false }
-
-            if !activeTitle.isEmpty && task.title == activeTitle {
-                return false
-            }
-
-            return true
+        todayBoardTasks.first { task in
+            !task.isDone
         }
     }
 
@@ -287,147 +276,52 @@ extension HomeDashboardView {
     }
 
     func startInlineFocus() {
-        if let exercises = workoutExercisesForFocusTask(), !exercises.isEmpty {
-            inlineWorkoutExerciseIndex = 0
-            inlineWorkoutCurrentSet = 1
-            inlineWorkoutIsResting = false
-            inlineWorkoutRestSeconds = 0
-
-            let firstExercise = exercises[inlineWorkoutExerciseIndex]
-
-            focusWorkoutMode = true
-            focusWorkoutExerciseName = firstExercise.name
-            focusWorkoutCurrentSet = inlineWorkoutCurrentSet
-            focusWorkoutTotalSets = firstExercise.sets
-            focusWorkoutIsResting = false
-
-            let duration = max(60, firstExercise.restSeconds > 0 ? firstExercise.restSeconds : 60)
-
-            activeFocusTaskTitle = focusTask?.title ?? "Odak"
-            activeFocusTotalSeconds = duration
-            activeFocusRemainingSeconds = duration
-            activeFocusStartedAt = Date()
-            isFocusActive = true
-            pulseActiveFocus = true
-        } else {
-            let duration: Int
+        Task {
+            let minutes: Int
 
             if let task = focusTask, let due = task.dueDate {
-                let diff = Int(due.timeIntervalSinceNow)
-                duration = max(15 * 60, min(diff, 60 * 60))
+                let diffSeconds = Int(due.timeIntervalSinceNow)
+                let suggestedSeconds = max(15 * 60, min(diffSeconds, 60 * 60))
+                minutes = max(15, suggestedSeconds / 60)
             } else {
-                duration = 25 * 60
+                minutes = 25
             }
 
-            activeFocusTaskTitle = focusTask?.title ?? "Odak"
-            activeFocusTotalSeconds = duration
-            activeFocusRemainingSeconds = duration
-            activeFocusStartedAt = Date()
-            isFocusActive = true
-            pulseActiveFocus = true
+            let goal: FocusGoal
+            if let task = focusTask {
+                switch task.taskType.lowercased() {
+                case "workout":
+                    goal = .workout
+                case "project":
+                    goal = .deepWork
+                case "study", "exam", "homework":
+                    goal = .study
+                default:
+                    goal = .study
+                }
+            } else {
+                goal = .study
+            }
+
+            _ = await focusSession.startRequestedSession(
+                mode: .personal,
+                durationMinutes: minutes,
+                goal: goal,
+                style: .silent
+            )
         }
     }
 
     func stopActiveFocus() {
-        isFocusActive = false
-        pulseActiveFocus = false
-        activeFocusTaskTitle = ""
-        activeFocusRemainingSeconds = 25 * 60
-        activeFocusTotalSeconds = 25 * 60
-        activeFocusStartedAt = nil
-
-        inlineWorkoutExerciseIndex = 0
-        inlineWorkoutCurrentSet = 1
-        inlineWorkoutIsResting = false
-        inlineWorkoutRestSeconds = 0
-
-        focusWorkoutMode = false
-        focusWorkoutExerciseName = ""
-        focusWorkoutCurrentSet = 0
-        focusWorkoutTotalSets = 0
-        focusWorkoutIsResting = false
+        focusSession.closeSession()
     }
 
     func advanceInlineWorkout() {
-        guard let exercises = workoutExercisesForFocusTask(),
-              inlineWorkoutExerciseIndex < exercises.count else { return }
-
-        let exercise = exercises[inlineWorkoutExerciseIndex]
-
-        if inlineWorkoutIsResting {
-            inlineWorkoutIsResting = false
-            focusWorkoutIsResting = false
-            activeFocusStartedAt = Date()
-            return
-        }
-
-        if inlineWorkoutCurrentSet < exercise.sets {
-            inlineWorkoutCurrentSet += 1
-            focusWorkoutCurrentSet = inlineWorkoutCurrentSet
-
-            if exercise.restSeconds > 0 {
-                inlineWorkoutIsResting = true
-                inlineWorkoutRestSeconds = exercise.restSeconds
-                focusWorkoutIsResting = true
-                activeFocusTotalSeconds = exercise.restSeconds
-                activeFocusRemainingSeconds = exercise.restSeconds
-                activeFocusStartedAt = Date()
-            }
-        } else {
-            if inlineWorkoutExerciseIndex < exercises.count - 1 {
-                inlineWorkoutExerciseIndex += 1
-                inlineWorkoutCurrentSet = 1
-
-                let nextExercise = exercises[inlineWorkoutExerciseIndex]
-                focusWorkoutExerciseName = nextExercise.name
-                focusWorkoutCurrentSet = 1
-                focusWorkoutTotalSets = nextExercise.sets
-
-                if exercise.restSeconds > 0 {
-                    inlineWorkoutIsResting = true
-                    inlineWorkoutRestSeconds = exercise.restSeconds
-                    focusWorkoutIsResting = true
-                    activeFocusTotalSeconds = exercise.restSeconds
-                    activeFocusRemainingSeconds = exercise.restSeconds
-                    activeFocusStartedAt = Date()
-                }
-            } else {
-                finishInlineWorkout()
-            }
-        }
+        // Eski çağrılar bozulmasın diye tutuldu.
     }
 
     func finishInlineWorkout() {
-        if let task = focusTask {
-            task.isDone = true
-            task.completedAt = Date()
-            completeLinkedWeekEvent(for: task)
-
-            do {
-                try modelContext.save()
-            } catch {
-                print("❌ Task save error:", error)
-            }
-        }
-
-        isFocusActive = false
-        pulseActiveFocus = false
-
-        focusWorkoutMode = false
-        focusWorkoutExerciseName = ""
-        focusWorkoutCurrentSet = 0
-        focusWorkoutTotalSets = 0
-        focusWorkoutIsResting = false
-
-        inlineWorkoutExerciseIndex = 0
-        inlineWorkoutCurrentSet = 1
-        inlineWorkoutIsResting = false
-        inlineWorkoutRestSeconds = 0
-
-        activeFocusTaskTitle = ""
-        activeFocusRemainingSeconds = 25 * 60
-        activeFocusTotalSeconds = 25 * 60
-        activeFocusStartedAt = nil
+        focusSession.closeSession()
     }
 
     func completeLinkedWeekEvent(for task: DTTaskItem) {
@@ -443,53 +337,34 @@ extension HomeDashboardView {
     }
 
     func syncActiveFocusCountdown() {
-        guard isFocusActive else { return }
-        guard let startedAt = activeFocusStartedAt else { return }
-
-        let elapsed = Int(Date().timeIntervalSince(startedAt))
-        let remaining = max(0, activeFocusTotalSeconds - elapsed)
-        activeFocusRemainingSeconds = remaining
-
-        if remaining == 0 {
-            if focusWorkoutMode {
-                if inlineWorkoutIsResting {
-                    inlineWorkoutIsResting = false
-                    focusWorkoutIsResting = false
-                    activeFocusStartedAt = Date()
-                } else {
-                    advanceInlineWorkout()
-                }
-            } else {
-                isFocusActive = false
-                pulseActiveFocus = false
-            }
-        }
+        // Countdown artık FocusSessionManager tarafından yönetiliyor.
     }
 
     func liveFocusRemaining(at now: Date) -> Int {
-        guard let startedAt = activeFocusStartedAt else { return activeFocusRemainingSeconds }
-        let elapsed = Int(now.timeIntervalSince(startedAt))
-        return max(0, activeFocusTotalSeconds - elapsed)
+        focusSession.remainingSeconds
     }
 
     func liveFocusTimeText(at now: Date) -> String {
-        let remaining = liveFocusRemaining(at: now)
-        let minutes = remaining / 60
-        let seconds = remaining % 60
-        return String(format: "%02d:%02d", minutes, seconds)
+        focusSession.timeString
     }
 
     func activeFocusUrgencyColor(for remaining: Int) -> Color {
+        if focusSession.isPaused { return .orange }
         if remaining <= 60 { return .red }
         if remaining <= 300 { return .orange }
-        return .blue
+
+        switch focusSession.selectedMode {
+        case .personal:
+            return .blue
+        case .crew:
+            return .pink
+        case .friend:
+            return .purple
+        }
     }
 
     func smoothActiveFocusProgressBar(at now: Date) -> some View {
-        let remaining = liveFocusRemaining(at: now)
-        let progress = activeFocusTotalSeconds > 0
-            ? 1 - (Double(remaining) / Double(activeFocusTotalSeconds))
-            : 0
+        let progress = max(0.02, focusSession.progress)
 
         return GeometryReader { geo in
             ZStack(alignment: .leading) {

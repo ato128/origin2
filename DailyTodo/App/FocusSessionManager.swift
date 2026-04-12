@@ -21,11 +21,17 @@ final class FocusSessionManager: ObservableObject {
     @Published var now: Date = Date()
     @Published var completionSummary: FocusCompletionSummary?
     @Published var lastFinishedSession: FocusSessionState?
-    
+
+    @Published var currentCrewID: UUID?
+    @Published var currentCrewBackendSessionID: UUID?
 
     private let storageKey = "active_focus_session_state_v1"
     private let audioManager = FocusAudioManager.shared
     private let liveActivityManager = FocusLiveActivityManager.shared
+
+    private weak var crewStore: CrewStore?
+    private weak var sessionStore: SessionStore?
+
     private var timer: Timer?
     private var nowTimer: Timer?
 
@@ -39,48 +45,50 @@ final class FocusSessionManager: ObservableObject {
         nowTimer?.invalidate()
     }
 
-    func startSession(
+    // MARK: - Dependency Wiring
+
+    func configure(sessionStore: SessionStore, crewStore: CrewStore) {
+        self.sessionStore = sessionStore
+        self.crewStore = crewStore
+    }
+
+    // MARK: - Public Launch API
+
+    @discardableResult
+    func startRequestedSession(
         mode: FocusMode,
         durationMinutes: Int,
         goal: FocusGoal,
-        style: FocusStyle,
-        participants: [FocusParticipant] = []
-    ) {
-        let start = Date()
-        let end = start.addingTimeInterval(Double(durationMinutes * 60))
-
-        let resolvedParticipants: [FocusParticipant]
+        style: FocusStyle
+    ) async -> Bool {
         switch mode {
         case .personal:
-            resolvedParticipants = []
+            startLocalSession(
+                mode: .personal,
+                durationMinutes: durationMinutes,
+                goal: goal,
+                style: style,
+                participants: []
+            )
+            return true
+
         case .crew:
-            resolvedParticipants = participants.isEmpty ? FocusParticipant.mockCrew : participants
+            return await startCrewSession(
+                durationMinutes: durationMinutes,
+                goal: goal,
+                style: style
+            )
+
         case .friend:
-            resolvedParticipants = participants.isEmpty ? FocusParticipant.mockFriend : participants
+            startLocalSession(
+                mode: .friend,
+                durationMinutes: durationMinutes,
+                goal: goal,
+                style: style,
+                participants: FocusParticipant.mockFriend
+            )
+            return true
         }
-
-        let session = FocusSessionState(
-            id: UUID(),
-            mode: mode,
-            durationMinutes: durationMinutes,
-            startDate: start,
-            endDate: end,
-            isPaused: false,
-            pausedRemainingSeconds: nil,
-            participants: resolvedParticipants,
-            goal: goal,
-            style: style
-        )
-
-        currentSession = session
-        isSessionActive = true
-        isExpanded = true
-        isMinimized = false
-        save()
-        startLifecycleTimer()
-        audioManager.play(style: style)
-        
-        
     }
 
     func expandSession() {
@@ -96,46 +104,134 @@ final class FocusSessionManager: ObservableObject {
     }
 
     func closeSession() {
-        currentSession = nil
-        isSessionActive = false
-        isExpanded = false
-        isMinimized = false
-        completionSummary = nil
-        save()
-        stopLifecycleTimer()
-        audioManager.stop()
-        
-        Task {
-            await liveActivityManager.end()
+        guard let session = currentSession else {
+            clearSessionLocally()
+            return
         }
+
+        if session.mode == .crew,
+           let crewID = currentCrewID,
+           let backendSessionID = currentCrewBackendSessionID,
+           let crewStore {
+            let host = isCurrentUserHost
+
+            Task {
+                do {
+                    if host {
+                        let completedMinutes = resolvedCompletedMinutes(for: session)
+                        try await crewStore.endCrewFocusSession(
+                            sessionID: backendSessionID,
+                            crewID: crewID,
+                            hostUserID: currentUserID,
+                            hostName: currentUserDisplayName,
+                            completedMinutes: completedMinutes,
+                            participantNames: session.participants.map(\.name),
+                            taskID: nil
+                        )
+                    } else {
+                        try await crewStore.leaveCrewFocusSession(
+                            sessionID: backendSessionID,
+                            crewID: crewID,
+                            userID: currentUserID,
+                            memberName: currentUserDisplayName
+                        )
+                    }
+                } catch {
+                    print("FOCUS CLOSE SESSION ERROR:", error.localizedDescription)
+                }
+
+                clearSessionLocally()
+            }
+
+            return
+        }
+
+        clearSessionLocally()
     }
 
     func pauseSession() {
-        guard var session = currentSession, !session.isPaused else { return }
-        let remaining = remainingSeconds
-        session.isPaused = true
-        session.pausedRemainingSeconds = remaining
-        currentSession = session
-        save()
-        audioManager.pause()
-        
-        
+        guard let session = currentSession else { return }
+
+        if session.mode == .crew,
+           let crewID = currentCrewID,
+           let backendSessionID = currentCrewBackendSessionID,
+           let crewStore,
+           isCurrentUserHost {
+            let remaining = remainingSeconds
+
+            Task {
+                do {
+                    try await crewStore.pauseCrewFocusSession(
+                        sessionID: backendSessionID,
+                        crewID: crewID,
+                        hostUserID: currentUserID,
+                        hostName: currentUserDisplayName,
+                        pausedRemainingSeconds: remaining
+                    )
+
+                    if let updated = crewStore.activeFocusSessionByCrew[crewID] {
+                        hydrateFromCrewSessionDTO(
+                            updated,
+                            crewID: crewID,
+                            participantsDTO: crewStore.focusParticipantsBySession[updated.id] ?? [],
+                            preferredGoal: selectedGoal,
+                            preferredStyle: selectedStyle
+                        )
+                    } else {
+                        applyLocalPause()
+                    }
+                } catch {
+                    print("FOCUS PAUSE SESSION ERROR:", error.localizedDescription)
+                }
+            }
+
+            return
+        }
+
+        applyLocalPause()
     }
 
     func resumeSession() {
-        guard var session = currentSession, session.isPaused else { return }
-        let remaining = session.pausedRemainingSeconds ?? 0
-        let newStart = Date()
-        let newEnd = newStart.addingTimeInterval(Double(remaining))
-        session.startDate = newStart
-        session.endDate = newEnd
-        session.isPaused = false
-        session.pausedRemainingSeconds = nil
-        currentSession = session
-        save()
-        audioManager.resume()
-        
-       
+        guard let session = currentSession else { return }
+
+        if session.mode == .crew,
+           let crewID = currentCrewID,
+           let backendSessionID = currentCrewBackendSessionID,
+           let crewStore,
+           isCurrentUserHost {
+            let remaining = session.pausedRemainingSeconds ?? remainingSeconds
+
+            Task {
+                do {
+                    try await crewStore.resumeCrewFocusSession(
+                        sessionID: backendSessionID,
+                        crewID: crewID,
+                        hostUserID: currentUserID,
+                        hostName: currentUserDisplayName,
+                        durationMinutes: session.durationMinutes,
+                        pausedRemainingSeconds: remaining
+                    )
+
+                    if let updated = crewStore.activeFocusSessionByCrew[crewID] {
+                        hydrateFromCrewSessionDTO(
+                            updated,
+                            crewID: crewID,
+                            participantsDTO: crewStore.focusParticipantsBySession[updated.id] ?? [],
+                            preferredGoal: selectedGoal,
+                            preferredStyle: selectedStyle
+                        )
+                    } else {
+                        applyLocalResume()
+                    }
+                } catch {
+                    print("FOCUS RESUME SESSION ERROR:", error.localizedDescription)
+                }
+            }
+
+            return
+        }
+
+        applyLocalResume()
     }
 
     func togglePause() {
@@ -146,6 +242,201 @@ final class FocusSessionManager: ObservableObject {
             pauseSession()
         }
     }
+
+    func dismissCompletionSummary() {
+        completionSummary = nil
+        isExpanded = false
+    }
+
+    func restartLastFinishedSession() {
+        guard let session = lastFinishedSession else { return }
+
+        startLocalSession(
+            mode: session.mode,
+            durationMinutes: session.durationMinutes,
+            goal: session.goal,
+            style: session.style,
+            participants: session.participants
+        )
+
+        completionSummary = nil
+    }
+
+    // MARK: - Crew Hydration
+
+    func hydrateFromCrewSessionDTO(
+        _ dto: CrewFocusSessionDTO,
+        crewID: UUID,
+        participantsDTO: [CrewFocusParticipantDTO],
+        preferredGoal: FocusGoal? = nil,
+        preferredStyle: FocusStyle? = nil
+    ) {
+        let existingGoal = currentSession?.goal
+        let existingStyle = currentSession?.style
+
+        let goal = preferredGoal ?? existingGoal ?? .study
+        let style = preferredStyle ?? existingStyle ?? .silent
+
+        let startDate = CrewDateParser.parse(dto.started_at) ?? Date()
+
+        let resolvedEndDate: Date
+        if dto.is_paused {
+            let remaining = max(0, dto.paused_remaining_seconds ?? 0)
+            resolvedEndDate = Date().addingTimeInterval(TimeInterval(remaining))
+        } else {
+            resolvedEndDate = startDate.addingTimeInterval(TimeInterval(dto.duration_minutes * 60))
+        }
+
+        let mappedParticipants = mapCrewParticipants(
+            participantsDTO,
+            hostName: dto.host_name
+        )
+
+        let session = FocusSessionState(
+            id: dto.id,
+            mode: .crew,
+            durationMinutes: dto.duration_minutes,
+            startDate: startDate,
+            endDate: resolvedEndDate,
+            isPaused: dto.is_paused,
+            pausedRemainingSeconds: dto.is_paused ? dto.paused_remaining_seconds : nil,
+            participants: mappedParticipants,
+            goal: goal,
+            style: style
+        )
+
+        currentSession = session
+        currentCrewID = crewID
+        currentCrewBackendSessionID = dto.id
+        isSessionActive = dto.is_active
+        isExpanded = dto.is_active
+        isMinimized = false
+
+        save()
+        startLifecycleTimer()
+        syncAudioForCurrentState()
+
+        Task {
+            await syncLiveActivityIfNeeded()
+        }
+    }
+
+    func applyCrewRealtimeStateIfNeeded(
+        activeSession: CrewFocusSessionDTO?,
+        crewID: UUID,
+        participants: [CrewFocusParticipantDTO],
+        preferredGoal: FocusGoal? = nil,
+        preferredStyle: FocusStyle? = nil
+    ) {
+        guard currentCrewID == crewID || selectedMode == .crew || currentSession?.mode == .crew else { return }
+
+        if let activeSession {
+            hydrateFromCrewSessionDTO(
+                activeSession,
+                crewID: crewID,
+                participantsDTO: participants,
+                preferredGoal: preferredGoal,
+                preferredStyle: preferredStyle
+            )
+        } else if currentSession?.mode == .crew {
+            clearSessionLocally()
+        }
+    }
+
+    // MARK: - Internal Start Methods
+
+    private func startLocalSession(
+        mode: FocusMode,
+        durationMinutes: Int,
+        goal: FocusGoal,
+        style: FocusStyle,
+        participants: [FocusParticipant]
+    ) {
+        let start = Date()
+        let end = start.addingTimeInterval(Double(durationMinutes * 60))
+
+        let session = FocusSessionState(
+            id: UUID(),
+            mode: mode,
+            durationMinutes: durationMinutes,
+            startDate: start,
+            endDate: end,
+            isPaused: false,
+            pausedRemainingSeconds: nil,
+            participants: participants,
+            goal: goal,
+            style: style
+        )
+
+        currentCrewID = nil
+        currentCrewBackendSessionID = nil
+
+        currentSession = session
+        isSessionActive = true
+        isExpanded = true
+        isMinimized = false
+
+        save()
+        startLifecycleTimer()
+        audioManager.play(style: style)
+
+        Task {
+            await syncLiveActivityIfNeeded()
+        }
+    }
+
+    private func startCrewSession(
+        durationMinutes: Int,
+        goal: FocusGoal,
+        style: FocusStyle
+    ) async -> Bool {
+        guard let crewStore else {
+            print("START CREW SESSION ERROR: CrewStore not configured")
+            return false
+        }
+
+        guard let crew = crewStore.crews.first else {
+            print("START CREW SESSION ERROR: No crew found")
+            return false
+        }
+
+        let hostName = currentUserDisplayName
+        let title = "\(goal.title) Focus"
+
+        do {
+            let dto = try await crewStore.startCrewFocusSession(
+                crewID: crew.id,
+                hostUserID: currentUserID,
+                hostName: hostName,
+                title: title,
+                taskID: nil,
+                taskTitle: nil,
+                durationMinutes: durationMinutes
+            )
+
+            crewStore.subscribeToActiveFocusRealtime(crewID: crew.id)
+            await crewStore.loadActiveFocusSession(for: crew.id)
+            await crewStore.loadFocusParticipants(sessionID: dto.id)
+
+            let participants = crewStore.focusParticipantsBySession[dto.id] ?? []
+
+            hydrateFromCrewSessionDTO(
+                dto,
+                crewID: crew.id,
+                participantsDTO: participants,
+                preferredGoal: goal,
+                preferredStyle: style
+            )
+
+            await syncLiveActivityIfNeeded()
+            return true
+        } catch {
+            print("START CREW SESSION ERROR:", error.localizedDescription)
+            return false
+        }
+    }
+
+    // MARK: - Persistence / Timers
 
     func restoreSessionIfNeeded() {
         guard
@@ -162,14 +453,16 @@ final class FocusSessionManager: ObservableObject {
         if session.isPaused {
             currentSession = session
             isSessionActive = true
+            syncAudioForCurrentState()
+
+            Task {
+                await syncLiveActivityIfNeeded()
+            }
             return
         }
 
         if session.endDate <= Date() {
-            currentSession = nil
-            isSessionActive = false
-            isExpanded = false
-            isMinimized = false
+            clearSessionLocally()
             UserDefaults.standard.removeObject(forKey: storageKey)
             return
         }
@@ -177,9 +470,11 @@ final class FocusSessionManager: ObservableObject {
         currentSession = session
         isSessionActive = true
         startLifecycleTimer()
-        audioManager.play(style: session.style)
-        
-        
+        syncAudioForCurrentState()
+
+        Task {
+            await syncLiveActivityIfNeeded()
+        }
     }
 
     private func save() {
@@ -215,7 +510,7 @@ final class FocusSessionManager: ObservableObject {
 
     private func tick() {
         guard let session = currentSession else {
-            closeSession()
+            clearSessionLocally()
             return
         }
 
@@ -223,14 +518,37 @@ final class FocusSessionManager: ObservableObject {
             return
         }
 
-        
-
         if remainingSeconds <= 0 {
             finishSession(session)
         }
     }
-    
+
     private func finishSession(_ session: FocusSessionState) {
+        if session.mode == .crew,
+           let crewID = currentCrewID,
+           let backendSessionID = currentCrewBackendSessionID,
+           let crewStore,
+           isCurrentUserHost {
+            Task {
+                do {
+                    try await crewStore.endCrewFocusSession(
+                        sessionID: backendSessionID,
+                        crewID: crewID,
+                        hostUserID: currentUserID,
+                        hostName: currentUserDisplayName,
+                        completedMinutes: session.durationMinutes,
+                        participantNames: session.participants.map(\.name),
+                        taskID: nil
+                    )
+                } catch {
+                    print("AUTO END CREW SESSION ERROR:", error.localizedDescription)
+                }
+
+                clearSessionLocally()
+            }
+            return
+        }
+
         stopLifecycleTimer()
         audioManager.stop()
 
@@ -254,18 +572,189 @@ final class FocusSessionManager: ObservableObject {
         isSessionActive = false
         isMinimized = false
         isExpanded = true
+        currentCrewID = nil
+        currentCrewBackendSessionID = nil
 
         UserDefaults.standard.removeObject(forKey: storageKey)
+
         Task {
             await liveActivityManager.end()
         }
     }
 
+    private func clearSessionLocally() {
+        stopLifecycleTimer()
+        audioManager.stop()
+
+        currentSession = nil
+        isSessionActive = false
+        isExpanded = false
+        isMinimized = false
+        completionSummary = nil
+        currentCrewID = nil
+        currentCrewBackendSessionID = nil
+
+        UserDefaults.standard.removeObject(forKey: storageKey)
+
+        Task {
+            await liveActivityManager.end()
+        }
+    }
+
+    private func applyLocalPause() {
+        guard var session = currentSession, !session.isPaused else { return }
+
+        let remaining = remainingSeconds
+        session.isPaused = true
+        session.pausedRemainingSeconds = remaining
+        currentSession = session
+
+        save()
+        audioManager.pause()
+
+        Task {
+            await syncLiveActivityIfNeeded()
+        }
+    }
+
+    private func applyLocalResume() {
+        guard var session = currentSession, session.isPaused else { return }
+
+        let remaining = session.pausedRemainingSeconds ?? 0
+        let newStart = Date()
+        let newEnd = newStart.addingTimeInterval(Double(remaining))
+
+        session.startDate = newStart
+        session.endDate = newEnd
+        session.isPaused = false
+        session.pausedRemainingSeconds = nil
+        currentSession = session
+
+        save()
+        audioManager.resume()
+
+        Task {
+            await syncLiveActivityIfNeeded()
+        }
+    }
+
+    private func syncAudioForCurrentState() {
+        guard let session = currentSession else { return }
+
+        if session.isPaused {
+            audioManager.pause()
+        } else {
+            audioManager.play(style: session.style)
+        }
+    }
+
+    private func resolvedCompletedMinutes(for session: FocusSessionState) -> Int {
+        if session.isPaused {
+            let remaining = session.pausedRemainingSeconds ?? 0
+            let elapsedSeconds = max(0, session.durationMinutes * 60 - remaining)
+            return max(1, elapsedSeconds / 60)
+        }
+
+        return max(1, session.durationMinutes - (remainingSeconds / 60))
+    }
+
+    private func mapCrewParticipants(
+        _ participantsDTO: [CrewFocusParticipantDTO],
+        hostName: String
+    ) -> [FocusParticipant] {
+        participantsDTO.map { dto in
+            FocusParticipant(
+                id: dto.id,
+                name: dto.member_name,
+                isHost: dto.member_name == hostName,
+                isReady: dto.is_active,
+                isActive: dto.is_active
+            )
+        }
+    }
+
+    private func syncLiveActivityIfNeeded() async {
+        guard let session = currentSession else {
+            await liveActivityManager.end()
+            return
+        }
+
+        let title: String
+        let subtitle: String
+        let modeRaw = session.mode.rawValue
+
+        switch session.mode {
+        case .personal:
+            title = "\(session.goal.title) Focus"
+            subtitle = "Kişisel focus aktif"
+        case .crew:
+            title = "Crew Focus"
+            subtitle = liveSubtitleText
+        case .friend:
+            title = "Friend Focus"
+            subtitle = "Shared focus aktif"
+        }
+
+        let effectiveEndDate: Date
+        if session.isPaused {
+            effectiveEndDate = Date().addingTimeInterval(
+                TimeInterval(session.pausedRemainingSeconds ?? remainingSeconds)
+            )
+        } else {
+            effectiveEndDate = session.endDate
+        }
+
+        await liveActivityManager.startOrUpdate(
+            title: title,
+            subtitle: subtitle,
+            modeRaw: modeRaw,
+            startDate: session.startDate,
+            endDate: effectiveEndDate,
+            isPaused: session.isPaused,
+            isResting: false,
+            pausedRemainingSeconds: session.isPaused
+                ? (session.pausedRemainingSeconds ?? remainingSeconds)
+                : nil,
+            pausedProgress: session.isPaused ? progress : nil
+        )
+    }
+
+    private var liveSubtitleText: String {
+        if let hostName {
+            return "\(hostName) ile focus"
+        }
+        return "Crew focus aktif"
+    }
+
+    // MARK: - Derived
+
+    var currentUserID: UUID? {
+        sessionStore?.currentUser?.id
+    }
+
+    var currentUserDisplayName: String {
+        if let email = sessionStore?.currentUser?.email, !email.isEmpty {
+            let prefix = email.split(separator: "@").first.map(String.init)
+            if let prefix, !prefix.isEmpty {
+                return prefix
+            }
+            return email
+        }
+        return "You"
+    }
+
+    var isCurrentUserHost: Bool {
+        guard let currentSession else { return false }
+        return currentSession.participants.first(where: { $0.isHost })?.name == currentUserDisplayName
+    }
+
     var remainingSeconds: Int {
         guard let session = currentSession else { return 0 }
+
         if session.isPaused {
             return max(0, session.pausedRemainingSeconds ?? 0)
         }
+
         return max(0, Int(session.endDate.timeIntervalSince(now)))
     }
 
@@ -306,6 +795,7 @@ final class FocusSessionManager: ObservableObject {
     var statusLine: String {
         guard let session = currentSession else { return "Hazır" }
         if session.isPaused { return "Focus duraklatıldı" }
+
         switch session.mode {
         case .personal:
             return "Şu an focustasın"
@@ -337,10 +827,10 @@ final class FocusSessionManager: ObservableObject {
     }
 
     var readyCount: Int {
-        currentSession?.participants.filter { $0.isReady }.count ?? 0
+        currentSession?.participants.filter { $0.isReady || $0.isActive }.count ?? 0
     }
 
-    // MARK: - Monetizable summary data
+    // MARK: - Summary Values
 
     var todayFocusMinutes: Int {
         if isSessionActive && selectedMode == .personal {
@@ -423,24 +913,7 @@ final class FocusSessionManager: ObservableObject {
             ]
         }
     }
-    func dismissCompletionSummary() {
-        completionSummary = nil
-        isExpanded = false
-    }
 
-    func restartLastFinishedSession() {
-        guard let session = lastFinishedSession else { return }
-
-        startSession(
-            mode: session.mode,
-            durationMinutes: session.durationMinutes,
-            goal: session.goal,
-            style: session.style,
-            participants: session.participants
-        )
-
-        completionSummary = nil
-    }
     var selectedGoal: FocusGoal {
         currentSession?.goal ?? .study
     }
@@ -448,83 +921,4 @@ final class FocusSessionManager: ObservableObject {
     var selectedStyle: FocusStyle {
         currentSession?.style ?? .silent
     }
-
 }
-
-enum FocusGoal: String, CaseIterable, Identifiable, Codable {
-    case study
-    case deepWork
-    case reading
-    case planning
-    case workout
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .study: return "Study"
-        case .deepWork: return "Deep Work"
-        case .reading: return "Reading"
-        case .planning: return "Planning"
-        case .workout: return "Workout"
-        }
-    }
-
-    var subtitle: String {
-        switch self {
-        case .study: return "Ders ve tekrar"
-        case .deepWork: return "Kesintisiz çalışma"
-        case .reading: return "Okuma akışı"
-        case .planning: return "Planlama zamanı"
-        case .workout: return "Aktif odak modu"
-        }
-    }
-
-    var icon: String {
-        switch self {
-        case .study: return "book.closed.fill"
-        case .deepWork: return "brain.head.profile"
-        case .reading: return "text.book.closed.fill"
-        case .planning: return "calendar"
-        case .workout: return "figure.run"
-        }
-    }
-}
-
-enum FocusStyle: String, CaseIterable, Identifiable, Codable {
-    case silent
-    case ambient
-    case rain
-    case library
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .silent: return "Silent"
-        case .ambient: return "Ambient"
-        case .rain: return "Rain"
-        case .library: return "Library"
-        }
-    }
-
-    var subtitle: String {
-        switch self {
-        case .silent: return "Sessiz mod"
-        case .ambient: return "Yumuşak arka plan"
-        case .rain: return "Yağmur sesi hissi"
-        case .library: return "Kütüphane atmosferi"
-        }
-    }
-
-    var icon: String {
-        switch self {
-        case .silent: return "speaker.slash.fill"
-        case .ambient: return "waveform"
-        case .rain: return "cloud.rain.fill"
-        case .library: return "building.columns.fill"
-        }
-    }
-
-}
-

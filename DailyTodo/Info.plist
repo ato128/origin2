@@ -23,6 +23,10 @@
 			</array>
 		</dict>
 	</array>
+	<key>SUPABASE_ANON_KEY</key>
+	<string>sb_publishable_lrWcbEx1SkaW3BmIYZ-j5g_iuFRrGhH</string>
+	<key>SUPABASE_URL</key>
+	<string>https://srzvzaczgydwtopnlrvx.supabase.co</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

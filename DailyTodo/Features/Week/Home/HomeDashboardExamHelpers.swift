@@ -103,14 +103,5 @@ extension HomeDashboardView {
         }
     }
 
-    var shouldSuggestExamPrep: Bool {
-        guard let exam = nextUpcomingExam else { return false }
-        let days = daysUntilExam(exam)
-
-        if isFocusActive || hasAnyActiveFocusSession {
-            return false
-        }
-
-        return days >= 0 && days <= 7
-    }
+    
 }
