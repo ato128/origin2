@@ -71,7 +71,6 @@
 		6D2A2AC52F88452C0051459D /* FocusDetailSectionV3.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2A2AC42F88452C0051459D /* FocusDetailSectionV3.swift */; };
 		6D2A2AC72F885F220051459D /* ActiveFocusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2A2AC62F885F220051459D /* ActiveFocusView.swift */; };
 		6D2A2AC92F88628F0051459D /* FocusSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2A2AC82F88628F0051459D /* FocusSessionManager.swift */; };
-		6D2A2ACB2F8862BA0051459D /* FloatingFocusBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2A2ACA2F8862BA0051459D /* FloatingFocusBubble.swift */; };
 		6D2A2ACD2F8875D00051459D /* FocusAudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2A2ACC2F8875D00051459D /* FocusAudioManager.swift */; };
 		6D2A2ACF2F887A890051459D /* ambient_loop.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 6D2A2ACE2F887A890051459D /* ambient_loop.mp3 */; };
 		6D2A2AD12F887A960051459D /* library_loop.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 6D2A2AD02F887A960051459D /* library_loop.mp3 */; };
@@ -375,7 +374,6 @@
 		6D2A2AC42F88452C0051459D /* FocusDetailSectionV3.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusDetailSectionV3.swift; sourceTree = "<group>"; };
 		6D2A2AC62F885F220051459D /* ActiveFocusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveFocusView.swift; sourceTree = "<group>"; };
 		6D2A2AC82F88628F0051459D /* FocusSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusSessionManager.swift; sourceTree = "<group>"; };
-		6D2A2ACA2F8862BA0051459D /* FloatingFocusBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingFocusBubble.swift; sourceTree = "<group>"; };
 		6D2A2ACC2F8875D00051459D /* FocusAudioManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusAudioManager.swift; sourceTree = "<group>"; };
 		6D2A2ACE2F887A890051459D /* ambient_loop.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = ambient_loop.mp3; sourceTree = "<group>"; };
 		6D2A2AD02F887A960051459D /* library_loop.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = library_loop.mp3; sourceTree = "<group>"; };
@@ -1037,7 +1035,6 @@
 				6D2A2AC42F88452C0051459D /* FocusDetailSectionV3.swift */,
 				6D2A2AC62F885F220051459D /* ActiveFocusView.swift */,
 				6D2A2AC82F88628F0051459D /* FocusSessionManager.swift */,
-				6D2A2ACA2F8862BA0051459D /* FloatingFocusBubble.swift */,
 				6D2A2ACC2F8875D00051459D /* FocusAudioManager.swift */,
 				6D2A2ADC2F89DEFC0051459D /* FocusQuickControlsV6.swift */,
 			);
@@ -1406,7 +1403,6 @@
 				6DC8F52A2F78A42E00361A6D /* PushService.swift in Sources */,
 				6DBE91D52F6C6948001DF813 /* WeekCrewChatModels.swift in Sources */,
 				6D2A2AC92F88628F0051459D /* FocusSessionManager.swift in Sources */,
-				6D2A2ACB2F8862BA0051459D /* FloatingFocusBubble.swift in Sources */,
 				6DBE91D12F6C5760001DF813 /* CrewTaskCommentDTO.swift in Sources */,
 				6DC0CAB62F5F7D0000A875ED /* ScheduleShare.swift in Sources */,
 				6DC0CAB72F5F7D0000A875ED /* DTTaskItem.swift in Sources */,

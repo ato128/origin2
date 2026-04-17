@@ -688,23 +688,29 @@ final class FriendStore: ObservableObject {
 
     @MainActor
     private func appendFriendMessage(_ item: FriendChatMessageItem, friendshipID: UUID) {
-        
         var items = friendMessagesByFriendship[friendshipID] ?? []
 
         if let serverID = item.serverID,
            let existingIndex = items.firstIndex(where: { $0.serverID == serverID }) {
             items[existingIndex] = item
         } else if let clientID = item.clientID,
-                  let pendingIndex = items.firstIndex(where: { $0.serverID == nil && $0.clientID == clientID }) {
+                  let pendingIndex = items.firstIndex(where: {
+                      $0.serverID == nil && $0.clientID == clientID
+                  }) {
             items[pendingIndex] = item
         } else {
             items.append(item)
         }
 
-        items.sort { $0.createdAt < $1.createdAt }
-        var updated = friendMessagesByFriendship
-        updated[friendshipID] = Array(items.suffix(100))
-        friendMessagesByFriendship = updated
+        items.sort { lhs, rhs in
+            if lhs.createdAt == rhs.createdAt {
+                return lhs.id.uuidString < rhs.id.uuidString
+            }
+            return lhs.createdAt < rhs.createdAt
+        }
+
+        let trimmedItems = Array(items.suffix(100))
+        friendMessagesByFriendship[friendshipID] = trimmedItems
         recomputeUnreadState(for: friendshipID)
     }
 
@@ -723,10 +729,15 @@ final class FriendStore: ObservableObject {
             let decoded = try JSONDecoder().decode([FriendMessageDTO].self, from: response.data)
                 .sorted { ($0.created_at ?? "") < ($1.created_at ?? "") }
 
-            friendMessagesByFriendship[friendshipID] = decoded.map {
+            let mapped = decoded.map {
                 mapDTOToFriendItem($0, currentUserID: currentUserID)
             }
-            recomputeUnreadState(for: friendshipID)
+
+            await MainActor.run {
+                self.friendMessagesByFriendship[friendshipID] = mapped
+                self.recomputeUnreadState(for: friendshipID)
+            }
+
             await markMessagesDelivered(friendshipID: friendshipID, currentUserID: currentUserID)
         } catch {
             print("LOAD INITIAL MESSAGES ERROR:", error.localizedDescription)
@@ -747,31 +758,34 @@ final class FriendStore: ObservableObject {
                 .sorted { ($0.created_at ?? "") < ($1.created_at ?? "") }
 
             let serverIDs = Set(decoded.map { $0.id })
-            var current = friendMessagesByFriendship[friendshipID] ?? []
 
-            // Silinmiş mesajları kaldır
-            current.removeAll { msg in
-                guard let sid = msg.serverID else { return false }
-                return !serverIDs.contains(sid)
-            }
+            await MainActor.run {
+                var current = self.friendMessagesByFriendship[friendshipID] ?? []
 
-            // Yeni mesajları ekle veya güncelle
-            for dto in decoded {
-                let item = mapDTOToFriendItem(dto, currentUserID: currentUserID)
-                if let index = current.firstIndex(where: { $0.serverID == item.serverID }) {
-                    current[index] = item
-                } else if let cidx = current.firstIndex(where: {
-                    $0.clientID == dto.client_id && $0.serverID == nil
-                }) {
-                    current[cidx] = item
-                } else {
-                    current.append(item)
+                current.removeAll { msg in
+                    guard let sid = msg.serverID else { return false }
+                    return !serverIDs.contains(sid)
                 }
+
+                for dto in decoded {
+                    let item = self.mapDTOToFriendItem(dto, currentUserID: currentUserID)
+
+                    if let index = current.firstIndex(where: { $0.serverID == item.serverID }) {
+                        current[index] = item
+                    } else if let cidx = current.firstIndex(where: {
+                        $0.clientID == dto.client_id && $0.serverID == nil
+                    }) {
+                        current[cidx] = item
+                    } else {
+                        current.append(item)
+                    }
+                }
+
+                current.sort { $0.createdAt < $1.createdAt }
+                self.friendMessagesByFriendship[friendshipID] = Array(current.suffix(100))
+                self.recomputeUnreadState(for: friendshipID)
             }
 
-            current.sort { $0.createdAt < $1.createdAt }
-            friendMessagesByFriendship[friendshipID] = Array(current.suffix(100))
-            recomputeUnreadState(for: friendshipID)
             await markMessagesDelivered(friendshipID: friendshipID, currentUserID: currentUserID)
         } catch {
             print("LOAD NEW MESSAGES ERROR:", error.localizedDescription)
@@ -798,7 +812,9 @@ final class FriendStore: ObservableObject {
             messageStatus: "sending"
         )
 
-        appendFriendMessage(localItem, friendshipID: friendshipID)
+        await MainActor.run {
+            self.appendFriendMessage(localItem, friendshipID: friendshipID)
+        }
 
         do {
             let payload = FriendMessageInsertPayload(
@@ -830,13 +846,18 @@ final class FriendStore: ObservableObject {
                 .execute()
 
             let savedDTO = try JSONDecoder().decode(FriendMessageDTO.self, from: response.data)
-            appendFriendMessage(
-                mapDTOToFriendItem(savedDTO, currentUserID: resolvedSenderID),
-                friendshipID: friendshipID
-            )
+
+            let mapped = mapDTOToFriendItem(savedDTO, currentUserID: resolvedSenderID)
+
+            await MainActor.run {
+                self.appendFriendMessage(mapped, friendshipID: friendshipID)
+            }
         } catch {
             print("SEND MESSAGE ERROR:", error.localizedDescription)
-            markPendingMessageFailed(clientID: clientID, friendshipID: friendshipID)
+
+            await MainActor.run {
+                self.markPendingMessageFailed(clientID: clientID, friendshipID: friendshipID)
+            }
         }
     }
     private struct FriendMessageInsertPayload: Encodable {
@@ -1823,8 +1844,10 @@ final class FriendStore: ObservableObject {
                 InsertAction.self,
                 schema: "public",
                 table: "friend_messages",
-                filter: "friendship_id=eq.\(friendshipID.uuidString)"
+                
             ) { [weak self] action in
+                print("🟢 FRIEND REALTIME INSERT GELDİ:", action.record)
+                
                 Task { @MainActor [weak self] in
                     guard let self else { return }
                     do {
@@ -1853,7 +1876,7 @@ final class FriendStore: ObservableObject {
                 UpdateAction.self,
                 schema: "public",
                 table: "friend_messages",
-                filter: "friendship_id=eq.\(friendshipID.uuidString)"
+                
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
                     guard let self else { return }
@@ -1873,7 +1896,7 @@ final class FriendStore: ObservableObject {
                 DeleteAction.self,
                 schema: "public",
                 table: "friend_messages",
-                filter: "friendship_id=eq.\(friendshipID.uuidString)"
+                
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
                     guard let self else { return }

@@ -101,13 +101,9 @@ struct DailyTodoApp: App {
             .environmentObject(focusSession)
             .environment(\.locale, languageManager.activeLocale)
             .overlay {
-                ZStack {
-                    InAppBannerOverlay()
-
-                    FloatingFocusBubble()
-                        .environmentObject(focusSession)
-                }
+                InAppBannerOverlay()
             }
+            
             .onAppear {
                 let context = ModelContext(container)
 

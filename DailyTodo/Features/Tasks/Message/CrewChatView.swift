@@ -98,7 +98,7 @@ struct CrewChatView: View {
                 }
 
                 await MainActor.run {
-                    crewStore.subscribeToActiveFocusRealtime(crewID: crew.id)
+                    
                 }
             }
         }

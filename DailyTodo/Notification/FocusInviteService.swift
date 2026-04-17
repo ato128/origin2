@@ -6,13 +6,13 @@
 //
 
 import Foundation
-
+import Supabase
 
 final class FocusInviteService {
     static let shared = FocusInviteService()
     private init() {}
 
-    private let functionURL = URL(string: "https://srzvzaczgydwtopnlrvx.supabase.co/functions/v1/send-message-notification")!
+    private let functionURL = URL(string: "https://srzvzaczgydwtopnlrvx.supabase.co/functions/v1/send-message-push")!
 
     func sendInvites(
         sessionID: UUID,
@@ -24,9 +24,11 @@ final class FocusInviteService {
     ) async {
         let currentUserIDString = UserDefaults.standard.string(forKey: "current_user_id")
 
-        let filteredParticipantIDs = participantIDs.filter {
-            $0.uuidString != currentUserIDString
-        }
+        let filteredParticipantIDs = Array(
+            Set(
+                participantIDs.filter { $0.uuidString != currentUserIDString }
+            )
+        )
 
         guard !filteredParticipantIDs.isEmpty else {
             print("FOCUS INVITE: gönderilecek katılımcı yok")
@@ -39,106 +41,84 @@ final class FocusInviteService {
             return
         }
 
+        let normalizedTaskTitle = taskTitle?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
         for participantID in filteredParticipantIDs {
             do {
-                let pushTokens = try await fetchPushTokens(for: participantID)
-                guard !pushTokens.isEmpty else {
-                    print("FOCUS INVITE: token yok -> \(participantID.uuidString)")
-                    continue
-                }
-
-                for token in pushTokens {
-                    try await sendSingleInvite(
-                        anonKey: anonKey,
-                        pushToken: token,
-                        sessionID: sessionID,
-                        crewID: crewID,
-                        hostName: hostName,
-                        duration: duration,
-                        taskTitle: taskTitle
-                    )
-                }
+                try await sendSingleInvite(
+                    anonKey: anonKey,
+                    toUserID: participantID,
+                    sessionID: sessionID,
+                    crewID: crewID,
+                    hostName: hostName,
+                    duration: duration,
+                    taskTitle: normalizedTaskTitle
+                )
             } catch {
-                print("FOCUS INVITE SEND ERROR:", error.localizedDescription)
+                print("FOCUS INVITE SEND ERROR [\(participantID.uuidString)]:", error.localizedDescription)
             }
         }
     }
 
-    private func fetchPushTokens(for userID: UUID) async throws -> [String] {
-        guard let supabaseURLString = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_URL") as? String,
-              !supabaseURLString.isEmpty,
-              let anonKey = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String,
-              !anonKey.isEmpty else {
-            print("FOCUS INVITE ERROR: SUPABASE_URL veya SUPABASE_ANON_KEY eksik")
-            return []
-        }
-
-        let baseURL = supabaseURLString.hasSuffix("/")
-            ? String(supabaseURLString.dropLast())
-            : supabaseURLString
-
-        guard let url = URL(string: "\(baseURL)/rest/v1/push_tokens?user_id=eq.\(userID.uuidString)&select=apns_token") else {
-            print("FOCUS INVITE ERROR: push_tokens URL oluşturulamadı")
-            return []
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue(anonKey, forHTTPHeaderField: "apikey")
-        request.setValue("Bearer \(anonKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            print("FOCUS INVITE ERROR: geçersiz response")
-            return []
-        }
-
-        guard (200...299).contains(httpResponse.statusCode) else {
-            let body = String(data: data, encoding: .utf8) ?? "no-body"
-            print("FOCUS INVITE TOKEN FETCH ERROR:", httpResponse.statusCode, body)
-            return []
-        }
-
-        struct PushTokenRow: Decodable {
-            let apns_token: String
-        }
-
-        let rows = try JSONDecoder().decode([PushTokenRow].self, from: data)
-        return rows.map(\.apns_token)
-    }
-
     private func sendSingleInvite(
         anonKey: String,
-        pushToken: String,
+        toUserID: UUID,
         sessionID: UUID,
         crewID: UUID,
         hostName: String,
         duration: Int,
         taskTitle: String?
     ) async throws {
+        guard let inviteSecret = Bundle.main.object(forInfoDictionaryKey: "FOCUS_INVITE_SECRET") as? String,
+              !inviteSecret.isEmpty else {
+            print("FOCUS INVITE ERROR: FOCUS_INVITE_SECRET bulunamadı")
+            return
+        }
+
+        guard let accessToken = SupabaseManager.shared.client.auth.currentSession?.accessToken,
+              !accessToken.isEmpty else {
+            print("FOCUS INVITE ERROR: access token yok")
+            return
+        }
+
         var request = URLRequest(url: functionURL)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(anonKey)", forHTTPHeaderField: "Authorization")
         request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue(inviteSecret, forHTTPHeaderField: "x-focus-invite-secret")
 
-        let body: [String: Any] = [
-            "pushToken": pushToken,
+        let deepLink = "dailytodo://focus?crew_id=\(crewID.uuidString)&session_id=\(sessionID.uuidString)"
+
+        let bodyText: String
+        if let taskTitle, !taskTitle.isEmpty {
+            bodyText = "\(hostName) \(duration) dk focus başlattı. Görev: \(taskTitle). Katılmak ister misin?"
+        } else {
+            bodyText = "\(hostName) \(duration) dk focus başlattı. Katılmak ister misin?"
+        }
+
+        var body: [String: Any] = [
+            "toUserId": toUserID.uuidString,
             "title": "Takım odakta",
-            "body": "\(hostName) \(duration) dk focus başlattı. Katılmak ister misin?",
-            "data": [
-                "type": "crew_focus_invite",
-                "crew_id": crewID.uuidString,
-                "session_id": sessionID.uuidString,
-                "host_name": hostName,
-                "duration_minutes": duration,
-                "task_title": taskTitle ?? ""
-            ]
+            "message": bodyText,
+            "type": "crew_focus_invite",
+            "crew_id": crewID.uuidString,
+            "session_id": sessionID.uuidString,
+            "host_name": hostName,
+            "duration_minutes": duration,
+            "deep_link": deepLink,
+            "badge": 1
         ]
 
+        if let taskTitle, !taskTitle.isEmpty {
+            body["task_title"] = taskTitle
+        }
+
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        print("FOCUS INVITE ACCESS TOKEN EMPTY:", accessToken.isEmpty)
+        print("FOCUS INVITE HEADERS:", request.allHTTPHeaderFields ?? [:])
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
@@ -147,12 +127,15 @@ final class FocusInviteService {
             return
         }
 
+        let bodyString = String(data: data, encoding: .utf8) ?? "no-body"
+        print("FOCUS INVITE STATUS:", httpResponse.statusCode)
+        print("FOCUS INVITE RESPONSE:", bodyString)
+
         guard (200...299).contains(httpResponse.statusCode) else {
-            let bodyString = String(data: data, encoding: .utf8) ?? "no-body"
             print("FOCUS INVITE FUNCTION ERROR:", httpResponse.statusCode, bodyString)
             return
         }
 
-        print("FOCUS INVITE SENT -> \(pushToken)")
+        print("FOCUS INVITE SENT -> \(toUserID.uuidString)")
     }
 }

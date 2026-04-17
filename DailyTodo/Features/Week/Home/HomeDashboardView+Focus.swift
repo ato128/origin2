@@ -131,13 +131,9 @@ extension HomeDashboardView {
         }
     }
 
-    // MARK: - Compatibility alias
-
     var activeFocusCard: some View {
         homeLiveFocusCard
     }
-
-    // MARK: - Crew live card
 
     func crewSharedFocusCard(session: CrewFocusSessionDTO) -> some View {
         TimelineView(.animation) { timeline in
@@ -193,7 +189,10 @@ extension HomeDashboardView {
                 HStack(spacing: 10) {
                     Button {
                         guard !isFinished else { return }
-                        focusRoomSession = session
+                        NotificationCenter.default.post(
+                            name: .openCrewFocusFromNotification,
+                            object: session.crew_id.uuidString
+                        )
                     } label: {
                         Text(isFinished ? "Tamamlandı" : "Katıl")
                             .font(.system(size: 14, weight: .bold))
@@ -209,43 +208,20 @@ extension HomeDashboardView {
                     .disabled(isFinished)
 
                     Button {
-                        Task {
-                            let hostName = sessionStoreSafeEmailPrefix() ?? "You"
-
-                            do {
-                                if session.is_paused {
-                                    try await crewStore.resumeCrewFocusSession(
-                                        sessionID: session.id,
-                                        crewID: session.crew_id,
-                                        hostUserID: self.session.currentUser?.id,
-                                        hostName: hostName,
-                                        durationMinutes: session.duration_minutes,
-                                        pausedRemainingSeconds: session.paused_remaining_seconds ?? 0
-                                    )
-                                } else {
-                                    try await crewStore.pauseCrewFocusSession(
-                                        sessionID: session.id,
-                                        crewID: session.crew_id,
-                                        hostUserID: self.session.currentUser?.id,
-                                        hostName: hostName,
-                                        pausedRemainingSeconds: remaining
-                                    )
-                                }
-
-                                await crewStore.loadActiveFocusSession(for: session.crew_id)
-                            } catch {
-                                print("HOME FOCUS PAUSE/RESUME ERROR:", error.localizedDescription)
-                            }
-                        }
+                        guard !isFinished else { return }
+                        NotificationCenter.default.post(
+                            name: .openCrewFocusFromNotification,
+                            object: session.crew_id.uuidString
+                        )
                     } label: {
-                        Text(session.is_paused ? "Devam Et" : "Duraklat")
+                        Text("Aç")
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(session.is_paused ? .green : .orange)
+                            .foregroundStyle(accent)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 11)
                             .background(
                                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .fill((session.is_paused ? Color.green : Color.orange).opacity(0.12))
+                                    .fill(accent.opacity(0.12))
                             )
                     }
                     .buttonStyle(.plain)
@@ -275,7 +251,157 @@ extension HomeDashboardView {
         }
     }
 
-    // MARK: - New live focus card driven by FocusSessionManager
+    var multiCrewFocusCard: some View {
+        let sessions = activeCrewFocusSessions
+        let primary = sessions.first
+        let totalCount = sessions.count
+
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Ortak Odak")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(palette.secondaryText)
+
+                    Text("Birden Fazla Aktif Crew Focus")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
+                        .lineLimit(2)
+
+                    if let primary {
+                        Text("\(primary.host_name) dahil \(totalCount) aktif oturum var")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(palette.secondaryText)
+                    } else {
+                        Text("\(totalCount) aktif oturum var")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(palette.secondaryText)
+                    }
+                }
+
+                Spacer()
+
+                ZStack {
+                    Circle()
+                        .fill(Color.pink.opacity(0.14))
+                        .frame(width: 48, height: 48)
+
+                    Image(systemName: "person.3.fill")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(Color.pink)
+                }
+            }
+
+            VStack(spacing: 10) {
+                ForEach(Array(sessions.prefix(3)), id: \.id) { session in
+                    Button {
+                        NotificationCenter.default.post(
+                            name: .openCrewFocusFromNotification,
+                            object: session.crew_id.uuidString
+                        )
+                    } label: {
+                        HStack(spacing: 10) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(session.title)
+                                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                                    .foregroundStyle(palette.primaryText)
+                                    .lineLimit(1)
+
+                                Text("\(session.host_name) • \(session.duration_minutes) dk")
+                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(palette.secondaryText)
+                                    .lineLimit(1)
+                            }
+
+                            Spacer()
+
+                            Text("Katıl")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 10)
+                                .frame(height: 30)
+                                .background(
+                                    Capsule(style: .continuous)
+                                        .fill(Color.accentColor)
+                                )
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(palette.secondaryCardFill.opacity(0.85))
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            HStack(spacing: 10) {
+                Button {
+                    if let first = sessions.first {
+                        NotificationCenter.default.post(
+                            name: .openCrewFocusFromNotification,
+                            object: first.crew_id.uuidString
+                        )
+                    }
+                } label: {
+                    Text("İlk Oturumu Aç")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.accentColor)
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(sessions.isEmpty)
+
+                Button {
+                    if let first = sessions.first {
+                        NotificationCenter.default.post(
+                            name: .openCrewFocusFromNotification,
+                            object: first.crew_id.uuidString
+                        )
+                    }
+                } label: {
+                    Text("Tümünü Gör")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Color.pink)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.pink.opacity(0.12))
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(palette.cardFill)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(
+                            RadialGradient(
+                                colors: [Color.pink.opacity(0.10), Color.clear],
+                                center: .topLeading,
+                                startRadius: 14,
+                                endRadius: 220
+                            )
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(Color.pink.opacity(0.18), lineWidth: 1)
+                )
+        )
+        .shadow(color: Color.pink.opacity(0.08), radius: 12, x: 0, y: 5)
+    }
 
     var homeLiveFocusCard: some View {
         TimelineView(.animation) { _ in
@@ -285,7 +411,7 @@ extension HomeDashboardView {
             let timeText = String(format: "%02d:%02d", minutes, seconds)
             let accent = liveHomeFocusAccentColor(remaining: remaining)
             let progress = max(0.02, focusSession.progress)
-            let isFinished = focusSession.isSessionActive == false && remaining == 0
+            let isFinished = !focusSession.isSessionActive && remaining == 0
 
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .center) {
@@ -385,7 +511,10 @@ extension HomeDashboardView {
                             if let crewID = focusSession.currentCrewID,
                                let sessionDTO = crewStore.activeFocusSessionByCrew[crewID],
                                sessionDTO.is_active {
-                                focusRoomSession = sessionDTO
+                                NotificationCenter.default.post(
+                                    name: .openCrewFocusFromNotification,
+                                    object: sessionDTO.crew_id.uuidString
+                                )
                             } else {
                                 focusSession.expandSession()
                             }
@@ -421,21 +550,21 @@ extension HomeDashboardView {
                     .disabled(isFinished)
 
                     Button {
-                        focusSession.togglePause()
+                        focusSession.expandSession()
                     } label: {
                         HStack(spacing: 8) {
-                            Image(systemName: focusSession.isPaused ? "play.fill" : "pause.fill")
+                            Image(systemName: "slider.horizontal.3")
                                 .font(.system(size: 13, weight: .bold))
 
-                            Text(focusSession.isPaused ? "Devam Et" : "Duraklat")
+                            Text("Yönet")
                                 .font(.system(size: 14, weight: .bold))
                         }
-                        .foregroundStyle(focusSession.isPaused ? .green : .orange)
+                        .foregroundStyle(accent)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 11)
                         .background(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill((focusSession.isPaused ? Color.green : Color.orange).opacity(0.12))
+                                .fill(accent.opacity(0.12))
                         )
                     }
                     .buttonStyle(.plain)
@@ -478,8 +607,6 @@ extension HomeDashboardView {
             .shadow(color: accent.opacity(0.08), radius: 12, x: 0, y: 5)
         }
     }
-
-    // MARK: - Helpers
 
     func liveHomeFocusAccentColor(remaining: Int) -> Color {
         if focusSession.isPaused { return .orange }
@@ -645,6 +772,6 @@ extension HomeDashboardView {
 
     func isCurrentFocusTask(_ task: DTTaskItem) -> Bool {
         guard focusSession.isSessionActive else { return false }
-        return focusSession.selectedMode == .personal && focusSession.currentSession?.goal == .study && task.taskType.lowercased() == "study"
+        return focusSession.selectedMode == .personal
     }
 }

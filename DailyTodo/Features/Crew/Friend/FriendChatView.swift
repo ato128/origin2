@@ -39,6 +39,7 @@ struct FriendChatView: View {
     @State private var draftAttachment: DraftAttachment?
     @State private var showMicPermissionAlert = false
     
+    @State private var lastScrolledMessageID: UUID?
     @StateObject private var audioRecorder = AudioRecorderManager()
     
     
@@ -85,8 +86,11 @@ struct FriendChatView: View {
             .toolbar(.hidden, for: .navigationBar)
     }
     
-    private var chatSheetsAndDialogs: some View {
-        EmptyView()
+    
+    
+    
+    var body: some View {
+        chatMainView
             .sheet(isPresented: $showFriendInfo) {
                 NavigationStack {
                     FriendChatInfoView(friend: friend)
@@ -116,18 +120,17 @@ struct FriendChatView: View {
             } message: {
                 Text(attachmentAlertText)
             }
-    }
-    private var chatLifecycleHandlers: some View {
-        EmptyView()
             .task(id: friendshipID) {
                 guard let friendshipID else { return }
-                
+
+                print("🟡 CHAT TASK START:", friendshipID.uuidString)
+
                 FriendStore.sharedRetryBridge = { message in
                     await friendStore.retryMessage(message)
                 }
-                
+
                 friendStore.setActiveChat(friendshipID)
-                
+
                 if friendStore.friendMessagesByFriendship[friendshipID] == nil {
                     await friendStore.loadInitialMessages(
                         for: friendshipID,
@@ -139,61 +142,26 @@ struct FriendChatView: View {
                         currentUserID: session.currentUser?.id
                     )
                 }
-                
+
                 await friendStore.markMessagesSeen(
                     friendshipID: friendshipID,
                     currentUserID: session.currentUser?.id
                 )
-                
-                
+
                 friendStore.subscribeToFriendMessagesRealtime(
                     friendshipID: friendshipID,
                     currentUserID: session.currentUser?.id
                 )
-                
-                // friendStore.subscribeToTypingRealtime(
-                  //  friendshipID: friendshipID,
-                   // currentUserID: session.currentUser?.id
-                //)
-                
-              //  if let friendUserID = friend.backendUserID {
-                //    await friendStore.loadPresence(for: [friendUserID])
-                  //  friendStore.subscribeToPresenceRealtime(for: [friendUserID])
-               // }
-                
-                await friendStore.setPresence(
-                    currentUserID: session.currentUser?.id,
-                    isOnline: true
-                )
-                
             }
             .onDisappear {
+                print("🔴 CHAT DISAPPEAR")
+
                 friendStore.setActiveChat(nil)
                 friendStore.unsubscribeFriendMessagesRealtime()
-                friendStore.unsubscribeTypingRealtime()
-                friendStore.unsubscribePresenceRealtime()
-                
-                Task {
-                    await friendStore.setPresence(
-                        currentUserID: session.currentUser?.id,
-                        isOnline: false
-                    )
-                }
-                
-                if let friendshipID {
-                    Task {
-                        await friendStore.setTyping(
-                            friendshipID: friendshipID,
-                            currentUserID: session.currentUser?.id,
-                            currentUserName: senderDisplayName(),
-                            isTyping: false
-                        )
-                    }
-                }
             }
             .onChange(of: messages.count) { _, _ in
                 guard let friendshipID else { return }
-                
+
                 Task {
                     await friendStore.markMessagesSeen(
                         friendshipID: friendshipID,
@@ -201,40 +169,6 @@ struct FriendChatView: View {
                     )
                 }
             }
-            .onChange(of: selectedPhotoItem) { _, newItem in
-                guard let newItem else { return }
-                
-                Task {
-                    do {
-                        if let data = try await newItem.loadTransferable(type: Data.self),
-                           let image = UIImage(data: data) {
-                            await MainActor.run {
-                                draftAttachment = .photo(image)
-                            }
-                        } else {
-                            await MainActor.run {
-                                attachmentAlertText = "Fotoğraf alınamadı."
-                                showAttachmentAlert = true
-                            }
-                        }
-                    } catch {
-                        await MainActor.run {
-                            attachmentAlertText = "Fotoğraf seçilemedi: \(error.localizedDescription)"
-                            showAttachmentAlert = true
-                        }
-                    }
-                }
-            }
-            .onChange(of: capturedImage) { _, newImage in
-                guard let newImage else { return }
-                draftAttachment = .photo(newImage)
-            }
-    }
-    
-    var body: some View {
-        chatMainView
-            .background(chatSheetsAndDialogs)
-            .background(chatLifecycleHandlers)
             .alert("Mikrofon izni gerekli", isPresented: $showMicPermissionAlert) {
                 Button("Ayarlar") {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -430,6 +364,7 @@ private extension FriendChatView {
                             .id(message.id)
                         }
                     }
+
                     if isTypingNow {
                         HStack {
                             HStack(spacing: 6) {
@@ -456,25 +391,32 @@ private extension FriendChatView {
                         .frame(height: 1)
                         .id("chat-bottom-anchor")
                 }
-                .animation(.spring(response: 0.32, dampingFraction: 0.86), value: messages.count)
+               
                 .padding(.horizontal, 16)
                 .padding(.top, 64)
                 .padding(.bottom, composerBarHeight + 18)
             }
             .scrollIndicators(.hidden)
             .scrollDismissesKeyboard(.interactively)
+           
             .onAppear {
+                lastScrolledMessageID = messages.last?.id
+
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
                     scrollToBottom(proxy: proxy, animated: false)
                 }
             }
+            .onChange(of: messages.last?.id) { _, newValue in
+                guard let newValue else { return }
+                guard newValue != lastScrolledMessageID else { return }
 
-            .task(id: messages.last?.id) {
+                lastScrolledMessageID = newValue
+
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
                     scrollToBottom(proxy: proxy, animated: true)
                 }
             }
-
+           
             .onChange(of: isComposerFocused) { _, focused in
                 guard focused else { return }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {

@@ -155,41 +155,57 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     }
 
     private func handleNotificationPayload(_ userInfo: [AnyHashable: Any]) {
-        if let type = userInfo["type"] as? String {
-            switch type {
-            case "crew_chat":
-                if let crewID = userInfo["crew_id"] as? String {
-                    NotificationCenter.default.post(
-                        name: .openCrewChatFromNotification,
-                        object: crewID
-                    )
-                }
-
-            case "friend_chat":
-                if let friendshipID = userInfo["friendship_id"] as? String {
-                    NotificationCenter.default.post(
-                        name: .openFriendChatFromNotification,
-                        object: friendshipID
-                    )
-                }
-
-            case "focus_room":
-                if let crewID = userInfo["crew_id"] as? String {
-                    NotificationCenter.default.post(
-                        name: .openCrewFocusInviteFromNotification,
-                        object: crewID
-                    )
-                }
-
-            case "crew_focus_invite":
+        guard let type = userInfo["type"] as? String else {
+            if let deepLink = userInfo["deep_link"] as? String,
+               let url = URL(string: deepLink) {
                 NotificationCenter.default.post(
-                    name: .openCrewFocusInviteFromNotification,
-                    object: userInfo
+                    name: .openURLFromNotification,
+                    object: url
+                )
+            }
+            return
+        }
+
+        switch type {
+        case "crew_chat":
+            if let crewID = userInfo["crew_id"] as? String {
+                NotificationCenter.default.post(
+                    name: .openCrewChatFromNotification,
+                    object: crewID
+                )
+            }
+
+        case "friend_chat":
+            if let friendshipID = userInfo["friendship_id"] as? String {
+                NotificationCenter.default.post(
+                    name: .openFriendChatFromNotification,
+                    object: friendshipID
+                )
+            }
+
+        case "focus_room":
+            if let crewID = userInfo["crew_id"] as? String {
+                NotificationCenter.default.post(
+                    name: .presentActiveCrewFocusFromNotification,
+                    object: crewID
                 )
 
-            default:
-                break
+                NotificationCenter.default.post(
+                    name: .openCrewFocusFromNotification,
+                    object: crewID
+                )
             }
+
+        case "crew_focus_invite":
+            NotificationCenter.default.post(
+                name: .presentCrewFocusInviteSheet,
+                object: userInfo
+            )
+
+           
+
+        default:
+            break
         }
 
         if let deepLink = userInfo["deep_link"] as? String,
@@ -212,5 +228,4 @@ extension Notification.Name {
     static let presentActiveCrewFocusFromNotification = Notification.Name("presentActiveCrewFocusFromNotification")
     static let openCrewFocusInviteFromNotification = Notification.Name("openCrewFocusInviteFromNotification")
     static let openCrewFocusFromNotification = Notification.Name("openCrewFocusFromNotification")
-    
 }

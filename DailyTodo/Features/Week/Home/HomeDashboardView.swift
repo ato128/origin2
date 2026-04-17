@@ -60,7 +60,7 @@ struct HomeDashboardView: View {
     @State var inlineWorkoutRestSeconds: Int = 0
     @State var didLoadCrewFocusSessions = false
 
-    @State var focusRoomSession: CrewFocusSessionDTO?
+    
 
     enum HomeLayoutMode {
         case focusActive
@@ -437,18 +437,6 @@ struct HomeDashboardView: View {
                 NavigationStack {
                     TasksView()
                         .environmentObject(store)
-                }
-            }
-            .sheet(item: $focusRoomSession) { openedSession in
-                if let crewItem = weekCrewItem(for: openedSession.crew_id) {
-                    NavigationStack {
-                        CrewFocusRoomBackendView(
-                            crew: crewItem,
-                            sessionDTO: openedSession
-                        )
-                        .environmentObject(crewStore)
-                        .environmentObject(session)
-                    }
                 }
             }
             .onAppear {

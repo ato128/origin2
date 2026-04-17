@@ -60,15 +60,17 @@ struct FocusView: View {
                         FocusModeSwitcherV3(selectedMode: $selectedMode)
 
                         FocusFullPageStageV7(
-                            mode: selectedMode,
-                            durationText: durationText,
-                            statusText: heroStatusText,
-                            metaText: "\(selectedGoal.title) • \(selectedStyle.title)",
-                            progress: heroProgress,
+                            mode: effectiveStageMode,
+                            durationText: effectiveStageDurationText,
+                            statusText: effectiveStageStatusText,
+                            metaText: effectiveStageMetaText,
+                            progress: effectiveStageProgress,
                             isLaunching: isLaunchingFocus
                         )
 
                         compactControlsSection
+                        
+                        inviteBannerCard
 
                         bigStartButton
 
@@ -106,9 +108,7 @@ struct FocusView: View {
         .sheet(isPresented: $showCrewStartSheet) {
             crewStartSheet
         }
-        .sheet(item: $invitePayload) { payload in
-            crewInviteJoinSheet(payload: payload)
-        }
+       
         .fullScreenCover(isPresented: $focusSession.isExpanded) {
             ActiveFocusView()
                 .environmentObject(focusSession)
@@ -127,7 +127,11 @@ struct FocusView: View {
                 await loadCrewStartDependenciesIfNeeded()
 
                 if selectedParticipantIDs.isEmpty {
-                    selectedParticipantIDs = Set(availableParticipantUserIDs)
+                    selectedParticipantIDs = Set(
+                        activeCrewMembers
+                            .filter { isLockedParticipant($0) }
+                            .map(\.user_id)
+                    )
                 }
             }
         }
@@ -137,7 +141,11 @@ struct FocusView: View {
 
             Task {
                 await loadCrewStartDependenciesIfNeeded()
-                selectedParticipantIDs = Set(availableParticipantUserIDs)
+                selectedParticipantIDs = Set(
+                    activeCrewMembers
+                        .filter { isLockedParticipant($0) }
+                        .map(\.user_id)
+                )
             }
         }
         .onChange(of: selectedMode) { _, newValue in
@@ -433,55 +441,204 @@ private extension FocusView {
         }
         .buttonStyle(.plain)
     }
-
-    var bigStartButton: some View {
-        Button {
-            triggerFocusLaunch()
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "play.fill")
-                    .font(.system(size: 15, weight: .bold))
-
-                Text(modeCTA)
-                    .font(.system(size: 18, weight: .heavy, design: .rounded))
-
-                Spacer()
-
-                Image(systemName: "arrow.right")
-                    .font(.system(size: 14, weight: .bold))
-                    .opacity(0.86)
-            }
-            .foregroundStyle(.white)
-            .padding(.horizontal, 22)
-            .frame(height: 60)
-            .frame(maxWidth: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                selectedModeAccent.opacity(1.0),
-                                selectedModeSecondaryAccent.opacity(0.92)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(Color.white.opacity(0.11), lineWidth: 1)
-                    )
-            )
-            .shadow(color: selectedModeAccent.opacity(0.38), radius: 26, x: 0, y: 14)
-        }
-        .buttonStyle(PressScaleButtonStyle())
-        .padding(.top, 2)
-        .opacity(isLaunchingFocus ? 0.0 : 1)
-        .offset(y: isLaunchingFocus ? 8 : 0)
-        .animation(.easeInOut(duration: 0.18), value: isLaunchingFocus)
+    
+    var hasAnyBlockingFocus: Bool {
+        focusSession.isSessionActive
     }
 
+    var activeFocusInfoText: String {
+        guard let mode = focusSession.activeSessionMode else { return "" }
+
+        switch mode {
+        case .personal:
+            return "Şu anda kişisel bir focus aktif"
+        case .crew:
+            return "Şu anda crew focus aktif"
+        case .friend:
+            return "Şu anda friend focus aktif"
+        }
+    }
+
+    var activeCrewSessionsForHome: [CrewFocusSessionDTO] {
+        let now = Date()
+
+        return crewStore.activeFocusSessionByCrew.values
+            .filter { session in
+                guard session.is_active else { return false }
+                guard session.ended_at == nil else { return false }
+
+                if session.is_paused {
+                    return (session.paused_remaining_seconds ?? 0) > 0
+                }
+
+                guard let startedAt = CrewDateParser.parse(session.started_at) else { return false }
+
+                let endDate = startedAt.addingTimeInterval(
+                    TimeInterval(session.duration_minutes * 60)
+                )
+
+                return endDate > now
+            }
+            .sorted {
+                let lhs = CrewDateParser.parse($0.started_at) ?? .distantPast
+                let rhs = CrewDateParser.parse($1.started_at) ?? .distantPast
+                return lhs > rhs
+            }
+    }
+
+    var selectedCrewHasActiveSession: Bool {
+        guard let selectedCrewID else { return false }
+        return crewStore.activeFocusSessionByCrew[selectedCrewID]?.is_active == true
+    }
+
+    var bigStartButton: some View {
+        VStack(spacing: 12) {
+            Button {
+                triggerFocusLaunch()
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: focusSession.isSessionActive ? "lock.fill" : "play.fill")
+                        .font(.system(size: 15, weight: .bold))
+
+                    Text(focusSession.isSessionActive ? "Aktif Focusu Aç" : modeCTA)
+                        .font(.system(size: 18, weight: .heavy, design: .rounded))
+
+                    Spacer()
+
+                    Image(systemName: focusSession.isSessionActive ? "arrow.up.forward.app" : "arrow.right")
+                        .font(.system(size: 14, weight: .bold))
+                        .opacity(0.86)
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 22)
+                .frame(height: 60)
+                .frame(maxWidth: .infinity)
+                .background(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: focusSession.isSessionActive
+                                ? [
+                                    Color.orange.opacity(0.95),
+                                    Color.red.opacity(0.88)
+                                ]
+                                : [
+                                    selectedModeAccent.opacity(1.0),
+                                    selectedModeSecondaryAccent.opacity(0.92)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                        )
+                )
+                .shadow(
+                    color: (focusSession.isSessionActive ? Color.orange : selectedModeAccent).opacity(0.24),
+                    radius: 26,
+                    x: 0,
+                    y: 14
+                )
+            }
+            .buttonStyle(PressScaleButtonStyle())
+            .padding(.top, 2)
+            .opacity(isLaunchingFocus ? 0.0 : 1)
+            .offset(y: isLaunchingFocus ? 8 : 0)
+            .animation(.easeInOut(duration: 0.18), value: isLaunchingFocus)
+
+            if !focusSession.isSessionActive && !activeCrewSessionsForHome.isEmpty {
+                activeCrewSessionsSection
+            }
+        }
+    }
+
+    var activeCrewSessionsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(activeCrewSessionsForHome.count > 1 ? "Aktif Crew Focuslar" : "Aktif Crew Focus")
+                .font(.system(size: 14, weight: .heavy, design: .rounded))
+                .foregroundStyle(palette.primaryText.opacity(0.94))
+
+            ForEach(activeCrewSessionsForHome, id: \.id) { activeSession in
+                Button {
+                    Task {
+                        await crewStore.loadActiveFocusSession(for: activeSession.crew_id)
+
+                        guard let latestSession = crewStore.activeFocusSessionByCrew[activeSession.crew_id],
+                              latestSession.id == activeSession.id,
+                              latestSession.is_active,
+                              latestSession.ended_at == nil
+                        else {
+                            return
+                        }
+
+                        await crewStore.loadFocusParticipants(sessionID: latestSession.id)
+                        let participants = crewStore.focusParticipantsBySession[latestSession.id] ?? []
+
+                        await MainActor.run {
+                            selectedMode = .crew
+                            focusSession.hydrateFromCrewSessionDTO(
+                                latestSession,
+                                crewID: latestSession.crew_id,
+                                participantsDTO: participants,
+                                preferredGoal: selectedGoal,
+                                preferredStyle: selectedStyle
+                            )
+                            focusSession.expandSession()
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(activeSession.title)
+                                .font(.system(size: 16, weight: .heavy, design: .rounded))
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+
+                            Text("\(activeSession.host_name) başlattı • \(activeSession.duration_minutes) dk")
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        Text("Katıl")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 12)
+                            .frame(height: 34)
+                            .background(
+                                Capsule(style: .continuous)
+                                    .fill(Color.blue.opacity(0.9))
+                            )
+                    }
+                    .padding(14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(Color.white.opacity(0.05))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                            )
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+    
     func triggerFocusLaunch() {
+        if focusSession.isSessionActive {
+            focusSession.expandSession()
+            return
+        }
+
+        if !activeCrewSessionsForHome.isEmpty && selectedMode != .crew {
+            selectedMode = .crew
+            return
+        }
+
         if selectedMode == .crew {
             showCrewStartSheet = true
             return
@@ -511,6 +668,128 @@ private extension FocusView {
                 isLaunchingFocus = false
             }
         }
+    }
+    
+    var inviteBannerCard: some View {
+        Group {
+            if let payload = invitePayload {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Focus’a davet edildin")
+                        .font(.system(size: 18, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white)
+
+                    Text("\(payload.hostName) seni \(payload.durationMinutes) dk crew focusa çağırıyor.")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.76))
+
+                    if let taskTitle = payload.taskTitle, !taskTitle.isEmpty {
+                        Text("Görev: \(taskTitle)")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.9))
+                    }
+
+                    HStack(spacing: 10) {
+                        Button {
+                            Task {
+                                await joinInviteSession(payload)
+                            }
+                        } label: {
+                            HStack(spacing: 8) {
+                                if isJoiningInvite {
+                                    ProgressView()
+                                        .tint(.white)
+                                } else {
+                                    Image(systemName: "person.badge.plus")
+                                }
+
+                                Text(isJoiningInvite ? "Katılıyor..." : "Katıl")
+                                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                            }
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 46)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(Color.green)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isJoiningInvite)
+
+                        Button {
+                            invitePayload = nil
+                        } label: {
+                            Text("Şimdi değil")
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.82))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 46)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .fill(Color.white.opacity(0.08))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(18)
+                .background(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(Color.white.opacity(0.04))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .stroke(Color.green.opacity(0.22), lineWidth: 1)
+                        )
+                )
+            }
+        }
+    }
+    
+    var effectiveStageMode: FocusMode {
+        if focusSession.isSessionActive {
+            return focusSession.selectedMode
+        }
+        return selectedMode
+    }
+
+    var effectiveStageDurationText: String {
+        if focusSession.isSessionActive {
+            return focusSession.timeString
+        }
+        return durationText
+    }
+
+    var effectiveStageStatusText: String {
+        if focusSession.isSessionActive {
+            if focusSession.isPaused {
+                return "Duraklatıldı"
+            }
+
+            switch focusSession.selectedMode {
+            case .personal:
+                return "Aktif session"
+            case .crew:
+                return "\(focusSession.readyCount)/\(max(focusSession.participantCount, 1)) hazır"
+            case .friend:
+                return "Birlikte aktif"
+            }
+        }
+
+        return heroStatusText
+    }
+
+    var effectiveStageMetaText: String {
+        if focusSession.isSessionActive {
+            return "\(focusSession.selectedGoal.title) • \(focusSession.selectedStyle.title)"
+        }
+        return "\(selectedGoal.title) • \(selectedStyle.title)"
+    }
+
+    var effectiveStageProgress: Double {
+        if focusSession.isSessionActive {
+            return max(0.02, focusSession.progress)
+        }
+        return heroProgress
     }
 
     var crewStartSheet: some View {
@@ -825,17 +1104,23 @@ private extension FocusView {
                 Spacer()
 
                 Button("Herkes") {
-                    selectedParticipantIDs = Set(availableParticipantUserIDs)
+                    selectedParticipantIDs = Set(
+                        activeCrewMembers.map(\.user_id)
+                    )
                 }
                 .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundStyle(.blue)
             }
 
             ForEach(activeCrewMembers, id: \.id) { member in
                 let userID = member.user_id
                 let isSelected = selectedParticipantIDs.contains(userID)
                 let name = displayName(for: member)
+                let isLocked = isLockedParticipant(member)
 
                 Button {
+                    guard !isLocked else { return }
+
                     if isSelected {
                         selectedParticipantIDs.remove(userID)
                     } else {
@@ -869,14 +1154,18 @@ private extension FocusView {
                                 .font(.system(size: 15, weight: .heavy, design: .rounded))
                                 .foregroundStyle(.primary)
 
-                            Text(member.role.capitalized)
+                            Text(isLocked ? "Zorunlu katılımcı" : member.role.capitalized)
                                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                                 .foregroundStyle(.secondary)
                         }
 
                         Spacer()
 
-                        if isSelected {
+                        if isLocked {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(Color.white.opacity(0.7))
+                        } else if isSelected {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 21, weight: .bold))
                                 .foregroundStyle(selectedModeAccent)
@@ -889,11 +1178,11 @@ private extension FocusView {
                     .padding(14)
                     .background(
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .fill(Color.white.opacity(isSelected ? 0.09 : 0.05))
+                            .fill(Color.white.opacity(isSelected || isLocked ? 0.09 : 0.05))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                                     .stroke(
-                                        isSelected
+                                        isSelected || isLocked
                                         ? selectedModeAccent.opacity(0.30)
                                         : Color.white.opacity(0.05),
                                         lineWidth: 1
@@ -976,60 +1265,100 @@ private extension FocusView {
     func startCrewSessionFromSheet() async {
         guard let crewID = selectedCrewID else { return }
 
-        showCrewStartSheet = false
+        guard !focusSession.isSessionActive else {
+            await MainActor.run {
+                focusSession.expandSession()
+            }
+            return
+        }
 
-        withAnimation(.easeInOut(duration: 0.24)) {
-            isLaunchingFocus = true
+        await crewStore.loadActiveFocusSession(for: crewID)
+
+        if let existing = crewStore.activeFocusSessionByCrew[crewID], existing.is_active {
+            await crewStore.loadFocusParticipants(sessionID: existing.id)
+            let participants = crewStore.focusParticipantsBySession[existing.id] ?? []
+
+            await MainActor.run {
+                focusSession.hydrateFromCrewSessionDTO(
+                    existing,
+                    crewID: crewID,
+                    participantsDTO: participants,
+                    preferredGoal: selectedGoal,
+                    preferredStyle: selectedStyle
+                )
+                showCrewStartSheet = false
+                focusSession.expandSession()
+            }
+            return
+        }
+
+        let invitedParticipantIDs = selectedParticipantIDs.filter { $0 != focusSession.currentUserID }
+
+        guard !invitedParticipantIDs.isEmpty else {
+            print("CREW START BLOCKED: en az 1 davetli katılımcı seçilmeli")
+            return
+        }
+
+        await MainActor.run {
+            showCrewStartSheet = false
+            withAnimation(.easeInOut(duration: 0.24)) {
+                isLaunchingFocus = true
+            }
         }
 
         let task = activeCrewTasks.first(where: { $0.id == selectedCrewTaskID })
         let hostName = focusSession.currentUserDisplayName
 
-       
-            do {
-                let dto = try await crewStore.startCrewFocusSession(
+        do {
+            let dto = try await crewStore.startCrewFocusSession(
+                crewID: crewID,
+                hostUserID: focusSession.currentUserID,
+                hostName: hostName,
+                title: task?.title ?? "\(selectedGoal.title) Focus",
+                taskID: task?.id,
+                taskTitle: task?.title,
+                durationMinutes: resolvedMinutes,
+                participantCount: selectedParticipantIDs.count
+            )
+
+           
+            await crewStore.loadActiveFocusSession(for: crewID)
+            await crewStore.loadFocusParticipants(sessionID: dto.id)
+
+            let participants = crewStore.focusParticipantsBySession[dto.id] ?? []
+
+            await MainActor.run {
+                selectedMode = .crew
+                focusSession.hydrateFromCrewSessionDTO(
+                    dto,
                     crewID: crewID,
-                    hostUserID: focusSession.currentUserID,
-                    hostName: hostName,
-                    title: task?.title ?? "\(selectedGoal.title) Focus",
-                    taskID: task?.id,
-                    taskTitle: task?.title,
-                    durationMinutes: resolvedMinutes
+                    participantsDTO: participants,
+                    preferredGoal: selectedGoal,
+                    preferredStyle: selectedStyle
                 )
-
-                crewStore.subscribeToActiveFocusRealtime(crewID: crewID)
-                await crewStore.loadActiveFocusSession(for: crewID)
-                await crewStore.loadFocusParticipants(sessionID: dto.id)
-
-                let participants = crewStore.focusParticipantsBySession[dto.id] ?? []
-
-                await MainActor.run {
-                    focusSession.hydrateFromCrewSessionDTO(
-                        dto,
-                        crewID: crewID,
-                        participantsDTO: participants,
-                        preferredGoal: selectedGoal,
-                        preferredStyle: selectedStyle
-                    )
-                }
-
-                await FocusInviteService.shared.sendInvites(
-                    sessionID: dto.id,
-                    crewID: crewID,
-                    participantIDs: Array(selectedParticipantIDs),
-                    hostName: hostName,
-                    duration: resolvedMinutes,
-                    taskTitle: task?.title
-                )
-            } catch {
-                print("CREW START SHEET ERROR:", error.localizedDescription)
             }
+
+            await FocusInviteService.shared.sendInvites(
+                sessionID: dto.id,
+                crewID: crewID,
+                participantIDs: Array(invitedParticipantIDs),
+                hostName: hostName,
+                duration: resolvedMinutes,
+                taskTitle: task?.title
+            )
+        } catch {
+            print("CREW START SHEET ERROR:", error.localizedDescription)
+        }
 
         try? await Task.sleep(nanoseconds: 250_000_000)
 
         await MainActor.run {
             isLaunchingFocus = false
         }
+    }
+    
+    func isLockedParticipant(_ member: CrewMemberDTO) -> Bool {
+        member.role.lowercased() == "owner" || member.user_id == focusSession.currentUserID
     }
 
     func joinInviteSession(_ payload: CrewFocusInvitePayload) async {
@@ -1047,7 +1376,9 @@ private extension FocusView {
             await crewStore.loadActiveFocusSession(for: payload.crewID)
 
             guard let dto = crewStore.activeFocusSessionByCrew[payload.crewID] else {
-                invitePayload = nil
+                await MainActor.run {
+                    invitePayload = nil
+                }
                 return
             }
 
@@ -1064,6 +1395,7 @@ private extension FocusView {
                     preferredStyle: selectedStyle
                 )
                 invitePayload = nil
+                focusSession.expandSession()
             }
         } catch {
             print("JOIN INVITE ERROR:", error.localizedDescription)
@@ -1075,7 +1407,6 @@ private extension FocusView {
             let crewIDString = userInfo["crew_id"] as? String,
             let sessionIDString = userInfo["session_id"] as? String,
             let hostName = userInfo["host_name"] as? String,
-            let duration = userInfo["duration_minutes"] as? Int,
             let crewID = UUID(uuidString: crewIDString),
             let sessionID = UUID(uuidString: sessionIDString)
         else {
@@ -1083,6 +1414,16 @@ private extension FocusView {
         }
 
         let taskTitle = userInfo["task_title"] as? String
+
+        let duration: Int
+        if let intValue = userInfo["duration_minutes"] as? Int {
+            duration = intValue
+        } else if let stringValue = userInfo["duration_minutes"] as? String,
+                  let parsed = Int(stringValue) {
+            duration = parsed
+        } else {
+            duration = 25
+        }
 
         return CrewFocusInvitePayload(
             crewID: crewID,
@@ -1092,22 +1433,26 @@ private extension FocusView {
             taskTitle: taskTitle
         )
     }
-
+    
     func loadCrewStartDependenciesIfNeeded() async {
         guard let crewID = selectedCrewID else { return }
+
         await crewStore.loadMembers(for: crewID)
         await crewStore.loadMemberProfiles(for: crewStore.crewMembers)
         await crewStore.loadTasks(for: crewID)
+        await crewStore.loadActiveFocusSession(for: crewID)
     }
 
     var activeCrewTasks: [CrewTaskDTO] {
         guard let crewID = selectedCrewID else { return [] }
-        return crewStore.crewTasks.filter { $0.crew_id == crewID && !$0.is_done }
+        return crewStore.crewTasks
+            .filter { $0.crew_id == crewID && !$0.is_done }
     }
 
     var activeCrewMembers: [CrewMemberDTO] {
         guard let crewID = selectedCrewID else { return [] }
-        return crewStore.crewMembers.filter { $0.crew_id == crewID }
+        return crewStore.crewMembers
+            .filter { $0.crew_id == crewID }
     }
 
     var availableParticipantUserIDs: [UUID] {

@@ -22,4 +22,8 @@ struct CrewFocusSessionDTO: Codable, Identifiable, Equatable {
     let paused_remaining_seconds: Int?
     let ended_at: String?
     let created_at: String?
+    let started_live_at: String?
+    let is_waiting: Bool?
+    let invited_count: Int?
+    let required_count: Int?
 }

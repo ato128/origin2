@@ -82,41 +82,32 @@ struct MainTabView: View {
 
             tab = .focus
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 openFocusFromNotification = false
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .openWeekFromWidget)) { _ in
             tab = .week
         }
-    }
-}
+        .onReceive(NotificationCenter.default.publisher(for: .openCrewFocusFromNotification)) { output in
+            tab = .focus
 
-struct FocusPlaceholderView: View {
-    var body: some View {
-        ZStack {
-            AppBackground()
-
-            VStack(spacing: 14) {
-                Spacer()
-
-                Image(systemName: "timer")
-                    .font(.system(size: 34, weight: .bold))
-                    .foregroundStyle(.blue)
-
-                Text("Focus")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-
-                Text("Buraya odak ekranını yerleştireceğiz.")
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
-
-                Spacer()
+            if let payload = output.object as? [AnyHashable: Any] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    NotificationCenter.default.post(
+                        name: .presentCrewFocusInviteSheet,
+                        object: payload
+                    )
+                }
+            } else if let crewID = output.object as? String {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    NotificationCenter.default.post(
+                        name: .presentActiveCrewFocusFromNotification,
+                        object: crewID
+                    )
+                }
             }
-            .padding()
         }
     }
 }
-
 

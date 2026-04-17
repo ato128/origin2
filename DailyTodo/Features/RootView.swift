@@ -43,6 +43,11 @@ struct RootView: View {
                 .onOpenURL { url in
                     handleIncomingFileURL(url)
                 }
+                .onReceive(NotificationCenter.default.publisher(for: .openCrewFocusFromNotification)) { _ in
+                    DispatchQueue.main.async {
+                        openFocusFromNotification = true
+                    }
+                }
                 .sheet(isPresented: $showImportSheet) {
                     if let export = importExport {
                         ImportScheduleView(export: export)

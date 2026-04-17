@@ -23,6 +23,7 @@ struct CrewFocusRoomBackendView: View {
     @State private var localParticipants: [CrewFocusParticipantDTO] = []
     @State private var didInitialLoad = false
     @State private var isClosingView = false
+    @State private var isStartingWaitingSession = false
 
     init(crew: WeekCrewItem, sessionDTO: CrewFocusSessionDTO) {
         self.crew = crew
@@ -62,6 +63,25 @@ struct CrewFocusRoomBackendView: View {
         return localSession.host_name == currentUserName
     }
 
+    var isWaitingRoom: Bool {
+        localSession.is_waiting == true
+    }
+
+    var requiredParticipantCount: Int {
+        max(1, localSession.required_count ?? 1)
+    }
+
+    var hasEnoughParticipants: Bool {
+        participants.count >= requiredParticipantCount
+    }
+
+    var waitingStatusText: String {
+        if hasEnoughParticipants {
+            return "Herkes hazır. Host başlatabilir."
+        }
+        return "Katılımcı bekleniyor"
+    }
+
     var body: some View {
         ZStack {
             AppBackground()
@@ -87,6 +107,10 @@ struct CrewFocusRoomBackendView: View {
                             finished: finished
                         )
 
+                        if isWaitingRoom {
+                            waitingInfoCard
+                        }
+
                         participantsCard
                     }
                     .padding(.horizontal, 16)
@@ -95,6 +119,7 @@ struct CrewFocusRoomBackendView: View {
                 }
                 .onChange(of: remaining) { _, newRemaining in
                     guard !isClosingView else { return }
+                    guard !isWaitingRoom else { return }
 
                     if !localSession.is_paused && newRemaining <= 0 {
                         handleSessionEndedFromUI()
@@ -112,7 +137,7 @@ struct CrewFocusRoomBackendView: View {
             didInitialLoad = true
 
             Task {
-                crewStore.subscribeToActiveFocusRealtime(crewID: crew.id)
+               
                 await refreshSessionStateOrDismiss()
             }
         }
@@ -131,6 +156,25 @@ struct CrewFocusRoomBackendView: View {
         }
         .onChange(of: crewStore.focusParticipantsBySession[localSession.id]) { _, newValue in
             localParticipants = newValue ?? []
+        }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                guard !isClosingView else { break }
+
+                await crewStore.loadActiveFocusSession(for: crew.id)
+
+                if let active = crewStore.activeFocusSessionByCrew[crew.id] {
+                    localSession = active
+                    await crewStore.loadFocusParticipants(sessionID: active.id)
+                    localParticipants = crewStore.focusParticipantsBySession[active.id] ?? []
+                } else {
+                    await MainActor.run {
+                        dismiss()
+                    }
+                    break
+                }
+            }
         }
     }
 }
@@ -154,12 +198,19 @@ private extension CrewFocusRoomBackendView {
         guard session.is_active else { return false }
         if session.ended_at != nil { return false }
 
+        if session.is_waiting == true {
+            return true
+        }
+
         if session.is_paused {
             return (session.paused_remaining_seconds ?? 0) > 0
         }
 
-        guard let startedAt = CrewDateParser.parse(session.started_at) else { return false }
-        let endDate = startedAt.addingTimeInterval(TimeInterval(session.duration_minutes * 60))
+        guard let liveStart = CrewDateParser.parse(session.started_live_at ?? session.started_at) else {
+            return false
+        }
+
+        let endDate = liveStart.addingTimeInterval(TimeInterval(session.duration_minutes * 60))
         return endDate > date
     }
 
@@ -188,23 +239,58 @@ private extension CrewFocusRoomBackendView {
         }
     }
 
+    func startWaitingSession() {
+        guard !isStartingWaitingSession else { return }
+        isStartingWaitingSession = true
+
+        Task {
+            defer {
+                Task { @MainActor in
+                    isStartingWaitingSession = false
+                }
+            }
+
+            do {
+                try await crewStore.beginWaitingCrewFocusSession(
+                    sessionID: localSession.id,
+                    crewID: localSession.crew_id
+                )
+
+                await crewStore.loadActiveFocusSession(for: localSession.crew_id)
+
+                if let updated = crewStore.activeFocusSessionByCrew[localSession.crew_id] {
+                    await MainActor.run {
+                        localSession = updated
+                    }
+                }
+            } catch {
+                print("BEGIN WAITING CREW SESSION ERROR:", error.localizedDescription)
+            }
+        }
+    }
+
     func remainingSeconds(at date: Date) -> Int {
-        if !localSession.is_active { return 0 }
+        if localSession.is_waiting == true {
+            return localSession.duration_minutes * 60
+        }
 
         if localSession.is_paused {
             return max(0, localSession.paused_remaining_seconds ?? 0)
         }
 
-        guard let startedAt = CrewDateParser.parse(localSession.started_at) else {
-            return 0
+        guard let liveStart = CrewDateParser.parse(localSession.started_live_at ?? localSession.started_at) else {
+            return localSession.duration_minutes * 60
         }
 
-        let elapsed = Int(date.timeIntervalSince(startedAt))
+        let elapsed = Int(date.timeIntervalSince(liveStart))
         let total = localSession.duration_minutes * 60
+
         return max(0, total - elapsed)
     }
 
     func progress(forRemaining remaining: Int) -> Double {
+        if localSession.is_waiting == true { return 0 }
+
         let total = Double(localSession.duration_minutes * 60)
         guard total > 0 else { return 0 }
 
@@ -220,6 +306,7 @@ private extension CrewFocusRoomBackendView {
 
     func focusAccentColor(forRemaining remaining: Int) -> Color {
         if !localSession.is_active || remaining <= 0 { return .green }
+        if localSession.is_waiting == true { return .orange }
         if localSession.is_paused { return .orange }
         if remaining <= 180 { return .red }
         if remaining <= 600 { return .orange }
@@ -248,7 +335,7 @@ private extension CrewFocusRoomBackendView {
 
             Spacer()
 
-            Text("crew_focus_room_title")
+            Text("Odak Odası")
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
@@ -273,19 +360,9 @@ private extension CrewFocusRoomBackendView {
                 .foregroundStyle(palette.primaryText)
                 .multilineTextAlignment(.center)
 
-            Text(
-                finished
-                ? String(localized: "crew_focus_room_session_completed")
-                : localSession.is_paused
-                    ? String(localized: "crew_focus_room_paused")
-                    : String(localized: "crew_focus_room_stay_locked_in")
-            )
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(
-                finished ? .green :
-                localSession.is_paused ? .orange :
-                palette.secondaryText
-            )
+            Text(statusTitle(finished: finished))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(statusColor(finished: finished))
 
             ZStack {
                 Circle()
@@ -319,14 +396,18 @@ private extension CrewFocusRoomBackendView {
                     .blur(radius: 5)
 
                 VStack(spacing: 8) {
-                    Image(systemName: finished ? "checkmark.circle.fill" : localSession.is_paused ? "pause.fill" : "timer")
+                    Image(systemName: centerIconName(finished: finished))
                         .font(.title2)
                         .foregroundStyle(accent)
 
                     if finished {
-                        Text("crew_focus_room_done")
+                        Text("Bitti")
                             .font(.system(size: 42, weight: .bold, design: .rounded))
                             .foregroundStyle(.green)
+                    } else if localSession.is_waiting == true {
+                        Text("Bekliyor")
+                            .font(.system(size: 34, weight: .bold, design: .rounded))
+                            .foregroundStyle(.orange)
                     } else {
                         Text(timeText)
                             .font(.system(size: 46, weight: .bold, design: .rounded))
@@ -345,9 +426,38 @@ private extension CrewFocusRoomBackendView {
                 Image(systemName: "person.fill")
                     .foregroundStyle(accent)
 
-                Text(String(format: String(localized: "crew_focus_room_host"), localSession.host_name))
+                Text("Host: \(localSession.host_name)")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(palette.secondaryText)
+            }
+
+            if localSession.is_waiting == true && isHost {
+                Button {
+                    startWaitingSession()
+                } label: {
+                    HStack(spacing: 8) {
+                        if isStartingWaitingSession {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 14, weight: .bold))
+                        }
+
+                        Text(isStartingWaitingSession ? "Başlatılıyor..." : "Focusu Başlat")
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(hasEnoughParticipants ? Color.green : Color.gray.opacity(0.45))
+                    )
+                }
+                .buttonStyle(.plain)
+                .disabled(!hasEnoughParticipants || isStartingWaitingSession)
+                .opacity((!hasEnoughParticipants || isStartingWaitingSession) ? 0.7 : 1)
             }
         }
         .frame(maxWidth: .infinity)
@@ -391,14 +501,65 @@ private extension CrewFocusRoomBackendView {
         .compositingGroup()
     }
 
+    var waitingInfoCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: hasEnoughParticipants ? "checkmark.circle.fill" : "hourglass")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(hasEnoughParticipants ? .green : .orange)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(hasEnoughParticipants ? "Katılımcılar hazır" : "Katılımcı bekleniyor")
+                        .font(.system(size: 16, weight: .heavy, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
+
+                    Text(waitingStatusText)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(palette.secondaryText)
+                }
+
+                Spacer()
+            }
+
+            HStack(spacing: 10) {
+                waitingMiniPill(title: "Gerekli", value: "\(requiredParticipantCount)")
+                waitingMiniPill(title: "Katılan", value: "\(participants.count)")
+                waitingMiniPill(title: "Durum", value: hasEnoughParticipants ? "Hazır" : "Bekliyor")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(cardBackground)
+    }
+
+    func waitingMiniPill(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title.uppercased())
+                .font(.system(size: 10, weight: .heavy, design: .rounded))
+                .foregroundStyle(Color.white.opacity(0.45))
+                .tracking(1.2)
+
+            Text(value)
+                .font(.system(size: 16, weight: .heavy, design: .rounded))
+                .foregroundStyle(palette.primaryText)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white.opacity(0.04))
+        )
+    }
+
     var participantsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("crew_focus_room_participants")
+            Text("Katılımcılar")
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
             if participants.isEmpty {
-                Text("crew_focus_room_no_participants")
+                Text("Henüz aktif katılımcı yok")
                     .font(.subheadline)
                     .foregroundStyle(palette.secondaryText)
             } else {
@@ -420,7 +581,7 @@ private extension CrewFocusRoomBackendView {
                         Spacer()
 
                         if participant.member_name == localSession.host_name {
-                            Text("crew_focus_room_host_badge")
+                            Text("Host")
                                 .font(.caption2.weight(.bold))
                                 .foregroundStyle(.green)
                                 .padding(.horizontal, 8)
@@ -446,6 +607,36 @@ private extension CrewFocusRoomBackendView {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(palette.cardStroke, lineWidth: 1)
             )
+    }
+
+    func statusTitle(finished: Bool) -> String {
+        if finished {
+            return "Oturum tamamlandı"
+        }
+
+        if localSession.is_waiting == true {
+            return "Katılımcı bekleniyor"
+        }
+
+        if localSession.is_paused {
+            return "Duraklatıldı"
+        }
+
+        return "Odakta kal"
+    }
+
+    func statusColor(finished: Bool) -> Color {
+        if finished { return .green }
+        if localSession.is_waiting == true { return .orange }
+        if localSession.is_paused { return .orange }
+        return palette.secondaryText
+    }
+
+    func centerIconName(finished: Bool) -> String {
+        if finished { return "checkmark.circle.fill" }
+        if localSession.is_waiting == true { return "hourglass" }
+        if localSession.is_paused { return "pause.fill" }
+        return "timer"
     }
 
     func localizedMinutesText(_ minutes: Int) -> String {

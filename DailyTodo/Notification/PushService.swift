@@ -20,6 +20,7 @@ final class PushService {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
         request.setValue("Bearer \(anonKey)", forHTTPHeaderField: "Authorization")
 
         guard let body = try? JSONSerialization.data(withJSONObject: bodyObject) else {

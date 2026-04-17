@@ -44,6 +44,8 @@ final class CrewStore: ObservableObject {
     private var activeFocusChannel: RealtimeChannelV2?
     private var focusParticipantsChannel: RealtimeChannelV2?
     private var subscribedFocusCrewID: UUID?
+    
+    private var globalFocusChannel: RealtimeChannelV2?
 
     private var taskChannel: RealtimeChannelV2?
     private var memberChannel: RealtimeChannelV2?
@@ -1159,6 +1161,84 @@ final class CrewStore: ObservableObject {
         focusChannel = nil
         subscribedCrewRealtimeID = nil
     }
+    
+    func subscribeToGlobalFocusRealtime() {
+        let client = SupabaseManager.shared.client
+
+        Task {
+            await globalFocusChannel?.unsubscribe()
+        }
+
+        globalFocusChannel = client.realtimeV2.channel("global-focus")
+
+        // SESSION CHANGES
+        _ = globalFocusChannel?.onPostgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "crew_focus_sessions"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.reloadAllActiveSessions()
+            }
+        }
+
+        _ = globalFocusChannel?.onPostgresChange(
+            UpdateAction.self,
+            schema: "public",
+            table: "crew_focus_sessions"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.reloadAllActiveSessions()
+            }
+        }
+
+        _ = globalFocusChannel?.onPostgresChange(
+            DeleteAction.self,
+            schema: "public",
+            table: "crew_focus_sessions"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.reloadAllActiveSessions()
+            }
+        }
+
+        // PARTICIPANT CHANGES
+        _ = globalFocusChannel?.onPostgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "crew_focus_participants"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.reloadAllParticipants()
+            }
+        }
+
+        _ = globalFocusChannel?.onPostgresChange(
+            UpdateAction.self,
+            schema: "public",
+            table: "crew_focus_participants"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.reloadAllParticipants()
+            }
+        }
+
+        Task {
+            try? await globalFocusChannel?.subscribeWithError()
+        }
+    }
+    
+    func reloadAllActiveSessions() async {
+        for crew in crews {
+            await loadActiveFocusSession(for: crew.id)
+        }
+    }
+
+    func reloadAllParticipants() async {
+        for (_, session) in activeFocusSessionByCrew {
+            await loadFocusParticipants(sessionID: session.id)
+        }
+    }
 
     // MARK: - Existing Loads / Actions
 
@@ -2034,31 +2114,45 @@ final class CrewStore: ObservableObject {
                 .execute()
 
             let decoded = try JSONDecoder().decode([CrewFocusSessionDTO].self, from: response.data)
-
             let now = Date()
 
-            let validSession = decoded.first(where: { session in
+            let validSession = decoded.first { session in
                 guard session.is_active else { return false }
-                if session.ended_at != nil { return false }
+                guard session.ended_at == nil else { return false }
 
                 if session.is_paused {
                     return (session.paused_remaining_seconds ?? 0) > 0
                 }
 
                 guard let startedAt = CrewDateParser.parse(session.started_at) else { return false }
-                let endDate = startedAt.addingTimeInterval(TimeInterval(session.duration_minutes * 60))
+
+                let endDate = startedAt.addingTimeInterval(
+                    TimeInterval(session.duration_minutes * 60)
+                )
+
                 return endDate > now
-            })
+            }
 
             if let validSession {
                 activeFocusSessionByCrew[crewID] = validSession
             } else {
                 activeFocusSessionByCrew.removeValue(forKey: crewID)
             }
+            if validSession == nil {
+                activeFocusSessionByCrew.removeValue(forKey: crewID)
+
+                for (key, value) in focusParticipantsBySession {
+                    if value.first?.crew_id == crewID {
+                        focusParticipantsBySession.removeValue(forKey: key)
+                    }
+                }
+            }
+
         } catch {
             print("LOAD ACTIVE FOCUS SESSION ERROR:", error.localizedDescription)
             activeFocusSessionByCrew.removeValue(forKey: crewID)
         }
+        
     }
     func loadFocusParticipants(sessionID: UUID) async {
         do {
@@ -2084,9 +2178,13 @@ final class CrewStore: ObservableObject {
         title: String,
         taskID: UUID?,
         taskTitle: String?,
-        durationMinutes: Int
+        durationMinutes: Int,
+        participantCount: Int
     ) async throws -> CrewFocusSessionDTO {
         let startedAt = Date()
+
+        let invitedUsers = max(0, participantCount - 1)
+        let requiredUsers = max(1, participantCount)
 
         let payload = CreateCrewFocusSessionPayload(
             crew_id: crewID,
@@ -2097,9 +2195,13 @@ final class CrewStore: ObservableObject {
             task_title: taskTitle,
             duration_minutes: durationMinutes,
             started_at: CrewDateParser.string(from: startedAt),
+            started_live_at: nil,
             is_active: true,
+            is_waiting: true,
             is_paused: false,
-            paused_remaining_seconds: nil
+            paused_remaining_seconds: nil,
+            invited_count: invitedUsers,
+            required_count: requiredUsers
         )
 
         let response = try await SupabaseManager.shared.client
@@ -2249,12 +2351,40 @@ final class CrewStore: ObservableObject {
             .update(payload)
             .eq("session_id", value: sessionID.uuidString)
             .eq("crew_id", value: crewID.uuidString)
-            .eq("member_name", value: memberName)
+            .eq("user_id", value: userID?.uuidString)
             .eq("is_active", value: true)
             .execute()
 
         await loadFocusParticipants(sessionID: sessionID)
     }
+    func beginWaitingCrewFocusSession(
+        sessionID: UUID,
+        crewID: UUID
+    ) async throws {
+        struct BeginPayload: Encodable {
+            let is_waiting: Bool
+            let started_live_at: String
+        }
+
+        let payload = BeginPayload(
+            is_waiting: false,
+            started_live_at: CrewDateParser.string(from: Date())
+        )
+
+        try await SupabaseManager.shared.client
+            .from("crew_focus_sessions")
+            .update(payload)
+            .eq("id", value: sessionID.uuidString)
+            .eq("crew_id", value: crewID.uuidString)
+            .execute()
+
+        await loadActiveFocusSession(for: crewID)
+
+        if let updated = activeFocusSessionByCrew[crewID] {
+            await loadFocusParticipants(sessionID: updated.id)
+        }
+    }
+    
     func pauseCrewFocusSession(
         sessionID: UUID,
         crewID: UUID,
@@ -2446,105 +2576,7 @@ final class CrewStore: ObservableObject {
         let is_active: Bool
         let left_at: String
     }
-    func subscribeToActiveFocusRealtime(crewID: UUID) {
-        if subscribedFocusCrewID == crewID {
-            return
-        }
-
-        let client = SupabaseManager.shared.client
-
-        Task {
-            await activeFocusChannel?.unsubscribe()
-            await focusParticipantsChannel?.unsubscribe()
-        }
-
-        activeFocusChannel = nil
-        focusParticipantsChannel = nil
-
-        activeFocusChannel = client.realtimeV2.channel("crew-focus-session-\(crewID.uuidString)")
-        focusParticipantsChannel = client.realtimeV2.channel("crew-focus-participants-\(crewID.uuidString)")
-        subscribedFocusCrewID = crewID
-
-       _ = activeFocusChannel?.onPostgresChange(
-            InsertAction.self,
-            schema: "public",
-            table: "crew_focus_sessions",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] _ in
-            Task { @MainActor in
-                await self?.loadActiveFocusSession(for: crewID)
-            }
-        }
-
-        _ =  activeFocusChannel?.onPostgresChange(
-            UpdateAction.self,
-            schema: "public",
-            table: "crew_focus_sessions",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] _ in
-            Task { @MainActor in
-                await self?.loadActiveFocusSession(for: crewID)
-            }
-        }
-
-        _ =     activeFocusChannel?.onPostgresChange(
-            DeleteAction.self,
-            schema: "public",
-            table: "crew_focus_sessions",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] _ in
-            Task { @MainActor in
-                await self?.loadActiveFocusSession(for: crewID)
-            }
-        }
-
-        _ =  focusParticipantsChannel?.onPostgresChange(
-            InsertAction.self,
-            schema: "public",
-            table: "crew_focus_participants",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] _ in
-            Task { @MainActor in
-                guard let self else { return }
-                if let session = self.activeFocusSessionByCrew[crewID] {
-                    await self.loadFocusParticipants(sessionID: session.id)
-                }
-            }
-        }
-
-        _ =   focusParticipantsChannel?.onPostgresChange(
-            UpdateAction.self,
-            schema: "public",
-            table: "crew_focus_participants",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] _ in
-            Task { @MainActor in
-                guard let self else { return }
-                if let session = self.activeFocusSessionByCrew[crewID] {
-                    await self.loadFocusParticipants(sessionID: session.id)
-                }
-            }
-        }
-
-        _ =  focusParticipantsChannel?.onPostgresChange(
-            DeleteAction.self,
-            schema: "public",
-            table: "crew_focus_participants",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] _ in
-            Task { @MainActor in
-                guard let self else { return }
-                if let session = self.activeFocusSessionByCrew[crewID] {
-                    await self.loadFocusParticipants(sessionID: session.id)
-                }
-            }
-        }
-
-        Task {
-          try? await activeFocusChannel?.subscribeWithError()
-           try? await focusParticipantsChannel?.subscribeWithError()
-        }
-    }
+   
     func unsubscribeCrewFocusRealtime() {
         Task {
             await activeFocusChannel?.unsubscribe()
@@ -2564,9 +2596,13 @@ final class CrewStore: ObservableObject {
         let task_title: String?
         let duration_minutes: Int
         let started_at: String
+        let started_live_at: String?
         let is_active: Bool
+        let is_waiting: Bool
         let is_paused: Bool
         let paused_remaining_seconds: Int?
+        let invited_count: Int
+        let required_count: Int
     }
 
     struct CreateCrewFocusParticipantPayload: Encodable {

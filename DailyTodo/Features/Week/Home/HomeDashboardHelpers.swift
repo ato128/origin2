@@ -147,16 +147,32 @@ extension HomeDashboardView {
         return todaysEvents.first(where: { $0.startMinute > now })
     }
 
+    // MARK: - Focus source of truth helpers
+
+    var activeCrewFocusSessions: [CrewFocusSessionDTO] {
+        crewStore.activeFocusSessionByCrew.values
+            .filter { $0.is_active }
+            .sorted { lhs, rhs in
+                let l = CrewDateParser.parse(lhs.started_at) ?? .distantPast
+                let r = CrewDateParser.parse(rhs.started_at) ?? .distantPast
+                return l > r
+            }
+    }
+
     var activeBackendCrewFocusSession: CrewFocusSessionDTO? {
-        crewStore.activeFocusSessionByCrew.values.first(where: { $0.is_active })
+        activeCrewFocusSessions.first
+    }
+
+    var hasMultipleActiveCrewFocusSessions: Bool {
+        activeCrewFocusSessions.count > 1
     }
 
     var hasAnyActiveFocusSession: Bool {
-        focusSession.isSessionActive
+        focusSession.isSessionActive || !activeCrewFocusSessions.isEmpty
     }
 
     var isSharedFocusActive: Bool {
-        focusSession.isSessionActive && focusSession.selectedMode != .personal
+        !activeCrewFocusSessions.isEmpty || (focusSession.isSessionActive && focusSession.selectedMode != .personal)
     }
 
     var activeSharedFriendName: String? {
@@ -192,15 +208,17 @@ extension HomeDashboardView {
     }
 
     var shouldShowFocusCard: Bool {
-        activeBackendCrewFocusSession != nil || focusSession.isSessionActive
+        focusSession.isSessionActive || !activeCrewFocusSessions.isEmpty
     }
 
     @ViewBuilder
     var currentFocusCard: some View {
-        if let activeSession = activeBackendCrewFocusSession {
-            crewSharedFocusCard(session: activeSession)
-        } else if focusSession.isSessionActive {
+        if focusSession.isSessionActive {
             homeLiveFocusCard
+        } else if hasMultipleActiveCrewFocusSessions {
+            multiCrewFocusCard
+        } else if let activeSession = activeBackendCrewFocusSession {
+            crewSharedFocusCard(session: activeSession)
         }
     }
 
@@ -277,8 +295,25 @@ extension HomeDashboardView {
 
     func startInlineFocus() {
         Task {
-            let minutes: Int
+            // Önce aktif personal/friend/crew focus varsa yenisini başlatma
+            if focusSession.isSessionActive {
+                await MainActor.run {
+                    focusSession.expandSession()
+                }
+                return
+            }
 
+            if let existingCrewSession = activeCrewFocusSessions.first {
+                await MainActor.run {
+                    NotificationCenter.default.post(
+                        name: .openCrewFocusFromNotification,
+                        object: existingCrewSession.crew_id.uuidString
+                    )
+                }
+                return
+            }
+
+            let minutes: Int
             if let task = focusTask, let due = task.dueDate {
                 let diffSeconds = Int(due.timeIntervalSinceNow)
                 let suggestedSeconds = max(15 * 60, min(diffSeconds, 60 * 60))
@@ -389,15 +424,19 @@ extension HomeDashboardView {
     }
 
     func backendCrewFocusRemainingSeconds(for session: CrewFocusSessionDTO, now: Date) -> Int {
+        if session.is_waiting == true {
+            return session.duration_minutes * 60
+        }
+
         if session.is_paused {
             return max(0, session.paused_remaining_seconds ?? 0)
         }
 
-        guard let startedAt = CrewDateParser.parse(session.started_at) else {
+        guard let liveStart = CrewDateParser.parse(session.started_live_at ?? session.started_at) else {
             return session.duration_minutes * 60
         }
 
-        let endDate = startedAt.addingTimeInterval(TimeInterval(session.duration_minutes * 60))
+        let endDate = liveStart.addingTimeInterval(TimeInterval(session.duration_minutes * 60))
         return max(0, Int(endDate.timeIntervalSince(now)))
     }
 

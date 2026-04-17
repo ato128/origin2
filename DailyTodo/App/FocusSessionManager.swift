@@ -61,6 +61,11 @@ final class FocusSessionManager: ObservableObject {
         goal: FocusGoal,
         style: FocusStyle
     ) async -> Bool {
+        guard !hasBlockingActiveSession else {
+            print("FOCUS START BLOCKED: another session is already active")
+            return false
+        }
+
         switch mode {
         case .personal:
             startLocalSession(
@@ -90,6 +95,8 @@ final class FocusSessionManager: ObservableObject {
             return true
         }
     }
+    
+   
 
     func expandSession() {
         guard isSessionActive else { return }
@@ -289,7 +296,7 @@ final class FocusSessionManager: ObservableObject {
 
         let mappedParticipants = mapCrewParticipants(
             participantsDTO,
-            hostName: dto.host_name
+            hostUserID: dto.host_user_id
         )
 
         let session = FocusSessionState(
@@ -404,17 +411,19 @@ final class FocusSessionManager: ObservableObject {
         let title = "\(goal.title) Focus"
 
         do {
-            let dto = try await crewStore.startCrewFocusSession(
+            let dto = try await
+            crewStore.startCrewFocusSession(
                 crewID: crew.id,
                 hostUserID: currentUserID,
                 hostName: hostName,
                 title: title,
                 taskID: nil,
                 taskTitle: nil,
-                durationMinutes: durationMinutes
+                durationMinutes: durationMinutes,
+                participantCount: 1
             )
 
-            crewStore.subscribeToActiveFocusRealtime(crewID: crew.id)
+            
             await crewStore.loadActiveFocusSession(for: crew.id)
             await crewStore.loadFocusParticipants(sessionID: dto.id)
 
@@ -660,19 +669,18 @@ final class FocusSessionManager: ObservableObject {
 
     private func mapCrewParticipants(
         _ participantsDTO: [CrewFocusParticipantDTO],
-        hostName: String
+        hostUserID: UUID?
     ) -> [FocusParticipant] {
         participantsDTO.map { dto in
             FocusParticipant(
                 id: dto.id,
                 name: dto.member_name,
-                isHost: dto.member_name == hostName,
+                isHost: dto.user_id == hostUserID,
                 isReady: dto.is_active,
                 isActive: dto.is_active
             )
         }
     }
-
     private func syncLiveActivityIfNeeded() async {
         guard let session = currentSession else {
             await liveActivityManager.end()
@@ -828,6 +836,31 @@ final class FocusSessionManager: ObservableObject {
 
     var readyCount: Int {
         currentSession?.participants.filter { $0.isReady || $0.isActive }.count ?? 0
+    }
+    
+    var hasBlockingActiveSession: Bool {
+        isSessionActive && currentSession != nil
+    }
+
+    var activeSessionMode: FocusMode? {
+        currentSession?.mode
+    }
+
+    var activeSessionDisplayTitle: String {
+        guard let session = currentSession else { return "Focus" }
+
+        switch session.mode {
+        case .personal:
+            return "\(session.goal.title) Focus"
+        case .crew:
+            return "Crew Focus"
+        case .friend:
+            return "Friend Focus"
+        }
+    }
+
+    func canStartNewSession() -> Bool {
+        !hasBlockingActiveSession
     }
 
     // MARK: - Summary Values

@@ -545,7 +545,12 @@ extension HomeDashboardView {
             contextLine: activeSession.is_paused ? "Oturum duraklatılmış." : "Şu an ekip odağı aktif.",
             primaryCTA: "Odayı Aç",
             primaryIcon: "arrow.right.circle.fill",
-            primaryAction: { focusRoomSession = activeSession },
+            primaryAction: {
+                NotificationCenter.default.post(
+                    name: .openCrewFocusFromNotification,
+                    object: activeSession.crew_id.uuidString
+                )
+            },
             secondaryCTA: HeroCTA(title: "Crew", icon: "person.3.fill", action: { onOpenWeek() })
         )
     }
