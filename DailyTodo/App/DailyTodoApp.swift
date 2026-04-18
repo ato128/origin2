@@ -103,7 +103,6 @@ struct DailyTodoApp: App {
             .overlay {
                 InAppBannerOverlay()
             }
-            
             .onAppear {
                 let context = ModelContext(container)
 
@@ -164,12 +163,12 @@ struct DailyTodoApp: App {
                         UIApplication.shared.registerForRemoteNotifications()
                     }
 
-                    try? await Task.sleep(nanoseconds: 3_000_000_000)
+                    guard let newID else { return }
 
-                    if let newID {
-                        print("💾 TOKEN KAYIT DENEMESİ (onChange)...")
-                        await PushTokenStore().saveCurrentToken(currentUserID: newID)
-                    }
+                    try? await Task.sleep(nanoseconds: 2_500_000_000)
+
+                    print("💾 TOKEN KAYIT DENEMESİ (onChange)...")
+                    await PushTokenStore.shared.saveCurrentToken(currentUserID: newID)
                 }
             }
             .onChange(of: scenePhase) { _, newPhase in
@@ -177,12 +176,6 @@ struct DailyTodoApp: App {
                     LiveActivityScheduler.shared.startForegroundLoop(container: container)
                     let context = ModelContext(container)
                     WidgetAppSync.refreshFromSwiftData(context: context)
-
-                    if let userID = session.currentUser?.id {
-                        Task {
-                            await PushTokenStore().saveCurrentToken(currentUserID: userID)
-                        }
-                    }
                 } else if newPhase == .background {
                     LiveActivityScheduler.shared.stopForegroundLoop()
                     LiveActivityScheduler.shared.rescheduleBackgroundTask(container: container)
@@ -194,17 +187,6 @@ struct DailyTodoApp: App {
             .onReceive(NotificationCenter.default.publisher(for: .openURLFromNotification)) { output in
                 guard let url = output.object as? URL else { return }
                 handleIncomingURL(url)
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .didReceiveAPNSToken)) { _ in
-                guard let userID = session.currentUser?.id else {
-                    print("⚠️ APNS TOKEN GELDİ AMA SESSION HAZIR DEĞİL")
-                    return
-                }
-
-                print("💾 TOKEN KAYIT DENEMESİ (didReceiveAPNSToken)...")
-                Task {
-                    await PushTokenStore().saveCurrentToken(currentUserID: userID)
-                }
             }
             .onReceive(NotificationCenter.default.publisher(for: .presentActiveCrewFocusFromNotification)) { _ in
                 openFocusFromNotification = true

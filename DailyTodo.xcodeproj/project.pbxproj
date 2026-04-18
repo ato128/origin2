@@ -30,11 +30,8 @@
 		6D20049C2F6389460022C810 /* FriendChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D20049B2F6389460022C810 /* FriendChatView.swift */; };
 		6D20049E2F638AC80022C810 /* FriendFocusSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D20049D2F638AC80022C810 /* FriendFocusSession.swift */; };
 		6D2004A02F6391320022C810 /* JoinFocusSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D20049F2F6391320022C810 /* JoinFocusSheet.swift */; };
-		6D2004B22F644F300022C810 /* InsightsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004B12F644F300022C810 /* InsightsModels.swift */; };
+		6D2004B22F644F300022C810 /* InsightsV2Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004B12F644F300022C810 /* InsightsV2Models.swift */; };
 		6D2004B42F644F650022C810 /* InsightsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004B32F644F650022C810 /* InsightsViewModel.swift */; };
-		6D2004BF2F6450860022C810 /* FocusInsightsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004BE2F6450860022C810 /* FocusInsightsCard.swift */; };
-		6D2004C52F6450E10022C810 /* SmartSuggestionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004C42F6450E10022C810 /* SmartSuggestionCard.swift */; };
-		6D2004C72F6452230022C810 /* ProgressRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004C62F6452230022C810 /* ProgressRing.swift */; };
 		6D2004C92F645D170022C810 /* CountUpText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004C82F645D170022C810 /* CountUpText.swift */; };
 		6D2004CB2F645FC60022C810 /* ViewportAppearModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004CA2F645FC60022C810 /* ViewportAppearModifier.swift */; };
 		6D2004CD2F6461B60022C810 /* InsightsAmbientHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004CC2F6461B60022C810 /* InsightsAmbientHeader.swift */; };
@@ -144,20 +141,30 @@
 		6D9E213E2F80010700946892 /* SuggestedNextActionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E213D2F80010700946892 /* SuggestedNextActionCard.swift */; };
 		6D9E21402F803D9C00946892 /* ExamItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E213F2F803D9C00946892 /* ExamItem.swift */; };
 		6D9E21422F803E1300946892 /* HomeDashboardExamHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21412F803E1300946892 /* HomeDashboardExamHelpers.swift */; };
-		6D9E21442F80B2ED00946892 /* InsightsStudentModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21432F80B2ED00946892 /* InsightsStudentModels.swift */; };
-		6D9E214E2F80B7AD00946892 /* StudyPatternCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E214D2F80B7AD00946892 /* StudyPatternCard.swift */; };
-		6D9E21602F815E1E00946892 /* InsightsCardStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E215F2F815E1E00946892 /* InsightsCardStyle.swift */; };
-		6D9E21622F81610C00946892 /* InsightsHeroPremiumCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21612F81610C00946892 /* InsightsHeroPremiumCard.swift */; };
-		6D9E21642F816B1300946892 /* ConsistencyScoreCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21632F816B1300946892 /* ConsistencyScoreCard.swift */; };
-		6D9E21662F816B1900946892 /* DailyBoostCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21652F816B1900946892 /* DailyBoostCard.swift */; };
-		6D9E21682F816B2100946892 /* MostBusyCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21672F816B2100946892 /* MostBusyCard.swift */; };
-		6D9E216A2F816B2600946892 /* OverViewCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21692F816B2600946892 /* OverViewCard.swift */; };
-		6D9E216C2F816B2C00946892 /* ProductivityScoreCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E216B2F816B2C00946892 /* ProductivityScoreCard.swift */; };
-		6D9E216E2F816B3400946892 /* StudyHeatMapCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E216D2F816B3400946892 /* StudyHeatMapCard.swift */; };
-		6D9E21722F81775B00946892 /* StudyInsightsHeroCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21712F81775B00946892 /* StudyInsightsHeroCard.swift */; };
-		6D9E21742F81778300946892 /* StudyInsightsPagerCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21732F81778300946892 /* StudyInsightsPagerCard.swift */; };
-		6D9E21762F8177F600946892 /* StudyInsightsQuickActionsRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21752F8177F600946892 /* StudyInsightsQuickActionsRow.swift */; };
-		6D9E21782F81781500946892 /* StudyInsightsUnlockedCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9E21772F81781500946892 /* StudyInsightsUnlockedCard.swift */; };
+		6DB004132F92F9EE009F2F3B /* InsightsGlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB004122F92F9EE009F2F3B /* InsightsGlassCard.swift */; };
+		6DB004152F92FA35009F2F3B /* InsightsHeroCardV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB004142F92FA35009F2F3B /* InsightsHeroCardV2.swift */; };
+		6DB004172F92FA4F009F2F3B /* InsightsCoachCardV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB004162F92FA4F009F2F3B /* InsightsCoachCardV2.swift */; };
+		6DB004192F92FA6A009F2F3B /* InsightsMomentumCardV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB004182F92FA6A009F2F3B /* InsightsMomentumCardV2.swift */; };
+		6DB0041B2F92FA88009F2F3B /* InsightsIdentityCardV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB0041A2F92FA88009F2F3B /* InsightsIdentityCardV2.swift */; };
+		6DB0041D2F92FAA6009F2F3B /* InsightsachievementSectionV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB0041C2F92FAA6009F2F3B /* InsightsachievementSectionV2.swift */; };
+		6DB0041F2F92FAC2009F2F3B /* InsightsMiniStatsGridV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB0041E2F92FAC2009F2F3B /* InsightsMiniStatsGridV2.swift */; };
+		6DB004212F92FAE1009F2F3B /* InsightsPremiumUnlockCardV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB004202F92FAE1009F2F3B /* InsightsPremiumUnlockCardV2.swift */; };
+		6DB004232F92FFFB009F2F3B /* InsightsAchievementsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB004222F92FFFB009F2F3B /* InsightsAchievementsView.swift */; };
+		6DB004252F9308C1009F2F3B /* DeepInsightsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB004242F9308C1009F2F3B /* DeepInsightsModels.swift */; };
+		6DB004272F9308E3009F2F3B /* DeepInsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB004262F9308E3009F2F3B /* DeepInsightsView.swift */; };
+		6DB004292F93093A009F2F3B /* InsightsPremiumState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB004282F93093A009F2F3B /* InsightsPremiumState.swift */; };
+		6DB0042B2F93095C009F2F3B /* InsightsPremiumCardV4.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB0042A2F93095C009F2F3B /* InsightsPremiumCardV4.swift */; };
+		6DB0042D2F930980009F2F3B /* InsightsPremiumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB0042C2F930980009F2F3B /* InsightsPremiumView.swift */; };
+		6DB0042F2F93152F009F2F3B /* InsightsPlusModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB0042E2F93152F009F2F3B /* InsightsPlusModels.swift */; };
+		6DB004312F931550009F2F3B /* InsightsPlusCoachCardV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB004302F931550009F2F3B /* InsightsPlusCoachCardV2.swift */; };
+		6DB004332F931571009F2F3B /* InsightsPlusStudyWindowCardV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB004322F931571009F2F3B /* InsightsPlusStudyWindowCardV2.swift */; };
+		6DB004352F931593009F2F3B /* InsightsPlusWeekSignalCardV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB004342F931593009F2F3B /* InsightsPlusWeekSignalCardV2.swift */; };
+		6DB004372F93194A009F2F3B /* InsightsStudyWindowDetailedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB004362F931949009F2F3B /* InsightsStudyWindowDetailedModels.swift */; };
+		6DB004392F931990009F2F3B /* InsightsStudyWindowDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB004382F931990009F2F3B /* InsightsStudyWindowDetailView.swift */; };
+		6DB0043B2F931CF8009F2F3B /* InsightsCoachDetailModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB0043A2F931CF8009F2F3B /* InsightsCoachDetailModels.swift */; };
+		6DB0043D2F931D26009F2F3B /* InsightsCoachDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB0043C2F931D26009F2F3B /* InsightsCoachDetailView.swift */; };
+		6DB0043F2F931F66009F2F3B /* InsightsWeeklySignalDetailModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB0043E2F931F66009F2F3B /* InsightsWeeklySignalDetailModels.swift */; };
+		6DB004412F931FD6009F2F3B /* InsightsWeeklySignalDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB004402F931FD6009F2F3B /* InsightsWeeklySignalDetailView.swift */; };
 		6DB70E712F72D47D00F04B43 /* WeekView+MainContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E702F72D47D00F04B43 /* WeekView+MainContent.swift */; };
 		6DB70E732F72D54B00F04B43 /* WeekView+Sheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E722F72D54B00F04B43 /* WeekView+Sheets.swift */; };
 		6DB70E752F72D56A00F04B43 /* WeekView+Lifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E742F72D56A00F04B43 /* WeekView+Lifecycle.swift */; };
@@ -282,7 +289,6 @@
 		6DF0C9412F557F730043B887 /* AddTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF0C9402F557F730043B887 /* AddTaskView.swift */; };
 		6DF0C9462F55E3960043B887 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF0C9452F55E3960043B887 /* OnboardingView.swift */; };
 		6DF8FB932F5B6B3E00D548E4 /* EventItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DA62F56035A00F7B9D7 /* EventItem.swift */; };
-		6DF8FB992F5B918100D548E4 /* HeatmapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF8FB982F5B918100D548E4 /* HeatmapView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -333,11 +339,8 @@
 		6D20049B2F6389460022C810 /* FriendChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendChatView.swift; sourceTree = "<group>"; };
 		6D20049D2F638AC80022C810 /* FriendFocusSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendFocusSession.swift; sourceTree = "<group>"; };
 		6D20049F2F6391320022C810 /* JoinFocusSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoinFocusSheet.swift; sourceTree = "<group>"; };
-		6D2004B12F644F300022C810 /* InsightsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsModels.swift; sourceTree = "<group>"; };
+		6D2004B12F644F300022C810 /* InsightsV2Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsV2Models.swift; sourceTree = "<group>"; };
 		6D2004B32F644F650022C810 /* InsightsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsViewModel.swift; sourceTree = "<group>"; };
-		6D2004BE2F6450860022C810 /* FocusInsightsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusInsightsCard.swift; sourceTree = "<group>"; };
-		6D2004C42F6450E10022C810 /* SmartSuggestionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartSuggestionCard.swift; sourceTree = "<group>"; };
-		6D2004C62F6452230022C810 /* ProgressRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressRing.swift; sourceTree = "<group>"; };
 		6D2004C82F645D170022C810 /* CountUpText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountUpText.swift; sourceTree = "<group>"; };
 		6D2004CA2F645FC60022C810 /* ViewportAppearModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewportAppearModifier.swift; sourceTree = "<group>"; };
 		6D2004CC2F6461B60022C810 /* InsightsAmbientHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsAmbientHeader.swift; sourceTree = "<group>"; };
@@ -422,20 +425,30 @@
 		6D9E213D2F80010700946892 /* SuggestedNextActionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestedNextActionCard.swift; sourceTree = "<group>"; };
 		6D9E213F2F803D9C00946892 /* ExamItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExamItem.swift; sourceTree = "<group>"; };
 		6D9E21412F803E1300946892 /* HomeDashboardExamHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDashboardExamHelpers.swift; sourceTree = "<group>"; };
-		6D9E21432F80B2ED00946892 /* InsightsStudentModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsStudentModels.swift; sourceTree = "<group>"; };
-		6D9E214D2F80B7AD00946892 /* StudyPatternCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyPatternCard.swift; sourceTree = "<group>"; };
-		6D9E215F2F815E1E00946892 /* InsightsCardStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsCardStyle.swift; sourceTree = "<group>"; };
-		6D9E21612F81610C00946892 /* InsightsHeroPremiumCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsHeroPremiumCard.swift; sourceTree = "<group>"; };
-		6D9E21632F816B1300946892 /* ConsistencyScoreCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsistencyScoreCard.swift; sourceTree = "<group>"; };
-		6D9E21652F816B1900946892 /* DailyBoostCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyBoostCard.swift; sourceTree = "<group>"; };
-		6D9E21672F816B2100946892 /* MostBusyCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MostBusyCard.swift; sourceTree = "<group>"; };
-		6D9E21692F816B2600946892 /* OverViewCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverViewCard.swift; sourceTree = "<group>"; };
-		6D9E216B2F816B2C00946892 /* ProductivityScoreCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductivityScoreCard.swift; sourceTree = "<group>"; };
-		6D9E216D2F816B3400946892 /* StudyHeatMapCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyHeatMapCard.swift; sourceTree = "<group>"; };
-		6D9E21712F81775B00946892 /* StudyInsightsHeroCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyInsightsHeroCard.swift; sourceTree = "<group>"; };
-		6D9E21732F81778300946892 /* StudyInsightsPagerCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyInsightsPagerCard.swift; sourceTree = "<group>"; };
-		6D9E21752F8177F600946892 /* StudyInsightsQuickActionsRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyInsightsQuickActionsRow.swift; sourceTree = "<group>"; };
-		6D9E21772F81781500946892 /* StudyInsightsUnlockedCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyInsightsUnlockedCard.swift; sourceTree = "<group>"; };
+		6DB004122F92F9EE009F2F3B /* InsightsGlassCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsGlassCard.swift; sourceTree = "<group>"; };
+		6DB004142F92FA35009F2F3B /* InsightsHeroCardV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsHeroCardV2.swift; sourceTree = "<group>"; };
+		6DB004162F92FA4F009F2F3B /* InsightsCoachCardV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsCoachCardV2.swift; sourceTree = "<group>"; };
+		6DB004182F92FA6A009F2F3B /* InsightsMomentumCardV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsMomentumCardV2.swift; sourceTree = "<group>"; };
+		6DB0041A2F92FA88009F2F3B /* InsightsIdentityCardV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsIdentityCardV2.swift; sourceTree = "<group>"; };
+		6DB0041C2F92FAA6009F2F3B /* InsightsachievementSectionV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsachievementSectionV2.swift; sourceTree = "<group>"; };
+		6DB0041E2F92FAC2009F2F3B /* InsightsMiniStatsGridV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsMiniStatsGridV2.swift; sourceTree = "<group>"; };
+		6DB004202F92FAE1009F2F3B /* InsightsPremiumUnlockCardV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsPremiumUnlockCardV2.swift; sourceTree = "<group>"; };
+		6DB004222F92FFFB009F2F3B /* InsightsAchievementsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsAchievementsView.swift; sourceTree = "<group>"; };
+		6DB004242F9308C1009F2F3B /* DeepInsightsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepInsightsModels.swift; sourceTree = "<group>"; };
+		6DB004262F9308E3009F2F3B /* DeepInsightsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepInsightsView.swift; sourceTree = "<group>"; };
+		6DB004282F93093A009F2F3B /* InsightsPremiumState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsPremiumState.swift; sourceTree = "<group>"; };
+		6DB0042A2F93095C009F2F3B /* InsightsPremiumCardV4.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsPremiumCardV4.swift; sourceTree = "<group>"; };
+		6DB0042C2F930980009F2F3B /* InsightsPremiumView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsPremiumView.swift; sourceTree = "<group>"; };
+		6DB0042E2F93152F009F2F3B /* InsightsPlusModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsPlusModels.swift; sourceTree = "<group>"; };
+		6DB004302F931550009F2F3B /* InsightsPlusCoachCardV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsPlusCoachCardV2.swift; sourceTree = "<group>"; };
+		6DB004322F931571009F2F3B /* InsightsPlusStudyWindowCardV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsPlusStudyWindowCardV2.swift; sourceTree = "<group>"; };
+		6DB004342F931593009F2F3B /* InsightsPlusWeekSignalCardV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsPlusWeekSignalCardV2.swift; sourceTree = "<group>"; };
+		6DB004362F931949009F2F3B /* InsightsStudyWindowDetailedModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsStudyWindowDetailedModels.swift; sourceTree = "<group>"; };
+		6DB004382F931990009F2F3B /* InsightsStudyWindowDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsStudyWindowDetailView.swift; sourceTree = "<group>"; };
+		6DB0043A2F931CF8009F2F3B /* InsightsCoachDetailModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsCoachDetailModels.swift; sourceTree = "<group>"; };
+		6DB0043C2F931D26009F2F3B /* InsightsCoachDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsCoachDetailView.swift; sourceTree = "<group>"; };
+		6DB0043E2F931F66009F2F3B /* InsightsWeeklySignalDetailModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsWeeklySignalDetailModels.swift; sourceTree = "<group>"; };
+		6DB004402F931FD6009F2F3B /* InsightsWeeklySignalDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsWeeklySignalDetailView.swift; sourceTree = "<group>"; };
 		6DB70E702F72D47D00F04B43 /* WeekView+MainContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeekView+MainContent.swift"; sourceTree = "<group>"; };
 		6DB70E722F72D54B00F04B43 /* WeekView+Sheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeekView+Sheets.swift"; sourceTree = "<group>"; };
 		6DB70E742F72D56A00F04B43 /* WeekView+Lifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeekView+Lifecycle.swift"; sourceTree = "<group>"; };
@@ -553,7 +566,6 @@
 		6DF0C93C2F557DBF0043B887 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		6DF0C9402F557F730043B887 /* AddTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddTaskView.swift; sourceTree = "<group>"; };
 		6DF0C9452F55E3960043B887 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
-		6DF8FB982F5B918100D548E4 /* HeatmapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeatmapView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -630,9 +642,6 @@
 		6D2004B52F644FC70022C810 /* InsgihtsComponents */ = {
 			isa = PBXGroup;
 			children = (
-				6D2004BE2F6450860022C810 /* FocusInsightsCard.swift */,
-				6D2004C42F6450E10022C810 /* SmartSuggestionCard.swift */,
-				6D2004C62F6452230022C810 /* ProgressRing.swift */,
 				6D2004C82F645D170022C810 /* CountUpText.swift */,
 				6D2004CA2F645FC60022C810 /* ViewportAppearModifier.swift */,
 				6D2004CC2F6461B60022C810 /* InsightsAmbientHeader.swift */,
@@ -641,11 +650,24 @@
 				6D2004D22F6463720022C810 /* ShimmerModifier.swift */,
 				6D2004D82F6469B20022C810 /* InsightsRevealStyle.swift */,
 				6D2004DC2F646DEC0022C810 /* ScrollOffsetReader.swift */,
-				6D9E214D2F80B7AD00946892 /* StudyPatternCard.swift */,
-				6D9E21712F81775B00946892 /* StudyInsightsHeroCard.swift */,
-				6D9E21732F81778300946892 /* StudyInsightsPagerCard.swift */,
-				6D9E21752F8177F600946892 /* StudyInsightsQuickActionsRow.swift */,
-				6D9E21772F81781500946892 /* StudyInsightsUnlockedCard.swift */,
+				6DB004122F92F9EE009F2F3B /* InsightsGlassCard.swift */,
+				6DB004142F92FA35009F2F3B /* InsightsHeroCardV2.swift */,
+				6DB004162F92FA4F009F2F3B /* InsightsCoachCardV2.swift */,
+				6DB004182F92FA6A009F2F3B /* InsightsMomentumCardV2.swift */,
+				6DB0041A2F92FA88009F2F3B /* InsightsIdentityCardV2.swift */,
+				6DB0041C2F92FAA6009F2F3B /* InsightsachievementSectionV2.swift */,
+				6DB0041E2F92FAC2009F2F3B /* InsightsMiniStatsGridV2.swift */,
+				6DB004202F92FAE1009F2F3B /* InsightsPremiumUnlockCardV2.swift */,
+				6DB004222F92FFFB009F2F3B /* InsightsAchievementsView.swift */,
+				6DB004282F93093A009F2F3B /* InsightsPremiumState.swift */,
+				6DB0042A2F93095C009F2F3B /* InsightsPremiumCardV4.swift */,
+				6DB004302F931550009F2F3B /* InsightsPlusCoachCardV2.swift */,
+				6DB004322F931571009F2F3B /* InsightsPlusStudyWindowCardV2.swift */,
+				6DB004342F931593009F2F3B /* InsightsPlusWeekSignalCardV2.swift */,
+				6DB004362F931949009F2F3B /* InsightsStudyWindowDetailedModels.swift */,
+				6DB004382F931990009F2F3B /* InsightsStudyWindowDetailView.swift */,
+				6DB0043C2F931D26009F2F3B /* InsightsCoachDetailView.swift */,
+				6DB004402F931FD6009F2F3B /* InsightsWeeklySignalDetailView.swift */,
 			);
 			path = InsgihtsComponents;
 			sourceTree = "<group>";
@@ -865,24 +887,20 @@
 		6DC0CACC2F5F7FA000A875ED /* Insights */ = {
 			isa = PBXGroup;
 			children = (
-				6D9E216D2F816B3400946892 /* StudyHeatMapCard.swift */,
-				6D9E216B2F816B2C00946892 /* ProductivityScoreCard.swift */,
-				6D9E21692F816B2600946892 /* OverViewCard.swift */,
-				6D9E21672F816B2100946892 /* MostBusyCard.swift */,
-				6D9E21652F816B1900946892 /* DailyBoostCard.swift */,
-				6D9E21632F816B1300946892 /* ConsistencyScoreCard.swift */,
 				6D02C9D62F5B4D95008193F3 /* SmartInsights.swift */,
 				6D02C9D22F5B4D1F008193F3 /* StreakEngine.swift */,
 				6D02C9D42F5B4D63008193F3 /* FocusTimerView.swift */,
-				6DF8FB982F5B918100D548E4 /* HeatmapView.swift */,
 				6D02C9CF2F5B4402008193F3 /* InsightsView.swift */,
 				6DC0CAA02F5F7D0000A875ED /* InsightsEngine.swift */,
 				6DC0CAA12F5F7D0000A875ED /* InsightsScheduleChart.swift */,
-				6D2004B12F644F300022C810 /* InsightsModels.swift */,
+				6D2004B12F644F300022C810 /* InsightsV2Models.swift */,
 				6D2004B32F644F650022C810 /* InsightsViewModel.swift */,
-				6D9E21432F80B2ED00946892 /* InsightsStudentModels.swift */,
-				6D9E215F2F815E1E00946892 /* InsightsCardStyle.swift */,
-				6D9E21612F81610C00946892 /* InsightsHeroPremiumCard.swift */,
+				6DB004242F9308C1009F2F3B /* DeepInsightsModels.swift */,
+				6DB004262F9308E3009F2F3B /* DeepInsightsView.swift */,
+				6DB0042C2F930980009F2F3B /* InsightsPremiumView.swift */,
+				6DB0042E2F93152F009F2F3B /* InsightsPlusModels.swift */,
+				6DB0043A2F931CF8009F2F3B /* InsightsCoachDetailModels.swift */,
+				6DB0043E2F931F66009F2F3B /* InsightsWeeklySignalDetailModels.swift */,
 			);
 			path = Insights;
 			sourceTree = "<group>";
@@ -1283,15 +1301,15 @@
 				6D2004E12F6490C60022C810 /* WeekAmbientBackground.swift in Sources */,
 				6DBE91BD2F6B7391001DF813 /* ProfileDTO.swift in Sources */,
 				6DBE91B92F6B695C001DF813 /* CrewStore.swift in Sources */,
-				6D2004C72F6452230022C810 /* ProgressRing.swift in Sources */,
 				6DD2828D2F697DF100B1281A /* WorkoutExerciseItem.swift in Sources */,
+				6DB0043B2F931CF8009F2F3B /* InsightsCoachDetailModels.swift in Sources */,
 				6DD282932F699C2D00B1281A /* WorkoutExerciseHistoryItem.swift in Sources */,
 				6D2004C92F645D170022C810 /* CountUpText.swift in Sources */,
+				6DB004192F92FA6A009F2F3B /* InsightsMomentumCardV2.swift in Sources */,
+				6DB004152F92FA35009F2F3B /* InsightsHeroCardV2.swift in Sources */,
 				6DD286C22F7C750B005A73FA /* AudioRecorderManager.swift in Sources */,
 				6DB70E792F72ED8400F04B43 /* SharedFocusRunTime.swift in Sources */,
-				6D9E216C2F816B2C00946892 /* ProductivityScoreCard.swift in Sources */,
 				6D2004522F61C6FC0022C810 /* EventRow.swift in Sources */,
-				6D9E21442F80B2ED00946892 /* InsightsStudentModels.swift in Sources */,
 				6DBE91DD2F6C8211001DF813 /* CrewTypingStatusDTO.swift in Sources */,
 				6D9E21402F803D9C00946892 /* ExamItem.swift in Sources */,
 				6D2A2ACD2F8875D00051459D /* FocusAudioManager.swift in Sources */,
@@ -1301,11 +1319,9 @@
 				6D2A2AC72F885F220051459D /* ActiveFocusView.swift in Sources */,
 				6DBE91E52F6C9612001DF813 /* CrewChatView+Models.swift in Sources */,
 				6D2004622F62265D0022C810 /* WeekView+ScrollTracking.swift in Sources */,
-				6D9E21722F81775B00946892 /* StudyInsightsHeroCard.swift in Sources */,
 				6DF0C91D2F557AA50043B887 /* DailyTodoApp.swift in Sources */,
 				6DB70E732F72D54B00F04B43 /* WeekView+Sheets.swift in Sources */,
 				6D8C3D432F65C9E900ABF6CA /* SmartTaskSuggestionCard.swift in Sources */,
-				6D9E216E2F816B3400946892 /* StudyHeatMapCard.swift in Sources */,
 				6D215DB12F5617BF00F7B9D7 /* TodoStore.swift in Sources */,
 				6DBE91CB2F6C4429001DF813 /* CrewActivityDTO.swift in Sources */,
 				6D8C3D3D2F65B83A00ABF6CA /* AICoachData.swift in Sources */,
@@ -1323,8 +1339,10 @@
 				6D215DD92F5645F200F7B9D7 /* WidgetShared.swift in Sources */,
 				6DB70E752F72D56A00F04B43 /* WeekView+Lifecycle.swift in Sources */,
 				6D5FE4472F687756007C124D /* CrewFocusRecord.swift in Sources */,
+				6DB0041B2F92FA88009F2F3B /* InsightsIdentityCardV2.swift in Sources */,
 				6D2A2ADD2F89DEFC0051459D /* FocusQuickControlsV6.swift in Sources */,
 				6DBE91B52F6B6906001DF813 /* CrewDTO.swift in Sources */,
+				6DB004212F92FAE1009F2F3B /* InsightsPremiumUnlockCardV2.swift in Sources */,
 				6D5FE3F82F6755DA007C124D /* CrewFocusSession.swift in Sources */,
 				6D9E213E2F80010700946892 /* SuggestedNextActionCard.swift in Sources */,
 				6DBE91CD2F6C4446001DF813 /* CrewFocusRecordDTO.swift in Sources */,
@@ -1344,9 +1362,8 @@
 				6DB70E902F76F2A600F04B43 /* LocalizedString.swift in Sources */,
 				6D2004942F63862E0022C810 /* FriendDetailView.swift in Sources */,
 				6D215DA92F5603B100F7B9D7 /* WeekView.swift in Sources */,
-				6D9E21782F81781500946892 /* StudyInsightsUnlockedCard.swift in Sources */,
+				6DB004132F92F9EE009F2F3B /* InsightsGlassCard.swift in Sources */,
 				6D2004862F63334D0022C810 /* AddMemberView.swift in Sources */,
-				6DF8FB992F5B918100D548E4 /* HeatmapView.swift in Sources */,
 				6D02C9D32F5B4D1F008193F3 /* StreakEngine.swift in Sources */,
 				6DD286BF2F7AE88B005A73FA /* NotificationName+Focus.swift in Sources */,
 				6DBE91FD2F6E1129001DF813 /* FriendTypingStatusDTO.swift in Sources */,
@@ -1357,20 +1374,20 @@
 				6D20045E2F62148F0022C810 /* WeekView+ModeHeader.swift in Sources */,
 				6D9E213C2F7FFEE500946892 /* DailyFlowEngine.swift in Sources */,
 				6D2004EB2F64EE8A0022C810 /* PermissionOnboardingView.swift in Sources */,
+				6DB004352F931593009F2F3B /* InsightsPlusWeekSignalCardV2.swift in Sources */,
 				6D5FE3FA2F675620007C124D /* CrewFocusRoomView.swift in Sources */,
 				6D5FE4312F679B68007C124D /* HomeDashboardView+Actions.swift in Sources */,
 				6D5FE3D42F66DD72007C124D /* CrewChatInfoView.swift in Sources */,
 				6D8C3D3F2F65B8F700ABF6CA /* AICoachCard.swift in Sources */,
 				6DBE91E72F6D6A27001DF813 /* CrewChatMessageItem.swift in Sources */,
 				6DBE920B2F6EE881001DF813 /* FriendWeekShareItemDTO.swift in Sources */,
-				6D9E21682F816B2100946892 /* MostBusyCard.swift in Sources */,
 				6DC0CAAF2F5F7D0000A875ED /* Haptics.swift in Sources */,
 				6D8C3D342F65903B00ABF6CA /* AppTheme.swift in Sources */,
 				6D20045A2F61D73E0022C810 /* WeekView+CrewHelpers.swift in Sources */,
+				6DB004272F9308E3009F2F3B /* DeepInsightsView.swift in Sources */,
 				6D8C3D362F65905100ABF6CA /* AppBackground.swift in Sources */,
 				6D8C3D412F65C9C000ABF6CA /* SmartTaskEngine.swift in Sources */,
 				6DC0CAB12F5F7D0000A875ED /* ImportScheduleView.swift in Sources */,
-				6D9E21662F816B1900946892 /* DailyBoostCard.swift in Sources */,
 				6DBE91E92F6D888A001DF813 /* CrewFocusSessionDTO.swift in Sources */,
 				6DB70E862F7321A700F04B43 /* LanguageManager.swift in Sources */,
 				6DD286B72F7AE67D005A73FA /* HomeDashboardView+Tasks.swift in Sources */,
@@ -1378,11 +1395,13 @@
 				6DBE91C92F6C38C4001DF813 /* BackendEditCrewTaskView.swift in Sources */,
 				6D2004D92F6469B20022C810 /* InsightsRevealStyle.swift in Sources */,
 				6D2004D32F6463720022C810 /* ShimmerModifier.swift in Sources */,
+				6DB0043F2F931F66009F2F3B /* InsightsWeeklySignalDetailModels.swift in Sources */,
 				6DBE92072F6EB064001DF813 /* FriendWeekShareDTO.swift in Sources */,
-				6D2004BF2F6450860022C810 /* FocusInsightsCard.swift in Sources */,
 				6DC0CAB22F5F7D0000A875ED /* TodoListView.swift in Sources */,
+				6DB004332F931571009F2F3B /* InsightsPlusStudyWindowCardV2.swift in Sources */,
+				6DB0043D2F931D26009F2F3B /* InsightsCoachDetailView.swift in Sources */,
+				6DB0042B2F93095C009F2F3B /* InsightsPremiumCardV4.swift in Sources */,
 				6DBE91FB2F6DEE90001DF813 /* FriendChatMessageItem.swift in Sources */,
-				6D9E21622F81610C00946892 /* InsightsHeroPremiumCard.swift in Sources */,
 				6DC0CAB32F5F7D0000A875ED /* FocusSessionView.swift in Sources */,
 				6DC0CAB42F5F7D0000A875ED /* HomeDashboardView.swift in Sources */,
 				6DBE92012F6E1BA7001DF813 /* AppDelegate.swift in Sources */,
@@ -1406,10 +1425,12 @@
 				6DBE91D12F6C5760001DF813 /* CrewTaskCommentDTO.swift in Sources */,
 				6DC0CAB62F5F7D0000A875ED /* ScheduleShare.swift in Sources */,
 				6DC0CAB72F5F7D0000A875ED /* DTTaskItem.swift in Sources */,
+				6DB004172F92FA4F009F2F3B /* InsightsCoachCardV2.swift in Sources */,
 				6DB70E712F72D47D00F04B43 /* WeekView+MainContent.swift in Sources */,
 				6DC0CAB82F5F7D0000A875ED /* InsightsScheduleChart.swift in Sources */,
 				6DBE91A42F6B36EB001DF813 /* SupabaseManager.swift in Sources */,
 				6DBE92052F6E1C8F001DF813 /* PushTokenStore.swift in Sources */,
+				6DB004412F931FD6009F2F3B /* InsightsWeeklySignalDetailView.swift in Sources */,
 				6D2004DD2F646DEC0022C810 /* ScrollOffsetReader.swift in Sources */,
 				6DD282912F698F6F00B1281A /* WeekEventDetailView.swift in Sources */,
 				6DBE91F92F6DEE67001DF813 /* FriendMessageDTO.swift in Sources */,
@@ -1425,6 +1446,7 @@
 				6DB70E842F73217400F04B43 /* AppLanguage.swift in Sources */,
 				6D2004D12F6462130022C810 /* ParallaxCardModifier.swift in Sources */,
 				6D2A2A9D2F86E3710051459D /* ProfileHubView.swift in Sources */,
+				6DB004232F92FFFB009F2F3B /* InsightsAchievementsView.swift in Sources */,
 				6DC0CABB2F5F7D0000A875ED /* InsightsEngine.swift in Sources */,
 				6DBE91DF2F6C8277001DF813 /* WeekCrewMemberItem.swift in Sources */,
 				6DD282882F69751D00B1281A /* TaskDetailView.swift in Sources */,
@@ -1435,21 +1457,23 @@
 				6D5FE4042F6789C1007C124D /* CrewChatView+Helpers.swift in Sources */,
 				6DB70E7D2F72EECF00F04B43 /* FocusLiveActivityManager.swift in Sources */,
 				6DBE91FF2F6E1627001DF813 /* FriendPresenceDTO.swift in Sources */,
-				6D9E214E2F80B7AD00946892 /* StudyPatternCard.swift in Sources */,
 				6DBCED2E2F85D4DC00788909 /* HomeOverviewCards.swift in Sources */,
 				6DDF5B5B2F5F9DFF003057C9 /* CrewTaskComment.swift in Sources */,
 				6DBE91A22F6B2F5D001DF813 /* SignUpView.swift in Sources */,
-				6D9E216A2F816B2600946892 /* OverViewCard.swift in Sources */,
 				6D2004E92F64E7210022C810 /* OnboardingPageView.swift in Sources */,
 				6D2004562F61CF550022C810 /* WeekView+CrewCardHelpers.swift in Sources */,
+				6DB0041F2F92FAC2009F2F3B /* InsightsMiniStatsGridV2.swift in Sources */,
 				6DBE91C12F6B75D5001DF813 /* AddCrewMemberView.swift in Sources */,
 				6D2004582F61D19B0022C810 /* WeekView+CrewUI.swift in Sources */,
+				6DB004292F93093A009F2F3B /* InsightsPremiumState.swift in Sources */,
 				6DBE919E2F6B2F25001DF813 /* AuthView.swift in Sources */,
 				6DC0CABE2F5F7D0000A875ED /* TaskNotifications.swift in Sources */,
 				6DD286B32F79A7FF005A73FA /* CrewChatView+Glass.swift in Sources */,
 				6D5FE4492F689760007C124D /* CrewBadgeHelpers.swift in Sources */,
-				6D2004B22F644F300022C810 /* InsightsModels.swift in Sources */,
+				6D2004B22F644F300022C810 /* InsightsV2Models.swift in Sources */,
+				6DB0042D2F930980009F2F3B /* InsightsPremiumView.swift in Sources */,
 				6D2A2AC32F8843D70051459D /* FocusFullPageStageV7.swift in Sources */,
+				6DB0041D2F92FAA6009F2F3B /* InsightsachievementSectionV2.swift in Sources */,
 				6DD282862F68CBC100B1281A /* TaskCompleteAnimation.swift in Sources */,
 				6D5FE4242F6790EA007C124D /* TodoListView+Cards.swift in Sources */,
 				6D5FE4262F67912E007C124D /* TodoListView+Helpers.swift in Sources */,
@@ -1462,9 +1486,8 @@
 				6DBE91D32F6C6826001DF813 /* CrewMessageDTO.swift in Sources */,
 				6DC0CAC22F5F7D0000A875ED /* FocusSessionRecord.swift in Sources */,
 				6D2A2AFF2F8B14CC0051459D /* FocusInviteService.swift in Sources */,
-				6D9E21642F816B1300946892 /* ConsistencyScoreCard.swift in Sources */,
+				6DB004392F931990009F2F3B /* InsightsStudyWindowDetailView.swift in Sources */,
 				6DC0CAC32F5F7D0000A875ED /* CrewMember.swift in Sources */,
-				6D2004C52F6450E10022C810 /* SmartSuggestionCard.swift in Sources */,
 				6D64E0DF2F71BC1B00C68B5B /* IntroCrewMockView.swift in Sources */,
 				6D2A2AC52F88452C0051459D /* FocusDetailSectionV3.swift in Sources */,
 				6DC0CAC52F5F7D0000A875ED /* CrewActivity.swift in Sources */,
@@ -1474,6 +1497,8 @@
 				6D2004CD2F6461B60022C810 /* InsightsAmbientHeader.swift in Sources */,
 				6DC0CAC82F5F7D0000A875ED /* LiveActivityScheduler.swift in Sources */,
 				6D2004B42F644F650022C810 /* InsightsViewModel.swift in Sources */,
+				6DB004252F9308C1009F2F3B /* DeepInsightsModels.swift in Sources */,
+				6DB004312F931550009F2F3B /* InsightsPlusCoachCardV2.swift in Sources */,
 				6D2004962F6387D20022C810 /* Friend.swift in Sources */,
 				6DBE91F32F6DDE82001DF813 /* FriendDTOs.swift in Sources */,
 				6DBE919A2F6B157B001DF813 /* IntroPageView.swift in Sources */,
@@ -1484,10 +1509,9 @@
 				6D02C9D52F5B4D63008193F3 /* FocusTimerView.swift in Sources */,
 				6DBE92092F6EB0B8001DF813 /* SharedWeekView.swift in Sources */,
 				6D775B852F5F81CF0009D660 /* Color+Hex.swift in Sources */,
+				6DB0042F2F93152F009F2F3B /* InsightsPlusModels.swift in Sources */,
 				6D2004882F6336A20022C810 /* EditCrewTaskView.swift in Sources */,
-				6D9E21762F8177F600946892 /* StudyInsightsQuickActionsRow.swift in Sources */,
 				6D02C9D12F5B4718008193F3 /* InsightsView.swift in Sources */,
-				6D9E21602F815E1E00946892 /* InsightsCardStyle.swift in Sources */,
 				6DBE91BF2F6B73E0001DF813 /* BackendCrewDetailView.swift in Sources */,
 				6DBE91982F6B1556001DF813 /* IntroFlowView.swift in Sources */,
 				6DBE920D2F6F373C001DF813 /* AddFriendSheetView.swift in Sources */,
@@ -1504,8 +1528,8 @@
 				6DD286BB2F7AE6BF005A73FA /* HomeDashboardView+Week.swift in Sources */,
 				6D5FE4022F6788F4007C124D /* CrewChatView+Focus.swift in Sources */,
 				6D215DB72F5642AE00F7B9D7 /* ScheduleExport.swift in Sources */,
+				6DB004372F93194A009F2F3B /* InsightsStudyWindowDetailedModels.swift in Sources */,
 				6D5FE4002F67886F007C124D /* CrewChatView+Composer.swift in Sources */,
-				6D9E21742F81778300946892 /* StudyInsightsPagerCard.swift in Sources */,
 				6D215DB32F56342E00F7B9D7 /* EditEventView.swift in Sources */,
 				6DDF5B5F2F5FA38A003057C9 /* CreateCrewTaskView.swift in Sources */,
 			);

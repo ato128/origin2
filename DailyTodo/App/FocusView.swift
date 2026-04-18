@@ -1518,31 +1518,29 @@ private extension FocusView {
     }
 
     var ambientBackground: some View {
-        ZStack {
-            LinearGradient(
+        ZStack(alignment: .topLeading) {
+            RadialGradient(
                 colors: [
-                    .black,
-                    Color(red: 0.01, green: 0.02, blue: 0.07),
-                    .black
+                    selectedModeAccent.opacity(0.14),
+                    Color.clear
                 ],
-                startPoint: .top,
-                endPoint: .bottom
+                center: .topTrailing,
+                startRadius: 50,
+                endRadius: 320
             )
             .ignoresSafeArea()
 
-            Circle()
-                .fill(selectedModeAccent.opacity(0.16))
-                .frame(width: 320, height: 320)
-                .blur(radius: 90)
-                .offset(x: 135, y: -220)
-
-            Circle()
-                .fill(selectedModeSecondaryAccent.opacity(0.12))
-                .frame(width: 260, height: 260)
-                .blur(radius: 96)
-                .offset(x: -150, y: 380)
+            RadialGradient(
+                colors: [
+                    selectedModeSecondaryAccent.opacity(0.10),
+                    Color.clear
+                ],
+                center: .bottomLeading,
+                startRadius: 60,
+                endRadius: 300
+            )
+            .ignoresSafeArea()
         }
-        .ignoresSafeArea()
     }
 
     var resolvedMinutes: Int {

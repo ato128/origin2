@@ -80,7 +80,7 @@ struct CrewView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
-                        Color.clear.frame(height: 50)
+                        Color.clear.frame(height: 16)
 
                         topHeader
                         crewTopSegment
@@ -94,6 +94,7 @@ struct CrewView: View {
                         Spacer(minLength: 90)
                     }
                     .padding(.horizontal, 16)
+                    .padding(.top, 8)
                     .padding(.bottom, 28)
                 }
                 .onAppear {
@@ -206,34 +207,23 @@ private extension CrewView {
             if appTheme == AppTheme.gradient.rawValue {
                 RadialGradient(
                     colors: [
-                        Color.purple.opacity(0.18),
+                        Color.purple.opacity(0.12),
                         Color.clear
                     ],
-                    center: .topLeading,
-                    startRadius: 40,
-                    endRadius: 320
+                    center: .bottomLeading,
+                    startRadius: 80,
+                    endRadius: 360
                 )
                 .ignoresSafeArea()
 
                 RadialGradient(
                     colors: [
-                        Color.blue.opacity(0.14),
+                        Color.blue.opacity(0.10),
                         Color.clear
                     ],
                     center: .topTrailing,
-                    startRadius: 60,
-                    endRadius: 360
-                )
-                .ignoresSafeArea()
-
-                LinearGradient(
-                    colors: [
-                        Color.blue.opacity(0.05),
-                        Color.clear,
-                        Color.black.opacity(0.08)
-                    ],
-                    startPoint: .topTrailing,
-                    endPoint: .bottomLeading
+                    startRadius: 80,
+                    endRadius: 340
                 )
                 .ignoresSafeArea()
             }
@@ -241,30 +231,10 @@ private extension CrewView {
     }
 
     var topHeader: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            ZStack(alignment: .leading) {
-                if appTheme == AppTheme.gradient.rawValue {
-                    Text("crew_title")
-                        .font(.system(size: 56, weight: .black, design: .rounded))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [
-                                    Color.purple.opacity(0.14),
-                                    Color.blue.opacity(0.10)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .blur(radius: 2)
-                        .opacity(0.34)
-                        .offset(x: 2, y: -4)
-                }
-
-                Text("crew_title")
-                    .font(.system(size: 40, weight: .black, design: .rounded))
-                    .foregroundStyle(palette.primaryText)
-            }
+        VStack(alignment: .leading, spacing: 16) {
+            Text("crew_title")
+                .font(.system(size: 40, weight: .black, design: .rounded))
+                .foregroundStyle(palette.primaryText)
 
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 6) {

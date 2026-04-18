@@ -53,7 +53,7 @@ struct AICoachCard: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .lineSpacing(2)
 
-            if let buttonTitle = data.buttonTitle, !buttonTitle.isEmpty {
+            if   !data.buttonTitle.isEmpty {
                 Button {
                     withAnimation(.spring(response: 0.24, dampingFraction: 0.72)) {
                         pressed = true
@@ -70,7 +70,7 @@ struct AICoachCard: View {
                         Image(systemName: buttonIcon(for: data.action))
                             .font(.system(size: 14, weight: .bold))
 
-                        Text(buttonTitle)
+                        Text(data.buttonTitle)
                             .font(.system(size: 15, weight: .semibold))
                             .lineLimit(1)
                     }
