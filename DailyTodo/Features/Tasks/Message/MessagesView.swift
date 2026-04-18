@@ -15,7 +15,9 @@ struct MessagesView: View {
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var session: SessionStore
 
-    @State private var selectedTab = 0
+    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
+
+    @State private var searchText = ""
 
     @Query(sort: \Friend.createdAt, order: .reverse)
     private var friends: [Friend]
@@ -45,26 +47,132 @@ struct MessagesView: View {
         }
     }
 
+    private var onlineItems: [MessagesHubItem] {
+        let onlineFriendsItems = backendFriends
+            .filter(\.isOnline)
+            .map { friend in
+                MessagesHubItem(
+                    id: "friend-online-\(friend.id.uuidString)",
+                    kind: .friend,
+                    payload: .friend(friend),
+                    title: firstWord(friend.name),
+                    shortTitle: firstWord(friend.name),
+                    preview: lastPreviewText(for: friend),
+                    time: lastFriendMessageDate(for: friend),
+                    unreadCount: unreadFriendCount(for: friend),
+                    avatarText: initials(for: friend.name),
+                    tint: tintForFriend(friend),
+                    isOnline: true,
+                    showsPresence: true
+                )
+            }
+
+        let onlineCrewItems = backendCrews
+            .filter { crew in
+                guard let lastDate = lastCrewMessageDate(for: crew) else { return false }
+                return Calendar.current.isDateInToday(lastDate)
+            }
+            .map { crew in
+                MessagesHubItem(
+                    id: "crew-online-\(crew.id.uuidString)",
+                    kind: .crew,
+                    payload: .crew(crew),
+                    title: crew.name,
+                    shortTitle: crew.name,
+                    preview: lastPreviewText(for: crew),
+                    time: lastCrewMessageDate(for: crew),
+                    unreadCount: 0,
+                    avatarText: crew.icon,
+                    tint: tintForCrew(crew),
+                    isOnline: true,
+                    showsPresence: true
+                )
+            }
+
+        return Array((onlineFriendsItems + onlineCrewItems)
+            .sorted { ($0.time ?? .distantPast) > ($1.time ?? .distantPast) }
+            .prefix(8))
+    }
+
+    private var allConversationItems: [MessagesHubItem] {
+        let friendItems = backendFriends.map { friend in
+            MessagesHubItem(
+                id: "friend-\(friend.id.uuidString)",
+                kind: .friend,
+                payload: .friend(friend),
+                title: friend.name,
+                shortTitle: firstWord(friend.name),
+                preview: lastPreviewText(for: friend),
+                time: lastFriendMessageDate(for: friend),
+                unreadCount: unreadFriendCount(for: friend),
+                avatarText: initials(for: friend.name),
+                tint: tintForFriend(friend),
+                isOnline: friend.isOnline,
+                showsPresence: true
+            )
+        }
+
+        let crewItems = backendCrews.map { crew in
+            MessagesHubItem(
+                id: "crew-\(crew.id.uuidString)",
+                kind: .crew,
+                payload: .crew(crew),
+                title: crew.name,
+                shortTitle: crew.name,
+                preview: lastPreviewText(for: crew),
+                time: lastCrewMessageDate(for: crew),
+                unreadCount: 0,
+                avatarText: crew.icon,
+                tint: tintForCrew(crew),
+                isOnline: isCrewActiveToday(crew),
+                showsPresence: true
+            )
+        }
+
+        return (friendItems + crewItems)
+            .sorted { lhs, rhs in
+                let l = lhs.time ?? .distantPast
+                let r = rhs.time ?? .distantPast
+                if l != r { return l > r }
+                return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+            }
+    }
+
+    private var filteredConversationItems: [MessagesHubItem] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return allConversationItems }
+
+        return allConversationItems.filter {
+            $0.title.localizedCaseInsensitiveContains(query)
+            || $0.preview.localizedCaseInsensitiveContains(query)
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
                 AppBackground()
 
+                if appTheme == AppTheme.gradient.rawValue {
+                    ambientBackground
+                        .ignoresSafeArea()
+                }
+
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         header
-                        segmentedPicker
+                        searchBar
 
-                        if selectedTab == 0 {
-                            friendsSection
-                        } else {
-                            crewsSection
+                        if !onlineItems.isEmpty {
+                            onlineSection
                         }
 
-                        Spacer(minLength: 80)
+                        conversationsSection
+
+                        Spacer(minLength: 70)
                     }
                     .padding(.horizontal, 16)
-                    .padding(.top, 10)
+                    .padding(.top, 8)
                     .padding(.bottom, 24)
                 }
                 .scrollIndicators(.hidden)
@@ -109,11 +217,43 @@ struct MessagesView: View {
 }
 
 private extension MessagesView {
+    var ambientBackground: some View {
+        ZStack {
+            RadialGradient(
+                colors: [
+                    Color.blue.opacity(0.16),
+                    .clear
+                ],
+                center: .topTrailing,
+                startRadius: 20,
+                endRadius: 280
+            )
+            .offset(x: 90, y: -80)
+
+            RadialGradient(
+                colors: [
+                    Color.purple.opacity(0.14),
+                    .clear
+                ],
+                center: .bottomLeading,
+                startRadius: 40,
+                endRadius: 260
+            )
+            .offset(x: -120, y: 260)
+        }
+    }
+
     var header: some View {
-        HStack(alignment: .center) {
-            Text("Messages")
-                .font(.system(size: 30, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Mesajlar")
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+
+                Text("Friend & Crew Sohbetleri")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.52))
+            }
 
             Spacer()
 
@@ -121,240 +261,256 @@ private extension MessagesView {
                 dismiss()
             } label: {
                 Text("Done")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 18)
-                    .frame(height: 42)
-                    .background(smallGlassCapsule)
+                    .frame(height: 46)
+                    .background(
+                        Capsule()
+                            .fill(Color.white.opacity(0.05))
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.white.opacity(0.09), lineWidth: 1)
+                            )
+                    )
             }
             .buttonStyle(.plain)
         }
     }
 
-    var segmentedPicker: some View {
-        HStack(spacing: 0) {
-            segmentButton(title: "Friends", isSelected: selectedTab == 0) {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
-                    selectedTab = 0
-                }
-            }
+    var searchBar: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.38))
 
-            segmentButton(title: "Crews", isSelected: selectedTab == 1) {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
-                    selectedTab = 1
-                }
-            }
-        }
-        .padding(4)
-        .background(largeGlassCapsule)
-    }
-
-    func segmentButton(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 18, weight: .semibold, design: .rounded))
-                .foregroundStyle(isSelected ? .white : .white.opacity(0.62))
-                .frame(maxWidth: .infinity)
-                .frame(height: 48)
-                .background {
-                    if isSelected {
-                        Capsule()
-                            .fill(Color.white.opacity(0.16))
-                            .overlay(
-                                Capsule()
-                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
-                            )
-                    }
-                }
-        }
-        .buttonStyle(.plain)
-    }
-
-    var friendsSection: some View {
-        VStack(spacing: 12) {
-            if backendFriends.isEmpty {
-                emptyState(
-                    title: "No Friends Yet",
-                    subtitle: "Your friend chats will appear here.",
-                    systemImage: "person.2.slash"
-                )
-            } else {
-                ForEach(backendFriends) { friend in
-                    NavigationLink {
-                        FriendChatView(friend: friend)
-                            .environmentObject(friendStore)
-                            .environmentObject(session)
-                    } label: {
-                        friendRow(friend)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    var crewsSection: some View {
-        VStack(spacing: 12) {
-            if backendCrews.isEmpty {
-                emptyState(
-                    title: "No Crews Yet",
-                    subtitle: "Your crew chats will appear here.",
-                    systemImage: "person.3.slash"
-                )
-            } else {
-                ForEach(backendCrews) { crew in
-                    NavigationLink {
-                        CrewChatView(crew: crew)
-                            .environmentObject(crewStore)
-                            .environmentObject(session)
-                    } label: {
-                        crewRow(crew)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    func friendRow(_ friend: Friend) -> some View {
-        let unreadCount = unreadFriendCount(for: friend)
-        let hasUnread = unreadCount > 0
-
-        return HStack(spacing: 12) {
-            ZStack(alignment: .bottomTrailing) {
-                Circle()
-                    .fill(hexColor(friend.colorHex).opacity(0.16))
-                    .frame(width: 44, height: 44)
-
-                Image(systemName: friend.avatarSymbol)
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(hexColor(friend.colorHex))
-
-                Circle()
-                    .fill(friend.isOnline ? Color.green : Color.gray.opacity(0.45))
-                    .frame(width: 9, height: 9)
-                    .overlay(
-                        Circle()
-                            .stroke(Color.black.opacity(0.35), lineWidth: 1.2)
-                    )
-                    .offset(x: 1, y: 1)
-            }
-            .frame(width: 48, height: 48)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(friend.name)
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-
-                Text(lastPreviewText(for: friend))
-                    .font(.system(size: 13.5, weight: .semibold))
-                    .foregroundStyle(hasUnread ? .white.opacity(0.86) : .white.opacity(0.62))
-                    .lineLimit(1)
-            }
-
-            Spacer(minLength: 8)
-
-            VStack(alignment: .trailing, spacing: 8) {
-                if let lastDate = lastFriendMessageDate(for: friend) {
-                    Text(lastDate, style: .time)
-                        .font(.system(size: 11.5, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.70))
-                }
-
-                HStack(spacing: 8) {
-                    if unreadCount > 0 {
-                        unreadBadge(unreadCount)
-                    }
-
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.34))
-                }
-            }
+            TextField("Sohbet ara...", text: $searchText)
+                .font(.system(size: 17, weight: .medium, design: .rounded))
+                .foregroundStyle(.white)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 13)
+        .frame(height: 54)
         .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(hasUnread ? Color.white.opacity(0.06) : Color.white.opacity(0.045))
-                .background(
-                    .ultraThinMaterial,
-                    in: RoundedRectangle(cornerRadius: 24, style: .continuous)
-                )
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white.opacity(0.035))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(
-                            hasUnread ? Color.white.opacity(0.13) : Color.white.opacity(0.08),
-                            lineWidth: 1
-                        )
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
                 )
-        )
-        .shadow(
-            color: hasUnread ? Color.white.opacity(0.04) : .clear,
-            radius: hasUnread ? 8 : 0,
-            y: hasUnread ? 3 : 0
         )
     }
 
-    func crewRow(_ crew: WeekCrewItem) -> some View {
+    var onlineSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(Color.green)
+                    .frame(width: 11, height: 11)
+
+                Text("ŞU AN ONLINE")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.54))
+                    .tracking(1.0)
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(onlineItems) { item in
+                        NavigationLink {
+                            destinationView(for: item)
+                        } label: {
+                            VStack(spacing: 8) {
+                                ZStack(alignment: .bottomTrailing) {
+                                    onlineAvatar(for: item, size: 64)
+
+                                    Circle()
+                                        .fill(Color.green)
+                                        .frame(width: 14, height: 14)
+                                        .overlay(
+                                            Circle()
+                                                .stroke(Color.black, lineWidth: 2.5)
+                                        )
+                                }
+
+                                Text(item.shortTitle)
+                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(.white.opacity(0.84))
+                                    .lineLimit(1)
+                            }
+                            .frame(width: 76)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 2)
+            }
+        }
+    }
+
+    var conversationsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("TÜM SOHBETLER")
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.54))
+                .tracking(1.0)
+
+            if filteredConversationItems.isEmpty {
+                emptyState(
+                    title: searchText.isEmpty ? "Henüz sohbet yok" : "Sonuç bulunamadı",
+                    subtitle: searchText.isEmpty
+                    ? "Friend ve crew sohbetlerin burada görünecek."
+                    : "Aramayı değiştirip tekrar dene.",
+                    systemImage: "bubble.left.and.bubble.right"
+                )
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(filteredConversationItems) { item in
+                        NavigationLink {
+                            destinationView(for: item)
+                        } label: {
+                            conversationRow(item)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    func conversationRow(_ item: MessagesHubItem) -> some View {
         HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(hexColor(crew.colorHex).opacity(0.16))
-                .frame(width: 44, height: 44)
-                .overlay(
-                    Image(systemName: crew.icon)
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(hexColor(crew.colorHex))
-                )
-                .frame(width: 48, height: 48)
+            ZStack(alignment: .bottomTrailing) {
+                rowAvatar(for: item, size: 56)
+
+                if item.showsPresence {
+                    Circle()
+                        .fill(item.isOnline ? Color.green : Color.gray.opacity(0.75))
+                        .frame(width: 13, height: 13)
+                        .overlay(
+                            Circle()
+                                .stroke(Color.black, lineWidth: 2.5)
+                        )
+                }
+            }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(crew.name)
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(item.title)
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
 
-                Text(lastPreviewText(for: crew))
-                    .font(.system(size: 13.5, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.62))
-                    .lineLimit(1)
-            }
+                    Spacer(minLength: 4)
 
-            Spacer(minLength: 8)
-
-            VStack(alignment: .trailing, spacing: 8) {
-                if let lastDate = lastCrewMessageDate(for: crew) {
-                    Text(lastDate, style: .time)
-                        .font(.system(size: 11.5, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.70))
+                    if let time = item.time {
+                        Text(time, style: .time)
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(item.unreadCount > 0 ? .white.opacity(0.82) : .white.opacity(0.42))
+                    }
                 }
 
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.34))
+                HStack(spacing: 6) {
+                    if item.kind == .crew {
+                        Text("Crew")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(item.tint)
+
+                        Text("•")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.28))
+                    }
+
+                    Text(item.preview)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(item.unreadCount > 0 ? .white.opacity(0.78) : .white.opacity(0.52))
+                        .lineLimit(1)
+                }
             }
+
+            VStack(alignment: .trailing, spacing: 8) {
+                if item.unreadCount > 0 {
+                    unreadBadge(item.unreadCount)
+                } else {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.24))
+                }
+            }
+            .frame(width: 28)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 14)
         .padding(.vertical, 13)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.white.opacity(0.045))
-                .background(
-                    .ultraThinMaterial,
-                    in: RoundedRectangle(cornerRadius: 24, style: .continuous)
-                )
+        .background(rowBackground(highlighted: item.unreadCount > 0))
+    }
+
+    func onlineAvatar(for item: MessagesHubItem, size: CGFloat) -> some View {
+        switch item.kind {
+        case .friend:
+            return AnyView(friendInitialAvatar(item.avatarText, tint: item.tint, size: size))
+        case .crew:
+            return AnyView(crewIconAvatar(symbol: item.avatarText, tint: item.tint, size: size))
+        }
+    }
+
+    func rowAvatar(for item: MessagesHubItem, size: CGFloat) -> some View {
+        switch item.kind {
+        case .friend:
+            return AnyView(friendInitialAvatar(item.avatarText, tint: item.tint, size: size))
+        case .crew:
+            return AnyView(crewIconAvatar(symbol: item.avatarText, tint: item.tint, size: size))
+        }
+    }
+
+    func friendInitialAvatar(_ initials: String, tint: Color, size: CGFloat) -> some View {
+        ZStack {
+            Circle()
+                .fill(tint.opacity(0.10))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    Circle()
+                        .stroke(tint.opacity(0.24), lineWidth: 1.1)
                 )
-        )
+                .frame(width: size, height: size)
+
+            Text(initials)
+                .font(.system(size: size * 0.30, weight: .bold, design: .rounded))
+                .foregroundStyle(tint)
+        }
+    }
+
+    func crewIconAvatar(symbol: String, tint: Color, size: CGFloat) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
+                .fill(tint.opacity(0.10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
+                        .stroke(tint.opacity(0.22), lineWidth: 1.1)
+                )
+                .frame(width: size, height: size)
+
+            Image(systemName: symbol)
+                .font(.system(size: size * 0.28, weight: .medium))
+                .foregroundStyle(tint)
+        }
+    }
+
+    func rowBackground(highlighted: Bool) -> some View {
+        RoundedRectangle(cornerRadius: 24, style: .continuous)
+            .fill(highlighted ? Color.white.opacity(0.050) : Color.white.opacity(0.032))
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(
+                        highlighted ? Color.white.opacity(0.10) : Color.white.opacity(0.06),
+                        lineWidth: 1
+                    )
+            )
     }
 
     func emptyState(title: String, subtitle: String, systemImage: String) -> some View {
         VStack(spacing: 12) {
             Image(systemName: systemImage)
-                .font(.system(size: 26, weight: .semibold))
+                .font(.system(size: 24, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.80))
 
             Text(title)
@@ -371,24 +527,19 @@ private extension MessagesView {
         .padding(.horizontal, 20)
     }
 
-    var smallGlassCapsule: some View {
-        Capsule()
-            .fill(Color.white.opacity(0.05))
-            .background(.ultraThinMaterial, in: Capsule())
-            .overlay(
-                Capsule()
-                    .stroke(Color.white.opacity(0.09), lineWidth: 1)
-            )
-    }
+    @ViewBuilder
+    func destinationView(for item: MessagesHubItem) -> some View {
+        switch item.payload {
+        case .friend(let friend):
+            FriendChatView(friend: friend)
+                .environmentObject(friendStore)
+                .environmentObject(session)
 
-    var largeGlassCapsule: some View {
-        RoundedRectangle(cornerRadius: 28, style: .continuous)
-            .fill(Color.white.opacity(0.035))
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
-            )
+        case .crew(let crew):
+            CrewChatView(crew: crew)
+                .environmentObject(crewStore)
+                .environmentObject(session)
+        }
     }
 
     private func cleanedPreview(_ text: String) -> String {
@@ -412,12 +563,7 @@ private extension MessagesView {
         }
 
         let cleaned = cleanedPreview(last.text)
-
-        if last.isFromMe {
-            return "You: \(cleaned)"
-        } else {
-            return cleaned
-        }
+        return last.isFromMe ? "You: \(cleaned)" : cleaned
     }
 
     private func lastFriendMessageDate(for friend: Friend) -> Date? {
@@ -427,7 +573,6 @@ private extension MessagesView {
 
     private func unreadFriendCount(for friend: Friend) -> Int {
         guard let friendshipID = friend.backendFriendshipID else { return 0 }
-
         let messages = friendStore.friendMessagesByFriendship[friendshipID] ?? []
         return messages.filter { !$0.isFromMe && $0.seenAt == nil }.count
     }
@@ -452,15 +597,108 @@ private extension MessagesView {
         crewChatMessages(for: crew).last?.createdAt
     }
 
+    private func isCrewActiveToday(_ crew: WeekCrewItem) -> Bool {
+        guard let lastDate = lastCrewMessageDate(for: crew) else { return false }
+        return Calendar.current.isDateInToday(lastDate)
+    }
+
     private func unreadBadge(_ count: Int) -> some View {
         Text(count > 99 ? "99+" : "\(count)")
-            .font(.system(size: 12, weight: .bold))
+            .font(.system(size: 11, weight: .bold))
             .foregroundStyle(.white)
-            .padding(.horizontal, count > 9 ? 8 : 7)
-            .frame(height: 26)
+            .padding(.horizontal, count > 9 ? 7 : 6)
+            .frame(height: 24)
             .background(
                 Capsule()
                     .fill(Color.accentColor)
             )
     }
+
+    private func firstWord(_ value: String) -> String {
+        value.split(separator: " ").first.map(String.init) ?? value
+    }
+
+    private func initials(for name: String) -> String {
+        let parts = name
+            .split(separator: " ")
+            .map(String.init)
+            .filter { !$0.isEmpty }
+
+        if parts.count >= 2 {
+            return String(parts[0].prefix(1) + parts[1].prefix(1)).uppercased()
+        } else if let first = parts.first {
+            return String(first.prefix(2)).uppercased()
+        } else {
+            return "?"
+        }
+    }
+
+    private func tintForFriend(_ friend: Friend) -> Color {
+        hexColor(friend.colorHex)
+    }
+
+    private func tintForCrew(_ crew: WeekCrewItem) -> Color {
+        hexColor(crew.colorHex)
+    }
+
+    private func hexColor(_ hex: String?) -> Color {
+        guard let hex else { return .accentColor }
+        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: cleaned).scanHexInt64(&int)
+
+        let a, r, g, b: UInt64
+        switch cleaned.count {
+        case 3:
+            (a, r, g, b) = (255,
+                            ((int >> 8) & 0xF) * 17,
+                            ((int >> 4) & 0xF) * 17,
+                            (int & 0xF) * 17)
+        case 6:
+            (a, r, g, b) = (255,
+                            (int >> 16) & 0xFF,
+                            (int >> 8) & 0xFF,
+                            int & 0xFF)
+        case 8:
+            (a, r, g, b) = ((int >> 24) & 0xFF,
+                            (int >> 16) & 0xFF,
+                            (int >> 8) & 0xFF,
+                            int & 0xFF)
+        default:
+            return .accentColor
+        }
+
+        return Color(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
+    }
+}
+
+private struct MessagesHubItem: Identifiable {
+    enum Kind {
+        case friend
+        case crew
+    }
+
+    enum Payload {
+        case friend(Friend)
+        case crew(WeekCrewItem)
+    }
+
+    let id: String
+    let kind: Kind
+    let payload: Payload
+    let title: String
+    let shortTitle: String
+    let preview: String
+    let time: Date?
+    let unreadCount: Int
+    let avatarText: String
+    let tint: Color
+    let isOnline: Bool
+    let showsPresence: Bool
 }
