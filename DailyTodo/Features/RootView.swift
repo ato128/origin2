@@ -21,11 +21,18 @@ struct RootView: View {
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var friendStore: FriendStore
+    @EnvironmentObject var studentStore: StudentStore
 
     var body: some View {
         Group {
             if !session.isSignedIn {
                 AuthView()
+
+            } else if !studentStore.didResolveRemoteProfile || studentStore.isLoading {
+                studentLoadingView
+
+            } else if !studentStore.hasCompletedStudentProfile {
+                StudentOnboardingFlowView()
 
             } else if !didFinishOnboarding {
                 OnboardingView()
@@ -54,6 +61,36 @@ struct RootView: View {
                     }
                 }
             }
+        }
+        .task(id: session.currentUser?.id) {
+            guard session.isSignedIn else {
+                studentStore.clearForSignOut()
+                return
+            }
+
+            await studentStore.loadFromRemote()
+        }
+    }
+
+    private var studentLoadingView: some View {
+        ZStack {
+            AppBackground()
+
+            VStack(spacing: 18) {
+                ProgressView()
+                    .tint(.white)
+                    .scaleEffect(1.1)
+
+                Text("Preparing your student profile...")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.82))
+            }
+            .padding(28)
+            .background(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(.white.opacity(0.08))
+            )
+            .padding(.horizontal, 24)
         }
     }
 

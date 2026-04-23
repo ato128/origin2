@@ -26,7 +26,7 @@
 	<key>FOCUS_INVITE_SECRET</key>
 	<string>dailytodo_focus_invite_2026_x9K2mP7QvL4zN8rT1sY6aB3uH5wC9eF2</string>
 	<key>SUPABASE_ANON_KEY</key>
-	<string>sb_publishable_lrWcbEx1SkaW3BmIYZ-j5g_iuFRrGhH</string>
+	<string>$(SUPABASE_ANON_KEY)</string>
 	<key>SUPABASE_URL</key>
 	<string>https://srzvzaczgydwtopnlrvx.supabase.co</string>
 	<key>UIBackgroundModes</key>

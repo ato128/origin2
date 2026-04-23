@@ -25,6 +25,7 @@ struct DailyTodoApp: App {
     @StateObject private var todoStore: TodoStore
     @StateObject private var languageManager = LanguageManager()
     @StateObject private var focusSession = FocusSessionManager.shared
+    @StateObject private var studentStore: StudentStore
 
     @State private var openFocusFromNotification: Bool = false
 
@@ -51,6 +52,8 @@ struct DailyTodoApp: App {
                 WorkoutExerciseHistoryItem.self,
                 EventItem.self,
                 ExamItem.self,
+                StudentProfile.self,
+                Course.self,
                 FocusSessionRecord.self,
                 Crew.self,
                 CrewMember.self,
@@ -80,6 +83,9 @@ struct DailyTodoApp: App {
             _todoStore = StateObject(
                 wrappedValue: TodoStore(context: context)
             )
+            _studentStore = StateObject(
+                wrappedValue: StudentStore(context: context)
+            )
 
         } catch {
             fatalError("SwiftData container oluşturulamadı: \(error)")
@@ -100,6 +106,7 @@ struct DailyTodoApp: App {
             .environmentObject(languageManager)
             .environmentObject(focusSession)
             .environment(\.locale, languageManager.activeLocale)
+            .environmentObject(studentStore)
             .overlay {
                 InAppBannerOverlay()
             }
@@ -113,6 +120,7 @@ struct DailyTodoApp: App {
 
                 let currentUserID = session.currentUser?.id.uuidString
                 todoStore.setCurrentUserID(currentUserID)
+                studentStore.setCurrentUserID(currentUserID)
                 LiveActivityScheduler.shared.setCurrentUserID(currentUserID)
 
                 syncCurrentUserIDToDefaults(session.currentUser?.id)
@@ -137,6 +145,7 @@ struct DailyTodoApp: App {
                 let userIDString = newID.map { $0.uuidString }
 
                 todoStore.setCurrentUserID(userIDString)
+                studentStore.setCurrentUserID(userIDString)
                 LiveActivityScheduler.shared.setCurrentUserID(userIDString)
 
                 syncCurrentUserIDToDefaults(newID)

@@ -12,6 +12,7 @@ struct ProfileHubView: View {
     @EnvironmentObject var store: TodoStore
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var languageManager: LanguageManager
+    @EnvironmentObject var studentStore: StudentStore
 
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     @AppStorage("smartEngineEnabled") private var smartEngineEnabled = true
@@ -122,21 +123,49 @@ struct ProfileHubView: View {
                                 .foregroundStyle(.white.opacity(0.95))
                         }
 
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: 5) {
                             Text(user.fullName.isEmpty ? "Kullanıcı" : user.fullName)
                                 .font(.system(size: 18, weight: .bold, design: .rounded))
                                 .foregroundStyle(palette.primaryText)
 
-                            Text("@\(user.username)")
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(palette.secondaryText)
+                            if let academicLine = academicPrimaryLine {
+                                Text(academicLine)
+                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                    .foregroundStyle(.blue)
+                            } else {
+                                Text("@\(user.username)")
+                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(palette.secondaryText)
+                            }
 
-                            Text(user.email)
-                                .font(.system(size: 13, weight: .medium, design: .rounded))
-                                .foregroundStyle(palette.tertiaryText)
+                            if let academicSecondaryLine {
+                                Text(academicSecondaryLine)
+                                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                                    .foregroundStyle(palette.secondaryText)
+                            } else {
+                                Text(user.email)
+                                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                                    .foregroundStyle(palette.tertiaryText)
+                            }
                         }
 
                         Spacer()
+                    }
+
+                    if hasAcademicProfile {
+                        HStack(spacing: 10) {
+                            miniStatChip(
+                                icon: "graduationcap.fill",
+                                title: gradeChipText
+                            )
+
+                            if let institutionChipText {
+                                miniStatChip(
+                                    icon: "building.columns.fill",
+                                    title: institutionChipText
+                                )
+                            }
+                        }
                     }
 
                     Button {
@@ -362,6 +391,7 @@ struct ProfileHubView: View {
 
                     Button {
                         session.signOut()
+                        studentStore.clearForSignOut()
                         dismiss()
                     } label: {
                         HStack(spacing: 12) {
@@ -398,6 +428,123 @@ struct ProfileHubView: View {
                 }
             }
         }
+    }
+
+    private var hasAcademicProfile: Bool {
+        studentStore.profile != nil
+    }
+
+    private var academicPrimaryLine: String? {
+        guard let profile = studentStore.profile else { return nil }
+
+        if profile.educationLevel == "university" {
+            guard
+                let institution = profile.institutionName,
+                !institution.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            else {
+                return "University • \(formattedGrade(profile.gradeLevel))"
+            }
+
+            return "\(formattedGrade(profile.gradeLevel)) • \(institution)"
+        } else {
+            let track = formattedTrack(profile.highSchoolTrack)
+            return track.isEmpty
+                ? "\(formattedGrade(profile.gradeLevel))"
+                : "\(formattedGrade(profile.gradeLevel)) • \(track)"
+        }
+    }
+
+    private var academicSecondaryLine: String? {
+        guard let profile = studentStore.profile else { return nil }
+
+        if profile.educationLevel == "university" {
+            let trimmedMajor = profile.majorName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return trimmedMajor.isEmpty ? session.currentUser?.email : trimmedMajor
+        } else {
+            return session.currentUser?.email
+        }
+    }
+
+    private var gradeChipText: String {
+        guard let profile = studentStore.profile else { return "No grade" }
+        return formattedGrade(profile.gradeLevel)
+    }
+
+    private var institutionChipText: String? {
+        guard let profile = studentStore.profile else { return nil }
+
+        let trimmed = profile.institutionName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private func formattedGrade(_ value: String) -> String {
+        switch value {
+        case "prep":
+            return "Hazırlık"
+        case "1":
+            return "1. Year"
+        case "2":
+            return "2. Year"
+        case "3":
+            return "3. Year"
+        case "4":
+            return "4. Year"
+        case "5":
+            return "5. Year"
+        case "6":
+            return "6. Year"
+        case "9":
+            return "9. Sınıf"
+        case "10":
+            return "10. Sınıf"
+        case "11":
+            return "11. Sınıf"
+        case "12":
+            return "12. Sınıf"
+        default:
+            return value
+        }
+    }
+
+    private func formattedTrack(_ value: String?) -> String {
+        switch value {
+        case "sayisal":
+            return "Sayısal"
+        case "sozel":
+            return "Sözel"
+        case "esit_agirlik":
+            return "Eşit Ağırlık"
+        case "dil":
+            return "Dil"
+        default:
+            return ""
+        }
+    }
+
+    private func miniStatChip(
+        icon: String,
+        title: String
+    ) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.blue)
+
+            Text(title)
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundStyle(palette.primaryText)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(palette.cardFill.opacity(0.9))
+                .overlay(
+                    Capsule()
+                        .stroke(palette.cardStroke, lineWidth: 1)
+                )
+        )
     }
 
     private func profileRow(
