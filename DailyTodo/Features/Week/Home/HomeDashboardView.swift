@@ -28,6 +28,7 @@ struct HomeDashboardView: View {
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var focusSession: FocusSessionManager
     @Environment(\.locale) var locale
+    @EnvironmentObject var studentStore: StudentStore
 
     @Query(sort: \EventItem.startMinute, order: .forward) var allEvents: [EventItem]
     @Query(sort: \ExamItem.examDate, order: .forward) var allExams: [ExamItem]
@@ -39,7 +40,10 @@ struct HomeDashboardView: View {
     let onAddTask: () -> Void
     let onOpenWeek: () -> Void
     let onOpenInsights: () -> Void
-
+    let onOpenFocus: () -> Void = {
+        NotificationCenter.default.post(name: .openFocusTabFromHome, object: nil)
+    }
+    
     @State var selectedDay: Int = 0
     @State var showFriendsShortcut = false
     @State var showRecentFriendChat = false

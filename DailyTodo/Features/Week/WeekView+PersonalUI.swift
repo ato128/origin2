@@ -353,6 +353,16 @@ extension WeekView {
     }
 
     var emptySection: some View {
+        Group {
+            if studentStore.courses.isEmpty {
+                studentCourseEmptyCard
+            } else {
+                defaultEmptyWeekCard
+            }
+        }
+    }
+
+    var defaultEmptyWeekCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
                 ZStack {
@@ -416,7 +426,6 @@ extension WeekView {
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
-
     var nowEvents: [EventItem] {
         let now = currentMinuteOfDay()
 
@@ -753,5 +762,64 @@ extension WeekView {
         } else {
             return "\(count) items • \(durationText(totalMinutes)) total"
         }
+    }
+    var studentCourseEmptyCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(Color.blue.opacity(0.15))
+                        .frame(width: 46, height: 46)
+
+                    Image(systemName: "graduationcap.fill")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(.blue)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Derslerini ekle")
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
+
+                    Text("Derslerini seç, haftanı ve çalışma planını buna göre kuralım.")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(palette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+            }
+
+            Button {
+                Haptics.impact(.medium)
+                showCourseSetupSheet = true
+            } label: {
+                Text("Dersleri Seç")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        LinearGradient(
+                            colors: [.blue, .indigo],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
+        }
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 24)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
+        )
+        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 12, trailing: 16))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
     }
 }

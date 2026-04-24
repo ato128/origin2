@@ -14,31 +14,32 @@ extension HomeDashboardView {
             overviewMainMetricCard
 
             VStack(spacing: 14) {
-                overviewStreakMetricCard
-                overviewContextMetricCard
+                overviewFocusMetricCard
+                overviewCourseMetricCard
             }
         }
     }
 
+    // MARK: - Main Plan Card
+
     var overviewMainMetricCard: some View {
         Button {
-            showTasksShortcut = true
+            handleMainMetricTap()
         } label: {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .top, spacing: 10) {
-                    Text("Bugünkü İlerleme")
+                    Text(mainMetricCardTitle)
                         .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.95))
+                        .foregroundStyle(.white.opacity(0.96))
                         .lineLimit(2)
                         .minimumScaleFactor(0.82)
-                        .shadow(color: .white.opacity(0.05), radius: 3, y: 1)
 
                     Spacer(minLength: 8)
 
                     premiumHeroCornerIcon(
-                        systemName: safeTodayCompletionRatio >= 1 ? "checkmark.circle.fill" : "checkmark.circle",
-                        tint: safeTodayCompletionRatio >= 1 ? Color.green.opacity(0.98) : .white.opacity(0.88),
-                        glowColor: safeTodayCompletionRatio >= 1 ? Color.green.opacity(0.30) : .white.opacity(0.10)
+                        systemName: mainMetricIcon,
+                        tint: .white.opacity(0.9),
+                        glowColor: todayProgressAccent.opacity(0.28)
                     )
                 }
 
@@ -46,45 +47,29 @@ extension HomeDashboardView {
 
                 ZStack {
                     Circle()
-                        .stroke(
-                            safeTodayCompletionRatio >= 1
-                            ? Color.green.opacity(0.20)
-                            : Color.white.opacity(0.10),
-                            lineWidth: 9
-                        )
+                        .stroke(Color.white.opacity(0.10), lineWidth: 9)
 
                     Circle()
                         .trim(from: 0, to: safeTodayCompletionRatio)
                         .stroke(
                             AngularGradient(
-                                colors: safeTodayCompletionRatio >= 1
-                                ? [
-                                    Color.green.opacity(0.95),
-                                    Color.green.opacity(0.78),
-                                    Color.green.opacity(0.98)
-                                ]
-                                : [
-                                    .white.opacity(0.98),
-                                    .white.opacity(0.82),
-                                    .white.opacity(0.96)
+                                colors: [
+                                    Color.white.opacity(0.96),
+                                    todayProgressAccent.opacity(0.95),
+                                    Color.white.opacity(0.88)
                                 ],
                                 center: .center
                             ),
                             style: StrokeStyle(lineWidth: 9, lineCap: .round)
                         )
                         .rotationEffect(.degrees(-90))
-                        .shadow(
-                            color: safeTodayCompletionRatio >= 1
-                            ? Color.green.opacity(0.22)
-                            : Color.white.opacity(0.08),
-                            radius: 8
-                        )
+                        .shadow(color: todayProgressAccent.opacity(0.18), radius: 8)
 
                     Circle()
                         .fill(
                             RadialGradient(
                                 colors: [
-                                    (safeTodayCompletionRatio >= 1 ? Color.green : Color.white).opacity(0.07),
+                                    todayProgressAccent.opacity(0.10),
                                     Color.clear
                                 ],
                                 center: .center,
@@ -99,12 +84,10 @@ extension HomeDashboardView {
                             .font(.system(size: 28, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
                             .monospacedDigit()
-                            .minimumScaleFactor(0.8)
-                            .shadow(color: .white.opacity(0.05), radius: 3, y: 1)
 
                         Text("tamamlandı")
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.75))
+                            .foregroundStyle(.white.opacity(0.74))
                     }
                 }
                 .frame(width: 108, height: 108)
@@ -114,10 +97,9 @@ extension HomeDashboardView {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(todayCompletionSummaryText)
                         .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.96))
+                        .foregroundStyle(.white.opacity(0.97))
                         .lineLimit(2)
                         .minimumScaleFactor(0.84)
-                        .shadow(color: .white.opacity(0.04), radius: 2, y: 1)
 
                     Text(todayCompletionFootnoteText)
                         .font(.system(size: 11.5, weight: .semibold, design: .rounded))
@@ -137,10 +119,10 @@ extension HomeDashboardView {
             .background(
                 premiumOverviewCardBackground(
                     accent: todayProgressAccent,
-                    secondaryAccent: safeTodayCompletionRatio >= 1 ? Color.green : Color(red: 0.45, green: 0.10, blue: 0.42),
+                    secondaryAccent: todayProgressSecondaryAccent,
                     strength: todayCardGlowStrength,
                     cornerRadius: 34,
-                    emphasizeBottomGlow: safeTodayCompletionRatio >= 1
+                    emphasizeBottomGlow: safeTodayCompletionRatio >= 1 || !hasStudentCourses
                 )
             )
             .overlay(
@@ -151,45 +133,71 @@ extension HomeDashboardView {
         .buttonStyle(.plain)
     }
 
-    var overviewStreakMetricCard: some View {
+    // MARK: - Focus Card
+
+    var overviewFocusMetricCard: some View {
         Button {
-            onOpenInsights()
+            onOpenFocus()
         } label: {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .top, spacing: 8) {
-                    Text("🔥 SERİ")
-                        .font(.system(size: 10.5, weight: .bold, design: .rounded))
-                        .foregroundStyle(streakAccent.opacity(0.97))
-                        .tracking(0.9)
-                        .shadow(color: streakAccent.opacity(0.18), radius: 4)
+            ZStack(alignment: .bottomTrailing) {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(alignment: .top, spacing: 8) {
+                        Text(focusMetricEyebrowText)
+                            .font(.system(size: 10.5, weight: .heavy, design: .rounded))
+                            .foregroundStyle(focusMetricAccent.opacity(0.98))
+                            .tracking(1.1)
+
+                        Spacer(minLength: 8)
+
+                        premiumHeroCornerIcon(
+                            systemName: focusMetricIconName,
+                            tint: .white.opacity(0.9),
+                            glowColor: focusMetricAccent.opacity(0.32)
+                        )
+                    }
+
+                    Spacer(minLength: 12)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(focusMetricMainText)
+                            .font(.system(size: hasFocusedTodayForHome && !isFocusCurrentlyActive ? 28 : 32,
+                                          weight: .heavy,
+                                          design: .rounded))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
+
+                        Text(focusMetricSubtitleText)
+                            .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.76))
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.84)
+                    }
 
                     Spacer(minLength: 8)
 
-                    premiumHeroCornerIcon(
-                        systemName: "flame.fill",
-                        tint: .white.opacity(0.88),
-                        glowColor: streakAccent.opacity(0.32)
-                    )
+                    premiumOrbitDecorationCompact
                 }
 
-                Spacer(minLength: 14)
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("\(streakCount)")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .monospacedDigit()
-                        .shadow(color: .white.opacity(0.05), radius: 3)
-
-                    Text("gün üst üste")
-                        .font(.system(size: 11.5, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.74))
-                        .shadow(color: streakAccent.opacity(0.10), radius: 3)
+                if hasFocusedTodayForHome && !isFocusCurrentlyActive {
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 58, weight: .black))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.95),
+                                    Color(red: 1.00, green: 0.72, blue: 0.22),
+                                    Color(red: 1.00, green: 0.30, blue: 0.10)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .shadow(color: Color.orange.opacity(0.55), radius: 18)
+                        .shadow(color: Color.red.opacity(0.20), radius: 28)
+                        .opacity(0.32)
+                        .offset(x: 4, y: 4)
                 }
-
-                Spacer(minLength: 8)
-
-                premiumOrbitDecorationCompact
             }
             .padding(.horizontal, 16)
             .padding(.top, 14)
@@ -197,11 +205,11 @@ extension HomeDashboardView {
             .frame(maxWidth: .infinity, minHeight: 108, alignment: .topLeading)
             .background(
                 premiumOverviewCardBackground(
-                    accent: streakAccent,
-                    secondaryAccent: Color(red: 0.38, green: 0.06, blue: 0.28),
-                    strength: streakCardGlowStrength,
+                    accent: focusMetricAccent,
+                    secondaryAccent: focusMetricSecondaryAccent,
+                    strength: focusMetricGlowStrength,
                     cornerRadius: 28,
-                    emphasizeBottomGlow: streakCount >= 3
+                    emphasizeBottomGlow: isFocusCurrentlyActive || hasFocusedTodayForHome
                 )
             )
             .overlay(
@@ -212,43 +220,42 @@ extension HomeDashboardView {
         .buttonStyle(.plain)
     }
 
-    var overviewContextMetricCard: some View {
+    // MARK: - Course Card
+
+    var overviewCourseMetricCard: some View {
         Button {
-            onOpenWeek()
+            handleCourseMetricTap()
         } label: {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .top, spacing: 8) {
-                    Text("✨ DERS")
+                    Text(courseMetricEyebrowText)
                         .font(.system(size: 10.5, weight: .bold, design: .rounded))
-                        .foregroundStyle(nextClassAccent.opacity(0.97))
+                        .foregroundStyle(courseMetricAccent.opacity(0.98))
                         .tracking(0.9)
-                        .shadow(color: nextClassAccent.opacity(0.16), radius: 4)
 
                     Spacer(minLength: 8)
 
                     premiumHeroCornerIcon(
-                        systemName: "calendar",
-                        tint: .white.opacity(0.88),
-                        glowColor: nextClassAccent.opacity(0.24)
+                        systemName: courseMetricIconName,
+                        tint: .white.opacity(0.9),
+                        glowColor: courseMetricAccent.opacity(0.26)
                     )
                 }
 
                 Spacer(minLength: 14)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(nextClassCardTitle)
+                    Text(courseMetricTitle)
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.98))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .shadow(color: .white.opacity(0.04), radius: 2, y: 1)
+                        .minimumScaleFactor(0.78)
 
-                    Text(nextClassCardSubtitle)
+                    Text(courseMetricSubtitle)
                         .font(.system(size: 11.5, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.74))
                         .lineLimit(2)
                         .minimumScaleFactor(0.84)
-                        .shadow(color: nextClassAccent.opacity(0.10), radius: 3)
                 }
 
                 Spacer(minLength: 8)
@@ -261,11 +268,11 @@ extension HomeDashboardView {
             .frame(maxWidth: .infinity, minHeight: 108, alignment: .topLeading)
             .background(
                 premiumOverviewCardBackground(
-                    accent: nextClassAccent,
-                    secondaryAccent: Color(red: 0.34, green: 0.05, blue: 0.34),
-                    strength: nextClassGlowStrength,
+                    accent: courseMetricAccent,
+                    secondaryAccent: courseMetricSecondaryAccent,
+                    strength: courseMetricGlowStrength,
                     cornerRadius: 28,
-                    emphasizeBottomGlow: nextEvent != nil
+                    emphasizeBottomGlow: nextEvent != nil || hasStudentCourses
                 )
             )
             .overlay(
@@ -274,6 +281,55 @@ extension HomeDashboardView {
             )
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Actions
+
+    func handleMainMetricTap() {
+        if !hasStudentCourses {
+            onOpenWeek()
+            return
+        }
+
+        showTasksShortcut = true
+    }
+
+    func handleCourseMetricTap() {
+        onOpenWeek()
+    }
+
+    // MARK: - Main Metric State
+
+    var mainMetricCardTitle: String {
+        if !hasStudentCourses {
+            return "Başlangıç"
+        }
+
+        if totalTodayTaskCount == 0 {
+            return "Bugünkü Plan"
+        }
+
+        if completedTodayCount >= totalTodayTaskCount {
+            return "Bugün Tamam"
+        }
+
+        return "Bugünkü İlerleme"
+    }
+
+    var mainMetricIcon: String {
+        if !hasStudentCourses {
+            return "graduationcap.fill"
+        }
+
+        if totalTodayTaskCount == 0 {
+            return "sparkles"
+        }
+
+        if completedTodayCount >= totalTodayTaskCount {
+            return "checkmark.circle.fill"
+        }
+
+        return "checkmark.circle"
     }
 
     var safeTodayCompletionRatio: CGFloat {
@@ -287,20 +343,28 @@ extension HomeDashboardView {
     }
 
     var todayCompletionSummaryText: String {
+        if !hasStudentCourses {
+            return "Derslerini ekle"
+        }
+
         if totalTodayTaskCount == 0 {
-            return "Bugün boş görünüyor"
+            return "Bir ders seç ve çalış"
         }
 
         if completedTodayCount >= totalTodayTaskCount {
-            return "Tüm görevler tamam"
+            return "Bugün tamam"
         }
 
         return "\(completedTodayCount)/\(totalTodayTaskCount) görev bitti"
     }
 
     var todayCompletionFootnoteText: String {
+        if !hasStudentCourses {
+            return "Planın buna göre akıllanır"
+        }
+
         if totalTodayTaskCount == 0 {
-            return "İstersen yeni bir görev ekleyebilirsin"
+            return "Sana çalışma planı oluşturalım"
         }
 
         let remaining = max(totalTodayTaskCount - completedTodayCount, 0)
@@ -313,71 +377,172 @@ extension HomeDashboardView {
     }
 
     var todayProgressAccent: Color {
+        if !hasStudentCourses {
+            return Color(red: 0.44, green: 0.58, blue: 1.00)
+        }
+
         if safeTodayCompletionRatio >= 1 {
-            return Color(red: 0.22, green: 0.82, blue: 0.42)
+            return Color(red: 0.20, green: 0.78, blue: 0.44)
         }
+
         if safeTodayCompletionRatio >= 0.66 {
-            return Color(red: 0.66, green: 0.50, blue: 0.84)
+            return Color(red: 0.35, green: 0.67, blue: 1.00)
         }
-        return Color(red: 0.90, green: 0.47, blue: 0.80)
+
+        if safeTodayCompletionRatio > 0 {
+            return Color(red: 0.55, green: 0.44, blue: 1.00)
+        }
+
+        return Color(red: 0.48, green: 0.35, blue: 0.98)
+    }
+
+    var todayProgressSecondaryAccent: Color {
+        if !hasStudentCourses {
+            return Color(red: 0.08, green: 0.18, blue: 0.36)
+        }
+
+        if safeTodayCompletionRatio >= 1 {
+            return Color(red: 0.04, green: 0.30, blue: 0.20)
+        }
+
+        return Color(red: 0.12, green: 0.06, blue: 0.28)
     }
 
     var todayCardGlowStrength: Double {
-        0.32 + (Double(safeTodayCompletionRatio) * 0.68)
+        if !hasStudentCourses { return 0.74 }
+        return 0.34 + (Double(safeTodayCompletionRatio) * 0.66)
     }
 
-    var streakAccent: Color {
-        if streakCount >= 14 {
-            return Color(red: 1.00, green: 0.55, blue: 0.16)
-        }
-        if streakCount >= 7 {
-            return Color(red: 0.98, green: 0.50, blue: 0.18)
-        }
-        if streakCount >= 3 {
-            return Color(red: 0.96, green: 0.46, blue: 0.20)
-        }
-        return Color(red: 0.90, green: 0.42, blue: 0.22)
+    // MARK: - Focus Metric State
+
+    var isFocusCurrentlyActive: Bool {
+        focusSession.isSessionActive || hasAnyActiveFocusSession
     }
 
-    var streakCardGlowStrength: Double {
-        min(0.28 + (Double(streakCount) * 0.055), 1.0)
+    var hasFocusedTodayForHome: Bool {
+        if isFocusCurrentlyActive { return true }
+        return streakCount > 0
     }
 
-    var nextClassGlowStrength: Double {
-        guard let nextEvent else { return 0.26 }
-
-        let diff = max(nextEvent.startMinute - currentMinuteOfDay(), 0)
-
-        if diff <= 15 { return 1.0 }
-        if diff <= 30 { return 0.86 }
-        if diff <= 60 { return 0.70 }
-        if diff <= 120 { return 0.52 }
-        return 0.34
-    }
-
-    var nextClassAccent: Color {
-        guard let nextEvent else {
-            return Color.white.opacity(0.42)
+    var focusMetricEyebrowText: String {
+        if isFocusCurrentlyActive {
+            return "🔥 ODAK"
         }
 
-        let hex = nextEvent.colorHex.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let color = colorFromHex(hex), hex.isEmpty == false {
-            return color
+        if hasFocusedTodayForHome {
+            return "🔥 ATEŞ"
         }
 
-        return Color(red: 0.20, green: 0.64, blue: 1.00)
+        return "🔥 FOCUS"
     }
 
-    var nextClassCardTitle: String {
+    var focusMetricMainText: String {
+        if isFocusCurrentlyActive {
+            return "Aktif"
+        }
+
+        if hasFocusedTodayForHome {
+            return "Yandı"
+        }
+
+        return "Başla"
+    }
+
+    var focusMetricSubtitleText: String {
+        if isFocusCurrentlyActive {
+            return "oturum devam ediyor"
+        }
+
+        if hasFocusedTodayForHome {
+            return streakCount > 0 ? "\(streakCount) gün seri" : "bugün odaklandın"
+        }
+
+        return "ilk oturumu başlat"
+    }
+
+    var focusMetricIconName: String {
+        if isFocusCurrentlyActive {
+            return "timer"
+        }
+
+        if hasFocusedTodayForHome {
+            return "flame.fill"
+        }
+
+        return "play.fill"
+    }
+
+    var focusMetricAccent: Color {
+        if isFocusCurrentlyActive {
+            return Color(red: 0.16, green: 0.56, blue: 1.00)
+        }
+
+        if hasFocusedTodayForHome {
+            return Color(red: 1.00, green: 0.52, blue: 0.16)
+        }
+
+        return Color(red: 0.56, green: 0.36, blue: 1.00)
+    }
+
+    var focusMetricSecondaryAccent: Color {
+        if isFocusCurrentlyActive {
+            return Color(red: 0.03, green: 0.18, blue: 0.36)
+        }
+
+        if hasFocusedTodayForHome {
+            return Color(red: 0.36, green: 0.10, blue: 0.04)
+        }
+
+        return Color(red: 0.16, green: 0.07, blue: 0.32)
+    }
+
+    var focusMetricGlowStrength: Double {
+        if isFocusCurrentlyActive { return 0.94 }
+        if hasFocusedTodayForHome { return 0.86 }
+        return 0.62
+    }
+
+    // MARK: - Course Metric State
+
+    var courseMetricEyebrowText: String {
+        if nextEvent != nil {
+            return "✨ SIRADAKİ"
+        }
+
+        return "✨ DERS"
+    }
+
+    var courseMetricIconName: String {
+        if nextEvent != nil {
+            return "calendar.badge.clock"
+        }
+
+        if hasStudentCourses {
+            return "books.vertical.fill"
+        }
+
+        return "calendar.badge.plus"
+    }
+
+    var courseMetricTitle: String {
         if let nextEvent {
             return nextEvent.title
         }
-        return "Ders yok"
+
+        if hasStudentCourses {
+            return "\(studentCourseCount) aktif ders"
+        }
+
+        return "Ders ekle"
     }
 
-    var nextClassCardSubtitle: String {
+    var courseMetricSubtitle: String {
         guard let nextEvent else {
-            return "Takviminde yakın ders görünmüyor"
+            if hasStudentCourses {
+                return coursePreviewText
+            }
+
+            return "Derslerini seç, haftanı ona göre kuralım"
         }
 
         let diff = max(nextEvent.startMinute - currentMinuteOfDay(), 0)
@@ -406,6 +571,98 @@ extension HomeDashboardView {
         return "\(hours) sa \(minutes) dk sonra"
     }
 
+    var courseMetricAccent: Color {
+        if let nextEvent {
+            let hex = nextEvent.colorHex.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let color = colorFromHex(hex), !hex.isEmpty {
+                return color
+            }
+
+            return Color(red: 0.18, green: 0.62, blue: 1.00)
+        }
+
+        if hasStudentCourses {
+            return primaryCourseAccent
+        }
+
+        return Color(red: 0.55, green: 0.60, blue: 0.72)
+    }
+
+    var courseMetricSecondaryAccent: Color {
+        if nextEvent != nil {
+            return Color(red: 0.03, green: 0.18, blue: 0.34)
+        }
+
+        if hasStudentCourses {
+            return Color(red: 0.10, green: 0.08, blue: 0.28)
+        }
+
+        return Color(red: 0.16, green: 0.16, blue: 0.22)
+    }
+
+    var courseMetricGlowStrength: Double {
+        if nextEvent != nil { return 0.92 }
+        if hasStudentCourses { return 0.72 }
+        return 0.42
+    }
+
+    var primaryCourseAccent: Color {
+        guard let first = studentActiveCourses.first else {
+            return Color(red: 0.50, green: 0.56, blue: 0.72)
+        }
+
+        let hex = first.colorHex.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let color = colorFromHex(hex), !hex.isEmpty {
+            return color
+        }
+
+        return Color(red: 0.28, green: 0.56, blue: 1.00)
+    }
+
+    // MARK: - Student Data
+
+    var studentActiveCourses: [Course] {
+        studentStore.courses.filter { !$0.isArchived }
+    }
+
+    var studentCourseCount: Int {
+        studentActiveCourses.count
+    }
+
+    var hasStudentCourses: Bool {
+        studentCourseCount > 0
+    }
+
+    var coursePreviewText: String {
+        let previews = studentActiveCourses
+            .prefix(2)
+            .map { course in
+                let code = course.code.trimmingCharacters(in: .whitespacesAndNewlines)
+                return code.isEmpty ? course.name : code
+            }
+
+        if previews.isEmpty {
+            return "Derslerini ekle"
+        }
+
+        return previews.joined(separator: ", ")
+    }
+
+    func studentGradeLabel(_ value: String) -> String {
+        switch value {
+        case "prep": return "Hazırlık"
+        case "1": return "1. sınıf"
+        case "2": return "2. sınıf"
+        case "3": return "3. sınıf"
+        case "4": return "4. sınıf"
+        case "5": return "5. sınıf"
+        case "6": return "6. sınıf"
+        default: return "\(value). sınıf"
+        }
+    }
+
+    // MARK: - Shared UI
+
     func premiumHeroCornerIcon(
         systemName: String,
         tint: Color,
@@ -416,8 +673,8 @@ extension HomeDashboardView {
                 .fill(
                     RadialGradient(
                         colors: [
-                            glowColor.opacity(0.22),
-                            Color.white.opacity(0.03),
+                            glowColor.opacity(0.24),
+                            Color.white.opacity(0.035),
                             Color.clear
                         ],
                         center: .center,
@@ -428,17 +685,17 @@ extension HomeDashboardView {
                 .frame(width: 34, height: 34)
 
             Circle()
-                .fill(Color.white.opacity(0.05))
+                .fill(Color.white.opacity(0.055))
                 .frame(width: 28, height: 28)
 
             Circle()
-                .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                .stroke(Color.white.opacity(0.075), lineWidth: 1)
                 .frame(width: 28, height: 28)
 
             Image(systemName: systemName)
                 .font(.system(size: 11.5, weight: .bold))
                 .foregroundStyle(tint)
-                .shadow(color: glowColor.opacity(0.20), radius: 4)
+                .shadow(color: glowColor.opacity(0.24), radius: 4)
         }
     }
 
@@ -449,18 +706,18 @@ extension HomeDashboardView {
         cornerRadius: CGFloat,
         emphasizeBottomGlow: Bool
     ) -> some View {
-        let topGlow = 0.14 + (strength * 0.08)
-        let leadingGlow = 0.18 + (strength * 0.10)
-        let bottomGlow = emphasizeBottomGlow ? (0.18 + strength * 0.18) : (0.10 + strength * 0.08)
+        let topGlow = 0.12 + (strength * 0.08)
+        let leadingGlow = 0.16 + (strength * 0.10)
+        let bottomGlow = emphasizeBottomGlow ? (0.16 + strength * 0.18) : (0.08 + strength * 0.08)
 
         return RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             .fill(
                 LinearGradient(
                     colors: [
-                        accent.opacity(0.84),
-                        accent.opacity(0.48),
-                        secondaryAccent.opacity(0.76),
-                        Color(red: 0.11, green: 0.03, blue: 0.12)
+                        accent.opacity(0.82),
+                        accent.opacity(0.46),
+                        secondaryAccent.opacity(0.78),
+                        Color(red: 0.035, green: 0.035, blue: 0.070)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -473,10 +730,10 @@ extension HomeDashboardView {
                             colors: [
                                 Color.white.opacity(topGlow),
                                 Color.clear,
-                                Color.clear
+                                Color.black.opacity(0.08)
                             ],
                             startPoint: .top,
-                            endPoint: .center
+                            endPoint: .bottom
                         )
                     )
                     .blendMode(.screen)
@@ -491,7 +748,7 @@ extension HomeDashboardView {
                             ],
                             center: .topLeading,
                             startRadius: 4,
-                            endRadius: 160
+                            endRadius: 170
                         )
                     )
             )
@@ -505,7 +762,7 @@ extension HomeDashboardView {
                             ],
                             center: .bottomLeading,
                             startRadius: 10,
-                            endRadius: 160
+                            endRadius: 170
                         )
                     )
                     .blur(radius: 10)
@@ -520,7 +777,7 @@ extension HomeDashboardView {
                             colors: [
                                 Color.black.opacity(0.00),
                                 Color.black.opacity(0.08),
-                                Color.black.opacity(0.18)
+                                Color.black.opacity(0.20)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
@@ -534,7 +791,7 @@ extension HomeDashboardView {
             height: 66,
             circleSize: 62,
             pointScale: 0.95,
-            opacityScale: 0.78
+            opacityScale: 0.72
         )
     }
 
@@ -543,7 +800,7 @@ extension HomeDashboardView {
             height: 30,
             circleSize: 28,
             pointScale: 0.72,
-            opacityScale: 0.66
+            opacityScale: 0.62
         )
     }
 

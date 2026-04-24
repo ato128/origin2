@@ -22,6 +22,7 @@ struct ProfileHubView: View {
 
     @State private var showEditProfile = false
     @State private var showAuthSheet = false
+    @State private var showStudentAcademicSettings = false
 
     private var palette: ThemePalette { ThemePalette() }
 
@@ -58,6 +59,10 @@ struct ProfileHubView: View {
         .sheet(isPresented: $showAuthSheet) {
             AuthView()
                 .environmentObject(session)
+        }
+        .sheet(isPresented: $showStudentAcademicSettings) {
+            StudentAcademicSettingsView()
+                .environmentObject(studentStore)
         }
     }
 
@@ -176,6 +181,20 @@ struct ProfileHubView: View {
                             iconColor: .blue,
                             title: "Profili Düzenle",
                             subtitle: "Adını ve kullanıcı adını güncelle"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    Divider()
+                        .overlay(Color.white.opacity(0.08))
+
+                    Button {
+                        showStudentAcademicSettings = true
+                    } label: {
+                        profileRow(
+                            icon: "graduationcap.fill",
+                            iconColor: .blue,
+                            title: "Öğrenci Bilgileri",
+                            subtitle: "Üniversite, bölüm, yıl ve derslerini düzenle"
                         )
                     }
                     .buttonStyle(.plain)

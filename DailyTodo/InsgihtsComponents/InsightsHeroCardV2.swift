@@ -14,10 +14,19 @@ struct InsightsHeroCardV2: View {
 
     private var heroTint: Color {
         switch data.mode {
-        case .exams: return .orange
-        case .courses: return .blue
-        case .rhythm: return .green
-        case .empty: return .purple
+        case .exams: return Color(red: 1.00, green: 0.55, blue: 0.18)
+        case .courses: return Color(red: 0.20, green: 0.58, blue: 1.00)
+        case .rhythm: return Color(red: 0.22, green: 0.78, blue: 0.46)
+        case .empty: return Color(red: 0.56, green: 0.36, blue: 1.00)
+        }
+    }
+
+    private var secondaryTint: Color {
+        switch data.mode {
+        case .exams: return Color(red: 0.36, green: 0.10, blue: 0.04)
+        case .courses: return Color(red: 0.03, green: 0.18, blue: 0.36)
+        case .rhythm: return Color(red: 0.04, green: 0.26, blue: 0.18)
+        case .empty: return Color(red: 0.16, green: 0.07, blue: 0.32)
         }
     }
 
@@ -32,14 +41,10 @@ struct InsightsHeroCardV2: View {
 
     private var compactSubtitle: String {
         switch data.mode {
-        case .exams:
-            return "Short consistent blocks win."
-        case .courses:
-            return "Keep weaker courses in view."
-        case .rhythm:
-            return "Your pattern is starting to form."
-        case .empty:
-            return "A few sessions will light this up."
+        case .exams: return "Short consistent blocks win."
+        case .courses: return "Keep weaker courses in view."
+        case .rhythm: return "Your pattern is starting to form."
+        case .empty: return "A few sessions will light this up."
         }
     }
 
@@ -51,19 +56,19 @@ struct InsightsHeroCardV2: View {
                 HStack(alignment: .top, spacing: 16) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Today Pulse")
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.54))
-                            .tracking(0.35)
+                            .font(.system(size: 12, weight: .heavy, design: .rounded))
+                            .foregroundStyle(heroTint.opacity(0.98))
+                            .tracking(1.1)
 
                         Text(compactTitle)
-                            .font(.system(size: 31, weight: .bold, design: .rounded))
+                            .font(.system(size: 32, weight: .heavy, design: .rounded))
                             .foregroundStyle(.white)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
 
                         Text(compactSubtitle)
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.72))
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.74))
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -94,18 +99,34 @@ struct InsightsHeroCardV2: View {
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                     }
                     .foregroundStyle(.black)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 11)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
                     .background(
                         Capsule()
                             .fill(Color.white.opacity(0.98))
                     )
+                    .shadow(color: heroTint.opacity(0.22), radius: 14, y: 5)
                 }
                 .buttonStyle(.plain)
+
+                orbitDecoration
             }
-            .padding(18)
-            .frame(maxWidth: .infinity, minHeight: 220, alignment: .topLeading)
-            .background(heroCardBackground(accent: heroTint))
+            .padding(.horizontal, 18)
+            .padding(.top, 18)
+            .padding(.bottom, 14)
+            .frame(maxWidth: .infinity, minHeight: 228, alignment: .topLeading)
+            .background(
+                premiumInsightsBackground(
+                    accent: heroTint,
+                    secondaryAccent: secondaryTint,
+                    strength: 0.78,
+                    cornerRadius: 34
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 34, style: .continuous)
+                    .stroke(Color.white.opacity(0.07), lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
     }
@@ -113,76 +134,47 @@ struct InsightsHeroCardV2: View {
     private var metricOrb: some View {
         ZStack {
             Circle()
-                .stroke(Color.white.opacity(0.10), lineWidth: 1.2)
+                .stroke(Color.white.opacity(0.09), lineWidth: 1.2)
                 .frame(width: 128, height: 128)
 
             Circle()
                 .fill(
                     RadialGradient(
                         colors: [
-                            heroTint.opacity(0.22),
-                            heroTint.opacity(0.10),
+                            heroTint.opacity(0.26),
+                            heroTint.opacity(0.08),
                             .clear
                         ],
                         center: .center,
                         startRadius: 8,
-                        endRadius: 64
+                        endRadius: 66
                     )
                 )
                 .frame(width: 132, height: 132)
-                .blur(radius: 8)
-
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            heroTint.opacity(0.55),
-                            heroTint.opacity(0.20),
-                            .clear
-                        ],
-                        center: .center,
-                        startRadius: 6,
-                        endRadius: 42
-                    )
-                )
-                .frame(width: 92, height: 92)
-                .blur(radius: 3)
 
             Circle()
                 .fill(
                     LinearGradient(
                         colors: [
-                            heroTint.opacity(0.95),
-                            heroTint.opacity(0.72)
+                            Color.white.opacity(0.18),
+                            heroTint.opacity(0.88),
+                            secondaryTint.opacity(0.72)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
-                .frame(width: 74, height: 74)
-
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            Color.white.opacity(0.22),
-                            .clear
-                        ],
-                        center: UnitPoint(x: 0.42, y: 0.30),
-                        startRadius: 2,
-                        endRadius: 18
-                    )
-                )
-                .frame(width: 74, height: 74)
+                .frame(width: 76, height: 76)
+                .shadow(color: heroTint.opacity(0.22), radius: 18)
 
             VStack(spacing: 1) {
                 Text(data.primaryValue)
-                    .font(.system(size: 31, weight: .bold, design: .rounded))
+                    .font(.system(size: 31, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
 
                 Text(data.primaryLabel)
                     .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.64))
+                    .foregroundStyle(.white.opacity(0.66))
                     .lineLimit(1)
             }
         }
@@ -192,11 +184,11 @@ struct InsightsHeroCardV2: View {
     private func heroChip(_ text: String) -> some View {
         HStack(spacing: 6) {
             Circle()
-                .fill(Color.white.opacity(0.50))
+                .fill(Color.white.opacity(0.52))
                 .frame(width: 5, height: 5)
 
             Text(text)
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .font(.system(size: 12, weight: .bold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.88))
                 .lineLimit(1)
         }
@@ -204,122 +196,135 @@ struct InsightsHeroCardV2: View {
         .padding(.vertical, 7)
         .background(
             Capsule()
-                .fill(Color.white.opacity(0.08))
+                .fill(Color.white.opacity(0.075))
                 .overlay(
                     Capsule()
-                        .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                        .stroke(Color.white.opacity(0.055), lineWidth: 1)
                 )
         )
     }
 
-    private func heroCardBackground(accent: Color) -> some View {
-        RoundedRectangle(cornerRadius: 34, style: .continuous)
+    private func premiumInsightsBackground(
+        accent: Color,
+        secondaryAccent: Color,
+        strength: Double,
+        cornerRadius: CGFloat
+    ) -> some View {
+        let topGlow = 0.12 + (strength * 0.08)
+        let leadingGlow = 0.16 + (strength * 0.10)
+        let bottomGlow = 0.14 + (strength * 0.16)
+
+        return RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             .fill(
                 LinearGradient(
                     colors: [
-                        accent,
-                        accent.opacity(0.85),
-                        accent.opacity(0.65),
-                        Color.black.opacity(0.35)
+                        accent.opacity(0.82),
+                        accent.opacity(0.46),
+                        secondaryAccent.opacity(0.78),
+                        Color(red: 0.035, green: 0.035, blue: 0.070)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 34, style: .continuous)
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                accent.opacity(0.9),
-                                accent.opacity(0.5),
-                                accent.opacity(0.15),
-                                .clear
-                            ],
-                            center: .topLeading,
-                            startRadius: 10,
-                            endRadius: 280
-                        )
-                    )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 34, style: .continuous)
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                Color.white.opacity(0.25),
-                                Color.white.opacity(0.08),
-                                .clear
-                            ],
-                            center: UnitPoint(x: 0.78, y: 0.22),
-                            startRadius: 6,
-                            endRadius: 120
-                        )
-                    )
-            )
-            .overlay(
-                ZStack {
-                    Circle()
-                        .fill(accent.opacity(0.35))
-                        .frame(width: 300, height: 300)
-                        .blur(radius: 70)
-                        .offset(x: -120, y: 160)
-
-                    Circle()
-                        .fill(accent.opacity(0.22))
-                        .frame(width: 220, height: 220)
-                        .blur(radius: 60)
-                        .offset(x: 100, y: 180)
-                }
-            )
-            .overlay(
-                HeroDustOverlay()
-                    .clipShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 34, style: .continuous)
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.06),
+                                Color.white.opacity(topGlow),
                                 Color.clear,
+                                Color.black.opacity(0.08)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .blendMode(.screen)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                accent.opacity(leadingGlow),
                                 Color.clear
                             ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                            center: .topLeading,
+                            startRadius: 4,
+                            endRadius: 180
                         )
                     )
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 34, style: .continuous)
-                    .stroke(accent.opacity(0.25), lineWidth: 1)
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                secondaryAccent.opacity(bottomGlow),
+                                Color.clear
+                            ],
+                            center: .bottomLeading,
+                            startRadius: 10,
+                            endRadius: 180
+                        )
+                    )
+                    .blur(radius: 10)
+                    .mask(
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.black.opacity(0.00),
+                                Color.black.opacity(0.08),
+                                Color.black.opacity(0.20)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
             )
     }
-}
 
-private struct HeroDustOverlay: View {
-    var body: some View {
+    private var orbitDecoration: some View {
         ZStack {
-            Circle()
-                .fill(Color.white.opacity(0.25))
-                .frame(width: 10, height: 10)
-                .offset(x: -90, y: 110)
+            RoundedRectangle(cornerRadius: 120, style: .continuous)
+                .strokeBorder(
+                    Color.white.opacity(0.035),
+                    style: StrokeStyle(lineWidth: 0.8, dash: [3, 5])
+                )
 
-            Circle()
-                .fill(Color.white.opacity(0.18))
-                .frame(width: 8, height: 8)
-                .offset(x: -30, y: 120)
+            GeometryReader { geo in
+                let y = geo.size.height / 2
 
-            Circle()
-                .fill(Color.white.opacity(0.14))
-                .frame(width: 8, height: 8)
-                .offset(x: 30, y: 112)
+                Path { path in
+                    path.move(to: CGPoint(x: 0, y: y))
+                    path.addLine(to: CGPoint(x: geo.size.width, y: y))
+                }
+                .stroke(
+                    Color.white.opacity(0.025),
+                    style: StrokeStyle(lineWidth: 0.8, dash: [3, 5])
+                )
 
-            Circle()
-                .fill(Color.white.opacity(0.12))
-                .frame(width: 7, height: 7)
-                .offset(x: 95, y: 125)
+                ForEach(0..<4, id: \.self) { index in
+                    Circle()
+                        .stroke(
+                            Color.white.opacity(0.032),
+                            style: StrokeStyle(lineWidth: 0.8, dash: [3, 5])
+                        )
+                        .frame(width: 28, height: 28)
+                        .position(
+                            x: geo.size.width * (0.12 + CGFloat(index) * 0.24),
+                            y: y
+                        )
+                }
+            }
         }
-        .allowsHitTesting(false)
+        .frame(height: 30)
+        .opacity(0.82)
     }
 }

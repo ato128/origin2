@@ -41,6 +41,10 @@ extension WeekView {
                 .sheet(item: $selectedEventForDetail) { event in
                     selectedEventDetailSheet(event)
                 }
+                .sheet(isPresented: $showCourseSetupSheet) {
+                    CourseSetupSheet()
+                        .environmentObject(studentStore)
+                }
         }
     }
 
@@ -208,6 +212,7 @@ extension WeekView {
                         showCrewPickerSheet = true
                     }
                 } else {
+                    studentStore.reload()
                     planAheadDate = targetDateForSelectedDay()
                     showingAdd = true
                 }

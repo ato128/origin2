@@ -23,7 +23,7 @@ struct InsightsAchievementsSectionV2: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Achievements")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .font(.system(size: 24, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
 
                 Spacer()
@@ -49,7 +49,7 @@ struct InsightsAchievementsSectionV2: View {
                     previewCard(
                         title: "Recent",
                         badge: recentUnlocked,
-                        tint: recentUnlocked.isUnlocked ? recentUnlocked.accent : .white,
+                        tint: recentUnlocked.isUnlocked ? recentUnlocked.accent : Color(red: 0.52, green: 0.58, blue: 0.72),
                         isPrimary: false
                     )
                 }
@@ -66,60 +66,164 @@ struct InsightsAchievementsSectionV2: View {
         Button {
             onSeeAll()
         } label: {
-            InsightsGlassCard(
-                cornerRadius: 26,
-                tint: tint,
-                glowOpacity: badge.isUnlocked ? 0.16 : 0.10,
-                fillOpacity: badge.isUnlocked ? 0.14 : 0.08,
-                strokeOpacity: 0.08
-            ) {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text(title)
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.54))
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text(title)
+                        .font(.system(size: 12, weight: .heavy, design: .rounded))
+                        .foregroundStyle(tint.opacity(0.95))
+                        .tracking(0.5)
 
-                        Spacer()
+                    Spacer()
 
-                        Image(systemName: badge.icon)
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(badge.isUnlocked ? tint : .white.opacity(0.42))
-                    }
+                    premiumIcon(systemName: badge.icon, tint: tint, unlocked: badge.isUnlocked)
+                }
 
-                    Spacer(minLength: 0)
+                Spacer(minLength: 0)
 
-                    Text(badge.title)
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(2)
+                Text(badge.title)
+                    .font(.system(size: 19, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(2)
 
-                    if let progress = badge.progress, !badge.isUnlocked {
-                        ZStack(alignment: .leading) {
-                            Capsule()
-                                .fill(Color.white.opacity(0.08))
-                                .frame(height: 6)
+                if let progress = badge.progress, !badge.isUnlocked {
+                    progressBeam(progress: progress, tint: tint)
+                } else {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(badge.isUnlocked ? tint : Color.white.opacity(0.50))
+                            .frame(width: 6, height: 6)
 
-                            Capsule()
-                                .fill(Color.white.opacity(0.84))
-                                .frame(width: max(12, 120 * progress), height: 6)
-                        }
-                    } else {
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(Color.white.opacity(0.82))
-                                .frame(width: 6, height: 6)
-
-                            Text(badge.isUnlocked ? "Unlocked" : "Locked")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(.white.opacity(0.78))
-                        }
+                        Text(badge.isUnlocked ? "Unlocked" : "Locked")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.78))
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .frame(height: 138, alignment: .topLeading)
             }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 154, alignment: .topLeading)
+            .background(
+                achievementBackground(
+                    tint: tint,
+                    isUnlocked: badge.isUnlocked,
+                    isPrimary: isPrimary
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .stroke(Color.white.opacity(0.07), lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
+    }
+
+    private func premiumIcon(systemName: String, tint: Color, unlocked: Bool) -> some View {
+        ZStack {
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            tint.opacity(unlocked ? 0.28 : 0.12),
+                            Color.white.opacity(0.035),
+                            Color.clear
+                        ],
+                        center: .center,
+                        startRadius: 2,
+                        endRadius: 22
+                    )
+                )
+                .frame(width: 34, height: 34)
+
+            Circle()
+                .fill(Color.white.opacity(0.055))
+                .frame(width: 28, height: 28)
+
+            Image(systemName: systemName)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(unlocked ? Color.white.opacity(0.92) : Color.white.opacity(0.42))
+                .shadow(color: tint.opacity(0.22), radius: 4)
+        }
+    }
+
+    private func progressBeam(progress: Double, tint: Color) -> some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let value = min(max(progress, 0), 1)
+
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.white.opacity(0.08))
+                    .frame(height: 7)
+
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                tint.opacity(0.98),
+                                Color.white.opacity(0.86)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: max(12, width * value), height: 7)
+                    .shadow(color: tint.opacity(0.14), radius: 8)
+            }
+        }
+        .frame(height: 7)
+    }
+
+    private func achievementBackground(
+        tint: Color,
+        isUnlocked: Bool,
+        isPrimary: Bool
+    ) -> some View {
+        let strength: Double = isUnlocked ? 0.72 : 0.42
+        let secondary = isPrimary
+            ? Color(red: 0.04, green: 0.16, blue: 0.30)
+            : Color(red: 0.12, green: 0.10, blue: 0.18)
+
+        return RoundedRectangle(cornerRadius: 26, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        tint.opacity(0.18 + strength * 0.16),
+                        tint.opacity(0.10),
+                        secondary.opacity(0.62),
+                        Color(red: 0.035, green: 0.035, blue: 0.070)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                tint.opacity(0.16 + strength * 0.12),
+                                Color.clear
+                            ],
+                            center: .topLeading,
+                            startRadius: 4,
+                            endRadius: 130
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.07),
+                                Color.clear,
+                                Color.black.opacity(0.18)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+            )
     }
 }

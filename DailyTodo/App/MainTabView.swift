@@ -18,6 +18,10 @@ enum AppTab: Hashable {
     case insights
 }
 
+extension Notification.Name {
+    static let openFocusTabFromHome = Notification.Name("openFocusTabFromHome")
+}
+
 struct MainTabView: View {
     @Binding var openFocusFromNotification: Bool
 
@@ -88,6 +92,9 @@ struct MainTabView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .openWeekFromWidget)) { _ in
             tab = .week
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openFocusTabFromHome)) { _ in
+            tab = .focus
         }
         .onReceive(NotificationCenter.default.publisher(for: .openCrewFocusFromNotification)) { output in
             tab = .focus

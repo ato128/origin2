@@ -16,6 +16,9 @@ extension WeekView {
                 defaultWeekday: selectedDay,
                 defaultDate: planAheadDate
             )
+            .environmentObject(studentStore)
+            .environmentObject(session)
+            .environmentObject(friendStore)
         }
         .presentationDetents([.medium, .large])
     }

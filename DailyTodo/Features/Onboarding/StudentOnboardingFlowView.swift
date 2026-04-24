@@ -1064,6 +1064,7 @@ struct StudentOnboardingFlowView: View {
             weeklyStudyGoalMinutes: Int(weeklyStudyGoalMinutes),
             courseDrafts: normalizedCourses
         )
+        studentStore.forceRestoreCoursesFromOnboardingDrafts(normalizedCourses)
     }
     
     private func loadMajorsForSelectedUniversity() async {

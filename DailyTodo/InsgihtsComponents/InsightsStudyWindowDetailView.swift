@@ -387,13 +387,42 @@ struct InsightsStudyWindowDetailView: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            tint.opacity(0.14),
-                            Color.white.opacity(0.03),
-                            Color.black.opacity(0.20)
+                            tint.opacity(0.34),
+                            tint.opacity(0.16),
+                            Color(red: 0.03, green: 0.18, blue: 0.36).opacity(0.62),
+                            Color(red: 0.035, green: 0.035, blue: 0.070)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    tint.opacity(0.24),
+                                    Color.clear
+                                ],
+                                center: .topLeading,
+                                startRadius: 4,
+                                endRadius: 150
+                            )
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.075),
+                                    Color.clear,
+                                    Color.black.opacity(0.18)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 28, style: .continuous)

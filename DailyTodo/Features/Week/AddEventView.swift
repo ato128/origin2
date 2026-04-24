@@ -9,281 +9,497 @@ import SwiftUI
 import SwiftData
 
 struct AddEventView: View {
-
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
-    @Environment(\.locale) private var locale
+
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var friendStore: FriendStore
-
-    private let colorPalette: [(nameKey: String, hex: String)] = [
-        ("event_color_blue", "#3B82F6"),
-        ("event_color_purple", "#8B5CF6"),
-        ("event_color_pink", "#EC4899"),
-        ("event_color_orange", "#F97316"),
-        ("event_color_green", "#22C55E"),
-        ("event_color_red", "#EF4444"),
-        ("event_color_gray", "#64748B")
-    ]
+    @EnvironmentObject var studentStore: StudentStore
 
     let defaultWeekday: Int
     let defaultDate: Date?
 
-    @State private var title: String = ""
-    @State private var weekday: Int = 0
-    @State private var location: String = ""
-    @State private var notes: String = ""
-    @State private var selectedColorHex: String = "#3B82F6"
+    @State private var title = ""
+    @State private var courseCode = ""
+    @State private var weekday = 0
+    @State private var location = ""
+    @State private var notes = ""
+    @State private var selectedColorHex = "#3B82F6"
 
-    @State private var startTime: Date =
-        Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: Date()) ?? Date()
+    @State private var selectedCourseID: UUID?
+    @State private var expandedCourseID: UUID?
+    @State private var addedCourseIDs: Set<UUID> = []
 
-    @State private var endTime: Date =
-        Calendar.current.date(bySettingHour: 10, minute: 0, second: 0, of: Date()) ?? Date()
+    @State private var showManualCourse = false
+    @State private var manualCourseCode = ""
+    @State private var manualCourseName = ""
 
-    @State private var showConflictAlert: Bool = false
-    @State private var conflictSummary: String = ""
+    @State private var showCustomEvent = false
+
+    @State private var startTime = Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: Date()) ?? Date()
+    @State private var endTime = Calendar.current.date(bySettingHour: 10, minute: 0, second: 0, of: Date()) ?? Date()
+
+    @State private var showConflictAlert = false
+    @State private var conflictSummary = ""
+    @State private var pendingKeepOpen = false
+    @State private var pendingAddedCourseID: UUID?
 
     var body: some View {
         Form {
-
-            Section("event_section_class_or_event") {
-                TextField(String(localized: "event_title_placeholder"), text: $title)
-                TextField(String(localized: "event_location_optional"), text: $location)
+            Section {
+                livePreviewCard
             }
 
-            Section("event_section_day_time") {
-                Picker("event_day", selection: $weekday) {
-                    ForEach(0..<7, id: \.self) { i in
-                        Text(localizedDayTitle(i)).tag(i)
+            Section {
+                if studentStore.courses.isEmpty {
+                    emptyCourseRow
+                } else {
+                    ForEach(uniqueCourses) { course in
+                        courseRow(course)
                     }
                 }
-
-                DatePicker(
-                    "event_start",
-                    selection: $startTime,
-                    displayedComponents: [.hourAndMinute]
-                )
-
-                DatePicker(
-                    "event_end",
-                    selection: $endTime,
-                    displayedComponents: [.hourAndMinute]
-                )
-
-                Text("\(String(localized: "event_duration")): \(durationText)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            } header: {
+                Label("Derslerim", systemImage: "graduationcap.fill")
             }
 
-            Section("event_section_color") {
-                Picker("event_color", selection: $selectedColorHex) {
-                    ForEach(colorPalette, id: \.hex) { c in
-                        HStack {
-                            Circle()
-                                .fill(colorFromHex(c.hex))
-                                .frame(width: 12, height: 12)
+            Section {
+                DisclosureGroup(isExpanded: $showManualCourse) {
+                    TextField("Kod", text: $manualCourseCode)
+                        .textInputAutocapitalization(.characters)
 
-                            Text(LocalizedStringKey(c.nameKey))
+                    TextField("Ders adı", text: $manualCourseName)
+
+                    Button {
+                        addManualCourse()
+                    } label: {
+                        Label("Dersi Listeye Ekle", systemImage: "plus.circle.fill")
+                    }
+                    .disabled(manualCourseName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                } label: {
+                    Label("Ekstra ders", systemImage: "plus.circle")
+                }
+            }
+
+            Section {
+                DisclosureGroup(isExpanded: $showCustomEvent) {
+                    TextField("Kod", text: $courseCode)
+                        .textInputAutocapitalization(.characters)
+
+                    TextField("Başlık", text: $title)
+
+                    TextField("Konum (opsiyonel)", text: $location)
+
+                    Picker("Gün", selection: $weekday) {
+                        ForEach(0..<7, id: \.self) { i in
+                            Text(localizedDayTitle(i)).tag(i)
                         }
-                        .tag(c.hex)
                     }
-                }
-            }
 
-            Section("event_section_note") {
-                TextField(String(localized: "event_note_optional"), text: $notes, axis: .vertical)
-                    .lineLimit(3...6)
+                    DatePicker("Başlangıç", selection: $startTime, displayedComponents: [.hourAndMinute])
+                    DatePicker("Bitiş", selection: $endTime, displayedComponents: [.hourAndMinute])
+
+                    TextField("Not (opsiyonel)", text: $notes, axis: .vertical)
+                        .lineLimit(3...6)
+                } label: {
+                    Label("Özel etkinlik", systemImage: "calendar.badge.plus")
+                }
             }
         }
-        .navigationTitle("event_add_title")
+        .scrollContentBackground(.hidden)
+        .background(AppBackground())
+        .navigationTitle("Ekle")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
-
             ToolbarItem(placement: .topBarLeading) {
-                Button("week_cancel") { dismiss() }
+                Button("Bitti") { dismiss() }
             }
 
             ToolbarItem(placement: .topBarTrailing) {
-                Button("event_save") {
+                Button("Kaydet") {
                     trySaveWithConflictCheck()
                 }
+                .fontWeight(.bold)
                 .disabled(!canSave)
             }
         }
         .onAppear {
             applyDefaultDateIfNeeded()
-
-            if selectedColorHex.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                selectedColorHex = "#3B82F6"
-            }
+            studentStore.reload()
         }
-        .alert("event_conflict_title", isPresented: $showConflictAlert) {
-
-            Button("week_cancel", role: .cancel) { }
-
-            Button("event_save_anyway") {
+        .onChange(of: courseCode) { _, newValue in
+            autoFillFromCode(newValue)
+        }
+        .alert("Çakışma var", isPresented: $showConflictAlert) {
+            Button("Vazgeç", role: .cancel) { }
+            Button("Yine de ekle") {
                 saveIgnoringConflicts()
             }
-
         } message: {
             Text(conflictSummary)
         }
     }
 
+    private var livePreviewCard: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(colorFromHex(selectedColorHex).opacity(0.18))
+                    .frame(width: 46, height: 46)
+
+                Image(systemName: previewIcon)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(colorFromHex(selectedColorHex))
+            }
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(title.isEmpty ? "Ders seç" : title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+
+                HStack(spacing: 8) {
+                    if !courseCode.isEmpty {
+                        Text(courseCode)
+                    }
+
+                    Text(localizedDayTitle(weekday))
+                    Text("\(hm(minutesFrom(startTime)))–\(hm(minutesFrom(endTime)))")
+                }
+                .font(.caption.bold())
+                .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Text(durationText)
+                .font(.caption.bold())
+                .foregroundStyle(colorFromHex(selectedColorHex))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(
+                    Capsule()
+                        .fill(colorFromHex(selectedColorHex).opacity(0.14))
+                )
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var previewIcon: String {
+        if selectedCourseID != nil { return "book.closed.fill" }
+        if showCustomEvent { return "calendar" }
+        return "sparkles"
+    }
+
+    private var uniqueCourses: [Course] {
+        var seen = Set<String>()
+
+        return studentStore.courses.filter { course in
+            let key = "\(course.code.uppercased())-\(course.name.uppercased())"
+            if seen.contains(key) { return false }
+            seen.insert(key)
+            return true
+        }
+    }
+
+    private var emptyCourseRow: some View {
+        Label {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Ders yok")
+                    .font(.headline)
+
+                Text("Profil > Öğrenci Bilgileri bölümünden ders ekleyebilirsin.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } icon: {
+            Image(systemName: "graduationcap")
+                .foregroundStyle(.blue)
+        }
+    }
+
+    private func courseRow(_ course: Course) -> some View {
+        let isExpanded = expandedCourseID == course.id
+        let isAdded = addedCourseIDs.contains(course.id)
+        let tint = colorFromHex(course.colorHex)
+
+        return VStack(spacing: 12) {
+            Button {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                    selectedCourseID = course.id
+                    expandedCourseID = isExpanded ? nil : course.id
+                    showCustomEvent = false
+                    applyCourse(course)
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    Circle()
+                        .fill(isAdded ? .green : tint)
+                        .frame(width: 11, height: 11)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(course.name)
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+
+                        if !course.code.isEmpty {
+                            Text(course.code)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Spacer()
+
+                    Image(systemName: isAdded ? "checkmark.circle.fill" : (isExpanded ? "chevron.up.circle.fill" : "chevron.down.circle"))
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(isAdded ? .green : .secondary)
+                }
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                VStack(spacing: 12) {
+                    Picker("Gün", selection: $weekday) {
+                        ForEach(0..<7, id: \.self) { i in
+                            Text(localizedDayTitle(i)).tag(i)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    HStack {
+                        DatePicker("", selection: $startTime, displayedComponents: [.hourAndMinute])
+                            .labelsHidden()
+
+                        Image(systemName: "arrow.right")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+
+                        DatePicker("", selection: $endTime, displayedComponents: [.hourAndMinute])
+                            .labelsHidden()
+                    }
+
+                    HStack {
+                        Label(durationText, systemImage: "clock.fill")
+                            .font(.caption.bold())
+                            .foregroundStyle(colorFromHex(selectedColorHex))
+
+                        Spacer()
+
+                        Label("Her hafta", systemImage: "repeat")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+                    }
+
+                    courseColorPicker()
+
+                    Button {
+                        title = course.name
+                        courseCode = course.code
+
+                        trySaveWithConflictCheck(
+                            keepSheetOpen: true,
+                            addedCourseID: course.id
+                        )
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: isAdded ? "checkmark.circle.fill" : "plus.circle.fill")
+                            Text(isAdded ? "Eklendi" : "Haftaya Ekle")
+                        }
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(isAdded ? .green : .white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(
+                            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                .fill(isAdded ? Color.green.opacity(0.16) : colorFromHex(selectedColorHex))
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isAdded || durationMinute < 15)
+                }
+                .padding(.top, 2)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+    
+    private func courseColorPicker() -> some View {
+        let colors = [
+            "#3B82F6",
+            "#22C55E",
+            "#F59E0B",
+            "#EF4444",
+            "#A855F7",
+            "#06B6D4",
+            "#EC4899"
+        ]
+
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("Renk")
+                .font(.caption.bold())
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 12) {
+                ForEach(colors, id: \.self) { hex in
+                    let color = colorFromHex(hex)
+                    let selected = selectedColorHex == hex
+
+                    Button {
+                        selectedColorHex = hex
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(color)
+                                .frame(width: 28, height: 28)
+
+                            if selected {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundStyle(.white)
+                            }
+                        }
+                        .overlay(
+                            Circle()
+                                .stroke(.white.opacity(selected ? 0.8 : 0), lineWidth: 2)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(.top, 2)
+    }
+
     private var canSave: Bool {
-        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        && durationMinute >= 15
+        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && durationMinute >= 15
     }
 
     private var durationMinute: Int {
-        let s = minutesFrom(startTime)
-        let e = minutesFrom(endTime)
-        return max(0, e - s)
+        max(0, minutesFrom(endTime) - minutesFrom(startTime))
     }
 
     private var durationText: String {
         let d = durationMinute
-
         if d <= 0 { return "—" }
 
         let h = d / 60
         let m = d % 60
 
-        if locale.language.languageCode?.identifier == "tr" {
-            if h == 0 { return "\(m) dk" }
-            if m == 0 { return "\(h) saat" }
-            return "\(h) saat \(m) dk"
-        } else {
-            if h == 0 { return "\(m) min" }
-            if m == 0 { return "\(h) hr" }
-            return "\(h) hr \(m) min"
+        if h == 0 { return "\(m) dk" }
+        if m == 0 { return "\(h) sa" }
+        return "\(h) sa \(m) dk"
+    }
+
+    private func applyCourse(_ course: Course) {
+        title = course.name
+        courseCode = course.code
+        selectedColorHex = course.colorHex
+    }
+
+    private func autoFillFromCode(_ code: String) {
+        let normalized = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard !normalized.isEmpty else { return }
+
+        if let match = studentStore.courses.first(where: {
+            $0.code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() == normalized
+        }) {
+            applyCourse(match)
+            selectedCourseID = match.id
+            expandedCourseID = match.id
         }
     }
 
-    private func localizedDayTitle(_ day: Int) -> String {
-        let safeDay = max(0, min(6, day))
-        let isTR = locale.language.languageCode?.identifier == "tr"
+    private func addManualCourse() {
+        let name = manualCourseName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let code = manualCourseCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard !name.isEmpty else { return }
 
-        if isTR {
-            switch safeDay {
-            case 0: return "Pzt"
-            case 1: return "Sal"
-            case 2: return "Çar"
-            case 3: return "Per"
-            case 4: return "Cum"
-            case 5: return "Cmt"
-            default: return "Paz"
-            }
-        } else {
-            switch safeDay {
-            case 0: return "Mon"
-            case 1: return "Tue"
-            case 2: return "Wed"
-            case 3: return "Thu"
-            case 4: return "Fri"
-            case 5: return "Sat"
-            default: return "Sun"
-            }
-        }
+        studentStore.addCourse(
+            name: name,
+            code: code,
+            colorHex: selectedColorHex,
+            sourceType: "manual"
+        )
+
+        title = name
+        courseCode = code
+        manualCourseName = ""
+        manualCourseCode = ""
+        showManualCourse = false
+        studentStore.reload()
+        Haptics.notify(.success)
     }
 
-    private func minutesFrom(_ date: Date) -> Int {
-        let c = Calendar.current.dateComponents([.hour, .minute], from: date)
-        let h = c.hour ?? 0
-        let m = c.minute ?? 0
-        return max(0, min(1439, h * 60 + m))
-    }
-
-    private func applyDefaultDateIfNeeded() {
-        let calendar = Calendar.current
-
-        if let defaultDate {
-            let comps = calendar.dateComponents([.weekday, .hour, .minute], from: defaultDate)
-
-            let systemWeekday = comps.weekday ?? 2
-            weekday = (systemWeekday + 5) % 7
-
-            let hour = comps.hour ?? 9
-            let minute = comps.minute ?? 0
-
-            startTime = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: defaultDate) ?? defaultDate
-            endTime = calendar.date(byAdding: .minute, value: 60, to: startTime) ?? startTime.addingTimeInterval(3600)
-        } else {
-            weekday = max(0, min(6, defaultWeekday))
-        }
-    }
-
-    private func trySaveWithConflictCheck() {
+    private func trySaveWithConflictCheck(
+        keepSheetOpen: Bool = false,
+        addedCourseID: UUID? = nil
+    ) {
         let t = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let start = minutesFrom(startTime)
         let end = start + durationMinute
+
+        pendingKeepOpen = keepSheetOpen
+        pendingAddedCourseID = addedCourseID
 
         let descriptor = FetchDescriptor<EventItem>(
             predicate: #Predicate { $0.weekday == weekday },
             sortBy: [SortDescriptor(\EventItem.startMinute, order: .forward)]
         )
 
-        let sameDayAll: [EventItem] = (try? context.fetch(descriptor)) ?? []
-        let sameDay: [EventItem]
-
-        if let currentUserID = session.currentUser?.id {
-            sameDay = sameDayAll.filter { $0.ownerUserID == currentUserID.uuidString }
-        } else {
-            sameDay = []
+        let sameDayAll = (try? context.fetch(descriptor)) ?? []
+        let sameDay = sameDayAll.filter {
+            $0.ownerUserID == session.currentUser?.id.uuidString
         }
 
         let conflicts = sameDay.filter { ev in
-            let evStart = ev.startMinute
-            let evEnd = ev.startMinute + ev.durationMinute
-
-            return intervalsOverlap(
-                startA: start,
-                endA: end,
-                startB: evStart,
-                endB: evEnd
-            )
+            max(start, ev.startMinute) < min(end, ev.startMinute + ev.durationMinute)
         }
 
         if conflicts.isEmpty {
             insertEvent(title: t, start: start, dur: durationMinute)
-            dismiss()
-            return
+            completeSaveFlow()
+        } else {
+            conflictSummary = conflicts
+                .prefix(4)
+                .map { "\($0.title) (\(hm($0.startMinute))–\(hm($0.startMinute + $0.durationMinute)))" }
+                .joined(separator: "\n")
+
+            showConflictAlert = true
         }
-
-        conflictSummary = conflicts
-            .prefix(4)
-            .map { "\($0.title) (\(hm($0.startMinute))–\(hm($0.startMinute + $0.durationMinute)))" }
-            .joined(separator: "\n")
-
-        if conflicts.count > 4 {
-            if locale.language.languageCode?.identifier == "tr" {
-                conflictSummary += "\n+ \(conflicts.count - 4) daha"
-            } else {
-                conflictSummary += "\n+ \(conflicts.count - 4) more"
-            }
-        }
-
-        showConflictAlert = true
     }
 
     private func saveIgnoringConflicts() {
-        let t = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        let start = minutesFrom(startTime)
+        insertEvent(
+            title: title.trimmingCharacters(in: .whitespacesAndNewlines),
+            start: minutesFrom(startTime),
+            dur: durationMinute
+        )
+        completeSaveFlow()
+    }
 
-        insertEvent(title: t, start: start, dur: durationMinute)
-        dismiss()
+    private func completeSaveFlow() {
+        if let id = pendingAddedCourseID {
+            addedCourseIDs.insert(id)
+        }
+
+        Haptics.notify(.success)
+
+        if !pendingKeepOpen {
+            dismiss()
+        }
+
+        pendingKeepOpen = false
+        pendingAddedCourseID = nil
     }
 
     private func insertEvent(title: String, start: Int, dur: Int) {
-        let scheduledDate = buildScheduledDate(startMinute: start)
-
         let ev = EventItem(
             ownerUserID: session.currentUser?.id.uuidString,
             title: title,
             weekday: weekday,
             startMinute: start,
             durationMinute: dur,
-            scheduledDate: scheduledDate,
+            scheduledDate: nil,
             location: location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : location,
             notes: notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notes,
             colorHex: selectedColorHex
@@ -293,28 +509,27 @@ struct AddEventView: View {
 
         do {
             try context.save()
-
             WidgetAppSync.refreshFromSwiftData(context: context)
 
             Task {
-                await NotificationManager.shared.cancel(for: ev)
                 await NotificationManager.shared.schedule(for: ev, minutesBefore: 10)
                 await NotificationManager.shared.schedule(for: ev, minutesBefore: 0)
             }
 
             Task {
                 guard let currentUserID = session.currentUser?.id else { return }
-
-                let eventsForSync = currentUserEventsFromContext()
                 await friendStore.resyncSharedWeekIfNeeded(
                     for: currentUserID,
-                    events: eventsForSync
+                    events: currentUserEventsFromContext()
                 )
             }
-
         } catch {
             print("Save error:", error)
         }
+    }
+
+    private func applyDefaultDateIfNeeded() {
+        weekday = max(0, min(6, defaultWeekday))
     }
 
     private func currentUserEventsFromContext() -> [EventItem] {
@@ -328,57 +543,41 @@ struct AddEventView: View {
         return all.filter { $0.ownerUserID == currentUserID }
     }
 
-    private func buildScheduledDate(startMinute: Int) -> Date? {
-        let calendar = Calendar.current
-        let hour = startMinute / 60
-        let minute = startMinute % 60
-
-        let today = Date()
-        let startOfToday = calendar.startOfDay(for: today)
-        let todayWeekday = (calendar.component(.weekday, from: today) + 5) % 7
-        let diff = weekday - todayWeekday
-
-        guard let targetDate = calendar.date(byAdding: .day, value: diff, to: startOfToday) else {
-            return nil
+    private func localizedDayTitle(_ day: Int) -> String {
+        switch max(0, min(6, day)) {
+        case 0: return "Pzt"
+        case 1: return "Sal"
+        case 2: return "Çar"
+        case 3: return "Per"
+        case 4: return "Cum"
+        case 5: return "Cmt"
+        default: return "Paz"
         }
-
-        return calendar.date(
-            bySettingHour: hour,
-            minute: minute,
-            second: 0,
-            of: targetDate
-        )
     }
 
-    private func intervalsOverlap(
-        startA: Int,
-        endA: Int,
-        startB: Int,
-        endB: Int
-    ) -> Bool {
-        return max(startA, startB) < min(endA, endB)
+    private func minutesFrom(_ date: Date) -> Int {
+        let c = Calendar.current.dateComponents([.hour, .minute], from: date)
+        return max(0, min(1439, (c.hour ?? 0) * 60 + (c.minute ?? 0)))
     }
 
     private func hm(_ minute: Int) -> String {
         let m = max(0, minute)
-        let h = m / 60
-        let mm = m % 60
-        return String(format: "%02d:%02d", h, mm)
+        return String(format: "%02d:%02d", m / 60, m % 60)
     }
 
     private func colorFromHex(_ hex: String) -> Color {
-        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+        var clean = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        clean = clean.replacingOccurrences(of: "#", with: "")
 
-        guard hexSanitized.count == 6 else { return .accentColor }
+        guard clean.count == 6 else { return .accentColor }
 
         var rgb: UInt64 = 0
-        Scanner(string: hexSanitized).scanHexInt64(&rgb)
+        Scanner(string: clean).scanHexInt64(&rgb)
 
-        let r = Double((rgb & 0xFF0000) >> 16) / 255.0
-        let g = Double((rgb & 0x00FF00) >> 8) / 255.0
-        let b = Double(rgb & 0x0000FF) / 255.0
-
-        return Color(red: r, green: g, blue: b)
+        return Color(
+            red: Double((rgb & 0xFF0000) >> 16) / 255,
+            green: Double((rgb & 0x00FF00) >> 8) / 255,
+            blue: Double(rgb & 0x0000FF) / 255
+        )
     }
 }

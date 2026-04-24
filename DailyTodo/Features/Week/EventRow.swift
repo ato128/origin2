@@ -110,14 +110,14 @@ struct EventRow: View {
         }
 
         if isLive {
-            return Color(red: 0.28, green: 0.56, blue: 1.00)
+            return rawAccent.opacity(0.95)
         }
 
         if isUpNext || isSoon {
-            return Color(red: 1.00, green: 0.55, blue: 0.20)
+            return rawAccent.opacity(0.88)
         }
 
-        return Color(red: 0.96, green: 0.52, blue: 0.22)
+        return rawAccent.opacity(0.82)
     }
 
     private var cardCoolTint: Color {
@@ -130,14 +130,14 @@ struct EventRow: View {
         }
 
         if isLive {
-            return Color(red: 0.46, green: 0.20, blue: 0.92)
+            return rawAccent.opacity(0.72)
         }
 
         if isUpNext || isSoon {
-            return Color(red: 0.40, green: 0.14, blue: 0.70)
+            return rawAccent.opacity(0.64)
         }
 
-        return Color(red: 0.52, green: 0.18, blue: 0.78)
+        return rawAccent.opacity(0.56)
     }
 
     private var secondaryAccent: Color {

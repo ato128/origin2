@@ -28,6 +28,7 @@ struct WeekView: View {
     @EnvironmentObject var store: TodoStore
     @EnvironmentObject var friendStore: FriendStore
     @Environment(\.locale)  var locale
+    @EnvironmentObject var studentStore: StudentStore
 
     @Query(sort: \EventItem.startMinute, order: .forward)
      var allEvents: [EventItem]
@@ -236,6 +237,7 @@ struct WeekView: View {
     @State var planAheadDate: Date = Date()
     @State var planAheadMode: PlanAheadMode = .personal
     @State var selectedEventForDetail: EventItem?
+    @State var showCourseSetupSheet = false
 
     var body: some View {
         ZStack {

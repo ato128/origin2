@@ -219,7 +219,6 @@ final class StudentStore: ObservableObject {
         isLoading = true
         defer { isLoading = false }
 
-        // 1) local profile
         saveStudentProfile(
             educationLevel: educationLevel,
             gradeLevel: gradeLevel,
@@ -231,33 +230,40 @@ final class StudentStore: ObservableObject {
             weeklyStudyGoalMinutes: weeklyStudyGoalMinutes
         )
 
-        // 2) local courses reset + replace
         clearLocalCoursesForCurrentUser()
-        for draft in courseDrafts {
-            do {
-                let payload = StudentCourseInsertPayload(
-                    user_id: userUUID,
-                    course_code: draft.code,
-                    course_name: draft.name,
-                    institution_name: institutionName,
-                    major_name: majorName,
-                    grade_level: gradeLevel,
-                    year_number: normalizedYearNumber(from: gradeLevel),
-                    term_number: nil,
-                    source_type: "manual",
-                    is_archived: false
-                )
 
-                try await SupabaseManager.shared.client
-                    .from("student_courses")
-                    .insert(payload)
-                    .execute()
-            } catch {
-                print("❌ StudentStore.insert remote course error:", error)
-            }
+        for draft in courseDrafts {
+            addCourse(
+                name: draft.name,
+                code: draft.code,
+                sourceType: draft.isSuggested ? "catalog" : "manual",
+                yearNumber: normalizedYearNumber(from: gradeLevel),
+                termNumber: nil
+            )
         }
 
-        // 4) remote courses replace
+        do {
+            let profilePayload = StudentProfileUpsertPayload(
+                user_id: userUUID,
+                education_level: educationLevel,
+                grade_level: gradeLevel,
+                high_school_track: highSchoolTrack,
+                institution_name: institutionName,
+                institution_country: institutionCountry,
+                major_name: majorName,
+                daily_study_goal_minutes: dailyStudyGoalMinutes,
+                weekly_study_goal_minutes: weeklyStudyGoalMinutes,
+                onboarding_completed: true
+            )
+
+            try await SupabaseManager.shared.client
+                .from("student_profiles")
+                .upsert(profilePayload, onConflict: "user_id")
+                .execute()
+        } catch {
+            print("❌ StudentStore.upsert profile error:", error)
+        }
+
         do {
             try await SupabaseManager.shared.client
                 .from("student_courses")
@@ -270,25 +276,25 @@ final class StudentStore: ObservableObject {
 
         for draft in courseDrafts {
             do {
-                let payload = StudentProfileUpsertPayload(
+                let payload = StudentCourseInsertPayload(
                     user_id: userUUID,
-                    education_level: educationLevel,
-                    grade_level: gradeLevel,
-                    high_school_track: highSchoolTrack,
+                    course_code: draft.code,
+                    course_name: draft.name,
                     institution_name: institutionName,
-                    institution_country: institutionCountry,
                     major_name: majorName,
-                    daily_study_goal_minutes: dailyStudyGoalMinutes,
-                    weekly_study_goal_minutes: weeklyStudyGoalMinutes,
-                    onboarding_completed: true
+                    grade_level: gradeLevel,
+                    year_number: normalizedYearNumber(from: gradeLevel),
+                    term_number: nil,
+                    source_type: draft.isSuggested ? "catalog" : "manual",
+                    is_archived: false
                 )
 
                 try await SupabaseManager.shared.client
-                    .from("student_profiles")
-                    .upsert(payload, onConflict: "user_id")
+                    .from("student_courses")
+                    .insert(payload)
                     .execute()
             } catch {
-                print("❌ StudentStore.upsert profile error:", error)
+                print("❌ StudentStore.insert remote course error:", error)
             }
         }
 
@@ -349,6 +355,90 @@ final class StudentStore: ObservableObject {
         context.insert(course)
         saveAndReload()
     }
+    
+    func addCourseAndSync(
+        name: String,
+        code: String = "",
+        colorHex: String = "#3B82F6",
+        sourceType: String = "manual",
+        yearNumber: Int? = nil,
+        termNumber: Int? = nil
+    ) async {
+        guard let currentUserID,
+              let userUUID = UUID(uuidString: currentUserID)
+        else { return }
+
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+
+        guard !trimmedName.isEmpty else { return }
+
+        let alreadyExists = courses.contains {
+            $0.ownerUserID == currentUserID &&
+            $0.name.caseInsensitiveCompare(trimmedName) == .orderedSame &&
+            $0.code.caseInsensitiveCompare(trimmedCode) == .orderedSame
+        }
+
+        guard !alreadyExists else { return }
+
+        addCourse(
+            name: trimmedName,
+            code: trimmedCode,
+            colorHex: colorHex,
+            sourceType: sourceType,
+            yearNumber: yearNumber,
+            termNumber: termNumber
+        )
+
+        do {
+            let payload = StudentCourseInsertPayload(
+                user_id: userUUID,
+                course_code: trimmedCode,
+                course_name: trimmedName,
+                institution_name: profile?.institutionName,
+                major_name: profile?.majorName,
+                grade_level: profile?.gradeLevel,
+                year_number: yearNumber,
+                term_number: termNumber,
+                source_type: sourceType,
+                is_archived: false
+            )
+
+            try await SupabaseManager.shared.client
+                .from("student_courses")
+                .insert(payload)
+                .execute()
+
+            reload()
+        } catch {
+            print("❌ addCourseAndSync error:", error)
+        }
+    }
+    
+    func deleteCourseAndSync(_ course: Course) async {
+        guard let currentUserID,
+              let userUUID = UUID(uuidString: currentUserID)
+        else { return }
+
+        let code = course.code
+        let name = course.name
+
+        deleteCourse(course)
+
+        do {
+            try await SupabaseManager.shared.client
+                .from("student_courses")
+                .delete()
+                .eq("user_id", value: userUUID.uuidString)
+                .eq("course_code", value: code)
+                .eq("course_name", value: name)
+                .execute()
+
+            reload()
+        } catch {
+            print("❌ deleteCourseAndSync error:", error)
+        }
+    }
 
     func deleteCourse(_ course: Course) {
         guard course.ownerUserID == currentUserID else { return }
@@ -361,6 +451,57 @@ final class StudentStore: ObservableObject {
         profile = nil
         courses = []
         didResolveRemoteProfile = false
+    }
+    
+    func forceRestoreCoursesFromOnboardingDrafts(_ drafts: [OnboardingCourseDraft]) {
+        guard let currentUserID else {
+            print("❌ forceRestoreCourses failed: currentUserID nil")
+            return
+        }
+
+        let cleaned = drafts
+            .map {
+                OnboardingCourseDraft(
+                    code: $0.code.trimmingCharacters(in: .whitespacesAndNewlines),
+                    name: $0.name.trimmingCharacters(in: .whitespacesAndNewlines),
+                    isSuggested: $0.isSuggested
+                )
+            }
+            .filter { !$0.name.isEmpty }
+
+        guard !cleaned.isEmpty else { return }
+
+        for draft in cleaned {
+            let alreadyExists = courses.contains {
+                $0.ownerUserID == currentUserID &&
+                $0.name.caseInsensitiveCompare(draft.name) == .orderedSame &&
+                $0.code.caseInsensitiveCompare(draft.code) == .orderedSame
+            }
+
+            if !alreadyExists {
+                addCourse(
+                    name: draft.name,
+                    code: draft.code,
+                    sourceType: draft.isSuggested ? "catalog" : "manual",
+                    yearNumber: profile.map { normalizedYearNumberPublic(from: $0.gradeLevel) } ?? nil,
+                    termNumber: nil
+                )
+            }
+        }
+
+        reload()
+    }
+
+    private func normalizedYearNumberPublic(from gradeLevel: String) -> Int? {
+        switch gradeLevel {
+        case "1": return 1
+        case "2": return 2
+        case "3": return 3
+        case "4": return 4
+        case "5": return 5
+        case "6": return 6
+        default: return nil
+        }
     }
 
     // MARK: - Local Sync Helpers

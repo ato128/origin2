@@ -11,21 +11,17 @@ struct InsightsAchievementsView: View {
     @Environment(\.dismiss) private var dismiss
     let badges: [InsightsBadgeData]
 
-    private var unlocked: [InsightsBadgeData] {
-        badges.filter { $0.isUnlocked }
-    }
+    private var unlocked: [InsightsBadgeData] { badges.filter { $0.isUnlocked } }
+    private var inProgress: [InsightsBadgeData] { badges.filter { !$0.isUnlocked && ($0.progress ?? 0) > 0 } }
+    private var locked: [InsightsBadgeData] { badges.filter { !$0.isUnlocked && ($0.progress ?? 0) == 0 } }
 
-    private var inProgress: [InsightsBadgeData] {
-        badges.filter { !$0.isUnlocked && ($0.progress ?? 0) > 0 }
-    }
-
-    private var locked: [InsightsBadgeData] {
-        badges.filter { !$0.isUnlocked && ($0.progress ?? 0) == 0 }
-    }
+    private let accent = Color(red: 0.56, green: 0.36, blue: 1.00)
+    private let secondaryAccent = Color(red: 0.16, green: 0.07, blue: 0.32)
 
     var body: some View {
         ZStack(alignment: .top) {
             Color.black.ignoresSafeArea()
+            AppBackground()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
@@ -57,12 +53,12 @@ struct InsightsAchievementsView: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Achievements")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .font(.system(size: 34, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
 
                 Text("Milestones and upcoming unlocks")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.60))
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.62))
             }
 
             Spacer()
@@ -73,49 +69,82 @@ struct InsightsAchievementsView: View {
                 Image(systemName: "xmark")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(.white)
-                    .frame(width: 36, height: 36)
+                    .frame(width: 38, height: 38)
                     .background(Color.white.opacity(0.08), in: Circle())
+                    .overlay(Circle().stroke(Color.white.opacity(0.07), lineWidth: 1))
             }
             .buttonStyle(.plain)
         }
     }
 
     private var summaryCard: some View {
-        InsightsGlassCard(cornerRadius: 28, tint: .purple, glowOpacity: 0.14) {
-            HStack {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Progress")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.56))
+        HStack {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Progress")
+                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                    .foregroundStyle(accent.opacity(0.98))
+                    .tracking(0.8)
 
-                    Text("\(unlocked.count) unlocked")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                Text("\(unlocked.count) unlocked")
+                    .font(.system(size: 26, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
 
-                    Text("\(inProgress.count) close to unlocking")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.72))
-                }
+                Text("\(inProgress.count) close to unlocking")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.72))
+            }
 
-                Spacer()
+            Spacer()
 
-                ZStack {
-                    Circle()
-                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
-                        .frame(width: 68, height: 68)
+            ZStack {
+                Circle()
+                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                    .frame(width: 74, height: 74)
 
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                accent.opacity(0.34),
+                                Color.clear
+                            ],
+                            center: .center,
+                            startRadius: 4,
+                            endRadius: 42
+                        )
+                    )
+                    .frame(width: 74, height: 74)
+
+                VStack(spacing: 1) {
                     Text("\(badges.count)")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .font(.system(size: 25, weight: .heavy, design: .rounded))
                         .foregroundStyle(.white)
+
+                    Text("total")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.58))
                 }
             }
         }
+        .padding(18)
+        .background(
+            premiumBackground(
+                tint: accent,
+                secondary: secondaryAccent,
+                cornerRadius: 28,
+                strength: 0.72
+            )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.white.opacity(0.07), lineWidth: 1)
+        )
     }
 
     private func groupSection(_ title: String, items: [InsightsBadgeData]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .font(.system(size: 22, weight: .heavy, design: .rounded))
                 .foregroundStyle(.white)
 
             LazyVGrid(
@@ -133,51 +162,154 @@ struct InsightsAchievementsView: View {
     }
 
     private func badgeCard(_ badge: InsightsBadgeData) -> some View {
-        InsightsGlassCard(
-            cornerRadius: 24,
-            tint: badge.isUnlocked ? badge.accent : .white,
-            glowOpacity: badge.isUnlocked ? 0.14 : 0.08,
-            fillOpacity: badge.isUnlocked ? 0.12 : 0.07
-        ) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Image(systemName: badge.icon)
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(badge.isUnlocked ? badge.accent : .white.opacity(0.42))
+        let tint = badge.isUnlocked ? badge.accent : Color(red: 0.52, green: 0.58, blue: 0.72)
 
-                    Spacer()
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                premiumIcon(systemName: badge.icon, tint: tint, unlocked: badge.isUnlocked)
 
-                    Text(badge.isUnlocked ? "Unlocked" : "Locked")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.56))
-                }
+                Spacer()
 
-                Spacer(minLength: 0)
-
-                Text(badge.title)
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
-
-                Text(badge.subtitle)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.60))
-                    .lineLimit(2)
-
-                if let progress = badge.progress, !badge.isUnlocked {
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(Color.white.opacity(0.08))
-                            .frame(height: 6)
-
-                        Capsule()
-                            .fill(Color.white.opacity(0.84))
-                            .frame(width: max(12, 120 * progress), height: 6)
-                    }
-                }
+                Text(badge.isUnlocked ? "Unlocked" : "Locked")
+                    .font(.system(size: 10, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.58))
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: 144, alignment: .topLeading)
+
+            Spacer(minLength: 0)
+
+            Text(badge.title)
+                .font(.system(size: 17, weight: .heavy, design: .rounded))
+                .foregroundStyle(.white)
+                .lineLimit(2)
+
+            Text(badge.subtitle)
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.62))
+                .lineLimit(2)
+
+            if let progress = badge.progress, !badge.isUnlocked {
+                progressBeam(progress: progress, tint: tint)
+            }
         }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: 154, alignment: .topLeading)
+        .background(
+            premiumBackground(
+                tint: tint,
+                secondary: Color(red: 0.12, green: 0.10, blue: 0.18),
+                cornerRadius: 24,
+                strength: badge.isUnlocked ? 0.70 : 0.42
+            )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.white.opacity(0.065), lineWidth: 1)
+        )
+    }
+
+    private func premiumIcon(systemName: String, tint: Color, unlocked: Bool) -> some View {
+        ZStack {
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            tint.opacity(unlocked ? 0.28 : 0.12),
+                            Color.white.opacity(0.035),
+                            Color.clear
+                        ],
+                        center: .center,
+                        startRadius: 2,
+                        endRadius: 22
+                    )
+                )
+                .frame(width: 34, height: 34)
+
+            Circle()
+                .fill(Color.white.opacity(0.055))
+                .frame(width: 28, height: 28)
+
+            Image(systemName: systemName)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(unlocked ? Color.white.opacity(0.92) : Color.white.opacity(0.42))
+                .shadow(color: tint.opacity(0.22), radius: 4)
+        }
+    }
+
+    private func progressBeam(progress: Double, tint: Color) -> some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let value = min(max(progress, 0), 1)
+
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.white.opacity(0.08))
+                    .frame(height: 7)
+
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                tint.opacity(0.98),
+                                Color.white.opacity(0.86)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: max(12, width * value), height: 7)
+                    .shadow(color: tint.opacity(0.14), radius: 8)
+            }
+        }
+        .frame(height: 7)
+    }
+
+    private func premiumBackground(
+        tint: Color,
+        secondary: Color,
+        cornerRadius: CGFloat,
+        strength: Double
+    ) -> some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        tint.opacity(0.18 + strength * 0.18),
+                        tint.opacity(0.10),
+                        secondary.opacity(0.66),
+                        Color(red: 0.035, green: 0.035, blue: 0.070)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                tint.opacity(0.16 + strength * 0.12),
+                                Color.clear
+                            ],
+                            center: .topLeading,
+                            startRadius: 4,
+                            endRadius: 150
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.075),
+                                Color.clear,
+                                Color.black.opacity(0.18)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+            )
     }
 }
