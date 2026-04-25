@@ -227,3 +227,86 @@ struct InsightsAchievementsSectionV2: View {
             )
     }
 }
+struct InsightsAchievementMiniCard: View {
+    let badges: [InsightsBadgeData]
+    let onTap: () -> Void
+
+    private var featuredBadge: InsightsBadgeData? {
+        badges.first { $0.isUnlocked } ?? badges.first
+    }
+
+    private var accent: Color {
+        Color(red: 1.00, green: 0.55, blue: 0.18)
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("SERİ")
+                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.42))
+                        .tracking(3.0)
+
+                    Spacer()
+
+                    Image(systemName: featuredBadge?.icon ?? "sparkles")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(accent)
+                }
+
+                Spacer(minLength: 2)
+
+                Text("3")
+                    .font(.system(size: 56, weight: .heavy, design: .rounded))
+                    .foregroundStyle(accent)
+
+                Text("gündür üst üste")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.68))
+
+                Rectangle()
+                    .fill(.white.opacity(0.075))
+                    .frame(height: 1)
+
+                Text(featuredBadge?.title ?? "İlk Focus")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.50))
+                    .lineLimit(1)
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity, minHeight: 170, alignment: .topLeading)
+            .background(
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                accent.opacity(0.22),
+                                Color.red.opacity(0.10),
+                                Color.black.opacity(0.92)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RadialGradient(
+                            colors: [
+                                accent.opacity(0.20),
+                                .clear
+                            ],
+                            center: .topTrailing,
+                            startRadius: 4,
+                            endRadius: 120
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 26, style: .continuous)
+                            .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}

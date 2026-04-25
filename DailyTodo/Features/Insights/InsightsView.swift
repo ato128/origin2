@@ -298,35 +298,19 @@ struct InsightsView: View {
                 action: handleInsightAction
             )
 
-            InsightsIdentityCardV2(
-                data: vm.identityProfile,
-                stats: vm.identityCompactStats,
-                streakCount: vm.streakValueForUI,
-                isExpanded: identityExpanded,
-                onTap: {
-                    withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
-                        identityExpanded.toggle()
-                    }
-                }
-            )
+            HStack(spacing: 12) {
+                InsightsMomentumMiniCard(
+                    data: vm.identityProfile,
+                    streakCount: vm.streakValueForUI
+                )
+
+                InsightsAchievementMiniCard(
+                    badges: vm.achievementBadges,
+                    onTap: { showAchievements = true }
+                )
+            }
 
             if premiumState != .free {
-                InsightsPlusCoachCardV2(
-                    data: vm.plusCoachCard,
-                    action: handleInsightAction,
-                    onTap: {
-                        showCoachDetail = true
-                    }
-                )
-
-                InsightsPlusStudyWindowCardV2(
-                    data: vm.plusStudyWindowCard,
-                    action: handleInsightAction,
-                    onTap: {
-                        showStudyWindowDetail = true
-                    }
-                )
-
                 InsightsPlusWeeklySignalCardV2(
                     data: vm.plusWeeklySignalCard,
                     action: handleInsightAction,
@@ -334,12 +318,11 @@ struct InsightsView: View {
                         showWeeklySignalDetail = true
                     }
                 )
-            }
 
-            InsightsAchievementsSectionV2(
-                badges: vm.achievementBadges,
-                onSeeAll: { showAchievements = true }
-            )
+                InsightsExamPlannerCTA {
+                    goWeek = true
+                }
+            }
 
             InsightsPremiumCardV4(
                 state: premiumState,
@@ -353,7 +336,7 @@ struct InsightsView: View {
                     }
                 },
                 titleOverride: premiumState == .free ? nil : "Insights+ active",
-                subtitleOverride: premiumState == .free ? nil : "Premium cards are now active in your main Insights flow.",
+                subtitleOverride: premiumState == .free ? nil : "Weekly Signal ve Exam Planner aktif.",
                 buttonTitleOverride: premiumState == .free ? nil : "Return to Free",
                 eyebrowOverride: premiumState == .free ? nil : "Insights+"
             )
@@ -637,5 +620,72 @@ struct InsightsView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
             .background(Color.white.opacity(0.08), in: Capsule())
+    }
+}
+struct InsightsExamPlannerCTA: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.orange.opacity(0.16))
+                        .frame(width: 54, height: 54)
+
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(.orange)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Sınav Çalışma Programı")
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+
+                    Text("Yaklaşan sınavlara göre plan oluştur")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.56))
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.48))
+            }
+            .padding(18)
+            .background(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.orange.opacity(0.16),
+                                Color.purple.opacity(0.08),
+                                Color.black.opacity(0.90)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RadialGradient(
+                            colors: [
+                                Color.orange.opacity(0.18),
+                                .clear
+                            ],
+                            center: .topTrailing,
+                            startRadius: 4,
+                            endRadius: 130
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
     }
 }

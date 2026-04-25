@@ -318,3 +318,80 @@ struct InsightsIdentityCardV2: View {
         }
     }
 }
+struct InsightsMomentumMiniCard: View {
+    let data: InsightsIdentityData
+    let streakCount: Int
+
+    private var accent: Color {
+        Color(red: 1.00, green: 0.55, blue: 0.18)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("MOMENTUM")
+                    .font(.system(size: 11, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.42))
+                    .tracking(3.0)
+
+                Spacer()
+
+                Image(systemName: "bolt.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(accent)
+            }
+
+            Spacer(minLength: 2)
+
+            Text(data.title)
+                .font(.system(size: 25, weight: .heavy, design: .rounded))
+                .foregroundStyle(.white.opacity(0.98))
+                .lineLimit(2)
+                .minimumScaleFactor(0.72)
+
+            Text("Lv.\(data.level) • \(streakCount) gün seri")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(accent)
+
+            ProgressView(value: min(max(data.progress, 0), 1))
+                .tint(accent)
+
+            Text("Bir sonraki seviyeye ilerle")
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.50))
+                .lineLimit(1)
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, minHeight: 170, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            accent.opacity(0.24),
+                            Color.purple.opacity(0.10),
+                            Color.black.opacity(0.92)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RadialGradient(
+                        colors: [
+                            accent.opacity(0.20),
+                            .clear
+                        ],
+                        center: .topTrailing,
+                        startRadius: 4,
+                        endRadius: 120
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                )
+        )
+    }
+}
