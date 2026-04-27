@@ -54,6 +54,8 @@ struct DailyTodoApp: App {
                 ExamItem.self,
                 StudentProfile.self,
                 Course.self,
+                ExamStudyPlanItem.self,
+                IdentityProgressState.self,
                 FocusSessionRecord.self,
                 Crew.self,
                 CrewMember.self,
@@ -78,6 +80,10 @@ struct DailyTodoApp: App {
                 for: schema,
                 configurations: [configuration]
             )
+           
+            
+
+            FocusCompletionRecorder.shared.configure(container: container)
 
             let context = ModelContext(container)
             _todoStore = StateObject(

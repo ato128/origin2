@@ -161,8 +161,39 @@ final class TodoStore: ObservableObject {
 
     func toggleDone(_ item: DTTaskItem) {
         guard item.ownerUserID == currentUserID else { return }
+
+        let wasDone = item.isDone
+
         item.isDone.toggle()
         item.completedAt = item.isDone ? Date() : nil
+
+        if wasDone == false && item.isDone == true {
+
+            switch item.taskType {
+            case "study":
+                IdentityXPManager.shared.add(.custom(25))
+
+            case "homework":
+                IdentityXPManager.shared.add(.custom(30))
+
+            case "exam":
+                IdentityXPManager.shared.add(.custom(40))
+
+            case "exam_study":
+                IdentityXPManager.shared.add(.custom(35))
+
+            case "project":
+                IdentityXPManager.shared.add(.custom(35))
+
+            default:
+                IdentityXPManager.shared.add(.taskCompleted)
+            }
+
+            if isOverdue(item) {
+                IdentityXPManager.shared.add(.custom(10))
+            }
+        }
+
         saveAndReload()
     }
 

@@ -15,6 +15,8 @@ struct TasksView: View {
     
     @EnvironmentObject var session: SessionStore
     @Query(sort: \ExamItem.examDate, order: .forward) var allExams: [ExamItem]
+    @Query(sort: \ExamStudyPlanItem.examDate, order: .forward)
+    private var examPlanItems: [ExamStudyPlanItem]
 
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
 
@@ -57,25 +59,27 @@ struct TasksView: View {
         let tasks: [DTTaskItem]
 
         switch selectedFilter {
-            case .today:
-                tasks = store.items
-                    .filter { task in
-                        (isToday(task) && !task.isDone) || pendingRemovalTaskKeys.contains(taskKey(task))
-                    }
-
-            case .all:
-                tasks = store.items
-                    .filter { task in
-                        !task.isDone || pendingRemovalTaskKeys.contains(taskKey(task))
-                    }
-
-            case .done:
-                tasks = store.items
-                    .filter(\.isDone)
-
-            case .exams:
-                tasks = []
-            }
+        case .today:
+            tasks = store.items
+                .filter { task in
+                    (isToday(task) && !task.isDone) || pendingRemovalTaskKeys.contains(taskKey(task))
+                }
+            
+        case .all:
+            tasks = store.items
+                .filter { task in
+                    task.taskType.lowercased() != "exam_study" &&
+                    (!task.isDone || pendingRemovalTaskKeys.contains(taskKey(task)))
+                }
+            
+        case .done:
+            tasks = store.items
+                .filter(\.isDone)
+            
+        case .exams:
+            tasks = []
+                
+        }
 
         return tasks.sorted(by: taskSort)
     }
@@ -89,6 +93,28 @@ struct TasksView: View {
         }
 
         return allExams
+    }
+    
+    var userScopedExamPlans: [ExamStudyPlanItem] {
+        guard let currentUserID = session.currentUser?.id.uuidString else { return [] }
+
+        return examPlanItems.filter {
+            $0.ownerUserID == currentUserID
+        }
+    }
+
+    var examScheduleGroups: [(key: String, value: [ExamStudyPlanItem])] {
+        Dictionary(grouping: userScopedExamPlans) {
+            "\($0.examGroupID?.uuidString ?? $0.courseName)-\($0.examTypeRaw)-\($0.examDate.timeIntervalSince1970)"
+        }
+        .map { ($0.key, $0.value.sorted { $0.studyDate < $1.studyDate }) }
+        .sorted {
+            ($0.value.first?.examDate ?? .distantFuture) < ($1.value.first?.examDate ?? .distantFuture)
+        }
+    }
+
+    var hasExamSchedule: Bool {
+        !examScheduleGroups.isEmpty
     }
 
     var upcomingExams: [ExamItem] {
@@ -116,12 +142,12 @@ struct TasksView: View {
                     filterSegment
 
                     if selectedFilter == .exams {
-                        if hasVisibleUpcomingExams {
-                            upcomingExamsSection
+                        if hasExamSchedule {
+                            examScheduleSection
                         } else {
                             emptyState
                         }
-                    } else {
+                    }else {
                         if filteredTasks.isEmpty {
                             emptyState
                         } else {
@@ -356,6 +382,174 @@ private extension TasksView {
                 )
         )
     }
+    
+    func examPlanAccent(_ item: ExamStudyPlanItem) -> Color {
+        switch item.examType {
+        case .quiz:
+            return .blue
+        case .midterm:
+            return .orange
+        case .final:
+            return .pink
+        }
+    }
+
+    func examPlanIcon(_ item: ExamStudyPlanItem) -> String {
+        switch item.examType {
+        case .quiz:
+            return "pencil.and.list.clipboard"
+        case .midterm:
+            return "doc.text.fill"
+        case .final:
+            return "flag.fill"
+        }
+    }
+
+    func examPlanDateText(_ date: Date) -> String {
+        date.formatted(.dateTime.day().month(.abbreviated).year())
+    }
+
+    func examPlanCountdownText(_ date: Date) -> String {
+        let days = Calendar.current.dateComponents(
+            [.day],
+            from: Calendar.current.startOfDay(for: .now),
+            to: Calendar.current.startOfDay(for: date)
+        ).day ?? 0
+
+        if days <= 0 { return "Bugün" }
+        if days == 1 { return "Yarın" }
+        return "\(days) gün kaldı"
+    }
+    
+    func examScheduleRow(items: [ExamStudyPlanItem], first: ExamStudyPlanItem) -> some View {
+        let completed = items.filter(\.isCompleted).count
+        let total = max(items.count, 1)
+        let ratio = Double(completed) / Double(total)
+        let accent = examPlanAccent(first)
+
+        return HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .stroke(accent.opacity(0.18), lineWidth: 5)
+                    .frame(width: 48, height: 48)
+
+                Circle()
+                    .trim(from: 0, to: ratio)
+                    .stroke(accent, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                    .frame(width: 48, height: 48)
+                    .rotationEffect(.degrees(-90))
+
+                Image(systemName: examPlanIcon(first))
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(accent)
+            }
+
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 6) {
+                    Text(first.courseName)
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
+                        .lineLimit(1)
+
+                    Text(first.examType.title)
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(accent)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill(accent.opacity(0.14))
+                        )
+                }
+
+                HStack(spacing: 8) {
+                    miniMeta(icon: "calendar", text: examPlanDateText(first.examDate), tint: accent)
+                    miniMeta(icon: "clock.fill", text: examPlanCountdownText(first.examDate), tint: .orange)
+                }
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 4) {
+                Text("\(completed)/\(total)")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundStyle(accent)
+
+                Text("hazırlık")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(palette.secondaryText)
+            }
+        }
+        .padding(15)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(palette.secondaryCardFill)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(accent.opacity(0.055))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(accent.opacity(0.12), lineWidth: 1)
+                )
+        )
+    }
+    
+    var examScheduleSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Sınav Takvimi")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primaryText)
+
+                    Text("Derslerine göre yaklaşan sınavlar")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(palette.secondaryText)
+                }
+
+                Spacer()
+
+                Image(systemName: "calendar.badge.clock")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(.orange)
+                    .frame(width: 42, height: 42)
+                    .background(
+                        Circle()
+                            .fill(Color.orange.opacity(0.13))
+                    )
+            }
+
+            VStack(spacing: 10) {
+                ForEach(examScheduleGroups, id: \.key) { group in
+                    if let first = group.value.first {
+                        examScheduleRow(items: group.value, first: first)
+                    }
+                }
+            }
+        }
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(palette.cardFill)
+                .overlay(
+                    RadialGradient(
+                        colors: [
+                            Color.orange.opacity(0.10),
+                            Color.clear
+                        ],
+                        center: .topTrailing,
+                        startRadius: 10,
+                        endRadius: 220
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .stroke(palette.cardStroke, lineWidth: 1)
+                )
+        )
+    }
 
     var filterSegment: some View {
         HStack(spacing: 8) {
@@ -457,8 +651,7 @@ private extension TasksView {
 
                             miniMeta(icon: taskTypeSymbol(for: task), text: taskTypeTitle(for: task), tint: accent)
 
-                            if task.taskType.lowercased() == "study",
-                               let mins = task.workoutDurationMinutes {
+                            if let mins = task.workoutDurationMinutes ?? task.scheduledWeekDurationMinutes {
                                 miniMeta(icon: "timer", text: "\(mins) dk", tint: .orange)
                             }
                         }
@@ -980,7 +1173,7 @@ private extension TasksView {
         case .done:
             return "Tamamlanan görev görünmüyor"
         case .exams:
-            return "Yaklaşan sınav yok"
+            return "Sınav takvimi boş"
         }
     }
 
@@ -993,7 +1186,7 @@ private extension TasksView {
         case .done:
             return "Tamamladığın görevler burada görünecek."
         case .exams:
-            return "Eklediğin sınavlar burada görünecek."
+            return "Insights içindeki Sınav Çalışma Programı’ndan sınav tarihi ekleyebilirsin."
         }
     }
 
@@ -1194,7 +1387,7 @@ private extension TasksView {
         case "study": return "brain.head.profile"
         case "project": return "folder.fill"
         case "workout": return "dumbbell.fill"
-        case "exam_study": return "gradutaioncap.fill"
+        case "exam_study": return "graduationcap.fill"
         default: return "checklist"
         }
     }

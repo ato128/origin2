@@ -116,22 +116,32 @@ final class FocusSessionManager: ObservableObject {
             return
         }
 
+        FocusCompletionRecorder.shared.saveCompletedSession(
+            ownerUserID: currentUserID?.uuidString,
+            title: activeSessionDisplayTitle,
+            startedAt: session.startDate,
+            endedAt: Date(),
+            totalSeconds: session.durationMinutes * 60,
+            completedSeconds: elapsedSeconds,
+            isCompleted: false
+        )
+
         if session.mode == .crew,
            let crewID = currentCrewID,
            let backendSessionID = currentCrewBackendSessionID,
            let crewStore {
+
             let host = isCurrentUserHost
 
             Task {
                 do {
                     if host {
-                        let completedMinutes = resolvedCompletedMinutes(for: session)
                         try await crewStore.endCrewFocusSession(
                             sessionID: backendSessionID,
                             crewID: crewID,
                             hostUserID: currentUserID,
                             hostName: currentUserDisplayName,
-                            completedMinutes: completedMinutes,
+                            completedMinutes: resolvedCompletedMinutes(for: session),
                             participantNames: session.participants.map(\.name),
                             taskID: nil
                         )
@@ -144,7 +154,7 @@ final class FocusSessionManager: ObservableObject {
                         )
                     }
                 } catch {
-                    print("FOCUS CLOSE SESSION ERROR:", error.localizedDescription)
+                    print(error.localizedDescription)
                 }
 
                 clearSessionLocally()
@@ -532,12 +542,15 @@ final class FocusSessionManager: ObservableObject {
         }
     }
 
+   
+
     private func finishSession(_ session: FocusSessionState) {
         if session.mode == .crew,
            let crewID = currentCrewID,
            let backendSessionID = currentCrewBackendSessionID,
            let crewStore,
            isCurrentUserHost {
+
             Task {
                 do {
                     try await crewStore.endCrewFocusSession(
@@ -553,19 +566,48 @@ final class FocusSessionManager: ObservableObject {
                     print("AUTO END CREW SESSION ERROR:", error.localizedDescription)
                 }
 
-                clearSessionLocally()
+                IdentityXPManager.shared.add(
+                    .crewFocus(minutes: session.durationMinutes)
+                )
+
+                completeAndPersist(session)
             }
+
             return
         }
 
+        IdentityXPManager.shared.add(
+            .focusCompleted(minutes: session.durationMinutes)
+        )
+
+        completeAndPersist(session)
+    }
+    
+    // FocusSessionManager.swift içine EKLE
+
+    private func completeAndPersist(_ session: FocusSessionState) {
         stopLifecycleTimer()
         audioManager.stop()
+
+        let ended = Date()
+        let totalSeconds = session.durationMinutes * 60
+        let completed = max(1, elapsedSeconds)
+
+        FocusCompletionRecorder.shared.saveCompletedSession(
+            ownerUserID: currentUserID?.uuidString,
+            title: activeSessionDisplayTitle,
+            startedAt: session.startDate,
+            endedAt: ended,
+            totalSeconds: totalSeconds,
+            completedSeconds: completed,
+            isCompleted: true
+        )
 
         let summary = FocusCompletionSummary(
             id: UUID(),
             mode: session.mode,
             durationMinutes: session.durationMinutes,
-            completedAt: Date(),
+            completedAt: ended,
             totalTodayMinutes: todayFocusMinutes + session.durationMinutes,
             streakDays: streakDays + 1,
             completedSessionsToday: max(1, weekFocusSessions - 2),
@@ -585,6 +627,11 @@ final class FocusSessionManager: ObservableObject {
         currentCrewBackendSessionID = nil
 
         UserDefaults.standard.removeObject(forKey: storageKey)
+
+        NotificationCenter.default.post(
+            name: Notification.Name("focus_completed"),
+            object: nil
+        )
 
         Task {
             await liveActivityManager.end()

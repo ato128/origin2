@@ -11,6 +11,10 @@ import SwiftData
 struct InsightsView: View {
     @EnvironmentObject var session: SessionStore
     @Environment(\.locale) private var locale
+    @Environment(\.modelContext) private var modelContext
+    
+    @EnvironmentObject var studentStore: StudentStore
+    @State private var showExamPlannerSheet = false
 
     @AppStorage("smartEngineEnabled") private var smartEngineEnabled: Bool = true
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
@@ -33,7 +37,7 @@ struct InsightsView: View {
     @State private var showCoachDetail = false
     
     @State private var showWeeklySignalDetail = false
-  
+    @State private var showIdentityLevelSheet = false
 
    
     @Query(sort: \DTTaskItem.createdAt, order: .reverse)
@@ -47,9 +51,37 @@ struct InsightsView: View {
 
     @Query(sort: \ExamItem.examDate, order: .forward)
     private var exams: [ExamItem]
+    
+    @Query(sort: \IdentityProgressState.updatedAt, order: .reverse)
+    private var identityProgressStates: [IdentityProgressState]
+
+    @Query(sort: \IdentityLevelUpState.createdAt, order: .reverse)
+    private var identityLevelUpStates: [IdentityLevelUpState]
+    
+
+    @State private var showLevelUpCelebration = false
+    @State private var showLevelUpBanner = false
+    
+   
+    
+    private var pendingLevelUp: IdentityLevelUpState? {
+        identityLevelUpStates.first {
+            $0.ownerUserID == currentUserIDString && $0.isPending
+        }
+    }
+    
+    
 
     private var currentUserIDString: String? {
         session.currentUser?.id.uuidString
+    }
+    
+    private var identitySnapshot: IdentityLevelSnapshot {
+        IdentityXPLevelEngine.snapshot(
+            tasks: filteredTasks,
+            focusSessions: filteredFocusSessions,
+            streakDays: vm.streakValueForUI
+        )
     }
 
     private var filteredTasks: [DTTaskItem] {
@@ -59,7 +91,19 @@ struct InsightsView: View {
 
     private var filteredFocusSessions: [FocusSessionRecord] {
         guard let currentUserIDString else { return [] }
-        return focusSessions.filter { $0.ownerUserID == currentUserIDString }
+
+        let scoped = focusSessions.filter {
+            $0.ownerUserID == currentUserIDString
+        }
+
+        if !scoped.isEmpty {
+            return scoped
+        }
+
+        // Eski kayıtlarda ownerUserID nil kaldıysa onları da say
+        return focusSessions.filter {
+            $0.ownerUserID == nil
+        }
     }
 
     private var filteredEvents: [EventItem] {
@@ -173,6 +217,54 @@ struct InsightsView: View {
                 }
             )
         }
+        .sheet(isPresented: $showExamPlannerSheet) {
+            ExamPlannerSheet(
+                courses: studentStore.courses,
+                ownerUserID: currentUserIDString
+            )
+        }
+        .sheet(isPresented: $showIdentityLevelSheet) {
+            InsightsIdentityLevelSheet(
+                level: identitySnapshot.level,
+                progress: identitySnapshot.progress,
+                focusSessions: identitySnapshot.focusSessions,
+                completedTasks: identitySnapshot.completedTasks,
+                streakDays: identitySnapshot.streakDays
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+        .fullScreenCover(isPresented: $showLevelUpCelebration) {
+            if let pending = pendingLevelUp {
+
+                let oldLevel = max(1, pending.pendingLevel - 1)
+                let info = InsightsIdentityLevelSystem.info(for: pending.pendingLevel)
+
+                IdentityLevelUpCelebrationView(
+                    oldLevel: oldLevel,
+                    newLevel: pending.pendingLevel,
+                    title: pending.pendingTitle,
+                    accent: info.accent
+                ) {
+                    completePendingLevelUp(pending)
+                }
+
+            } else {
+
+                let nextLevel = identitySnapshot.level + 1
+                let info = InsightsIdentityLevelSystem.info(for: nextLevel)
+
+                IdentityLevelUpCelebrationView(
+                    oldLevel: identitySnapshot.level,
+                    newLevel: nextLevel,
+                    title: info.title,
+                    accent: info.accent
+                ) {
+                    instantLevelUpFallback()
+                }
+            }
+        }
+        
         .toolbar(.hidden, for: .navigationBar)
         .background(
             Group {
@@ -195,8 +287,77 @@ struct InsightsView: View {
                     )
                 }
             }
+                
+                .onAppear {
+                    syncIdentityProgressState()
+                }
+                .onChange(of: focusSessions.count) { _, _ in
+                    syncIdentityProgressState()
+                }
+                .onChange(of: filteredTasks.filter(\.isDone).count) { _, _ in
+                    syncIdentityProgressState()
+                }
+                .overlay(alignment: .top) {
+                    if showLevelUpBanner, let pending = pendingLevelUp {
+                        levelUpBanner(pending)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 10)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                }
+                
+                .onReceive(NotificationCenter.default.publisher(for: .focusSessionRecordSaved)) { output in
+                    guard let record = output.object as? FocusSessionRecord else { return }
+                    handleFocusRecordSaved(record)
+                }
             .hidden()
         )
+    }
+    
+    private func handleFocusRecordSaved(_ record: FocusSessionRecord) {
+        guard record.isCompleted else { return }
+
+        syncIdentityProgressState()
+
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.success)
+    }
+    
+    private func instantLevelUpFallback() {
+        showLevelUpCelebration = false
+    }
+
+    
+    
+    private func completePendingLevelUp(_ pending: IdentityLevelUpState) {
+        pending.isPending = false
+
+        if let state = identityProgressStates.first(where: {
+            $0.ownerUserID == currentUserIDString
+        }) {
+            state.currentLevel = pending.pendingLevel
+            state.updatedAt = Date()
+        }
+
+        try? modelContext.save()
+
+        showLevelUpCelebration = false
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            showLevelUpBanner = true
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+            showLevelUpBanner = false
+        }
+    }
+    
+    private var identityCompletedTasks: Int {
+        filteredTasks.filter(\.isDone).count
+    }
+
+    private var identityFocusSessions: Int {
+        filteredFocusSessions.count
     }
 
     private var stableBackground: some View {
@@ -299,9 +460,17 @@ struct InsightsView: View {
             )
 
             HStack(spacing: 12) {
-                InsightsMomentumMiniCard(
-                    data: vm.identityProfile,
-                    streakCount: vm.streakValueForUI
+                InsightsIdentityCardV2(
+                    snapshot: identitySnapshot,
+                    isExpanded: identityExpanded,
+                    hasPendingLevelUp: pendingLevelUp != nil || identitySnapshot.progress >= 1,
+                    onTap: {
+                        if pendingLevelUp != nil || identitySnapshot.progress >= 1 {
+                            showLevelUpCelebration = true
+                        } else {
+                            showIdentityLevelSheet = true
+                        }
+                    }
                 )
 
                 InsightsAchievementMiniCard(
@@ -320,7 +489,7 @@ struct InsightsView: View {
                 )
 
                 InsightsExamPlannerCTA {
-                    goWeek = true
+                    showExamPlannerSheet = true
                 }
             }
 
@@ -353,10 +522,9 @@ struct InsightsView: View {
 
             
             InsightsIdentityCardV2(
-                data: vm.identityProfile,
-                stats: vm.identityCompactStats,
-                streakCount: vm.streakValueForUI,
+                snapshot: identitySnapshot,
                 isExpanded: identityExpanded,
+                hasPendingLevelUp: pendingLevelUp != nil || identitySnapshot.progress >= 1,
                 onTap: {
                     withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
                         identityExpanded.toggle()
@@ -612,7 +780,109 @@ struct InsightsView: View {
                 .padding(18)
         }
     }
+    
+    private func syncIdentityProgressState() {
+        guard let currentUserIDString else { return }
 
+        let snapshot = identitySnapshot
+
+        if let existing = identityProgressStates.first(where: { $0.ownerUserID == currentUserIDString }) {
+            let oldLevel = existing.level
+            let newLevel = snapshot.level
+
+            existing.totalXP = 0
+            existing.focusSessions = snapshot.focusSessions
+            existing.completedTasks = snapshot.completedTasks
+            existing.streakDays = snapshot.streakDays
+            existing.updatedAt = Date()
+
+            if newLevel > oldLevel {
+                existing.level = oldLevel
+
+                let alreadyPending = identityLevelUpStates.contains {
+                    $0.ownerUserID == currentUserIDString &&
+                    $0.isPending &&
+                    $0.pendingLevel == newLevel
+                }
+
+                if !alreadyPending {
+                    let nextInfo = InsightsIdentityLevelSystem.info(for: newLevel)
+
+                    let pending = IdentityLevelUpState(
+                        ownerUserID: currentUserIDString,
+                        pendingLevel: newLevel,
+                        pendingTitle: nextInfo.title
+                    )
+
+                    modelContext.insert(pending)
+
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                        showLevelUpBanner = true
+                    }
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            showLevelUpBanner = false
+                        }
+                    }
+                }
+            } else {
+                existing.level = newLevel
+            }
+        } else {
+            let state = IdentityProgressState(
+                ownerUserID: currentUserIDString,
+                level: snapshot.level,
+                totalXP: 0,
+                focusSessions: snapshot.focusSessions,
+                completedTasks: snapshot.completedTasks,
+                streakDays: snapshot.streakDays
+            )
+
+            modelContext.insert(state)
+        }
+
+        try? modelContext.save()
+    }
+    private func levelUpBanner(_ pending: IdentityLevelUpState) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "arrow.up.forward.circle.fill")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(.orange)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Yeni seviyeye hazırsın")
+                    .font(.system(size: 14, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+
+                Text("Lv.\(pending.pendingLevel) • \(pending.pendingTitle)")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.62))
+            }
+
+            Spacer()
+
+            Text("Aç")
+                .font(.system(size: 12, weight: .black, design: .rounded))
+                .foregroundStyle(.black)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(.white, in: Capsule())
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(.black.opacity(0.86))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(.white.opacity(0.12), lineWidth: 1)
+                )
+        )
+        .onTapGesture {
+            showLevelUpCelebration = true
+        }
+    }
+    
     private func chip(_ text: String) -> some View {
         Text(text)
             .font(.system(size: 12, weight: .semibold))

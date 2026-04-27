@@ -8,390 +8,148 @@
 import SwiftUI
 
 struct InsightsIdentityCardV2: View {
-    let data: InsightsIdentityData
-    let stats: [InsightsMiniStatData]
-    let streakCount: Int
+    let snapshot: IdentityLevelSnapshot
     let isExpanded: Bool
+    let hasPendingLevelUp: Bool
     let onTap: () -> Void
 
-    private var accent: Color { data.accent }
-
-    private var secondaryAccent: Color {
-        Color(red: 0.22, green: 0.08, blue: 0.20)
-    }
-
-    private var archetypeIcon: String {
-        switch data.title.lowercased() {
-        case let t where t.contains("deep"):
-            return "circle.hexagongrid.fill"
-        case let t where t.contains("consistency"):
-            return "leaf.fill"
-        case let t where t.contains("night"):
-            return "moon.stars.fill"
-        default:
-            return "bolt.fill"
-        }
+    private var accent: Color {
+        snapshot.currentRequirement.accent
     }
 
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 14) {
-                headerRow
+            VStack(alignment: .leading, spacing: 16) {
 
-                Text(data.subtitle)
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.72))
-                    .lineLimit(2)
+                topBar
 
-                streakBeam
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(snapshot.title)
+                        .font(.system(size: 30, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
 
-                HStack(spacing: 8) {
-                    ForEach(data.traits.prefix(3), id: \.self) { trait in
-                        Text(trait)
-                            .font(.system(size: 11.5, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.84))
-                            .padding(.horizontal, 11)
-                            .padding(.vertical, 7)
-                            .background(Color.white.opacity(0.08), in: Capsule())
-                    }
-
-                    Spacer()
-
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.62))
-                        .frame(width: 28, height: 28)
-                        .background(Color.white.opacity(0.055), in: Circle())
+                    Text("Level \(snapshot.level)")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.55))
                 }
+
+                progressArea
+
+                bottomArea
 
                 if isExpanded {
-                    expandedStats
-                        .transition(.move(edge: .top).combined(with: .opacity))
+                    expandedArea
                 }
+
             }
             .padding(18)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
-            .background(
-                premiumInsightsBackground(
-                    accent: accent,
-                    secondaryAccent: secondaryAccent,
-                    strength: min(0.92, 0.54 + Double(streakCount) * 0.035),
-                    cornerRadius: 30
-                )
-            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(bg)
+            .clipShape(RoundedRectangle(cornerRadius: 30))
             .overlay(
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 30)
+                    .stroke(.white.opacity(0.06), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
     }
 
-    private var headerRow: some View {
-        HStack(alignment: .top) {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            RadialGradient(
-                                colors: [
-                                    accent.opacity(0.30),
-                                    Color.white.opacity(0.05),
-                                    Color.clear
-                                ],
-                                center: .center,
-                                startRadius: 2,
-                                endRadius: 26
-                            )
-                        )
-                        .frame(width: 48, height: 48)
-
-                    Circle()
-                        .fill(Color.white.opacity(0.055))
-                        .frame(width: 42, height: 42)
-
-                    Image(systemName: archetypeIcon)
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.94))
-                        .shadow(color: accent.opacity(0.28), radius: 6)
-                }
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Identity")
-                        .font(.system(size: 12, weight: .heavy, design: .rounded))
-                        .foregroundStyle(accent.opacity(0.98))
-                        .tracking(0.8)
-
-                    Text(data.title)
-                        .font(.system(size: 24, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
-                        .lineLimit(2)
-                }
-            }
+    var topBar: some View {
+        HStack {
+            Text("IDENTITY")
+                .font(.system(size: 11, weight: .black))
+                .tracking(3)
+                .foregroundStyle(accent)
 
             Spacer()
 
-            ZStack {
-                Circle()
-                    .fill(Color.white.opacity(0.07))
-                    .frame(width: 54, height: 54)
+            Text("Lv \(snapshot.level)")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(.white.opacity(0.75))
+        }
+    }
 
-                VStack(spacing: 1) {
-                    Text("Lv")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.52))
+    var progressArea: some View {
+        VStack(alignment: .leading, spacing: 8) {
 
-                    Text("\(data.level)")
-                        .font(.system(size: 20, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+
+                    Capsule()
+                        .fill(.white.opacity(0.08))
+                        .frame(height: 10)
+
+                    Capsule()
+                        .fill(accent)
+                        .frame(
+                            width: geo.size.width * snapshot.progress,
+                            height: 10
+                        )
                 }
             }
-        }
-    }
+            .frame(height: 10)
 
-    private var streakBeam: some View {
-        GeometryReader { proxy in
-            let width = proxy.size.width
-
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(Color.white.opacity(0.08))
-                    .frame(height: 8)
-
-                Capsule()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                accent.opacity(0.98),
-                                Color.white.opacity(0.88)
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .frame(width: max(14, width * data.progress), height: 8)
-                    .shadow(color: accent.opacity(0.18), radius: 8)
-            }
-        }
-        .frame(height: 8)
-    }
-
-    private var expandedStats: some View {
-        VStack(spacing: 10) {
-            Divider()
-                .overlay(Color.white.opacity(0.06))
-
-            LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: 10),
-                    GridItem(.flexible(), spacing: 10)
-                ],
-                spacing: 10
-            ) {
-                ForEach(Array(stats.enumerated()), id: \.offset) { index, item in
-                    statTile(item: item, index: index)
-                }
-            }
-        }
-    }
-
-    private func statTile(item: InsightsMiniStatData, index: Int) -> some View {
-        HStack(spacing: 10) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(item.accent.opacity(0.16))
-                    .frame(width: 34, height: 34)
-
-                Image(systemName: icon(for: index))
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.84))
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.value)
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-
-                Text(shortLabel(item.label))
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.56))
-            }
-
-            Spacer()
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.045))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.045), lineWidth: 1)
-                )
-        )
-    }
-
-    private func premiumInsightsBackground(
-        accent: Color,
-        secondaryAccent: Color,
-        strength: Double,
-        cornerRadius: CGFloat
-    ) -> some View {
-        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .fill(
-                LinearGradient(
-                    colors: [
-                        accent.opacity(0.32 + strength * 0.18),
-                        accent.opacity(0.20),
-                        secondaryAccent.opacity(0.70),
-                        Color(red: 0.035, green: 0.035, blue: 0.070)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                accent.opacity(0.20 + strength * 0.12),
-                                Color.clear
-                            ],
-                            center: .topLeading,
-                            startRadius: 4,
-                            endRadius: 170
-                        )
-                    )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                secondaryAccent.opacity(0.18 + strength * 0.12),
-                                Color.clear
-                            ],
-                            center: .bottomLeading,
-                            startRadius: 10,
-                            endRadius: 170
-                        )
-                    )
-                    .blur(radius: 10)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.08),
-                                Color.clear,
-                                Color.black.opacity(0.18)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-            )
-    }
-
-    private func icon(for index: Int) -> String {
-        switch index {
-        case 0: return "flame.fill"
-        case 1: return "timer"
-        case 2: return "checkmark.circle.fill"
-        default: return "waveform.path"
-        }
-    }
-
-    private func shortLabel(_ label: String) -> String {
-        let lowered = label.lowercased()
-
-        if lowered.contains("seri") || lowered.contains("streak") {
-            return "Streak"
-        } else if lowered.contains("focus") {
-            return "Focus"
-        } else if lowered.contains("tamam") || lowered.contains("done") || lowered.contains("completed") {
-            return "Done"
-        } else {
-            return "Best Day"
-        }
-    }
-}
-struct InsightsMomentumMiniCard: View {
-    let data: InsightsIdentityData
-    let streakCount: Int
-
-    private var accent: Color {
-        Color(red: 1.00, green: 0.55, blue: 0.18)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("MOMENTUM")
-                    .font(.system(size: 11, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.42))
-                    .tracking(3.0)
+                Text("Lv.\(snapshot.level) → Lv.\(snapshot.level + 1)")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(accent)
 
                 Spacer()
 
-                Image(systemName: "bolt.fill")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(accent)
+                Text("\(Int(snapshot.progress * 100))%")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.55))
             }
-
-            Spacer(minLength: 2)
-
-            Text(data.title)
-                .font(.system(size: 25, weight: .heavy, design: .rounded))
-                .foregroundStyle(.white.opacity(0.98))
-                .lineLimit(2)
-                .minimumScaleFactor(0.72)
-
-            Text("Lv.\(data.level) • \(streakCount) gün seri")
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(accent)
-
-            ProgressView(value: min(max(data.progress, 0), 1))
-                .tint(accent)
-
-            Text("Bir sonraki seviyeye ilerle")
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.50))
-                .lineLimit(1)
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, minHeight: 170, alignment: .topLeading)
-        .background(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            accent.opacity(0.24),
-                            Color.purple.opacity(0.10),
-                            Color.black.opacity(0.92)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RadialGradient(
-                        colors: [
-                            accent.opacity(0.20),
-                            .clear
-                        ],
-                        center: .topTrailing,
-                        startRadius: 4,
-                        endRadius: 120
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .stroke(Color.white.opacity(0.075), lineWidth: 1)
-                )
+    }
+
+    var bottomArea: some View {
+        HStack {
+            Text(hasPendingLevelUp ? "Yeni seviye hazır" : "İlerleme aktif")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(hasPendingLevelUp ? .green : .white.opacity(0.55))
+
+            Spacer()
+
+            Image(systemName: "chevron.down")
+                .foregroundStyle(.white.opacity(0.45))
+        }
+    }
+
+    var expandedArea: some View {
+        VStack(spacing: 10) {
+            Divider().overlay(.white.opacity(0.07))
+
+            stat("Focus", "\(snapshot.focusSessions)")
+            stat("Tasks", "\(snapshot.completedTasks)")
+            stat("Streak", "\(snapshot.streakDays)")
+        }
+        .padding(.top, 4)
+    }
+
+    func stat(_ title: String,_ value: String) -> some View {
+        HStack {
+            Text(title)
+                .foregroundStyle(.white.opacity(0.5))
+            Spacer()
+            Text(value)
+                .foregroundStyle(.white)
+                .fontWeight(.bold)
+        }
+        .font(.system(size: 13))
+    }
+
+    var bg: some View {
+        LinearGradient(
+            colors: [
+                accent.opacity(0.28),
+                Color.orange.opacity(0.12),
+                Color.black
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
         )
     }
 }
