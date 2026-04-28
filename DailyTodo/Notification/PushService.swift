@@ -51,8 +51,7 @@ final class PushService {
         toUserId: String,
         friendshipID: String,
         senderName: String,
-        message: String,
-        badge: Int = 1
+        message: String
     ) {
         performRequest(bodyObject: [
             "toUserId": toUserId,
@@ -60,11 +59,9 @@ final class PushService {
             "message": message,
             "type": "friend_chat",
             "friendship_id": friendshipID,
-            "deep_link": "dailytodo://friend-chat?friendship_id=\(friendshipID)",
-            "badge": badge
+            "deep_link": "dailytodo://friend-chat?friendship_id=\(friendshipID)"
         ])
     }
-
     func sendCrewMessagePush(
         toUserId: String,
         crewID: String,

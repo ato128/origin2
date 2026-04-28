@@ -14,28 +14,30 @@ struct MessagesView: View {
     @EnvironmentObject var friendStore: FriendStore
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var session: SessionStore
-
+    
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
-
+    
     @State private var searchText = ""
-
+    
     @Query(sort: \Friend.createdAt, order: .reverse)
     private var friends: [Friend]
-
+    
     private let replyMarker = "[[reply]]"
     private let bodyMarker = "[[body]]"
-
+    
     private var currentUserID: UUID? {
         session.currentUser?.id
     }
-
+    
     private var backendFriends: [Friend] {
         guard let currentUserID else { return [] }
         return friends.filter {
             $0.ownerUserID == currentUserID.uuidString && $0.backendFriendshipID != nil
         }
     }
-
+    
+    
+    
     private var backendCrews: [WeekCrewItem] {
         crewStore.crews.map {
             WeekCrewItem(
@@ -46,27 +48,27 @@ struct MessagesView: View {
             )
         }
     }
-
+    
     private var onlineItems: [MessagesHubItem] {
-        let onlineFriendsItems = backendFriends
-            .filter(\.isOnline)
-            .map { friend in
+        let onlineFriendsItems = friendStore.friendChatSummaries
+            .filter { $0.isOnline }
+            .map { summary in
                 MessagesHubItem(
-                    id: "friend-online-\(friend.id.uuidString)",
+                    id: "friend-online-\(summary.friendshipID.uuidString)",
                     kind: .friend,
-                    payload: .friend(friend),
-                    title: firstWord(friend.name),
-                    shortTitle: firstWord(friend.name),
-                    preview: lastPreviewText(for: friend),
-                    time: lastFriendMessageDate(for: friend),
-                    unreadCount: unreadFriendCount(for: friend),
-                    avatarText: initials(for: friend.name),
-                    tint: tintForFriend(friend),
-                    isOnline: true,
+                    payload: .friendSummary(summary),
+                    title: firstWord(summary.title),
+                    shortTitle: firstWord(summary.title),
+                    preview: summary.typingText ?? cleanedPreview(summary.lastMessageText),
+                    time: summary.lastMessageAt,
+                    unreadCount: summary.unreadCount,
+                    avatarText: initials(for: summary.title),
+                    tint: hexColor(summary.colorHex),
+                    isOnline: summary.isOnline,
                     showsPresence: true
                 )
             }
-
+        
         let onlineCrewItems = backendCrews
             .filter { crew in
                 guard let lastDate = lastCrewMessageDate(for: crew) else { return false }
@@ -88,31 +90,31 @@ struct MessagesView: View {
                     showsPresence: true
                 )
             }
-
+        
         return Array((onlineFriendsItems + onlineCrewItems)
             .sorted { ($0.time ?? .distantPast) > ($1.time ?? .distantPast) }
             .prefix(8))
     }
-
+    
     private var allConversationItems: [MessagesHubItem] {
-        let friendItems = backendFriends.map { friend in
+        let friendItems = friendStore.friendChatSummaries.map { summary in
             MessagesHubItem(
-                id: "friend-\(friend.id.uuidString)",
+                id: "friend-\(summary.friendshipID.uuidString)",
                 kind: .friend,
-                payload: .friend(friend),
-                title: friend.name,
-                shortTitle: firstWord(friend.name),
-                preview: lastPreviewText(for: friend),
-                time: lastFriendMessageDate(for: friend),
-                unreadCount: unreadFriendCount(for: friend),
-                avatarText: initials(for: friend.name),
-                tint: tintForFriend(friend),
-                isOnline: friend.isOnline,
+                payload: .friendSummary(summary),
+                title: summary.title,
+                shortTitle: firstWord(summary.title),
+                preview: summary.typingText ?? cleanedPreview(summary.lastMessageText),
+                time: summary.lastMessageAt,
+                unreadCount: summary.unreadCount,
+                avatarText: initials(for: summary.title),
+                tint: hexColor(summary.colorHex),
+                isOnline: summary.isOnline,
                 showsPresence: true
             )
         }
-
-        let crewItems = backendCrews.map { crew in
+        
+        let crewItems: [MessagesHubItem] = backendCrews.map { crew in
             MessagesHubItem(
                 id: "crew-\(crew.id.uuidString)",
                 kind: .crew,
@@ -128,95 +130,141 @@ struct MessagesView: View {
                 showsPresence: true
             )
         }
-
-        return (friendItems + crewItems)
-            .sorted { lhs, rhs in
-                let l = lhs.time ?? .distantPast
-                let r = rhs.time ?? .distantPast
-                if l != r { return l > r }
-                return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
-            }
+        
+        let merged: [MessagesHubItem] = friendItems + crewItems
+        
+        return merged.sorted(by: conversationSort)
     }
-
+    
+    private func conversationSort(
+        _ lhs: MessagesHubItem,
+        _ rhs: MessagesHubItem
+    ) -> Bool {
+        let left = lhs.time ?? .distantPast
+        let right = rhs.time ?? .distantPast
+        
+        if left != right {
+            return left > right
+        }
+        
+        return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+    }
+    
     private var filteredConversationItems: [MessagesHubItem] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return allConversationItems }
-
+        
         return allConversationItems.filter {
             $0.title.localizedCaseInsensitiveContains(query)
             || $0.preview.localizedCaseInsensitiveContains(query)
         }
     }
-
+    
     var body: some View {
         NavigationStack {
-            ZStack {
-                AppBackground()
-
-                if appTheme == AppTheme.gradient.rawValue {
-                    ambientBackground
-                        .ignoresSafeArea()
+            messagesRoot
+                .navigationBarBackButtonHidden(true)
+                .toolbar(.hidden, for: .navigationBar)
+                .task {
+                    await loadMessagesHubData()
                 }
-
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
-                        header
-                        searchBar
-
-                        if !onlineItems.isEmpty {
-                            onlineSection
-                        }
-
-                        conversationsSection
-
-                        Spacer(minLength: 70)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                    .padding(.bottom, 24)
+                .onReceive(friendStore.$friendships) { _ in
+                    rebuildFriendSummariesIfPossible()
                 }
-                .scrollIndicators(.hidden)
-            }
-            .navigationBarBackButtonHidden(true)
-            .toolbar(.hidden, for: .navigationBar)
-            .task {
-                await crewStore.loadCrews()
-
-                for crew in crewStore.crews {
-                    await crewStore.loadInitialChatMessages(
-                        for: crew.id,
-                        currentUserID: session.currentUser?.id
-                    )
+                .onReceive(friendStore.$friendMessagesByFriendship) { _ in
+                    rebuildFriendSummariesIfPossible()
                 }
-
-                guard let currentUserID = session.currentUser?.id else { return }
-
-                await friendStore.loadAllFriendships(currentUserID: currentUserID)
-
-                let otherUserIDs = friendStore.friendships.compactMap {
-                    $0.requester_id == currentUserID ? $0.addressee_id : $0.requester_id
+                .onReceive(friendStore.$typingStatusByFriendship) { _ in
+                    rebuildFriendSummariesIfPossible()
                 }
-
-                await friendStore.loadProfiles(for: otherUserIDs)
-                friendStore.syncAcceptedFriendsToLocal(
-                    currentUserID: currentUserID,
-                    modelContext: modelContext
-                )
-
-                for friend in backendFriends {
-                    if let friendshipID = friend.backendFriendshipID {
-                        await friendStore.loadInitialMessages(
-                            for: friendshipID,
-                            currentUserID: currentUserID
-                        )
-                    }
+                .onReceive(friendStore.$presenceByUserID) { _ in
+                    rebuildFriendSummariesIfPossible()
                 }
-            }
         }
     }
 }
 
 private extension MessagesView {
+    
+    var messagesRoot: some View {
+        ZStack {
+            AppBackground()
+
+            if appTheme == AppTheme.gradient.rawValue {
+                ambientBackground
+                    .ignoresSafeArea()
+            }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    header
+                    searchBar
+
+                    if !onlineItems.isEmpty {
+                        onlineSection
+                    }
+
+                    conversationsSection
+
+                    Spacer(minLength: 70)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 24)
+            }
+            .scrollIndicators(.hidden)
+        }
+    }
+
+
+    func rebuildFriendSummariesIfPossible() {
+        guard let currentUserID else { return }
+        friendStore.rebuildFriendChatSummaries(
+            currentUserID: currentUserID,
+            localFriends: backendFriends
+        )
+    }
+
+    func loadMessagesHubData() async {
+        await crewStore.loadCrews()
+
+        for crew in crewStore.crews {
+            await crewStore.loadInitialChatMessages(
+                for: crew.id,
+                currentUserID: session.currentUser?.id
+            )
+        }
+
+        guard let currentUserID = session.currentUser?.id else { return }
+
+        await friendStore.loadAllFriendships(currentUserID: currentUserID)
+        friendStore.subscribeToFriendshipsRealtime(currentUserID: currentUserID)
+
+        let otherUserIDs = friendStore.friendships.compactMap {
+            $0.requester_id == currentUserID ? $0.addressee_id : $0.requester_id
+        }
+
+        await friendStore.loadProfiles(for: otherUserIDs)
+        friendStore.syncAcceptedFriendsToLocal(
+            currentUserID: currentUserID,
+            modelContext: modelContext
+        )
+
+        for friend in backendFriends {
+            if let friendshipID = friend.backendFriendshipID {
+                await friendStore.loadInitialMessages(
+                    for: friendshipID,
+                    currentUserID: currentUserID
+                )
+            }
+        }
+
+        friendStore.rebuildFriendChatSummaries(
+            currentUserID: currentUserID,
+            localFriends: backendFriends
+        )
+    }
+    
     var ambientBackground: some View {
         ZStack {
             RadialGradient(
@@ -404,6 +452,18 @@ private extension MessagesView {
 
                     Spacer(minLength: 4)
 
+                    if let summary = summaryFromPayload(item.payload), summary.isPinned {
+                        Image(systemName: "pin.fill")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.44))
+                    }
+
+                    if let summary = summaryFromPayload(item.payload), summary.isMuted {
+                        Image(systemName: "bell.slash.fill")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.34))
+                    }
+
                     if let time = item.time {
                         Text(time, style: .time)
                             .font(.system(size: 12, weight: .bold, design: .rounded))
@@ -443,6 +503,66 @@ private extension MessagesView {
         .padding(.horizontal, 14)
         .padding(.vertical, 13)
         .background(rowBackground(highlighted: item.unreadCount > 0))
+        .contextMenu {
+            switch item.payload {
+            case .friend(let friend):
+                let summary = friendSummary(for: friend)
+                let isPinned = summary?.isPinned ?? false
+                let isMuted = summary?.isMuted ?? false
+
+                Button {
+                    togglePinFriendChat(friend)
+                } label: {
+                    Label(
+                        isPinned ? "Sabitlemeyi kaldır" : "Sohbeti sabitle",
+                        systemImage: isPinned ? "pin.slash" : "pin"
+                    )
+                }
+
+                Button {
+                    toggleMuteFriendChat(friend)
+                } label: {
+                    Label(
+                        isMuted ? "Sessizden çıkar" : "Sessize al",
+                        systemImage: isMuted ? "bell" : "bell.slash"
+                    )
+                }
+
+                Button(role: .destructive) {
+                    archiveFriendChat(friend)
+                } label: {
+                    Label("Arşivle", systemImage: "archivebox")
+                }
+
+            case .friendSummary(let summary):
+                Button {
+                    togglePinFriendChat(summary)
+                } label: {
+                    Label(
+                        summary.isPinned ? "Sabitlemeyi kaldır" : "Sohbeti sabitle",
+                        systemImage: summary.isPinned ? "pin.slash" : "pin"
+                    )
+                }
+
+                Button {
+                    toggleMuteFriendChat(summary)
+                } label: {
+                    Label(
+                        summary.isMuted ? "Sessizden çıkar" : "Sessize al",
+                        systemImage: summary.isMuted ? "bell" : "bell.slash"
+                    )
+                }
+
+                Button(role: .destructive) {
+                    archiveFriendChat(summary)
+                } label: {
+                    Label("Arşivle", systemImage: "archivebox")
+                }
+
+            case .crew:
+                EmptyView()
+            }
+        }
     }
 
     func onlineAvatar(for item: MessagesHubItem, size: CGFloat) -> some View {
@@ -535,6 +655,14 @@ private extension MessagesView {
                 .environmentObject(friendStore)
                 .environmentObject(session)
 
+        case .friendSummary(let summary):
+            if let friend = backendFriends.first(where: { $0.backendFriendshipID == summary.friendshipID }) {
+                FriendChatView(friend: friend)
+                    .environmentObject(friendStore)
+                    .environmentObject(session)
+            } else {
+                EmptyView()
+            }
         case .crew(let crew):
             CrewChatView(crew: crew)
                 .environmentObject(crewStore)
@@ -555,10 +683,16 @@ private extension MessagesView {
     }
 
     private func lastPreviewText(for friend: Friend) -> String {
-        guard
-            let friendshipID = friend.backendFriendshipID,
-            let last = friendStore.friendMessagesByFriendship[friendshipID]?.last
-        else {
+        guard let friendshipID = friend.backendFriendshipID else {
+            return friend.subtitle
+        }
+
+        if let summary = friendStore.friendChatSummaries.first(where: { $0.friendshipID == friendshipID }) {
+            let cleaned = cleanedPreview(summary.lastMessageText)
+            return summary.typingText ?? cleaned
+        }
+
+        guard let last = friendStore.friendMessagesByFriendship[friendshipID]?.last else {
             return friend.subtitle
         }
 
@@ -568,13 +702,22 @@ private extension MessagesView {
 
     private func lastFriendMessageDate(for friend: Friend) -> Date? {
         guard let friendshipID = friend.backendFriendshipID else { return nil }
+
+        if let summary = friendStore.friendChatSummaries.first(where: { $0.friendshipID == friendshipID }) {
+            return summary.lastMessageAt
+        }
+
         return friendStore.friendMessagesByFriendship[friendshipID]?.last?.createdAt
     }
 
     private func unreadFriendCount(for friend: Friend) -> Int {
         guard let friendshipID = friend.backendFriendshipID else { return 0 }
-        let messages = friendStore.friendMessagesByFriendship[friendshipID] ?? []
-        return messages.filter { !$0.isFromMe && $0.seenAt == nil }.count
+
+        if let summary = friendStore.friendChatSummaries.first(where: { $0.friendshipID == friendshipID }) {
+            return summary.unreadCount
+        }
+
+        return friendStore.unreadCount(for: friendshipID)
     }
 
     private func crewChatMessages(for crew: WeekCrewItem) -> [CrewChatMessageItem] {
@@ -640,6 +783,110 @@ private extension MessagesView {
     private func tintForCrew(_ crew: WeekCrewItem) -> Color {
         hexColor(crew.colorHex)
     }
+    
+    private func friendSummary(for friend: Friend) -> FriendChatThreadSummary? {
+        guard let friendshipID = friend.backendFriendshipID else { return nil }
+        return friendStore.friendChatSummaries.first {
+            $0.friendshipID == friendshipID
+        }
+    }
+    private func summaryFromPayload(_ payload: MessagesHubItem.Payload) -> FriendChatThreadSummary? {
+        switch payload {
+        case .friend(let friend):
+            return friendSummary(for: friend)
+
+        case .friendSummary(let summary):
+            return summary
+
+        case .crew:
+            return nil
+        }
+    }
+
+    private func togglePinFriendChat(_ summary: FriendChatThreadSummary) {
+        guard let currentUserID = session.currentUser?.id else { return }
+
+        Task {
+            await friendStore.setFriendChatPinned(
+                friendshipID: summary.friendshipID,
+                currentUserID: currentUserID,
+                isPinned: !summary.isPinned
+            )
+        }
+    }
+
+    private func toggleMuteFriendChat(_ summary: FriendChatThreadSummary) {
+        guard let currentUserID = session.currentUser?.id else { return }
+
+        Task {
+            await friendStore.setFriendChatMuted(
+                friendshipID: summary.friendshipID,
+                currentUserID: currentUserID,
+                isMuted: !summary.isMuted
+            )
+        }
+    }
+
+    private func archiveFriendChat(_ summary: FriendChatThreadSummary) {
+        guard let currentUserID = session.currentUser?.id else { return }
+
+        Task {
+            await friendStore.setFriendChatArchived(
+                friendshipID: summary.friendshipID,
+                currentUserID: currentUserID,
+                isArchived: true
+            )
+        }
+    }
+
+    private func togglePinFriendChat(_ friend: Friend) {
+        guard
+            let friendshipID = friend.backendFriendshipID,
+            let currentUserID = session.currentUser?.id
+        else { return }
+
+        let current = friendSummary(for: friend)?.isPinned ?? false
+
+        Task {
+            await friendStore.setFriendChatPinned(
+                friendshipID: friendshipID,
+                currentUserID: currentUserID,
+                isPinned: !current
+            )
+        }
+    }
+
+    private func toggleMuteFriendChat(_ friend: Friend) {
+        guard
+            let friendshipID = friend.backendFriendshipID,
+            let currentUserID = session.currentUser?.id
+        else { return }
+
+        let current = friendSummary(for: friend)?.isMuted ?? false
+
+        Task {
+            await friendStore.setFriendChatMuted(
+                friendshipID: friendshipID,
+                currentUserID: currentUserID,
+                isMuted: !current
+            )
+        }
+    }
+
+    private func archiveFriendChat(_ friend: Friend) {
+        guard
+            let friendshipID = friend.backendFriendshipID,
+            let currentUserID = session.currentUser?.id
+        else { return }
+
+        Task {
+            await friendStore.setFriendChatArchived(
+                friendshipID: friendshipID,
+                currentUserID: currentUserID,
+                isArchived: true
+            )
+        }
+    }
 
     private func hexColor(_ hex: String?) -> Color {
         guard let hex else { return .accentColor }
@@ -678,17 +925,18 @@ private extension MessagesView {
     }
 }
 
-private struct MessagesHubItem: Identifiable {
+struct MessagesHubItem: Identifiable {
     enum Kind {
         case friend
         case crew
     }
 
-    enum Payload {
-        case friend(Friend)
-        case crew(WeekCrewItem)
-    }
-
+     enum Payload {
+         case friend(Friend)
+         case friendSummary(FriendChatThreadSummary)
+         case crew(WeekCrewItem)
+     }
+     
     let id: String
     let kind: Kind
     let payload: Payload

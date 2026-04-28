@@ -130,6 +130,10 @@ struct DailyTodoApp: App {
                 LiveActivityScheduler.shared.setCurrentUserID(currentUserID)
 
                 syncCurrentUserIDToDefaults(session.currentUser?.id)
+                if let userID = session.currentUser?.id {
+                    updateFriendPresence(isOnline: true)
+                    bootstrapFriendRealtime(for: userID)
+                }
 
                 let descriptor = FetchDescriptor<EventItem>(
                     sortBy: [SortDescriptor(\EventItem.startMinute, order: .forward)]
@@ -155,6 +159,13 @@ struct DailyTodoApp: App {
                 LiveActivityScheduler.shared.setCurrentUserID(userIDString)
 
                 syncCurrentUserIDToDefaults(newID)
+                friendStore.unsubscribePresenceRealtime()
+                friendStore.unsubscribeFriendshipsRealtime()
+
+                if let newID {
+                    updateFriendPresence(isOnline: true)
+                    bootstrapFriendRealtime(for: newID)
+                }
 
                 let context = ModelContext(container)
                 WidgetAppSync.refreshFromSwiftData(context: context)
@@ -187,13 +198,32 @@ struct DailyTodoApp: App {
                 }
             }
             .onChange(of: scenePhase) { _, newPhase in
-                if newPhase == .active {
+                switch newPhase {
+                case .active:
                     LiveActivityScheduler.shared.startForegroundLoop(container: container)
+
                     let context = ModelContext(container)
                     WidgetAppSync.refreshFromSwiftData(context: context)
-                } else if newPhase == .background {
+
+                    friendStore.setAppActive(true)
+                    updateFriendPresence(isOnline: true)
+
+                    if let userID = session.currentUser?.id {
+                        bootstrapFriendRealtime(for: userID)
+                    }
+
+                case .inactive:
+                    friendStore.setAppActive(false)
+
+                case .background:
+                    friendStore.setAppActive(false)
+                    updateFriendPresence(isOnline: false)
+
                     LiveActivityScheduler.shared.stopForegroundLoop()
                     LiveActivityScheduler.shared.rescheduleBackgroundTask(container: container)
+
+                @unknown default:
+                    break
                 }
             }
             .onOpenURL { url in
@@ -208,6 +238,36 @@ struct DailyTodoApp: App {
             }
             .onReceive(NotificationCenter.default.publisher(for: .presentCrewFocusInviteSheet)) { _ in
                 openFocusFromNotification = true
+            }
+        }
+    }
+    
+    private func updateFriendPresence(isOnline: Bool) {
+        guard let userID = session.currentUser?.id else { return }
+
+        Task {
+            await friendStore.setPresence(
+                currentUserID: userID,
+                isOnline: isOnline
+            )
+        }
+    }
+
+    private func bootstrapFriendRealtime(for userID: UUID) {
+        Task {
+            await friendStore.loadAllFriendships(currentUserID: userID)
+
+            let otherUserIDs = friendStore.friendships.compactMap { friendship -> UUID? in
+                if friendship.requester_id == userID { return friendship.addressee_id }
+                if friendship.addressee_id == userID { return friendship.requester_id }
+                return nil
+            }
+
+            await friendStore.loadPresence(for: otherUserIDs)
+
+            await MainActor.run {
+                friendStore.subscribeToFriendshipsRealtime(currentUserID: userID)
+                friendStore.subscribeToPresenceRealtime(for: otherUserIDs)
             }
         }
     }

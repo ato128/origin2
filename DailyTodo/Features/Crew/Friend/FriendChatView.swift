@@ -115,6 +115,29 @@ struct FriendChatView: View {
             .sheet(isPresented: $showCamera) {
                 CameraPicker(image: $capturedImage)
             }
+            .onChange(of: capturedImage) { _, newImage in
+                guard let newImage else { return }
+                draftAttachment = .photo(newImage)
+            }
+            .onChange(of: selectedPhotoItem) { _, newItem in
+                guard let newItem else { return }
+
+                Task {
+                    do {
+                        if let data = try await newItem.loadTransferable(type: Data.self),
+                           let image = UIImage(data: data) {
+                            await MainActor.run {
+                                draftAttachment = .photo(image)
+                            }
+                        }
+                    } catch {
+                        await MainActor.run {
+                            attachmentAlertText = "Fotoğraf yüklenemedi: \(error.localizedDescription)"
+                            showAttachmentAlert = true
+                        }
+                    }
+                }
+            }
             .alert("Bilgi", isPresented: $showAttachmentAlert) {
                 Button("Tamam", role: .cancel) { }
             } message: {
@@ -130,6 +153,12 @@ struct FriendChatView: View {
                 }
 
                 friendStore.setActiveChat(friendshipID)
+                if let currentUserID = session.currentUser?.id {
+                    await friendStore.resetUnreadForCurrentUser(
+                        friendshipID: friendshipID,
+                        currentUserID: currentUserID
+                    )
+                }
 
                 if friendStore.friendMessagesByFriendship[friendshipID] == nil {
                     await friendStore.loadInitialMessages(
@@ -152,12 +181,18 @@ struct FriendChatView: View {
                     friendshipID: friendshipID,
                     currentUserID: session.currentUser?.id
                 )
+                
+                friendStore.subscribeToTypingRealtime(
+                    friendshipID: friendshipID,
+                    currentUserID: session.currentUser?.id
+                )
             }
             .onDisappear {
                 print("🔴 CHAT DISAPPEAR")
 
                 friendStore.setActiveChat(nil)
                 friendStore.unsubscribeFriendMessagesRealtime()
+                friendStore.unsubscribeTypingRealtime()
             }
             .onChange(of: messages.count) { _, _ in
                 guard let friendshipID else { return }
@@ -217,20 +252,20 @@ private extension FriendChatView {
                     .background(glassCircleBackground)
             }
             .buttonStyle(.plain)
-
+            
             Spacer(minLength: 8)
-
+            
             Button { showFriendInfo = true } label: {
                 HStack(spacing: 10) {
                     ZStack(alignment: .bottomTrailing) {
                         Circle()
                             .fill(hexColor(friend.colorHex).opacity(0.16))
                             .frame(width: 34, height: 34)
-
+                        
                         Image(systemName: friend.avatarSymbol)
                             .font(.system(size: 15, weight: .medium))
                             .foregroundStyle(hexColor(friend.colorHex))
-
+                        
                         if isFriendOnline {
                             Circle()
                                 .fill(.green)
@@ -239,13 +274,13 @@ private extension FriendChatView {
                                 .offset(x: 1, y: 1)
                         }
                     }
-
+                    
                     VStack(alignment: .leading, spacing: 1) {
                         Text(friend.name)
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(.white)
                             .lineLimit(1)
-
+                        
                         if isTypingNow {
                             HStack(spacing: 5) {
                                 Text(headerStatusText)
@@ -267,9 +302,9 @@ private extension FriendChatView {
                 .background(glassCapsuleBackground)
             }
             .buttonStyle(.plain)
-
+            
             Spacer(minLength: 8)
-
+            
             Button { showFriendInfo = true } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 17, weight: .semibold))
@@ -282,32 +317,31 @@ private extension FriendChatView {
         .padding(.horizontal, 16)
         .padding(.top, 8)
     }
-
+    
     private var friendPresence: FriendPresenceDTO? {
         guard let userID = friend.backendUserID else { return nil }
         return friendStore.presenceByUserID[userID]
     }
-
+    
     private var isTypingNow: Bool {
         guard let friendshipID else { return false }
         return friendStore.typingStatusByFriendship[friendshipID] == true
     }
-
-    private var isFriendOnline: Bool { friendPresence?.is_online == true }
-
+    
+    private var isFriendOnline: Bool {
+        FriendPresenceEngine.isOnline(friendPresence)
+    }
+    
     private var headerStatusText: String {
         if let friendshipID,
            friendStore.typingStatusByFriendship[friendshipID] == true {
             return tr("chat_typing_suffix")
         }
-        guard let friendPresence else { return tr("chat_direct_chat") }
-        if friendPresence.is_online { return tr("chat_online") }
-        let date = CrewDateParser.parse(friendPresence.last_seen_at) ?? Date()
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .short
-        formatter.locale = locale
-        let relative = formatter.localizedString(for: date, relativeTo: Date())
-        return tr("chat_last_seen_format", relative)
+        
+        return FriendPresenceEngine.statusText(
+            presence: friendPresence,
+            locale: locale
+        )
     }
 }
 
@@ -568,7 +602,22 @@ private extension FriendChatView {
                         .submitLabel(.send)
                         .onSubmit { sendMessage() }
                         .onChange(of: draftMessage) { _, newValue in
-                            guard let friendshipID, !newValue.isEmpty else { return }
+                            guard let friendshipID else { return }
+
+                            let clean = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                            if clean.isEmpty {
+                                Task {
+                                    await friendStore.setTyping(
+                                        friendshipID: friendshipID,
+                                        currentUserID: session.currentUser?.id,
+                                        currentUserName: senderDisplayName(),
+                                        isTyping: false
+                                    )
+                                }
+                                return
+                            }
+
                             friendStore.userDidType(
                                 friendshipID: friendshipID,
                                 currentUserID: session.currentUser?.id,
@@ -717,11 +766,9 @@ private extension FriendChatView {
     func sendMessage() {
         guard let friendshipID else { return }
         guard let senderID = session.currentUser?.id else { return }
+        guard let toUserId = friend.backendUserID?.uuidString else { return }
 
         let clean = draftMessage.trimmingCharacters(in: .whitespacesAndNewlines)
-        let toUserId = friend.backendUserID?.uuidString
-        guard let toUserId = toUserId else { return }
-        
         let attachmentToSend = draftAttachment
 
         draftMessage = ""
@@ -750,12 +797,14 @@ private extension FriendChatView {
                         caption: clean.isEmpty ? nil : clean
                     )
 
-                    PushService.shared.sendFriendMessagePush(
-                        toUserId: toUserId,
-                        friendshipID: friendshipID.uuidString,
-                        senderName: senderDisplayName(),
-                        message: clean.isEmpty ? "📷 Fotoğraf" : clean
-                    )
+                    if friendStore.shouldSendFriendPush(friendshipID: friendshipID, currentUserID: senderID) {
+                        PushService.shared.sendFriendMessagePush(
+                            toUserId: toUserId,
+                            friendshipID: friendshipID.uuidString,
+                            senderName: senderDisplayName(),
+                            message: clean.isEmpty ? "📷 Fotoğraf" : clean
+                        )
+                    }
                     return
 
                 case .file(let fileURL):
@@ -767,12 +816,14 @@ private extension FriendChatView {
                         caption: clean.isEmpty ? nil : clean
                     )
 
-                    PushService.shared.sendFriendMessagePush(
-                        toUserId: toUserId,
-                        friendshipID: friendshipID.uuidString,
-                        senderName: senderDisplayName(),
-                        message: clean.isEmpty ? "📎 Dosya" : clean
-                    )
+                    if friendStore.shouldSendFriendPush(friendshipID: friendshipID, currentUserID: senderID) {
+                        PushService.shared.sendFriendMessagePush(
+                            toUserId: toUserId,
+                            friendshipID: friendshipID.uuidString,
+                            senderName: senderDisplayName(),
+                            message: clean.isEmpty ? "📎 Dosya" : clean
+                        )
+                    }
                     return
                 }
             }
@@ -786,12 +837,14 @@ private extension FriendChatView {
                 senderName: senderDisplayName()
             )
 
-            PushService.shared.sendFriendMessagePush(
-                toUserId: toUserId,
-                friendshipID: friendshipID.uuidString,
-                senderName: senderDisplayName(),
-                message: clean
-            )
+            if friendStore.shouldSendFriendPush(friendshipID: friendshipID, currentUserID: senderID) {
+                PushService.shared.sendFriendMessagePush(
+                    toUserId: toUserId,
+                    friendshipID: friendshipID.uuidString,
+                    senderName: senderDisplayName(),
+                    message: clean
+                )
+            }
         }
     }
     func scrollToBottom(proxy: ScrollViewProxy, animated: Bool) {

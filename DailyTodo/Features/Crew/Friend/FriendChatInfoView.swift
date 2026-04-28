@@ -35,6 +35,33 @@ struct FriendChatInfoView: View {
         guard let friendshipID else { return false }
         return friendStore.incomingWeekSharesByFriendship[friendshipID]?.is_enabled == true
     }
+    
+    private var friendPresence: FriendPresenceDTO? {
+        guard let friendUserID else { return nil }
+        return friendStore.presenceByUserID[friendUserID]
+    }
+
+    private var isFriendReallyOnline: Bool {
+        FriendPresenceEngine.isOnline(friendPresence)
+    }
+
+    private var friendStatusText: String {
+        FriendPresenceEngine.statusText(
+            presence: friendPresence,
+            locale: locale
+        )
+    }
+
+    private var friendSummary: FriendChatThreadSummary? {
+        guard let friendshipID else { return nil }
+        return friendStore.friendChatSummaries.first {
+            $0.friendshipID == friendshipID
+        }
+    }
+
+    private var isMutedFromBackend: Bool {
+        friendSummary?.isMuted ?? false
+    }
 
     private var currentUserEvents: [EventItem] {
         guard let currentUserID = session.currentUser?.id.uuidString else { return [] }
@@ -191,10 +218,10 @@ private extension FriendChatInfoView {
 
                 HStack(spacing: 8) {
                     Circle()
-                        .fill(friend.isOnline ? .green : .gray.opacity(0.6))
+                        .fill(isFriendReallyOnline ? .green : .gray.opacity(0.6))
                         .frame(width: 8, height: 8)
 
-                    Text(friend.isOnline ? "chat_online" : "friend_info_offline")
+                    Text(friendStatusText)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -289,7 +316,23 @@ private extension FriendChatInfoView {
             Divider()
                 .overlay(palette.cardStroke)
 
-            Toggle(isOn: $friend.isMuted) {
+            Toggle(isOn: Binding(
+                get: { isMutedFromBackend },
+                set: { newValue in
+                    guard
+                        let friendshipID,
+                        let currentUserID = session.currentUser?.id
+                    else { return }
+
+                    Task {
+                        await friendStore.setFriendChatMuted(
+                            friendshipID: friendshipID,
+                            currentUserID: currentUserID,
+                            isMuted: newValue
+                        )
+                    }
+                }
+            )) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("friend_info_mute_notifications")
                         .font(.subheadline.weight(.semibold))

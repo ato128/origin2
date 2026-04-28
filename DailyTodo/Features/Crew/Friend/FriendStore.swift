@@ -31,8 +31,11 @@ final class FriendStore: ObservableObject {
     @Published var unreadCountByFriendship: [UUID: Int] = [:]
     @Published var lastIncomingMessageByFriendship: [UUID: FriendChatMessageItem] = [:]
     @Published var isAppActive: Bool = true
+    @Published var friendChatSummaries: [FriendChatThreadSummary] = []
 
     private var lastForegroundRefreshAt: Date? = nil
+    private var friendshipsRealtimeChannel: RealtimeChannelV2?
+    private var subscribedFriendshipsRealtimeUserID: UUID?
 
     func shouldDoForegroundRefresh() -> Bool {
         guard let lastForegroundRefreshAt else { return true }
@@ -112,6 +115,34 @@ final class FriendStore: ObservableObject {
         } catch {
             print("LOAD FRIENDSHIPS CACHE ERROR:", error.localizedDescription)
         }
+    }
+    
+    private func upsertLocalFriendship(_ friendship: FriendshipDTO) {
+        if let index = friendships.firstIndex(where: { $0.id == friendship.id }) {
+            friendships[index] = friendship
+        } else {
+            friendships.insert(friendship, at: 0)
+        }
+
+        friendships.sort { lhs, rhs in
+            let lhsDate = lhs.last_message_at.flatMap { CrewDateParser.parse($0) }
+                ?? CrewDateParser.parse(lhs.created_at)
+                ?? .distantPast
+
+            let rhsDate = rhs.last_message_at.flatMap { CrewDateParser.parse($0) }
+                ?? CrewDateParser.parse(rhs.created_at)
+                ?? .distantPast
+
+            return lhsDate > rhsDate
+        }
+    }
+
+    private func removeLocalFriendship(id: UUID) {
+        friendships.removeAll { $0.id == id }
+        friendMessagesByFriendship.removeValue(forKey: id)
+        unreadCountByFriendship.removeValue(forKey: id)
+        lastIncomingMessageByFriendship.removeValue(forKey: id)
+        typingStatusByFriendship.removeValue(forKey: id)
     }
 
     // MARK: - Profiles
@@ -342,6 +373,7 @@ final class FriendStore: ObservableObject {
             UserDefaults.standard.removeObject(forKey: friendshipsCacheKey(for: currentUserID))
             UserDefaults.standard.removeObject(forKey: profilesCacheKey(for: currentUserID))
         }
+        unsubscribeFriendshipsRealtime()
     }
 
     // MARK: - Local Sync
@@ -519,6 +551,96 @@ final class FriendStore: ObservableObject {
         markFriendsCacheRefreshed()
     }
     
+    // MARK: - Friend Chat Thread Summaries
+
+    func rebuildFriendChatSummaries(currentUserID: UUID, localFriends: [Friend]) {
+        let accepted = friendships.filter { $0.status == "accepted" }
+
+        let summaries: [FriendChatThreadSummary] = accepted.compactMap { friendship in
+            let isRequester = friendship.requester_id == currentUserID
+            let otherUserID = isRequester ? friendship.addressee_id : friendship.requester_id
+
+            let localFriend = localFriends.first {
+                $0.backendFriendshipID == friendship.id &&
+                $0.ownerUserID == currentUserID.uuidString
+            }
+
+            let profile = profiles[otherUserID]
+
+            let title: String = {
+                if let localFriend { return localFriend.name }
+                if let fullName = profile?.full_name, !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    return fullName
+                }
+                if let username = profile?.username, !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    return username
+                }
+                return profile?.email ?? "Friend"
+            }()
+
+            let unread = isRequester
+                ? (friendship.requester_unread_count ?? unreadCountByFriendship[friendship.id] ?? 0)
+                : (friendship.addressee_unread_count ?? unreadCountByFriendship[friendship.id] ?? 0)
+
+            let isPinned = isRequester
+                ? (friendship.requester_pinned ?? false)
+                : (friendship.addressee_pinned ?? false)
+
+            let isMuted = isRequester
+                ? (friendship.requester_muted ?? false)
+                : (friendship.addressee_muted ?? false)
+
+            let isArchived = isRequester
+                ? (friendship.requester_archived ?? false)
+                : (friendship.addressee_archived ?? false)
+
+            let lastMessageAt = friendship.last_message_at.flatMap {
+                CrewDateParser.parse($0)
+            } ?? friendMessagesByFriendship[friendship.id]?.last?.createdAt
+
+            let lastMessageText = friendship.last_message_text
+                ?? friendMessagesByFriendship[friendship.id]?.last?.text
+                ?? localFriend?.subtitle
+                ?? "Direct chat"
+
+            let typingText: String? = typingStatusByFriendship[friendship.id] == true
+                ? "typing..."
+                : nil
+
+            return FriendChatThreadSummary(
+                id: friendship.id,
+                friendshipID: friendship.id,
+                friendUserID: otherUserID,
+                title: title,
+                subtitle: localFriend?.subtitle ?? "Friend",
+                avatarSymbol: localFriend?.avatarSymbol ?? "person.fill",
+                colorHex: localFriend?.colorHex,
+                lastMessageText: lastMessageText,
+                lastMessageAt: lastMessageAt,
+                unreadCount: unread,
+                isPinned: isPinned,
+                isMuted: isMuted,
+                isArchived: isArchived,
+                isOnline: FriendPresenceEngine.isOnline(presenceByUserID[otherUserID]),
+                typingText: typingText
+            )
+        }
+
+        friendChatSummaries = summaries
+            .filter { !$0.isArchived }
+            .sorted { lhs, rhs in
+                if lhs.isPinned != rhs.isPinned {
+                    return lhs.isPinned && !rhs.isPinned
+                }
+
+                if lhs.sortDate != rhs.sortDate {
+                    return lhs.sortDate > rhs.sortDate
+                }
+
+                return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+            }
+    }
+    
     // MARK: - Unread
 
     var totalUnreadCount: Int {
@@ -563,6 +685,428 @@ final class FriendStore: ObservableObject {
             recomputeUnreadState(for: friendshipID)
         }
     }
+    
+    func isFriendChatMuted(friendshipID: UUID, currentUserID: UUID) -> Bool {
+        guard let friendship = friendships.first(where: { $0.id == friendshipID }) else {
+            return false
+        }
+
+        let isRequester = friendship.requester_id == currentUserID
+        return isRequester
+            ? (friendship.requester_muted ?? false)
+            : (friendship.addressee_muted ?? false)
+    }
+
+    func shouldSendFriendPush(
+        friendshipID: UUID,
+        currentUserID: UUID
+    ) -> Bool {
+        if activeChatFriendshipID == friendshipID && isAppActive {
+            return false
+        }
+
+        if isFriendChatMuted(friendshipID: friendshipID, currentUserID: currentUserID) {
+            return false
+        }
+
+        return true
+    }
+
+    func totalFriendUnreadBadge(for currentUserID: UUID) -> Int {
+        friendships.reduce(0) { total, friendship in
+            let isRequester = friendship.requester_id == currentUserID
+            let unread = isRequester
+                ? (friendship.requester_unread_count ?? 0)
+                : (friendship.addressee_unread_count ?? 0)
+
+            let archived = isRequester
+                ? (friendship.requester_archived ?? false)
+                : (friendship.addressee_archived ?? false)
+
+            return archived ? total : total + unread
+        }
+    }
+    
+    // MARK: - Friend Chat Metadata
+
+    private struct FriendshipLastMessagePayload: Encodable {
+        let last_message_text: String
+        let last_message_at: String
+        let last_sender_id: UUID
+    }
+
+    private struct FriendshipUnreadPayload: Encodable {
+        let requester_unread_count: Int?
+        let addressee_unread_count: Int?
+    }
+
+    private struct FriendshipArchivePayload: Encodable {
+        let requester_archived: Bool?
+        let addressee_archived: Bool?
+    }
+
+    private struct FriendshipMutePayload: Encodable {
+        let requester_muted: Bool?
+        let addressee_muted: Bool?
+    }
+
+    private struct FriendshipPinPayload: Encodable {
+        let requester_pinned: Bool?
+        let addressee_pinned: Bool?
+    }
+
+    func updateFriendshipLastMessageMetadata(
+        friendshipID: UUID,
+        senderID: UUID,
+        text: String
+    ) async {
+        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let preview = clean.isEmpty ? "Message" : clean
+
+        let payload = FriendshipLastMessagePayload(
+            last_message_text: preview,
+            last_message_at: ISO8601DateFormatter().string(from: Date()),
+            last_sender_id: senderID
+        )
+
+        do {
+            try await SupabaseManager.shared.client
+                .from("friendships")
+                .update(payload)
+                .eq("id", value: friendshipID.uuidString)
+                .execute()
+        } catch {
+            print("UPDATE FRIENDSHIP LAST MESSAGE METADATA ERROR:", error.localizedDescription)
+        }
+    }
+
+    func incrementFriendUnreadForOtherUser(
+        friendshipID: UUID,
+        senderID: UUID
+    ) async {
+        guard let friendship = friendships.first(where: { $0.id == friendshipID }) else { return }
+
+        let senderIsRequester = friendship.requester_id == senderID
+
+        let requesterUnread = friendship.requester_unread_count ?? 0
+        let addresseeUnread = friendship.addressee_unread_count ?? 0
+
+        let payload = FriendShipUnreadPatch(
+            requester_unread_count: senderIsRequester ? nil : requesterUnread + 1,
+            addressee_unread_count: senderIsRequester ? addresseeUnread + 1 : nil
+        )
+
+        do {
+            try await SupabaseManager.shared.client
+                .from("friendships")
+                .update(payload)
+                .eq("id", value: friendshipID.uuidString)
+                .execute()
+        } catch {
+            print("INCREMENT FRIEND UNREAD ERROR:", error.localizedDescription)
+        }
+    }
+
+    private struct FriendShipUnreadPatch: Encodable {
+        let requester_unread_count: Int?
+        let addressee_unread_count: Int?
+
+        enum CodingKeys: String, CodingKey {
+            case requester_unread_count
+            case addressee_unread_count
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            if let requester_unread_count {
+                try container.encode(requester_unread_count, forKey: .requester_unread_count)
+            }
+            if let addressee_unread_count {
+                try container.encode(addressee_unread_count, forKey: .addressee_unread_count)
+            }
+        }
+    }
+
+    func resetUnreadForCurrentUser(
+        friendshipID: UUID,
+        currentUserID: UUID
+    ) async {
+        guard let friendship = friendships.first(where: { $0.id == friendshipID }) else {
+            unreadCountByFriendship[friendshipID] = 0
+            return
+        }
+
+        let currentIsRequester = friendship.requester_id == currentUserID
+
+        let payload = FriendShipUnreadPatch(
+            requester_unread_count: currentIsRequester ? 0 : nil,
+            addressee_unread_count: currentIsRequester ? nil : 0
+        )
+
+        do {
+            try await SupabaseManager.shared.client
+                .from("friendships")
+                .update(payload)
+                .eq("id", value: friendshipID.uuidString)
+                .execute()
+
+            unreadCountByFriendship[friendshipID] = 0
+        } catch {
+            print("RESET FRIEND UNREAD ERROR:", error.localizedDescription)
+        }
+    }
+
+    private func loadAllFriendshipsIfLightRefreshPossible(currentUserID: UUID) async {
+        await loadAllFriendships(currentUserID: currentUserID)
+    }
+    func subscribeToFriendshipsRealtime(currentUserID: UUID) {
+        if subscribedFriendshipsRealtimeUserID == currentUserID,
+           friendshipsRealtimeChannel != nil {
+            return
+        }
+
+        Task {
+            if let old = friendshipsRealtimeChannel {
+                try? await old.unsubscribe()
+            }
+
+            await MainActor.run {
+                self.friendshipsRealtimeChannel = nil
+                self.subscribedFriendshipsRealtimeUserID = nil
+            }
+
+            let channel = SupabaseManager.shared.client.realtimeV2
+                .channel("friendships-list-\(currentUserID.uuidString)")
+
+            _ = channel.onPostgresChange(
+                InsertAction.self,
+                schema: "public",
+                table: "friendships"
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+
+                    do {
+                        let jsonData = try JSONSerialization.data(withJSONObject: action.record)
+                        let dto = try JSONDecoder().decode(FriendshipDTO.self, from: jsonData)
+
+                        guard dto.requester_id == currentUserID || dto.addressee_id == currentUserID else {
+                            return
+                        }
+
+                        self.upsertLocalFriendship(dto)
+                        self.markFriendsCacheRefreshed()
+                        self.saveFriendshipsToCache(currentUserID: currentUserID)
+                    } catch {
+                        print("FRIENDSHIPS INSERT REALTIME DECODE ERROR:", error.localizedDescription)
+                    }
+                }
+            }
+
+            _ = channel.onPostgresChange(
+                UpdateAction.self,
+                schema: "public",
+                table: "friendships"
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+
+                    do {
+                        let jsonData = try JSONSerialization.data(withJSONObject: action.record)
+                        let dto = try JSONDecoder().decode(FriendshipDTO.self, from: jsonData)
+
+                        guard dto.requester_id == currentUserID || dto.addressee_id == currentUserID else {
+                            return
+                        }
+
+                        self.upsertLocalFriendship(dto)
+                        self.markFriendsCacheRefreshed()
+                        self.saveFriendshipsToCache(currentUserID: currentUserID)
+                    } catch {
+                        print("FRIENDSHIPS UPDATE REALTIME DECODE ERROR:", error.localizedDescription)
+                    }
+                }
+            }
+
+            _ = channel.onPostgresChange(
+                DeleteAction.self,
+                schema: "public",
+                table: "friendships"
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+
+                    if let idString = action.oldRecord["id"] as? String,
+                       let id = UUID(uuidString: idString) {
+                        self.removeLocalFriendship(id: id)
+                        self.saveFriendshipsToCache(currentUserID: currentUserID)
+                    }
+                }
+            }
+
+            await MainActor.run {
+                self.friendshipsRealtimeChannel = channel
+                self.subscribedFriendshipsRealtimeUserID = currentUserID
+            }
+
+            do {
+                try await channel.subscribeWithError()
+                print("✅ FRIENDSHIPS REALTIME SUBSCRIBED:", currentUserID.uuidString)
+            } catch {
+                print("FRIENDSHIPS REALTIME SUBSCRIBE ERROR:", error.localizedDescription)
+
+                await MainActor.run {
+                    self.friendshipsRealtimeChannel = nil
+                    self.subscribedFriendshipsRealtimeUserID = nil
+                }
+            }
+        }
+    }
+
+    func unsubscribeFriendshipsRealtime() {
+        Task {
+            if let old = friendshipsRealtimeChannel {
+                try? await old.unsubscribe()
+            }
+
+            await MainActor.run {
+                self.friendshipsRealtimeChannel = nil
+                self.subscribedFriendshipsRealtimeUserID = nil
+            }
+        }
+    }
+    
+    func setFriendChatPinned(
+        friendshipID: UUID,
+        currentUserID: UUID,
+        isPinned: Bool
+    ) async {
+        guard let friendship = friendships.first(where: { $0.id == friendshipID }) else { return }
+        let isRequester = friendship.requester_id == currentUserID
+
+        let payload = FriendShipPinPatch(
+            requester_pinned: isRequester ? isPinned : nil,
+            addressee_pinned: isRequester ? nil : isPinned
+        )
+
+        do {
+            try await SupabaseManager.shared.client
+                .from("friendships")
+                .update(payload)
+                .eq("id", value: friendshipID.uuidString)
+                .execute()
+        } catch {
+            print("SET FRIEND CHAT PINNED ERROR:", error.localizedDescription)
+        }
+    }
+
+    func setFriendChatMuted(
+        friendshipID: UUID,
+        currentUserID: UUID,
+        isMuted: Bool
+    ) async {
+        guard let friendship = friendships.first(where: { $0.id == friendshipID }) else { return }
+        let isRequester = friendship.requester_id == currentUserID
+
+        let payload = FriendShipMutePatch(
+            requester_muted: isRequester ? isMuted : nil,
+            addressee_muted: isRequester ? nil : isMuted
+        )
+
+        do {
+            try await SupabaseManager.shared.client
+                .from("friendships")
+                .update(payload)
+                .eq("id", value: friendshipID.uuidString)
+                .execute()
+        } catch {
+            print("SET FRIEND CHAT MUTED ERROR:", error.localizedDescription)
+        }
+    }
+
+    func setFriendChatArchived(
+        friendshipID: UUID,
+        currentUserID: UUID,
+        isArchived: Bool
+    ) async {
+        guard let friendship = friendships.first(where: { $0.id == friendshipID }) else { return }
+        let isRequester = friendship.requester_id == currentUserID
+
+        let payload = FriendShipArchivePatch(
+            requester_archived: isRequester ? isArchived : nil,
+            addressee_archived: isRequester ? nil : isArchived
+        )
+
+        do {
+            try await SupabaseManager.shared.client
+                .from("friendships")
+                .update(payload)
+                .eq("id", value: friendshipID.uuidString)
+                .execute()
+        } catch {
+            print("SET FRIEND CHAT ARCHIVED ERROR:", error.localizedDescription)
+        }
+    }
+
+    private struct FriendShipPinPatch: Encodable {
+        let requester_pinned: Bool?
+        let addressee_pinned: Bool?
+
+        enum CodingKeys: String, CodingKey {
+            case requester_pinned
+            case addressee_pinned
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            if let requester_pinned {
+                try container.encode(requester_pinned, forKey: .requester_pinned)
+            }
+            if let addressee_pinned {
+                try container.encode(addressee_pinned, forKey: .addressee_pinned)
+            }
+        }
+    }
+
+    private struct FriendShipMutePatch: Encodable {
+        let requester_muted: Bool?
+        let addressee_muted: Bool?
+
+        enum CodingKeys: String, CodingKey {
+            case requester_muted
+            case addressee_muted
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            if let requester_muted {
+                try container.encode(requester_muted, forKey: .requester_muted)
+            }
+            if let addressee_muted {
+                try container.encode(addressee_muted, forKey: .addressee_muted)
+            }
+        }
+    }
+
+    private struct FriendShipArchivePatch: Encodable {
+        let requester_archived: Bool?
+        let addressee_archived: Bool?
+
+        enum CodingKeys: String, CodingKey {
+            case requester_archived
+            case addressee_archived
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            if let requester_archived {
+                try container.encode(requester_archived, forKey: .requester_archived)
+            }
+            if let addressee_archived {
+                try container.encode(addressee_archived, forKey: .addressee_archived)
+            }
+        }
+    }
 
     // MARK: - Messages
 
@@ -604,12 +1148,35 @@ final class FriendStore: ObservableObject {
         }
     }
 
-    func userDidType(friendshipID: UUID, currentUserID: UUID?, currentUserName: String) {
+    func userDidType(
+        friendshipID: UUID,
+        currentUserID: UUID?,
+        currentUserName: String
+    ) {
+        guard let currentUserID else { return }
+
         typingResetTask?.cancel()
-        Task { await setTyping(friendshipID: friendshipID, currentUserID: currentUserID, currentUserName: currentUserName, isTyping: true) }
-        typingResetTask = Task {
-            try? await Task.sleep(nanoseconds: 1_200_000_000)
-            await setTyping(friendshipID: friendshipID, currentUserID: currentUserID, currentUserName: currentUserName, isTyping: false)
+
+        typingResetTask = Task { [weak self] in
+            guard let self else { return }
+
+            try? await Task.sleep(nanoseconds: 350_000_000)
+
+            await self.setTyping(
+                friendshipID: friendshipID,
+                currentUserID: currentUserID,
+                currentUserName: currentUserName,
+                isTyping: true
+            )
+
+            try? await Task.sleep(nanoseconds: 1_800_000_000)
+
+            await self.setTyping(
+                friendshipID: friendshipID,
+                currentUserID: currentUserID,
+                currentUserName: currentUserName,
+                isTyping: false
+            )
         }
     }
 
@@ -852,6 +1419,16 @@ final class FriendStore: ObservableObject {
             await MainActor.run {
                 self.appendFriendMessage(mapped, friendshipID: friendshipID)
             }
+            await updateFriendshipLastMessageMetadata(
+                friendshipID: friendshipID,
+                senderID: resolvedSenderID,
+                text: clean
+            )
+
+            await incrementFriendUnreadForOtherUser(
+                friendshipID: friendshipID,
+                senderID: resolvedSenderID
+            )
         } catch {
             print("SEND MESSAGE ERROR:", error.localizedDescription)
 
@@ -1135,11 +1712,23 @@ final class FriendStore: ObservableObject {
                 mapDTOToFriendItem(finalDTO, currentUserID: resolvedSenderID),
                 friendshipID: friendshipID
             )
+
+            await updateFriendshipLastMessageMetadata(
+                friendshipID: friendshipID,
+                senderID: resolvedSenderID,
+                text: fallbackText
+            )
+
+            await incrementFriendUnreadForOtherUser(
+                friendshipID: friendshipID,
+                senderID: resolvedSenderID
+            )
         } catch {
             print("SEND PHOTO MESSAGE ERROR:", error.localizedDescription)
             markPendingMessageFailed(clientID: clientID, friendshipID: friendshipID)
         }
     }
+    
     func sendFileMessage(
         fileURL: URL,
         friendshipID: UUID,
@@ -1274,6 +1863,17 @@ final class FriendStore: ObservableObject {
                 mapDTOToFriendItem(finalDTO, currentUserID: resolvedSenderID),
                 friendshipID: friendshipID
             )
+
+            await updateFriendshipLastMessageMetadata(
+                friendshipID: friendshipID,
+                senderID: resolvedSenderID,
+                text: fallbackText
+            )
+
+            await incrementFriendUnreadForOtherUser(
+                friendshipID: friendshipID,
+                senderID: resolvedSenderID
+            )
         } catch {
             print("SEND FILE MESSAGE ERROR:", error.localizedDescription)
             markPendingMessageFailed(clientID: clientID, friendshipID: friendshipID)
@@ -1394,6 +1994,17 @@ final class FriendStore: ObservableObject {
             appendFriendMessage(
                 mapDTOToFriendItem(finalDTO, currentUserID: resolvedSenderID),
                 friendshipID: friendshipID
+            )
+
+            await updateFriendshipLastMessageMetadata(
+                friendshipID: friendshipID,
+                senderID: resolvedSenderID,
+                text: fallbackText
+            )
+
+            await incrementFriendUnreadForOtherUser(
+                friendshipID: friendshipID,
+                senderID: resolvedSenderID
             )
         } catch {
             print("SEND VOICE MESSAGE ERROR:", error.localizedDescription)
@@ -1793,7 +2404,9 @@ final class FriendStore: ObservableObject {
             let decoded = try JSONDecoder().decode([FriendPresenceDTO].self, from: response.data)
             var dict: [UUID: FriendPresenceDTO] = [:]
             for item in decoded { dict[item.user_id] = item }
-            presenceByUserID = dict
+            for item in decoded {
+                presenceByUserID[item.user_id] = item
+            }
         } catch {
             print("LOAD PRESENCE ERROR:", error.localizedDescription)
         }
@@ -1821,7 +2434,13 @@ final class FriendStore: ObservableObject {
 
     // MARK: - Messages Realtime
 
-   
+    func refreshFriendChatSummariesIfPossible(currentUserID: UUID?, localFriends: [Friend]) {
+        guard let currentUserID else { return }
+        rebuildFriendChatSummaries(
+            currentUserID: currentUserID,
+            localFriends: localFriends
+        )
+    }
     
     func subscribeToFriendMessagesRealtime(friendshipID: UUID, currentUserID: UUID?) {
         let currentUserIDCopy = currentUserID
@@ -1844,30 +2463,35 @@ final class FriendStore: ObservableObject {
                 InsertAction.self,
                 schema: "public",
                 table: "friend_messages",
-                
+                filter: "friendship_id=eq.\(friendshipID.uuidString)"
             ) { [weak self] action in
-                print("🟢 FRIEND REALTIME INSERT GELDİ:", action.record)
-                
                 Task { @MainActor [weak self] in
                     guard let self else { return }
+
                     do {
                         let jsonData = try JSONSerialization.data(withJSONObject: action.record)
                         let dto = try JSONDecoder().decode(FriendMessageDTO.self, from: jsonData)
-                        guard dto.friendship_id == friendshipID else { return }
                         let item = self.mapDTOToFriendItem(dto, currentUserID: currentUserIDCopy)
+
                         self.appendFriendMessage(item, friendshipID: friendshipID)
 
                         if dto.sender_id != currentUserIDCopy {
-                            await self.markMessagesDelivered(friendshipID: friendshipID, currentUserID: currentUserIDCopy)
+                            await self.markMessagesDelivered(
+                                friendshipID: friendshipID,
+                                currentUserID: currentUserIDCopy
+                            )
                         }
 
                         if dto.sender_id != currentUserIDCopy,
                            self.activeChatFriendshipID == friendshipID,
                            self.isAppActive {
-                            await self.markMessagesSeen(friendshipID: friendshipID, currentUserID: currentUserIDCopy)
+                            await self.markMessagesSeen(
+                                friendshipID: friendshipID,
+                                currentUserID: currentUserIDCopy
+                            )
                         }
                     } catch {
-                        print("🔴 REALTIME DECODE ERROR:", error.localizedDescription)
+                        print("FRIEND REALTIME INSERT DECODE ERROR:", error.localizedDescription)
                     }
                 }
             }
@@ -1876,18 +2500,19 @@ final class FriendStore: ObservableObject {
                 UpdateAction.self,
                 schema: "public",
                 table: "friend_messages",
-                
+                filter: "friendship_id=eq.\(friendshipID.uuidString)"
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
                     guard let self else { return }
+
                     do {
                         let jsonData = try JSONSerialization.data(withJSONObject: action.record)
                         let dto = try JSONDecoder().decode(FriendMessageDTO.self, from: jsonData)
-                        guard dto.friendship_id == friendshipID else { return }
                         let item = self.mapDTOToFriendItem(dto, currentUserID: currentUserIDCopy)
+
                         self.appendFriendMessage(item, friendshipID: friendshipID)
                     } catch {
-                        print("🔴 REALTIME UPDATE DECODE ERROR:", error.localizedDescription)
+                        print("FRIEND REALTIME UPDATE DECODE ERROR:", error.localizedDescription)
                     }
                 }
             }
@@ -1896,15 +2521,17 @@ final class FriendStore: ObservableObject {
                 DeleteAction.self,
                 schema: "public",
                 table: "friend_messages",
-                
+                filter: "friendship_id=eq.\(friendshipID.uuidString)"
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
                     guard let self else { return }
+
                     if let idString = action.oldRecord["id"] as? String,
                        let deletedID = UUID(uuidString: idString) {
                         var items = self.friendMessagesByFriendship[friendshipID] ?? []
                         items.removeAll { $0.serverID == deletedID }
                         self.friendMessagesByFriendship[friendshipID] = items
+                        self.recomputeUnreadState(for: friendshipID)
                     }
                 }
             }
@@ -1916,9 +2543,14 @@ final class FriendStore: ObservableObject {
 
             do {
                 try await channel.subscribeWithError()
-                print("🟡 REALTIME SUBSCRIBE BAŞARILI:", friendshipID)
+                print("✅ FRIEND MESSAGE REALTIME SUBSCRIBED:", friendshipID.uuidString)
             } catch {
-                print("🔴 REALTIME SUBSCRIBE ERROR:", error.localizedDescription)
+                print("FRIEND MESSAGE REALTIME SUBSCRIBE ERROR:", error.localizedDescription)
+
+                await MainActor.run {
+                    self.friendMessagesChannel = nil
+                    self.subscribedFriendshipID = nil
+                }
             }
         }
     }
