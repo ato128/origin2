@@ -14,4 +14,9 @@ struct CrewDTO: Codable, Identifiable, Equatable {
     let name: String
     let icon: String
     let color_hex: String
+
+    // Chat Metadata
+    let last_message_text: String?
+    let last_message_at: String?
+    let last_sender_id: UUID?
 }

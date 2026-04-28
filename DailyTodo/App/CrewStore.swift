@@ -667,16 +667,51 @@ final class CrewStore: ObservableObject {
                 .from("crew_messages")
                 .insert(payload)
                 .execute()
+            
+            await incrementUnreadCountsForOthers(
+                crewID: crewID,
+                senderID: senderID
+            )
 
             await fetchInsertedMessage(
                 crewID: crewID,
                 clientID: clientID,
                 currentUserID: senderID
             )
+            
+            await updateCrewLastMessageMetadata(
+                crewID: crewID,
+                text: text,
+                senderID: senderID
+            )
+
+            await incrementUnreadForOthers(
+                crewID: crewID,
+                senderID: senderID
+            )
 
         } catch {
             print("SEND CREW MESSAGE OPTIMISTIC ERROR:", error.localizedDescription)
             markPendingMessageFailed(crewID: crewID, localID: localID)
+        }
+    }
+    
+    func incrementUnreadCountsForOthers(
+        crewID: UUID,
+        senderID: UUID?
+    ) async {
+        guard let senderID else { return }
+
+        do {
+            try await SupabaseManager.shared.client.rpc(
+                "increment_crew_unread_counts",
+                params: [
+                    "p_crew_id": crewID.uuidString,
+                    "p_sender_id": senderID.uuidString
+                ]
+            ).execute()
+        } catch {
+            print("INCREMENT CREW UNREAD ERROR:", error.localizedDescription)
         }
     }
     
@@ -833,6 +868,37 @@ final class CrewStore: ObservableObject {
             .from("crew_messages")
             .insert(payload)
             .execute()
+
+        await updateCrewLastMessageMetadata(
+            crewID: crewID,
+            text: text,
+            senderID: senderID
+        )
+
+        await incrementUnreadForOthers(
+            crewID: crewID,
+            senderID: senderID
+        )
+
+        guard !isSystemMessage else { return }
+
+        let crewName = crews.first(where: { $0.id == crewID })?.name ?? "Crew"
+
+        let targetMembers = crewMembers.filter {
+            $0.crew_id == crewID &&
+            $0.user_id != senderID &&
+            $0.is_muted != true
+        }
+
+        for member in targetMembers {
+            PushService.shared.sendCrewMessagePush(
+                toUserId: member.user_id.uuidString,
+                crewID: crewID.uuidString,
+                crewName: crewName,
+                message: "\(senderName): \(text)",
+                badge: max(1, (member.unread_count ?? 0) + 1)
+            )
+        }
     }
 
     // MARK: - Chat Realtime
@@ -2572,6 +2638,90 @@ final class CrewStore: ObservableObject {
         await loadFocusRecords(for: crewID)
     }
     
+    func updateCrewLastMessageMetadata(
+        crewID: UUID,
+        text: String,
+        senderID: UUID?
+    ) async {
+        struct Payload: Encodable {
+            let last_message_text: String
+            let last_message_at: String
+            let last_sender_id: UUID?
+        }
+
+        let payload = Payload(
+            last_message_text: text,
+            last_message_at: CrewDateParser.string(from: Date()),
+            last_sender_id: senderID
+        )
+
+        do {
+            try await SupabaseManager.shared.client
+                .from("crews")
+                .update(payload)
+                .eq("id", value: crewID.uuidString)
+                .execute()
+
+            await loadCrews(force: true)
+
+        } catch {
+            print("UPDATE LAST MESSAGE ERROR:", error.localizedDescription)
+        }
+    }
+    
+    func incrementUnreadForOthers(
+        crewID: UUID,
+        senderID: UUID?
+    ) async {
+        guard let senderID else { return }
+
+        let others = crewMembers.filter {
+            $0.crew_id == crewID && $0.user_id != senderID
+        }
+
+        for member in others {
+            let current = member.unread_count ?? 0
+
+            do {
+                try await SupabaseManager.shared.client
+                    .from("crew_members")
+                    .update(["unread_count": current + 1])
+                    .eq("id", value: member.id.uuidString)
+                    .execute()
+            } catch {
+                print("UNREAD INCREMENT ERROR:", error.localizedDescription)
+            }
+        }
+    }
+    
+    func resetUnreadCount(
+        crewID: UUID,
+        userID: UUID
+    ) async {
+
+        struct Payload: Encodable {
+            let unread_count: Int
+            let last_read_at: String
+        }
+
+        do {
+            try await SupabaseManager.shared.client
+                .from("crew_members")
+                .update(
+                    Payload(
+                        unread_count: 0,
+                        last_read_at: CrewDateParser.string(from: Date())
+                    )
+                )
+                .eq("crew_id", value: crewID.uuidString)
+                .eq("user_id", value: userID.uuidString)
+                .execute()
+
+        } catch {
+            print("RESET UNREAD ERROR:", error.localizedDescription)
+        }
+    }
+    
     struct EndCrewFocusParticipantPayload: Encodable {
         let is_active: Bool
         let left_at: String
@@ -2620,4 +2770,102 @@ final class CrewStore: ObservableObject {
         let member_name: String
         let minutes: Int
     }
+    // MARK: - Crew Chat Personal State
+
+    private struct CrewMemberPersonalStatePatch: Encodable {
+        let is_pinned: Bool?
+        let is_muted: Bool?
+        let is_archived: Bool?
+
+        enum CodingKeys: String, CodingKey {
+            case is_pinned
+            case is_muted
+            case is_archived
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+
+            if let is_pinned {
+                try container.encode(is_pinned, forKey: .is_pinned)
+            }
+
+            if let is_muted {
+                try container.encode(is_muted, forKey: .is_muted)
+            }
+
+            if let is_archived {
+                try container.encode(is_archived, forKey: .is_archived)
+            }
+        }
+    }
+
+    func setCrewChatPinned(
+        crewID: UUID,
+        userID: UUID,
+        isPinned: Bool
+    ) async {
+        await updateCrewMemberPersonalState(
+            crewID: crewID,
+            userID: userID,
+            patch: CrewMemberPersonalStatePatch(
+                is_pinned: isPinned,
+                is_muted: nil,
+                is_archived: nil
+            )
+        )
+    }
+
+    func setCrewChatMuted(
+        crewID: UUID,
+        userID: UUID,
+        isMuted: Bool
+    ) async {
+        await updateCrewMemberPersonalState(
+            crewID: crewID,
+            userID: userID,
+            patch: CrewMemberPersonalStatePatch(
+                is_pinned: nil,
+                is_muted: isMuted,
+                is_archived: nil
+            )
+        )
+    }
+
+    func setCrewChatArchived(
+        crewID: UUID,
+        userID: UUID,
+        isArchived: Bool
+    ) async {
+        await updateCrewMemberPersonalState(
+            crewID: crewID,
+            userID: userID,
+            patch: CrewMemberPersonalStatePatch(
+                is_pinned: nil,
+                is_muted: nil,
+                is_archived: isArchived
+            )
+        )
+    }
+
+    private func updateCrewMemberPersonalState(
+        crewID: UUID,
+        userID: UUID,
+        patch: CrewMemberPersonalStatePatch
+    ) async {
+        do {
+            try await SupabaseManager.shared.client
+                .from("crew_members")
+                .update(patch)
+                .eq("crew_id", value: crewID.uuidString)
+                .eq("user_id", value: userID.uuidString)
+                .execute()
+
+           
+        } catch {
+            print("UPDATE CREW MEMBER PERSONAL STATE ERROR:", error.localizedDescription)
+        }
+    }
 }
+
+

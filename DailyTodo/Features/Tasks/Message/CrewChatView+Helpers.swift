@@ -69,6 +69,16 @@ extension CrewChatView {
                 crewID: crew.id,
                 userID: myID
             )
+
+            await crewStore.resetUnreadCount(
+                crewID: crew.id,
+                userID: myID
+            )
+            
+            await crewStore.resetUnreadCount(
+                crewID: crew.id,
+                userID: myID
+            )
         }
     }
 }

@@ -50,7 +50,7 @@ struct MessagesView: View {
     }
     
     private var onlineItems: [MessagesHubItem] {
-        let onlineFriendsItems = friendStore.friendChatSummaries
+        let onlineFriendsItems: [MessagesHubItem] = friendStore.friendChatSummaries
             .filter { $0.isOnline }
             .map { summary in
                 MessagesHubItem(
@@ -64,18 +64,22 @@ struct MessagesView: View {
                     unreadCount: summary.unreadCount,
                     avatarText: initials(for: summary.title),
                     tint: hexColor(summary.colorHex),
-                    isOnline: summary.isOnline,
-                    showsPresence: true
+                    isOnline: true,
+                    showsPresence: true,
+                    isPinned: summary.isPinned,
+                    isMuted: summary.isMuted
                 )
             }
-        
-        let onlineCrewItems = backendCrews
+
+        let onlineCrewItems: [MessagesHubItem] = backendCrews
             .filter { crew in
                 guard let lastDate = lastCrewMessageDate(for: crew) else { return false }
                 return Calendar.current.isDateInToday(lastDate)
             }
             .map { crew in
-                MessagesHubItem(
+                let member = currentCrewMember(for: crew)
+
+                return MessagesHubItem(
                     id: "crew-online-\(crew.id.uuidString)",
                     kind: .crew,
                     payload: .crew(crew),
@@ -83,17 +87,23 @@ struct MessagesView: View {
                     shortTitle: crew.name,
                     preview: lastPreviewText(for: crew),
                     time: lastCrewMessageDate(for: crew),
-                    unreadCount: 0,
+                    unreadCount: crewUnreadCount(for: crew),
                     avatarText: crew.icon,
                     tint: tintForCrew(crew),
                     isOnline: true,
-                    showsPresence: true
+                    showsPresence: true,
+                    isPinned: member?.is_pinned ?? false,
+                    isMuted: member?.is_muted ?? false
                 )
             }
-        
-        return Array((onlineFriendsItems + onlineCrewItems)
-            .sorted { ($0.time ?? .distantPast) > ($1.time ?? .distantPast) }
-            .prefix(8))
+
+        return Array(
+            (onlineFriendsItems + onlineCrewItems)
+                .sorted { a, b in
+                    (a.time ?? .distantPast) > (b.time ?? .distantPast)
+                }
+                .prefix(8)
+        )
     }
     
     private var allConversationItems: [MessagesHubItem] {
@@ -110,12 +120,20 @@ struct MessagesView: View {
                 avatarText: initials(for: summary.title),
                 tint: hexColor(summary.colorHex),
                 isOnline: summary.isOnline,
-                showsPresence: true
+                showsPresence: true,
+                isPinned: summary.isPinned,
+                isMuted: summary.isMuted
             )
         }
         
-        let crewItems: [MessagesHubItem] = backendCrews.map { crew in
-            MessagesHubItem(
+        let crewItems: [MessagesHubItem] = backendCrews.compactMap { crew -> MessagesHubItem? in
+            let member = currentCrewMember(for: crew)
+
+            if member?.is_archived == true {
+                return nil
+            }
+
+            return MessagesHubItem(
                 id: "crew-\(crew.id.uuidString)",
                 kind: .crew,
                 payload: .crew(crew),
@@ -123,11 +141,13 @@ struct MessagesView: View {
                 shortTitle: crew.name,
                 preview: lastPreviewText(for: crew),
                 time: lastCrewMessageDate(for: crew),
-                unreadCount: 0,
+                unreadCount: crewUnreadCount(for: crew),
                 avatarText: crew.icon,
                 tint: tintForCrew(crew),
                 isOnline: isCrewActiveToday(crew),
-                showsPresence: true
+                showsPresence: true,
+                isPinned: member?.is_pinned ?? false,
+                isMuted: member?.is_muted ?? false
             )
         }
         
@@ -140,13 +160,17 @@ struct MessagesView: View {
         _ lhs: MessagesHubItem,
         _ rhs: MessagesHubItem
     ) -> Bool {
+        if lhs.isPinned != rhs.isPinned {
+            return lhs.isPinned && !rhs.isPinned
+        }
+
         let left = lhs.time ?? .distantPast
         let right = rhs.time ?? .distantPast
-        
+
         if left != right {
             return left > right
         }
-        
+
         return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
     }
     
@@ -229,6 +253,8 @@ private extension MessagesView {
         await crewStore.loadCrews()
 
         for crew in crewStore.crews {
+            await crewStore.loadMembers(for: crew.id)
+
             await crewStore.loadInitialChatMessages(
                 for: crew.id,
                 currentUserID: session.currentUser?.id
@@ -452,13 +478,13 @@ private extension MessagesView {
 
                     Spacer(minLength: 4)
 
-                    if let summary = summaryFromPayload(item.payload), summary.isPinned {
+                    if item.isPinned  {
                         Image(systemName: "pin.fill")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(.white.opacity(0.44))
                     }
 
-                    if let summary = summaryFromPayload(item.payload), summary.isMuted {
+                    if item.isMuted {
                         Image(systemName: "bell.slash.fill")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(.white.opacity(0.34))
@@ -559,8 +585,33 @@ private extension MessagesView {
                     Label("Arşivle", systemImage: "archivebox")
                 }
 
-            case .crew:
-                EmptyView()
+            case .crew(let crew):
+                let pinned = isCrewPinned(crew)
+                let muted = isCrewMuted(crew)
+
+                Button {
+                    togglePinCrewChat(crew)
+                } label: {
+                    Label(
+                        pinned ? "Sabitlemeyi kaldır" : "Sohbeti sabitle",
+                        systemImage: pinned ? "pin.slash" : "pin"
+                    )
+                }
+
+                Button {
+                    toggleMuteCrewChat(crew)
+                } label: {
+                    Label(
+                        muted ? "Sessizden çıkar" : "Sessize al",
+                        systemImage: muted ? "bell" : "bell.slash"
+                    )
+                }
+
+                Button(role: .destructive) {
+                    archiveCrewChat(crew)
+                } label: {
+                    Label("Arşivle", systemImage: "archivebox")
+                }
             }
         }
     }
@@ -738,6 +789,14 @@ private extension MessagesView {
 
     private func lastCrewMessageDate(for crew: WeekCrewItem) -> Date? {
         crewChatMessages(for: crew).last?.createdAt
+    }
+    
+    private func crewUnreadCount(for crew: WeekCrewItem) -> Int {
+        guard let currentUserID = session.currentUser?.id else { return 0 }
+
+        return crewStore.crewMembers.first {
+            $0.crew_id == crew.id && $0.user_id == currentUserID
+        }?.unread_count ?? 0
     }
 
     private func isCrewActiveToday(_ crew: WeekCrewItem) -> Bool {
@@ -923,6 +982,69 @@ private extension MessagesView {
             opacity: Double(a) / 255
         )
     }
+    private func crewMemberState(for crew: WeekCrewItem) -> CrewMemberDTO? {
+        guard let currentUserID = session.currentUser?.id else { return nil }
+
+        return crewStore.crewMembers.first {
+            $0.crew_id == crew.id && $0.user_id == currentUserID
+        }
+    }
+
+    private func isCrewPinned(_ crew: WeekCrewItem) -> Bool {
+        crewMemberState(for: crew)?.is_pinned ?? false
+    }
+
+    private func isCrewMuted(_ crew: WeekCrewItem) -> Bool {
+        crewMemberState(for: crew)?.is_muted ?? false
+    }
+
+    private func currentCrewMember(for crew: WeekCrewItem) -> CrewMemberDTO? {
+        guard let currentUserID = session.currentUser?.id else { return nil }
+
+        return crewStore.crewMembers.first {
+            $0.crew_id == crew.id && $0.user_id == currentUserID
+        }
+    }
+
+    private func togglePinCrewChat(_ crew: WeekCrewItem) {
+        guard let currentUserID = session.currentUser?.id else { return }
+
+        let current = currentCrewMember(for: crew)?.is_pinned ?? false
+
+        Task {
+            await crewStore.setCrewChatPinned(
+                crewID: crew.id,
+                userID: currentUserID,
+                isPinned: !current
+            )
+        }
+    }
+
+    private func toggleMuteCrewChat(_ crew: WeekCrewItem) {
+        guard let currentUserID = session.currentUser?.id else { return }
+
+        let current = currentCrewMember(for: crew)?.is_muted ?? false
+
+        Task {
+            await crewStore.setCrewChatMuted(
+                crewID: crew.id,
+                userID: currentUserID,
+                isMuted: !current
+            )
+        }
+    }
+
+    private func archiveCrewChat(_ crew: WeekCrewItem) {
+        guard let currentUserID = session.currentUser?.id else { return }
+
+        Task {
+            await crewStore.setCrewChatArchived(
+                crewID: crew.id,
+                userID: currentUserID,
+                isArchived: true
+            )
+        }
+    }
 }
 
 struct MessagesHubItem: Identifiable {
@@ -949,4 +1071,8 @@ struct MessagesHubItem: Identifiable {
     let tint: Color
     let isOnline: Bool
     let showsPresence: Bool
+    let isPinned: Bool
+    let isMuted: Bool
 }
+
+
