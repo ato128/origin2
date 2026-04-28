@@ -642,102 +642,205 @@ struct InsightsViewModel {
     }
 
     var achievementBadges: [InsightsBadgeData] {
-        let hasFirstFocus = totalFocusSessionsCount >= 1
-        let hasThreeDayStreak = streakCount >= 3
-        let hasWeeklyWarrior = completedTasksCount >= 7
-        let hasFocusBuilder = totalFocusMinutes >= 120
-        let hasExamReady = !upcomingExams.isEmpty && averageExamReadiness >= 0.6
+        allAchievementBadges
+            .filter { $0.isUnlocked || (($0.progress ?? 0) > 0) }
+            .sorted {
+                let lhs = $0.progress ?? ($0.isUnlocked ? 1 : 0)
+                let rhs = $1.progress ?? ($1.isUnlocked ? 1 : 0)
+                return lhs > rhs
+            }
+            .prefix(6)
+            .map { $0 }
+    }
 
-        return [
+    var allAchievementBadges: [InsightsBadgeData] {
+        [
+            // MARK: - Focus Path
+
             InsightsBadgeData(
                 title: isTurkish ? "İlk Focus" : "First Focus",
                 subtitle: isTurkish ? "İlk odak oturumun" : "Your first focus session",
-                icon: "sparkles",
-                isUnlocked: hasFirstFocus,
-                progress: hasFirstFocus ? 1 : min(Double(totalFocusSessionsCount), 1),
+                icon: "timer",
+                isUnlocked: totalFocusSessionsCount >= 1,
+                progress: min(Double(totalFocusSessionsCount) / 1.0, 1),
                 accent: .blue
             ),
+            InsightsBadgeData(
+                title: "Deep Builder",
+                subtitle: isTurkish ? "120 dk focus" : "120 min focus",
+                icon: "timer",
+                isUnlocked: totalFocusMinutes >= 120,
+                progress: min(Double(totalFocusMinutes) / 120.0, 1),
+                accent: .blue
+            ),
+            InsightsBadgeData(
+                title: "Focus 300",
+                subtitle: isTurkish ? "300 dk toplam odak" : "300 total focus minutes",
+                icon: "brain.head.profile",
+                isUnlocked: totalFocusMinutes >= 300,
+                progress: min(Double(totalFocusMinutes) / 300.0, 1),
+                accent: .blue
+            ),
+            InsightsBadgeData(
+                title: "Focus 600",
+                subtitle: isTurkish ? "600 dk toplam odak" : "600 total focus minutes",
+                icon: "bolt.circle.fill",
+                isUnlocked: totalFocusMinutes >= 600,
+                progress: min(Double(totalFocusMinutes) / 600.0, 1),
+                accent: .blue
+            ),
+            InsightsBadgeData(
+                title: "Focus Master",
+                subtitle: isTurkish ? "10 focus oturumu" : "10 focus sessions",
+                icon: "target",
+                isUnlocked: totalFocusSessionsCount >= 10,
+                progress: min(Double(totalFocusSessionsCount) / 10.0, 1),
+                accent: .blue
+            ),
+            InsightsBadgeData(
+                title: "Flow State",
+                subtitle: isTurkish ? "25 focus oturumu" : "25 focus sessions",
+                icon: "waveform.path.ecg",
+                isUnlocked: totalFocusSessionsCount >= 25,
+                progress: min(Double(totalFocusSessionsCount) / 25.0, 1),
+                accent: .blue
+            ),
+            InsightsBadgeData(
+                title: "Ultra Focus",
+                subtitle: isTurkish ? "1500 dk toplam odak" : "1500 total focus minutes",
+                icon: "sparkles",
+                isUnlocked: totalFocusMinutes >= 1500,
+                progress: min(Double(totalFocusMinutes) / 1500.0, 1),
+                accent: .blue
+            ),
+
+            // MARK: - Streak Path
+
             InsightsBadgeData(
                 title: isTurkish ? "3 Gün Seri" : "3 Day Streak",
                 subtitle: isTurkish ? "Düzenli akış başladı" : "Consistency has started",
                 icon: "flame.fill",
-                isUnlocked: hasThreeDayStreak,
-                progress: hasThreeDayStreak ? 1 : min(Double(streakCount) / 3.0, 1),
+                isUnlocked: streakCount >= 3,
+                progress: min(Double(streakCount) / 3.0, 1),
                 accent: .orange
             ),
-            InsightsBadgeData(
-                title: isTurkish ? "Weekly Warrior" : "Weekly Warrior",
-                subtitle: isTurkish ? "Haftalık güçlü tempo" : "A strong weekly pace",
-                icon: "bolt.fill",
-                isUnlocked: hasWeeklyWarrior,
-                progress: hasWeeklyWarrior ? 1 : min(Double(completedTasksCount) / 7.0, 1),
-                accent: .green
-            ),
-            InsightsBadgeData(
-                title: isTurkish ? "Deep Builder" : "Deep Builder",
-                subtitle: isTurkish ? "120 dk focus" : "120 min focus",
-                icon: "timer",
-                isUnlocked: hasFocusBuilder,
-                progress: hasFocusBuilder ? 1 : min(Double(totalFocusMinutes) / 120.0, 1),
-                accent: .purple
-            ),
-            InsightsBadgeData(
-                title: isTurkish ? "Exam Ready" : "Exam Ready",
-                subtitle: isTurkish ? "Hazırlık dengeli görünüyor" : "Your readiness looks balanced",
-                icon: "graduationcap.fill",
-                isUnlocked: hasExamReady,
-                progress: hasExamReady ? 1 : min(averageExamReadiness, 1),
-                accent: .pink
-            )
-        ]
-    }
-    
-    var allAchievementBadges: [InsightsBadgeData] {
-        let more: [InsightsBadgeData] = [
             InsightsBadgeData(
                 title: isTurkish ? "7 Gün Seri" : "7 Day Streak",
                 subtitle: isTurkish ? "Bir haftalık düzen" : "A full week of consistency",
                 icon: "flame.circle.fill",
                 isUnlocked: streakCount >= 7,
-                progress: streakCount >= 7 ? 1 : min(Double(streakCount) / 7.0, 1),
+                progress: min(Double(streakCount) / 7.0, 1),
                 accent: .orange
             ),
             InsightsBadgeData(
-                title: isTurkish ? "Focus 300" : "Focus 300",
-                subtitle: isTurkish ? "300 dk toplam odak" : "300 total focus minutes",
-                icon: "brain.head.profile",
-                isUnlocked: totalFocusMinutes >= 300,
-                progress: totalFocusMinutes >= 300 ? 1 : min(Double(totalFocusMinutes) / 300.0, 1),
-                accent: .blue
+                title: isTurkish ? "14 Gün Seri" : "14 Day Streak",
+                subtitle: isTurkish ? "İki haftalık ritim" : "Two weeks of rhythm",
+                icon: "flame.circle.fill",
+                isUnlocked: streakCount >= 14,
+                progress: min(Double(streakCount) / 14.0, 1),
+                accent: .orange
             ),
             InsightsBadgeData(
-                title: isTurkish ? "Night Mode" : "Night Mode",
-                subtitle: isTurkish ? "Akşam ritmini kur" : "Build an evening rhythm",
-                icon: "moon.stars.fill",
-                isUnlocked: isEveningProductive && totalFocusSessionsCount >= 3,
-                progress: (isEveningProductive && totalFocusSessionsCount >= 3) ? 1 : min(Double(totalFocusSessionsCount) / 3.0, 1),
-                accent: .purple
+                title: isTurkish ? "30 Gün Seri" : "30 Day Streak",
+                subtitle: isTurkish ? "Kalıcı alışkanlık" : "A lasting habit",
+                icon: "flame.circle.fill",
+                isUnlocked: streakCount >= 30,
+                progress: min(Double(streakCount) / 30.0, 1),
+                accent: .orange
             ),
+
+            // MARK: - Task Path
+
             InsightsBadgeData(
-                title: isTurkish ? "Task Finisher" : "Task Finisher",
-                subtitle: isTurkish ? "10 görev tamamla" : "Complete 10 tasks",
-                icon: "checkmark.seal.fill",
-                isUnlocked: completedTasksCount >= 10,
-                progress: completedTasksCount >= 10 ? 1 : min(Double(completedTasksCount) / 10.0, 1),
+                title: isTurkish ? "İlk Görev" : "First Task",
+                subtitle: isTurkish ? "İlk görevi tamamla" : "Complete your first task",
+                icon: "checkmark.circle.fill",
+                isUnlocked: completedTasksCount >= 1,
+                progress: min(Double(completedTasksCount) / 1.0, 1),
                 accent: .green
             ),
             InsightsBadgeData(
-                title: isTurkish ? "Exam Sprint" : "Exam Sprint",
+                title: "Weekly Warrior",
+                subtitle: isTurkish ? "7 görev tamamla" : "Complete 7 tasks",
+                icon: "bolt.fill",
+                isUnlocked: completedTasksCount >= 7,
+                progress: min(Double(completedTasksCount) / 7.0, 1),
+                accent: .green
+            ),
+            InsightsBadgeData(
+                title: "Task Finisher",
+                subtitle: isTurkish ? "10 görev tamamla" : "Complete 10 tasks",
+                icon: "checkmark.seal.fill",
+                isUnlocked: completedTasksCount >= 10,
+                progress: min(Double(completedTasksCount) / 10.0, 1),
+                accent: .green
+            ),
+            InsightsBadgeData(
+                title: "Task Master",
+                subtitle: isTurkish ? "50 görev tamamla" : "Complete 50 tasks",
+                icon: "checkmark.seal.fill",
+                isUnlocked: completedTasksCount >= 50,
+                progress: min(Double(completedTasksCount) / 50.0, 1),
+                accent: .green
+            ),
+            InsightsBadgeData(
+                title: "Task Legend",
+                subtitle: isTurkish ? "100 görev tamamla" : "Complete 100 tasks",
+                icon: "crown.fill",
+                isUnlocked: completedTasksCount >= 100,
+                progress: min(Double(completedTasksCount) / 100.0, 1),
+                accent: .green
+            ),
+
+            // MARK: - Exam Path
+
+            InsightsBadgeData(
+                title: "Exam Ready",
+                subtitle: isTurkish ? "Hazırlık dengeli görünüyor" : "Your readiness looks balanced",
+                icon: "graduationcap.fill",
+                isUnlocked: !upcomingExams.isEmpty && averageExamReadiness >= 0.60,
+                progress: !upcomingExams.isEmpty ? min(averageExamReadiness / 0.60, 1) : 0,
+                accent: .pink
+            ),
+            InsightsBadgeData(
+                title: "Exam Sprint",
                 subtitle: isTurkish ? "Sınav hazırlığını güçlendir" : "Strengthen exam readiness",
                 icon: "graduationcap.circle.fill",
                 isUnlocked: !upcomingExams.isEmpty && averageExamReadiness >= 0.75,
                 progress: !upcomingExams.isEmpty ? min(averageExamReadiness / 0.75, 1) : 0,
                 accent: .pink
+            ),
+            InsightsBadgeData(
+                title: "Exam Crusher",
+                subtitle: isTurkish ? "Hazırlık %90 üstüne çıksın" : "Reach 90% exam readiness",
+                icon: "star.circle.fill",
+                isUnlocked: !upcomingExams.isEmpty && averageExamReadiness >= 0.90,
+                progress: !upcomingExams.isEmpty ? min(averageExamReadiness / 0.90, 1) : 0,
+                accent: .pink
+            ),
+
+            // MARK: - Special Path
+
+            InsightsBadgeData(
+                title: "Night Mode",
+                subtitle: isTurkish ? "Akşam ritmini kur" : "Build an evening rhythm",
+                icon: "moon.stars.fill",
+                isUnlocked: isEveningProductive && totalFocusSessionsCount >= 3,
+                progress: min(Double(totalFocusSessionsCount) / 3.0, 1),
+                accent: .purple
+            ),
+            InsightsBadgeData(
+                title: "Comeback",
+                subtitle: isTurkish ? "Seriyi yeniden başlat" : "Restart your rhythm",
+                icon: "arrow.clockwise.circle.fill",
+                isUnlocked: streakCount >= 1 && completedTasksCount >= 3,
+                progress: min((Double(streakCount) / 1.0 + Double(completedTasksCount) / 3.0) / 2.0, 1),
+                accent: .purple
             )
         ]
-
-        return achievementBadges + more
     }
+    
+    
 
     var miniStatsV2: [InsightsMiniStatData] {
         [

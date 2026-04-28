@@ -8,14 +8,15 @@ import Foundation
 import SwiftUI
 import SwiftData
 
-// MARK: - Snapshot
-
 struct IdentityLevelSnapshot {
     let level: Int
     let title: String
     let accent: Color
 
     let progress: Double
+    let taskRatio: Double
+    let focusRatio: Double
+    let streakRatio: Double
 
     let focusSessions: Int
     let focusMinutes: Int
@@ -24,17 +25,34 @@ struct IdentityLevelSnapshot {
 
     let currentRequirement: IdentityLevelInfo
     let nextRequirement: IdentityLevelInfo
-}
 
-// MARK: - Engine
+    let isMaxLevel: Bool
+    let isReadyForLevelUp: Bool
+
+    var percentText: String {
+        "\(Int(round(progress * 100)))%"
+    }
+
+    var levelRangeText: String {
+        isMaxLevel ? "Lv.\(level)" : "Lv.\(level) → Lv.\(nextRequirement.level)"
+    }
+
+    var statusText: String {
+        if isMaxLevel { return "Maksimum seviye" }
+        return isReadyForLevelUp ? "Yeni seviye hazır" : "İlerleme aktif"
+    }
+}
 
 enum IdentityXPLevelEngine {
 
     static func snapshot(
+        currentLevel: Int,
         tasks: [DTTaskItem],
         focusSessions: [FocusSessionRecord],
         streakDays: Int
     ) -> IdentityLevelSnapshot {
+
+        let safeCurrentLevel = min(max(currentLevel, 1), InsightsIdentityLevelSystem.maxLevel)
 
         let completedTasks = tasks.filter(\.isDone).count
 
@@ -47,74 +65,50 @@ enum IdentityXPLevelEngine {
             $0 + max(1, $1.completedSeconds / 60)
         }
 
-        let level = calculatedLevel(
-            focusSessions: focusCount,
-            completedTasks: completedTasks,
-            streakDays: streakDays
+        let current = InsightsIdentityLevelSystem.info(for: safeCurrentLevel)
+        let next = InsightsIdentityLevelSystem.info(for: min(safeCurrentLevel + 1, InsightsIdentityLevelSystem.maxLevel))
+
+        let isMaxLevel = safeCurrentLevel >= InsightsIdentityLevelSystem.maxLevel
+
+        let taskRatio = isMaxLevel ? 1 : requirementProgress(
+            current: completedTasks,
+            target: next.requiredCompletedTasks
         )
 
-        let current = InsightsIdentityLevelSystem.info(for: level)
-        let next = InsightsIdentityLevelSystem.info(for: min(level + 1, 50))
+        let focusRatio = isMaxLevel ? 1 : requirementProgress(
+            current: focusCount,
+            target: next.requiredFocusSessions
+        )
 
-        let progress: Double
+        let streakRatio = isMaxLevel ? 1 : requirementProgress(
+            current: streakDays,
+            target: next.requiredStreakDays
+        )
 
-        if level >= 50 {
-            progress = 1
-        } else {
-            let focusProgress = requirementProgress(
-                current: focusCount,
-                target: next.requiredFocusSessions
-            )
+        let ready = !isMaxLevel &&
+        completedTasks >= next.requiredCompletedTasks &&
+        focusCount >= next.requiredFocusSessions &&
+        streakDays >= next.requiredStreakDays
 
-            let taskProgress = requirementProgress(
-                current: completedTasks,
-                target: next.requiredCompletedTasks
-            )
-
-            let streakProgress = requirementProgress(
-                current: streakDays,
-                target: next.requiredStreakDays
-            )
-
-            progress = min(
-                1,
-                max(
-                    0,
-                    (focusProgress + taskProgress + streakProgress) / 3
-                )
-            )
-        }
+        let progress = isMaxLevel ? 1 : ready ? 1 : min(max((taskRatio + focusRatio + streakRatio) / 3, 0), 1)
 
         return IdentityLevelSnapshot(
-            level: level,
+            level: safeCurrentLevel,
             title: current.title,
             accent: current.accent,
             progress: progress,
+            taskRatio: taskRatio,
+            focusRatio: focusRatio,
+            streakRatio: streakRatio,
             focusSessions: focusCount,
             focusMinutes: focusMinutes,
             completedTasks: completedTasks,
             streakDays: streakDays,
             currentRequirement: current,
-            nextRequirement: next
+            nextRequirement: next,
+            isMaxLevel: isMaxLevel,
+            isReadyForLevelUp: ready
         )
-    }
-
-    private static func calculatedLevel(
-        focusSessions: Int,
-        completedTasks: Int,
-        streakDays: Int
-    ) -> Int {
-        for level in stride(from: 50, through: 1, by: -1) {
-            let info = InsightsIdentityLevelSystem.info(for: level)
-
-            if focusSessions >= info.requiredFocusSessions &&
-                completedTasks >= info.requiredCompletedTasks &&
-                streakDays >= info.requiredStreakDays {
-                return level
-            }
-        }
-
-        return 1
     }
 
     private static func requirementProgress(

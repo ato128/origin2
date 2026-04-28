@@ -67,11 +67,11 @@ private extension AuthView {
             }
 
             VStack(spacing: 10) {
-                Text("DailyTodo")
+                Text("Updo")
                     .font(.system(size: 42, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
 
-                Text("Plan smarter, stay focused, and keep your day under control.")
+                Text("Öğrenci hayatını görevler, ders programı, focus ve arkadaşlarınla tek sistemde yönet.")
                     .font(.system(size: 18, weight: .medium))
                     .foregroundStyle(Color.white.opacity(0.72))
                     .multilineTextAlignment(.center)

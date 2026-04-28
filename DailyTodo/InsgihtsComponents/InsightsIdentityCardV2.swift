@@ -14,13 +14,12 @@ struct InsightsIdentityCardV2: View {
     let onTap: () -> Void
 
     private var accent: Color {
-        snapshot.currentRequirement.accent
+        snapshot.accent
     }
 
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 16) {
-
                 topBar
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -36,55 +35,60 @@ struct InsightsIdentityCardV2: View {
                 }
 
                 progressArea
-
                 bottomArea
 
                 if isExpanded {
                     expandedArea
                 }
-
             }
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(bg)
-            .clipShape(RoundedRectangle(cornerRadius: 30))
+            .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 30)
-                    .stroke(.white.opacity(0.06), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .stroke(.white.opacity(0.07), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
     }
 
-    var topBar: some View {
+    private var topBar: some View {
         HStack {
             Text("IDENTITY")
-                .font(.system(size: 11, weight: .black))
+                .font(.system(size: 11, weight: .black, design: .rounded))
                 .tracking(3)
                 .foregroundStyle(accent)
 
             Spacer()
 
             Text("Lv \(snapshot.level)")
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(size: 15, weight: .bold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.75))
         }
     }
 
-    var progressArea: some View {
+    private var progressArea: some View {
         VStack(alignment: .leading, spacing: 8) {
-
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-
                     Capsule()
                         .fill(.white.opacity(0.08))
                         .frame(height: 10)
 
                     Capsule()
-                        .fill(accent)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    accent,
+                                    .white.opacity(0.82)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
                         .frame(
-                            width: geo.size.width * snapshot.progress,
+                            width: geo.size.width * min(max(snapshot.progress, 0), 1),
                             height: 10
                         )
                 }
@@ -92,64 +96,79 @@ struct InsightsIdentityCardV2: View {
             .frame(height: 10)
 
             HStack {
-                Text("Lv.\(snapshot.level) → Lv.\(snapshot.level + 1)")
-                    .font(.system(size: 13, weight: .bold))
+                Text(snapshot.levelRangeText)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundStyle(accent)
 
                 Spacer()
 
-                Text("\(Int(snapshot.progress * 100))%")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.55))
+                Text(snapshot.percentText)
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.60))
             }
         }
     }
 
-    var bottomArea: some View {
+    private var bottomArea: some View {
         HStack {
-            Text(hasPendingLevelUp ? "Yeni seviye hazır" : "İlerleme aktif")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(hasPendingLevelUp ? .green : .white.opacity(0.55))
+            Text(hasPendingLevelUp ? "Yeni seviyeye geç" : snapshot.statusText)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(hasPendingLevelUp ? .green : .white.opacity(0.58))
 
             Spacer()
 
-            Image(systemName: "chevron.down")
-                .foregroundStyle(.white.opacity(0.45))
+            Image(systemName: hasPendingLevelUp ? "arrow.up.forward.circle.fill" : "chevron.down")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(hasPendingLevelUp ? .green : .white.opacity(0.45))
         }
     }
 
-    var expandedArea: some View {
+    private var expandedArea: some View {
         VStack(spacing: 10) {
             Divider().overlay(.white.opacity(0.07))
 
-            stat("Focus", "\(snapshot.focusSessions)")
-            stat("Tasks", "\(snapshot.completedTasks)")
-            stat("Streak", "\(snapshot.streakDays)")
+            stat("Focus", "\(snapshot.focusSessions)/\(snapshot.nextRequirement.requiredFocusSessions)")
+            stat("Tasks", "\(snapshot.completedTasks)/\(snapshot.nextRequirement.requiredCompletedTasks)")
+            stat("Streak", "\(snapshot.streakDays)/\(snapshot.nextRequirement.requiredStreakDays)")
         }
         .padding(.top, 4)
     }
 
-    func stat(_ title: String,_ value: String) -> some View {
+    private func stat(_ title: String, _ value: String) -> some View {
         HStack {
             Text(title)
-                .foregroundStyle(.white.opacity(0.5))
+                .foregroundStyle(.white.opacity(0.50))
+
             Spacer()
+
             Text(value)
                 .foregroundStyle(.white)
                 .fontWeight(.bold)
         }
-        .font(.system(size: 13))
+        .font(.system(size: 13, design: .rounded))
     }
 
-    var bg: some View {
-        LinearGradient(
-            colors: [
-                accent.opacity(0.28),
-                Color.orange.opacity(0.12),
-                Color.black
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+    private var bg: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    accent.opacity(0.30),
+                    Color.purple.opacity(0.12),
+                    Color.black
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            RadialGradient(
+                colors: [
+                    accent.opacity(0.22),
+                    .clear
+                ],
+                center: .topTrailing,
+                startRadius: 8,
+                endRadius: 170
+            )
+        }
     }
 }

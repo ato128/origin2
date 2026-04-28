@@ -70,14 +70,29 @@ struct InsightsView: View {
         }
     }
     
+    private var nextIdentityLevel: IdentityLevelInfo {
+        identitySnapshot.nextRequirement
+    }
+    
     
 
     private var currentUserIDString: String? {
         session.currentUser?.id.uuidString
     }
     
+    private var storedIdentityState: IdentityProgressState? {
+        identityProgressStates.first {
+            $0.ownerUserID == currentUserIDString
+        }
+    }
+
+    private var storedIdentityLevel: Int {
+        storedIdentityState?.level ?? storedIdentityState?.currentLevel ?? 1
+    }
+
     private var identitySnapshot: IdentityLevelSnapshot {
         IdentityXPLevelEngine.snapshot(
+            currentLevel: storedIdentityLevel,
             tasks: filteredTasks,
             focusSessions: filteredFocusSessions,
             streakDays: vm.streakValueForUI
@@ -225,43 +240,26 @@ struct InsightsView: View {
         }
         .sheet(isPresented: $showIdentityLevelSheet) {
             InsightsIdentityLevelSheet(
-                level: identitySnapshot.level,
-                progress: identitySnapshot.progress,
-                focusSessions: identitySnapshot.focusSessions,
-                completedTasks: identitySnapshot.completedTasks,
-                streakDays: identitySnapshot.streakDays
+                snapshot: identitySnapshot,
+                onLevelUp: {
+                    preparePendingLevelUpIfNeeded()
+                    showLevelUpCelebration = true
+                }
             )
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
         .fullScreenCover(isPresented: $showLevelUpCelebration) {
-            if let pending = pendingLevelUp {
+            let targetLevel = pendingLevelUp?.pendingLevel ?? identitySnapshot.nextRequirement.level
+            let info = InsightsIdentityLevelSystem.info(for: targetLevel)
 
-                let oldLevel = max(1, pending.pendingLevel - 1)
-                let info = InsightsIdentityLevelSystem.info(for: pending.pendingLevel)
-
-                IdentityLevelUpCelebrationView(
-                    oldLevel: oldLevel,
-                    newLevel: pending.pendingLevel,
-                    title: pending.pendingTitle,
-                    accent: info.accent
-                ) {
-                    completePendingLevelUp(pending)
-                }
-
-            } else {
-
-                let nextLevel = identitySnapshot.level + 1
-                let info = InsightsIdentityLevelSystem.info(for: nextLevel)
-
-                IdentityLevelUpCelebrationView(
-                    oldLevel: identitySnapshot.level,
-                    newLevel: nextLevel,
-                    title: info.title,
-                    accent: info.accent
-                ) {
-                    instantLevelUpFallback()
-                }
+            IdentityLevelUpCelebrationView(
+                oldLevel: identitySnapshot.level,
+                newLevel: targetLevel,
+                title: info.title,
+                accent: info.accent
+            ) {
+                completeLevelUpDirectly(to: targetLevel)
             }
         }
         
@@ -323,34 +321,59 @@ struct InsightsView: View {
         generator.notificationOccurred(.success)
     }
     
-    private func instantLevelUpFallback() {
-        showLevelUpCelebration = false
-    }
+    
 
-    
-    
-    private func completePendingLevelUp(_ pending: IdentityLevelUpState) {
-        pending.isPending = false
+    private func completeLevelUpDirectly(to newLevel: Int) {
+        guard let currentUserIDString else {
+            showLevelUpCelebration = false
+            return
+        }
+
+        let safeLevel = min(max(newLevel, 1), InsightsIdentityLevelSystem.maxLevel)
+
+        if let pending = identityLevelUpStates.first(where: {
+            $0.ownerUserID == currentUserIDString &&
+            $0.isPending &&
+            $0.pendingLevel == safeLevel
+        }) {
+            pending.isPending = false
+            pending.completedAt = Date()
+        }
 
         if let state = identityProgressStates.first(where: {
             $0.ownerUserID == currentUserIDString
         }) {
-            state.currentLevel = pending.pendingLevel
+            state.level = safeLevel
+            state.currentLevel = safeLevel
+            state.totalXP = 0
+            state.focusSessions = identitySnapshot.focusSessions
+            state.completedTasks = identitySnapshot.completedTasks
+            state.streakDays = identitySnapshot.streakDays
             state.updatedAt = Date()
+        } else {
+            let state = IdentityProgressState(
+                ownerUserID: currentUserIDString,
+                level: safeLevel,
+                totalXP: 0,
+                focusSessions: identitySnapshot.focusSessions,
+                completedTasks: identitySnapshot.completedTasks,
+                streakDays: identitySnapshot.streakDays,
+                currentLevel: safeLevel
+            )
+
+            modelContext.insert(state)
         }
 
         try? modelContext.save()
 
         showLevelUpCelebration = false
+        showIdentityLevelSheet = false
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            showLevelUpBanner = true
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
-            showLevelUpBanner = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            syncIdentityProgressState()
         }
     }
+    
     
     private var identityCompletedTasks: Int {
         filteredTasks.filter(\.isDone).count
@@ -463,9 +486,10 @@ struct InsightsView: View {
                 InsightsIdentityCardV2(
                     snapshot: identitySnapshot,
                     isExpanded: identityExpanded,
-                    hasPendingLevelUp: pendingLevelUp != nil || identitySnapshot.progress >= 1,
+                    hasPendingLevelUp: pendingLevelUp != nil || identitySnapshot.isReadyForLevelUp,
                     onTap: {
-                        if pendingLevelUp != nil || identitySnapshot.progress >= 1 {
+                        if pendingLevelUp != nil || identitySnapshot.isReadyForLevelUp {
+                            preparePendingLevelUpIfNeeded()
                             showLevelUpCelebration = true
                         } else {
                             showIdentityLevelSheet = true
@@ -784,66 +808,68 @@ struct InsightsView: View {
     private func syncIdentityProgressState() {
         guard let currentUserIDString else { return }
 
-        let snapshot = identitySnapshot
-
         if let existing = identityProgressStates.first(where: { $0.ownerUserID == currentUserIDString }) {
-            let oldLevel = existing.level
-            let newLevel = snapshot.level
-
             existing.totalXP = 0
-            existing.focusSessions = snapshot.focusSessions
-            existing.completedTasks = snapshot.completedTasks
-            existing.streakDays = snapshot.streakDays
+            existing.focusSessions = identitySnapshot.focusSessions
+            existing.completedTasks = identitySnapshot.completedTasks
+            existing.streakDays = identitySnapshot.streakDays
+            existing.currentLevel = existing.level
             existing.updatedAt = Date()
-
-            if newLevel > oldLevel {
-                existing.level = oldLevel
-
-                let alreadyPending = identityLevelUpStates.contains {
-                    $0.ownerUserID == currentUserIDString &&
-                    $0.isPending &&
-                    $0.pendingLevel == newLevel
-                }
-
-                if !alreadyPending {
-                    let nextInfo = InsightsIdentityLevelSystem.info(for: newLevel)
-
-                    let pending = IdentityLevelUpState(
-                        ownerUserID: currentUserIDString,
-                        pendingLevel: newLevel,
-                        pendingTitle: nextInfo.title
-                    )
-
-                    modelContext.insert(pending)
-
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
-                        showLevelUpBanner = true
-                    }
-
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-                        withAnimation(.easeOut(duration: 0.25)) {
-                            showLevelUpBanner = false
-                        }
-                    }
-                }
-            } else {
-                existing.level = newLevel
-            }
         } else {
             let state = IdentityProgressState(
                 ownerUserID: currentUserIDString,
-                level: snapshot.level,
+                level: 1,
                 totalXP: 0,
-                focusSessions: snapshot.focusSessions,
-                completedTasks: snapshot.completedTasks,
-                streakDays: snapshot.streakDays
+                focusSessions: identitySnapshot.focusSessions,
+                completedTasks: identitySnapshot.completedTasks,
+                streakDays: identitySnapshot.streakDays,
+                currentLevel: 1
             )
 
             modelContext.insert(state)
         }
 
+        preparePendingLevelUpIfNeeded(showBanner: false)
+
         try? modelContext.save()
     }
+    private func preparePendingLevelUpIfNeeded(showBanner: Bool = true) {
+        guard let currentUserIDString else { return }
+        guard identitySnapshot.isReadyForLevelUp else { return }
+        guard !identitySnapshot.isMaxLevel else { return }
+
+        let targetLevel = identitySnapshot.nextRequirement.level
+
+        let alreadyPending = identityLevelUpStates.contains {
+            $0.ownerUserID == currentUserIDString &&
+            $0.isPending &&
+            $0.pendingLevel == targetLevel
+        }
+
+        guard !alreadyPending else { return }
+
+        let pending = IdentityLevelUpState(
+            ownerUserID: currentUserIDString,
+            pendingLevel: targetLevel,
+            pendingTitle: identitySnapshot.nextRequirement.title
+        )
+
+        modelContext.insert(pending)
+        try? modelContext.save()
+
+        guard showBanner else { return }
+
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+            showLevelUpBanner = true
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            withAnimation(.easeOut(duration: 0.25)) {
+                showLevelUpBanner = false
+            }
+        }
+    }
+    
     private func levelUpBanner(_ pending: IdentityLevelUpState) -> some View {
         HStack(spacing: 12) {
             Image(systemName: "arrow.up.forward.circle.fill")

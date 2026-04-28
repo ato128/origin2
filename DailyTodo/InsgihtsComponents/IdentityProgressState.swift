@@ -14,6 +14,8 @@ final class IdentityProgressState {
     var ownerUserID: String?
 
     var level: Int
+
+    // Compatibility only. UI ve logic kullanmaz.
     var totalXP: Int
 
     var focusSessions: Int
@@ -36,12 +38,12 @@ final class IdentityProgressState {
     ) {
         self.id = id
         self.ownerUserID = ownerUserID
-        self.level = level
-        self.totalXP = totalXP
-        self.focusSessions = focusSessions
-        self.completedTasks = completedTasks
-        self.streakDays = streakDays
-        self.currentLevel = currentLevel
+        self.level = max(1, level)
+        self.totalXP = 0
+        self.focusSessions = max(0, focusSessions)
+        self.completedTasks = max(0, completedTasks)
+        self.streakDays = max(0, streakDays)
+        self.currentLevel = max(1, currentLevel)
         self.updatedAt = updatedAt
     }
 }

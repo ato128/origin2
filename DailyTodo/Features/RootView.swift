@@ -11,9 +11,9 @@ import SwiftData
 struct RootView: View {
     @Binding var openFocusFromNotification: Bool
 
-    @AppStorage("didFinishOnboarding") private var didFinishOnboarding = false
-    @AppStorage("didFinishPermissionOnboarding") private var didFinishPermissionOnboarding = false
-    @AppStorage("didFinishIntroFlow") private var didFinishIntroFlow = false
+    @AppStorage("didFinishFullOnboardingV2") private var didFinishFullOnboarding = false
+    
+   
 
     @State private var importExport: ScheduleExport? = nil
     @State private var showImportSheet: Bool = false
@@ -31,18 +31,8 @@ struct RootView: View {
             } else if !studentStore.didResolveRemoteProfile || studentStore.isLoading {
                 studentLoadingView
 
-            } else if !studentStore.hasCompletedStudentProfile {
-                StudentOnboardingFlowView()
-
-            } else if !didFinishOnboarding {
-                OnboardingView()
-
-            } else if !didFinishPermissionOnboarding {
-                PermissionOnboardingView()
-
-            } else if !didFinishIntroFlow {
-                IntroFlowView()
-
+            } else if !didFinishFullOnboarding {
+                AppOnboardingFlowView()
             } else {
                 MainTabView(
                     openFocusFromNotification: $openFocusFromNotification
@@ -71,7 +61,6 @@ struct RootView: View {
             await studentStore.loadFromRemote()
         }
     }
-
     private var studentLoadingView: some View {
         ZStack {
             AppBackground()

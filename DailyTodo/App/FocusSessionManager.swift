@@ -566,9 +566,7 @@ final class FocusSessionManager: ObservableObject {
                     print("AUTO END CREW SESSION ERROR:", error.localizedDescription)
                 }
 
-                IdentityXPManager.shared.add(
-                    .crewFocus(minutes: session.durationMinutes)
-                )
+              
 
                 completeAndPersist(session)
             }
@@ -576,10 +574,7 @@ final class FocusSessionManager: ObservableObject {
             return
         }
 
-        IdentityXPManager.shared.add(
-            .focusCompleted(minutes: session.durationMinutes)
-        )
-
+       
         completeAndPersist(session)
     }
     

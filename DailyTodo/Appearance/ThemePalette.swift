@@ -10,101 +10,113 @@ import SwiftUI
 struct ThemePalette {
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
 
+    var theme: AppTheme {
+        AppTheme(rawValue: appTheme) ?? .gradient
+    }
+
     var isLight: Bool {
-        appTheme == AppTheme.light.rawValue
+        theme == .light
     }
 
     var isGradient: Bool {
-        appTheme == AppTheme.gradient.rawValue
+        theme == .gradient
     }
 
     var screenBackground: Color {
-        switch appTheme {
-        case AppTheme.dark.rawValue, AppTheme.amoled.rawValue, AppTheme.gradient.rawValue:
+        switch theme {
+        case .light:
+            return Color(red: 0.965, green: 0.935, blue: 0.875)
+        case .dark:
+            return Color(red: 0.030, green: 0.032, blue: 0.050)
+        case .amoled:
             return .black
-        case AppTheme.light.rawValue:
-            return Color(.systemGray6)
-        default:
-            return .black
+        case .gradient:
+            return Color(red: 0.008, green: 0.010, blue: 0.020)
         }
     }
 
     var cardFill: Color {
-        switch appTheme {
-        case AppTheme.light.rawValue:
-            return .white
-        case AppTheme.dark.rawValue:
-            return Color.white.opacity(0.050)
-        case AppTheme.amoled.rawValue:
+        switch theme {
+        case .light:
+            return Color.white.opacity(0.70)
+        case .dark:
+            return Color.white.opacity(0.052)
+        case .amoled:
             return Color.white.opacity(0.038)
-        default:
+        case .gradient:
             return Color.white.opacity(0.055)
-        }
-    }
-
-    var secondaryCardFill: Color {
-        switch appTheme {
-        case AppTheme.light.rawValue:
-            return Color.black.opacity(0.04)
-        case AppTheme.dark.rawValue:
-            return Color.white.opacity(0.040)
-        case AppTheme.amoled.rawValue:
-            return Color.white.opacity(0.032)
-        default:
-            return Color.white.opacity(0.038)
         }
     }
 
     var cardStroke: Color {
-        switch appTheme {
-        case AppTheme.light.rawValue:
-            return Color.black.opacity(0.07)
-        case AppTheme.dark.rawValue:
+        switch theme {
+        case .light:
+            return Color.white.opacity(0.86)
+        case .dark:
             return Color.white.opacity(0.055)
-        case AppTheme.amoled.rawValue:
+        case .amoled:
             return Color.white.opacity(0.045)
-        default:
+        case .gradient:
             return Color.white.opacity(0.070)
         }
     }
 
+    var shadowColor: Color {
+        isLight
+        ? Color(red: 0.42, green: 0.34, blue: 0.26).opacity(0.15)
+        : Color.black.opacity(0.20)
+    }
+    
+    var secondaryCardFill: Color {
+        switch appTheme {
+        case AppTheme.light.rawValue:
+            return Color.white.opacity(0.55)
+
+        case AppTheme.dark.rawValue:
+            return Color.white.opacity(0.040)
+
+        case AppTheme.amoled.rawValue:
+            return Color.white.opacity(0.030)
+
+        default:
+            return Color.white.opacity(0.045)
+        }
+    }
+
     var primaryText: Color {
-        isLight ? .black : .white
+        isLight ? Color(red: 0.105, green: 0.090, blue: 0.075) : .white
     }
 
     var secondaryText: Color {
-        isLight ? Color.black.opacity(0.65) : Color.white.opacity(0.68)
+        isLight ? Color.black.opacity(0.64) : Color.white.opacity(0.68)
     }
 
     var tertiaryText: Color {
-        isLight ? Color.black.opacity(0.45) : Color.white.opacity(0.48)
+        isLight ? Color.black.opacity(0.44) : Color.white.opacity(0.48)
     }
 
     var capsuleFill: Color {
-        isLight ? Color.black.opacity(0.05) : Color.white.opacity(0.06)
+        isLight ? Color.white.opacity(0.62) : Color.white.opacity(0.06)
     }
 
     var divider: Color {
-        isLight ? Color.black.opacity(0.06) : Color.white.opacity(0.05)
+        isLight ? Color.black.opacity(0.055) : Color.white.opacity(0.05)
     }
 
     var glassFill: AnyShapeStyle {
         if isLight {
-            return AnyShapeStyle(Color.white.opacity(0.88))
+            return AnyShapeStyle(Color.white.opacity(0.68))
         } else {
-            return AnyShapeStyle(.ultraThinMaterial)
+            return AnyShapeStyle(Color.white.opacity(0.055))
         }
     }
 
-    var shadowColor: Color {
-        isLight ? Color.black.opacity(0.08) : Color.black.opacity(0.18)
-    }
-
+   
     var accent: Color {
         Color.accentColor
     }
 
     var cardShadow: Color {
-        Color.black.opacity(0.18)
+        isLight ? Color.black.opacity(0.10) : Color.black.opacity(0.18)
     }
 }

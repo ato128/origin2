@@ -10,26 +10,15 @@ import SwiftUI
 struct InsightsIdentityLevelSheet: View {
     @Environment(\.dismiss) private var dismiss
 
-    let level: Int
-    let progress: Double
-    let focusSessions: Int
-    let completedTasks: Int
-    let streakDays: Int
+    let snapshot: IdentityLevelSnapshot
+    let onLevelUp: () -> Void
 
     private var currentLevel: IdentityLevelInfo {
-        InsightsIdentityLevelSystem.info(for: level)
+        snapshot.currentRequirement
     }
 
     private var nextLevel: IdentityLevelInfo {
-        InsightsIdentityLevelSystem.info(for: min(level + 1, 50))
-    }
-
-    private var safeProgress: Double {
-        min(max(progress, 0), 1)
-    }
-
-    private var isMaxLevel: Bool {
-        currentLevel.level >= 50
+        snapshot.nextRequirement
     }
 
     var body: some View {
@@ -42,6 +31,10 @@ struct InsightsIdentityLevelSheet: View {
                     heroCard
                     requirementsCard
                     nextLevelCard
+
+                    if snapshot.isReadyForLevelUp {
+                        levelUpButton
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 18)
@@ -121,7 +114,7 @@ struct InsightsIdentityLevelSheet: View {
                         .foregroundStyle(.white)
                         .lineLimit(2)
 
-                    Text(isMaxLevel ? "Maksimum seviyedesin" : "Lv.\(nextLevel.level) için ilerliyorsun")
+                    Text(snapshot.isMaxLevel ? "Maksimum seviyedesin" : "Lv.\(nextLevel.level) için ilerliyorsun")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.58))
                 }
@@ -131,18 +124,18 @@ struct InsightsIdentityLevelSheet: View {
                 levelBadge(level: currentLevel.level, tint: currentLevel.accent)
             }
 
-            progressBeam(progress: safeProgress, tint: currentLevel.accent)
+            progressBeam(progress: snapshot.progress, tint: currentLevel.accent)
 
             HStack {
-                Text("\(Int(safeProgress * 100))% tamamlandı")
+                Text("\(snapshot.percentText) tamamlandı")
                     .font(.system(size: 13, weight: .black, design: .rounded))
                     .foregroundStyle(currentLevel.accent)
 
                 Spacer()
 
-                Text("Max Lv. 50")
+                Text(snapshot.statusText)
                     .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.42))
+                    .foregroundStyle(snapshot.isReadyForLevelUp ? .green : .white.opacity(0.42))
             }
         }
         .padding(18)
@@ -158,7 +151,7 @@ struct InsightsIdentityLevelSheet: View {
 
                 Spacer()
 
-                Text("Lv.\(currentLevel.level) → Lv.\(nextLevel.level)")
+                Text(snapshot.levelRangeText)
                     .font(.system(size: 12, weight: .black, design: .rounded))
                     .foregroundStyle(currentLevel.accent)
                     .padding(.horizontal, 10)
@@ -169,22 +162,25 @@ struct InsightsIdentityLevelSheet: View {
             requirementRow(
                 icon: "scope",
                 title: "Focus oturumu",
-                currentValue: focusSessions,
-                targetValue: currentLevel.requiredFocusSessions
+                currentValue: snapshot.focusSessions,
+                targetValue: nextLevel.requiredFocusSessions,
+                ratio: snapshot.focusRatio
             )
 
             requirementRow(
                 icon: "checkmark.circle.fill",
                 title: "Görev tamamla",
-                currentValue: completedTasks,
-                targetValue: currentLevel.requiredCompletedTasks
+                currentValue: snapshot.completedTasks,
+                targetValue: nextLevel.requiredCompletedTasks,
+                ratio: snapshot.taskRatio
             )
 
             requirementRow(
                 icon: "flame.fill",
                 title: "Seri günü",
-                currentValue: streakDays,
-                targetValue: currentLevel.requiredStreakDays
+                currentValue: snapshot.streakDays,
+                targetValue: nextLevel.requiredStreakDays,
+                ratio: snapshot.streakRatio
             )
         }
         .padding(18)
@@ -196,7 +192,7 @@ struct InsightsIdentityLevelSheet: View {
             levelBadge(level: nextLevel.level, tint: nextLevel.accent)
 
             VStack(alignment: .leading, spacing: 5) {
-                Text(isMaxLevel ? "Final statü" : "Sonraki statü")
+                Text(snapshot.isMaxLevel ? "Final statü" : "Sonraki statü")
                     .font(.system(size: 12, weight: .bold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.48))
 
@@ -217,8 +213,26 @@ struct InsightsIdentityLevelSheet: View {
         .background(cardBackground(tint: nextLevel.accent, strength: 0.62))
     }
 
+    private var levelUpButton: some View {
+        Button {
+            dismiss()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                onLevelUp()
+            }
+        } label: {
+            Text("Yeni seviyeye geç")
+                .font(.system(size: 17, weight: .black, design: .rounded))
+                .foregroundStyle(.black)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
     private var nextLevelSummary: String {
-        if isMaxLevel {
+        if snapshot.isMaxLevel {
             return "Bu seviyeden sonra yeni ligler eklenebilir."
         }
 
@@ -229,9 +243,9 @@ struct InsightsIdentityLevelSheet: View {
         icon: String,
         title: String,
         currentValue: Int,
-        targetValue: Int
+        targetValue: Int,
+        ratio: Double
     ) -> some View {
-        let ratio = min(1, Double(currentValue) / Double(max(targetValue, 1)))
         let isCompleted = currentValue >= targetValue
         let tint: Color = isCompleted ? .green : currentLevel.accent
 
@@ -296,7 +310,7 @@ struct InsightsIdentityLevelSheet: View {
                             endPoint: .trailing
                         )
                     )
-                    .frame(width: max(10, proxy.size.width * min(max(progress, 0), 1)))
+                    .frame(width: proxy.size.width * min(max(progress, 0), 1))
             }
         }
         .frame(height: height)

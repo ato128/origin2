@@ -15,103 +15,156 @@ struct IdentityLevelUpCelebrationView: View {
     let accent: Color
     let onFinish: () -> Void
 
-    @State private var showContent = false
-    @State private var burst = false
+    @State private var appeared = false
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            background
 
-            RadialGradient(
-                colors: [
-                    accent.opacity(0.45),
-                    .clear
-                ],
-                center: .center,
-                startRadius: 10,
-                endRadius: 420
-            )
-            .ignoresSafeArea()
-            .scaleEffect(burst ? 1.25 : 0.75)
-            .opacity(burst ? 1 : 0.4)
+            VStack(spacing: 26) {
+                Spacer(minLength: 80)
 
-            ForEach(0..<28, id: \.self) { index in
-                Circle()
-                    .fill(index.isMultiple(of: 2) ? accent : .white)
-                    .frame(width: CGFloat.random(in: 5...10), height: CGFloat.random(in: 5...10))
-                    .offset(
-                        x: burst ? CGFloat.random(in: -180...180) : 0,
-                        y: burst ? CGFloat.random(in: -330...330) : 0
-                    )
-                    .opacity(burst ? 0.95 : 0)
-                    .animation(.spring(response: 0.85, dampingFraction: 0.72).delay(Double(index) * 0.012), value: burst)
-            }
-
-            VStack(spacing: 22) {
                 Text("LEVEL UP")
-                    .font(.system(size: 15, weight: .black, design: .rounded))
+                    .font(.system(size: 12, weight: .black, design: .rounded))
                     .tracking(4)
                     .foregroundStyle(accent)
-                    .opacity(showContent ? 1 : 0)
+                    .opacity(appeared ? 1 : 0)
+                    .offset(y: appeared ? 0 : 10)
 
-                ZStack {
-                    Circle()
-                        .fill(accent.opacity(0.18))
-                        .frame(width: 154, height: 154)
+                levelOrb
 
-                    Circle()
-                        .stroke(.white.opacity(0.12), lineWidth: 1)
-                        .frame(width: 154, height: 154)
-
-                    VStack(spacing: 2) {
-                        Text("Lv")
-                            .font(.system(size: 18, weight: .black, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.6))
-
-                        Text("\(newLevel)")
-                            .font(.system(size: 68, weight: .black, design: .rounded))
-                            .foregroundStyle(.white)
-                    }
-                }
-                .scaleEffect(showContent ? 1 : 0.65)
-                .opacity(showContent ? 1 : 0)
-
-                VStack(spacing: 8) {
+                VStack(spacing: 10) {
                     Text("Lv.\(oldLevel) → Lv.\(newLevel)")
-                        .font(.system(size: 18, weight: .black, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .font(.system(size: 17, weight: .black, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.58))
 
                     Text(title)
-                        .font(.system(size: 36, weight: .black, design: .rounded))
+                        .font(.system(size: 42, weight: .black, design: .rounded))
                         .foregroundStyle(.white)
                         .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.72)
                 }
-                .opacity(showContent ? 1 : 0)
-                .offset(y: showContent ? 0 : 18)
+                .opacity(appeared ? 1 : 0)
+                .offset(y: appeared ? 0 : 16)
+
+                Spacer()
 
                 Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     onFinish()
                 } label: {
                     Text("Devam Et")
                         .font(.system(size: 17, weight: .black, design: .rounded))
                         .foregroundStyle(.black)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
+                        .padding(.vertical, 17)
                         .background(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        .shadow(color: .white.opacity(0.16), radius: 22, x: 0, y: 10)
                 }
-                .padding(.top, 8)
-                .opacity(showContent ? 1 : 0)
+                .buttonStyle(.plain)
+                .opacity(appeared ? 1 : 0)
+                .offset(y: appeared ? 0 : 18)
+                .padding(.bottom, 44)
             }
             .padding(.horizontal, 28)
         }
         .onAppear {
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
-            withAnimation(.spring(response: 0.65, dampingFraction: 0.75)) {
-                showContent = true
-                burst = true
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+
+            withAnimation(.spring(response: 0.72, dampingFraction: 0.84)) {
+                appeared = true
             }
         }
+    }
+
+    private var background: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            LinearGradient(
+                colors: [
+                    accent.opacity(0.22),
+                    Color.black.opacity(0.96),
+                    Color.black
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            RadialGradient(
+                colors: [
+                    accent.opacity(0.36),
+                    accent.opacity(0.14),
+                    .clear
+                ],
+                center: .center,
+                startRadius: 20,
+                endRadius: 360
+            )
+            .ignoresSafeArea()
+
+            VStack {
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                .white.opacity(0.035),
+                                .clear
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(height: 180)
+
+                Spacer()
+            }
+            .ignoresSafeArea()
+        }
+    }
+
+    private var levelOrb: some View {
+        ZStack {
+            Circle()
+                .fill(accent.opacity(0.18))
+                .frame(width: 184, height: 184)
+                .blur(radius: 28)
+
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            .white.opacity(0.18),
+                            accent.opacity(0.28),
+                            Color.white.opacity(0.04)
+                        ],
+                        center: .topLeading,
+                        startRadius: 8,
+                        endRadius: 120
+                    )
+                )
+                .frame(width: 158, height: 158)
+                .overlay(
+                    Circle()
+                        .stroke(.white.opacity(0.14), lineWidth: 1)
+                )
+                .shadow(color: accent.opacity(0.34), radius: 34, x: 0, y: 18)
+
+            VStack(spacing: 0) {
+                Text("Lv")
+                    .font(.system(size: 17, weight: .black, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.55))
+
+                Text("\(newLevel)")
+                    .font(.system(size: 72, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .contentTransition(.numericText())
+            }
+        }
+        .scaleEffect(appeared ? 1 : 0.78)
+        .opacity(appeared ? 1 : 0)
     }
 }

@@ -42,8 +42,6 @@
 		6D2004DD2F646DEC0022C810 /* ScrollOffsetReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004DC2F646DEC0022C810 /* ScrollOffsetReader.swift */; };
 		6D2004DF2F646EB90022C810 /* ScrollOffsetPreference.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004DE2F646EB90022C810 /* ScrollOffsetPreference.swift */; };
 		6D2004E12F6490C60022C810 /* WeekAmbientBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004E02F6490C60022C810 /* WeekAmbientBackground.swift */; };
-		6D2004E92F64E7210022C810 /* OnboardingPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004E82F64E7210022C810 /* OnboardingPageView.swift */; };
-		6D2004EB2F64EE8A0022C810 /* PermissionOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2004EA2F64EE8A0022C810 /* PermissionOnboardingView.swift */; };
 		6D215DA32F55FD7100F7B9D7 /* EditTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DA22F55FD7100F7B9D7 /* EditTaskView.swift */; };
 		6D215DA52F5602D100F7B9D7 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DA42F5602D100F7B9D7 /* MainTabView.swift */; };
 		6D215DA72F56035A00F7B9D7 /* EventItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DA62F56035A00F7B9D7 /* EventItem.swift */; };
@@ -86,7 +84,7 @@
 		6D4F2BD52F9EDDCE0056E067 /* IdentityLevelUpState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D4F2BD42F9EDDCD0056E067 /* IdentityLevelUpState.swift */; };
 		6D4F2BD72F9EDDF80056E067 /* IdentityLevelUpCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D4F2BD62F9EDDF80056E067 /* IdentityLevelUpCelebrationView.swift */; };
 		6D4F2BD92F9EE4D80056E067 /* FocusCompletionRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D4F2BD82F9EE4D80056E067 /* FocusCompletionRecorder.swift */; };
-		6D4F2BDB2F9EF1480056E067 /* IdentityXPManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D4F2BDA2F9EF1480056E067 /* IdentityXPManager.swift */; };
+		6D4F2BDD2FA023EF0056E067 /* AppOnboardingFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D4F2BDC2FA023EF0056E067 /* AppOnboardingFlowView.swift */; };
 		6D5FE3CC2F66CE68007C124D /* MessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3CB2F66CE68007C124D /* MessagesView.swift */; };
 		6D5FE3CE2F66CF29007C124D /* CrewMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3CD2F66CF29007C124D /* CrewMessage.swift */; };
 		6D5FE3D02F66D034007C124D /* CrewChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FE3CF2F66D034007C124D /* CrewChatView.swift */; };
@@ -136,11 +134,7 @@
 		6D605D232F7743330052C76B /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = 6D605D222F7743330052C76B /* FirebaseRemoteConfig */; };
 		6D605D252F7743330052C76B /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 6D605D242F7743330052C76B /* FirebaseStorage */; };
 		6D605D272F7743330052C76B /* FirebaseStorageCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 6D605D262F7743330052C76B /* FirebaseStorageCombine-Community */; };
-		6D64E0D92F7079D000C68B5B /* IntroHomeMockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D64E0D82F7079D000C68B5B /* IntroHomeMockView.swift */; };
 		6D64E0DB2F70815C00C68B5B /* AuthFormSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D64E0DA2F70815C00C68B5B /* AuthFormSheetView.swift */; };
-		6D64E0DD2F71BBB000C68B5B /* IntroWeekMockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D64E0DC2F71BBB000C68B5B /* IntroWeekMockView.swift */; };
-		6D64E0DF2F71BC1B00C68B5B /* IntroCrewMockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D64E0DE2F71BC1B00C68B5B /* IntroCrewMockView.swift */; };
-		6D64E0E12F71BC3100C68B5B /* IntroInsightsMockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D64E0E02F71BC3100C68B5B /* IntroInsightsMockView.swift */; };
 		6D775B852F5F81CF0009D660 /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D775B842F5F81CF0009D660 /* Color+Hex.swift */; };
 		6D775B862F5F82F60009D660 /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D775B842F5F81CF0009D660 /* Color+Hex.swift */; };
 		6D8C3D342F65903B00ABF6CA /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D8C3D332F65903B00ABF6CA /* AppTheme.swift */; };
@@ -201,8 +195,6 @@
 		6DB70E8D2F73266D00F04B43 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 6DB70E8B2F73266D00F04B43 /* Localizable.strings */; };
 		6DB70E902F76F2A600F04B43 /* LocalizedString.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E8F2F76F2A600F04B43 /* LocalizedString.swift */; };
 		6DBCED2E2F85D4DC00788909 /* HomeOverviewCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBCED2D2F85D4DC00788909 /* HomeOverviewCards.swift */; };
-		6DBE91982F6B1556001DF813 /* IntroFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE91972F6B1555001DF813 /* IntroFlowView.swift */; };
-		6DBE919A2F6B157B001DF813 /* IntroPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE91992F6B157B001DF813 /* IntroPageView.swift */; };
 		6DBE919C2F6B2EFD001DF813 /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE919B2F6B2EFD001DF813 /* SessionStore.swift */; };
 		6DBE919E2F6B2F25001DF813 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE919D2F6B2F25001DF813 /* AuthView.swift */; };
 		6DBE91A02F6B2F43001DF813 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE919F2F6B2F43001DF813 /* SignInView.swift */; };
@@ -308,7 +300,6 @@
 		6DF0C91D2F557AA50043B887 /* DailyTodoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF0C91C2F557AA50043B887 /* DailyTodoApp.swift */; };
 		6DF0C93D2F557DBF0043B887 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF0C93C2F557DBF0043B887 /* RootView.swift */; };
 		6DF0C9412F557F730043B887 /* AddTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF0C9402F557F730043B887 /* AddTaskView.swift */; };
-		6DF0C9462F55E3960043B887 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF0C9452F55E3960043B887 /* OnboardingView.swift */; };
 		6DF8FB932F5B6B3E00D548E4 /* EventItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DA62F56035A00F7B9D7 /* EventItem.swift */; };
 /* End PBXBuildFile section */
 
@@ -372,8 +363,6 @@
 		6D2004DC2F646DEC0022C810 /* ScrollOffsetReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollOffsetReader.swift; sourceTree = "<group>"; };
 		6D2004DE2F646EB90022C810 /* ScrollOffsetPreference.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollOffsetPreference.swift; sourceTree = "<group>"; };
 		6D2004E02F6490C60022C810 /* WeekAmbientBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekAmbientBackground.swift; sourceTree = "<group>"; };
-		6D2004E82F64E7210022C810 /* OnboardingPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingPageView.swift; sourceTree = "<group>"; };
-		6D2004EA2F64EE8A0022C810 /* PermissionOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionOnboardingView.swift; sourceTree = "<group>"; };
 		6D215DA22F55FD7100F7B9D7 /* EditTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditTaskView.swift; sourceTree = "<group>"; };
 		6D215DA42F5602D100F7B9D7 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		6D215DA62F56035A00F7B9D7 /* EventItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventItem.swift; sourceTree = "<group>"; };
@@ -416,7 +405,7 @@
 		6D4F2BD42F9EDDCD0056E067 /* IdentityLevelUpState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentityLevelUpState.swift; sourceTree = "<group>"; };
 		6D4F2BD62F9EDDF80056E067 /* IdentityLevelUpCelebrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentityLevelUpCelebrationView.swift; sourceTree = "<group>"; };
 		6D4F2BD82F9EE4D80056E067 /* FocusCompletionRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusCompletionRecorder.swift; sourceTree = "<group>"; };
-		6D4F2BDA2F9EF1480056E067 /* IdentityXPManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentityXPManager.swift; sourceTree = "<group>"; };
+		6D4F2BDC2FA023EF0056E067 /* AppOnboardingFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppOnboardingFlowView.swift; sourceTree = "<group>"; };
 		6D5FE3CB2F66CE68007C124D /* MessagesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagesView.swift; sourceTree = "<group>"; };
 		6D5FE3CD2F66CF29007C124D /* CrewMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewMessage.swift; sourceTree = "<group>"; };
 		6D5FE3CF2F66D034007C124D /* CrewChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewChatView.swift; sourceTree = "<group>"; };
@@ -441,11 +430,7 @@
 		6D5FE44A2F689BA5007C124D /* CrewBadgeCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewBadgeCard.swift; sourceTree = "<group>"; };
 		6D5FE44C2F689D74007C124D /* CrewLeaderboardRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewLeaderboardRow.swift; sourceTree = "<group>"; };
 		6D605CF42F773E060052C76B /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
-		6D64E0D82F7079D000C68B5B /* IntroHomeMockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntroHomeMockView.swift; sourceTree = "<group>"; };
 		6D64E0DA2F70815C00C68B5B /* AuthFormSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthFormSheetView.swift; sourceTree = "<group>"; };
-		6D64E0DC2F71BBB000C68B5B /* IntroWeekMockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntroWeekMockView.swift; sourceTree = "<group>"; };
-		6D64E0DE2F71BC1B00C68B5B /* IntroCrewMockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntroCrewMockView.swift; sourceTree = "<group>"; };
-		6D64E0E02F71BC3100C68B5B /* IntroInsightsMockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntroInsightsMockView.swift; sourceTree = "<group>"; };
 		6D775B842F5F81CF0009D660 /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
 		6D81C1072F59E87500B65AF8 /* DailyTodo.entitlements.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = DailyTodo.entitlements.plist; sourceTree = "<group>"; };
 		6D8C3D332F65903B00ABF6CA /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
@@ -505,8 +490,6 @@
 		6DB70E8E2F73268200F04B43 /* tr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/Localizable.strings; sourceTree = "<group>"; };
 		6DB70E8F2F76F2A600F04B43 /* LocalizedString.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizedString.swift; sourceTree = "<group>"; };
 		6DBCED2D2F85D4DC00788909 /* HomeOverviewCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeOverviewCards.swift; sourceTree = "<group>"; };
-		6DBE91972F6B1555001DF813 /* IntroFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntroFlowView.swift; sourceTree = "<group>"; };
-		6DBE91992F6B157B001DF813 /* IntroPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntroPageView.swift; sourceTree = "<group>"; };
 		6DBE919B2F6B2EFD001DF813 /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
 		6DBE919D2F6B2F25001DF813 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
 		6DBE919F2F6B2F43001DF813 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
@@ -607,7 +590,6 @@
 		6DF0C91C2F557AA50043B887 /* DailyTodoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyTodoApp.swift; sourceTree = "<group>"; };
 		6DF0C93C2F557DBF0043B887 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		6DF0C9402F557F730043B887 /* AddTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddTaskView.swift; sourceTree = "<group>"; };
-		6DF0C9452F55E3960043B887 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -714,7 +696,6 @@
 				6D4F2BD22F9EDAC90056E067 /* IdentityXPLevelEngine.swift */,
 				6D4F2BD42F9EDDCD0056E067 /* IdentityLevelUpState.swift */,
 				6D4F2BD62F9EDDF80056E067 /* IdentityLevelUpCelebrationView.swift */,
-				6D4F2BDA2F9EF1480056E067 /* IdentityXPManager.swift */,
 			);
 			path = InsgihtsComponents;
 			sourceTree = "<group>";
@@ -1184,16 +1165,8 @@
 		6DF0C9442F55E3770043B887 /* Onboarding */ = {
 			isa = PBXGroup;
 			children = (
-				6DF0C9452F55E3960043B887 /* OnboardingView.swift */,
-				6D2004E82F64E7210022C810 /* OnboardingPageView.swift */,
-				6D2004EA2F64EE8A0022C810 /* PermissionOnboardingView.swift */,
-				6DBE91972F6B1555001DF813 /* IntroFlowView.swift */,
-				6DBE91992F6B157B001DF813 /* IntroPageView.swift */,
-				6D64E0D82F7079D000C68B5B /* IntroHomeMockView.swift */,
-				6D64E0DC2F71BBB000C68B5B /* IntroWeekMockView.swift */,
-				6D64E0DE2F71BC1B00C68B5B /* IntroCrewMockView.swift */,
-				6D64E0E02F71BC3100C68B5B /* IntroInsightsMockView.swift */,
 				6DB0046A2F99761B009F2F3B /* StudentOnboardingFlowView.swift */,
+				6D4F2BDC2FA023EF0056E067 /* AppOnboardingFlowView.swift */,
 			);
 			path = Onboarding;
 			sourceTree = "<group>";
@@ -1431,8 +1404,8 @@
 				6D2A2AC12F8843B40051459D /* FocusModeSwitcherV3.swift in Sources */,
 				6D215DAB2F5603D600F7B9D7 /* AddEventView.swift in Sources */,
 				6DD286BD2F7AE6ED005A73FA /* HomeDashboardView+Styles.swift in Sources */,
-				6D64E0E12F71BC3100C68B5B /* IntroInsightsMockView.swift in Sources */,
 				6DB70E902F76F2A600F04B43 /* LocalizedString.swift in Sources */,
+				6D4F2BDD2FA023EF0056E067 /* AppOnboardingFlowView.swift in Sources */,
 				6D2004942F63862E0022C810 /* FriendDetailView.swift in Sources */,
 				6D215DA92F5603B100F7B9D7 /* WeekView.swift in Sources */,
 				6DB004672F9973F1009F2F3B /* Course.swift in Sources */,
@@ -1447,7 +1420,6 @@
 				6D20049C2F6389460022C810 /* FriendChatView.swift in Sources */,
 				6D20045E2F62148F0022C810 /* WeekView+ModeHeader.swift in Sources */,
 				6D9E213C2F7FFEE500946892 /* DailyFlowEngine.swift in Sources */,
-				6D2004EB2F64EE8A0022C810 /* PermissionOnboardingView.swift in Sources */,
 				6DB004352F931593009F2F3B /* InsightsPlusWeekSignalCardV2.swift in Sources */,
 				6D5FE3FA2F675620007C124D /* CrewFocusRoomView.swift in Sources */,
 				6D5FE4312F679B68007C124D /* HomeDashboardView+Actions.swift in Sources */,
@@ -1494,7 +1466,6 @@
 				6DBE91B72F6B692B001DF813 /* CrewMemberDTO.swift in Sources */,
 				6DD2828F2F697E1900B1281A /* WorkoutExerciseLibrary.swift in Sources */,
 				6D2004922F6383720022C810 /* HomeDashboardHelpers.swift in Sources */,
-				6D64E0D92F7079D000C68B5B /* IntroHomeMockView.swift in Sources */,
 				6DBE91E12F6C8295001DF813 /* WeekCrewItem.swift in Sources */,
 				6DD286E42F7EEA74005A73FA /* InAppBannerCenter.swift in Sources */,
 				6DBE91BB2F6B69C0001DF813 /* CreateCrewBackendView.swift in Sources */,
@@ -1518,12 +1489,10 @@
 				6DBE91C32F6B7A9C001DF813 /* CrewTaskDTO.swift in Sources */,
 				6D2004CF2F6461D70022C810 /* InsightsCardContainer.swift in Sources */,
 				6DBE91A02F6B2F43001DF813 /* SignInView.swift in Sources */,
-				6D64E0DD2F71BBB000C68B5B /* IntroWeekMockView.swift in Sources */,
 				6DBE91EF2F6D91B7001DF813 /* CrewDateParser.swift in Sources */,
 				6DBE919C2F6B2EFD001DF813 /* SessionStore.swift in Sources */,
 				6DC0CABA2F5F7D0000A875ED /* CreateCrewView.swift in Sources */,
 				6DB70E842F73217400F04B43 /* AppLanguage.swift in Sources */,
-				6D4F2BDB2F9EF1480056E067 /* IdentityXPManager.swift in Sources */,
 				6D2004D12F6462130022C810 /* ParallaxCardModifier.swift in Sources */,
 				6D2A2A9D2F86E3710051459D /* ProfileHubView.swift in Sources */,
 				6DB004232F92FFFB009F2F3B /* InsightsAchievementsView.swift in Sources */,
@@ -1540,7 +1509,6 @@
 				6DBCED2E2F85D4DC00788909 /* HomeOverviewCards.swift in Sources */,
 				6DDF5B5B2F5F9DFF003057C9 /* CrewTaskComment.swift in Sources */,
 				6DBE91A22F6B2F5D001DF813 /* SignUpView.swift in Sources */,
-				6D2004E92F64E7210022C810 /* OnboardingPageView.swift in Sources */,
 				6D2004562F61CF550022C810 /* WeekView+CrewCardHelpers.swift in Sources */,
 				6DB0041F2F92FAC2009F2F3B /* InsightsMiniStatsGridV2.swift in Sources */,
 				6DBE91C12F6B75D5001DF813 /* AddCrewMemberView.swift in Sources */,
@@ -1571,7 +1539,6 @@
 				6D2A2AFF2F8B14CC0051459D /* FocusInviteService.swift in Sources */,
 				6DB004392F931990009F2F3B /* InsightsStudyWindowDetailView.swift in Sources */,
 				6DC0CAC32F5F7D0000A875ED /* CrewMember.swift in Sources */,
-				6D64E0DF2F71BC1B00C68B5B /* IntroCrewMockView.swift in Sources */,
 				6D2A2AC52F88452C0051459D /* FocusDetailSectionV3.swift in Sources */,
 				6DC0CAC52F5F7D0000A875ED /* CrewActivity.swift in Sources */,
 				6D5FE4202F678FD1007C124D /* TodoListView+Header.swift in Sources */,
@@ -1584,7 +1551,6 @@
 				6DB004312F931550009F2F3B /* InsightsPlusCoachCardV2.swift in Sources */,
 				6D2004962F6387D20022C810 /* Friend.swift in Sources */,
 				6DBE91F32F6DDE82001DF813 /* FriendDTOs.swift in Sources */,
-				6DBE919A2F6B157B001DF813 /* IntroPageView.swift in Sources */,
 				6D9E21422F803E1300946892 /* HomeDashboardExamHelpers.swift in Sources */,
 				6DBE91F52F6DDEA4001DF813 /* FriendStore.swift in Sources */,
 				6D5FE3FE2F6787D7007C124D /* CrewChatView+Messages.swift in Sources */,
@@ -1596,11 +1562,9 @@
 				6D2004882F6336A20022C810 /* EditCrewTaskView.swift in Sources */,
 				6D02C9D12F5B4718008193F3 /* InsightsView.swift in Sources */,
 				6DBE91BF2F6B73E0001DF813 /* BackendCrewDetailView.swift in Sources */,
-				6DBE91982F6B1556001DF813 /* IntroFlowView.swift in Sources */,
 				6DBE920D2F6F373C001DF813 /* AddFriendSheetView.swift in Sources */,
 				6D64E0DB2F70815C00C68B5B /* AuthFormSheetView.swift in Sources */,
 				6D2004CB2F645FC60022C810 /* ViewportAppearModifier.swift in Sources */,
-				6DF0C9462F55E3960043B887 /* OnboardingView.swift in Sources */,
 				6D2004542F61C7DA0022C810 /* CrewTaskCard.swift in Sources */,
 				6D4F2BCF2F9ED8820056E067 /* InsightsIdentityLevelSheet.swift in Sources */,
 				6D215DDC2F564C4100F7B9D7 /* WidgetSync+App.swift in Sources */,

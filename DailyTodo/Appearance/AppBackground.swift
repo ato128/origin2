@@ -9,29 +9,110 @@ import SwiftUI
 struct AppBackground: View {
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
 
+    private var theme: AppTheme {
+        AppTheme(rawValue: appTheme) ?? .gradient
+    }
+
     var body: some View {
-        switch appTheme {
-        case AppTheme.dark.rawValue:
-            darkBackground
-
-        case AppTheme.amoled.rawValue:
-            amoledBackground
-
-        case AppTheme.light.rawValue:
-            lightBackground
-
-        default:
-            gradientBackground
+        ZStack {
+            switch theme {
+            case .light:
+                premiumCreamBackground
+            case .dark:
+                darkBackground
+            case .amoled:
+                amoledBackground
+            case .gradient:
+                gradientBackground
+            }
         }
+        .ignoresSafeArea()
     }
 }
 
 private extension AppBackground {
 
+    var premiumCreamBackground: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.996, green: 0.978, blue: 0.935),
+                    Color(red: 0.978, green: 0.940, blue: 0.860),
+                    Color(red: 0.950, green: 0.900, blue: 0.805)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            RadialGradient(
+                colors: [
+                    Color(red: 0.58, green: 0.38, blue: 1.00).opacity(0.34),
+                    Color(red: 0.74, green: 0.56, blue: 1.00).opacity(0.16),
+                    .clear
+                ],
+                center: UnitPoint(x: -0.18, y: 0.18),
+                startRadius: 18,
+                endRadius: 390
+            )
+
+            RadialGradient(
+                colors: [
+                    Color(red: 0.16, green: 0.62, blue: 1.00).opacity(0.30),
+                    Color(red: 0.48, green: 0.78, blue: 1.00).opacity(0.14),
+                    .clear
+                ],
+                center: UnitPoint(x: 1.20, y: 0.22),
+                startRadius: 20,
+                endRadius: 410
+            )
+
+            RadialGradient(
+                colors: [
+                    Color(red: 0.42, green: 0.26, blue: 1.00).opacity(0.30),
+                    Color(red: 0.22, green: 0.54, blue: 1.00).opacity(0.16),
+                    .clear
+                ],
+                center: UnitPoint(x: -0.16, y: 0.94),
+                startRadius: 25,
+                endRadius: 430
+            )
+
+            RadialGradient(
+                colors: [
+                    Color(red: 0.18, green: 0.58, blue: 1.00).opacity(0.28),
+                    Color(red: 0.72, green: 0.36, blue: 1.00).opacity(0.16),
+                    .clear
+                ],
+                center: UnitPoint(x: 1.18, y: 0.98),
+                startRadius: 25,
+                endRadius: 460
+            )
+
+            RadialGradient(
+                colors: [
+                    Color.white.opacity(0.42),
+                    Color.white.opacity(0.20),
+                    .clear
+                ],
+                center: UnitPoint(x: 0.50, y: 0.42),
+                startRadius: 40,
+                endRadius: 420
+            )
+
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(0.48),
+                    .clear,
+                    Color(red: 0.66, green: 0.54, blue: 0.40).opacity(0.10)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+    }
     var darkBackground: some View {
         ZStack {
             Color(red: 0.030, green: 0.032, blue: 0.050)
-                .ignoresSafeArea()
 
             edgeLitField(
                 topBase: Color(red: 0.024, green: 0.020, blue: 0.050),
@@ -42,13 +123,11 @@ private extension AppBackground {
                 rightVioletOpacity: 0.08
             )
         }
-        .ignoresSafeArea()
     }
 
     var amoledBackground: some View {
         ZStack {
             Color.black
-                .ignoresSafeArea()
 
             edgeLitField(
                 topBase: Color(red: 0.018, green: 0.016, blue: 0.038),
@@ -59,25 +138,11 @@ private extension AppBackground {
                 rightVioletOpacity: 0.07
             )
         }
-        .ignoresSafeArea()
-    }
-
-    var lightBackground: some View {
-        LinearGradient(
-            colors: [
-                Color.white,
-                Color(.systemGray6)
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .ignoresSafeArea()
     }
 
     var gradientBackground: some View {
         ZStack {
             Color(red: 0.008, green: 0.010, blue: 0.020)
-                .ignoresSafeArea()
 
             edgeLitField(
                 topBase: Color(red: 0.030, green: 0.020, blue: 0.070),
@@ -88,7 +153,6 @@ private extension AppBackground {
                 rightVioletOpacity: 0.12
             )
         }
-        .ignoresSafeArea()
     }
 
     func edgeLitField(
@@ -109,73 +173,61 @@ private extension AppBackground {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            .ignoresSafeArea()
 
-            // Sol alt peach/pink edge glow
             RadialGradient(
                 colors: [
                     Color(red: 1.00, green: 0.82, blue: 0.86).opacity(leftPinkOpacity * 0.95),
                     Color(red: 0.95, green: 0.42, blue: 0.74).opacity(leftPinkOpacity * 0.68),
-                    Color.clear
+                    .clear
                 ],
                 center: UnitPoint(x: -0.08, y: 1.04),
                 startRadius: 10,
                 endRadius: 300
             )
-            .ignoresSafeArea()
 
-            // Sol orta/alt violet lift
             RadialGradient(
                 colors: [
                     Color(red: 0.78, green: 0.22, blue: 0.88).opacity(leftPurpleOpacity * 0.86),
                     Color(red: 0.34, green: 0.08, blue: 0.76).opacity(leftPurpleOpacity * 0.58),
-                    Color.clear
+                    .clear
                 ],
                 center: UnitPoint(x: -0.05, y: 0.78),
                 startRadius: 30,
                 endRadius: 260
             )
-            .ignoresSafeArea()
 
-            // Sağ üst blue edge glow
             RadialGradient(
                 colors: [
                     Color(red: 0.20, green: 0.66, blue: 1.00).opacity(rightBlueOpacity),
                     Color(red: 0.10, green: 0.20, blue: 0.76).opacity(rightBlueOpacity * 0.62),
-                    Color.clear
+                    .clear
                 ],
                 center: UnitPoint(x: 1.05, y: -0.02),
                 startRadius: 30,
                 endRadius: 280
             )
-            .ignoresSafeArea()
 
-            // Sağ alt indigo/violet edge glow
             RadialGradient(
                 colors: [
                     Color(red: 0.42, green: 0.28, blue: 0.96).opacity(rightVioletOpacity * 0.90),
                     Color(red: 0.20, green: 0.08, blue: 0.44).opacity(rightVioletOpacity * 0.56),
-                    Color.clear
+                    .clear
                 ],
                 center: UnitPoint(x: 1.06, y: 0.96),
                 startRadius: 30,
                 endRadius: 240
             )
-            .ignoresSafeArea()
 
-            // Üstte hafif koyu perde, header rahat okusun
             LinearGradient(
                 colors: [
                     Color.black.opacity(0.14),
-                    Color.clear,
-                    Color.clear
+                    .clear,
+                    .clear
                 ],
                 startPoint: .top,
                 endPoint: .bottom
             )
-            .ignoresSafeArea()
 
-            // Alt derinlik
             LinearGradient(
                 colors: [
                     Color.clear,
@@ -184,19 +236,6 @@ private extension AppBackground {
                 startPoint: .top,
                 endPoint: .bottom
             )
-            .ignoresSafeArea()
-
-            // Çok hafif genel polish
-            LinearGradient(
-                colors: [
-                    Color.white.opacity(0.010),
-                    Color.clear,
-                    Color.black.opacity(0.018)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
         }
     }
 }
