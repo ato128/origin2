@@ -129,6 +129,36 @@ final class SessionStore: ObservableObject {
         currentUser = nil
         UserDefaults.standard.removeObject(forKey: storageKey)
     }
+    
+    func restoreSupabaseSessionIfNeeded() async {
+        do {
+            let authSession = try await SupabaseManager.shared.client.auth.session
+            let userID = authSession.user.id
+
+            let profileResponse = try await SupabaseManager.shared.client
+                .from("profiles")
+                .select()
+                .eq("id", value: userID.uuidString)
+                .single()
+                .execute()
+
+            let profile = try JSONDecoder().decode(Profile.self, from: profileResponse.data)
+
+            let appUser = AppUser(
+                id: profile.id,
+                fullName: profile.full_name ?? "User",
+                email: profile.email,
+                username: profile.username ?? ""
+            )
+
+            currentUser = appUser
+            saveUser(appUser)
+
+            print("✅ SUPABASE SESSION RESTORED:", appUser.id.uuidString)
+        } catch {
+            print("⚠️ SUPABASE SESSION RESTORE FAILED:", error.localizedDescription)
+        }
+    }
 
     func updateProfile(fullName: String, username: String) async throws {
         guard let currentUser else { return }

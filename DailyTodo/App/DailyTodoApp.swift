@@ -117,6 +117,14 @@ struct DailyTodoApp: App {
                 InAppBannerOverlay()
             }
             .onAppear {
+                Task {
+                    await session.restoreSupabaseSessionIfNeeded()
+
+                    await PushTokenStore.shared.saveCurrentToken(
+                        currentUserID: session.currentUser?.id
+                    )
+                }
+
                 let context = ModelContext(container)
 
                 WidgetAppSync.refreshFromSwiftData(context: context)
@@ -130,6 +138,7 @@ struct DailyTodoApp: App {
                 LiveActivityScheduler.shared.setCurrentUserID(currentUserID)
 
                 syncCurrentUserIDToDefaults(session.currentUser?.id)
+
                 if let userID = session.currentUser?.id {
                     updateFriendPresence(isOnline: true)
                     bootstrapFriendRealtime(for: userID)
@@ -149,6 +158,17 @@ struct DailyTodoApp: App {
                         print("📡 REGISTERING FOR REMOTE NOTIFICATIONS FROM ONAPPEAR...")
                         UIApplication.shared.registerForRemoteNotifications()
                     }
+
+                    await PushTokenStore.shared.saveCurrentToken(
+                        currentUserID: session.currentUser?.id
+                    )
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .didReceiveAPNSToken)) { _ in
+                Task {
+                    await PushTokenStore.shared.saveCurrentToken(
+                        currentUserID: session.currentUser?.id
+                    )
                 }
             }
             .onChange(of: session.currentUser?.id) { _, newID in

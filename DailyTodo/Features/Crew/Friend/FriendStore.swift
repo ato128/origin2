@@ -1279,6 +1279,7 @@ final class FriendStore: ObservableObject {
         let trimmedItems = Array(items.suffix(100))
         friendMessagesByFriendship[friendshipID] = trimmedItems
         recomputeUnreadState(for: friendshipID)
+        objectWillChange.send()
     }
 
     // MARK: - Load Messages

@@ -41,6 +41,7 @@ struct FriendChatView: View {
     
     @State private var lastScrolledMessageID: UUID?
     @StateObject private var audioRecorder = AudioRecorderManager()
+    @State private var liveRefreshTask: Task<Void, Never>?
     
     
     enum DraftAttachment {
@@ -186,9 +187,14 @@ struct FriendChatView: View {
                     friendshipID: friendshipID,
                     currentUserID: session.currentUser?.id
                 )
+                
+                startLiveRefreshFallback()
             }
             .onDisappear {
                 print("🔴 CHAT DISAPPEAR")
+                
+                liveRefreshTask?.cancel()
+                liveRefreshTask = nil
 
                 friendStore.setActiveChat(nil)
                 friendStore.unsubscribeFriendMessagesRealtime()
@@ -762,14 +768,46 @@ private extension FriendChatView {
         }
         return tr("chat_you")
     }
+    
+    
+    func startLiveRefreshFallback() {
+        liveRefreshTask?.cancel()
+
+        liveRefreshTask = Task {
+            while !Task.isCancelled {
+                guard let friendshipID else { return }
+
+                await friendStore.loadNewMessages(
+                    for: friendshipID,
+                    currentUserID: session.currentUser?.id
+                )
+
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+            }
+        }
+    }
 
     func sendMessage() {
         guard let friendshipID else { return }
         guard let senderID = session.currentUser?.id else { return }
-        guard let toUserId = friend.backendUserID?.uuidString else { return }
 
         let clean = draftMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         let attachmentToSend = draftAttachment
+
+        let receiverUserID: UUID? = {
+            if let friendship = friendStore.friendships.first(where: { $0.id == friendshipID }) {
+                return friendship.requester_id == senderID
+                    ? friendship.addressee_id
+                    : friendship.requester_id
+            }
+
+            return friend.backendUserID
+        }()
+
+        guard let receiverUserID else {
+            print("❌ FRIEND PUSH SKIPPED: receiver userID nil")
+            return
+        }
 
         draftMessage = ""
         draftAttachment = nil
@@ -799,7 +837,7 @@ private extension FriendChatView {
 
                     if friendStore.shouldSendFriendPush(friendshipID: friendshipID, currentUserID: senderID) {
                         PushService.shared.sendFriendMessagePush(
-                            toUserId: toUserId,
+                            toUserId: receiverUserID.uuidString,
                             friendshipID: friendshipID.uuidString,
                             senderName: senderDisplayName(),
                             message: clean.isEmpty ? "📷 Fotoğraf" : clean
@@ -818,7 +856,7 @@ private extension FriendChatView {
 
                     if friendStore.shouldSendFriendPush(friendshipID: friendshipID, currentUserID: senderID) {
                         PushService.shared.sendFriendMessagePush(
-                            toUserId: toUserId,
+                            toUserId: receiverUserID.uuidString,
                             friendshipID: friendshipID.uuidString,
                             senderName: senderDisplayName(),
                             message: clean.isEmpty ? "📎 Dosya" : clean
@@ -837,14 +875,17 @@ private extension FriendChatView {
                 senderName: senderDisplayName()
             )
 
-            if friendStore.shouldSendFriendPush(friendshipID: friendshipID, currentUserID: senderID) {
-                PushService.shared.sendFriendMessagePush(
-                    toUserId: toUserId,
-                    friendshipID: friendshipID.uuidString,
-                    senderName: senderDisplayName(),
-                    message: clean
-                )
-            }
+            print("📣 ABOUT TO SEND FRIEND PUSH")
+            print("📣 senderID:", senderID.uuidString)
+            print("📣 receiverUserID:", receiverUserID.uuidString)
+            print("📣 friendshipID:", friendshipID.uuidString)
+
+            PushService.shared.sendFriendMessagePush(
+                toUserId: receiverUserID.uuidString,
+                friendshipID: friendshipID.uuidString,
+                senderName: senderDisplayName(),
+                message: clean
+            )
         }
     }
     func scrollToBottom(proxy: ScrollViewProxy, animated: Bool) {

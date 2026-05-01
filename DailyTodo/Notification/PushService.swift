@@ -29,6 +29,7 @@ final class PushService {
         }
 
         request.httpBody = body
+        print("🚀 PUSH BODY:", String(data: body, encoding: .utf8) ?? "nil")
 
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error {
@@ -53,6 +54,10 @@ final class PushService {
         senderName: String,
         message: String
     ) {
+        print("🚀 FRIEND PUSH SEND CALLED")
+        print("🚀 toUserId:", toUserId)
+        print("🚀 friendshipID:", friendshipID)
+        print("🚀 message:", message)
         performRequest(bodyObject: [
             "toUserId": toUserId,
             "title": senderName,
