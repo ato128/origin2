@@ -241,7 +241,17 @@ struct WeekView: View {
 
     var body: some View {
         ZStack {
-            AppBackground()
+            ArenaBackground(
+                primaryGlow: weekMode == .crew
+                    ? Color(arenaHex: AppArenaPalette.coral)
+                    : Color(arenaHex: AppArenaPalette.blue),
+                secondaryGlow: Color(arenaHex: AppArenaPalette.purple),
+                warmGlow: weekMode == .crew
+                    ? Color(arenaHex: AppArenaPalette.gold)
+                    : Color(arenaHex: AppArenaPalette.cyan),
+                intensity: 0.94
+            )
+
             weekMainContent
         }
     }
@@ -256,11 +266,36 @@ extension WeekView {
 
     var sectionCardBackground: some View {
         RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(.ultraThinMaterial)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        Color(arenaHex: AppArenaPalette.blue).opacity(0.065),
+                        Color(arenaHex: AppArenaPalette.purple).opacity(0.040),
+                        Color(arenaHex: AppArenaPalette.surface).opacity(0.92)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Color(arenaHex: AppArenaPalette.cyan).opacity(0.095),
+                                Color.clear
+                            ],
+                            center: .topTrailing,
+                            startRadius: 6,
+                            endRadius: 180
+                        )
+                    )
             )
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.18), radius: 12, y: 6)
     }
 }
 
@@ -272,8 +307,9 @@ extension WeekView {
 
         return LinearGradient(
             colors: [
-                tint.opacity(priority == "urgent" ? 0.16 : (active ? 0.12 : 0.08)),
-                Color.white.opacity(active ? 0.07 : 0.03)
+                tint.opacity(priority == "urgent" ? 0.115 : (active ? 0.095 : 0.070)),
+                Color(arenaHex: AppArenaPalette.purple).opacity(active ? 0.052 : 0.034),
+                Color.white.opacity(active ? 0.040 : 0.028)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -290,33 +326,33 @@ extension WeekView {
         let tint = premiumPriorityColor(priority)
 
         if priority == "urgent" {
-            return tint.opacity(active ? 0.65 : 0.42)
+            return tint.opacity(active ? 0.34 : 0.24)
         }
 
         if active {
-            return tint.opacity(0.50)
+            return tint.opacity(0.28)
         }
 
         if soon {
-            return tint.opacity(0.30)
+            return tint.opacity(0.20)
         }
 
-        return tint.opacity(0.18)
+        return Color.white.opacity(0.075)
     }
 
     func premiumGlowColor(_ priority: String, active: Bool, soon: Bool) -> Color {
         let tint = premiumPriorityColor(priority)
 
         if priority == "urgent" {
-            return tint.opacity(active ? 0.35 : 0.22)
+            return tint.opacity(active ? 0.22 : 0.12)
         }
 
         if active {
-            return tint.opacity(0.20)
+            return tint.opacity(0.16)
         }
 
         if soon {
-            return tint.opacity(0.10)
+            return tint.opacity(0.08)
         }
 
         return .clear
@@ -326,40 +362,48 @@ extension WeekView {
         HStack(spacing: 6) {
             if priority == "urgent" {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.caption2.weight(.bold))
+                    .font(.system(size: 10, weight: .black))
             }
 
-            Text(priorityTitle(priority))
-                .font(.caption2.weight(.bold))
+            Text(priorityTitle(priority).uppercased())
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .tracking(0.7)
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .frame(height: 26)
         .background(
             Capsule()
-                .fill(tint.opacity(0.16))
-        )
-        .overlay(
-            Capsule()
-                .stroke(tint.opacity(0.28), lineWidth: 1)
+                .fill(tint.opacity(0.13))
+                .overlay(
+                    Capsule()
+                        .stroke(tint.opacity(0.18), lineWidth: 1)
+                )
         )
         .foregroundStyle(tint)
     }
-
     func premiumMetaPill(icon: String, text: String, tint: Color) -> some View {
         HStack(spacing: 5) {
             Image(systemName: icon)
-            Text(text)
+                .font(.system(size: 9, weight: .black))
+
+            Text(text.uppercased())
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .tracking(0.45)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
         }
-        .font(.caption2.weight(.semibold))
         .padding(.horizontal, 9)
-        .padding(.vertical, 5)
+        .frame(height: 25)
         .background(
             Capsule()
-                .fill(Color.white.opacity(0.05))
+                .fill(Color.white.opacity(0.055))
+                .overlay(
+                    Capsule()
+                        .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                )
         )
         .foregroundStyle(tint)
     }
-
     func crewTimelineTaskCard(_ task: WeekCrewTaskItem, isLast: Bool) -> some View {
         let crew = allCrews.first { $0.id == task.crewID }
         let active = isTaskActive(task)
@@ -408,8 +452,8 @@ extension WeekView {
                             Image(systemName: "clock")
                             Text(hm(start))
                         }
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(active ? tint : .secondary)
+                        .font(.system(size: 12, weight: .black, design: .monospaced))
+                        .foregroundStyle(active ? tint : .white.opacity(0.48))
                     }
 
                     Spacer()
@@ -418,8 +462,8 @@ extension WeekView {
                 }
 
                 Text(task.title)
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(.primary)
+                    .font(.system(size: 18, weight: .black))
+                    .foregroundStyle(.white)
                     .lineLimit(2)
 
                 if let crew {
@@ -427,15 +471,15 @@ extension WeekView {
                         Image(systemName: "person.3.fill")
                         Text(crew.name)
                     }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.48))
                 }
 
                 HStack(spacing: 10) {
                     premiumMetaPill(
                         icon: "flag.fill",
                         text: statusTitle(task.status),
-                        tint: .secondary
+                        tint: .white.opacity(0.58)
                     )
 
                     if !task.assignedTo.isEmpty {
@@ -450,22 +494,24 @@ extension WeekView {
                 if active {
                     HStack(spacing: 6) {
                         Circle()
-                            .fill(.green)
+                            .fill(Color(arenaHex: AppArenaPalette.green))
                             .frame(width: 6, height: 6)
 
-                        Text("Active now")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.green)
+                        Text("ACTIVE NOW")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(0.7)
+                            .foregroundStyle(Color(arenaHex: AppArenaPalette.green))
                     }
                 } else if soon {
                     HStack(spacing: 6) {
                         Circle()
-                            .fill(.orange)
+                            .fill(Color(arenaHex: AppArenaPalette.gold))
                             .frame(width: 6, height: 6)
 
-                        Text("Starting soon")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.orange)
+                        Text("STARTING SOON")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(0.7)
+                            .foregroundStyle(Color(arenaHex: AppArenaPalette.gold))
                     }
                 }
             }
@@ -474,11 +520,26 @@ extension WeekView {
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .fill(cardFill)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(
+                                RadialGradient(
+                                    colors: [
+                                        tint.opacity(active ? 0.16 : 0.08),
+                                        Color.clear
+                                    ],
+                                    center: .topTrailing,
+                                    startRadius: 6,
+                                    endRadius: 160
+                                )
+                            )
+                    )
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(border, lineWidth: active ? 1.2 : 1)
             )
+            .shadow(color: Color.black.opacity(0.20), radius: 12, y: 6)
             .shadow(color: glow, radius: active ? 18 : (soon ? 10 : 0))
             .scaleEffect(active ? 1.015 : 1.0)
         }

@@ -8,19 +8,42 @@
 import SwiftUI
 import SwiftData
 
+private enum FriendChatInfoArenaPalette {
+    static let backgroundTop = Color(friendInfoHex: "#05060D")
+    static let backgroundMid = Color(friendInfoHex: "#070713")
+    static let backgroundBottom = Color(friendInfoHex: "#07040C")
+
+    static let blue = Color(friendInfoHex: "#1593FF")
+    static let cyan = Color(friendInfoHex: "#2DD4FF")
+    static let purple = Color(friendInfoHex: "#7C3AED")
+    static let coral = Color(friendInfoHex: "#FF5A44")
+    static let gold = Color(friendInfoHex: "#FBBF24")
+    static let green = Color(friendInfoHex: "#A3E635")
+    static let surface = Color(friendInfoHex: "#101118")
+
+    static var appGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(friendInfoHex: "#1E6BFF"),
+                Color(friendInfoHex: "#7C3AED")
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+}
+
 struct FriendChatInfoView: View {
     @Bindable var friend: Friend
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
     @EnvironmentObject var friendStore: FriendStore
     @EnvironmentObject var session: SessionStore
     @Environment(\.modelContext) private var modelContext
-    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
 
     @Query(sort: \EventItem.startMinute, order: .forward)
     private var allEvents: [EventItem]
-
-    private let palette = ThemePalette()
 
     @State private var showSharedWeek = false
     @State private var isSavingShare = false
@@ -28,14 +51,23 @@ struct FriendChatInfoView: View {
     @State private var infoMessage: String?
     @State private var isLoadingShareState = true
 
-    private var friendshipID: UUID? { friend.backendFriendshipID }
-    private var friendUserID: UUID? { friend.backendUserID }
+    private var friendshipID: UUID? {
+        friend.backendFriendshipID
+    }
+
+    private var friendUserID: UUID? {
+        friend.backendUserID
+    }
+
+    private var friendAccent: Color {
+        Color(friendInfoHex: friend.colorHex)
+    }
 
     private var canOpenSharedWeek: Bool {
         guard let friendshipID else { return false }
         return friendStore.incomingWeekSharesByFriendship[friendshipID]?.is_enabled == true
     }
-    
+
     private var friendPresence: FriendPresenceDTO? {
         guard let friendUserID else { return nil }
         return friendStore.presenceByUserID[friendUserID]
@@ -54,6 +86,7 @@ struct FriendChatInfoView: View {
 
     private var friendSummary: FriendChatThreadSummary? {
         guard let friendshipID else { return nil }
+
         return friendStore.friendChatSummaries.first {
             $0.friendshipID == friendshipID
         }
@@ -65,63 +98,38 @@ struct FriendChatInfoView: View {
 
     private var currentUserEvents: [EventItem] {
         guard let currentUserID = session.currentUser?.id.uuidString else { return [] }
-        return allEvents.filter { $0.ownerUserID == currentUserID }
+
+        return allEvents.filter {
+            $0.ownerUserID == currentUserID
+        }
     }
 
     var body: some View {
         ZStack {
-            AppBackground()
+            background
 
-            ScrollView {
-                VStack(spacing: 18) {
+            ScrollView(showsIndicators: false) {
+                LazyVStack(alignment: .leading, spacing: 14) {
+                    Color.clear.frame(height: 4)
+
                     topHeader
+
                     profileCard
+
                     actionsCard
+
                     settingsCard
+
+                    Color.clear.frame(height: 30)
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 10)
-                .padding(.bottom, 30)
+                .padding(.top, 12)
+                .padding(.bottom, 20)
             }
         }
         .toolbar(.hidden, for: .navigationBar)
         .task {
-            guard
-                let friendshipID,
-                let currentUserID = session.currentUser?.id,
-                let friendUserID
-            else { return }
-
-            isLoadingShareState = true
-
-            await friendStore.loadWeekShareStatus(
-                friendshipID: friendshipID,
-                currentUserID: currentUserID,
-                friendUserID: friendUserID
-            )
-
-            let initialShareState =
-                friendStore.outgoingWeekSharesByFriendship[friendshipID]?.is_enabled == true
-
-            await MainActor.run {
-                shareMyWeek = initialShareState
-                isLoadingShareState = false
-            }
-
-            if initialShareState {
-                await friendStore.setWeekShareEnabled(
-                    friendshipID: friendshipID,
-                    currentUserID: currentUserID,
-                    friendUserID: friendUserID,
-                    isEnabled: true,
-                    events: currentUserEvents
-                )
-
-                await MainActor.run {
-                    shareMyWeek =
-                        friendStore.outgoingWeekSharesByFriendship[friendshipID]?.is_enabled == true
-                }
-            }
+            await loadInitialShareState()
         }
         .onChange(of: allEvents.count) { _, _ in
             guard shareMyWeek else { return }
@@ -154,10 +162,13 @@ struct FriendChatInfoView: View {
                     .environmentObject(session)
             }
         }
-        .alert("friend_info_alert_title", isPresented: Binding(
-            get: { infoMessage != nil },
-            set: { if !$0 { infoMessage = nil } }
-        )) {
+        .alert(
+            "friend_info_alert_title",
+            isPresented: Binding(
+                get: { infoMessage != nil },
+                set: { if !$0 { infoMessage = nil } }
+            )
+        ) {
             Button("focus_ok", role: .cancel) { }
         } message: {
             Text(infoMessage ?? "")
@@ -165,158 +176,310 @@ struct FriendChatInfoView: View {
     }
 }
 
+// MARK: - UI
+
 private extension FriendChatInfoView {
+    var background: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            LinearGradient(
+                colors: [
+                    FriendChatInfoArenaPalette.backgroundTop,
+                    FriendChatInfoArenaPalette.backgroundMid,
+                    FriendChatInfoArenaPalette.backgroundBottom
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            Circle()
+                .fill(friendAccent.opacity(0.16))
+                .frame(width: 300, height: 300)
+                .blur(radius: 105)
+                .offset(x: -170, y: 480)
+
+            Circle()
+                .fill(FriendChatInfoArenaPalette.blue.opacity(0.10))
+                .frame(width: 260, height: 260)
+                .blur(radius: 96)
+                .offset(x: 165, y: -245)
+
+            Circle()
+                .fill(FriendChatInfoArenaPalette.purple.opacity(0.14))
+                .frame(width: 300, height: 300)
+                .blur(radius: 110)
+                .offset(x: 180, y: 260)
+
+            LinearGradient(
+                colors: [
+                    Color.black.opacity(0.16),
+                    Color.clear,
+                    Color.black.opacity(0.42)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        }
+    }
+
     var topHeader: some View {
         HStack {
             Button {
                 dismiss()
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 19, weight: .bold))
-                    .foregroundStyle(palette.primaryText)
-                    .frame(width: 44, height: 44)
-                    .background(
-                        Circle()
-                            .fill(palette.cardFill)
-                            .overlay(
-                                Circle()
-                                    .stroke(palette.cardStroke, lineWidth: 1)
-                            )
-                    )
+                    .font(.system(size: 19, weight: .black))
+                    .foregroundStyle(.white)
+                    .frame(width: 46, height: 46)
+                    .background(circleButtonBackground)
             }
             .buttonStyle(.plain)
 
             Spacer()
 
-            Text("friend_info_title")
-                .font(.headline)
-                .foregroundStyle(palette.primaryText)
+            VStack(spacing: 3) {
+                Text("FRIEND INFO")
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .tracking(2.2)
+                    .foregroundStyle(FriendChatInfoArenaPalette.cyan)
+
+                Text("friend_info_title")
+                    .font(.system(size: 21, weight: .black))
+                    .foregroundStyle(.white)
+            }
 
             Spacer()
 
             Color.clear
-                .frame(width: 44, height: 44)
+                .frame(width: 46, height: 46)
         }
     }
 
     var profileCard: some View {
-        VStack(spacing: 14) {
-            ZStack {
+        VStack(spacing: 16) {
+            ZStack(alignment: .bottomTrailing) {
                 Circle()
-                    .fill(hexColor(friend.colorHex).opacity(0.16))
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                friendAccent.opacity(0.90),
+                                FriendChatInfoArenaPalette.purple.opacity(0.78)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
                     .frame(width: 92, height: 92)
+                    .overlay(
+                        Image(systemName: friend.avatarSymbol)
+                            .font(.system(size: 35, weight: .black))
+                            .foregroundStyle(.white)
+                    )
+                    .shadow(color: friendAccent.opacity(0.20), radius: 18, y: 8)
 
-                Image(systemName: friend.avatarSymbol)
-                    .font(.system(size: 34, weight: .semibold))
-                    .foregroundStyle(hexColor(friend.colorHex))
+                Circle()
+                    .fill(isFriendReallyOnline ? FriendChatInfoArenaPalette.green : Color.gray.opacity(0.65))
+                    .frame(width: 16, height: 16)
+                    .overlay(
+                        Circle()
+                            .stroke(FriendChatInfoArenaPalette.surface, lineWidth: 3)
+                    )
+                    .offset(x: -4, y: -4)
             }
 
-            VStack(spacing: 4) {
-                Text(friend.name)
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(palette.primaryText)
+            VStack(spacing: 7) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(friend.name)
+                        .font(.system(size: 30, weight: .black))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.65)
+
+                    Text("friend")
+                        .font(.system(size: 25, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(FriendChatInfoArenaPalette.cyan)
+                }
 
                 HStack(spacing: 8) {
                     Circle()
-                        .fill(isFriendReallyOnline ? .green : .gray.opacity(0.6))
+                        .fill(isFriendReallyOnline ? FriendChatInfoArenaPalette.green : Color.gray.opacity(0.60))
                         .frame(width: 8, height: 8)
 
                     Text(friendStatusText)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(palette.secondaryText)
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .foregroundStyle(isFriendReallyOnline ? FriendChatInfoArenaPalette.green : .white.opacity(0.48))
                 }
 
                 Text(friend.subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(palette.secondaryText)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.50))
                     .multilineTextAlignment(.center)
-                    .padding(.top, 4)
+                    .lineLimit(2)
+                    .padding(.top, 2)
+            }
+
+            HStack(spacing: 9) {
+                profilePill(
+                    text: isFriendReallyOnline ? "ONLINE" : "OFFLINE",
+                    tint: isFriendReallyOnline ? FriendChatInfoArenaPalette.green : Color.gray
+                )
+
+                profilePill(
+                    text: isMutedFromBackend ? "MUTED" : "ACTIVE",
+                    tint: isMutedFromBackend ? FriendChatInfoArenaPalette.coral : FriendChatInfoArenaPalette.blue
+                )
+
+                profilePill(
+                    text: canOpenSharedWeek ? "WEEK" : "SOCIAL",
+                    tint: canOpenSharedWeek ? FriendChatInfoArenaPalette.gold : friendAccent
+                )
             }
         }
         .frame(maxWidth: .infinity)
         .padding(22)
-        .background(cardBackground)
+        .background(
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            friendAccent.opacity(0.13),
+                            FriendChatInfoArenaPalette.purple.opacity(0.11),
+                            FriendChatInfoArenaPalette.surface.opacity(0.98)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .stroke(friendAccent.opacity(0.18), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.24), radius: 20, y: 12)
+        )
     }
 
     var actionsCard: some View {
-        VStack(spacing: 12) {
-            Button {
-                if canOpenSharedWeek {
-                    showSharedWeek = true
-                } else {
-                    infoMessage = localizedFriendNotSharedWeek(friend.name)
-                }
-            } label: {
-                actionRow(
-                    title: String(localized: "friend_info_open_shared_week"),
-                    subtitle: canOpenSharedWeek
+        VStack(alignment: .leading, spacing: 14) {
+            sectionTitle(
+                eyebrow: "SOCIAL ACTIONS",
+                title: "Hızlı",
+                italic: "işlemler"
+            )
+
+            VStack(spacing: 10) {
+                Button {
+                    if canOpenSharedWeek {
+                        showSharedWeek = true
+                    } else {
+                        infoMessage = localizedFriendNotSharedWeek(friend.name)
+                    }
+                } label: {
+                    actionRow(
+                        title: String(localized: "friend_info_open_shared_week"),
+                        subtitle: canOpenSharedWeek
                         ? String(localized: "friend_info_see_weekly_plan_together")
                         : String(localized: "friend_info_waiting_for_share"),
-                    icon: "calendar"
+                        icon: "calendar",
+                        tint: canOpenSharedWeek ? FriendChatInfoArenaPalette.green : FriendChatInfoArenaPalette.cyan
+                    )
+                }
+                .buttonStyle(.plain)
+
+                actionRow(
+                    title: String(localized: "friend_info_start_focus_together"),
+                    subtitle: String(localized: "friend_info_launch_shared_focus"),
+                    icon: "timer",
+                    tint: FriendChatInfoArenaPalette.gold
                 )
             }
-            .buttonStyle(.plain)
-
-            actionRow(
-                title: String(localized: "friend_info_start_focus_together"),
-                subtitle: String(localized: "friend_info_launch_shared_focus"),
-                icon: "timer"
-            )
         }
         .padding(18)
         .background(cardBackground)
     }
 
     var settingsCard: some View {
-        VStack(spacing: 0) {
-            Toggle(isOn: Binding(
-                get: { shareMyWeek },
-                set: { newValue in
-                    guard
-                        let friendshipID,
-                        let currentUserID = session.currentUser?.id,
-                        let friendUserID
-                    else { return }
+        VStack(alignment: .leading, spacing: 14) {
+            sectionTitle(
+                eyebrow: "CHAT SETTINGS",
+                title: "Sohbet",
+                italic: "ayarları"
+            )
 
-                    if isSavingShare || isLoadingShareState { return }
+            VStack(spacing: 10) {
+                shareWeekToggleRow
 
-                    shareMyWeek = newValue
-                    isSavingShare = true
+                muteToggleRow
 
-                    Task {
-                        await friendStore.setWeekShareEnabled(
-                            friendshipID: friendshipID,
-                            currentUserID: currentUserID,
-                            friendUserID: friendUserID,
-                            isEnabled: newValue,
-                            events: currentUserEvents
-                        )
-
-                        await MainActor.run {
-                            shareMyWeek =
-                                friendStore.outgoingWeekSharesByFriendship[friendshipID]?.is_enabled == true
-                            isSavingShare = false
-                        }
-                    }
-                }
-            )) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("friend_info_share_my_week")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(palette.primaryText)
-
-                    Text("friend_info_let_friend_view_week")
-                        .font(.caption)
-                        .foregroundStyle(palette.secondaryText)
-                }
+                clearChatRow
             }
-            .tint(Color.accentColor)
-            .padding(.vertical, 14)
+        }
+        .padding(18)
+        .background(cardBackground)
+    }
 
-            Divider()
-                .overlay(palette.cardStroke)
+    var shareWeekToggleRow: some View {
+        HStack(spacing: 13) {
+            iconBox(
+                icon: "calendar.badge.plus",
+                tint: FriendChatInfoArenaPalette.green
+            )
 
-            Toggle(isOn: Binding(
+            VStack(alignment: .leading, spacing: 4) {
+                Text("friend_info_share_my_week")
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text("friend_info_let_friend_view_week")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.44))
+                    .lineLimit(2)
+            }
+
+            Spacer()
+
+            if isSavingShare || isLoadingShareState {
+                ProgressView()
+                    .tint(FriendChatInfoArenaPalette.green)
+            } else {
+                Toggle("", isOn: Binding(
+                    get: { shareMyWeek },
+                    set: { newValue in
+                        updateShareMyWeek(newValue)
+                    }
+                ))
+                .labelsHidden()
+                .tint(FriendChatInfoArenaPalette.green)
+            }
+        }
+        .padding(14)
+        .background(detailSurface(cornerRadius: 22, tint: FriendChatInfoArenaPalette.green))
+    }
+
+    var muteToggleRow: some View {
+        HStack(spacing: 13) {
+            iconBox(
+                icon: isMutedFromBackend ? "bell.slash.fill" : "bell.fill",
+                tint: isMutedFromBackend ? FriendChatInfoArenaPalette.coral : FriendChatInfoArenaPalette.blue
+            )
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("friend_info_mute_notifications")
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text("friend_info_stop_alerts_from_friend")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.44))
+                    .lineLimit(2)
+            }
+
+            Spacer()
+
+            Toggle("", isOn: Binding(
                 get: { isMutedFromBackend },
                 set: { newValue in
                     guard
@@ -332,37 +495,261 @@ private extension FriendChatInfoView {
                         )
                     }
                 }
-            )) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("friend_info_mute_notifications")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(palette.primaryText)
-
-                    Text("friend_info_stop_alerts_from_friend")
-                        .font(.caption)
-                        .foregroundStyle(palette.secondaryText)
-                }
-            }
-            .tint(Color.accentColor)
-            .padding(.vertical, 14)
-
-            Divider()
-                .overlay(palette.cardStroke)
-
-            Button(role: .destructive) {
-            } label: {
-                HStack {
-                    Image(systemName: "bell.slash.fill")
-                    Text("friend_info_clear_chat_later")
-                    Spacer()
-                }
-                .font(.subheadline.weight(.semibold))
-                .padding(.vertical, 14)
-            }
-            .buttonStyle(.plain)
+            ))
+            .labelsHidden()
+            .tint(FriendChatInfoArenaPalette.blue)
         }
-        .padding(.horizontal, 18)
-        .background(cardBackground)
+        .padding(14)
+        .background(
+            detailSurface(
+                cornerRadius: 22,
+                tint: isMutedFromBackend ? FriendChatInfoArenaPalette.coral : FriendChatInfoArenaPalette.blue
+            )
+        )
+    }
+
+    var clearChatRow: some View {
+        Button(role: .destructive) {
+            infoMessage = locale.language.languageCode?.identifier == "tr"
+            ? "Sohbet temizleme yakında eklenecek."
+            : "Clear chat will be added soon."
+        } label: {
+            HStack(spacing: 13) {
+                iconBox(
+                    icon: "trash.fill",
+                    tint: FriendChatInfoArenaPalette.coral
+                )
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("friend_info_clear_chat_later")
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundStyle(FriendChatInfoArenaPalette.coral)
+
+                    Text(locale.language.languageCode?.identifier == "tr"
+                         ? "Bu işlem henüz aktif değil."
+                         : "This action is not active yet.")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.44))
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .black))
+                    .foregroundStyle(.white.opacity(0.30))
+            }
+            .padding(14)
+            .background(detailSurface(cornerRadius: 22, tint: FriendChatInfoArenaPalette.coral))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Components
+
+private extension FriendChatInfoView {
+    func sectionTitle(eyebrow: String, title: String, italic: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("— \(eyebrow) —")
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .tracking(2.4)
+                .foregroundStyle(.white.opacity(0.34))
+                .lineLimit(1)
+                .minimumScaleFactor(0.60)
+
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(title)
+                    .font(.system(size: 24, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text(italic)
+                    .font(.system(size: 23, weight: .regular, design: .serif))
+                    .italic()
+                    .foregroundStyle(.white)
+            }
+        }
+    }
+
+    func actionRow(title: String, subtitle: String, icon: String, tint: Color) -> some View {
+        HStack(spacing: 13) {
+            iconBox(icon: icon, tint: tint)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+
+                Text(subtitle)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.44))
+                    .lineLimit(2)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .black))
+                .foregroundStyle(.white.opacity(0.30))
+        }
+        .padding(14)
+        .background(detailSurface(cornerRadius: 22, tint: tint))
+    }
+
+    func iconBox(icon: String, tint: Color) -> some View {
+        Image(systemName: icon)
+            .font(.system(size: 17, weight: .black))
+            .foregroundStyle(tint)
+            .frame(width: 42, height: 42)
+            .background(
+                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    .fill(tint.opacity(0.13))
+            )
+    }
+
+    func profilePill(text: String, tint: Color) -> some View {
+        Text(text)
+            .font(.system(size: 10, weight: .black, design: .monospaced))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 10)
+            .frame(height: 30)
+            .background(
+                Capsule()
+                    .fill(tint.opacity(0.12))
+                    .overlay(
+                        Capsule()
+                            .stroke(tint.opacity(0.20), lineWidth: 1)
+                    )
+            )
+            .lineLimit(1)
+    }
+
+    var circleButtonBackground: some View {
+        Circle()
+            .fill(
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(0.090),
+                        Color.white.opacity(0.055)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                Circle()
+                    .stroke(Color.white.opacity(0.11), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.24), radius: 12, y: 6)
+    }
+
+    func detailSurface(cornerRadius: CGFloat, tint: Color) -> some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        tint.opacity(0.055),
+                        FriendChatInfoArenaPalette.purple.opacity(0.040),
+                        Color.white.opacity(0.038)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(tint.opacity(0.13), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.22), radius: 14, y: 8)
+    }
+
+    var cardBackground: some View {
+        RoundedRectangle(cornerRadius: 26, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        FriendChatInfoArenaPalette.blue.opacity(0.035),
+                        FriendChatInfoArenaPalette.purple.opacity(0.045),
+                        Color.white.opacity(0.040)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
+    }
+}
+
+// MARK: - Logic
+
+private extension FriendChatInfoView {
+    @MainActor
+    func loadInitialShareState() async {
+        guard
+            let friendshipID,
+            let currentUserID = session.currentUser?.id,
+            let friendUserID
+        else { return }
+
+        isLoadingShareState = true
+
+        await friendStore.loadWeekShareStatus(
+            friendshipID: friendshipID,
+            currentUserID: currentUserID,
+            friendUserID: friendUserID
+        )
+
+        let initialShareState =
+            friendStore.outgoingWeekSharesByFriendship[friendshipID]?.is_enabled == true
+
+        shareMyWeek = initialShareState
+        isLoadingShareState = false
+
+        if initialShareState {
+            await friendStore.setWeekShareEnabled(
+                friendshipID: friendshipID,
+                currentUserID: currentUserID,
+                friendUserID: friendUserID,
+                isEnabled: true,
+                events: currentUserEvents
+            )
+
+            shareMyWeek =
+                friendStore.outgoingWeekSharesByFriendship[friendshipID]?.is_enabled == true
+        }
+    }
+
+    func updateShareMyWeek(_ newValue: Bool) {
+        guard
+            let friendshipID,
+            let currentUserID = session.currentUser?.id,
+            let friendUserID
+        else { return }
+
+        if isSavingShare || isLoadingShareState { return }
+
+        shareMyWeek = newValue
+        isSavingShare = true
+
+        Task {
+            await friendStore.setWeekShareEnabled(
+                friendshipID: friendshipID,
+                currentUserID: currentUserID,
+                friendUserID: friendUserID,
+                isEnabled: newValue,
+                events: currentUserEvents
+            )
+
+            await MainActor.run {
+                shareMyWeek =
+                    friendStore.outgoingWeekSharesByFriendship[friendshipID]?.is_enabled == true
+                isSavingShare = false
+            }
+        }
     }
 
     func localizedFriendNotSharedWeek(_ name: String) -> String {
@@ -372,43 +759,54 @@ private extension FriendChatInfoView {
             return "\(name) has not shared their week with you yet."
         }
     }
+}
 
-    func actionRow(title: String, subtitle: String, icon: String) -> some View {
-        HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.accentColor.opacity(0.14))
-                    .frame(width: 42, height: 42)
+// MARK: - Color Hex
 
-                Image(systemName: icon)
-                    .font(.headline)
-                    .foregroundStyle(Color.accentColor)
-            }
+private extension Color {
+    init(friendInfoHex hex: String) {
+        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(palette.primaryText)
+        var int: UInt64 = 0
+        Scanner(string: cleaned).scanHexInt64(&int)
 
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(palette.secondaryText)
-            }
+        let a: UInt64
+        let r: UInt64
+        let g: UInt64
+        let b: UInt64
 
-            Spacer()
+        switch cleaned.count {
+        case 3:
+            a = 255
+            r = (int >> 8) * 17
+            g = ((int >> 4) & 0xF) * 17
+            b = (int & 0xF) * 17
 
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(palette.secondaryText)
+        case 6:
+            a = 255
+            r = int >> 16
+            g = (int >> 8) & 0xFF
+            b = int & 0xFF
+
+        case 8:
+            a = int >> 24
+            r = (int >> 16) & 0xFF
+            g = (int >> 8) & 0xFF
+            b = int & 0xFF
+
+        default:
+            a = 255
+            r = 255
+            g = 255
+            b = 255
         }
-    }
 
-    var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(palette.cardFill)
-            .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(palette.cardStroke, lineWidth: 1)
-            )
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
     }
 }

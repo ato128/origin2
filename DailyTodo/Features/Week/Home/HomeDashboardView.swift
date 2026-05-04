@@ -378,100 +378,94 @@ struct HomeDashboardView: View {
     }
 
     var body: some View {
-        ZStack {
-            ScrollView {
-                VStack(spacing: 16) {
-                    headerCard
-                        .offset(y: showHeaderCard ? 0 : 18)
-                        .opacity(showHeaderCard ? 1 : 0)
-                        .scaleEffect(showHeaderCard ? 1 : 0.985)
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 16) {
+                todayOverviewTopCards
+                    .offset(y: showOverviewCards ? 0 : 18)
+                    .opacity(showOverviewCards ? 1 : 0)
+                    .scaleEffect(showOverviewCards ? 1 : 0.985)
 
-                    todayOverviewTopCards
-                        .offset(y: showOverviewCards ? 0 : 18)
-                        .opacity(showOverviewCards ? 1 : 0)
-                        .scaleEffect(showOverviewCards ? 1 : 0.985)
-
-                    if shouldShowFocusCard {
-                        currentFocusCard
-                            .offset(y: showFocusCard ? 0 : 18)
-                            .opacity(showFocusCard ? 1 : 0)
-                            .scaleEffect(showFocusCard ? 1 : 0.985)
-                    }
-
-                    suggestedActionSection
-
-                    if shouldShowTodayTasksCard {
-                        todayTasksCard
-                            .offset(y: showTodayTasksCard ? 0 : 18)
-                            .opacity(showTodayTasksCard ? 1 : 0)
-                            .scaleEffect(showTodayTasksCard ? 1 : 0.985)
-                    }
-
-                    homeMiniWeekCalendar
-                        .offset(y: showWeekCard ? 0 : 18)
-                        .opacity(showWeekCard ? 1 : 0)
-                        .scaleEffect(showWeekCard ? 1 : 0.985)
-
-                    momentumCard
-                        .offset(y: showMomentumCard ? 0 : 18)
-                        .opacity(showMomentumCard ? 1 : 0)
-                        .scaleEffect(showMomentumCard ? 1 : 0.985)
+                if shouldShowFocusCard {
+                    currentFocusCard
+                        .offset(y: showFocusCard ? 0 : 18)
+                        .opacity(showFocusCard ? 1 : 0)
+                        .scaleEffect(showFocusCard ? 1 : 0.985)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 6)
-                .padding(.bottom, 36)
-                .animation(.spring(response: 0.38, dampingFraction: 0.86), value: focusSession.isSessionActive)
-            }
-            .safeAreaInset(edge: .bottom) {
-                Color.clear.frame(height: 90)
-            }
-            .sheet(isPresented: $showRecentFriendChat) {
-                if let recentFriend = recentChatFriend {
-                    NavigationStack {
-                        FriendChatView(friend: recentFriend)
-                    }
+
+                suggestedActionSection
+
+                if shouldShowTodayTasksCard {
+                    todayTasksCard
+                        .offset(y: showTodayTasksCard ? 0 : 18)
+                        .opacity(showTodayTasksCard ? 1 : 0)
+                        .scaleEffect(showTodayTasksCard ? 1 : 0.985)
                 }
+
+                homeMiniWeekCalendar
+                    .offset(y: showWeekCard ? 0 : 18)
+                    .opacity(showWeekCard ? 1 : 0)
+                    .scaleEffect(showWeekCard ? 1 : 0.985)
+
+                momentumCard
+                    .offset(y: showMomentumCard ? 0 : 18)
+                    .opacity(showMomentumCard ? 1 : 0)
+                    .scaleEffect(showMomentumCard ? 1 : 0.985)
             }
-            .sheet(isPresented: $showFriendsShortcut) {
+            .padding(.horizontal, 16)
+            .padding(.top, 4)
+            .padding(.bottom, 36)
+            .animation(.spring(response: 0.38, dampingFraction: 0.86), value: focusSession.isSessionActive)
+        }
+        .scrollContentBackground(.hidden)
+        .background(Color.clear)
+        .safeAreaInset(edge: .bottom) {
+            Color.clear.frame(height: 90)
+        }
+        .sheet(isPresented: $showRecentFriendChat) {
+            if let recentFriend = recentChatFriend {
                 NavigationStack {
-                    CrewView(initialTab: .friends)
+                    FriendChatView(friend: recentFriend)
                 }
-            }
-            .sheet(isPresented: $showTasksShortcut) {
-                NavigationStack {
-                    TasksView()
-                        .environmentObject(store)
-                }
-            }
-            .onAppear {
-                selectedDay = weekdayIndexToday()
-
-                if !didLoadCrewFocusSessions {
-                    didLoadCrewFocusSessions = true
-                    Task {
-                        await crewStore.loadCrews()
-                        for crew in crewStore.crews {
-                            await crewStore.loadActiveFocusSession(for: crew.id)
-                        }
-                    }
-                }
-
-                let shouldAnimateEntrance = homeDashboardAnimatedAppearCount < 2
-
-                if shouldAnimateEntrance {
-                    homeDashboardAnimatedAppearCount += 1
-                }
-
-                crewFocusGlowPulse = false
-                runEntranceSequence(animated: shouldAnimateEntrance)
-            }
-            .onReceive(dashboardTimer) { value in
-                crewFocusNow = value
-                selectedDay = weekdayIndexToday()
             }
         }
-    }
+        .sheet(isPresented: $showFriendsShortcut) {
+            NavigationStack {
+                CrewView(initialTab: .friends)
+            }
+        }
+        .sheet(isPresented: $showTasksShortcut) {
+            NavigationStack {
+                TasksView()
+                    .environmentObject(store)
+            }
+        }
+        .onAppear {
+            selectedDay = weekdayIndexToday()
 
+            if !didLoadCrewFocusSessions {
+                didLoadCrewFocusSessions = true
+                Task {
+                    await crewStore.loadCrews()
+                    for crew in crewStore.crews {
+                        await crewStore.loadActiveFocusSession(for: crew.id)
+                    }
+                }
+            }
+
+            let shouldAnimateEntrance = homeDashboardAnimatedAppearCount < 2
+
+            if shouldAnimateEntrance {
+                homeDashboardAnimatedAppearCount += 1
+            }
+
+            crewFocusGlowPulse = false
+            runEntranceSequence(animated: shouldAnimateEntrance)
+        }
+        .onReceive(dashboardTimer) { value in
+            crewFocusNow = value
+            selectedDay = weekdayIndexToday()
+        }
+    }
     @ViewBuilder
     var suggestedActionSection: some View {
         if let suggestedAction = dailyFlowSnapshot.suggestedAction,

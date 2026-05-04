@@ -73,79 +73,19 @@ struct EventRow: View {
     private var minutesUntilStart: Int { max(0, start - nowMinute) }
 
     private var accent: Color {
-        if event.isCompleted { return .green }
-        if hasConflict { return .red }
-        if isSoon { return .orange }
-        if isDoneByTime { return palette.secondaryText }
+        if event.isCompleted { return Color(arenaHex: AppArenaPalette.green) }
+        if hasConflict { return Color(arenaHex: AppArenaPalette.coral) }
+        if isSoon { return Color(arenaHex: AppArenaPalette.gold) }
+        if isDoneByTime { return .white.opacity(0.34) }
         return rawAccent
-    }
-    
-    private var cardPrimaryTint: Color {
-        if event.isCompleted {
-            return Color(red: 0.18, green: 0.74, blue: 0.34)
-        }
-
-        if hasConflict {
-            return Color(red: 0.92, green: 0.33, blue: 0.34)
-        }
-
-        if isLive {
-            return rawAccent
-        }
-
-        if isUpNext || isSoon {
-            return rawAccent
-        }
-
-        return rawAccent
-    }
-
-    private var cardWarmTint: Color {
-        if event.isCompleted {
-            return Color(red: 0.18, green: 0.74, blue: 0.34)
-        }
-
-        if hasConflict {
-            return Color(red: 0.86, green: 0.24, blue: 0.26)
-        }
-
-        if isLive {
-            return rawAccent.opacity(0.95)
-        }
-
-        if isUpNext || isSoon {
-            return rawAccent.opacity(0.88)
-        }
-
-        return rawAccent.opacity(0.82)
-    }
-
-    private var cardCoolTint: Color {
-        if event.isCompleted {
-            return Color(red: 0.22, green: 0.82, blue: 0.42)
-        }
-
-        if hasConflict {
-            return Color(red: 0.42, green: 0.08, blue: 0.18)
-        }
-
-        if isLive {
-            return rawAccent.opacity(0.72)
-        }
-
-        if isUpNext || isSoon {
-            return rawAccent.opacity(0.64)
-        }
-
-        return rawAccent.opacity(0.56)
     }
 
     private var secondaryAccent: Color {
-        if event.isCompleted { return Color(red: 0.10, green: 0.24, blue: 0.16) }
-        if hasConflict { return Color(red: 0.30, green: 0.05, blue: 0.10) }
-        if isLive { return Color(red: 0.30, green: 0.06, blue: 0.34) }
-        if isUpNext || isSoon { return Color(red: 0.26, green: 0.08, blue: 0.28) }
-        return Color(red: 0.20, green: 0.06, blue: 0.24)
+        if event.isCompleted { return Color(arenaHex: AppArenaPalette.green) }
+        if hasConflict { return Color(arenaHex: AppArenaPalette.coral) }
+        if isLive { return Color(arenaHex: AppArenaPalette.cyan) }
+        if isUpNext || isSoon { return Color(arenaHex: AppArenaPalette.gold) }
+        return Color(arenaHex: AppArenaPalette.purple)
     }
 
     private var statusText: String? {
@@ -163,7 +103,10 @@ struct EventRow: View {
                 if exerciseCount > 0 { return "\(day) • \(exerciseCount) hareket" }
                 return day
             }
-            if exerciseCount > 0 { return "\(exerciseCount) hareket" }
+
+            if exerciseCount > 0 {
+                return "\(exerciseCount) hareket"
+            }
         }
 
         if let location = event.location?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -182,26 +125,26 @@ struct EventRow: View {
     }
 
     private var statusTintColor: Color {
-        if event.isCompleted { return .green }
+        if event.isCompleted { return Color(arenaHex: AppArenaPalette.green) }
         if isLive { return accent }
-        if isSoon { return .orange }
+        if isSoon { return Color(arenaHex: AppArenaPalette.gold) }
         if isUpNext { return accent }
-        if isDoneByTime { return palette.secondaryText }
+        if isDoneByTime { return .white.opacity(0.38) }
         return accent
     }
 
     private var timeRangePillTint: Color {
-        if event.isCompleted { return .green }
+        if event.isCompleted { return Color(arenaHex: AppArenaPalette.green) }
         if isLive { return accent }
         if isUpNext { return accent }
-        return palette.secondaryText
+        return .white.opacity(0.48)
     }
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             timelineRail
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
                 headerRow
 
                 if let supportingInfoText {
@@ -216,17 +159,18 @@ struct EventRow: View {
             }
             .padding(.vertical, 1)
         }
-        .padding(.horizontal, 13)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .background(cardBackground)
         .overlay(cardStroke)
+        .shadow(color: Color.black.opacity(0.20), radius: 12, y: 6)
         .shadow(
-            color: isLive ? accent.opacity(0.07) : .clear,
-            radius: isLive ? 9 : 0,
-            y: isLive ? 3 : 0
+            color: isLive ? accent.opacity(0.14) : .clear,
+            radius: isLive ? 16 : 0,
+            y: isLive ? 7 : 0
         )
-        .opacity(isDone ? 0.80 : 1.0)
-        .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .opacity(isDone ? 0.72 : 1.0)
+        .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .onTapGesture {
             Haptics.impact(.light)
             onTap()
@@ -265,70 +209,54 @@ struct EventRow: View {
     }
 
     private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 22, style: .continuous)
+        RoundedRectangle(cornerRadius: 24, style: .continuous)
             .fill(
                 LinearGradient(
                     colors: [
-                        cardWarmTint.opacity(backgroundTopOpacity),
-                        cardPrimaryTint.opacity(backgroundMidOpacity),
-                        cardCoolTint.opacity(backgroundBottomOpacity),
-                        Color(red: 0.10, green: 0.03, blue: 0.12)
+                        accent.opacity(isLive ? 0.105 : 0.075),
+                        secondaryAccent.opacity(isLive ? 0.060 : 0.040),
+                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                accent.opacity(isLive ? 0.18 : 0.105),
+                                Color.clear
+                            ],
+                            center: .topTrailing,
+                            startRadius: 6,
+                            endRadius: 170
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                secondaryAccent.opacity(isLive ? 0.12 : 0.075),
+                                Color.clear
+                            ],
+                            center: .bottomLeading,
+                            startRadius: 8,
+                            endRadius: 170
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.10),
+                                Color.white.opacity(0.040),
                                 Color.clear,
-                                Color.clear
-                            ],
-                            startPoint: .top,
-                            endPoint: .center
-                        )
-                    )
-                    .blendMode(.screen)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                cardWarmTint.opacity(isLive ? 0.18 : 0.12),
-                                Color.clear
-                            ],
-                            center: .topLeading,
-                            startRadius: 8,
-                            endRadius: 110
-                        )
-                    )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                cardCoolTint.opacity(isLive ? 0.22 : 0.16),
-                                Color.clear
-                            ],
-                            center: .bottomTrailing,
-                            startRadius: 8,
-                            endRadius: 130
-                        )
-                    )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.black.opacity(0.00),
-                                Color.black.opacity(0.06),
-                                Color.black.opacity(0.16)
+                                Color.black.opacity(0.12)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
@@ -338,88 +266,70 @@ struct EventRow: View {
     }
 
     private var cardStroke: some View {
-        RoundedRectangle(cornerRadius: 22, style: .continuous)
-            .stroke(borderColor, lineWidth: isLive ? 1.15 : 1)
-    }
-
-    private var backgroundTopOpacity: Double {
-        if event.isCompleted { return 0.22 }
-        if hasConflict { return 0.24 }
-        if isLive { return 0.30 }
-        if isUpNext { return 0.26 }
-        if isDoneByTime { return 0.16 }
-        return 0.24
-    }
-
-    private var backgroundMidOpacity: Double {
-        if event.isCompleted { return 0.16 }
-        if hasConflict { return 0.16 }
-        if isLive { return 0.18 }
-        if isUpNext { return 0.15 }
-        if isDoneByTime { return 0.10 }
-        return 0.14
-    }
-
-    private var backgroundBottomOpacity: Double {
-        if event.isCompleted { return 0.26 }
-        if hasConflict { return 0.20 }
-        if isLive { return 0.30 }
-        if isUpNext { return 0.24 }
-        if isDoneByTime { return 0.14 }
-        return 0.24
+        RoundedRectangle(cornerRadius: 24, style: .continuous)
+            .stroke(borderColor, lineWidth: isLive ? 1.2 : 1)
     }
 
     private var borderColor: Color {
-        if event.isCompleted { return Color.green.opacity(0.18) }
-        if hasConflict { return Color.red.opacity(0.22) }
-        if isLive { return accent.opacity(0.24) }
+        if event.isCompleted { return Color(arenaHex: AppArenaPalette.green).opacity(0.18) }
+        if hasConflict { return Color(arenaHex: AppArenaPalette.coral).opacity(0.24) }
+        if isLive { return accent.opacity(0.26) }
         if isUpNext { return accent.opacity(0.18) }
         if isDoneByTime { return Color.white.opacity(0.08) }
-        return Color.white.opacity(0.08)
+        return Color.white.opacity(0.075)
     }
 
     private var timelineRail: some View {
         VStack(spacing: 0) {
             ZStack {
                 Circle()
-                    .fill(accent.opacity(isLive ? 0.20 : 0.11))
-                    .frame(width: isLive ? 16 : 13, height: isLive ? 16 : 13)
+                    .fill(accent.opacity(isLive ? 0.22 : 0.12))
+                    .frame(width: isLive ? 18 : 14, height: isLive ? 18 : 14)
 
                 Circle()
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(isDone ? 0.66 : 0.96),
+                                Color.white.opacity(isDone ? 0.58 : 0.96),
                                 accent
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: isLive ? 9 : 7, height: isLive ? 9 : 7)
+                    .frame(width: isLive ? 10 : 7, height: isLive ? 10 : 7)
                     .shadow(
-                        color: accent.opacity(isLive ? 0.22 : 0.10),
-                        radius: isLive ? 6 : 2,
+                        color: accent.opacity(isLive ? 0.28 : 0.12),
+                        radius: isLive ? 7 : 2,
                         y: 1
                     )
             }
 
             RoundedRectangle(cornerRadius: 999, style: .continuous)
-                .fill(accent.opacity(isDone ? 0.10 : 0.16))
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            accent.opacity(isDone ? 0.10 : 0.24),
+                            Color.white.opacity(0.045)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
                 .frame(width: isLive ? 3 : 2.5)
                 .frame(maxHeight: .infinity)
                 .padding(.top, 6)
                 .opacity(isDone ? 0.40 : 1)
         }
-        .frame(width: 14)
+        .frame(width: 16)
     }
 
     private var headerRow: some View {
         HStack(alignment: .top, spacing: 8) {
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(event.title)
-                        .font(.system(size: 13.5, weight: .bold, design: .rounded))
+                        .font(.system(size: 15, weight: .black))
                         .foregroundStyle(.white.opacity(0.98))
                         .lineLimit(1)
 
@@ -429,30 +339,30 @@ struct EventRow: View {
                 }
 
                 Text(subtitleText)
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.72))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.56))
                     .lineLimit(1)
             }
 
             Spacer(minLength: 8)
 
             Text(timeText)
-                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .font(.system(size: 10, weight: .black, design: .monospaced))
                 .monospacedDigit()
                 .foregroundStyle(timeRangePillTint)
                 .padding(.horizontal, 10)
-                .padding(.vertical, 6)
+                .frame(height: 28)
                 .background(
                     Capsule()
-                        .fill(Color.white.opacity(0.055))
-                )
-                .overlay(
-                    Capsule()
-                        .stroke(
-                            isLive || isUpNext
-                            ? accent.opacity(0.20)
-                            : Color.white.opacity(0.08),
-                            lineWidth: 1
+                        .fill(timeRangePillTint.opacity(0.11))
+                        .overlay(
+                            Capsule()
+                                .stroke(
+                                    isLive || isUpNext
+                                    ? accent.opacity(0.18)
+                                    : Color.white.opacity(0.075),
+                                    lineWidth: 1
+                                )
                         )
                 )
         }
@@ -463,10 +373,12 @@ struct EventRow: View {
         HStack(spacing: 6) {
             Circle()
                 .fill(statusTintColor)
-                .frame(width: 5, height: 5)
+                .frame(width: 6, height: 6)
+                .shadow(color: statusTintColor.opacity(0.35), radius: 6)
 
-            Text(text)
-                .font(.system(size: 10, weight: .semibold, design: .rounded))
+            Text(text.uppercased())
+                .font(.system(size: 10, weight: .black, design: .monospaced))
+                .tracking(0.6)
                 .foregroundStyle(statusTintColor)
                 .monospacedDigit()
 
@@ -475,20 +387,39 @@ struct EventRow: View {
     }
 
     private var liveProgressBlock: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            ProgressView(value: progress)
-                .tint(accent)
-                .scaleEffect(y: 0.82)
+        VStack(alignment: .leading, spacing: 6) {
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.075))
+
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    accent,
+                                    Color(arenaHex: AppArenaPalette.cyan).opacity(0.82)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: max(8, proxy.size.width * progress))
+                        .shadow(color: accent.opacity(0.18), radius: 7, y: 2)
+                }
+            }
+            .frame(height: 7)
 
             HStack {
-                Text("İlerleme %\(Int(progress * 100))")
-                    .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.65))
+                Text("İLERLEME %\(Int(progress * 100))")
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .tracking(0.6)
+                    .foregroundStyle(.white.opacity(0.46))
 
                 Spacer()
 
-                Text("\(minutesLeft) dk")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                Text("\(minutesLeft) DK")
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
                     .foregroundStyle(accent)
                     .monospacedDigit()
             }
@@ -500,26 +431,26 @@ struct EventRow: View {
             metaChip(
                 icon: "clock",
                 text: "\(max(15, event.durationMinute)) dk",
-                tint: .white.opacity(0.62)
+                tint: .white.opacity(0.58)
             )
 
             if hasConflict && !event.isCompleted {
                 metaChip(
                     icon: "exclamationmark.triangle.fill",
                     text: "Çakışma",
-                    tint: .red
+                    tint: Color(arenaHex: AppArenaPalette.coral)
                 )
             } else if isWorkout {
                 metaChip(
                     icon: "dumbbell.fill",
                     text: workoutDay ?? "Workout",
-                    tint: .green
+                    tint: Color(arenaHex: AppArenaPalette.green)
                 )
             } else if exerciseCount > 0 {
                 metaChip(
                     icon: "figure.strengthtraining.traditional",
                     text: "\(exerciseCount)",
-                    tint: .blue
+                    tint: Color(arenaHex: AppArenaPalette.blue)
                 )
             }
 
@@ -529,14 +460,19 @@ struct EventRow: View {
 
     @ViewBuilder
     private func statusPill(_ text: String, tint: Color) -> some View {
-        Text(text)
-            .font(.system(size: 9, weight: .bold, design: .rounded))
+        Text(text.uppercased())
+            .font(.system(size: 8, weight: .black, design: .monospaced))
+            .tracking(0.6)
             .foregroundStyle(tint)
             .padding(.horizontal, 7)
-            .padding(.vertical, 4)
+            .frame(height: 22)
             .background(
                 Capsule()
-                    .fill(tint.opacity(0.16))
+                    .fill(tint.opacity(0.13))
+                    .overlay(
+                        Capsule()
+                            .stroke(tint.opacity(0.16), lineWidth: 1)
+                    )
             )
     }
 
@@ -544,18 +480,23 @@ struct EventRow: View {
     private func metaChip(icon: String, text: String, tint: Color) -> some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
-                .font(.system(size: 9, weight: .bold))
+                .font(.system(size: 9, weight: .black))
 
-            Text(text)
+            Text(text.uppercased())
                 .lineLimit(1)
         }
-        .font(.system(size: 10, weight: .semibold, design: .rounded))
+        .font(.system(size: 9, weight: .black, design: .monospaced))
+        .tracking(0.45)
         .foregroundStyle(tint)
         .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .frame(height: 24)
         .background(
             Capsule()
-                .fill(Color.white.opacity(0.06))
+                .fill(Color.white.opacity(0.055))
+                .overlay(
+                    Capsule()
+                        .stroke(Color.white.opacity(0.070), lineWidth: 1)
+                )
         )
     }
 }

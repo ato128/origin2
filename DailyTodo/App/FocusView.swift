@@ -20,45 +20,49 @@ struct FocusView: View {
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var focusSession: FocusSessionManager
     @EnvironmentObject var crewStore: CrewStore
-
+    
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private let palette = ThemePalette()
-
+    
     @State private var selectedMode: FocusMode = .personal
     @State private var selectedPreset: FocusDurationPreset = .medium
     @State private var customMinutes: Int = 60
-
+    
     @State private var selectedGoal: FocusGoal = .study
     @State private var selectedStyle: FocusStyle = .silent
-
+    
     @State private var showCustomDurationSheet = false
     @State private var showGoalPicker = false
     @State private var showStylePicker = false
     @State private var showCrewStartSheet = false
-
+    
     @State private var pageAppeared = false
     @State private var isLaunchingFocus = false
-
+    
     @State private var selectedCrewID: UUID?
     @State private var selectedCrewTaskID: UUID?
     @State private var selectedParticipantIDs: Set<UUID> = []
     @State private var invitePayload: CrewFocusInvitePayload?
     @State private var isJoiningInvite = false
-
+    
     var body: some View {
         ZStack {
-            AppBackground()
-            ambientBackground
-
+            ArenaBackground(
+                primaryGlow: selectedModeAccent,
+                secondaryGlow: selectedModeSecondaryAccent,
+                warmGlow: Color(arenaHex: AppArenaPalette.coral),
+                intensity: 0.94
+            )
+            
             GeometryReader { geo in
                 ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Color.clear.frame(height: 2)
-
+                    VStack(alignment: .leading, spacing: 14) {
+                        Color.clear.frame(height: 4)
+                        
                         pageHeader
-
+                        
                         FocusModeSwitcherV3(selectedMode: $selectedMode)
-
+                        
                         FocusFullPageStageV7(
                             mode: effectiveStageMode,
                             durationText: effectiveStageDurationText,
@@ -67,21 +71,20 @@ struct FocusView: View {
                             progress: effectiveStageProgress,
                             isLaunching: isLaunchingFocus
                         )
-
+                        
                         compactControlsSection
                         
                         inviteBannerCard
-
+                        
                         bigStartButton
-
+                        
                         if selectedMode == .crew {
                             crewSummaryHint
                         }
-
-                        Color.clear
-                            .frame(height: 110)
+                        
+                        Color.clear.frame(height: 112)
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, 16)
                     .padding(.bottom, 14)
                     .frame(minHeight: geo.size.height, alignment: .top)
                     .blur(radius: isLaunchingFocus ? 1.5 : 0)
@@ -90,7 +93,7 @@ struct FocusView: View {
                 }
                 .disabled(isLaunchingFocus)
             }
-
+            
             if isLaunchingFocus {
                 launchOverlay
                     .transition(.opacity)
@@ -108,7 +111,6 @@ struct FocusView: View {
         .sheet(isPresented: $showCrewStartSheet) {
             crewStartSheet
         }
-       
         .fullScreenCover(isPresented: $focusSession.isExpanded) {
             ActiveFocusView()
                 .environmentObject(focusSession)
@@ -116,16 +118,16 @@ struct FocusView: View {
         .onAppear {
             pageAppeared = true
             focusSession.configure(sessionStore: session, crewStore: crewStore)
-
+            
             Task {
                 await crewStore.loadCrews()
-
+                
                 if selectedCrewID == nil {
                     selectedCrewID = crewStore.crews.first?.id
                 }
-
+                
                 await loadCrewStartDependenciesIfNeeded()
-
+                
                 if selectedParticipantIDs.isEmpty {
                     selectedParticipantIDs = Set(
                         activeCrewMembers
@@ -138,7 +140,7 @@ struct FocusView: View {
         .onChange(of: selectedCrewID) { _, _ in
             selectedCrewTaskID = nil
             selectedParticipantIDs.removeAll()
-
+            
             Task {
                 await loadCrewStartDependenciesIfNeeded()
                 selectedParticipantIDs = Set(
@@ -155,10 +157,10 @@ struct FocusView: View {
         }
         .onReceive(crewStore.$activeFocusSessionByCrew) { sessionsByCrew in
             guard let crewID = focusSession.currentCrewID else { return }
-
+            
             let dto = sessionsByCrew[crewID]
             let participants = dto.flatMap { crewStore.focusParticipantsBySession[$0.id] } ?? []
-
+            
             focusSession.applyCrewRealtimeStateIfNeeded(
                 activeSession: dto,
                 crewID: crewID,
@@ -173,9 +175,9 @@ struct FocusView: View {
                 let backendSessionID = focusSession.currentCrewBackendSessionID,
                 let dto = crewStore.activeFocusSessionByCrew[crewID]
             else { return }
-
+            
             let participants = participantsBySession[backendSessionID] ?? []
-
+            
             focusSession.applyCrewRealtimeStateIfNeeded(
                 activeSession: dto,
                 crewID: crewID,
@@ -192,15 +194,15 @@ struct FocusView: View {
         .onReceive(NotificationCenter.default.publisher(for: .presentActiveCrewFocusFromNotification)) { output in
             guard let crewIDString = output.object as? String,
                   let crewID = UUID(uuidString: crewIDString) else { return }
-
+            
             Task {
                 await crewStore.loadActiveFocusSession(for: crewID)
-
+                
                 guard let dto = crewStore.activeFocusSessionByCrew[crewID] else { return }
-
+                
                 await crewStore.loadFocusParticipants(sessionID: dto.id)
                 let participants = crewStore.focusParticipantsBySession[dto.id] ?? []
-
+                
                 await MainActor.run {
                     selectedMode = .crew
                     focusSession.hydrateFromCrewSessionDTO(
@@ -219,28 +221,166 @@ struct FocusView: View {
 
 private extension FocusView {
     var pageHeader: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Focus")
-                .font(.system(size: 33, weight: .heavy, design: .rounded))
-                .foregroundStyle(palette.primaryText)
-                .tracking(-0.8)
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(selectedModeAccent)
+                        .frame(width: 20, height: 1)
 
-            Text("Kendi ritmini başlat ve tek dokunuşla odakta kal")
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
-                .foregroundStyle(palette.secondaryText.opacity(0.82))
-                .lineLimit(2)
+                    Text(focusEyebrow)
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .tracking(2.5)
+                        .foregroundStyle(selectedModeAccent)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Text("Focus")
+                        .font(.system(size: 39, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text(focusHeaderAccent)
+                        .font(.system(size: 36, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    selectedModeAccent,
+                                    selectedModeSecondaryAccent
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+
+                Text(focusHeaderSubtitle)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.48))
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 8)
+
+            HStack(spacing: 9) {
+                focusHeaderIconButton(
+                    systemName: "timer",
+                    badge: focusSession.isSessionActive ? "LIVE" : nil
+                ) {
+                    if focusSession.isSessionActive {
+                        focusSession.expandSession()
+                    }
+                }
+
+                focusHeaderIconButton(systemName: "ellipsis") { }
+            }
         }
-        .padding(.top, 20)
+        .padding(.top, 10)
         .opacity(pageAppeared ? 1 : 0)
         .offset(y: pageAppeared ? 0 : 8)
         .animation(.spring(response: 0.65, dampingFraction: 0.86), value: pageAppeared)
     }
+    
+    var focusEyebrow: String {
+        switch selectedMode {
+        case .personal:
+            return "PERSONAL RHYTHM"
+        case .crew:
+            return "CREW FOCUS · LIVE"
+        case .friend:
+            return "FRIEND SESSION"
+        }
+    }
+
+    var focusHeaderAccent: String {
+        switch selectedMode {
+        case .personal:
+            return "zone"
+        case .crew:
+            return "crew"
+        case .friend:
+            return "duo"
+        }
+    }
+
+    var focusHeaderSubtitle: String {
+        if focusSession.isSessionActive {
+            return activeFocusInfoText
+        }
+
+        switch selectedMode {
+        case .personal:
+            return "Kendi ritmini başlat, tek dokunuşla odakta kal."
+        case .crew:
+            return "Takım odası kur, görevi seç, birlikte odaklan."
+        case .friend:
+            return "Yakın çevrenle kısa bir focus akışı başlat."
+        }
+    }
+
+    func focusHeaderIconButton(
+        systemName: String,
+        badge: String? = nil,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: systemName)
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundStyle(.white.opacity(0.86))
+                    .frame(width: 46, height: 46)
+                    .background(
+                        RoundedRectangle(cornerRadius: 17, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.090),
+                                        Color.white.opacity(0.050)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                    .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                            )
+                            .shadow(color: Color.black.opacity(0.22), radius: 12, y: 6)
+                    )
+
+                if let badge {
+                    Text(badge)
+                        .font(.system(size: 8, weight: .black, design: .monospaced))
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 5)
+                        .frame(height: 17)
+                        .background(
+                            Capsule()
+                                .fill(Color(arenaHex: AppArenaPalette.green))
+                        )
+                        .offset(x: 5, y: -5)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
 
     var compactControlsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Ayarlar")
-                .font(.system(size: 14, weight: .heavy, design: .rounded))
-                .foregroundStyle(palette.primaryText.opacity(0.94))
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Rectangle()
+                    .fill(selectedModeAccent.opacity(0.85))
+                    .frame(width: 18, height: 1)
+
+                Text("SETTINGS")
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(1.8)
+                    .foregroundStyle(selectedModeAccent)
+            }
 
             durationRow
 
@@ -268,23 +408,46 @@ private extension FocusView {
     }
 
     var crewSummaryHint: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Crew başlatma")
-                .font(.system(size: 13, weight: .heavy, design: .rounded))
-                .foregroundStyle(Color.white.opacity(0.90))
+        HStack(spacing: 12) {
+            Image(systemName: "person.3.fill")
+                .font(.system(size: 15, weight: .black))
+                .foregroundStyle(Color(arenaHex: AppArenaPalette.green))
+                .frame(width: 42, height: 42)
+                .background(
+                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                        .fill(Color(arenaHex: AppArenaPalette.green).opacity(0.13))
+                )
 
-            Text("Başlat dediğinde crew, görev ve katılımcı seçimi alttan açılır.")
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(Color.white.opacity(0.56))
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Crew başlatma")
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text("Başlatınca crew, görev ve katılımcı seçimi açılır.")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.50))
+                    .lineLimit(2)
+            }
+
+            Spacer()
         }
-        .padding(14)
+        .padding(15)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.03))
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(arenaHex: AppArenaPalette.green).opacity(0.060),
+                            Color.white.opacity(0.035)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(Color(arenaHex: AppArenaPalette.green).opacity(0.13), lineWidth: 1)
                 )
         )
     }
@@ -300,40 +463,55 @@ private extension FocusView {
 
     func durationChip(_ preset: FocusDurationPreset, text: String) -> some View {
         Button {
-            selectedPreset = preset
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+                selectedPreset = preset
+            }
         } label: {
             Text(text)
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundStyle(selectedPreset == preset ? .white : palette.secondaryText.opacity(0.84))
+                .font(.system(size: 14, weight: .black, design: .monospaced))
+                .foregroundStyle(selectedPreset == preset ? .black : .white.opacity(0.58))
                 .frame(maxWidth: .infinity)
-                .frame(height: 40)
+                .frame(height: 42)
                 .background(
                     Capsule(style: .continuous)
                         .fill(
                             selectedPreset == preset
-                            ? LinearGradient(
-                                colors: [
-                                    selectedModeAccent.opacity(0.30),
-                                    Color.white.opacity(0.10)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+                            ? AnyShapeStyle(
+                                LinearGradient(
+                                    colors: [
+                                        selectedModeAccent,
+                                        selectedModeSecondaryAccent
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
-                            : LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.05),
-                                    Color.white.opacity(0.025)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
+                            : AnyShapeStyle(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.055),
+                                        Color.white.opacity(0.030)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
                         )
                         .overlay(
                             Capsule(style: .continuous)
-                                .stroke(Color.white.opacity(selectedPreset == preset ? 0.11 : 0.05), lineWidth: 1)
+                                .stroke(
+                                    selectedPreset == preset
+                                    ? Color.white.opacity(0.12)
+                                    : Color.white.opacity(0.070),
+                                    lineWidth: 1
+                                )
                         )
                 )
-                .shadow(color: selectedPreset == preset ? selectedModeAccent.opacity(0.18) : .clear, radius: 12, x: 0, y: 7)
+                .shadow(
+                    color: selectedPreset == preset ? selectedModeAccent.opacity(0.20) : .clear,
+                    radius: 14,
+                    y: 7
+                )
         }
         .buttonStyle(.plain)
     }
@@ -343,37 +521,50 @@ private extension FocusView {
             showCustomDurationSheet = true
         } label: {
             Text(selectedPreset == .custom ? "\(customMinutes) dk" : "Özel")
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundStyle(selectedPreset == .custom ? .white : palette.secondaryText.opacity(0.84))
+                .font(.system(size: 14, weight: .black, design: .monospaced))
+                .foregroundStyle(selectedPreset == .custom ? .black : .white.opacity(0.58))
                 .frame(maxWidth: .infinity)
-                .frame(height: 40)
+                .frame(height: 42)
                 .background(
                     Capsule(style: .continuous)
                         .fill(
                             selectedPreset == .custom
-                            ? LinearGradient(
-                                colors: [
-                                    selectedModeAccent.opacity(0.30),
-                                    Color.white.opacity(0.10)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+                            ? AnyShapeStyle(
+                                LinearGradient(
+                                    colors: [
+                                        selectedModeAccent,
+                                        selectedModeSecondaryAccent
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
-                            : LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.05),
-                                    Color.white.opacity(0.025)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
+                            : AnyShapeStyle(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.055),
+                                        Color.white.opacity(0.030)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
                         )
                         .overlay(
                             Capsule(style: .continuous)
-                                .stroke(Color.white.opacity(selectedPreset == .custom ? 0.11 : 0.05), lineWidth: 1)
+                                .stroke(
+                                    selectedPreset == .custom
+                                    ? Color.white.opacity(0.12)
+                                    : Color.white.opacity(0.070),
+                                    lineWidth: 1
+                                )
                         )
                 )
-                .shadow(color: selectedPreset == .custom ? selectedModeAccent.opacity(0.18) : .clear, radius: 12, x: 0, y: 7)
+                .shadow(
+                    color: selectedPreset == .custom ? selectedModeAccent.opacity(0.20) : .clear,
+                    radius: 14,
+                    y: 7
+                )
         }
         .buttonStyle(.plain)
     }
@@ -386,58 +577,67 @@ private extension FocusView {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.white.opacity(0.03))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(Color.white.opacity(0.05), lineWidth: 1)
-                    )
+            HStack(alignment: .center, spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                        .fill(selectedModeAccent.opacity(0.13))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                .stroke(selectedModeAccent.opacity(0.16), lineWidth: 1)
+                        )
 
-                Circle()
-                    .fill(selectedModeAccent.opacity(0.14))
-                    .frame(width: 90, height: 90)
-                    .blur(radius: 24)
-                    .offset(x: -48, y: 0)
-
-                HStack(alignment: .center, spacing: 12) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.white.opacity(0.08))
-
-                        Image(systemName: icon)
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(Color.white.opacity(0.9))
-                    }
-                    .frame(width: 34, height: 34)
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(title.uppercased())
-                            .font(.system(size: 9, weight: .bold, design: .rounded))
-                            .foregroundStyle(Color.white.opacity(0.56))
-                            .tracking(1)
-
-                        Text(value)
-                            .font(.system(size: 16, weight: .heavy, design: .rounded))
-                            .foregroundStyle(Color.white.opacity(0.96))
-                            .lineLimit(1)
-
-                        Text(subtitle)
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .foregroundStyle(Color.white.opacity(0.62))
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.85)
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Color.white.opacity(0.34))
+                    Image(systemName: icon)
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundStyle(selectedModeAccent)
                 }
-                .padding(.horizontal, 14)
+                .frame(width: 42, height: 42)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title.uppercased())
+                        .font(.system(size: 9, weight: .black, design: .monospaced))
+                        .tracking(1.3)
+                        .foregroundStyle(.white.opacity(0.36))
+
+                    Text(value)
+                        .font(.system(size: 17, weight: .black))
+                        .foregroundStyle(.white.opacity(0.96))
+                        .lineLimit(1)
+
+                    Text(subtitle)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.48))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.80)
+                }
+
+                Spacer(minLength: 4)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .black))
+                    .foregroundStyle(.white.opacity(0.25))
             }
+            .padding(14)
+            .frame(maxWidth: .infinity)
             .frame(height: 88)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                selectedModeAccent.opacity(0.060),
+                                Color(arenaHex: AppArenaPalette.purple).opacity(0.040),
+                                Color.white.opacity(0.035)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(selectedModeAccent.opacity(0.12), lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.18), radius: 10, y: 5)
+            )
         }
         .buttonStyle(.plain)
     }
@@ -498,18 +698,20 @@ private extension FocusView {
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: focusSession.isSessionActive ? "lock.fill" : "play.fill")
-                        .font(.system(size: 15, weight: .bold))
+                        .font(.system(size: 15, weight: .black))
 
                     Text(focusSession.isSessionActive ? "Aktif Focusu Aç" : modeCTA)
-                        .font(.system(size: 18, weight: .heavy, design: .rounded))
+                        .font(.system(size: 17, weight: .black))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.74)
 
                     Spacer()
 
                     Image(systemName: focusSession.isSessionActive ? "arrow.up.forward.app" : "arrow.right")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 14, weight: .black))
                         .opacity(0.86)
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(.black)
                 .padding(.horizontal, 22)
                 .frame(height: 60)
                 .frame(maxWidth: .infinity)
@@ -519,12 +721,12 @@ private extension FocusView {
                             LinearGradient(
                                 colors: focusSession.isSessionActive
                                 ? [
-                                    Color.orange.opacity(0.95),
-                                    Color.red.opacity(0.88)
+                                    Color(arenaHex: AppArenaPalette.gold),
+                                    Color(arenaHex: AppArenaPalette.coral)
                                 ]
                                 : [
-                                    selectedModeAccent.opacity(1.0),
-                                    selectedModeSecondaryAccent.opacity(0.92)
+                                    selectedModeAccent,
+                                    selectedModeSecondaryAccent
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -532,14 +734,13 @@ private extension FocusView {
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                                .stroke(Color.white.opacity(0.13), lineWidth: 1)
                         )
                 )
                 .shadow(
-                    color: (focusSession.isSessionActive ? Color.orange : selectedModeAccent).opacity(0.24),
-                    radius: 26,
-                    x: 0,
-                    y: 14
+                    color: (focusSession.isSessionActive ? Color(arenaHex: AppArenaPalette.gold) : selectedModeAccent).opacity(0.24),
+                    radius: 22,
+                    y: 12
                 )
             }
             .buttonStyle(PressScaleButtonStyle())
@@ -674,18 +875,33 @@ private extension FocusView {
         Group {
             if let payload = invitePayload {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Focus’a davet edildin")
-                        .font(.system(size: 18, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
+                    HStack(spacing: 10) {
+                        Text("LIVE")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .foregroundStyle(.black)
+                            .padding(.horizontal, 9)
+                            .frame(height: 25)
+                            .background(
+                                Capsule()
+                                    .fill(Color(arenaHex: AppArenaPalette.green))
+                            )
+
+                        Text("FOCUS DAVETİ")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(1.7)
+                            .foregroundStyle(Color(arenaHex: AppArenaPalette.green))
+                    }
 
                     Text("\(payload.hostName) seni \(payload.durationMinutes) dk crew focusa çağırıyor.")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.76))
+                        .font(.system(size: 17, weight: .black))
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
 
                     if let taskTitle = payload.taskTitle, !taskTitle.isEmpty {
                         Text("Görev: \(taskTitle)")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.9))
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.62))
+                            .lineLimit(1)
                     }
 
                     HStack(spacing: 10) {
@@ -697,20 +913,20 @@ private extension FocusView {
                             HStack(spacing: 8) {
                                 if isJoiningInvite {
                                     ProgressView()
-                                        .tint(.white)
+                                        .tint(.black)
                                 } else {
                                     Image(systemName: "person.badge.plus")
                                 }
 
                                 Text(isJoiningInvite ? "Katılıyor..." : "Katıl")
-                                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                                    .font(.system(size: 14, weight: .black))
                             }
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.black)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 46)
+                            .frame(height: 44)
                             .background(
                                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .fill(Color.green)
+                                    .fill(Color(arenaHex: AppArenaPalette.green))
                             )
                         }
                         .buttonStyle(.plain)
@@ -720,13 +936,17 @@ private extension FocusView {
                             invitePayload = nil
                         } label: {
                             Text("Şimdi değil")
-                                .font(.system(size: 15, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.82))
+                                .font(.system(size: 14, weight: .black))
+                                .foregroundStyle(.white.opacity(0.78))
                                 .frame(maxWidth: .infinity)
-                                .frame(height: 46)
+                                .frame(height: 44)
                                 .background(
                                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        .fill(Color.white.opacity(0.08))
+                                        .fill(Color.white.opacity(0.060))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                        )
                                 )
                         }
                         .buttonStyle(.plain)
@@ -734,11 +954,21 @@ private extension FocusView {
                 }
                 .padding(18)
                 .background(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(Color.white.opacity(0.04))
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(arenaHex: AppArenaPalette.green).opacity(0.075),
+                                    Color(arenaHex: AppArenaPalette.blue).opacity(0.040),
+                                    Color.white.opacity(0.035)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
                         .overlay(
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .stroke(Color.green.opacity(0.22), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                                .stroke(Color(arenaHex: AppArenaPalette.green).opacity(0.18), lineWidth: 1)
                         )
                 )
             }
@@ -1521,7 +1751,7 @@ private extension FocusView {
         ZStack(alignment: .topLeading) {
             RadialGradient(
                 colors: [
-                    selectedModeAccent.opacity(0.14),
+                    selectedModeAccent.opacity(0.12),
                     Color.clear
                 ],
                 center: .topTrailing,
@@ -1543,6 +1773,28 @@ private extension FocusView {
         }
     }
 
+    var selectedModeAccent: Color {
+        switch selectedMode {
+        case .personal:
+            return Color(arenaHex: AppArenaPalette.cyan)
+        case .crew:
+            return Color(arenaHex: AppArenaPalette.coral)
+        case .friend:
+            return Color(arenaHex: AppArenaPalette.purple)
+        }
+    }
+
+    var selectedModeSecondaryAccent: Color {
+        switch selectedMode {
+        case .personal:
+            return Color(arenaHex: AppArenaPalette.purple)
+        case .crew:
+            return Color(arenaHex: AppArenaPalette.gold)
+        case .friend:
+            return Color(arenaHex: AppArenaPalette.blue)
+        }
+    }
+    
     var resolvedMinutes: Int {
         switch selectedPreset {
         case .short: return 15
@@ -1592,27 +1844,7 @@ private extension FocusView {
         }
     }
 
-    var selectedModeAccent: Color {
-        switch selectedMode {
-        case .personal:
-            return Color(red: 0.42, green: 0.66, blue: 1.00)
-        case .crew:
-            return Color(red: 1.00, green: 0.46, blue: 0.54)
-        case .friend:
-            return Color(red: 0.88, green: 0.56, blue: 1.00)
-        }
-    }
-
-    var selectedModeSecondaryAccent: Color {
-        switch selectedMode {
-        case .personal:
-            return Color(red: 0.66, green: 0.54, blue: 1.00)
-        case .crew:
-            return Color(red: 1.00, green: 0.72, blue: 0.58)
-        case .friend:
-            return Color(red: 0.72, green: 0.60, blue: 1.00)
-        }
-    }
+   
 
     var modeCTA: String {
         switch selectedMode {

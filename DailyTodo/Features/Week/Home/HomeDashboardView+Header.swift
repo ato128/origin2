@@ -10,30 +10,91 @@ import Combine
 
 extension HomeDashboardView {
     var headerCard: some View {
-        HStack(alignment: .center, spacing: 12) {
-            HStack(spacing: 8) {
-                Text(todayDateText)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(palette.secondaryText)
-                    .lineLimit(1)
+        HStack(alignment: .top, spacing: 12) {
+            ArenaLargeTitle(
+                eyebrow: todayDateText.uppercased(),
+                title: adaptiveGreetingText,
+                accent: headerArenaAccentWord,
+                accentColor: headerArenaTint
+            )
 
-                Circle()
-                    .fill(headerAccentColor.opacity(0.85))
-                    .frame(width: 4, height: 4)
+            Spacer(minLength: 10)
 
-                Text(homePriorityLine)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(headerAccentColor.opacity(0.95))
-                    .lineLimit(1)
+            HStack(spacing: 9) {
+                ArenaIconButton(
+                    systemName: "plus",
+                    tint: headerArenaTint,
+                    emphasized: true,
+                    action: onAddTask
+                )
+
+                ArenaIconButton(
+                    systemName: smartEngineEnabled ? "sparkles" : "sparkles.slash",
+                    tint: .white.opacity(0.82),
+                    emphasized: false,
+                    action: {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                            smartEngineEnabled.toggle()
+                        }
+                    }
+                )
             }
-
-            Spacer()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 2)
         .padding(.top, 2)
     }
+    var headerArenaTint: Color {
+        switch homeLayoutMode {
+        case .focusActive:
+            switch focusSession.selectedMode {
+            case .personal:
+                return Color(arenaHex: AppArenaPalette.blue)
+            case .crew:
+                return Color(arenaHex: AppArenaPalette.coral)
+            case .friend:
+                return Color(arenaHex: AppArenaPalette.purple)
+            }
 
+        case .crewFollowUp:
+            return Color(arenaHex: AppArenaPalette.coral)
+
+        case .insightsFollowUp:
+            return Color(arenaHex: AppArenaPalette.gold)
+
+        case .completionWrapUp:
+            return Color(arenaHex: AppArenaPalette.green)
+
+        case .defaultFlow:
+            return Color(arenaHex: AppArenaPalette.cyan)
+        }
+    }
+
+    var headerArenaAccentWord: String {
+        switch homeLayoutMode {
+        case .focusActive:
+            return "focus"
+
+        case .crewFollowUp:
+            return "crew"
+
+        case .insightsFollowUp:
+            return "ritim"
+
+        case .completionWrapUp:
+            return "tamam"
+
+        case .defaultFlow:
+            switch heroDayPhase {
+            case .morning:
+                return "başla"
+            case .afternoon:
+                return "devam"
+            case .evening, .night:
+                return "plan"
+            }
+        }
+    }
+    
     var adaptiveGreetingText: String {
         switch homeLayoutMode {
         case .focusActive:

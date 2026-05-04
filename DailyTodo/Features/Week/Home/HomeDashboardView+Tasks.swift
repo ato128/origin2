@@ -10,6 +10,9 @@ import SwiftData
 import Combine
 
 extension HomeDashboardView {
+
+    // MARK: - Today Task Data
+
     var todayBoardTasks: [DTTaskItem] {
         let calendar = Calendar.current
 
@@ -50,8 +53,6 @@ extension HomeDashboardView {
     var todayPendingBoardCount: Int {
         todayPendingTasks.count
     }
-
-   
 
     var taskCardIsCompactMode: Bool {
         switch homeLayoutMode {
@@ -97,12 +98,38 @@ extension HomeDashboardView {
         }
     }
 
+    // MARK: - Arena State
+
     var todayCardAccentColor: Color {
-        if todayBoardTasks.isEmpty { return .blue }
-        if todayPendingBoardCount == 0 { return .green }
-        if todayPendingTasks.contains(where: { store.isOverdue($0) }) { return .orange }
-        if boardTodayProgressValue > 0.55 { return .green }
-        return .blue
+        if todayBoardTasks.isEmpty {
+            return Color(arenaHex: AppArenaPalette.cyan)
+        }
+
+        if todayPendingBoardCount == 0 {
+            return Color(arenaHex: AppArenaPalette.green)
+        }
+
+        if todayPendingTasks.contains(where: { store.isOverdue($0) }) {
+            return Color(arenaHex: AppArenaPalette.gold)
+        }
+
+        if boardTodayProgressValue > 0.55 {
+            return Color(arenaHex: AppArenaPalette.green)
+        }
+
+        return Color(arenaHex: AppArenaPalette.blue)
+    }
+
+    var todayOpenBadgeColor: Color {
+        if todayPendingBoardCount == 0 {
+            return Color(arenaHex: AppArenaPalette.green)
+        }
+
+        if todayPendingTasks.contains(where: { store.isOverdue($0) }) {
+            return Color(arenaHex: AppArenaPalette.gold)
+        }
+
+        return Color(arenaHex: AppArenaPalette.blue)
     }
 
     var adaptiveTasksBackground: some View {
@@ -110,8 +137,9 @@ extension HomeDashboardView {
             .fill(
                 LinearGradient(
                     colors: [
-                        palette.cardFill,
-                        palette.cardFill.opacity(0.96)
+                        todayCardAccentColor.opacity(0.070),
+                        Color(arenaHex: AppArenaPalette.purple).opacity(0.045),
+                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -122,12 +150,12 @@ extension HomeDashboardView {
                     .fill(
                         RadialGradient(
                             colors: [
-                                todayCardAccentColor.opacity(0.10),
+                                todayCardAccentColor.opacity(0.13),
                                 Color.clear
                             ],
                             center: .topLeading,
-                            startRadius: 12,
-                            endRadius: 220
+                            startRadius: 8,
+                            endRadius: 210
                         )
                     )
             )
@@ -137,13 +165,13 @@ extension HomeDashboardView {
                         RadialGradient(
                             colors: [
                                 shouldEmphasizeCompletedSection
-                                ? Color.green.opacity(0.06)
-                                : Color.clear,
+                                ? Color(arenaHex: AppArenaPalette.green).opacity(0.10)
+                                : Color(arenaHex: AppArenaPalette.blue).opacity(0.055),
                                 Color.clear
                             ],
                             center: .bottomTrailing,
                             startRadius: 10,
-                            endRadius: 220
+                            endRadius: 230
                         )
                     )
             )
@@ -151,58 +179,75 @@ extension HomeDashboardView {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .stroke(
                         shouldEmphasizeCompletedSection
-                        ? Color.green.opacity(0.12)
-                        : todayCardAccentColor.opacity(0.10),
+                        ? Color(arenaHex: AppArenaPalette.green).opacity(0.16)
+                        : todayCardAccentColor.opacity(0.14),
                         lineWidth: 1
                     )
             )
+            .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
     }
+
+    // MARK: - Card
 
     var todayTasksCard: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 8) {
+                        Rectangle()
+                            .fill(todayCardAccentColor)
+                            .frame(width: 18, height: 1)
+
+                        Text("TODAY BOARD")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(1.7)
+                            .foregroundStyle(todayCardAccentColor)
+                    }
+
                     Text("Bugün")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundStyle(palette.primaryText)
+                        .font(.system(size: 25, weight: .black))
+                        .foregroundStyle(.white)
 
                     Text(todayTaskHeaderText)
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(palette.secondaryText)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.50))
                         .lineLimit(2)
                 }
 
-                Spacer()
+                Spacer(minLength: 10)
 
                 if !todayBoardTasks.isEmpty {
-                    Text(todayOpenBadgeText)
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                    Text(todayOpenBadgeText.uppercased())
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .tracking(0.8)
                         .foregroundStyle(todayOpenBadgeColor)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 11)
+                        .frame(height: 30)
                         .background(
                             Capsule()
                                 .fill(todayOpenBadgeColor.opacity(0.13))
-                        )
-                        .overlay(
-                            Capsule()
-                                .stroke(todayOpenBadgeColor.opacity(0.14), lineWidth: 1)
+                                .overlay(
+                                    Capsule()
+                                        .stroke(todayOpenBadgeColor.opacity(0.18), lineWidth: 1)
+                                )
                         )
                 }
             }
 
             if !todayBoardTasks.isEmpty {
-                HStack(spacing: 12) {
+                HStack(spacing: 10) {
                     todayMiniMetricPill(
                         title: "Tamamlanan",
                         value: "\(completedTodayBoardCount)",
-                        tint: .green
+                        tint: Color(arenaHex: AppArenaPalette.green)
                     )
 
                     todayMiniMetricPill(
                         title: "Kalan",
                         value: "\(todayPendingBoardCount)",
-                        tint: todayPendingTasks.contains(where: { store.isOverdue($0) }) ? .orange : .blue
+                        tint: todayPendingTasks.contains(where: { store.isOverdue($0) })
+                        ? Color(arenaHex: AppArenaPalette.gold)
+                        : Color(arenaHex: AppArenaPalette.blue)
                     )
 
                     todayMiniMetricPill(
@@ -215,23 +260,25 @@ extension HomeDashboardView {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         Capsule()
-                            .fill(palette.secondaryCardFill.opacity(0.95))
+                            .fill(Color.white.opacity(0.075))
 
                         Capsule()
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        todayCardAccentColor.opacity(0.92),
-                                        todayCardAccentColor.opacity(0.76)
+                                        Color(arenaHex: AppArenaPalette.cyan),
+                                        todayCardAccentColor,
+                                        Color(arenaHex: AppArenaPalette.purple)
                                     ],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
                             )
                             .frame(width: max(10, geo.size.width * boardTodayProgressValue))
+                            .shadow(color: todayCardAccentColor.opacity(0.18), radius: 8, y: 2)
                     }
                 }
-                .frame(height: 10)
+                .frame(height: 9)
             }
 
             if todayBoardTasks.isEmpty {
@@ -244,7 +291,9 @@ extension HomeDashboardView {
                             count: todayPendingTasks.count > taskCardPendingLimit
                             ? "+\(todayPendingTasks.count - taskCardPendingLimit)"
                             : nil,
-                            tint: todayPendingTasks.contains(where: { store.isOverdue($0) }) ? .orange : .blue
+                            tint: todayPendingTasks.contains(where: { store.isOverdue($0) })
+                            ? Color(arenaHex: AppArenaPalette.gold)
+                            : Color(arenaHex: AppArenaPalette.blue)
                         )
 
                         ForEach(Array(todayPendingTasks.prefix(taskCardPendingLimit)), id: \.taskUUID) { task in
@@ -261,7 +310,7 @@ extension HomeDashboardView {
                         sectionEyebrow(
                             title: "Tamamlananlar",
                             count: "\(todayCompletedTasks.count)",
-                            tint: .green
+                            tint: Color(arenaHex: AppArenaPalette.green)
                         )
                         .padding(.top, todayPendingTasks.isEmpty ? 0 : 2)
 
@@ -275,9 +324,25 @@ extension HomeDashboardView {
                 }
 
                 HStack(spacing: 8) {
-                    smallStatsChip(title: "Seri", value: "\(streakCount)", tint: .orange)
-                    smallStatsChip(title: "Biten", value: "\(completedTodayBoardCount)", tint: .green)
-                    smallStatsChip(title: "Kalan", value: "\(todayPendingBoardCount)", tint: todayPendingTasks.contains(where: { store.isOverdue($0) }) ? .orange : .blue)
+                    smallStatsChip(
+                        title: "Seri",
+                        value: "\(streakCount)",
+                        tint: Color(arenaHex: AppArenaPalette.gold)
+                    )
+
+                    smallStatsChip(
+                        title: "Biten",
+                        value: "\(completedTodayBoardCount)",
+                        tint: Color(arenaHex: AppArenaPalette.green)
+                    )
+
+                    smallStatsChip(
+                        title: "Kalan",
+                        value: "\(todayPendingBoardCount)",
+                        tint: todayPendingTasks.contains(where: { store.isOverdue($0) })
+                        ? Color(arenaHex: AppArenaPalette.gold)
+                        : Color(arenaHex: AppArenaPalette.blue)
+                    )
                 }
                 .padding(.top, 2)
             }
@@ -287,51 +352,79 @@ extension HomeDashboardView {
         .background(adaptiveTasksBackground)
     }
 
+    // MARK: - Empty State
+
     var emptyTodayTasksState: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 13) {
+            HStack(spacing: 11) {
                 ZStack {
                     Circle()
-                        .fill(Color.green.opacity(0.14))
-                        .frame(width: 38, height: 38)
+                        .fill(Color(arenaHex: AppArenaPalette.green).opacity(0.13))
+                        .frame(width: 40, height: 40)
 
                     Image(systemName: "checkmark")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(.green)
+                        .font(.system(size: 16, weight: .black))
+                        .foregroundStyle(Color(arenaHex: AppArenaPalette.green))
                 }
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text("Bugün temiz görünüyor")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(palette.primaryText)
+                        .font(.system(size: 16, weight: .black))
+                        .foregroundStyle(.white)
 
                     Text(
                         homeLayoutMode == .completionWrapUp || homeLayoutMode == .insightsFollowUp
                         ? "Bugün için kalan görev görünmüyor."
                         : "Şimdilik sakin. İstersen küçük bir görev ekleyebilirsin."
                     )
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(palette.secondaryText)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.50))
+                    .lineLimit(2)
                 }
             }
 
             HStack(spacing: 8) {
-                smallStatsChip(title: "Seri", value: "\(streakCount)", tint: .orange)
-                smallStatsChip(title: "Biten", value: "0", tint: .green)
-                smallStatsChip(title: "Kalan", value: "0", tint: .blue)
+                smallStatsChip(
+                    title: "Seri",
+                    value: "\(streakCount)",
+                    tint: Color(arenaHex: AppArenaPalette.gold)
+                )
+
+                smallStatsChip(
+                    title: "Biten",
+                    value: "0",
+                    tint: Color(arenaHex: AppArenaPalette.green)
+                )
+
+                smallStatsChip(
+                    title: "Kalan",
+                    value: "0",
+                    tint: Color(arenaHex: AppArenaPalette.blue)
+                )
             }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(palette.secondaryCardFill.opacity(0.92))
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(arenaHex: AppArenaPalette.green).opacity(0.070),
+                            Color.white.opacity(0.040)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
         )
         .overlay(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(palette.cardStroke.opacity(0.84), lineWidth: 1)
+                .stroke(Color(arenaHex: AppArenaPalette.green).opacity(0.13), lineWidth: 1)
         )
     }
+
+    // MARK: - Header Text
 
     var todayTaskHeaderText: String {
         if todayBoardTasks.isEmpty {
@@ -363,12 +456,6 @@ extension HomeDashboardView {
         todayPendingBoardCount == 0 ? "Temiz" : "\(todayPendingBoardCount) açık"
     }
 
-    var todayOpenBadgeColor: Color {
-        if todayPendingBoardCount == 0 { return .green }
-        if todayPendingTasks.contains(where: { store.isOverdue($0) }) { return .orange }
-        return .blue
-    }
-
     var taskCardPendingSectionTitle: String {
         switch homeLayoutMode {
         case .focusActive:
@@ -382,48 +469,65 @@ extension HomeDashboardView {
         }
     }
 
+    // MARK: - UI Helpers
+
     func sectionEyebrow(title: String, count: String?, tint: Color) -> some View {
         HStack {
-            Text(title)
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundStyle(tint)
+            HStack(spacing: 8) {
+                Rectangle()
+                    .fill(tint.opacity(0.82))
+                    .frame(width: 14, height: 1)
+
+                Text(title.uppercased())
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(1.3)
+                    .foregroundStyle(tint)
+            }
 
             Spacer()
 
             if let count {
                 Text(count)
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
                     .foregroundStyle(tint)
                     .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
+                    .frame(height: 24)
                     .background(
                         Capsule()
                             .fill(tint.opacity(0.12))
+                            .overlay(
+                                Capsule()
+                                    .stroke(tint.opacity(0.18), lineWidth: 1)
+                            )
                     )
             }
         }
     }
 
     func todayMiniMetricPill(title: String, value: String, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundStyle(palette.secondaryText)
-
+        VStack(alignment: .leading, spacing: 3) {
             Text(value)
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-                .foregroundStyle(tint)
+                .font(.system(size: 18, weight: .black))
+                .foregroundStyle(.white)
+                .monospacedDigit()
+
+            Text(title.uppercased())
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .tracking(0.8)
+                .foregroundStyle(.white.opacity(0.38))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.vertical, 11)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(tint.opacity(0.09))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(tint.opacity(0.10), lineWidth: 1)
+                .fill(tint.opacity(0.080))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(tint.opacity(0.14), lineWidth: 1)
+                )
         )
     }
 
@@ -440,16 +544,21 @@ extension HomeDashboardView {
             HStack(spacing: compact ? 10 : 12) {
                 ZStack {
                     Circle()
-                        .stroke(task.isDone ? Color.green.opacity(0.24) : accent.opacity(0.95), lineWidth: 2.2)
+                        .stroke(
+                            task.isDone
+                            ? Color(arenaHex: AppArenaPalette.green).opacity(0.25)
+                            : accent.opacity(0.95),
+                            lineWidth: 2.2
+                        )
                         .frame(width: compact ? 26 : 30, height: compact ? 26 : 30)
 
                     if task.isDone {
                         Image(systemName: "checkmark")
-                            .font(.system(size: compact ? 10 : 11, weight: .bold))
-                            .foregroundStyle(.green)
+                            .font(.system(size: compact ? 10 : 11, weight: .black))
+                            .foregroundStyle(Color(arenaHex: AppArenaPalette.green))
                     } else if isFocused {
                         Image(systemName: "scope")
-                            .font(.system(size: compact ? 9 : 10, weight: .bold))
+                            .font(.system(size: compact ? 9 : 10, weight: .black))
                             .foregroundStyle(accent)
                     }
                 }
@@ -457,17 +566,18 @@ extension HomeDashboardView {
                 VStack(alignment: .leading, spacing: compact ? 3 : 5) {
                     HStack(spacing: 6) {
                         Text(task.title)
-                            .font(.system(size: compact ? 15 : 16, weight: .bold, design: .rounded))
-                            .foregroundStyle(task.isDone ? palette.secondaryText : palette.primaryText)
-                            .strikethrough(task.isDone, color: palette.secondaryText.opacity(0.72))
+                            .font(.system(size: compact ? 15 : 16, weight: .black))
+                            .foregroundStyle(task.isDone ? .white.opacity(0.42) : .white.opacity(0.94))
+                            .strikethrough(task.isDone, color: .white.opacity(0.34))
                             .lineLimit(1)
 
                         if isFocused && !task.isDone {
-                            Text("Odakta")
-                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                            Text("ODAKTA")
+                                .font(.system(size: 9, weight: .black, design: .monospaced))
+                                .tracking(0.7)
                                 .foregroundStyle(accent)
                                 .padding(.horizontal, 7)
-                                .padding(.vertical, 4)
+                                .frame(height: 22)
                                 .background(
                                     Capsule()
                                         .fill(accent.opacity(0.12))
@@ -477,25 +587,25 @@ extension HomeDashboardView {
 
                     if !compact || !task.isDone {
                         Text(taskRowSubtitle(for: task))
-                            .font(.system(size: compact ? 11.5 : 12.5, weight: .medium, design: .rounded))
-                            .foregroundStyle(palette.secondaryText)
+                            .font(.system(size: compact ? 11.5 : 12.5, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.44))
                             .lineLimit(1)
                     }
                 }
 
-                Spacer()
+                Spacer(minLength: 8)
 
                 if task.isDone {
                     miniBadge(
                         icon: "checkmark.circle.fill",
                         text: compact ? "Bitti" : "Tamamlandı",
-                        tint: .green
+                        tint: Color(arenaHex: AppArenaPalette.green)
                     )
                 } else if isOverdue {
                     miniBadge(
                         icon: "exclamationmark.triangle.fill",
                         text: dueText,
-                        tint: .red
+                        tint: Color(arenaHex: AppArenaPalette.coral)
                     )
                 } else if isFocused {
                     miniBadge(
@@ -520,20 +630,78 @@ extension HomeDashboardView {
             .padding(compact ? 13 : 15)
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(palette.secondaryCardFill.opacity(0.95))
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                accent.opacity(task.isDone ? 0.050 : 0.070),
+                                Color.white.opacity(0.040)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .stroke(
                         isOverdue
-                        ? Color.red.opacity(0.14)
-                        : (task.isDone ? Color.green.opacity(0.10) : palette.cardStroke.opacity(0.82)),
+                        ? Color(arenaHex: AppArenaPalette.coral).opacity(0.20)
+                        : (task.isDone ? Color(arenaHex: AppArenaPalette.green).opacity(0.13) : accent.opacity(0.12)),
                         lineWidth: 1
                     )
             )
         }
         .buttonStyle(.plain)
     }
+
+    func miniBadge(icon: String, text: String, tint: Color) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .black))
+
+            Text(text.uppercased())
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .tracking(0.5)
+        }
+        .padding(.horizontal, 9)
+        .frame(height: 26)
+        .background(
+            Capsule()
+                .fill(tint.opacity(0.13))
+                .overlay(
+                    Capsule()
+                        .stroke(tint.opacity(0.18), lineWidth: 1)
+                )
+        )
+        .foregroundStyle(tint)
+    }
+
+    func smallStatsChip(title: String, value: String, tint: Color) -> some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(tint)
+                .frame(width: 7, height: 7)
+
+            Text("\(title.uppercased()) \(value)")
+                .font(.system(size: 10, weight: .black, design: .monospaced))
+                .tracking(0.7)
+                .foregroundStyle(tint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 30)
+        .background(
+            Capsule()
+                .fill(tint.opacity(0.12))
+                .overlay(
+                    Capsule()
+                        .stroke(tint.opacity(0.18), lineWidth: 1)
+                )
+        )
+    }
+
+    // MARK: - Actions
 
     func toggleTodayBoardTask(_ task: DTTaskItem) {
         withAnimation(.easeOut(duration: 0.18)) {
@@ -551,6 +719,8 @@ extension HomeDashboardView {
             }
         }
     }
+
+    // MARK: - Task Logic
 
     func todayTaskUrgencyScore(_ task: DTTaskItem) -> Int {
         if task.isDone { return -1 }
@@ -580,14 +750,21 @@ extension HomeDashboardView {
     }
 
     func todayTaskAccent(for task: DTTaskItem) -> Color {
-        if store.isOverdue(task) && !task.isDone { return .red }
+        if store.isOverdue(task) && !task.isDone {
+            return Color(arenaHex: AppArenaPalette.coral)
+        }
 
         switch task.colorName.lowercased() {
-        case "green": return .green
-        case "orange": return .orange
-        case "pink": return .pink
-        case "purple": return .purple
-        default: return .blue
+        case "green":
+            return Color(arenaHex: AppArenaPalette.green)
+        case "orange":
+            return Color(arenaHex: AppArenaPalette.gold)
+        case "pink":
+            return Color(arenaHex: AppArenaPalette.coral)
+        case "purple":
+            return Color(arenaHex: AppArenaPalette.purple)
+        default:
+            return Color(arenaHex: AppArenaPalette.blue)
         }
     }
 
@@ -662,50 +839,21 @@ extension HomeDashboardView {
         let note = task.notes.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if !course.isEmpty, !note.isEmpty { return "\(course) • \(note)" }
+
         if !course.isEmpty {
             if let due = task.dueDate ?? task.scheduledWeekDate {
                 return "\(course) • \(due.formatted(date: .omitted, time: .shortened))"
             }
+
             return course
         }
+
         if !note.isEmpty { return note }
+
         if let due = task.dueDate ?? task.scheduledWeekDate {
             return due.formatted(date: .omitted, time: .shortened)
         }
+
         return task.taskType.isEmpty ? "Görev" : task.taskType.capitalized
-    }
-
-    func miniBadge(icon: String, text: String, tint: Color) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: icon)
-                .font(.caption2)
-            Text(text)
-        }
-        .font(.system(size: 11, weight: .semibold, design: .rounded))
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(
-            Capsule()
-                .fill(tint.opacity(0.14))
-        )
-        .foregroundStyle(tint)
-    }
-
-    func smallStatsChip(title: String, value: String, tint: Color) -> some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(tint)
-                .frame(width: 7, height: 7)
-
-            Text("\(title) \(value)")
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(tint)
-        }
-        .padding(.horizontal, 11)
-        .padding(.vertical, 8)
-        .background(
-            Capsule()
-                .fill(tint.opacity(0.12))
-        )
     }
 }

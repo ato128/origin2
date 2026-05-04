@@ -39,9 +39,23 @@ struct ActiveFocusView: View {
 
     private var titleText: String {
         switch mode {
-        case .personal: return "Kişisel Focus"
-        case .crew: return "Crew Focus"
-        case .friend: return "Friend Focus"
+        case .personal:
+            return "Kişisel Focus"
+        case .crew:
+            return "Crew Focus"
+        case .friend:
+            return "Arkadaş Focus"
+        }
+    }
+
+    private var titleAccent: String {
+        switch mode {
+        case .personal:
+            return "zone"
+        case .crew:
+            return "crew"
+        case .friend:
+            return "duo"
         }
     }
 
@@ -50,17 +64,25 @@ struct ActiveFocusView: View {
     }
 
     private var statusTitle: String {
-        if focusSession.isPaused { return "DURAKLATILDI" }
+        if focusSession.isPaused {
+            return "DURAKLATILDI"
+        }
 
         switch mode {
-        case .personal: return "HAZIR"
-        case .crew: return "TAKIM HAZIR"
-        case .friend: return "EŞLEŞTİ"
+        case .personal:
+            return "LIVE"
+        case .crew:
+            return "CREW LIVE"
+        case .friend:
+            return "DUO LIVE"
         }
     }
 
     private var subtitleText: String {
-        if focusSession.isPaused { return "Focus akışı beklemede" }
+        if focusSession.isPaused {
+            return "Focus akışı beklemede"
+        }
+
         return "Odak akışı devam ediyor"
     }
 
@@ -102,7 +124,7 @@ struct ActiveFocusView: View {
                     centerStage
                         .frame(maxWidth: .infinity)
 
-                    Spacer(minLength: 16)
+                    Spacer(minLength: 14)
 
                     bottomSection(bottomInset: bottomInset)
                 }
@@ -120,24 +142,47 @@ struct ActiveFocusView: View {
 }
 
 private extension ActiveFocusView {
+
     var ringSize: CGFloat { 292 }
     var ringLineWidth: CGFloat { 16 }
 
+    // MARK: - Top Bar
+
     func topBar(topInset: CGFloat) -> some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(titleText)
-                    .font(.system(size: 18, weight: .heavy, design: .rounded))
-                    .foregroundStyle(Color.white.opacity(0.96))
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(theme.accent)
+                        .frame(width: 20, height: 1)
+
+                    Text(statusTitle)
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .tracking(2.0)
+                        .foregroundStyle(theme.accent)
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Text(titleText)
+                        .font(.system(size: 24, weight: .black))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+
+                    Text(titleAccent)
+                        .font(.system(size: 23, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(theme.accent)
+                }
 
                 Text(durationText)
-                    .font(.system(size: 30, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 13, weight: .black, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.46))
             }
 
             Spacer()
 
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 topCircleButton(icon: "minus") {
                     focusSession.minimizeSession()
                 }
@@ -153,34 +198,47 @@ private extension ActiveFocusView {
 
     func topCircleButton(icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Circle()
-                .fill(Color.white.opacity(0.05))
-                .overlay(
+            Image(systemName: icon)
+                .font(.system(size: 17, weight: .black))
+                .foregroundStyle(.white.opacity(0.94))
+                .frame(width: 52, height: 52)
+                .background(
                     Circle()
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                )
-                .frame(width: 56, height: 56)
-                .overlay(
-                    Image(systemName: icon)
-                        .font(.system(size: 18, weight: .heavy))
-                        .foregroundStyle(Color.white.opacity(0.96))
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.095),
+                                    Color.black.opacity(0.24),
+                                    Color.white.opacity(0.045)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                        )
+                        .shadow(color: Color.black.opacity(0.28), radius: 14, y: 7)
                 )
         }
         .buttonStyle(.plain)
     }
 
+    // MARK: - Center Stage
+
     var centerStage: some View {
         ZStack {
             Circle()
-                .fill(theme.coreGlow.opacity(pulse ? 0.30 : 0.22))
+                .fill(theme.coreGlow.opacity(pulse ? 0.24 : 0.17))
                 .frame(width: 360, height: 360)
-                .blur(radius: 64)
+                .blur(radius: 70)
 
             Circle()
                 .fill(
                     RadialGradient(
                         colors: [
-                            theme.innerGlow.opacity(pulse ? 0.24 : 0.15),
+                            theme.innerGlow.opacity(pulse ? 0.18 : 0.11),
                             Color.clear
                         ],
                         center: .center,
@@ -189,41 +247,40 @@ private extension ActiveFocusView {
                     )
                 )
                 .frame(width: 308, height: 308)
-                .blur(radius: 24)
+                .blur(radius: 26)
 
             Circle()
-                .stroke(Color.white.opacity(0.08), lineWidth: ringLineWidth)
+                .stroke(Color.white.opacity(0.065), lineWidth: ringLineWidth)
                 .frame(width: ringSize, height: ringSize)
 
             Circle()
                 .trim(from: 0, to: max(focusSession.progress, 0.001))
                 .stroke(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.98),
-                            Color.white.opacity(0.90),
-                            Color.white.opacity(0.82)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+                    AngularGradient(
+                        gradient: Gradient(colors: [
+                            theme.accent.opacity(0.98),
+                            theme.secondaryAccent.opacity(0.95),
+                            theme.accent.opacity(0.98)
+                        ]),
+                        center: .center
                     ),
                     style: StrokeStyle(lineWidth: ringLineWidth, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
                 .frame(width: ringSize, height: ringSize)
-                .shadow(color: Color.white.opacity(0.10), radius: 8, x: 0, y: 0)
+                .shadow(color: theme.accent.opacity(0.26), radius: 14)
                 .opacity(focusSession.isPaused ? 0.42 : 1)
 
             Circle()
-                .stroke(Color.white.opacity(0.045), lineWidth: 1.1)
+                .stroke(Color.white.opacity(0.040), lineWidth: 1.1)
                 .frame(width: ringSize - 36, height: ringSize - 36)
 
             Circle()
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.04),
-                            Color.white.opacity(0.015)
+                            theme.accent.opacity(0.085),
+                            Color.white.opacity(0.018)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -232,32 +289,30 @@ private extension ActiveFocusView {
                 .frame(width: ringSize - 56, height: ringSize - 56)
                 .overlay(
                     Circle()
-                        .stroke(Color.white.opacity(0.04), lineWidth: 1)
+                        .stroke(Color.white.opacity(0.045), lineWidth: 1)
                 )
-
-            
 
             VStack(spacing: 10) {
                 Text(focusSession.timeString)
-                    .font(.system(size: 46, weight: .heavy, design: .rounded))
+                    .font(.system(size: 48, weight: .black))
                     .foregroundStyle(.white)
                     .contentTransition(.numericText())
                     .animation(.easeInOut(duration: 0.18), value: focusSession.timeString)
 
                 Text(statusTitle)
-                    .font(.system(size: 13, weight: .heavy, design: .rounded))
-                    .tracking(2.4)
-                    .foregroundStyle(Color.white.opacity(0.72))
+                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                    .tracking(2.2)
+                    .foregroundStyle(theme.accent)
 
                 Text(subtitleText)
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.white.opacity(0.48))
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.46))
             }
         }
         .frame(height: 360)
     }
 
-   
+    // MARK: - Bottom Section
 
     func bottomSection(bottomInset: CGFloat) -> some View {
         VStack(spacing: 14) {
@@ -266,15 +321,15 @@ private extension ActiveFocusView {
                     .padding(.horizontal, 20)
             }
 
-            VStack(spacing: 6) {
+            VStack(spacing: 7) {
                 Text(bottomHeadline)
-                    .font(.system(size: 17, weight: .heavy, design: .rounded))
-                    .foregroundStyle(Color.white.opacity(0.96))
+                    .font(.system(size: 17, weight: .black))
+                    .foregroundStyle(.white.opacity(0.96))
                     .multilineTextAlignment(.center)
 
                 Text(bottomSubtitle)
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.white.opacity(0.46))
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.46))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
             }
@@ -289,7 +344,7 @@ private extension ActiveFocusView {
                 colors: [
                     Color.black.opacity(0.00),
                     Color.black.opacity(0.18),
-                    Color.black.opacity(0.34)
+                    Color.black.opacity(0.38)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -297,17 +352,30 @@ private extension ActiveFocusView {
         )
     }
 
+    // MARK: - Shared Panel
+
     var compactSharedPanel: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 13) {
             HStack(spacing: 10) {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Rectangle()
+                            .fill(theme.accent)
+                            .frame(width: 16, height: 1)
+
+                        Text(mode == .crew ? "CREW SYNC" : "DUO SYNC")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(1.6)
+                            .foregroundStyle(theme.accent)
+                    }
+
                     Text(sharedPanelTitle)
-                        .font(.system(size: 17, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Color.white.opacity(0.95))
+                        .font(.system(size: 17, weight: .black))
+                        .foregroundStyle(.white.opacity(0.95))
 
                     Text(sharedPanelSubtitle)
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color.white.opacity(0.56))
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.50))
                         .lineLimit(1)
                 }
 
@@ -319,18 +387,22 @@ private extension ActiveFocusView {
                     }
                 } label: {
                     HStack(spacing: 6) {
-                        Text(showParticipantsExpanded ? "Daralt" : "Detay")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                        Text(showParticipantsExpanded ? "DARALT" : "DETAY")
+                            .font(.system(size: 9, weight: .black, design: .monospaced))
 
                         Image(systemName: showParticipantsExpanded ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.system(size: 9, weight: .black))
                     }
-                    .foregroundStyle(Color.white.opacity(0.80))
+                    .foregroundStyle(theme.accent)
                     .padding(.horizontal, 10)
                     .frame(height: 28)
                     .background(
                         Capsule(style: .continuous)
-                            .fill(Color.white.opacity(0.06))
+                            .fill(theme.accent.opacity(0.12))
+                            .overlay(
+                                Capsule(style: .continuous)
+                                    .stroke(theme.accent.opacity(0.18), lineWidth: 1)
+                            )
                     )
                 }
                 .buttonStyle(.plain)
@@ -357,14 +429,25 @@ private extension ActiveFocusView {
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .padding(14)
+        .padding(15)
         .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.white.opacity(0.055))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            theme.accent.opacity(0.070),
+                            theme.secondaryAccent.opacity(0.040),
+                            Color.white.opacity(0.035)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
                 )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .stroke(theme.accent.opacity(0.14), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
         )
     }
 
@@ -381,12 +464,16 @@ private extension ActiveFocusView {
                     }
                 } label: {
                     Text("+\(participants.count - visibleParticipants.count)")
-                        .font(.system(size: 14, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Color.white.opacity(0.92))
+                        .font(.system(size: 14, weight: .black, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.92))
                         .frame(width: 52, height: 52)
                         .background(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(Color.white.opacity(0.04))
+                                .fill(Color.white.opacity(0.045))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                                )
                         )
                 }
                 .buttonStyle(.plain)
@@ -401,8 +488,8 @@ private extension ActiveFocusView {
                 .frame(width: 10, height: 10)
 
             Text(participant.name)
-                .font(.system(size: 12, weight: .heavy, design: .rounded))
-                .foregroundStyle(Color.white.opacity(0.92))
+                .font(.system(size: 12, weight: .black))
+                .foregroundStyle(.white.opacity(0.92))
                 .lineLimit(1)
 
             Spacer(minLength: 0)
@@ -412,7 +499,11 @@ private extension ActiveFocusView {
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.04))
+                .fill(Color.white.opacity(0.045))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.white.opacity(0.065), lineWidth: 1)
+                )
         )
     }
 
@@ -426,12 +517,12 @@ private extension ActiveFocusView {
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(participant.name)
-                            .font(.system(size: 13, weight: .heavy, design: .rounded))
-                            .foregroundStyle(Color.white.opacity(0.95))
+                            .font(.system(size: 13, weight: .black))
+                            .foregroundStyle(.white.opacity(0.95))
 
                         Text(participantStatusText(participant))
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .foregroundStyle(Color.white.opacity(0.48))
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.48))
                     }
 
                     Spacer()
@@ -442,7 +533,11 @@ private extension ActiveFocusView {
                 .frame(height: 44)
                 .background(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.white.opacity(0.035))
+                        .fill(Color.white.opacity(0.038))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(Color.white.opacity(0.060), lineWidth: 1)
+                        )
                 )
             }
         }
@@ -450,31 +545,32 @@ private extension ActiveFocusView {
 
     func tagCapsule(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 10, weight: .heavy, design: .rounded))
-            .foregroundStyle(Color.white.opacity(0.70))
+            .font(.system(size: 9, weight: .black, design: .monospaced))
+            .tracking(0.7)
+            .foregroundStyle(theme.accent)
             .padding(.horizontal, 10)
             .frame(height: 22)
             .background(
                 Capsule(style: .continuous)
-                    .fill(Color.white.opacity(0.06))
+                    .fill(theme.accent.opacity(0.12))
             )
     }
 
     func compactPill(icon: String, title: String, value: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(Color.white.opacity(0.82))
+                .font(.system(size: 13, weight: .black))
+                .foregroundStyle(theme.accent)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(title.uppercased())
-                    .font(.system(size: 9, weight: .heavy, design: .rounded))
-                    .tracking(1.4)
-                    .foregroundStyle(Color.white.opacity(0.42))
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .tracking(1.3)
+                    .foregroundStyle(.white.opacity(0.38))
 
                 Text(value)
-                    .font(.system(size: 14, weight: .heavy, design: .rounded))
-                    .foregroundStyle(Color.white.opacity(0.95))
+                    .font(.system(size: 14, weight: .black))
+                    .foregroundStyle(.white.opacity(0.95))
                     .lineLimit(1)
             }
 
@@ -485,9 +581,15 @@ private extension ActiveFocusView {
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.05))
+                .fill(theme.accent.opacity(0.070))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(theme.accent.opacity(0.12), lineWidth: 1)
+                )
         )
     }
+
+    // MARK: - Controls
 
     var controls: some View {
         HStack(spacing: 14) {
@@ -496,20 +598,29 @@ private extension ActiveFocusView {
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: focusSession.isPaused ? "play.fill" : "pause.fill")
-                        .font(.system(size: 17, weight: .heavy))
+                        .font(.system(size: 17, weight: .black))
 
                     Text(focusSession.isPaused ? "Devam Et" : "Duraklat")
-                        .font(.system(size: 17, weight: .heavy, design: .rounded))
+                        .font(.system(size: 17, weight: .black))
                 }
-                .foregroundStyle(Color.white.opacity(0.96))
+                .foregroundStyle(.white.opacity(0.96))
                 .frame(maxWidth: .infinity)
                 .frame(height: 64)
                 .background(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(Color.white.opacity(0.05))
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.070),
+                                    Color.white.opacity(0.040)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
                         .overlay(
                             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                                .stroke(Color.white.opacity(0.085), lineWidth: 1)
                         )
                 )
             }
@@ -522,8 +633,8 @@ private extension ActiveFocusView {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.red.opacity(0.92),
-                                Color.red.opacity(0.72)
+                                Color(arenaHex: AppArenaPalette.coral),
+                                Color.red.opacity(0.78)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -532,17 +643,26 @@ private extension ActiveFocusView {
                     .frame(width: 92, height: 64)
                     .overlay(
                         Image(systemName: "stop.fill")
-                            .font(.system(size: 22, weight: .heavy))
+                            .font(.system(size: 22, weight: .black))
                             .foregroundStyle(.white)
                     )
+                    .shadow(color: Color(arenaHex: AppArenaPalette.coral).opacity(0.24), radius: 14, y: 7)
             }
             .buttonStyle(.plain)
         }
     }
 
+    // MARK: - Participant Logic
+
     func participantsStatusColor(_ participant: FocusParticipant) -> Color {
-        if participant.isHost || participant.isActive { return .green }
-        if participant.isReady { return .yellow }
+        if participant.isHost || participant.isActive {
+            return Color(arenaHex: AppArenaPalette.green)
+        }
+
+        if participant.isReady {
+            return Color(arenaHex: AppArenaPalette.gold)
+        }
+
         return .gray.opacity(0.8)
     }
 
@@ -562,9 +682,12 @@ private extension ActiveFocusView {
 
     var sharedPanelTitle: String {
         switch mode {
-        case .crew: return "Crew ile ortak odak"
-        case .friend: return "Birlikte odaklanıyorsunuz"
-        case .personal: return ""
+        case .crew:
+            return "Crew ile ortak odak"
+        case .friend:
+            return "Birlikte odaklanıyorsunuz"
+        case .personal:
+            return ""
         }
     }
 
@@ -580,13 +703,15 @@ private extension ActiveFocusView {
         }
     }
 
+    // MARK: - Background
+
     var backgroundLayer: some View {
         ZStack {
             LinearGradient(
                 colors: [
-                    .black,
+                    Color.black,
                     theme.backgroundMid,
-                    .black
+                    Color.black
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -594,16 +719,27 @@ private extension ActiveFocusView {
             .ignoresSafeArea()
 
             Circle()
-                .fill(theme.topGlow.opacity(pulse ? 0.30 : 0.22))
+                .fill(theme.topGlow.opacity(pulse ? 0.26 : 0.18))
                 .frame(width: 360, height: 360)
-                .blur(radius: 90)
+                .blur(radius: 95)
                 .offset(x: 110, y: -170)
 
             Circle()
-                .fill(theme.bottomGlow.opacity(pulse ? 0.20 : 0.14))
+                .fill(theme.bottomGlow.opacity(pulse ? 0.18 : 0.12))
                 .frame(width: 320, height: 320)
-                .blur(radius: 110)
+                .blur(radius: 112)
                 .offset(x: -120, y: 330)
+
+            LinearGradient(
+                colors: [
+                    Color.black.opacity(0.14),
+                    Color.clear,
+                    Color.black.opacity(0.32)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
         }
         .ignoresSafeArea()
     }
@@ -615,32 +751,42 @@ private struct ActiveFocusTheme {
     let bottomGlow: Color
     let coreGlow: Color
     let innerGlow: Color
+    let accent: Color
+    let secondaryAccent: Color
 
     static func forMode(_ mode: FocusMode) -> ActiveFocusTheme {
         switch mode {
         case .personal:
             return .init(
-                backgroundMid: Color(red: 0.02, green: 0.04, blue: 0.12),
-                topGlow: Color(red: 0.18, green: 0.42, blue: 1.00),
-                bottomGlow: Color(red: 0.05, green: 0.18, blue: 0.52),
-                coreGlow: Color(red: 0.20, green: 0.46, blue: 1.00),
-                innerGlow: Color(red: 0.22, green: 0.52, blue: 1.00)
+                backgroundMid: Color(arenaHex: "#050814"),
+                topGlow: Color(arenaHex: AppArenaPalette.cyan),
+                bottomGlow: Color(arenaHex: AppArenaPalette.purple),
+                coreGlow: Color(arenaHex: AppArenaPalette.cyan),
+                innerGlow: Color(arenaHex: AppArenaPalette.blue),
+                accent: Color(arenaHex: AppArenaPalette.cyan),
+                secondaryAccent: Color(arenaHex: AppArenaPalette.purple)
             )
+
         case .crew:
             return .init(
-                backgroundMid: Color(red: 0.11, green: 0.02, blue: 0.04),
-                topGlow: Color(red: 1.00, green: 0.20, blue: 0.24),
-                bottomGlow: Color(red: 0.55, green: 0.04, blue: 0.10),
-                coreGlow: Color(red: 1.00, green: 0.25, blue: 0.30),
-                innerGlow: Color(red: 1.00, green: 0.35, blue: 0.38)
+                backgroundMid: Color(arenaHex: "#11060A"),
+                topGlow: Color(arenaHex: AppArenaPalette.coral),
+                bottomGlow: Color(arenaHex: AppArenaPalette.gold),
+                coreGlow: Color(arenaHex: AppArenaPalette.coral),
+                innerGlow: Color(arenaHex: AppArenaPalette.coral),
+                accent: Color(arenaHex: AppArenaPalette.coral),
+                secondaryAccent: Color(arenaHex: AppArenaPalette.gold)
             )
+
         case .friend:
             return .init(
-                backgroundMid: Color(red: 0.07, green: 0.03, blue: 0.12),
-                topGlow: Color(red: 0.78, green: 0.34, blue: 1.00),
-                bottomGlow: Color(red: 0.34, green: 0.08, blue: 0.55),
-                coreGlow: Color(red: 0.82, green: 0.38, blue: 1.00),
-                innerGlow: Color(red: 0.86, green: 0.50, blue: 1.00)
+                backgroundMid: Color(arenaHex: "#090614"),
+                topGlow: Color(arenaHex: AppArenaPalette.purple),
+                bottomGlow: Color(arenaHex: AppArenaPalette.blue),
+                coreGlow: Color(arenaHex: AppArenaPalette.purple),
+                innerGlow: Color(arenaHex: AppArenaPalette.purple),
+                accent: Color(arenaHex: AppArenaPalette.purple),
+                secondaryAccent: Color(arenaHex: AppArenaPalette.blue)
             )
         }
     }

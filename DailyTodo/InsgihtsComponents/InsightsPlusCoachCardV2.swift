@@ -12,8 +12,12 @@ struct InsightsPlusCoachCardV2: View {
     let action: (SmartSuggestionAction) -> Void
     let onTap: () -> Void
 
+    private var accent: Color {
+        data.tint
+    }
+
     private var secondaryAccent: Color {
-        Color(red: 0.03, green: 0.18, blue: 0.36)
+        Color(arenaHex: AppArenaPalette.purple)
     }
 
     var body: some View {
@@ -23,45 +27,53 @@ struct InsightsPlusCoachCardV2: View {
             HStack(spacing: 14) {
                 premiumIcon
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Insights+ Coach")
-                        .font(.system(size: 12, weight: .heavy, design: .rounded))
-                        .foregroundStyle(data.tint.opacity(0.98))
-                        .tracking(0.7)
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack(spacing: 8) {
+                        Rectangle()
+                            .fill(accent)
+                            .frame(width: 16, height: 1)
+
+                        Text("INSIGHTS+ COACH")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(1.5)
+                            .foregroundStyle(accent)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
+                    }
 
                     Text(data.title)
-                        .font(.system(size: 19, weight: .heavy, design: .rounded))
+                        .font(.system(size: 19, weight: .black))
                         .foregroundStyle(.white)
                         .lineLimit(2)
+                        .minimumScaleFactor(0.78)
 
                     Text(data.subtitle)
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.70))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.52))
                         .lineLimit(2)
 
                     progressHint
                 }
 
-                Spacer()
+                Spacer(minLength: 8)
 
                 Button {
                     action(data.action)
                 } label: {
                     Image(systemName: "arrow.right")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 40, height: 40)
-                        .background(Color.white.opacity(0.08), in: Circle())
-                        .overlay(Circle().stroke(Color.white.opacity(0.07), lineWidth: 1))
+                        .font(.system(size: 13, weight: .black))
+                        .foregroundStyle(.black)
+                        .frame(width: 38, height: 38)
+                        .background(
+                            Circle()
+                                .fill(accent)
+                                .shadow(color: accent.opacity(0.22), radius: 10, y: 5)
+                        )
                 }
                 .buttonStyle(.plain)
             }
             .padding(16)
             .background(premiumBackground)
-            .overlay(
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .stroke(Color.white.opacity(0.07), lineWidth: 1)
-            )
         }
         .buttonStyle(.plain)
     }
@@ -69,14 +81,28 @@ struct InsightsPlusCoachCardV2: View {
     private var premiumIcon: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.055))
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            accent.opacity(0.14),
+                            secondaryAccent.opacity(0.08),
+                            Color.white.opacity(0.035)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .frame(width: 66, height: 66)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(accent.opacity(0.16), lineWidth: 1)
+                )
 
             Circle()
                 .fill(
                     RadialGradient(
                         colors: [
-                            data.tint.opacity(0.42),
+                            accent.opacity(0.30),
                             Color.clear
                         ],
                         center: .center,
@@ -87,9 +113,9 @@ struct InsightsPlusCoachCardV2: View {
                 .frame(width: 58, height: 58)
 
             Image(systemName: data.symbol)
-                .font(.system(size: 24, weight: .bold))
-                .foregroundStyle(.white.opacity(0.92))
-                .shadow(color: data.tint.opacity(0.24), radius: 8)
+                .font(.system(size: 24, weight: .black))
+                .foregroundStyle(accent)
+                .shadow(color: accent.opacity(0.22), radius: 8)
         }
     }
 
@@ -97,13 +123,16 @@ struct InsightsPlusCoachCardV2: View {
         HStack(spacing: 5) {
             ForEach(0..<5, id: \.self) { index in
                 Circle()
-                    .fill(index < 4 ? data.tint.opacity(0.95) : Color.white.opacity(0.18))
+                    .fill(index < 4 ? accent.opacity(0.95) : Color.white.opacity(0.16))
                     .frame(width: 5, height: 5)
             }
 
-            Text(data.hint)
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.56))
+            Text(data.hint.uppercased())
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .tracking(0.7)
+                .foregroundStyle(.white.opacity(0.46))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
                 .padding(.leading, 4)
         }
     }
@@ -113,10 +142,9 @@ struct InsightsPlusCoachCardV2: View {
             .fill(
                 LinearGradient(
                     colors: [
-                        data.tint.opacity(0.34),
-                        data.tint.opacity(0.16),
-                        secondaryAccent.opacity(0.62),
-                        Color(red: 0.035, green: 0.035, blue: 0.070)
+                        accent.opacity(0.085),
+                        secondaryAccent.opacity(0.045),
+                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -127,28 +155,33 @@ struct InsightsPlusCoachCardV2: View {
                     .fill(
                         RadialGradient(
                             colors: [
-                                data.tint.opacity(0.24),
+                                accent.opacity(0.15),
                                 Color.clear
                             ],
                             center: .topLeading,
                             startRadius: 4,
-                            endRadius: 150
+                            endRadius: 160
                         )
                     )
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .fill(
-                        LinearGradient(
+                        RadialGradient(
                             colors: [
-                                Color.white.opacity(0.075),
-                                Color.clear,
-                                Color.black.opacity(0.18)
+                                Color(arenaHex: AppArenaPalette.blue).opacity(0.08),
+                                Color.clear
                             ],
-                            startPoint: .top,
-                            endPoint: .bottom
+                            center: .bottomTrailing,
+                            startRadius: 8,
+                            endRadius: 180
                         )
                     )
             )
+            .overlay(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .stroke(accent.opacity(0.14), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
     }
 }

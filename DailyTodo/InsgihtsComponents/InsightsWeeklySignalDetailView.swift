@@ -17,11 +17,28 @@ struct InsightsWeeklySignalDetailView: View {
     @State private var animateBars = false
     @State private var animateLine = false
 
+    private var accent: Color {
+        Color(arenaHex: AppArenaPalette.cyan)
+    }
+
+    private var secondaryAccent: Color {
+        Color(arenaHex: AppArenaPalette.blue)
+    }
+
+    private var warmAccent: Color {
+        Color(arenaHex: AppArenaPalette.gold)
+    }
+
     var body: some View {
         ZStack(alignment: .top) {
-            Color.black.ignoresSafeArea()
+            ArenaBackground(
+                primaryGlow: accent,
+                secondaryGlow: Color(arenaHex: AppArenaPalette.purple),
+                warmGlow: warmAccent,
+                intensity: 0.92
+            )
 
-            ScrollView {
+            ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     header
                     heroCard
@@ -31,15 +48,16 @@ struct InsightsWeeklySignalDetailView: View {
                     Spacer(minLength: 40)
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 12)
+                .padding(.top, 16)
+                .padding(.bottom, 26)
             }
-            .scrollIndicators(.hidden)
         }
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
             withAnimation(.spring(response: 0.72, dampingFraction: 0.84)) {
                 animateBars = true
             }
+
             withAnimation(.easeOut(duration: 0.8).delay(0.08)) {
                 animateLine = true
             }
@@ -47,15 +65,45 @@ struct InsightsWeeklySignalDetailView: View {
     }
 
     private var header: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Weekly Signal")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(accent)
+                        .frame(width: 20, height: 1)
 
-                Text("Premium weekly rhythm analysis")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.60))
+                    Text("WEEKLY SIGNAL")
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .tracking(2.3)
+                        .foregroundStyle(accent)
+                        .lineLimit(1)
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Text("Weekly")
+                        .font(.system(size: 38, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text("signal")
+                        .font(.system(size: 35, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    accent,
+                                    secondaryAccent
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+
+                Text("Premium weekly rhythm analysis.")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.48))
             }
 
             Spacer()
@@ -64,61 +112,89 @@ struct InsightsWeeklySignalDetailView: View {
                 dismiss()
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 15, weight: .black))
                     .foregroundStyle(.white)
-                    .frame(width: 36, height: 36)
-                    .background(Color.white.opacity(0.08), in: Circle())
+                    .frame(width: 44, height: 44)
+                    .background(
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.095),
+                                        Color.white.opacity(0.045)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                            )
+                            .shadow(color: Color.black.opacity(0.24), radius: 12, y: 6)
+                    )
             }
             .buttonStyle(.plain)
         }
     }
 
     private var heroCard: some View {
-        premiumSurface(tint: .blue) {
+        premiumSurface(tint: accent) {
             VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Signal Overview")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.56))
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 8) {
+                            Rectangle()
+                                .fill(accent)
+                                .frame(width: 18, height: 1)
+
+                            Text("SIGNAL OVERVIEW")
+                                .font(.system(size: 10, weight: .black, design: .monospaced))
+                                .tracking(1.7)
+                                .foregroundStyle(accent)
+                        }
 
                         Text(data.trendSummary)
-                            .font(.system(size: 26, weight: .bold, design: .rounded))
+                            .font(.system(size: 26, weight: .black))
                             .foregroundStyle(.white)
                             .lineLimit(2)
+                            .minimumScaleFactor(0.75)
                     }
 
                     Spacer()
 
                     Image(systemName: "waveform.path.ecg")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.78))
+                        .font(.system(size: 20, weight: .black))
+                        .foregroundStyle(accent)
+                        .frame(width: 48, height: 48)
+                        .background(
+                            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                .fill(accent.opacity(0.12))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                        .stroke(accent.opacity(0.16), lineWidth: 1)
+                                )
+                        )
                 }
 
                 HStack(spacing: 8) {
-                    statChip(data.completionTotalText)
-                    statChip(data.focusTotalText)
-                    statChip(data.streakText)
+                    statChip(data.completionTotalText, tint: accent)
+                    statChip(data.focusTotalText, tint: secondaryAccent)
+                    statChip(data.streakText, tint: warmAccent)
                 }
             }
         }
     }
 
     private var weeklyChartCard: some View {
-        premiumSurface(tint: .cyan) {
+        premiumSurface(tint: Color(arenaHex: AppArenaPalette.blue)) {
             VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Text("7-Day Rhythm")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-
-                    Spacer()
-
-                    HStack(spacing: 8) {
-                        miniLegend(color: .white.opacity(0.88), text: "Peak")
-                        miniLegend(color: .white.opacity(0.22), text: "Base")
-                    }
-                }
+                sectionHeader(
+                    eyebrow: "7-DAY CHART",
+                    title: "7-Day Rhythm",
+                    icon: "chart.bar.fill",
+                    tint: Color(arenaHex: AppArenaPalette.blue)
+                )
 
                 ZStack(alignment: .bottomLeading) {
                     gridBackground
@@ -128,15 +204,21 @@ struct InsightsWeeklySignalDetailView: View {
                             VStack(spacing: 8) {
                                 ZStack(alignment: .bottom) {
                                     Capsule()
-                                        .fill(Color.white.opacity(0.06))
+                                        .fill(Color.white.opacity(0.060))
                                         .frame(width: day.isHighlight ? 40 : 28, height: 122)
 
                                     Capsule()
                                         .fill(
                                             LinearGradient(
                                                 colors: day.isHighlight
-                                                    ? [.white.opacity(0.98), .white.opacity(0.84)]
-                                                    : [.blue.opacity(0.85), .white.opacity(0.72)],
+                                                ? [
+                                                    Color(arenaHex: AppArenaPalette.gold).opacity(0.98),
+                                                    accent.opacity(0.86)
+                                                ]
+                                                : [
+                                                    Color(arenaHex: AppArenaPalette.blue).opacity(0.88),
+                                                    Color(arenaHex: AppArenaPalette.cyan).opacity(0.72)
+                                                ],
                                                 startPoint: .bottom,
                                                 endPoint: .top
                                             )
@@ -146,57 +228,74 @@ struct InsightsWeeklySignalDetailView: View {
                                             height: animateBars ? max(14, day.value * 122) : 10
                                         )
                                         .shadow(
-                                            color: day.isHighlight ? .white.opacity(0.16) : .blue.opacity(0.18),
+                                            color: day.isHighlight
+                                            ? Color(arenaHex: AppArenaPalette.gold).opacity(0.20)
+                                            : Color(arenaHex: AppArenaPalette.blue).opacity(0.18),
                                             radius: 10,
                                             y: 4
                                         )
                                 }
 
                                 Text(day.label)
-                                    .font(.system(size: 11, weight: .semibold))
+                                    .font(.system(size: 10, weight: .black, design: .monospaced))
                                     .foregroundStyle(.white.opacity(day.isHighlight ? 0.92 : 0.56))
+                                    .lineLimit(1)
                             }
                             .frame(maxWidth: .infinity)
                         }
                     }
                     .frame(height: 156)
                 }
+
+                HStack(spacing: 8) {
+                    miniLegend(color: Color(arenaHex: AppArenaPalette.gold), text: "Peak")
+                    miniLegend(color: Color.white.opacity(0.22), text: "Base")
+                }
             }
         }
     }
 
     private var dailyBreakdownCard: some View {
-        premiumSurface(tint: .purple) {
+        premiumSurface(tint: Color(arenaHex: AppArenaPalette.purple)) {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Daily Breakdown")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                sectionHeader(
+                    eyebrow: "DAILY DETAILS",
+                    title: "Daily Breakdown",
+                    icon: "list.bullet.rectangle",
+                    tint: Color(arenaHex: AppArenaPalette.purple)
+                )
 
                 ForEach(data.days) { day in
                     HStack(spacing: 12) {
                         Text(day.label)
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(size: 12, weight: .black, design: .monospaced))
                             .foregroundStyle(.white.opacity(day.isHighlight ? 0.92 : 0.58))
                             .frame(width: 28, alignment: .leading)
 
                         GeometryReader { proxy in
                             ZStack(alignment: .leading) {
                                 Capsule()
-                                    .fill(Color.white.opacity(0.06))
+                                    .fill(Color.white.opacity(0.060))
                                     .frame(height: 8)
 
                                 Capsule()
                                     .fill(
                                         LinearGradient(
                                             colors: day.isHighlight
-                                                ? [.white.opacity(0.96), .white.opacity(0.82)]
-                                                : [.purple.opacity(0.85), .white.opacity(0.72)],
+                                            ? [
+                                                Color(arenaHex: AppArenaPalette.gold).opacity(0.96),
+                                                accent.opacity(0.82)
+                                            ]
+                                            : [
+                                                Color(arenaHex: AppArenaPalette.purple).opacity(0.86),
+                                                Color(arenaHex: AppArenaPalette.cyan).opacity(0.70)
+                                            ],
                                             startPoint: .leading,
                                             endPoint: .trailing
                                         )
                                     )
                                     .frame(
-                                        width: animateLine ? proxy.size.width * day.value : 12,
+                                        width: animateLine ? max(8, proxy.size.width * day.value) : 12,
                                         height: 8
                                     )
                             }
@@ -205,35 +304,38 @@ struct InsightsWeeklySignalDetailView: View {
 
                         VStack(alignment: .trailing, spacing: 2) {
                             Text("\(day.completedCount) görev")
-                                .font(.system(size: 11, weight: .bold))
+                                .font(.system(size: 11, weight: .black))
                                 .foregroundStyle(.white.opacity(0.82))
 
                             Text("\(day.focusMinutes) dk")
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.46))
+                                .font(.system(size: 10, weight: .black, design: .monospaced))
+                                .foregroundStyle(.white.opacity(0.42))
                         }
-                        .frame(width: 54, alignment: .trailing)
+                        .frame(width: 58, alignment: .trailing)
                     }
                 }
 
                 HStack(spacing: 8) {
-                    summaryTag("Strongest \(data.strongestDay)", tint: .green)
-                    summaryTag("Weakest \(data.weakestDay)", tint: .orange)
+                    summaryTag("Strongest \(data.strongestDay)", tint: Color(arenaHex: AppArenaPalette.green))
+                    summaryTag("Weakest \(data.weakestDay)", tint: Color(arenaHex: AppArenaPalette.gold))
                 }
             }
         }
     }
 
     private var actionCard: some View {
-        premiumSurface(tint: .orange) {
+        premiumSurface(tint: Color(arenaHex: AppArenaPalette.gold)) {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Next Move")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                sectionHeader(
+                    eyebrow: "NEXT MOVE",
+                    title: "Next Move",
+                    icon: "arrow.up.forward",
+                    tint: Color(arenaHex: AppArenaPalette.gold)
+                )
 
                 Text("Use your strongest day as a template and reinforce your weakest one with a short block.")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.74))
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.56))
                     .lineLimit(3)
 
                 HStack(spacing: 10) {
@@ -241,12 +343,16 @@ struct InsightsWeeklySignalDetailView: View {
                         dismiss()
                         onOpenFocus()
                     } label: {
-                        Text("Focus Başlat")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                        Text("FOCUS BAŞLAT")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(0.8)
                             .foregroundStyle(.black)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 11)
-                            .background(Color.white, in: Capsule())
+                            .padding(.horizontal, 14)
+                            .frame(height: 38)
+                            .background(
+                                Capsule()
+                                    .fill(Color(arenaHex: AppArenaPalette.gold))
+                            )
                     }
                     .buttonStyle(.plain)
 
@@ -254,14 +360,24 @@ struct InsightsWeeklySignalDetailView: View {
                         dismiss()
                         onOpenWeek()
                     } label: {
-                        Text("Haftayı Aç")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 11)
-                            .background(Color.white.opacity(0.08), in: Capsule())
+                        Text("HAFTAYI AÇ")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(0.8)
+                            .foregroundStyle(.white.opacity(0.84))
+                            .padding(.horizontal, 14)
+                            .frame(height: 38)
+                            .background(
+                                Capsule()
+                                    .fill(Color.white.opacity(0.070))
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                    )
+                            )
                     }
                     .buttonStyle(.plain)
+
+                    Spacer()
                 }
             }
         }
@@ -271,20 +387,67 @@ struct InsightsWeeklySignalDetailView: View {
         VStack(spacing: 22) {
             ForEach(0..<4, id: \.self) { _ in
                 Rectangle()
-                    .fill(Color.white.opacity(0.05))
+                    .fill(Color.white.opacity(0.045))
                     .frame(height: 1)
             }
         }
         .padding(.bottom, 26)
     }
 
-    private func statChip(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(.white.opacity(0.82))
+    private func sectionHeader(
+        eyebrow: String,
+        title: String,
+        icon: String,
+        tint: Color
+    ) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(tint)
+                        .frame(width: 18, height: 1)
+
+                    Text(eyebrow)
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .tracking(1.6)
+                        .foregroundStyle(tint)
+                }
+
+                Text(title)
+                    .font(.system(size: 22, weight: .black))
+                    .foregroundStyle(.white)
+            }
+
+            Spacer()
+
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .black))
+                .foregroundStyle(tint)
+                .frame(width: 36, height: 36)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(tint.opacity(0.12))
+                )
+        }
+    }
+
+    private func statChip(_ text: String, tint: Color) -> some View {
+        Text(text.uppercased())
+            .font(.system(size: 9, weight: .black, design: .monospaced))
+            .tracking(0.7)
+            .foregroundStyle(tint)
+            .lineLimit(1)
+            .minimumScaleFactor(0.70)
             .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(Color.white.opacity(0.08), in: Capsule())
+            .frame(height: 30)
+            .background(
+                Capsule()
+                    .fill(tint.opacity(0.12))
+                    .overlay(
+                        Capsule()
+                            .stroke(tint.opacity(0.16), lineWidth: 1)
+                    )
+            )
     }
 
     private func miniLegend(color: Color, text: String) -> some View {
@@ -293,8 +456,9 @@ struct InsightsWeeklySignalDetailView: View {
                 .fill(color)
                 .frame(width: 6, height: 6)
 
-            Text(text)
-                .font(.system(size: 10, weight: .semibold))
+            Text(text.uppercased())
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .tracking(0.7)
                 .foregroundStyle(.white.opacity(0.46))
         }
     }
@@ -306,12 +470,21 @@ struct InsightsWeeklySignalDetailView: View {
                 .frame(width: 7, height: 7)
 
             Text(text)
-                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .font(.system(size: 12, weight: .black))
                 .foregroundStyle(.white.opacity(0.86))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(Color.white.opacity(0.08), in: Capsule())
+        .frame(height: 30)
+        .background(
+            Capsule()
+                .fill(tint.opacity(0.12))
+                .overlay(
+                    Capsule()
+                        .stroke(tint.opacity(0.16), lineWidth: 1)
+                )
+        )
     }
 
     private func premiumSurface<Content: View>(
@@ -323,10 +496,9 @@ struct InsightsWeeklySignalDetailView: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            tint.opacity(0.34),
-                            tint.opacity(0.16),
-                            Color(red: 0.03, green: 0.18, blue: 0.36).opacity(0.62),
-                            Color(red: 0.035, green: 0.035, blue: 0.070)
+                            tint.opacity(0.085),
+                            Color(arenaHex: AppArenaPalette.purple).opacity(0.040),
+                            Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -337,33 +509,34 @@ struct InsightsWeeklySignalDetailView: View {
                         .fill(
                             RadialGradient(
                                 colors: [
-                                    tint.opacity(0.24),
+                                    tint.opacity(0.145),
                                     Color.clear
                                 ],
                                 center: .topLeading,
                                 startRadius: 4,
-                                endRadius: 150
+                                endRadius: 170
                             )
                         )
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
                         .fill(
-                            LinearGradient(
+                            RadialGradient(
                                 colors: [
-                                    Color.white.opacity(0.075),
-                                    Color.clear,
-                                    Color.black.opacity(0.18)
+                                    Color(arenaHex: AppArenaPalette.blue).opacity(0.075),
+                                    Color.clear
                                 ],
-                                startPoint: .top,
-                                endPoint: .bottom
+                                center: .bottomTrailing,
+                                startRadius: 8,
+                                endRadius: 190
                             )
                         )
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                        .stroke(tint.opacity(0.14), lineWidth: 1)
                 )
+                .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
 
             content()
                 .padding(18)

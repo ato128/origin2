@@ -10,9 +10,13 @@ import SwiftUI
 extension TodoListView {
 
     var tasksAmbientBackground: some View {
-        AppBackground()
+        ArenaBackground(
+            primaryGlow: Color(arenaHex: AppArenaPalette.blue),
+            secondaryGlow: Color(arenaHex: AppArenaPalette.purple),
+            warmGlow: Color(arenaHex: AppArenaPalette.coral),
+            intensity: 0.92
+        )
     }
-
     var overdueTaskCount: Int {
         store.items.filter { task in
             !task.isDone && store.isOverdue(task)
@@ -22,7 +26,7 @@ extension TodoListView {
    
     var tasksHeader: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
                 Button {
                     showProfileHub = true
                     haptic(.light)
@@ -32,125 +36,179 @@ extension TodoListView {
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color.blue.opacity(0.42),
-                                        Color.purple.opacity(0.28)
+                                        Color(arenaHex: AppArenaPalette.blue).opacity(0.88),
+                                        Color(arenaHex: AppArenaPalette.purple).opacity(0.76)
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
                             )
-                            .frame(width: 46, height: 46)
+                            .frame(width: 50, height: 50)
 
                         Circle()
-                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                            .frame(width: 46, height: 46)
+                            .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                            .frame(width: 50, height: 50)
 
                         Image(systemName: "person.fill")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.95))
+                            .font(.system(size: 19, weight: .black))
+                            .foregroundStyle(.white)
                     }
-                    .shadow(color: .black.opacity(0.18), radius: 8, y: 4)
+                    .shadow(color: Color(arenaHex: AppArenaPalette.blue).opacity(0.18), radius: 14, y: 7)
                 }
                 .buttonStyle(.plain)
 
-                Text(todoHeroTitle)
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundStyle(palette.primaryText)
-                    .shadow(color: .white.opacity(0.04), radius: 2, y: 1)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(todoHeroTitle)
+                        .font(.system(size: 34, weight: .black))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
 
-                Spacer()
+                    HStack(spacing: 7) {
+                        Circle()
+                            .fill(headerStatusTint)
+                            .frame(width: 6, height: 6)
 
-                HStack(spacing: 10) {
-                    Button {
+                        Text(todoHeaderSubtitle)
+                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            .foregroundStyle(headerStatusTint.opacity(0.95))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    }
+                }
+
+                Spacer(minLength: 8)
+
+                HStack(spacing: 9) {
+                    headerCircleButton(
+                        systemName: "checklist",
+                        tint: overdueTaskCount > 0 ? Color(arenaHex: AppArenaPalette.gold) : .white.opacity(0.88),
+                        badge: overdueTaskCount > 0 ? "\(min(overdueTaskCount, 9))" : nil
+                    ) {
                         showTasksShortcut = true
                         haptic(.light)
-                    } label: {
-                        ZStack(alignment: .topTrailing) {
-                            Image(systemName: "checklist")
-                                .font(.system(size: 15.5, weight: .semibold))
-                                .foregroundStyle(
-                                    overdueTaskCount > 0
-                                    ? Color.orange
-                                    : palette.primaryText
-                                )
-                                .frame(width: 38, height: 38)
-                                .background(
-                                    Circle()
-                                        .fill(palette.cardFill.opacity(0.96))
-                                        .overlay(
-                                            Circle()
-                                                .stroke(
-                                                    overdueTaskCount > 0
-                                                    ? Color.orange.opacity(0.18)
-                                                    : palette.cardStroke.opacity(0.9),
-                                                    lineWidth: 1
-                                                )
-                                        )
-                                )
-
-                            if overdueTaskCount > 0 {
-                                Text("\(min(overdueTaskCount, 9))")
-                                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                                    .foregroundStyle(.white)
-                                    .padding(5)
-                                    .background(Color.orange)
-                                    .clipShape(Circle())
-                                    .offset(x: 5, y: -5)
-                            }
-                        }
                     }
-                    .buttonStyle(.plain)
 
-                    Button {
+                    headerCircleButton(
+                        systemName: "bubble.left.and.bubble.right.fill",
+                        tint: unreadCount > 0 ? Color(arenaHex: AppArenaPalette.coral) : .white.opacity(0.88),
+                        badge: unreadCount > 0 ? "\(min(unreadCount, 9))" : nil
+                    ) {
                         showMessages = true
                         haptic(.light)
-                    } label: {
-                        ZStack(alignment: .topTrailing) {
-                            Image(systemName: "bubble.left.and.bubble.right.fill")
-                                .font(.system(size: 15.5, weight: .semibold))
-                                .foregroundStyle(palette.primaryText)
-                                .frame(width: 38, height: 38)
-                                .background(
-                                    Circle()
-                                        .fill(palette.cardFill.opacity(0.96))
-                                        .overlay(
-                                            Circle()
-                                                .stroke(palette.cardStroke.opacity(0.9), lineWidth: 1)
-                                        )
-                                )
-
-                            if unreadCount > 0 {
-                                Text("\(min(unreadCount, 9))")
-                                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                                    .foregroundStyle(.white)
-                                    .padding(5)
-                                    .background(Color.red)
-                                    .clipShape(Circle())
-                                    .offset(x: 5, y: -5)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-
-                    if let next = nextClassInfo {
-                        Button {
-                            withAnimation(.easeInOut) {
-                                selectedTab = .week
-                            }
-                            haptic(.light)
-                        } label: {
-                            LiveBadgeView(
-                                next: next,
-                                palette: palette
-                            )
-                        }
-                        .buttonStyle(.plain)
                     }
                 }
             }
+
+            if let next = nextClassInfo {
+                Button {
+                    withAnimation(.easeInOut) {
+                        selectedTab = .week
+                    }
+                    haptic(.light)
+                } label: {
+                    ArenaLiveBadgeView(
+                        next: next,
+                        tint: next.status == .live
+                        ? Color(arenaHex: AppArenaPalette.green)
+                        : Color(arenaHex: AppArenaPalette.gold)
+                    )
+                }
+                .buttonStyle(.plain)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
-        .padding(.horizontal, 4)
-        .padding(.top, 4)
+        .padding(.horizontal, 2)
+        .padding(.top, 2)
+    }
+    
+    private var headerStatusTint: Color {
+        if overdueTaskCount > 0 {
+            return Color(arenaHex: AppArenaPalette.gold)
+        }
+
+        if unreadCount > 0 {
+            return Color(arenaHex: AppArenaPalette.coral)
+        }
+
+        if let next = nextClassInfo {
+            switch next.status {
+            case .live:
+                return Color(arenaHex: AppArenaPalette.green)
+            case .next:
+                return Color(arenaHex: AppArenaPalette.cyan)
+            }
+        }
+
+        return Color(arenaHex: AppArenaPalette.cyan)
+    }
+
+    private var todoHeaderSubtitle: String {
+        if overdueTaskCount > 0 {
+            return "\(overdueTaskCount) GÖREV BEKLİYOR"
+        }
+
+        if unreadCount > 0 {
+            return "\(unreadCount) MESAJ VAR"
+        }
+
+        if let next = nextClassInfo {
+            switch next.status {
+            case .live:
+                return "DERS ŞU AN AKTİF"
+            case .next:
+                return "SIRADAKİ DERS HAZIR"
+            }
+        }
+
+        return "BUGÜN SAKİN GÖRÜNÜYOR"
+    }
+
+    func headerCircleButton(
+        systemName: String,
+        tint: Color,
+        badge: String?,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: systemName)
+                    .font(.system(size: 17, weight: .black))
+                    .foregroundStyle(tint)
+                    .frame(width: 46, height: 46)
+                    .background(
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.090),
+                                        Color.white.opacity(0.050)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                            )
+                            .shadow(color: Color.black.opacity(0.22), radius: 12, y: 6)
+                    )
+
+                if let badge {
+                    Text(badge)
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .foregroundStyle(.black)
+                        .frame(minWidth: 18, minHeight: 18)
+                        .background(
+                            Circle()
+                                .fill(Color(arenaHex: AppArenaPalette.gold))
+                        )
+                        .offset(x: 4, y: -4)
+                }
+            }
+        }
+        .buttonStyle(.plain)
     }
     private var todoHeroTitle: String {
         if overdueTaskCount > 0 {
@@ -194,74 +252,73 @@ extension TodoListView {
 }
 
 extension TodoListView {
-    struct LiveBadgeView: View {
+    struct ArenaLiveBadgeView: View {
         let next: (title: String, timeText: String, status: TodoListView.NextClassStatus)
-        let palette: ThemePalette
+        let tint: Color
 
         var body: some View {
-            let isLive = next.status == .live
-
-            HStack(spacing: 8) {
-                HStack(spacing: 5) {
+            HStack(spacing: 10) {
+                HStack(spacing: 6) {
                     Circle()
-                        .fill(isLive ? Color.green : Color.orange)
-                        .frame(width: 6, height: 6)
-                        .shadow(
-                            color: isLive ? Color.green.opacity(0.45) : Color.orange.opacity(0.35),
-                            radius: isLive ? 6 : 4
-                        )
+                        .fill(tint)
+                        .frame(width: 7, height: 7)
+                        .shadow(color: tint.opacity(0.45), radius: 7)
 
-                    Text(
-                        isLive
-                        ? tr("todo_live_badge_live")
-                        : tr("todo_live_badge_next")
-                    )
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(isLive ? Color.green : Color.orange)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    Text(next.status == .live ? "LIVE" : "NEXT")
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .tracking(1.2)
+                        .foregroundStyle(tint)
                 }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 4)
+                .padding(.horizontal, 9)
+                .frame(height: 28)
                 .background(
                     Capsule()
-                        .fill(isLive ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
-                )
-                .overlay(
-                    Capsule()
-                        .stroke(
-                            isLive ? Color.green.opacity(0.22) : Color.orange.opacity(0.22),
-                            lineWidth: 0.8
+                        .fill(tint.opacity(0.13))
+                        .overlay(
+                            Capsule()
+                                .stroke(tint.opacity(0.20), lineWidth: 1)
                         )
                 )
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(next.title.uppercased())
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(palette.primaryText)
+                        .font(.system(size: 12, weight: .black, design: .monospaced))
+                        .foregroundStyle(.white)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .truncationMode(.tail)
-                        .layoutPriority(1)
+                        .minimumScaleFactor(0.74)
 
                     Text(next.timeText)
-                        .font(.caption2)
-                        .foregroundStyle(palette.secondaryText)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.50))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.8)
                 }
 
                 Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .black))
+                    .foregroundStyle(tint.opacity(0.85))
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
+            .padding(.horizontal, 12)
+            .frame(height: 52)
             .background(
                 Capsule()
-                    .fill(palette.cardFill)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                tint.opacity(0.060),
+                                Color(arenaHex: AppArenaPalette.purple).opacity(0.040),
+                                Color.white.opacity(0.036)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
                     .overlay(
                         Capsule()
-                            .stroke(palette.cardStroke, lineWidth: 1)
+                            .stroke(Color.white.opacity(0.080), lineWidth: 1)
                     )
+                    .shadow(color: Color.black.opacity(0.18), radius: 10, y: 5)
             )
         }
     }

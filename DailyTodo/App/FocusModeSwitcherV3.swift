@@ -11,25 +11,22 @@ struct FocusModeSwitcherV3: View {
     @Binding var selectedMode: FocusMode
     @Namespace private var namespace
 
-    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
-    private let palette = ThemePalette()
-
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 7) {
             ForEach(FocusMode.allCases) { mode in
                 Button {
-                    withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
+                    withAnimation(.spring(response: 0.30, dampingFraction: 0.86)) {
                         selectedMode = mode
                     }
                 } label: {
                     ZStack {
                         if selectedMode == mode {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
                                 .fill(
                                     LinearGradient(
                                         colors: [
-                                            Color.white.opacity(0.11),
-                                            Color.white.opacity(0.045)
+                                            accent(for: mode),
+                                            secondaryAccent(for: mode)
                                         ],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
@@ -37,30 +34,28 @@ struct FocusModeSwitcherV3: View {
                                 )
                                 .matchedGeometryEffect(id: "focus_mode_bg", in: namespace)
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .stroke(
-                                            LinearGradient(
-                                                colors: [
-                                                    Color.white.opacity(0.10),
-                                                    Color.white.opacity(0.035)
-                                                ],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            ),
-                                            lineWidth: 1
-                                        )
+                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                        .stroke(Color.white.opacity(0.13), lineWidth: 1)
+                                )
+                                .shadow(
+                                    color: accent(for: mode).opacity(0.22),
+                                    radius: 14,
+                                    y: 7
                                 )
                         }
 
-                        Text(mode.title)
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(
-                                selectedMode == mode
-                                ? palette.primaryText.opacity(0.98)
-                                : palette.secondaryText.opacity(0.82)
-                            )
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 46)
+                        HStack(spacing: 7) {
+                            Image(systemName: icon(for: mode))
+                                .font(.system(size: 13, weight: .black))
+
+                            Text(mode.title)
+                                .font(.system(size: 13, weight: .black, design: .monospaced))
+                                .tracking(selectedMode == mode ? 0.2 : 0)
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(selectedMode == mode ? .black : .white.opacity(0.48))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
                     }
                 }
                 .buttonStyle(.plain)
@@ -68,26 +63,56 @@ struct FocusModeSwitcherV3: View {
         }
         .padding(6)
         .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.025),
-                            Color.white.opacity(0.01),
-                            Color.black.opacity(0.10)
+                            Color(arenaHex: AppArenaPalette.blue).opacity(0.055),
+                            Color(arenaHex: AppArenaPalette.purple).opacity(0.040),
+                            Color.white.opacity(0.030)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
-                .background(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(.ultraThinMaterial.opacity(0.16))
-                )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(Color.white.opacity(0.045), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .stroke(Color.white.opacity(0.080), lineWidth: 1)
                 )
+                .shadow(color: Color.black.opacity(0.22), radius: 14, y: 7)
         )
+    }
+
+    private func icon(for mode: FocusMode) -> String {
+        switch mode {
+        case .personal:
+            return "person.fill"
+        case .crew:
+            return "person.3.fill"
+        case .friend:
+            return "person.2.fill"
+        }
+    }
+
+    private func accent(for mode: FocusMode) -> Color {
+        switch mode {
+        case .personal:
+            return Color(arenaHex: AppArenaPalette.cyan)
+        case .crew:
+            return Color(arenaHex: AppArenaPalette.coral)
+        case .friend:
+            return Color(arenaHex: AppArenaPalette.purple)
+        }
+    }
+
+    private func secondaryAccent(for mode: FocusMode) -> Color {
+        switch mode {
+        case .personal:
+            return Color(arenaHex: AppArenaPalette.purple)
+        case .crew:
+            return Color(arenaHex: AppArenaPalette.gold)
+        case .friend:
+            return Color(arenaHex: AppArenaPalette.blue)
+        }
     }
 }

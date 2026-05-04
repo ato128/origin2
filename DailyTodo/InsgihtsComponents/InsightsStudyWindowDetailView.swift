@@ -16,11 +16,24 @@ struct InsightsStudyWindowDetailView: View {
     @State private var animateBars = false
     @State private var animateRing = false
 
+    private var accent: Color {
+        Color(arenaHex: AppArenaPalette.gold)
+    }
+
+    private var secondaryAccent: Color {
+        Color(arenaHex: AppArenaPalette.coral)
+    }
+
     var body: some View {
         ZStack(alignment: .top) {
-            Color.black.ignoresSafeArea()
+            ArenaBackground(
+                primaryGlow: accent,
+                secondaryGlow: Color(arenaHex: AppArenaPalette.purple),
+                warmGlow: secondaryAccent,
+                intensity: 0.92
+            )
 
-            ScrollView {
+            ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     header
                     heroCard
@@ -30,15 +43,16 @@ struct InsightsStudyWindowDetailView: View {
                     Spacer(minLength: 40)
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 12)
+                .padding(.top, 16)
+                .padding(.bottom, 26)
             }
-            .scrollIndicators(.hidden)
         }
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
             withAnimation(.easeOut(duration: 0.75)) {
                 animateRing = true
             }
+
             withAnimation(.spring(response: 0.7, dampingFraction: 0.82).delay(0.08)) {
                 animateBars = true
             }
@@ -46,15 +60,45 @@ struct InsightsStudyWindowDetailView: View {
     }
 
     private var header: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Study Window")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(accent)
+                        .frame(width: 20, height: 1)
 
-                Text("Premium course-level focus insight")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.60))
+                    Text("STUDY WINDOW")
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .tracking(2.3)
+                        .foregroundStyle(accent)
+                        .lineLimit(1)
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Text("Study")
+                        .font(.system(size: 38, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text("window")
+                        .font(.system(size: 35, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    accent,
+                                    secondaryAccent
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+
+                Text("Premium course-level focus insight.")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.48))
             }
 
             Spacer()
@@ -63,34 +107,60 @@ struct InsightsStudyWindowDetailView: View {
                 dismiss()
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 15, weight: .black))
                     .foregroundStyle(.white)
-                    .frame(width: 36, height: 36)
-                    .background(Color.white.opacity(0.08), in: Circle())
+                    .frame(width: 44, height: 44)
+                    .background(
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.095),
+                                        Color.white.opacity(0.045)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                            )
+                            .shadow(color: Color.black.opacity(0.24), radius: 12, y: 6)
+                    )
             }
             .buttonStyle(.plain)
         }
     }
 
     private var heroCard: some View {
-        premiumSurface(tint: .purple) {
+        premiumSurface(tint: accent) {
             HStack(alignment: .center, spacing: 18) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Best Window")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.56))
+                    HStack(spacing: 8) {
+                        Rectangle()
+                            .fill(accent)
+                            .frame(width: 18, height: 1)
+
+                        Text("BEST WINDOW")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(1.7)
+                            .foregroundStyle(accent)
+                    }
 
                     Text(data.timeRangeText)
-                        .font(.system(size: 30, weight: .bold, design: .rounded))
+                        .font(.system(size: 30, weight: .black))
                         .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
 
                     Text(data.confidenceText)
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.66))
+                        .font(.system(size: 12, weight: .black))
+                        .foregroundStyle(.white.opacity(0.52))
 
                     HStack(spacing: 8) {
-                        miniChip("Longer focus")
-                        miniChip("Higher completion")
+                        miniChip("Longer focus", tint: accent)
+                        miniChip("Higher completion", tint: secondaryAccent)
                     }
                 }
 
@@ -104,53 +174,50 @@ struct InsightsStudyWindowDetailView: View {
     private var progressRing: some View {
         ZStack {
             Circle()
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                .frame(width: 102, height: 102)
+                .stroke(Color.white.opacity(0.075), lineWidth: 8)
+                .frame(width: 104, height: 104)
 
             Circle()
                 .trim(from: 0.12, to: animateRing ? 0.84 : 0.12)
                 .stroke(
                     AngularGradient(
                         colors: [
-                            Color.purple.opacity(0.95),
-                            Color.pink.opacity(0.88),
-                            Color.white.opacity(0.92)
+                            accent.opacity(0.98),
+                            secondaryAccent.opacity(0.92),
+                            Color(arenaHex: AppArenaPalette.purple).opacity(0.84),
+                            accent.opacity(0.98)
                         ],
                         center: .center
                     ),
                     style: StrokeStyle(lineWidth: 8, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-110))
-                .frame(width: 82, height: 82)
+                .frame(width: 86, height: 86)
+                .shadow(color: accent.opacity(0.20), radius: 10, y: 3)
 
             VStack(spacing: 4) {
                 Image(systemName: "clock.fill")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.88))
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundStyle(accent)
 
                 Text(data.timeRangeText)
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
                     .foregroundStyle(.white)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.65)
+                    .minimumScaleFactor(0.62)
             }
         }
     }
 
     private var courseBreakdownCard: some View {
-        premiumSurface(tint: .blue) {
+        premiumSurface(tint: Color(arenaHex: AppArenaPalette.blue)) {
             VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    Text("Course Breakdown")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-
-                    Spacer()
-
-                    Image(systemName: "chart.bar.xaxis")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.60))
-                }
+                sectionHeader(
+                    eyebrow: "COURSE CHART",
+                    title: "Course Breakdown",
+                    icon: "chart.bar.xaxis",
+                    tint: Color(arenaHex: AppArenaPalette.blue)
+                )
 
                 if data.rows.isEmpty {
                     emptyGraphState
@@ -168,7 +235,7 @@ struct InsightsStudyWindowDetailView: View {
                     VStack(spacing: 8) {
                         ZStack(alignment: .bottom) {
                             Capsule()
-                                .fill(Color.white.opacity(0.06))
+                                .fill(Color.white.opacity(0.060))
                                 .frame(width: 38, height: 104)
 
                             Capsule()
@@ -176,7 +243,7 @@ struct InsightsStudyWindowDetailView: View {
                                     LinearGradient(
                                         colors: [
                                             row.accent.opacity(0.98),
-                                            .white.opacity(0.88)
+                                            Color(arenaHex: AppArenaPalette.cyan).opacity(0.82)
                                         ],
                                         startPoint: .bottom,
                                         endPoint: .top
@@ -186,18 +253,18 @@ struct InsightsStudyWindowDetailView: View {
                                     width: 38,
                                     height: animateBars ? max(18, row.progress * 104) : 12
                                 )
-                                .shadow(color: row.accent.opacity(0.25), radius: 10, y: 4)
+                                .shadow(color: row.accent.opacity(0.22), radius: 10, y: 4)
                         }
 
                         Text(shortCourse(row.courseName))
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.70))
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.68))
                             .lineLimit(1)
-                            .minimumScaleFactor(0.7)
+                            .minimumScaleFactor(0.65)
 
                         Text("\(row.minutes) dk")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.46))
+                            .font(.system(size: 9, weight: .black, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.40))
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -205,8 +272,8 @@ struct InsightsStudyWindowDetailView: View {
             .frame(height: 148)
 
             HStack(spacing: 8) {
-                visualTag(title: "Top", value: data.strongestCourse, tint: .green)
-                visualTag(title: "Low", value: data.neglectedCourse, tint: .orange)
+                visualTag(title: "Top", value: data.strongestCourse, tint: Color(arenaHex: AppArenaPalette.green))
+                visualTag(title: "Low", value: data.neglectedCourse, tint: Color(arenaHex: AppArenaPalette.gold))
             }
         }
     }
@@ -230,73 +297,75 @@ struct InsightsStudyWindowDetailView: View {
             .frame(height: 120)
 
             Text("Add course tags to tasks to unlock this graph.")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(.white.opacity(0.56))
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.50))
         }
     }
 
     private var smartReadingCard: some View {
-        premiumSurface(tint: .orange) {
+        premiumSurface(tint: Color(arenaHex: AppArenaPalette.gold)) {
             VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    Text("Smart Reading")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-
-                    Spacer()
-
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.64))
-                }
+                sectionHeader(
+                    eyebrow: "SMART READING",
+                    title: "Smart Reading",
+                    icon: "sparkles",
+                    tint: Color(arenaHex: AppArenaPalette.gold)
+                )
 
                 insightLine(
                     icon: "checkmark.circle.fill",
-                    tint: .green,
+                    tint: Color(arenaHex: AppArenaPalette.green),
                     label: "Strongest",
                     value: data.strongestCourse
                 )
 
                 insightLine(
                     icon: "exclamationmark.circle.fill",
-                    tint: .orange,
+                    tint: Color(arenaHex: AppArenaPalette.gold),
                     label: "Needs more",
                     value: data.neglectedCourse
                 )
 
                 insightLine(
                     icon: "arrow.triangle.branch",
-                    tint: .purple,
+                    tint: Color(arenaHex: AppArenaPalette.purple),
                     label: "Recommended",
                     value: data.recommendedCourse
                 )
 
                 Text(data.recommendationReason)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.72))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.56))
                     .lineLimit(3)
             }
         }
     }
 
     private var actionCard: some View {
-        premiumSurface(tint: .pink) {
+        premiumSurface(tint: Color(arenaHex: AppArenaPalette.coral)) {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Next Move")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                sectionHeader(
+                    eyebrow: "NEXT MOVE",
+                    title: "Next Move",
+                    icon: "arrow.up.forward",
+                    tint: Color(arenaHex: AppArenaPalette.coral)
+                )
 
                 HStack(spacing: 10) {
                     Button {
                         dismiss()
                         onOpenFocus()
                     } label: {
-                        Text("Focus Başlat")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                        Text("FOCUS BAŞLAT")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(0.8)
                             .foregroundStyle(.black)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 11)
-                            .background(Color.white, in: Capsule())
+                            .padding(.horizontal, 14)
+                            .frame(height: 38)
+                            .background(
+                                Capsule()
+                                    .fill(Color(arenaHex: AppArenaPalette.coral))
+                            )
                     }
                     .buttonStyle(.plain)
 
@@ -304,16 +373,63 @@ struct InsightsStudyWindowDetailView: View {
                         dismiss()
                         onOpenWeek()
                     } label: {
-                        Text("Haftayı Aç")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 11)
-                            .background(Color.white.opacity(0.08), in: Capsule())
+                        Text("HAFTAYI AÇ")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(0.8)
+                            .foregroundStyle(.white.opacity(0.84))
+                            .padding(.horizontal, 14)
+                            .frame(height: 38)
+                            .background(
+                                Capsule()
+                                    .fill(Color.white.opacity(0.070))
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                    )
+                            )
                     }
                     .buttonStyle(.plain)
+
+                    Spacer()
                 }
             }
+        }
+    }
+
+    private func sectionHeader(
+        eyebrow: String,
+        title: String,
+        icon: String,
+        tint: Color
+    ) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(tint)
+                        .frame(width: 18, height: 1)
+
+                    Text(eyebrow)
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .tracking(1.6)
+                        .foregroundStyle(tint)
+                }
+
+                Text(title)
+                    .font(.system(size: 22, weight: .black))
+                    .foregroundStyle(.white)
+            }
+
+            Spacer()
+
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .black))
+                .foregroundStyle(tint)
+                .frame(width: 36, height: 36)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(tint.opacity(0.12))
+                )
         }
     }
 
@@ -325,17 +441,23 @@ struct InsightsStudyWindowDetailView: View {
     ) -> some View {
         HStack(spacing: 10) {
             Image(systemName: icon)
-                .font(.system(size: 13, weight: .bold))
+                .font(.system(size: 13, weight: .black))
                 .foregroundStyle(tint)
+                .frame(width: 25, height: 25)
+                .background(
+                    Circle()
+                        .fill(tint.opacity(0.12))
+                )
 
-            Text(label)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.56))
+            Text(label.uppercased())
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .tracking(0.8)
+                .foregroundStyle(.white.opacity(0.42))
 
             Spacer()
 
             Text(value)
-                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .font(.system(size: 15, weight: .black))
                 .foregroundStyle(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
@@ -348,27 +470,43 @@ struct InsightsStudyWindowDetailView: View {
                 .fill(tint)
                 .frame(width: 7, height: 7)
 
-            Text(title)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(.white.opacity(0.48))
+            Text(title.uppercased())
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .tracking(0.7)
+                .foregroundStyle(.white.opacity(0.42))
 
             Text(value)
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.88))
+                .font(.system(size: 12, weight: .black))
+                .foregroundStyle(.white.opacity(0.86))
                 .lineLimit(1)
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(Color.white.opacity(0.08), in: Capsule())
+        .frame(height: 30)
+        .background(
+            Capsule()
+                .fill(tint.opacity(0.12))
+                .overlay(
+                    Capsule()
+                        .stroke(tint.opacity(0.16), lineWidth: 1)
+                )
+        )
     }
 
-    private func miniChip(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(.white.opacity(0.82))
+    private func miniChip(_ text: String, tint: Color) -> some View {
+        Text(text.uppercased())
+            .font(.system(size: 9, weight: .black, design: .monospaced))
+            .tracking(0.7)
+            .foregroundStyle(tint)
             .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(Color.white.opacity(0.08), in: Capsule())
+            .frame(height: 28)
+            .background(
+                Capsule()
+                    .fill(tint.opacity(0.12))
+                    .overlay(
+                        Capsule()
+                            .stroke(tint.opacity(0.16), lineWidth: 1)
+                    )
+            )
     }
 
     private func shortCourse(_ name: String) -> String {
@@ -387,10 +525,9 @@ struct InsightsStudyWindowDetailView: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            tint.opacity(0.34),
-                            tint.opacity(0.16),
-                            Color(red: 0.03, green: 0.18, blue: 0.36).opacity(0.62),
-                            Color(red: 0.035, green: 0.035, blue: 0.070)
+                            tint.opacity(0.085),
+                            Color(arenaHex: AppArenaPalette.purple).opacity(0.040),
+                            Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -401,33 +538,34 @@ struct InsightsStudyWindowDetailView: View {
                         .fill(
                             RadialGradient(
                                 colors: [
-                                    tint.opacity(0.24),
+                                    tint.opacity(0.145),
                                     Color.clear
                                 ],
                                 center: .topLeading,
                                 startRadius: 4,
-                                endRadius: 150
+                                endRadius: 170
                             )
                         )
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
                         .fill(
-                            LinearGradient(
+                            RadialGradient(
                                 colors: [
-                                    Color.white.opacity(0.075),
-                                    Color.clear,
-                                    Color.black.opacity(0.18)
+                                    Color(arenaHex: AppArenaPalette.blue).opacity(0.075),
+                                    Color.clear
                                 ],
-                                startPoint: .top,
-                                endPoint: .bottom
+                                center: .bottomTrailing,
+                                startRadius: 8,
+                                endRadius: 190
                             )
                         )
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                        .stroke(tint.opacity(0.14), lineWidth: 1)
                 )
+                .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
 
             content()
                 .padding(18)

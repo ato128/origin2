@@ -10,13 +10,15 @@ import SwiftUI
 extension HomeDashboardView {
 
     var todayOverviewTopCards: some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .top, spacing: 12) {
             overviewMainMetricCard
+                .frame(maxWidth: .infinity)
 
-            VStack(spacing: 14) {
+            VStack(spacing: 12) {
                 overviewFocusMetricCard
                 overviewCourseMetricCard
             }
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -26,108 +28,97 @@ extension HomeDashboardView {
         Button {
             handleMainMetricTap()
         } label: {
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 16) {
                 HStack(alignment: .top, spacing: 10) {
-                    Text(mainMetricCardTitle)
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.96))
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.82)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("BUGÜNKÜ PLAN")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(1.6)
+                            .foregroundStyle(todayProgressAccent.opacity(0.95))
+
+                        Text(mainMetricCardTitle)
+                            .font(.system(size: 24, weight: .black))
+                            .foregroundStyle(.white)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.75)
+                    }
 
                     Spacer(minLength: 8)
 
-                    premiumHeroCornerIcon(
-                        systemName: mainMetricIcon,
-                        tint: .white.opacity(0.9),
-                        glowColor: todayProgressAccent.opacity(0.28)
-                    )
+                    Image(systemName: mainMetricIcon)
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundStyle(.white)
+                        .frame(width: 38, height: 38)
+                        .background(
+                            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                .fill(todayProgressAccent.opacity(0.15))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                        .stroke(todayProgressAccent.opacity(0.18), lineWidth: 1)
+                                )
+                        )
                 }
 
-                Spacer(minLength: 14)
+                Spacer(minLength: 4)
 
                 ZStack {
                     Circle()
-                        .stroke(Color.white.opacity(0.10), lineWidth: 9)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 10)
+                        .frame(width: 112, height: 112)
 
                     Circle()
-                        .trim(from: 0, to: safeTodayCompletionRatio)
+                        .trim(from: 0, to: max(safeTodayCompletionRatio, 0.025))
                         .stroke(
-                            AngularGradient(
+                            LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.96),
-                                    todayProgressAccent.opacity(0.95),
-                                    Color.white.opacity(0.88)
+                                    Color(arenaHex: AppArenaPalette.cyan),
+                                    todayProgressAccent,
+                                    Color(arenaHex: AppArenaPalette.purple)
                                 ],
-                                center: .center
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
                             ),
-                            style: StrokeStyle(lineWidth: 9, lineCap: .round)
+                            style: StrokeStyle(lineWidth: 10, lineCap: .round)
                         )
                         .rotationEffect(.degrees(-90))
-                        .shadow(color: todayProgressAccent.opacity(0.18), radius: 8)
-
-                    Circle()
-                        .fill(
-                            RadialGradient(
-                                colors: [
-                                    todayProgressAccent.opacity(0.10),
-                                    Color.clear
-                                ],
-                                center: .center,
-                                startRadius: 8,
-                                endRadius: 52
-                            )
-                        )
-                        .padding(18)
+                        .frame(width: 112, height: 112)
 
                     VStack(spacing: 2) {
                         Text(todayCompletionPercentageText)
-                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .font(.system(size: 31, weight: .black))
                             .foregroundStyle(.white)
                             .monospacedDigit()
 
-                        Text("tamamlandı")
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.74))
+                        Text("TAMAM")
+                            .font(.system(size: 9, weight: .black, design: .monospaced))
+                            .tracking(1.1)
+                            .foregroundStyle(.white.opacity(0.42))
                     }
                 }
-                .frame(width: 108, height: 108)
+                .frame(maxWidth: .infinity)
 
-                Spacer(minLength: 16)
+                Spacer(minLength: 2)
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 5) {
                     Text(todayCompletionSummaryText)
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.97))
+                        .font(.system(size: 18, weight: .black))
+                        .foregroundStyle(.white)
                         .lineLimit(2)
-                        .minimumScaleFactor(0.84)
 
                     Text(todayCompletionFootnoteText)
-                        .font(.system(size: 11.5, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.70))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.48))
                         .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
-
-                Spacer(minLength: 10)
-
-                premiumOrbitDecorationLarge
             }
-            .padding(.horizontal, 18)
-            .padding(.top, 16)
-            .padding(.bottom, 12)
-            .frame(maxWidth: .infinity, minHeight: 228, alignment: .topLeading)
+            .padding(18)
+            .frame(maxWidth: .infinity, minHeight: 260, alignment: .topLeading)
             .background(
-                premiumOverviewCardBackground(
+                homeArenaCardBackground(
                     accent: todayProgressAccent,
-                    secondaryAccent: todayProgressSecondaryAccent,
-                    strength: todayCardGlowStrength,
-                    cornerRadius: 34,
-                    emphasizeBottomGlow: safeTodayCompletionRatio >= 1 || !hasStudentCourses
+                    cornerRadius: 30,
+                    intensity: safeTodayCompletionRatio >= 1 ? 1.15 : 0.90
                 )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 34, style: .continuous)
-                    .stroke(Color.white.opacity(0.07), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
@@ -139,145 +130,130 @@ extension HomeDashboardView {
         Button {
             onOpenFocus()
         } label: {
-            ZStack(alignment: .bottomTrailing) {
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack(alignment: .top, spacing: 8) {
-                        Text(focusMetricEyebrowText)
-                            .font(.system(size: 10.5, weight: .heavy, design: .rounded))
-                            .foregroundStyle(focusMetricAccent.opacity(0.98))
-                            .tracking(1.1)
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(focusMetricEyebrowText.uppercased())
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(1.6)
+                            .foregroundStyle(focusMetricAccent.opacity(0.95))
 
-                        Spacer(minLength: 8)
-
-                        premiumHeroCornerIcon(
-                            systemName: focusMetricIconName,
-                            tint: .white.opacity(0.9),
-                            glowColor: focusMetricAccent.opacity(0.32)
-                        )
-                    }
-
-                    Spacer(minLength: 12)
-
-                    VStack(alignment: .leading, spacing: 2) {
                         Text(focusMetricMainText)
-                            .font(.system(size: hasFocusedTodayForHome && !isFocusCurrentlyActive ? 28 : 32,
-                                          weight: .heavy,
-                                          design: .rounded))
+                            .font(.system(size: 34, weight: .black))
                             .foregroundStyle(.white)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.72)
-
-                        Text(focusMetricSubtitleText)
-                            .font(.system(size: 11.5, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.76))
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.84)
+                            .minimumScaleFactor(0.70)
                     }
 
                     Spacer(minLength: 8)
 
-                    premiumOrbitDecorationCompact
+                    Image(systemName: focusMetricIconName)
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundStyle(.white)
+                        .frame(width: 38, height: 38)
+                        .background(
+                            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                .fill(focusMetricAccent.opacity(0.15))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                        .stroke(focusMetricAccent.opacity(0.18), lineWidth: 1)
+                                )
+                        )
                 }
 
-                if hasFocusedTodayForHome && !isFocusCurrentlyActive {
-                    Image(systemName: "flame.fill")
-                        .font(.system(size: 58, weight: .black))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.95),
-                                    Color(red: 1.00, green: 0.72, blue: 0.22),
-                                    Color(red: 1.00, green: 0.30, blue: 0.10)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .shadow(color: Color.orange.opacity(0.55), radius: 18)
-                        .shadow(color: Color.red.opacity(0.20), radius: 28)
-                        .opacity(0.32)
-                        .offset(x: 4, y: 4)
+                Spacer(minLength: 0)
+
+                Text(focusMetricSubtitleText)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.54))
+                    .lineLimit(2)
+
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(isFocusCurrentlyActive ? Color(arenaHex: AppArenaPalette.green) : focusMetricAccent)
+                        .frame(width: 6, height: 6)
+
+                    Text(isFocusCurrentlyActive ? "LIVE" : "READY")
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .tracking(1.2)
+                        .foregroundStyle(isFocusCurrentlyActive ? Color(arenaHex: AppArenaPalette.green) : focusMetricAccent)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 14)
-            .padding(.bottom, 10)
-            .frame(maxWidth: .infinity, minHeight: 108, alignment: .topLeading)
+            .padding(16)
+            .frame(maxWidth: .infinity, minHeight: 124, alignment: .topLeading)
             .background(
-                premiumOverviewCardBackground(
+                homeArenaCardBackground(
                     accent: focusMetricAccent,
-                    secondaryAccent: focusMetricSecondaryAccent,
-                    strength: focusMetricGlowStrength,
                     cornerRadius: 28,
-                    emphasizeBottomGlow: isFocusCurrentlyActive || hasFocusedTodayForHome
+                    intensity: isFocusCurrentlyActive ? 1.18 : 0.86
                 )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(Color.white.opacity(0.065), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
     }
-
     // MARK: - Course Card
 
     var overviewCourseMetricCard: some View {
         Button {
             handleCourseMetricTap()
         } label: {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .top, spacing: 8) {
-                    Text(courseMetricEyebrowText)
-                        .font(.system(size: 10.5, weight: .bold, design: .rounded))
-                        .foregroundStyle(courseMetricAccent.opacity(0.98))
-                        .tracking(0.9)
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(courseMetricEyebrowText.uppercased())
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(1.6)
+                            .foregroundStyle(courseMetricAccent.opacity(0.95))
+
+                        Text(courseMetricTitle)
+                            .font(.system(size: 20, weight: .black))
+                            .foregroundStyle(.white)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.72)
+                    }
 
                     Spacer(minLength: 8)
 
-                    premiumHeroCornerIcon(
-                        systemName: courseMetricIconName,
-                        tint: .white.opacity(0.9),
-                        glowColor: courseMetricAccent.opacity(0.26)
-                    )
+                    Image(systemName: courseMetricIconName)
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundStyle(.white)
+                        .frame(width: 38, height: 38)
+                        .background(
+                            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                .fill(courseMetricAccent.opacity(0.15))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                        .stroke(courseMetricAccent.opacity(0.18), lineWidth: 1)
+                                )
+                        )
                 }
 
-                Spacer(minLength: 14)
+                Spacer(minLength: 0)
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(courseMetricTitle)
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.98))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.78)
+                Text(courseMetricSubtitle)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.54))
+                    .lineLimit(2)
 
-                    Text(courseMetricSubtitle)
-                        .font(.system(size: 11.5, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.74))
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.84)
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(courseMetricAccent)
+                        .frame(width: 6, height: 6)
+
+                    Text(hasStudentCourses ? "COURSES" : "SETUP")
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .tracking(1.2)
+                        .foregroundStyle(courseMetricAccent)
                 }
-
-                Spacer(minLength: 8)
-
-                premiumOrbitDecorationCompact
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 14)
-            .padding(.bottom, 10)
-            .frame(maxWidth: .infinity, minHeight: 108, alignment: .topLeading)
+            .padding(16)
+            .frame(maxWidth: .infinity, minHeight: 124, alignment: .topLeading)
             .background(
-                premiumOverviewCardBackground(
+                homeArenaCardBackground(
                     accent: courseMetricAccent,
-                    secondaryAccent: courseMetricSecondaryAccent,
-                    strength: courseMetricGlowStrength,
                     cornerRadius: 28,
-                    emphasizeBottomGlow: nextEvent != nil || hasStudentCourses
+                    intensity: nextEvent != nil ? 1.08 : 0.84
                 )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(Color.white.opacity(0.065), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
@@ -378,34 +354,63 @@ extension HomeDashboardView {
 
     var todayProgressAccent: Color {
         if !hasStudentCourses {
-            return Color(red: 0.44, green: 0.58, blue: 1.00)
+            return Color(arenaHex: AppArenaPalette.cyan)
         }
 
         if safeTodayCompletionRatio >= 1 {
-            return Color(red: 0.20, green: 0.78, blue: 0.44)
+            return Color(arenaHex: AppArenaPalette.green)
         }
 
         if safeTodayCompletionRatio >= 0.66 {
-            return Color(red: 0.35, green: 0.67, blue: 1.00)
+            return Color(arenaHex: AppArenaPalette.blue)
         }
 
         if safeTodayCompletionRatio > 0 {
-            return Color(red: 0.55, green: 0.44, blue: 1.00)
+            return Color(arenaHex: AppArenaPalette.purple)
         }
 
-        return Color(red: 0.48, green: 0.35, blue: 0.98)
+        return Color(arenaHex: AppArenaPalette.cyan)
     }
 
     var todayProgressSecondaryAccent: Color {
-        if !hasStudentCourses {
-            return Color(red: 0.08, green: 0.18, blue: 0.36)
+        Color(arenaHex: AppArenaPalette.purple)
+    }
+
+    var focusMetricAccent: Color {
+        if isFocusCurrentlyActive {
+            return Color(arenaHex: AppArenaPalette.green)
         }
 
-        if safeTodayCompletionRatio >= 1 {
-            return Color(red: 0.04, green: 0.30, blue: 0.20)
+        if hasFocusedTodayForHome {
+            return Color(arenaHex: AppArenaPalette.gold)
         }
 
-        return Color(red: 0.12, green: 0.06, blue: 0.28)
+        return Color(arenaHex: AppArenaPalette.purple)
+    }
+
+    var focusMetricSecondaryAccent: Color {
+        Color(arenaHex: AppArenaPalette.blue)
+    }
+
+    var courseMetricAccent: Color {
+        if let nextEvent {
+            let hex = nextEvent.colorHex.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let color = colorFromHex(hex), !hex.isEmpty {
+                return color
+            }
+
+            return Color(arenaHex: AppArenaPalette.blue)
+        }
+
+        if hasStudentCourses {
+            return Color(arenaHex: AppArenaPalette.blue)
+        }
+
+        return Color(arenaHex: AppArenaPalette.cyan)
+    }
+
+    var courseMetricSecondaryAccent: Color {
+        Color(arenaHex: AppArenaPalette.purple)
     }
 
     var todayCardGlowStrength: Double {
@@ -472,29 +477,7 @@ extension HomeDashboardView {
         return "play.fill"
     }
 
-    var focusMetricAccent: Color {
-        if isFocusCurrentlyActive {
-            return Color(red: 0.16, green: 0.56, blue: 1.00)
-        }
-
-        if hasFocusedTodayForHome {
-            return Color(red: 1.00, green: 0.52, blue: 0.16)
-        }
-
-        return Color(red: 0.56, green: 0.36, blue: 1.00)
-    }
-
-    var focusMetricSecondaryAccent: Color {
-        if isFocusCurrentlyActive {
-            return Color(red: 0.03, green: 0.18, blue: 0.36)
-        }
-
-        if hasFocusedTodayForHome {
-            return Color(red: 0.36, green: 0.10, blue: 0.04)
-        }
-
-        return Color(red: 0.16, green: 0.07, blue: 0.32)
-    }
+   
 
     var focusMetricGlowStrength: Double {
         if isFocusCurrentlyActive { return 0.94 }
@@ -571,34 +554,7 @@ extension HomeDashboardView {
         return "\(hours) sa \(minutes) dk sonra"
     }
 
-    var courseMetricAccent: Color {
-        if let nextEvent {
-            let hex = nextEvent.colorHex.trimmingCharacters(in: .whitespacesAndNewlines)
-            if let color = colorFromHex(hex), !hex.isEmpty {
-                return color
-            }
-
-            return Color(red: 0.18, green: 0.62, blue: 1.00)
-        }
-
-        if hasStudentCourses {
-            return primaryCourseAccent
-        }
-
-        return Color(red: 0.55, green: 0.60, blue: 0.72)
-    }
-
-    var courseMetricSecondaryAccent: Color {
-        if nextEvent != nil {
-            return Color(red: 0.03, green: 0.18, blue: 0.34)
-        }
-
-        if hasStudentCourses {
-            return Color(red: 0.10, green: 0.08, blue: 0.28)
-        }
-
-        return Color(red: 0.16, green: 0.16, blue: 0.22)
-    }
+    
 
     var courseMetricGlowStrength: Double {
         if nextEvent != nil { return 0.92 }
@@ -659,6 +615,58 @@ extension HomeDashboardView {
         case "6": return "6. sınıf"
         default: return "\(value). sınıf"
         }
+    }
+    
+    func homeArenaCardBackground(
+        accent: Color,
+        cornerRadius: CGFloat,
+        intensity: Double
+    ) -> some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        accent.opacity(0.105 * intensity),
+                        Color(arenaHex: AppArenaPalette.purple).opacity(0.075 * intensity),
+                        Color(arenaHex: AppArenaPalette.surface).opacity(0.92)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                accent.opacity(0.18 * intensity),
+                                Color.clear
+                            ],
+                            center: .topLeading,
+                            startRadius: 6,
+                            endRadius: 210
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Color(arenaHex: AppArenaPalette.blue).opacity(0.08 * intensity),
+                                Color.clear
+                            ],
+                            center: .bottomTrailing,
+                            startRadius: 8,
+                            endRadius: 220
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(accent.opacity(0.16), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
     }
 
     // MARK: - Shared UI

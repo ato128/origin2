@@ -26,33 +26,47 @@ extension WeekView {
     }
 
     var personalDayPickerSection: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 7) {
             ForEach(dayTitles.indices, id: \.self) { day in
                 dayPickerButton(for: day)
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 10)
+        .padding(10)
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(
                     LinearGradient(
                         colors: [
-                            palette.cardFill,
-                            palette.cardFill.opacity(0.96)
+                            Color(arenaHex: AppArenaPalette.blue).opacity(0.055),
+                            Color(arenaHex: AppArenaPalette.purple).opacity(0.038),
+                            Color.white.opacity(0.030)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    Color(arenaHex: AppArenaPalette.cyan).opacity(0.080),
+                                    Color.clear
+                                ],
+                                center: .topTrailing,
+                                startRadius: 6,
+                                endRadius: 150
+                            )
+                        )
                 )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.18), radius: 12, y: 6)
         )
         .padding(.horizontal, 2)
     }
-
     @ViewBuilder
     func dayPickerButton(for day: Int) -> some View {
         let tint = dayAccent(for: day)
@@ -60,56 +74,64 @@ extension WeekView {
         let isToday = day == weekdayIndexToday()
         let hasItems = hasItemsOnDay(day)
         let isLiveDay = liveEventFor(day: day) != nil
-        let indicatorColor = isLiveDay ? Color.green : tint
-        let dotColor = isLiveDay ? Color.green : (hasItems ? tint.opacity(0.95) : Color.white.opacity(0.10))
-        let backgroundColor = isSelected ? indicatorColor.opacity(0.13) : Color.white.opacity(0.018)
-        let strokeColor = isSelected ? indicatorColor.opacity(0.20) : Color.white.opacity(0.05)
-        let shadowColor = isSelected ? indicatorColor.opacity(0.05) : .clear
-        let dotSize: CGFloat = (isToday || isLiveDay) ? 5.5 : 4
+        let indicatorColor = isLiveDay ? Color(arenaHex: AppArenaPalette.green) : tint
+        let dotColor = isLiveDay ? Color(arenaHex: AppArenaPalette.green) : (hasItems ? tint.opacity(0.95) : Color.white.opacity(0.16))
+        let dotSize: CGFloat = (isToday || isLiveDay) ? 6 : 4
 
         Button {
             withAnimation(.spring(response: 0.24, dampingFraction: 0.86)) {
                 selectedDay = day
             }
         } label: {
-            VStack(spacing: 4) {
+            VStack(spacing: 6) {
                 Text(localizedDayTitle(day))
-                    .font(.system(size: 10.5, weight: .bold, design: .rounded))
-                    .foregroundStyle(isSelected ? palette.primaryText : palette.secondaryText)
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .foregroundStyle(isSelected ? .white : .white.opacity(0.48))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.70)
 
                 Text("\(Calendar.current.component(.day, from: targetDateFor(day: day)))")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(palette.primaryText)
+                    .font(.system(size: 17, weight: .black))
+                    .foregroundStyle(isSelected ? .white : .white.opacity(0.86))
                     .monospacedDigit()
 
                 ZStack {
                     if isSelected {
                         Capsule()
                             .fill(indicatorColor)
-                            .frame(width: 14, height: 3.5)
+                            .frame(width: 16, height: 4)
+                            .shadow(color: indicatorColor.opacity(0.35), radius: 6, y: 2)
                     } else {
                         Circle()
                             .fill(dotColor)
                             .frame(width: dotSize, height: dotSize)
                     }
                 }
-                .frame(height: 7)
+                .frame(height: 8)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 7)
+            .padding(.vertical, 10)
             .background(
-                RoundedRectangle(cornerRadius: 15, style: .continuous)
-                    .fill(backgroundColor)
+                RoundedRectangle(cornerRadius: 17, style: .continuous)
+                    .fill(
+                        isSelected
+                        ? indicatorColor.opacity(0.16)
+                        : Color.white.opacity(0.035)
+                    )
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 15, style: .continuous)
-                    .stroke(strokeColor, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 17, style: .continuous)
+                    .stroke(
+                        isSelected
+                        ? indicatorColor.opacity(0.24)
+                        : Color.white.opacity(0.065),
+                        lineWidth: 1
+                    )
             )
             .shadow(
-                color: shadowColor,
-                radius: isSelected ? 5 : 0,
-                y: isSelected ? 2 : 0
+                color: isSelected ? indicatorColor.opacity(0.12) : .clear,
+                radius: isSelected ? 10 : 0,
+                y: isSelected ? 5 : 0
             )
         }
         .buttonStyle(.plain)
@@ -164,26 +186,37 @@ extension WeekView {
     }
 
     var daySummaryCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 10) {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 8) {
+                        Rectangle()
+                            .fill(heroAccentColor)
+                            .frame(width: 18, height: 1)
+
+                        Text("DAY FLOW")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(1.7)
+                            .foregroundStyle(heroAccentColor)
+                    }
+
                     HStack(spacing: 8) {
                         Text(localizedDayTitle(selectedDay))
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
-                            .foregroundStyle(palette.primaryText)
+                            .font(.system(size: 24, weight: .black))
+                            .foregroundStyle(.white)
 
                         if isTodaySelected {
-                            capsuleMicroTag("Bugün", tint: .orange)
+                            capsuleMicroTag("Bugün", tint: Color(arenaHex: AppArenaPalette.gold))
                         }
 
                         if liveEventForDay != nil {
-                            capsuleMicroTag("Canlı", tint: .green)
+                            capsuleMicroTag("Canlı", tint: Color(arenaHex: AppArenaPalette.green))
                         }
                     }
 
                     Text(summarySubtitle)
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(palette.secondaryText)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.50))
                         .lineLimit(2)
                 }
 
@@ -191,9 +224,19 @@ extension WeekView {
 
                 if totalMinutesForDay > 0 {
                     Text(durationText(totalMinutesForDay))
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundStyle(palette.primaryText)
+                        .font(.system(size: 17, weight: .black, design: .monospaced))
+                        .foregroundStyle(heroAccentColor)
                         .monospacedDigit()
+                        .padding(.horizontal, 12)
+                        .frame(height: 34)
+                        .background(
+                            Capsule()
+                                .fill(heroAccentColor.opacity(0.12))
+                                .overlay(
+                                    Capsule()
+                                        .stroke(heroAccentColor.opacity(0.18), lineWidth: 1)
+                                )
+                        )
                 }
             }
 
@@ -202,52 +245,53 @@ extension WeekView {
                     title: "Ders",
                     value: "\(eventsForDay.count)",
                     icon: "book.closed.fill",
-                    tint: liveEventForDay != nil ? .green : heroAccentColor
+                    tint: liveEventForDay != nil ? Color(arenaHex: AppArenaPalette.green) : heroAccentColor
                 )
 
                 summaryChip(
                     title: "İlk",
                     value: firstEventOfDay.map { hm($0.startMinute) } ?? "--:--",
                     icon: "sunrise.fill",
-                    tint: .orange
+                    tint: Color(arenaHex: AppArenaPalette.gold)
                 )
 
                 summaryChip(
                     title: "Son",
                     value: lastEventOfDay.map { hm($0.startMinute + $0.durationMinute) } ?? "--:--",
                     icon: "moon.stars.fill",
-                    tint: .purple
+                    tint: Color(arenaHex: AppArenaPalette.purple)
                 )
             }
 
             if let live = liveEventForDay {
                 HStack(spacing: 8) {
                     Circle()
-                        .fill(.green)
-                        .frame(width: 6, height: 6)
+                        .fill(Color(arenaHex: AppArenaPalette.green))
+                        .frame(width: 7, height: 7)
+                        .shadow(color: Color(arenaHex: AppArenaPalette.green).opacity(0.35), radius: 7)
 
                     Text(localizedLiveClassText(live.title))
-                        .font(.system(size: 11.5, weight: .semibold, design: .rounded))
-                        .foregroundStyle(palette.primaryText)
+                        .font(.system(size: 12, weight: .black))
+                        .foregroundStyle(.white.opacity(0.90))
                         .lineLimit(1)
 
                     Spacer()
 
                     Text(timeText(for: live))
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundStyle(palette.secondaryText)
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.48))
                         .lineLimit(1)
                 }
                 .padding(.top, 1)
             } else if let info = currentTimeIndicatorText {
                 HStack(spacing: 8) {
                     Image(systemName: "clock")
-                        .font(.system(size: 10.5, weight: .bold))
-                        .foregroundStyle(palette.secondaryText)
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundStyle(.white.opacity(0.44))
 
                     Text(info)
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundStyle(palette.secondaryText)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.48))
                         .lineLimit(1)
 
                     Spacer()
@@ -255,96 +299,97 @@ extension WeekView {
                 .padding(.top, 1)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 13)
+        .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
                 .fill(
                     LinearGradient(
                         colors: [
-                            palette.cardFill,
-                            palette.cardFill.opacity(0.97)
+                            heroAccentColor.opacity(0.075),
+                            Color(arenaHex: AppArenaPalette.purple).opacity(0.040),
+                            Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
                         .fill(
-                            LinearGradient(
+                            RadialGradient(
                                 colors: [
-                                    Color.white.opacity(0.03),
-                                    heroAccentColor.opacity(0.028),
+                                    heroAccentColor.opacity(0.13),
                                     Color.clear
                                 ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+                                center: .topTrailing,
+                                startRadius: 6,
+                                endRadius: 180
                             )
                         )
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .stroke(heroAccentColor.opacity(0.14), lineWidth: 1)
                 )
+                .shadow(color: Color.black.opacity(0.20), radius: 14, y: 7)
         )
-        .shadow(color: heroAccentColor.opacity(0.04), radius: 7, y: 2)
         .padding(.horizontal, 2)
     }
 
     func summaryChip(title: String, value: String, icon: String, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Label(title, systemImage: icon)
-                .font(.system(size: 9, weight: .bold, design: .rounded))
-                .foregroundStyle(tint)
-                .lineLimit(1)
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 10, weight: .black))
+
+                Text(title.uppercased())
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .tracking(0.7)
+            }
+            .foregroundStyle(tint)
+            .lineLimit(1)
 
             Text(value)
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(palette.primaryText)
+                .font(.system(size: 14, weight: .black, design: .monospaced))
+                .foregroundStyle(.white)
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.vertical, 9)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            tint.opacity(0.10),
-                            tint.opacity(0.06)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .fill(tint.opacity(0.085))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                        .stroke(tint.opacity(0.12), lineWidth: 1)
                 )
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .stroke(tint.opacity(0.10), lineWidth: 1)
         )
     }
 
     func personalTimelineSectionHeader(_ title: String, systemImage: String) -> some View {
-        HStack(spacing: 7) {
-            Image(systemName: systemImage)
-                .font(.system(size: 10.5, weight: .bold))
-                .foregroundStyle(palette.secondaryText)
+        HStack(spacing: 8) {
+            Rectangle()
+                .fill(Color.white.opacity(0.28))
+                .frame(width: 16, height: 1)
 
-            Text(title)
-                .font(.system(size: 10.5, weight: .bold, design: .rounded))
-                .foregroundStyle(palette.secondaryText)
+            Image(systemName: systemImage)
+                .font(.system(size: 10, weight: .black))
+                .foregroundStyle(.white.opacity(0.42))
+
+            Text(title.uppercased())
+                .font(.system(size: 10, weight: .black, design: .monospaced))
+                .tracking(1.2)
+                .foregroundStyle(.white.opacity(0.42))
 
             Spacer()
         }
         .padding(.horizontal, 16)
-        .padding(.top, 4)
-        .padding(.bottom, 3)
+        .padding(.top, 6)
+        .padding(.bottom, 4)
     }
-
     var summarySection: some View {
         daySummaryCard
             .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 10, trailing: 16))
@@ -364,25 +409,30 @@ extension WeekView {
 
     var defaultEmptyWeekCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 ZStack {
-                    Circle()
-                        .fill(heroAccentColor.opacity(0.14))
-                        .frame(width: 38, height: 38)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(heroAccentColor.opacity(0.13))
+                        .frame(width: 46, height: 46)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(heroAccentColor.opacity(0.16), lineWidth: 1)
+                        )
 
                     Image(systemName: "calendar")
-                        .font(.system(size: 15, weight: .bold))
+                        .font(.system(size: 17, weight: .black))
                         .foregroundStyle(heroAccentColor)
                 }
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(localizedEmptyDayTitle(selectedDay))
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundStyle(palette.primaryText)
+                        .font(.system(size: 18, weight: .black))
+                        .foregroundStyle(.white)
 
                     Text("Bugün için planlı bir ders ya da etkinlik görünmüyor.")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(palette.secondaryText)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.50))
+                        .lineLimit(2)
                 }
 
                 Spacer()
@@ -390,37 +440,46 @@ extension WeekView {
 
             HStack(spacing: 8) {
                 Image(systemName: "plus.circle.fill")
-                    .foregroundStyle(Color.accentColor)
+                    .font(.system(size: 13, weight: .black))
+                    .foregroundStyle(heroAccentColor)
 
                 Text("Sağ üstten yeni ders veya etkinlik ekleyebilirsin")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Color.accentColor)
+                    .font(.system(size: 12, weight: .black))
+                    .foregroundStyle(heroAccentColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 9)
+            .frame(height: 34)
             .background(
                 Capsule()
-                    .fill(Color.accentColor.opacity(0.14))
+                    .fill(heroAccentColor.opacity(0.12))
+                    .overlay(
+                        Capsule()
+                            .stroke(heroAccentColor.opacity(0.16), lineWidth: 1)
+                    )
             )
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(
                     LinearGradient(
                         colors: [
-                            palette.cardFill,
-                            palette.cardFill.opacity(0.97)
+                            heroAccentColor.opacity(0.070),
+                            Color(arenaHex: AppArenaPalette.purple).opacity(0.035),
+                            Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(palette.cardStroke, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(heroAccentColor.opacity(0.13), lineWidth: 1)
                 )
+                .shadow(color: Color.black.opacity(0.18), radius: 12, y: 6)
         )
         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 12, trailing: 16))
         .listRowSeparator(.hidden)
@@ -693,12 +752,14 @@ extension WeekView {
 
     var heroAccentColor: Color {
         if liveEventForDay != nil {
-            return .green
+            return Color(arenaHex: AppArenaPalette.green)
         }
+
         if eventsForDay.isEmpty {
-            return .blue
+            return Color(arenaHex: AppArenaPalette.cyan)
         }
-        return firstEventOfDay.map { dayIndicatorColor(for: $0.weekday) } ?? .accentColor
+
+        return firstEventOfDay.map { dayIndicatorColor(for: $0.weekday) } ?? Color(arenaHex: AppArenaPalette.blue)
     }
 
     var heroSymbolName: String {
@@ -714,29 +775,39 @@ extension WeekView {
     func heroInfoChip(icon: String, text: String, tint: Color) -> some View {
         HStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.system(size: 11, weight: .bold))
-            Text(text)
+                .font(.system(size: 10, weight: .black))
+
+            Text(text.uppercased())
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .tracking(0.6)
                 .lineLimit(1)
         }
-        .font(.system(size: 12, weight: .semibold))
         .foregroundStyle(tint)
         .padding(.horizontal, 10)
-        .padding(.vertical, 7)
+        .frame(height: 28)
         .background(
             Capsule()
                 .fill(tint.opacity(0.12))
+                .overlay(
+                    Capsule()
+                        .stroke(tint.opacity(0.16), lineWidth: 1)
+                )
         )
     }
-
     func capsuleMicroTag(_ text: String, tint: Color) -> some View {
-        Text(text)
-            .font(.system(size: 10, weight: .bold))
+        Text(text.uppercased())
+            .font(.system(size: 9, weight: .black, design: .monospaced))
+            .tracking(0.6)
             .foregroundStyle(tint)
             .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .frame(height: 24)
             .background(
                 Capsule()
                     .fill(tint.opacity(0.12))
+                    .overlay(
+                        Capsule()
+                            .stroke(tint.opacity(0.16), lineWidth: 1)
+                    )
             )
     }
 
@@ -767,23 +838,38 @@ extension WeekView {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 14) {
                 ZStack {
-                    Circle()
-                        .fill(Color.blue.opacity(0.15))
-                        .frame(width: 46, height: 46)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color(arenaHex: AppArenaPalette.cyan).opacity(0.13))
+                        .frame(width: 48, height: 48)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(Color(arenaHex: AppArenaPalette.cyan).opacity(0.16), lineWidth: 1)
+                        )
 
                     Image(systemName: "graduationcap.fill")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(.blue)
+                        .font(.system(size: 18, weight: .black))
+                        .foregroundStyle(Color(arenaHex: AppArenaPalette.cyan))
                 }
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 8) {
+                        Rectangle()
+                            .fill(Color(arenaHex: AppArenaPalette.cyan))
+                            .frame(width: 16, height: 1)
+
+                        Text("COURSE SETUP")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(1.4)
+                            .foregroundStyle(Color(arenaHex: AppArenaPalette.cyan))
+                    }
+
                     Text("Derslerini ekle")
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
-                        .foregroundStyle(palette.primaryText)
+                        .font(.system(size: 19, weight: .black))
+                        .foregroundStyle(.white)
 
                     Text("Derslerini seç, haftanı ve çalışma planını buna göre kuralım.")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundStyle(palette.secondaryText)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.50))
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
@@ -794,29 +880,55 @@ extension WeekView {
                 Haptics.impact(.medium)
                 showCourseSetupSheet = true
             } label: {
-                Text("Dersleri Seç")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(
-                        LinearGradient(
-                            colors: [.blue, .indigo],
-                            startPoint: .leading,
-                            endPoint: .trailing
+                HStack(spacing: 10) {
+                    Text("DERSLERİ SEÇ")
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .tracking(0.8)
+
+                    Spacer()
+
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 13, weight: .black))
+                }
+                .foregroundStyle(.black)
+                .padding(.horizontal, 16)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(arenaHex: AppArenaPalette.cyan),
+                                    Color(arenaHex: AppArenaPalette.purple)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                )
             }
+            .buttonStyle(.plain)
         }
         .padding(18)
         .background(
-            RoundedRectangle(cornerRadius: 24)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(arenaHex: AppArenaPalette.cyan).opacity(0.075),
+                            Color(arenaHex: AppArenaPalette.purple).opacity(0.040),
+                            Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
                 )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(Color(arenaHex: AppArenaPalette.cyan).opacity(0.14), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.18), radius: 12, y: 6)
         )
         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 12, trailing: 16))
         .listRowSeparator(.hidden)

@@ -244,36 +244,36 @@ extension HomeDashboardView {
 
     var momentumAccentColor: Color {
         if shouldUseExamMomentumTone {
-            return .orange
+            return Color(arenaHex: AppArenaPalette.gold)
         }
 
         if shouldUseNoTaskMomentumTone {
-            return .purple
+            return Color(arenaHex: AppArenaPalette.purple)
         }
 
         if isDayEffectivelyComplete {
-            return .green
+            return Color(arenaHex: AppArenaPalette.green)
         }
 
         if boardTodayProgressValue >= 0.6 {
-            return .green
+            return Color(arenaHex: AppArenaPalette.green)
         }
 
         if boardTodayProgressValue > 0 {
-            return .blue
+            return Color(arenaHex: AppArenaPalette.blue)
         }
 
         switch homeLayoutMode {
         case .completionWrapUp:
-            return .green
+            return Color(arenaHex: AppArenaPalette.green)
         case .insightsFollowUp:
-            return .blue
+            return Color(arenaHex: AppArenaPalette.blue)
         case .crewFollowUp:
-            return .pink
+            return Color(arenaHex: AppArenaPalette.coral)
         case .focusActive:
-            return .orange
+            return Color(arenaHex: AppArenaPalette.gold)
         case .defaultFlow:
-            return .accentColor
+            return Color(arenaHex: AppArenaPalette.cyan)
         }
     }
 
@@ -282,8 +282,9 @@ extension HomeDashboardView {
             .fill(
                 LinearGradient(
                     colors: [
-                        palette.cardFill,
-                        palette.cardFill.opacity(0.97)
+                        momentumAccentColor.opacity(0.070),
+                        Color(arenaHex: AppArenaPalette.purple).opacity(0.045),
+                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -294,12 +295,14 @@ extension HomeDashboardView {
                     .fill(
                         RadialGradient(
                             colors: [
-                                shouldEmphasizeMomentumCard ? momentumAccentColor.opacity(0.10) : momentumAccentColor.opacity(0.04),
+                                shouldEmphasizeMomentumCard
+                                ? momentumAccentColor.opacity(0.14)
+                                : momentumAccentColor.opacity(0.08),
                                 Color.clear
                             ],
                             center: .topLeading,
                             startRadius: 8,
-                            endRadius: 180
+                            endRadius: 210
                         )
                     )
             )
@@ -308,24 +311,24 @@ extension HomeDashboardView {
                     .fill(
                         RadialGradient(
                             colors: [
-                                momentumAccentColor.opacity(0.06),
+                                Color(arenaHex: AppArenaPalette.blue).opacity(0.060),
                                 Color.clear
                             ],
                             center: .bottomTrailing,
                             startRadius: 10,
-                            endRadius: 220
+                            endRadius: 230
                         )
                     )
-                    .blur(radius: 10)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .stroke(
                         shouldEmphasizeMomentumCard
-                        ? momentumAccentColor.opacity(0.14)
-                        : palette.cardStroke.opacity(0.86),
+                        ? momentumAccentColor.opacity(0.16)
+                        : momentumAccentColor.opacity(0.12),
                         lineWidth: 1
                     )
             )
+            .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
     }
 }

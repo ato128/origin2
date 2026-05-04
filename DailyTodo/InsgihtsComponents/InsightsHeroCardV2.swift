@@ -13,156 +13,293 @@ struct InsightsHeroCardV2: View {
     let action: (SmartSuggestionAction) -> Void
 
     private var heroTint: Color {
-        Color(red: 0.20, green: 0.58, blue: 1.00)
+        if isStudyMode {
+            return Color(arenaHex: AppArenaPalette.gold)
+        }
+
+        switch data.mode {
+        case .exams:
+            return Color(arenaHex: AppArenaPalette.coral)
+        case .courses:
+            return Color(arenaHex: AppArenaPalette.blue)
+        case .rhythm:
+            return Color(arenaHex: AppArenaPalette.cyan)
+        case .empty:
+            return Color(arenaHex: AppArenaPalette.purple)
+        }
     }
 
     private var secondaryTint: Color {
-        Color(red: 0.04, green: 0.12, blue: 0.30)
+        if isStudyMode {
+            return Color(arenaHex: AppArenaPalette.coral)
+        }
+
+        switch data.mode {
+        case .exams:
+            return Color(arenaHex: AppArenaPalette.gold)
+        case .courses:
+            return Color(arenaHex: AppArenaPalette.purple)
+        case .rhythm:
+            return Color(arenaHex: AppArenaPalette.blue)
+        case .empty:
+            return Color(arenaHex: AppArenaPalette.blue)
+        }
+    }
+
+    private var heroIcon: String {
+        if isStudyMode {
+            return "graduationcap.fill"
+        }
+
+        switch data.mode {
+        case .exams:
+            return "calendar.badge.exclamationmark"
+        case .courses:
+            return "book.closed.fill"
+        case .rhythm:
+            return "waveform.path.ecg"
+        case .empty:
+            return "sparkles"
+        }
+    }
+
+    private var heroEyebrow: String {
+        if isStudyMode {
+            return "STUDY SIGNAL"
+        }
+
+        switch data.mode {
+        case .exams:
+            return "EXAM SIGNAL"
+        case .courses:
+            return "COURSE FLOW"
+        case .rhythm:
+            return "WEEK RHYTHM"
+        case .empty:
+            return "START POINT"
+        }
+    }
+
+    private var heroTitleMain: String {
+        if isStudyMode {
+            return "Study"
+        }
+
+        switch data.mode {
+        case .exams:
+            return "Exam"
+        case .courses:
+            return "Course"
+        case .rhythm:
+            return "Haftanın"
+        case .empty:
+            return "Yeni"
+        }
+    }
+
+    private var heroTitleAccent: String {
+        if isStudyMode {
+            return "signal"
+        }
+
+        switch data.mode {
+        case .exams:
+            return "ready"
+        case .courses:
+            return "flow"
+        case .rhythm:
+            return "ritmi"
+        case .empty:
+            return "başla"
+        }
     }
 
     var body: some View {
         Button {
             action(data.action)
         } label: {
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 18) {
                 topRow
-                weeklyMetricsRow
-                divider
+                metricsRow
                 quoteRow
                 bottomActionRow
             }
-            .padding(.horizontal, 22)
-            .padding(.top, 22)
-            .padding(.bottom, 18)
-            .frame(maxWidth: .infinity, minHeight: 232, alignment: .topLeading)
+            .padding(20)
+            .frame(maxWidth: .infinity, minHeight: 230, alignment: .topLeading)
             .background(cardBackground)
-            .overlay(
-                RoundedRectangle(cornerRadius: 34, style: .continuous)
-                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
-            )
         }
         .buttonStyle(.plain)
     }
 
     private var topRow: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("BU HAFTA")
-                    .font(.system(size: 12, weight: .heavy, design: .rounded))
-                    .foregroundStyle(heroTint.opacity(0.98))
-                    .tracking(3.4)
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(heroTint)
+                        .frame(width: 20, height: 1)
 
-                Text("Haftanın ritmi")
-                    .font(.system(size: 34, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.98))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.76)
+                    Text(heroEyebrow)
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .tracking(2.1)
+                        .foregroundStyle(heroTint)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Text(heroTitleMain)
+                        .font(.system(size: 32, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text(heroTitleAccent)
+                        .font(.system(size: 31, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    heroTint,
+                                    secondaryTint
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
             }
 
-            Spacer()
+            Spacer(minLength: 10)
 
             ZStack {
-                Circle()
-                    .fill(Color.white.opacity(0.07))
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                heroTint.opacity(0.18),
+                                secondaryTint.opacity(0.10)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
                     .frame(width: 54, height: 54)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(heroTint.opacity(0.18), lineWidth: 1)
+                    )
 
-                Circle()
-                    .fill(heroTint.opacity(0.20))
-                    .frame(width: 54, height: 54)
-                    .blur(radius: 9)
-
-                Image(systemName: "waveform.path.ecg")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.92))
+                Image(systemName: heroIcon)
+                    .font(.system(size: 20, weight: .black))
+                    .foregroundStyle(heroTint)
             }
         }
     }
 
-    private var weeklyMetricsRow: some View {
-        HStack(spacing: 0) {
-            weeklyMetric(value: data.primaryValue, label: data.primaryLabel)
-
-            metricDivider
-
-            weeklyMetric(
-                value: cleanedMetricValue(data.chip1),
-                label: cleanedMetricLabel(data.chip1, fallback: "görev")
+    private var metricsRow: some View {
+        HStack(spacing: 10) {
+            metricCard(
+                value: data.primaryValue,
+                label: data.primaryLabel,
+                tint: heroTint
             )
 
-            metricDivider
+            metricCard(
+                value: cleanedMetricValue(data.chip1),
+                label: cleanedMetricLabel(data.chip1, fallback: "görev"),
+                tint: secondaryTint
+            )
 
-            weeklyMetric(
+            metricCard(
                 value: cleanedMetricValue(data.chip2),
-                label: cleanedMetricLabel(data.chip2, fallback: "aktif gün")
+                label: cleanedMetricLabel(data.chip2, fallback: "aktif gün"),
+                tint: Color(arenaHex: AppArenaPalette.cyan)
             )
         }
     }
 
-    private func weeklyMetric(value: String, label: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+    private func metricCard(value: String, label: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
             Text(value)
-                .font(.system(size: 42, weight: .heavy, design: .rounded))
-                .foregroundStyle(.white.opacity(0.98))
+                .font(.system(size: 27, weight: .black))
+                .foregroundStyle(.white)
+                .monospacedDigit()
                 .lineLimit(1)
-                .minimumScaleFactor(0.60)
+                .minimumScaleFactor(0.58)
 
-            Text(label)
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.54))
+            Text(label.uppercased())
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .tracking(0.8)
+                .foregroundStyle(.white.opacity(0.40))
                 .lineLimit(1)
-                .minimumScaleFactor(0.75)
+                .minimumScaleFactor(0.66)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var metricDivider: some View {
-        Rectangle()
-            .fill(Color.white.opacity(0.08))
-            .frame(width: 1, height: 58)
-            .padding(.horizontal, 14)
-    }
-
-    private var divider: some View {
-        Rectangle()
-            .fill(Color.white.opacity(0.075))
-            .frame(height: 1)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(tint.opacity(0.080))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(tint.opacity(0.14), lineWidth: 1)
+                )
+        )
     }
 
     private var quoteRow: some View {
-        Text(weeklyQuote)
-            .font(.system(size: 22, weight: .bold, design: .rounded))
-            .foregroundStyle(.white.opacity(0.82))
-            .lineLimit(2)
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "quote.opening")
+                .font(.system(size: 13, weight: .black))
+                .foregroundStyle(heroTint.opacity(0.90))
+                .padding(.top, 2)
+
+            Text(weeklyQuote)
+                .font(.system(size: 18, weight: .black))
+                .foregroundStyle(.white.opacity(0.86))
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.top, 1)
     }
 
     private var bottomActionRow: some View {
         HStack(spacing: 10) {
-            Button {
-                action(data.action)
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: 12, weight: .bold))
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(heroTint)
+                    .frame(width: 7, height: 7)
+                    .shadow(color: heroTint.opacity(0.35), radius: 7)
 
-                    Text(data.actionTitle)
-                        .font(.system(size: 14, weight: .heavy, design: .rounded))
-                }
-                .foregroundStyle(.black)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 12)
-                .background(Capsule().fill(Color.white.opacity(0.98)))
+                Text(data.actionTitle.uppercased())
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(0.8)
+                    .foregroundStyle(heroTint)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.74)
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 12)
+            .frame(height: 34)
+            .background(
+                Capsule()
+                    .fill(heroTint.opacity(0.12))
+                    .overlay(
+                        Capsule()
+                            .stroke(heroTint.opacity(0.18), lineWidth: 1)
+                    )
+            )
 
             Spacer()
 
-            HStack(spacing: 5) {
-                ForEach(0..<4, id: \.self) { index in
+            Image(systemName: "arrow.right")
+                .font(.system(size: 13, weight: .black))
+                .foregroundStyle(.black)
+                .frame(width: 34, height: 34)
+                .background(
                     Circle()
-                        .fill(index == 0 ? Color.white.opacity(0.86) : Color.white.opacity(0.22))
-                        .frame(width: 7, height: 7)
-                }
-            }
+                        .fill(heroTint)
+                )
         }
     }
 
@@ -196,42 +333,50 @@ struct InsightsHeroCardV2: View {
     }
 
     private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 34, style: .continuous)
+        RoundedRectangle(cornerRadius: 32, style: .continuous)
             .fill(
                 LinearGradient(
                     colors: [
-                        heroTint.opacity(0.40),
-                        heroTint.opacity(0.20),
-                        secondaryTint.opacity(0.82),
-                        Color(red: 0.025, green: 0.030, blue: 0.055)
+                        heroTint.opacity(0.090),
+                        secondaryTint.opacity(0.055),
+                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
                     ],
-                    startPoint: .topTrailing,
-                    endPoint: .bottomLeading
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
                 )
             )
             .overlay(
-                RadialGradient(
-                    colors: [
-                        heroTint.opacity(0.26),
-                        .clear
-                    ],
-                    center: .topTrailing,
-                    startRadius: 4,
-                    endRadius: 220
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
+                RoundedRectangle(cornerRadius: 32, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                heroTint.opacity(0.18),
+                                Color.clear
+                            ],
+                            center: .topTrailing,
+                            startRadius: 8,
+                            endRadius: 220
+                        )
+                    )
             )
             .overlay(
-                LinearGradient(
-                    colors: [
-                        Color.white.opacity(0.15),
-                        .clear,
-                        Color.black.opacity(0.22)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
+                RoundedRectangle(cornerRadius: 32, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                secondaryTint.opacity(0.12),
+                                Color.clear
+                            ],
+                            center: .bottomLeading,
+                            startRadius: 10,
+                            endRadius: 230
+                        )
+                    )
             )
+            .overlay(
+                RoundedRectangle(cornerRadius: 32, style: .continuous)
+                    .stroke(heroTint.opacity(0.15), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
     }
 }

@@ -25,20 +25,20 @@ extension CrewChatView {
 
         if typingNames.count == 1 {
             return isTurkish
-                ? "\(typingNames[0]) yazıyor..."
-                : "\(typingNames[0]) is typing..."
-        } else if typingNames.count == 2 {
-            return isTurkish
-                ? "\(typingNames[0]) ve \(typingNames[1]) yazıyor..."
-                : "\(typingNames[0]) and \(typingNames[1]) are typing..."
-        } else {
-            return isTurkish
-                ? "Birileri yazıyor..."
-                : "Some people are typing..."
+            ? "\(typingNames[0]) yazıyor..."
+            : "\(typingNames[0]) is typing..."
         }
-    }
 
- 
+        if typingNames.count == 2 {
+            return isTurkish
+            ? "\(typingNames[0]) ve \(typingNames[1]) yazıyor..."
+            : "\(typingNames[0]) and \(typingNames[1]) are typing..."
+        }
+
+        return isTurkish
+        ? "Birileri yazıyor..."
+        : "Some people are typing..."
+    }
 
     func loadChatData() async {
         await crewStore.loadInitialChatMessagesIfNeeded(
@@ -53,7 +53,11 @@ extension CrewChatView {
         )
 
         await crewStore.loadMembers(for: crew.id)
-        await crewStore.loadMemberProfiles(for: crewStore.crewMembers)
+
+        await crewStore.loadMemberProfiles(
+            for: crewStore.crewMembers.filter { $0.crew_id == crew.id }
+        )
+
         await crewStore.loadCrewMessageReads(for: crew.id)
         await crewStore.loadCrewTypingStatuses(for: crew.id)
 
@@ -70,11 +74,6 @@ extension CrewChatView {
                 userID: myID
             )
 
-            await crewStore.resetUnreadCount(
-                crewID: crew.id,
-                userID: myID
-            )
-            
             await crewStore.resetUnreadCount(
                 crewID: crew.id,
                 userID: myID

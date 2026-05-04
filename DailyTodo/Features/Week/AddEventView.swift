@@ -44,84 +44,40 @@ struct AddEventView: View {
     @State private var pendingKeepOpen = false
     @State private var pendingAddedCourseID: UUID?
 
+    private var accent: Color {
+        colorFromHex(selectedColorHex)
+    }
+
+    private var secondaryAccent: Color {
+        Color(arenaHex: AppArenaPalette.purple)
+    }
+
     var body: some View {
-        Form {
-            Section {
-                livePreviewCard
-            }
+        ZStack {
+            ArenaBackground(
+                primaryGlow: accent,
+                secondaryGlow: Color(arenaHex: AppArenaPalette.purple),
+                warmGlow: Color(arenaHex: AppArenaPalette.cyan),
+                intensity: 0.94
+            )
 
-            Section {
-                if studentStore.courses.isEmpty {
-                    emptyCourseRow
-                } else {
-                    ForEach(uniqueCourses) { course in
-                        courseRow(course)
-                    }
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    header
+                    livePreviewCard
+                    coursesSection
+                    manualCourseSection
+                    customEventSection
+
+                    Spacer(minLength: 40)
                 }
-            } header: {
-                Label("Derslerim", systemImage: "graduationcap.fill")
-            }
-
-            Section {
-                DisclosureGroup(isExpanded: $showManualCourse) {
-                    TextField("Kod", text: $manualCourseCode)
-                        .textInputAutocapitalization(.characters)
-
-                    TextField("Ders adı", text: $manualCourseName)
-
-                    Button {
-                        addManualCourse()
-                    } label: {
-                        Label("Dersi Listeye Ekle", systemImage: "plus.circle.fill")
-                    }
-                    .disabled(manualCourseName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                } label: {
-                    Label("Ekstra ders", systemImage: "plus.circle")
-                }
-            }
-
-            Section {
-                DisclosureGroup(isExpanded: $showCustomEvent) {
-                    TextField("Kod", text: $courseCode)
-                        .textInputAutocapitalization(.characters)
-
-                    TextField("Başlık", text: $title)
-
-                    TextField("Konum (opsiyonel)", text: $location)
-
-                    Picker("Gün", selection: $weekday) {
-                        ForEach(0..<7, id: \.self) { i in
-                            Text(localizedDayTitle(i)).tag(i)
-                        }
-                    }
-
-                    DatePicker("Başlangıç", selection: $startTime, displayedComponents: [.hourAndMinute])
-                    DatePicker("Bitiş", selection: $endTime, displayedComponents: [.hourAndMinute])
-
-                    TextField("Not (opsiyonel)", text: $notes, axis: .vertical)
-                        .lineLimit(3...6)
-                } label: {
-                    Label("Özel etkinlik", systemImage: "calendar.badge.plus")
-                }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 30)
             }
         }
-        .scrollContentBackground(.hidden)
-        .background(AppBackground())
-        .navigationTitle("Ekle")
-        .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button("Bitti") { dismiss() }
-            }
-
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Kaydet") {
-                    trySaveWithConflictCheck()
-                }
-                .fontWeight(.bold)
-                .disabled(!canSave)
-            }
-        }
+        .toolbar(.hidden, for: .navigationBar)
+        .preferredColorScheme(.dark)
         .onAppear {
             applyDefaultDateIfNeeded()
             studentStore.reload()
@@ -131,6 +87,7 @@ struct AddEventView: View {
         }
         .alert("Çakışma var", isPresented: $showConflictAlert) {
             Button("Vazgeç", role: .cancel) { }
+
             Button("Yine de ekle") {
                 saveIgnoringConflicts()
             }
@@ -139,49 +96,290 @@ struct AddEventView: View {
         }
     }
 
-    private var livePreviewCard: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(colorFromHex(selectedColorHex).opacity(0.18))
-                    .frame(width: 46, height: 46)
-
-                Image(systemName: previewIcon)
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(colorFromHex(selectedColorHex))
-            }
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text(title.isEmpty ? "Ders seç" : title)
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
-
+    private var header: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 7) {
                 HStack(spacing: 8) {
-                    if !courseCode.isEmpty {
-                        Text(courseCode)
-                    }
+                    Rectangle()
+                        .fill(accent)
+                        .frame(width: 20, height: 1)
 
-                    Text(localizedDayTitle(weekday))
-                    Text("\(hm(minutesFrom(startTime)))–\(hm(minutesFrom(endTime)))")
+                    Text("WEEK EVENT")
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .tracking(2.3)
+                        .foregroundStyle(accent)
+                        .lineLimit(1)
                 }
-                .font(.caption.bold())
-                .foregroundStyle(.secondary)
+
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Text("Yeni")
+                        .font(.system(size: 38, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text("ders")
+                        .font(.system(size: 35, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    accent,
+                                    secondaryAccent
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+
+                Text("Ders seç, gün ve saat belirle, haftana ekle.")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.48))
+                    .lineLimit(2)
             }
 
             Spacer()
 
-            Text(durationText)
-                .font(.caption.bold())
-                .foregroundStyle(colorFromHex(selectedColorHex))
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.095),
+                                        Color.white.opacity(0.045)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                            )
+                            .shadow(color: Color.black.opacity(0.24), radius: 12, y: 6)
+                    )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var livePreviewCard: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(accent.opacity(0.13))
+                    .frame(width: 56, height: 56)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(accent.opacity(0.18), lineWidth: 1)
+                    )
+
+                Image(systemName: previewIcon)
+                    .font(.system(size: 21, weight: .black))
+                    .foregroundStyle(accent)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(accent)
+                        .frame(width: 16, height: 1)
+
+                    Text("PREVIEW")
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .tracking(1.5)
+                        .foregroundStyle(accent)
+                }
+
+                Text(title.isEmpty ? "Ders seç" : title)
+                    .font(.system(size: 20, weight: .black))
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+
+                HStack(spacing: 8) {
+                    if !courseCode.isEmpty {
+                        miniPill(courseCode, tint: accent)
+                    }
+
+                    miniPill(localizedDayTitle(weekday), tint: Color(arenaHex: AppArenaPalette.cyan))
+                    miniPill("\(hm(minutesFrom(startTime)))–\(hm(minutesFrom(endTime)))", tint: Color(arenaHex: AppArenaPalette.gold))
+                }
+            }
+
+            Spacer()
+
+            Text(durationText.uppercased())
+                .font(.system(size: 10, weight: .black, design: .monospaced))
+                .foregroundStyle(accent)
                 .padding(.horizontal, 10)
-                .padding(.vertical, 7)
+                .frame(height: 30)
                 .background(
                     Capsule()
-                        .fill(colorFromHex(selectedColorHex).opacity(0.14))
+                        .fill(accent.opacity(0.12))
+                        .overlay(
+                            Capsule()
+                                .stroke(accent.opacity(0.16), lineWidth: 1)
+                        )
                 )
         }
-        .padding(.vertical, 4)
+        .padding(18)
+        .background(cardBackground(tint: accent, radius: 28, strength: 0.76))
+    }
+
+    private var coursesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(
+                title: "Derslerim",
+                eyebrow: "COURSES",
+                icon: "graduationcap.fill",
+                tint: Color(arenaHex: AppArenaPalette.cyan)
+            )
+
+            if studentStore.courses.isEmpty {
+                emptyCourseRow
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(uniqueCourses) { course in
+                        courseRow(course)
+                    }
+                }
+            }
+        }
+    }
+
+    private var manualCourseSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                withAnimation(.spring(response: 0.30, dampingFraction: 0.86)) {
+                    showManualCourse.toggle()
+                }
+            } label: {
+                disclosureHeader(
+                    title: "Ekstra ders",
+                    subtitle: "Listede olmayan dersi ekle",
+                    icon: "plus.circle",
+                    tint: Color(arenaHex: AppArenaPalette.green),
+                    isOpen: showManualCourse
+                )
+            }
+            .buttonStyle(.plain)
+
+            if showManualCourse {
+                VStack(spacing: 12) {
+                    arenaTextField("Kod", text: $manualCourseCode, capitalization: .characters)
+                    arenaTextField("Ders adı", text: $manualCourseName)
+
+                    Button {
+                        addManualCourse()
+                    } label: {
+                        primaryActionButton(
+                            title: "DERSİ LİSTEYE EKLE",
+                            icon: "plus.circle.fill",
+                            tint: Color(arenaHex: AppArenaPalette.green)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(manualCourseName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .opacity(manualCourseName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.45 : 1)
+                }
+                .padding(15)
+                .background(cardBackground(tint: Color(arenaHex: AppArenaPalette.green), radius: 22, strength: 0.48))
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+
+    private var customEventSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                withAnimation(.spring(response: 0.30, dampingFraction: 0.86)) {
+                    showCustomEvent.toggle()
+                    if showCustomEvent {
+                        selectedCourseID = nil
+                        expandedCourseID = nil
+                    }
+                }
+            } label: {
+                disclosureHeader(
+                    title: "Özel etkinlik",
+                    subtitle: "Ders dışı blok ekle",
+                    icon: "calendar.badge.plus",
+                    tint: Color(arenaHex: AppArenaPalette.gold),
+                    isOpen: showCustomEvent
+                )
+            }
+            .buttonStyle(.plain)
+
+            if showCustomEvent {
+                VStack(spacing: 12) {
+                    arenaTextField("Kod", text: $courseCode, capitalization: .characters)
+                    arenaTextField("Başlık", text: $title)
+                    arenaTextField("Konum (opsiyonel)", text: $location)
+
+                    pickerBlock
+
+                    TextField("Not (opsiyonel)", text: $notes, axis: .vertical)
+                        .lineLimit(3...6)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .tint(accent)
+                        .padding(14)
+                        .background(inputBackground)
+
+                    Button {
+                        trySaveWithConflictCheck()
+                    } label: {
+                        primaryActionButton(
+                            title: "KAYDET",
+                            icon: "checkmark.circle.fill",
+                            tint: accent
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canSave)
+                    .opacity(canSave ? 1 : 0.45)
+                }
+                .padding(15)
+                .background(cardBackground(tint: Color(arenaHex: AppArenaPalette.gold), radius: 22, strength: 0.48))
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+
+    private var pickerBlock: some View {
+        VStack(spacing: 12) {
+            Picker("Gün", selection: $weekday) {
+                ForEach(0..<7, id: \.self) { i in
+                    Text(localizedDayTitle(i)).tag(i)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            HStack(spacing: 10) {
+                DatePicker("", selection: $startTime, displayedComponents: [.hourAndMinute])
+                    .labelsHidden()
+                    .tint(accent)
+
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 12, weight: .black))
+                    .foregroundStyle(.white.opacity(0.36))
+
+                DatePicker("", selection: $endTime, displayedComponents: [.hourAndMinute])
+                    .labelsHidden()
+                    .tint(accent)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .padding(13)
+        .background(inputBackground)
     }
 
     private var previewIcon: String {
@@ -202,19 +400,32 @@ struct AddEventView: View {
     }
 
     private var emptyCourseRow: some View {
-        Label {
-            VStack(alignment: .leading, spacing: 3) {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color(arenaHex: AppArenaPalette.cyan).opacity(0.13))
+                    .frame(width: 46, height: 46)
+
+                Image(systemName: "graduationcap")
+                    .font(.system(size: 17, weight: .black))
+                    .foregroundStyle(Color(arenaHex: AppArenaPalette.cyan))
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
                 Text("Ders yok")
-                    .font(.headline)
+                    .font(.system(size: 17, weight: .black))
+                    .foregroundStyle(.white)
 
                 Text("Profil > Öğrenci Bilgileri bölümünden ders ekleyebilirsin.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.50))
+                    .lineLimit(2)
             }
-        } icon: {
-            Image(systemName: "graduationcap")
-                .foregroundStyle(.blue)
+
+            Spacer()
         }
+        .padding(15)
+        .background(cardBackground(tint: Color(arenaHex: AppArenaPalette.cyan), radius: 22, strength: 0.44))
     }
 
     private func courseRow(_ course: Course) -> some View {
@@ -233,61 +444,47 @@ struct AddEventView: View {
             } label: {
                 HStack(spacing: 12) {
                     Circle()
-                        .fill(isAdded ? .green : tint)
+                        .fill(isAdded ? Color(arenaHex: AppArenaPalette.green) : tint)
                         .frame(width: 11, height: 11)
+                        .shadow(color: (isAdded ? Color(arenaHex: AppArenaPalette.green) : tint).opacity(0.28), radius: 7)
 
-                    VStack(alignment: .leading, spacing: 3) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(course.name)
-                            .font(.headline)
-                            .foregroundStyle(.primary)
+                            .font(.system(size: 17, weight: .black))
+                            .foregroundStyle(.white)
+                            .lineLimit(2)
 
                         if !course.code.isEmpty {
-                            Text(course.code)
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
+                            Text(course.code.uppercased())
+                                .font(.system(size: 10, weight: .black, design: .monospaced))
+                                .tracking(0.7)
+                                .foregroundStyle(.white.opacity(0.44))
                         }
                     }
 
                     Spacer()
 
                     Image(systemName: isAdded ? "checkmark.circle.fill" : (isExpanded ? "chevron.up.circle.fill" : "chevron.down.circle"))
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(isAdded ? .green : .secondary)
+                        .font(.system(size: 20, weight: .black))
+                        .foregroundStyle(isAdded ? Color(arenaHex: AppArenaPalette.green) : .white.opacity(0.38))
                 }
             }
             .buttonStyle(.plain)
 
             if isExpanded {
                 VStack(spacing: 12) {
-                    Picker("Gün", selection: $weekday) {
-                        ForEach(0..<7, id: \.self) { i in
-                            Text(localizedDayTitle(i)).tag(i)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-
-                    HStack {
-                        DatePicker("", selection: $startTime, displayedComponents: [.hourAndMinute])
-                            .labelsHidden()
-
-                        Image(systemName: "arrow.right")
-                            .font(.caption.bold())
-                            .foregroundStyle(.secondary)
-
-                        DatePicker("", selection: $endTime, displayedComponents: [.hourAndMinute])
-                            .labelsHidden()
-                    }
+                    pickerBlock
 
                     HStack {
                         Label(durationText, systemImage: "clock.fill")
-                            .font(.caption.bold())
-                            .foregroundStyle(colorFromHex(selectedColorHex))
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .foregroundStyle(tint)
 
                         Spacer()
 
                         Label("Her hafta", systemImage: "repeat")
-                            .font(.caption.bold())
-                            .foregroundStyle(.secondary)
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.44))
                     }
 
                     courseColorPicker()
@@ -303,26 +500,37 @@ struct AddEventView: View {
                     } label: {
                         HStack(spacing: 8) {
                             Image(systemName: isAdded ? "checkmark.circle.fill" : "plus.circle.fill")
-                            Text(isAdded ? "Eklendi" : "Haftaya Ekle")
+                            Text(isAdded ? "EKLENDİ" : "HAFTAYA EKLE")
+                            Spacer()
+                            Image(systemName: "arrow.right")
                         }
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(isAdded ? .green : .white)
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .tracking(0.8)
+                        .foregroundStyle(isAdded ? Color(arenaHex: AppArenaPalette.green) : .black)
+                        .padding(.horizontal, 16)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 13)
+                        .frame(height: 50)
                         .background(
-                            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                                .fill(isAdded ? Color.green.opacity(0.16) : colorFromHex(selectedColorHex))
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(isAdded ? Color(arenaHex: AppArenaPalette.green).opacity(0.14) : tint)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .stroke(isAdded ? Color(arenaHex: AppArenaPalette.green).opacity(0.16) : Color.white.opacity(0.12), lineWidth: 1)
+                                )
                         )
                     }
                     .buttonStyle(.plain)
                     .disabled(isAdded || durationMinute < 15)
+                    .opacity(isAdded || durationMinute < 15 ? 0.55 : 1)
                 }
                 .padding(.top, 2)
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .padding(.vertical, 4)
+        .padding(15)
+        .background(cardBackground(tint: tint, radius: 22, strength: isExpanded ? 0.60 : 0.42))
     }
-    
+
     private func courseColorPicker() -> some View {
         let colors = [
             "#3B82F6",
@@ -335,9 +543,10 @@ struct AddEventView: View {
         ]
 
         return VStack(alignment: .leading, spacing: 10) {
-            Text("Renk")
-                .font(.caption.bold())
-                .foregroundStyle(.secondary)
+            Text("RENK")
+                .font(.system(size: 10, weight: .black, design: .monospaced))
+                .tracking(0.8)
+                .foregroundStyle(.white.opacity(0.42))
 
             HStack(spacing: 12) {
                 ForEach(colors, id: \.self) { hex in
@@ -350,17 +559,18 @@ struct AddEventView: View {
                         ZStack {
                             Circle()
                                 .fill(color)
-                                .frame(width: 28, height: 28)
+                                .frame(width: 30, height: 30)
+                                .shadow(color: color.opacity(selected ? 0.28 : 0.08), radius: selected ? 8 : 3)
 
                             if selected {
                                 Image(systemName: "checkmark")
-                                    .font(.system(size: 11, weight: .bold))
+                                    .font(.system(size: 11, weight: .black))
                                     .foregroundStyle(.white)
                             }
                         }
                         .overlay(
                             Circle()
-                                .stroke(.white.opacity(selected ? 0.8 : 0), lineWidth: 2)
+                                .stroke(.white.opacity(selected ? 0.85 : 0.0), lineWidth: 2)
                         )
                     }
                     .buttonStyle(.plain)
@@ -368,6 +578,175 @@ struct AddEventView: View {
             }
         }
         .padding(.top, 2)
+    }
+
+    private func sectionHeader(title: String, eyebrow: String, icon: String, tint: Color) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(tint)
+                        .frame(width: 18, height: 1)
+
+                    Text(eyebrow)
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .tracking(1.6)
+                        .foregroundStyle(tint)
+                }
+
+                Text(title)
+                    .font(.system(size: 24, weight: .black))
+                    .foregroundStyle(.white)
+            }
+
+            Spacer()
+
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .black))
+                .foregroundStyle(tint)
+                .frame(width: 36, height: 36)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(tint.opacity(0.12))
+                )
+        }
+    }
+
+    private func disclosureHeader(
+        title: String,
+        subtitle: String,
+        icon: String,
+        tint: Color,
+        isOpen: Bool
+    ) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(tint.opacity(0.13))
+                    .frame(width: 46, height: 46)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(tint.opacity(0.16), lineWidth: 1)
+                    )
+
+                Image(systemName: icon)
+                    .font(.system(size: 17, weight: .black))
+                    .foregroundStyle(tint)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 18, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text(subtitle)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.48))
+            }
+
+            Spacer()
+
+            Image(systemName: isOpen ? "chevron.up" : "chevron.down")
+                .font(.system(size: 13, weight: .black))
+                .foregroundStyle(tint)
+        }
+        .padding(15)
+        .background(cardBackground(tint: tint, radius: 22, strength: 0.42))
+    }
+
+    private func arenaTextField(
+        _ placeholder: String,
+        text: Binding<String>,
+        capitalization: TextInputAutocapitalization = .sentences
+    ) -> some View {
+        TextField(placeholder, text: text)
+            .textInputAutocapitalization(capitalization)
+            .autocorrectionDisabled()
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(.white)
+            .tint(accent)
+            .padding(14)
+            .background(inputBackground)
+    }
+
+    private var inputBackground: some View {
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .fill(Color.white.opacity(0.060))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
+            )
+    }
+
+    private func primaryActionButton(title: String, icon: String, tint: Color) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+            Text(title)
+            Spacer()
+            Image(systemName: "arrow.right")
+        }
+        .font(.system(size: 11, weight: .black, design: .monospaced))
+        .tracking(0.8)
+        .foregroundStyle(.black)
+        .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity)
+        .frame(height: 50)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(tint)
+                .shadow(color: tint.opacity(0.18), radius: 10, y: 5)
+        )
+    }
+
+    private func miniPill(_ text: String, tint: Color) -> some View {
+        Text(text.uppercased())
+            .font(.system(size: 9, weight: .black, design: .monospaced))
+            .tracking(0.6)
+            .foregroundStyle(tint)
+            .padding(.horizontal, 8)
+            .frame(height: 24)
+            .background(
+                Capsule()
+                    .fill(tint.opacity(0.12))
+                    .overlay(
+                        Capsule()
+                            .stroke(tint.opacity(0.16), lineWidth: 1)
+                    )
+            )
+    }
+
+    private func cardBackground(tint: Color, radius: CGFloat, strength: Double) -> some View {
+        RoundedRectangle(cornerRadius: radius, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        tint.opacity(0.070 + strength * 0.035),
+                        Color(arenaHex: AppArenaPalette.purple).opacity(0.038),
+                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                tint.opacity(0.10 + strength * 0.08),
+                                Color.clear
+                            ],
+                            center: .topTrailing,
+                            startRadius: 6,
+                            endRadius: 180
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .stroke(tint.opacity(0.14), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.20), radius: 13, y: 7)
     }
 
     private var canSave: Bool {

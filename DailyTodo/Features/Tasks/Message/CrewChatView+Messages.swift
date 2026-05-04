@@ -16,12 +16,12 @@ extension CrewChatView {
     var messagesList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 10) {
+                LazyVStack(spacing: 2) {
                     ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
-                        VStack(spacing: 8) {
+                        VStack(spacing: 6) {
                             if shouldShowDateSeparator(at: index) {
                                 dateSeparator(for: message.createdAt)
-                                    .padding(.vertical, 6)
+                                    .padding(.vertical, 8)
                             }
 
                             messageBubble(message, index: index)
@@ -78,6 +78,7 @@ extension CrewChatView {
 
         return otherMembers.contains { member in
             guard let readDate = lastReadDate(for: member.userID) else { return false }
+
             return readDate.timeIntervalSince1970 >= message.createdAt.timeIntervalSince1970 - 1
         }
     }
@@ -113,26 +114,23 @@ extension CrewChatView {
     func messageStatusView(for message: CrewChatMessageItem) -> some View {
         if message.isPending {
             Image(systemName: "clock")
-                .font(.caption2)
-                .foregroundStyle(message.isFromMe ? .white.opacity(0.72) : palette.secondaryText)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundStyle(message.isFromMe ? .white.opacity(0.55) : .white.opacity(0.36))
 
         } else if message.isFailed {
             Image(systemName: "exclamationmark.circle.fill")
-                .font(.caption2)
+                .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(.red)
 
         } else if message.isFromMe {
             let seen = messageSeenByAnyone(message)
 
-            HStack(spacing: -2) {
+            HStack(spacing: -3) {
                 Image(systemName: "checkmark")
-                    .font(.caption2.bold())
-                    .foregroundStyle(seen ? .blue : .white.opacity(0.80))
-
                 Image(systemName: "checkmark")
-                    .font(.caption2.bold())
-                    .foregroundStyle(seen ? .blue : .white.opacity(0.80))
             }
+            .font(.system(size: 9, weight: .bold))
+            .foregroundStyle(seen ? Color(crewChatMessageHex: "#2DD4FF") : .white.opacity(0.72))
         }
     }
 
@@ -156,103 +154,79 @@ extension CrewChatView {
             text.contains("odak oturumunu devam ettirdi")
 
         let showSenderName = shouldShowSenderName(at: index)
-        let topSpacing: CGFloat = shouldTightenSpacing(at: index) ? 2 : 8
+        let topSpacing: CGFloat = shouldTightenSpacing(at: index) ? 1 : 7
         let isFromMe = message.isFromMe
 
         HStack(alignment: .bottom) {
             if isFocusSystemMessage {
                 Spacer()
 
-                HStack(spacing: 8) {
+                HStack(spacing: 9) {
                     Image(systemName: "timer")
-                        .font(.caption.bold())
-                        .foregroundStyle(.green)
+                        .font(.system(size: 12, weight: .black))
+                        .foregroundStyle(Color(crewChatMessageHex: "#A3E635"))
 
                     Text(message.displayText)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.88))
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.84))
                         .multilineTextAlignment(.center)
+                        .lineLimit(3)
                 }
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 13)
                 .padding(.vertical, 9)
                 .background(
                     Capsule()
-                        .fill(Color.white.opacity(0.07))
-                )
-                .overlay(
-                    Capsule()
-                        .stroke(Color.white.opacity(0.08), lineWidth: 0.7)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(crewChatMessageHex: "#A3E635").opacity(0.10),
+                                    Color(crewChatMessageHex: "#1593FF").opacity(0.060),
+                                    Color.white.opacity(0.045)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(Color.white.opacity(0.09), lineWidth: 1)
+                        )
                 )
 
                 Spacer()
             } else {
                 if isFromMe {
-                    Spacer(minLength: 42)
+                    Spacer(minLength: 54)
                 }
 
                 VStack(alignment: isFromMe ? .trailing : .leading, spacing: 3) {
                     if !isFromMe && showSenderName {
                         Text(message.senderName)
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(.white.opacity(0.55))
-                            .padding(.horizontal, 4)
+                            .font(.system(size: 11, weight: .black, design: .monospaced))
+                            .foregroundStyle(senderNameTint(for: message.senderName))
+                            .padding(.horizontal, 5)
+                            .padding(.bottom, 1)
                     }
 
                     VStack(alignment: isFromMe ? .trailing : .leading, spacing: 6) {
                         if let replyPreview = message.replyPreview {
-                            HStack(spacing: 6) {
-                                Rectangle()
-                                    .fill(
-                                        isFromMe
-                                        ? Color.white.opacity(0.76)
-                                        : Color.accentColor.opacity(0.90)
-                                    )
-                                    .frame(width: 2, height: 24)
-                                    .clipShape(Capsule())
-
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text("crew_chat_reply_label")
-                                        .font(.caption2.weight(.semibold))
-                                        .foregroundStyle(
-                                            isFromMe
-                                            ? .white.opacity(0.82)
-                                            : .white.opacity(0.62)
-                                        )
-
-                                    Text(replyPreview)
-                                        .font(.caption2)
-                                        .foregroundStyle(
-                                            isFromMe
-                                            ? .white.opacity(0.90)
-                                            : .white.opacity(0.58)
-                                        )
-                                        .lineLimit(1)
-                                }
-
-                                Spacer(minLength: 0)
-                            }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 6)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .fill(
-                                        isFromMe
-                                        ? Color.white.opacity(0.12)
-                                        : Color.white.opacity(0.05)
-                                    )
+                            replyPreviewView(
+                                replyPreview,
+                                isFromMe: isFromMe
                             )
                         }
 
                         Text(message.displayText)
                             .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(isFromMe ? .white : .white.opacity(0.95))
+                            .foregroundStyle(isFromMe ? .white : .white.opacity(0.96))
                             .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
 
                         if isFromMe {
                             HStack(spacing: 5) {
                                 Text(message.createdAt, style: .time)
-                                    .font(.caption2)
-                                    .foregroundStyle(.white.opacity(0.76))
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundStyle(.white.opacity(0.70))
 
                                 messageStatusView(for: message)
                             }
@@ -260,40 +234,11 @@ extension CrewChatView {
                         }
                     }
                     .padding(.horizontal, 14)
-                    .padding(.vertical, 11)
-                    .background(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .fill(
-                                isFromMe
-                                ? LinearGradient(
-                                    colors: [
-                                        Color(red: 0.34, green: 0.62, blue: 1.0),
-                                        Color(red: 0.25, green: 0.55, blue: 0.98)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                                : LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.09),
-                                        Color.white.opacity(0.05)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(
-                                isFromMe
-                                ? Color.white.opacity(0.10)
-                                : Color.white.opacity(0.08),
-                                lineWidth: 0.8
-                            )
-                    )
-                    .padding(.top, topSpacing)
+                    .padding(.vertical, 10)
+                    .background(messageBubbleBackground(isFromMe: isFromMe))
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                     .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .padding(.top, topSpacing)
                     .onLongPressGesture(minimumDuration: 0.28) {
                         Haptics.impact(.light)
                         replyingTo = message
@@ -302,18 +247,94 @@ extension CrewChatView {
                     if !isFromMe {
                         HStack(spacing: 6) {
                             Text(message.createdAt, style: .time)
-                                .font(.caption2)
-                                .foregroundStyle(.white.opacity(0.42))
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(.white.opacity(0.36))
 
                             messageStatusView(for: message)
                         }
-                        .padding(.horizontal, 4)
+                        .padding(.horizontal, 5)
+                        .padding(.top, 1)
                     }
                 }
 
                 if !isFromMe {
-                    Spacer(minLength: 42)
+                    Spacer(minLength: 54)
                 }
+            }
+        }
+    }
+
+    func replyPreviewView(_ replyPreview: String, isFromMe: Bool) -> some View {
+        HStack(spacing: 8) {
+            Rectangle()
+                .fill(
+                    isFromMe
+                    ? Color.white.opacity(0.78)
+                    : Color(crewChatMessageHex: "#2DD4FF").opacity(0.90)
+                )
+                .frame(width: 3, height: 26)
+                .clipShape(Capsule())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("crew_chat_reply_label")
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .foregroundStyle(isFromMe ? .white.opacity(0.82) : Color(crewChatMessageHex: "#2DD4FF"))
+
+                Text(replyPreview)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(isFromMe ? .white.opacity(0.78) : .white.opacity(0.52))
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 7)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(isFromMe ? Color.white.opacity(0.12) : Color.white.opacity(0.050))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color.white.opacity(isFromMe ? 0.10 : 0.07), lineWidth: 1)
+                )
+        )
+    }
+
+    func messageBubbleBackground(isFromMe: Bool) -> some View {
+        Group {
+            if isFromMe {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(crewChatMessageHex: "#1593FF"),
+                                Color(crewChatMessageHex: "#7C3AED")
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
+                    .shadow(color: Color(crewChatMessageHex: "#1593FF").opacity(0.16), radius: 8, y: 4)
+            } else {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.062),
+                                Color.white.opacity(0.040)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .stroke(Color.white.opacity(0.085), lineWidth: 1)
+                    )
             }
         }
     }
@@ -321,7 +342,7 @@ extension CrewChatView {
     func scrollToBottom(proxy: ScrollViewProxy, animated: Bool) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             if animated {
-                withAnimation(.easeOut(duration: 0.22)) {
+                withAnimation(.spring(response: 0.30, dampingFraction: 0.88)) {
                     proxy.scrollTo("crew-chat-bottom-anchor", anchor: .bottom)
                 }
             } else {
@@ -332,21 +353,34 @@ extension CrewChatView {
 
     func shouldShowDateSeparator(at index: Int) -> Bool {
         guard messages.indices.contains(index) else { return false }
-        if index == 0 { return true }
+
+        if index == 0 {
+            return true
+        }
 
         let calendar = Calendar.current
-        return !calendar.isDate(messages[index].createdAt, inSameDayAs: messages[index - 1].createdAt)
+
+        return !calendar.isDate(
+            messages[index].createdAt,
+            inSameDayAs: messages[index - 1].createdAt
+        )
     }
 
     func shouldShowSenderName(at index: Int) -> Bool {
         guard messages.indices.contains(index) else { return true }
-        if index == 0 { return true }
+
+        if index == 0 {
+            return true
+        }
 
         let current = messages[index]
         let previous = messages[index - 1]
 
         let sameSender = current.senderID == previous.senderID
-        let sameDay = Calendar.current.isDate(current.createdAt, inSameDayAs: previous.createdAt)
+        let sameDay = Calendar.current.isDate(
+            current.createdAt,
+            inSameDayAs: previous.createdAt
+        )
 
         return !(sameSender && sameDay)
     }
@@ -358,7 +392,10 @@ extension CrewChatView {
         let previous = messages[index - 1]
 
         let sameSender = current.senderID == previous.senderID
-        let sameDay = Calendar.current.isDate(current.createdAt, inSameDayAs: previous.createdAt)
+        let sameDay = Calendar.current.isDate(
+            current.createdAt,
+            inSameDayAs: previous.createdAt
+        )
 
         return sameSender && sameDay
     }
@@ -366,17 +403,17 @@ extension CrewChatView {
     @ViewBuilder
     func dateSeparator(for date: Date) -> some View {
         Text(relativeDateTitle(for: date))
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.white.opacity(0.62))
+            .font(.system(size: 12, weight: .bold))
+            .foregroundStyle(.white.opacity(0.50))
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(
                 Capsule()
-                    .fill(Color.white.opacity(0.06))
-            )
-            .overlay(
-                Capsule()
-                    .stroke(Color.white.opacity(0.08), lineWidth: 0.7)
+                    .fill(Color.white.opacity(0.060))
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.white.opacity(0.085), lineWidth: 1)
+                    )
             )
     }
 
@@ -415,6 +452,70 @@ extension CrewChatView {
 
         let previewStart = fullText.index(fullText.startIndex, offsetBy: replyMarker.count)
         let preview = String(fullText[previewStart..<bodyRange.lowerBound])
+
         return preview.isEmpty ? nil : preview
+    }
+
+    func senderNameTint(for name: String) -> Color {
+        let palette: [Color] = [
+            Color(crewChatMessageHex: "#2DD4FF"),
+            Color(crewChatMessageHex: "#A3E635"),
+            Color(crewChatMessageHex: "#FBBF24"),
+            Color(crewChatMessageHex: "#FF5A44"),
+            Color(crewChatMessageHex: "#C084FC")
+        ]
+
+        let value = abs(name.unicodeScalars.map { Int($0.value) }.reduce(0, +))
+        return palette[value % palette.count]
+    }
+}
+
+// MARK: - Color Hex
+
+private extension Color {
+    init(crewChatMessageHex hex: String) {
+        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+
+        var int: UInt64 = 0
+        Scanner(string: cleaned).scanHexInt64(&int)
+
+        let a: UInt64
+        let r: UInt64
+        let g: UInt64
+        let b: UInt64
+
+        switch cleaned.count {
+        case 3:
+            a = 255
+            r = (int >> 8) * 17
+            g = ((int >> 4) & 0xF) * 17
+            b = (int & 0xF) * 17
+
+        case 6:
+            a = 255
+            r = int >> 16
+            g = (int >> 8) & 0xFF
+            b = int & 0xFF
+
+        case 8:
+            a = int >> 24
+            r = (int >> 16) & 0xFF
+            g = (int >> 8) & 0xFF
+            b = int & 0xFF
+
+        default:
+            a = 255
+            r = 255
+            g = 255
+            b = 255
+        }
+
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
     }
 }

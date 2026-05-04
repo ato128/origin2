@@ -15,7 +15,8 @@ extension WeekView {
     var weekMainContent: some View {
         ScrollViewReader { proxy in
             weekMainBase(proxy: proxy)
-                .toolbar { toolbarContent }
+                .toolbar(.hidden, for: .navigationBar)
+                .overlay(weekFloatingTopActions, alignment: .topTrailing)
                 .overlay(toastView, alignment: .bottom)
                 .sheet(isPresented: $showingAdd) {
                     addEventSheet
@@ -46,6 +47,117 @@ extension WeekView {
                         .environmentObject(studentStore)
                 }
         }
+    }
+    
+    var weekFloatingTopActions: some View {
+        HStack(spacing: 9) {
+            Menu {
+                if weekMode == .crew {
+                    Button {
+                        Haptics.impact(.light)
+                        shareCrewDay()
+                    } label: {
+                        Label("week_share_today_crew_tasks", systemImage: "square.and.arrow.up")
+                    }
+
+                    Button {
+                        Haptics.impact(.light)
+                        shareSelectedCrew()
+                    } label: {
+                        Label("week_share_crew", systemImage: "person.3.fill")
+                    }
+
+                    Button {
+                        UIPasteboard.general.string = shareTextForCrewDay()
+                        Haptics.notify(.success)
+                        showCopiedToast()
+                    } label: {
+                        Label("week_copy", systemImage: "doc.on.doc")
+                    }
+                } else {
+                    Button {
+                        Haptics.impact(.light)
+                        shareDay()
+                    } label: {
+                        Label("week_share_this_day", systemImage: "square.and.arrow.up")
+                    }
+
+                    Button {
+                        Haptics.impact(.light)
+                        shareWeek()
+                    } label: {
+                        Label("week_share_full_week", systemImage: "calendar")
+                    }
+
+                    Button {
+                        UIPasteboard.general.string = shareTextForSelectedDay()
+                        Haptics.notify(.success)
+                        showCopiedToast()
+                    } label: {
+                        Label("week_copy", systemImage: "doc.on.doc")
+                    }
+                }
+            } label: {
+                weekFloatingIconButton(systemName: "square.and.arrow.up")
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                Haptics.impact(.light)
+                planAheadDate = Date()
+                planAheadMode = weekMode == .crew ? .crew : .personal
+                showPlanAheadSheet = true
+            } label: {
+                weekFloatingIconButton(systemName: "calendar")
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                Haptics.impact(.medium)
+
+                if weekMode == .crew {
+                    if selectedCrew != nil {
+                        showingCreateCrewTask = true
+                    } else {
+                        showCrewPickerSheet = true
+                    }
+                } else {
+                    studentStore.reload()
+                    planAheadDate = targetDateForSelectedDay()
+                    showingAdd = true
+                }
+            } label: {
+                weekFloatingIconButton(systemName: "plus")
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.trailing, 16)
+        .padding(.top, 10)
+    }
+    
+    func weekFloatingIconButton(systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: systemName == "plus" ? 17 : 15, weight: .black))
+            .foregroundStyle(weekMode == .crew ? Color(arenaHex: AppArenaPalette.coral) : Color(arenaHex: AppArenaPalette.cyan))
+            .frame(width: 42, height: 42)
+            .background(
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.095),
+                                Color.white.opacity(0.045)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.24), radius: 12, y: 6)
+            )
     }
 
     private func weekMainBase(proxy: ScrollViewProxy) -> some View {
@@ -227,15 +339,38 @@ extension WeekView {
     var toastView: some View {
         Group {
             if showCopied {
-                Text("week_copied")
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(.ultraThinMaterial)
-                    .clipShape(Capsule())
-                    .shadow(radius: 8)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .padding(.bottom, 30)
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 13, weight: .black))
+                        .foregroundStyle(Color(arenaHex: AppArenaPalette.green))
+
+                    Text("week_copied")
+                        .font(.system(size: 12, weight: .black, design: .monospaced))
+                        .tracking(0.7)
+                        .foregroundStyle(.white)
+                }
+                .padding(.horizontal, 16)
+                .frame(height: 42)
+                .background(
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(arenaHex: AppArenaPalette.green).opacity(0.13),
+                                    Color.white.opacity(0.060)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(Color(arenaHex: AppArenaPalette.green).opacity(0.18), lineWidth: 1)
+                        )
+                        .shadow(color: Color.black.opacity(0.24), radius: 14, y: 7)
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .padding(.bottom, 30)
             }
         }
     }

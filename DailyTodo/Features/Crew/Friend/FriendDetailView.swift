@@ -8,6 +8,31 @@
 import SwiftUI
 import SwiftData
 
+private enum FriendDetailArenaPalette {
+    static let backgroundTop = Color(friendDetailHex: "#05060D")
+    static let backgroundMid = Color(friendDetailHex: "#070713")
+    static let backgroundBottom = Color(friendDetailHex: "#07040C")
+
+    static let blue = Color(friendDetailHex: "#1593FF")
+    static let cyan = Color(friendDetailHex: "#2DD4FF")
+    static let purple = Color(friendDetailHex: "#7C3AED")
+    static let coral = Color(friendDetailHex: "#FF5A44")
+    static let gold = Color(friendDetailHex: "#FBBF24")
+    static let green = Color(friendDetailHex: "#A3E635")
+    static let surface = Color(friendDetailHex: "#101118")
+
+    static var appGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(friendDetailHex: "#1E6BFF"),
+                Color(friendDetailHex: "#7C3AED")
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+}
+
 struct FriendDetailView: View {
     let friend: Friend
 
@@ -17,9 +42,6 @@ struct FriendDetailView: View {
     @EnvironmentObject var friendStore: FriendStore
     @EnvironmentObject var session: SessionStore
 
-    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
-    private let palette = ThemePalette()
-
     @Query(sort: \SharedWeekItem.createdAt, order: .forward)
     private var allSharedItems: [SharedWeekItem]
 
@@ -28,8 +50,9 @@ struct FriendDetailView: View {
 
     @State private var showHero = false
     @State private var showSchedule = false
-    @State private var showMessagesCard = false
-    @State private var showActionsCard = false
+    @State private var showInsights = false
+    @State private var showActions = false
+
     @State private var showRemoveFriendAlert = false
     @State private var isRemovingFriend = false
 
@@ -37,27 +60,24 @@ struct FriendDetailView: View {
         friend.backendFriendshipID
     }
 
+    private var isBackendFriend: Bool {
+        friend.backendFriendshipID != nil
+    }
+
     private var backendMessages: [FriendChatMessageItem] {
         guard let friendshipID else { return [] }
         return friendStore.friendMessagesByFriendship[friendshipID] ?? []
     }
 
-    private var isBackendFriend: Bool {
-        friend.backendFriendshipID != nil
-    }
-
     private var messages: [FriendChatMessageItem] {
-        if isBackendFriend {
-            return backendMessages
-        } else {
-            return []
-        }
+        isBackendFriend ? backendMessages : []
     }
 
     private var todaySchedule: [SharedWeekItem] {
         guard !isBackendFriend else { return [] }
 
         let today = weekdayIndexToday()
+
         return allSharedItems
             .filter { $0.friendID == friend.id && $0.weekday == today }
             .sorted { $0.startMinute < $1.startMinute }
@@ -69,78 +89,94 @@ struct FriendDetailView: View {
 
     private var activeFocusSession: FriendFocusSession? {
         guard !isBackendFriend else { return nil }
-        return allFocusSessions.first { $0.friendID == friend.id && $0.isActive }
+
+        return allFocusSessions.first {
+            $0.friendID == friend.id &&
+            $0.isActive
+        }
     }
-    
+
     private var friendFocusSessions: [FriendFocusSession] {
-            allFocusSessions.filter { $0.friendID == friend.id }
+        allFocusSessions.filter { $0.friendID == friend.id }
+    }
+
+    private var totalFocusMinutes: Int {
+        friendFocusSessions.reduce(0) { $0 + $1.durationMinute }
+    }
+
+    private var weeklyFocusSessions: [FriendFocusSession] {
+        let calendar = Calendar.current
+        let now = Date()
+        let weekAgo = calendar.date(byAdding: .day, value: -7, to: now) ?? now
+
+        return friendFocusSessions.filter {
+            $0.startedAt >= weekAgo
+        }
+    }
+
+    private var weeklyFocusCount: Int {
+        weeklyFocusSessions.count
+    }
+
+    private var weeklyFocusMinutes: Int {
+        weeklyFocusSessions.reduce(0) { $0 + $1.durationMinute }
+    }
+
+    private var longestFocusMinutes: Int {
+        friendFocusSessions.map(\.durationMinute).max() ?? 0
+    }
+
+    private var lastFocusDate: Date? {
+        friendFocusSessions.map(\.startedAt).max()
+    }
+
+    private var sharedScheduleCount: Int {
+        todaySchedule.count
+    }
+
+    private var friendAccent: Color {
+        Color(friendDetailHex: friend.colorHex)
+    }
+
+    private var isOnlineText: String {
+        friend.isOnline
+        ? String(localized: "chat_online")
+        : String(localized: "friend_info_offline")
+    }
+
+    private var friendInsightLine: String {
+        if let activeFocusSession {
+            return localizedInFocusNow(activeFocusSession.durationMinute)
         }
 
-        private var totalFocusMinutes: Int {
-            friendFocusSessions.reduce(0) { $0 + $1.durationMinute }
+        if weeklyFocusCount >= 4 {
+            return locale.language.languageCode?.identifier == "tr"
+            ? "Bu hafta düzenli bir ritim yakalamış görünüyor."
+            : "Looks consistent this week."
         }
 
-        private var weeklyFocusSessions: [FriendFocusSession] {
-            let calendar = Calendar.current
-            let now = Date()
-            let weekAgo = calendar.date(byAdding: .day, value: -7, to: now) ?? now
-
-            return friendFocusSessions.filter { $0.startedAt >= weekAgo }
-        }
-
-        private var weeklyFocusCount: Int {
-            weeklyFocusSessions.count
-        }
-
-        private var weeklyFocusMinutes: Int {
-            weeklyFocusSessions.reduce(0) { $0 + $1.durationMinute }
-        }
-
-        private var longestFocusMinutes: Int {
-            friendFocusSessions.map(\.durationMinute).max() ?? 0
-        }
-
-        private var lastFocusDate: Date? {
-            friendFocusSessions.map(\.startedAt).max()
-        }
-
-        private var sharedScheduleCount: Int {
-            todaySchedule.count
-        }
-
-        private var friendInsightLine: String {
-            if let activeFocusSession {
-                return localizedInFocusNow(activeFocusSession.durationMinute)
-            }
-
-            if weeklyFocusCount >= 4 {
-                return locale.language.languageCode?.identifier == "tr"
-                    ? "Bu hafta düzenli bir ritim yakalamış görünüyor."
-                    : "Looks consistent this week."
-            }
-
-            if let lastFocusDate {
-                let formatter = RelativeDateTimeFormatter()
-                formatter.locale = Locale.current
-                let relative = formatter.localizedString(for: lastFocusDate, relativeTo: Date())
-
-                return locale.language.languageCode?.identifier == "tr"
-                    ? "Son odak: \(relative)"
-                    : "Last focus: \(relative)"
-            }
+        if let lastFocusDate {
+            let formatter = RelativeDateTimeFormatter()
+            formatter.locale = Locale.current
+            let relative = formatter.localizedString(for: lastFocusDate, relativeTo: Date())
 
             return locale.language.languageCode?.identifier == "tr"
-                ? "Henüz focus verisi görünmüyor."
-                : "No focus data yet."
+            ? "Son odak: \(relative)"
+            : "Last focus: \(relative)"
         }
+
+        return locale.language.languageCode?.identifier == "tr"
+        ? "Henüz focus verisi görünmüyor."
+        : "No focus data yet."
+    }
 
     var body: some View {
         ZStack(alignment: .top) {
             ambientBackground
 
-            ScrollView {
-                VStack(spacing: 18) {
-                    Color.clear.frame(height: 76)
+            ScrollView(showsIndicators: false) {
+                LazyVStack(alignment: .leading, spacing: 14) {
+                    Color.clear.frame(height: 6)
 
                     customHeader
 
@@ -155,53 +191,26 @@ struct FriendDetailView: View {
                         .scaleEffect(showSchedule ? 1 : 0.985)
 
                     friendInsightsCard
-                                            .offset(y: showMessagesCard ? 0 : 18)
-                                            .opacity(showMessagesCard ? 1 : 0)
-                                            .scaleEffect(showMessagesCard ? 1 : 0.985)
+                        .offset(y: showInsights ? 0 : 18)
+                        .opacity(showInsights ? 1 : 0)
+                        .scaleEffect(showInsights ? 1 : 0.985)
 
                     actionsCard
-                        .offset(y: showActionsCard ? 0 : 18)
-                        .opacity(showActionsCard ? 1 : 0)
-                        .scaleEffect(showActionsCard ? 1 : 0.985)
+                        .offset(y: showActions ? 0 : 18)
+                        .opacity(showActions ? 1 : 0)
+                        .scaleEffect(showActions ? 1 : 0.985)
 
-                    Spacer(minLength: 90)
+                    Color.clear.frame(height: 96)
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 28)
+                .padding(.top, 4)
+                .padding(.bottom, 18)
             }
-            .scrollIndicators(.hidden)
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
-            showHero = false
-            showSchedule = false
-            showMessagesCard = false
-            showActionsCard = false
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
-                withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
-                    showHero = true
-                }
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
-                withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
-                    showSchedule = true
-                }
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-                withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
-                    showMessagesCard = true
-                }
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.26) {
-                withAnimation(.spring(response: 0.48, dampingFraction: 0.86)) {
-                    showActionsCard = true
-                }
-            }
+            playEntrance()
         }
         .task {
             guard let friendshipID else { return }
@@ -226,23 +235,7 @@ struct FriendDetailView: View {
 
             Button("crew_remove", role: .destructive) {
                 Task {
-                    guard let friendshipID = friendshipID,
-                          let currentUserID = session.currentUser?.id else { return }
-
-                    isRemovingFriend = true
-
-                    do {
-                        try await friendStore.removeFriendship(
-                            friendshipID: friendshipID,
-                            currentUserID: currentUserID,
-                            modelContext: modelContext
-                        )
-                        dismiss()
-                    } catch {
-                        print("REMOVE FRIEND ALERT ACTION ERROR:", error.localizedDescription)
-                    }
-
-                    isRemovingFriend = false
+                    await removeFriend()
                 }
             }
         } message: {
@@ -251,75 +244,52 @@ struct FriendDetailView: View {
     }
 }
 
+// MARK: - Main UI
+
 private extension FriendDetailView {
-
-    func localizedThisWeek(_ count: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
-            return "Bu Hafta"
-        } else {
-            return "This Week"
-        }
-    }
-
-    func localizedToday(_ count: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
-            return "Bugün"
-        } else {
-            return "Today"
-        }
-    }
-
-    func localizedMessages(_ count: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
-            return "Mesajlar"
-        } else {
-            return "Messages"
-        }
-    }
-
-    func localizedInFocusNow(_ minutes: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
-            return "Şu an odakta • \(minutes) dk"
-        } else {
-            return "In focus now • \(minutes) min"
-        }
-    }
-
-    func localizedScheduleCount(_ count: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
-            return "\(count) öğe"
-        } else {
-            return "\(count) items"
-        }
-    }
-
     var ambientBackground: some View {
-        ZStack(alignment: .topLeading) {
-            AppBackground()
+        ZStack {
+            Color.black.ignoresSafeArea()
 
-            if appTheme == AppTheme.gradient.rawValue {
-                RadialGradient(
-                    colors: [
-                        hexColor(friend.colorHex).opacity(0.16),
-                        Color.clear
-                    ],
-                    center: .topLeading,
-                    startRadius: 30,
-                    endRadius: 260
-                )
-                .ignoresSafeArea()
+            LinearGradient(
+                colors: [
+                    FriendDetailArenaPalette.backgroundTop,
+                    FriendDetailArenaPalette.backgroundMid,
+                    FriendDetailArenaPalette.backgroundBottom
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
-                RadialGradient(
-                    colors: [
-                        Color.blue.opacity(0.08),
-                        Color.clear
-                    ],
-                    center: .topTrailing,
-                    startRadius: 60,
-                    endRadius: 320
-                )
-                .ignoresSafeArea()
-            }
+            Circle()
+                .fill(friendAccent.opacity(0.16))
+                .frame(width: 300, height: 300)
+                .blur(radius: 105)
+                .offset(x: -170, y: 480)
+
+            Circle()
+                .fill(FriendDetailArenaPalette.blue.opacity(0.10))
+                .frame(width: 260, height: 260)
+                .blur(radius: 96)
+                .offset(x: 165, y: -245)
+
+            Circle()
+                .fill(FriendDetailArenaPalette.purple.opacity(0.14))
+                .frame(width: 300, height: 300)
+                .blur(radius: 110)
+                .offset(x: 180, y: 260)
+
+            LinearGradient(
+                colors: [
+                    Color.black.opacity(0.16),
+                    Color.clear,
+                    Color.black.opacity(0.42)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
         }
     }
 
@@ -329,26 +299,34 @@ private extension FriendDetailView {
                 dismiss()
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(palette.primaryText)
-                    .frame(width: 56, height: 56)
+                    .font(.system(size: 19, weight: .black))
+                    .foregroundStyle(.white)
+                    .frame(width: 46, height: 46)
                     .background(
-                        Circle()
-                            .fill(palette.cardFill)
+                        RoundedRectangle(cornerRadius: 17, style: .continuous)
+                            .fill(Color.white.opacity(0.075))
                             .overlay(
-                                Circle()
-                                    .stroke(palette.cardStroke, lineWidth: 1)
+                                RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
                             )
                     )
-                    .shadow(color: palette.shadowColor, radius: 10, y: 4)
             }
             .buttonStyle(.plain)
 
             Spacer()
 
-            Text(friend.name)
-                .font(.system(size: 22, weight: .bold, design: .rounded))
-                .foregroundStyle(palette.primaryText)
+            VStack(spacing: 3) {
+                Text("FRIEND SPACE")
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .tracking(2.2)
+                    .foregroundStyle(FriendDetailArenaPalette.cyan)
+
+                Text(friend.name)
+                    .font(.system(size: 21, weight: .black))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
 
             Spacer()
 
@@ -368,82 +346,101 @@ private extension FriendDetailView {
                 }
             } label: {
                 ZStack {
-                    Circle()
-                        .fill(palette.cardFill)
-                        .overlay(
-                            Circle()
-                                .stroke(palette.cardStroke, lineWidth: 1)
-                        )
-
                     if isRemovingFriend {
                         ProgressView()
-                            .tint(palette.primaryText)
+                            .tint(.white)
                     } else {
                         Image(systemName: "ellipsis")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(palette.primaryText)
+                            .font(.system(size: 19, weight: .black))
+                            .foregroundStyle(.white)
                     }
                 }
-                .frame(width: 56, height: 56)
-                .shadow(color: palette.shadowColor, radius: 10, y: 4)
+                .frame(width: 46, height: 46)
+                .background(
+                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                        .fill(Color.white.opacity(0.075))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                        )
+                )
             }
             .disabled(isRemovingFriend)
         }
     }
 
     var heroCard: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .top, spacing: 14) {
-                ZStack {
+                ZStack(alignment: .bottomTrailing) {
                     Circle()
-                        .fill(hexColor(friend.colorHex).opacity(0.16))
-                        .frame(width: 78, height: 78)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    friendAccent.opacity(0.90),
+                                    FriendDetailArenaPalette.purple.opacity(0.82)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 74, height: 74)
+                        .overlay(
+                            Image(systemName: friend.avatarSymbol)
+                                .font(.system(size: 30, weight: .black))
+                                .foregroundStyle(.white)
+                        )
 
-                    Image(systemName: friend.avatarSymbol)
-                        .font(.title.weight(.bold))
-                        .foregroundStyle(hexColor(friend.colorHex))
+                    Circle()
+                        .fill(friend.isOnline ? FriendDetailArenaPalette.green : Color.gray.opacity(0.65))
+                        .frame(width: 15, height: 15)
+                        .overlay(
+                            Circle()
+                                .stroke(FriendDetailArenaPalette.surface, lineWidth: 3)
+                        )
                 }
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(friend.name)
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(palette.primaryText)
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(activeFocusSession != nil ? FriendDetailArenaPalette.green : friendAccent)
+                            .frame(width: 8, height: 8)
+
+                        Text(activeFocusSession != nil ? "LIVE FOCUS" : "SOCIAL FRIEND")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .tracking(2)
+                            .foregroundStyle(activeFocusSession != nil ? FriendDetailArenaPalette.green : FriendDetailArenaPalette.cyan)
+                    }
+
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(friend.name)
+                            .font(.system(size: 30, weight: .black))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.62)
+
+                        Text("friend")
+                            .font(.system(size: 25, weight: .regular, design: .serif))
+                            .italic()
+                            .foregroundStyle(FriendDetailArenaPalette.cyan)
+                    }
 
                     Text(friend.subtitle)
-                        .font(.subheadline)
-                        .foregroundStyle(palette.secondaryText)
-
-                    if isBackendFriend {
-                                            HStack(spacing: 6) {
-                                                Circle()
-                                                    .fill(.green)
-                                                    .frame(width: 7, height: 7)
-
-                                                Text("friend_detail_connected_server")
-                                                    .font(.caption.weight(.semibold))
-                                                    .foregroundStyle(.green)
-                                            }
-                                        }
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.48))
+                        .lineLimit(2)
 
                     HStack(spacing: 8) {
-                                            Circle()
-                                                .fill(friend.isOnline ? .green : Color.gray.opacity(0.5))
-                                                .frame(width: 8, height: 8)
+                        statusPill(
+                            text: isOnlineText,
+                            tint: friend.isOnline ? FriendDetailArenaPalette.green : .gray
+                        )
 
-                                            Text(friend.isOnline ? "chat_online" : "friend_info_offline")
-                                                .font(.caption.weight(.semibold))
-                                                .foregroundStyle(palette.secondaryText)
-                                        }
-
-                    if let session = activeFocusSession {
-                        HStack(spacing: 8) {
-                            Circle()
-                                .fill(.green)
-                                .frame(width: 8, height: 8)
-
-                            Text(localizedInFocusNow(session.durationMinute))
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.green)
+                        if isBackendFriend {
+                            statusPill(
+                                text: "Connected",
+                                tint: FriendDetailArenaPalette.blue
+                            )
                         }
                     }
                 }
@@ -451,295 +448,533 @@ private extension FriendDetailView {
                 Spacer()
             }
 
+            if let activeFocusSession {
+                HStack(spacing: 10) {
+                    Image(systemName: "timer")
+                        .font(.system(size: 14, weight: .black))
+                        .foregroundStyle(FriendDetailArenaPalette.green)
+
+                    Text(localizedInFocusNow(activeFocusSession.durationMinute))
+                        .font(.system(size: 12, weight: .black, design: .monospaced))
+                        .foregroundStyle(FriendDetailArenaPalette.green)
+
+                    Spacer()
+                }
+                .padding(12)
+                .background(detailSurface(cornerRadius: 18, tint: FriendDetailArenaPalette.green))
+            }
+
             HStack(spacing: 10) {
-                statPill(title: "\(weekCount)", subtitle: localizedThisWeek(weekCount))
-                statPill(title: "\(todaySchedule.count)", subtitle: localizedToday(todaySchedule.count))
-                statPill(title: "\(messages.count)", subtitle: localizedMessages(messages.count))
+                statPill(
+                    value: "\(weekCount)",
+                    title: localizedThisWeek(weekCount),
+                    tint: friendAccent
+                )
+
+                statPill(
+                    value: "\(todaySchedule.count)",
+                    title: localizedToday(todaySchedule.count),
+                    tint: FriendDetailArenaPalette.green
+                )
+
+                statPill(
+                    value: "\(messages.count)",
+                    title: localizedMessages(messages.count),
+                    tint: FriendDetailArenaPalette.blue
+                )
             }
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
-        .shadow(color: hexColor(friend.colorHex).opacity(0.10), radius: 12, y: 6)
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            friendAccent.opacity(0.13),
+                            FriendDetailArenaPalette.purple.opacity(0.11),
+                            FriendDetailArenaPalette.surface.opacity(0.98)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .stroke(friendAccent.opacity(0.18), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.24), radius: 20, y: 12)
+        )
     }
 
     var todayScheduleCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("friend_detail_today_schedule")
-                    .font(.headline)
-                    .foregroundStyle(palette.primaryText)
+                sectionTitle(
+                    eyebrow: "TODAY PLAN",
+                    title: "Bugünkü",
+                    italic: "program"
+                )
 
                 Spacer()
 
                 Text(localizedScheduleCount(todaySchedule.count))
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(palette.secondaryText)
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                    .foregroundStyle(FriendDetailArenaPalette.green)
+                    .padding(.horizontal, 11)
+                    .frame(height: 34)
+                    .background(
+                        Capsule()
+                            .fill(FriendDetailArenaPalette.green.opacity(0.12))
+                    )
             }
 
             if todaySchedule.isEmpty {
-                Text("friend_detail_no_schedule_today")
-                    .font(.subheadline)
-                    .foregroundStyle(palette.secondaryText)
+                emptyMiniState(
+                    icon: "calendar",
+                    text: String(localized: "friend_detail_no_schedule_today"),
+                    tint: FriendDetailArenaPalette.cyan
+                )
             } else {
-                ForEach(todaySchedule) { item in
-                    HStack(spacing: 12) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(hexColor(friend.colorHex).opacity(0.14))
-                                .frame(width: 52, height: 52)
-
-                            Image(systemName: "calendar")
-                                .foregroundStyle(hexColor(friend.colorHex))
-                        }
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(item.title)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(palette.primaryText)
-
-                            Text("\(hm(item.startMinute)) – \(hm(item.startMinute + item.durationMinute))")
-                                .font(.caption)
-                                .foregroundStyle(palette.secondaryText)
-                        }
-
-                        Spacer()
+                VStack(spacing: 10) {
+                    ForEach(todaySchedule) { item in
+                        scheduleRow(item)
                     }
-                    .padding(12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(palette.secondaryCardFill)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
-                            )
-                    )
                 }
             }
         }
         .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
     }
 
     var friendInsightsCard: some View {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Çalışma Profili")
-                            .font(.headline)
-                            .foregroundStyle(palette.primaryText)
+        VStack(alignment: .leading, spacing: 14) {
+            sectionTitle(
+                eyebrow: "STUDY PROFILE",
+                title: "Çalışma",
+                italic: "profili"
+            )
 
-                        Text("Ritmini ve son aktivitesini gör")
-                            .font(.caption)
-                            .foregroundStyle(palette.secondaryText)
-                    }
-
-                    Spacer()
-
-                    ZStack {
-                        Circle()
-                            .fill(hexColor(friend.colorHex).opacity(0.14))
-                            .frame(width: 42, height: 42)
-
-                        Image(systemName: "chart.bar.xaxis")
-                            .foregroundStyle(hexColor(friend.colorHex))
-                    }
-                }
-
-                HStack(spacing: 10) {
-                    insightStatCard(
-                        value: "\(totalFocusMinutes)",
-                        title: locale.language.languageCode?.identifier == "tr" ? "Toplam dk" : "Total min",
-                        tint: hexColor(friend.colorHex)
-                    )
-
-                    insightStatCard(
-                        value: "\(weeklyFocusCount)",
-                        title: locale.language.languageCode?.identifier == "tr" ? "Bu hafta" : "This week",
-                        tint: .blue
-                    )
-
-                    insightStatCard(
-                        value: "\(longestFocusMinutes)",
-                        title: locale.language.languageCode?.identifier == "tr" ? "En uzun" : "Longest",
-                        tint: .green
-                    )
-                }
-
-                HStack(spacing: 10) {
-                    miniInsightPill(
-                        icon: "calendar",
-                        text: locale.language.languageCode?.identifier == "tr"
-                            ? "\(sharedScheduleCount) bugünkü plan"
-                            : "\(sharedScheduleCount) today items",
-                        tint: .orange
-                    )
-
-                    miniInsightPill(
-                        icon: "timer",
-                        text: locale.language.languageCode?.identifier == "tr"
-                            ? "\(weeklyFocusMinutes) dk hafta"
-                            : "\(weeklyFocusMinutes) min week",
-                        tint: .purple
-                    )
-                }
-
-                HStack(spacing: 8) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(hexColor(friend.colorHex))
-
-                    Text(friendInsightLine)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(palette.secondaryText)
-                        .lineLimit(2)
-
-                    Spacer()
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(hexColor(friend.colorHex).opacity(0.08))
+            HStack(spacing: 10) {
+                insightStatCard(
+                    value: "\(totalFocusMinutes)",
+                    title: locale.language.languageCode?.identifier == "tr" ? "Toplam dk" : "Total min",
+                    tint: friendAccent
                 )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(hexColor(friend.colorHex).opacity(0.12), lineWidth: 1)
+
+                insightStatCard(
+                    value: "\(weeklyFocusCount)",
+                    title: locale.language.languageCode?.identifier == "tr" ? "Bu hafta" : "This week",
+                    tint: FriendDetailArenaPalette.blue
+                )
+
+                insightStatCard(
+                    value: "\(longestFocusMinutes)",
+                    title: locale.language.languageCode?.identifier == "tr" ? "En uzun" : "Longest",
+                    tint: FriendDetailArenaPalette.green
                 )
             }
-            .padding(18)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(cardBackground)
+
+            HStack(spacing: 10) {
+                miniInsightPill(
+                    icon: "calendar",
+                    text: locale.language.languageCode?.identifier == "tr"
+                    ? "\(sharedScheduleCount) bugünkü plan"
+                    : "\(sharedScheduleCount) today items",
+                    tint: FriendDetailArenaPalette.coral
+                )
+
+                miniInsightPill(
+                    icon: "timer",
+                    text: locale.language.languageCode?.identifier == "tr"
+                    ? "\(weeklyFocusMinutes) dk hafta"
+                    : "\(weeklyFocusMinutes) min week",
+                    tint: FriendDetailArenaPalette.purple
+                )
+            }
+
+            HStack(spacing: 12) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 17, weight: .black))
+                    .foregroundStyle(FriendDetailArenaPalette.gold)
+                    .frame(width: 42, height: 42)
+                    .background(
+                        RoundedRectangle(cornerRadius: 15, style: .continuous)
+                            .fill(FriendDetailArenaPalette.gold.opacity(0.13))
+                    )
+
+                Text(friendInsightLine)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.52))
+                    .lineLimit(2)
+
+                Spacer()
+            }
+            .padding(14)
+            .background(detailSurface(cornerRadius: 22, tint: FriendDetailArenaPalette.gold))
         }
+        .padding(18)
+        .background(cardBackground)
+    }
 
     var actionsCard: some View {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("friend_detail_actions")
-                    .font(.headline)
-                    .foregroundStyle(palette.primaryText)
+        VStack(alignment: .leading, spacing: 14) {
+            sectionTitle(
+                eyebrow: "SOCIAL ACTIONS",
+                title: "Hızlı",
+                italic: "işlemler"
+            )
 
-                HStack(spacing: 12) {
-                    NavigationLink {
-                        FriendChatView(friend: friend)
-                            .environmentObject(friendStore)
-                            .environmentObject(session)
-                    } label: {
-                        actionTile(
-                            title: locale.language.languageCode?.identifier == "tr" ? "Sohbet" : "Chat",
-                            systemImage: "message.fill"
-                        )
-                    }
-                    .buttonStyle(.plain)
-
+            HStack(spacing: 10) {
+                NavigationLink {
+                    FriendChatView(friend: friend)
+                        .environmentObject(friendStore)
+                        .environmentObject(session)
+                } label: {
                     actionTile(
-                        title: locale.language.languageCode?.identifier == "tr" ? "Profil" : "Profile",
-                        systemImage: "person.crop.circle.fill"
+                        title: locale.language.languageCode?.identifier == "tr" ? "Sohbet" : "Chat",
+                        systemImage: "message.fill",
+                        tint: FriendDetailArenaPalette.blue,
+                        filled: true
                     )
-
-                    if activeFocusSession != nil {
-                        actionTile(
-                            title: locale.language.languageCode?.identifier == "tr" ? "Odakta" : "In Focus",
-                            systemImage: "timer"
-                        )
-                    } else {
-                        actionTile(
-                            title: locale.language.languageCode?.identifier == "tr" ? "Durum" : "Status",
-                            systemImage: friend.isOnline ? "circle.fill" : "moon.fill"
-                        )
-                    }
                 }
-            }
-            .padding(18)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(cardBackground)
-        }
+                .buttonStyle(.plain)
 
-    func actionTile(title: String, systemImage: String) -> some View {
+                actionTile(
+                    title: locale.language.languageCode?.identifier == "tr" ? "Profil" : "Profile",
+                    systemImage: "person.crop.circle.fill",
+                    tint: friendAccent,
+                    filled: false
+                )
+
+                actionTile(
+                    title: activeFocusSession != nil
+                    ? (locale.language.languageCode?.identifier == "tr" ? "Odakta" : "In Focus")
+                    : (friend.isOnline ? "Online" : "Offline"),
+                    systemImage: activeFocusSession != nil ? "timer" : (friend.isOnline ? "circle.fill" : "moon.fill"),
+                    tint: activeFocusSession != nil ? FriendDetailArenaPalette.green : friendAccent,
+                    filled: false
+                )
+            }
+
+            Button(role: .destructive) {
+                showRemoveFriendAlert = true
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "person.crop.circle.badge.xmark")
+                        .font(.system(size: 15, weight: .black))
+
+                    Text(String(localized: "crew_remove_friend"))
+                        .font(.system(size: 13, weight: .black))
+
+                    Spacer()
+                }
+                .foregroundStyle(FriendDetailArenaPalette.coral)
+                .padding(14)
+                .background(detailSurface(cornerRadius: 20, tint: FriendDetailArenaPalette.coral))
+            }
+            .buttonStyle(.plain)
+            .disabled(isRemovingFriend)
+        }
+        .padding(18)
+        .background(cardBackground)
+    }
+}
+
+// MARK: - Components
+
+private extension FriendDetailView {
+    func scheduleRow(_ item: SharedWeekItem) -> some View {
+        HStack(spacing: 13) {
+            Image(systemName: "calendar")
+                .font(.system(size: 17, weight: .black))
+                .foregroundStyle(friendAccent)
+                .frame(width: 42, height: 42)
+                .background(
+                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                        .fill(friendAccent.opacity(0.13))
+                )
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.title)
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+
+                Text("\(hm(item.startMinute)) – \(hm(item.startMinute + item.durationMinute))")
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.42))
+            }
+
+            Spacer()
+        }
+        .padding(14)
+        .background(detailSurface(cornerRadius: 22, tint: friendAccent))
+    }
+
+    func actionTile(title: String, systemImage: String, tint: Color, filled: Bool) -> some View {
         VStack(spacing: 10) {
             Image(systemName: systemImage)
-                .font(.title3)
-                .foregroundStyle(palette.primaryText)
+                .font(.system(size: 19, weight: .black))
 
             Text(title)
-                .font(.caption.weight(.semibold))
+                .font(.system(size: 11, weight: .black))
                 .multilineTextAlignment(.center)
-                .foregroundStyle(palette.primaryText)
         }
+        .foregroundStyle(filled ? .black : tint)
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
+        .frame(height: 88)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(palette.secondaryCardFill)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(filled ? tint : tint.opacity(0.12))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(tint.opacity(filled ? 0 : 0.20), lineWidth: 1)
                 )
         )
     }
 
-    func statPill(title: String, subtitle: String) -> some View {
+    func statPill(value: String, title: String, tint: Color) -> some View {
         VStack(spacing: 4) {
-            Text(title)
-                .font(.title3.weight(.bold))
-                .foregroundStyle(palette.primaryText)
+            Text(value)
+                .font(.system(size: 21, weight: .black))
+                .foregroundStyle(.white)
                 .monospacedDigit()
+                .lineLimit(1)
 
-            Text(subtitle)
-                .font(.caption2)
-                .foregroundStyle(palette.secondaryText)
+            Text(title)
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .tracking(0.8)
+                .foregroundStyle(.white.opacity(0.38))
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
+        .frame(height: 70)
+        .background(detailSurface(cornerRadius: 18, tint: tint))
+    }
+
+    func insightStatCard(value: String, title: String, tint: Color) -> some View {
+        VStack(spacing: 5) {
+            Text(value)
+                .font(.system(size: 18, weight: .black))
+                .foregroundStyle(.white)
+                .monospacedDigit()
+                .lineLimit(1)
+
+            Text(title)
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .foregroundStyle(tint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 72)
+        .background(detailSurface(cornerRadius: 18, tint: tint))
+    }
+
+    func miniInsightPill(icon: String, text: String, tint: Color) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .black))
+
+            Text(text)
+                .lineLimit(1)
+                .minimumScaleFactor(0.70)
+        }
+        .font(.system(size: 11, weight: .black, design: .monospaced))
+        .foregroundStyle(tint)
+        .padding(.horizontal, 10)
+        .frame(height: 34)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(palette.secondaryCardFill)
+            Capsule()
+                .fill(tint.opacity(0.12))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
+                    Capsule()
+                        .stroke(tint.opacity(0.18), lineWidth: 1)
                 )
         )
     }
-    
-    func insightStatCard(value: String, title: String, tint: Color) -> some View {
-            VStack(spacing: 5) {
-                Text(value)
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundStyle(palette.primaryText)
-                    .monospacedDigit()
 
-                Text(title)
-                    .font(.caption2)
-                    .foregroundStyle(tint)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(palette.secondaryCardFill)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(palette.cardStroke.opacity(0.7), lineWidth: 1)
-                    )
-            )
-        }
-
-        func miniInsightPill(icon: String, text: String, tint: Color) -> some View {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                Text(text)
-                    .lineLimit(1)
-            }
-            .font(.caption.weight(.semibold))
+    func statusPill(text: String, tint: Color) -> some View {
+        Text(text)
+            .font(.system(size: 10, weight: .black, design: .monospaced))
             .foregroundStyle(tint)
             .padding(.horizontal, 10)
-            .padding(.vertical, 7)
+            .frame(height: 30)
             .background(
                 Capsule()
                     .fill(tint.opacity(0.12))
+                    .overlay(
+                        Capsule()
+                            .stroke(tint.opacity(0.18), lineWidth: 1)
+                    )
             )
+            .lineLimit(1)
+    }
+
+    func emptyMiniState(icon: String, text: String, tint: Color) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 17, weight: .black))
+                .foregroundStyle(tint)
+                .frame(width: 42, height: 42)
+                .background(
+                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                        .fill(tint.opacity(0.13))
+                )
+
+            Text(text)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.50))
+                .lineLimit(2)
+
+            Spacer()
         }
+        .padding(14)
+        .background(detailSurface(cornerRadius: 22, tint: tint))
+    }
+
+    func sectionTitle(eyebrow: String, title: String, italic: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("— \(eyebrow) —")
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .tracking(2.4)
+                .foregroundStyle(.white.opacity(0.34))
+                .lineLimit(1)
+                .minimumScaleFactor(0.60)
+
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(title)
+                    .font(.system(size: 24, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text(italic)
+                    .font(.system(size: 23, weight: .regular, design: .serif))
+                    .italic()
+                    .foregroundStyle(.white)
+            }
+        }
+    }
+
+    func detailSurface(cornerRadius: CGFloat, tint: Color) -> some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        tint.opacity(0.055),
+                        FriendDetailArenaPalette.purple.opacity(0.040),
+                        Color.white.opacity(0.038)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(tint.opacity(0.13), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.22), radius: 14, y: 8)
+    }
+
+    var cardBackground: some View {
+        RoundedRectangle(cornerRadius: 26, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        FriendDetailArenaPalette.blue.opacity(0.035),
+                        FriendDetailArenaPalette.purple.opacity(0.045),
+                        Color.white.opacity(0.040)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
+    }
+}
+
+// MARK: - Helpers
+
+private extension FriendDetailView {
+    func playEntrance() {
+        showHero = false
+        showSchedule = false
+        showInsights = false
+        showActions = false
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
+                showHero = true
+            }
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
+            withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
+                showSchedule = true
+            }
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+            withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
+                showInsights = true
+            }
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.26) {
+            withAnimation(.spring(response: 0.48, dampingFraction: 0.86)) {
+                showActions = true
+            }
+        }
+    }
+
+    @MainActor
+    func removeFriend() async {
+        guard let friendshipID = friendshipID,
+              let currentUserID = session.currentUser?.id else { return }
+
+        isRemovingFriend = true
+
+        do {
+            try await friendStore.removeFriendship(
+                friendshipID: friendshipID,
+                currentUserID: currentUserID,
+                modelContext: modelContext
+            )
+            dismiss()
+        } catch {
+            print("REMOVE FRIEND ALERT ACTION ERROR:", error.localizedDescription)
+        }
+
+        isRemovingFriend = false
+    }
+
+    func localizedThisWeek(_ count: Int) -> String {
+        locale.language.languageCode?.identifier == "tr" ? "Bu Hafta" : "This Week"
+    }
+
+    func localizedToday(_ count: Int) -> String {
+        locale.language.languageCode?.identifier == "tr" ? "Bugün" : "Today"
+    }
+
+    func localizedMessages(_ count: Int) -> String {
+        locale.language.languageCode?.identifier == "tr" ? "Mesajlar" : "Messages"
+    }
+
+    func localizedInFocusNow(_ minutes: Int) -> String {
+        locale.language.languageCode?.identifier == "tr"
+        ? "Şu an odakta • \(minutes) dk"
+        : "In focus now • \(minutes) min"
+    }
+
+    func localizedScheduleCount(_ count: Int) -> String {
+        locale.language.languageCode?.identifier == "tr"
+        ? "\(count) öğe"
+        : "\(count) items"
+    }
 
     func weekdayIndexToday() -> Int {
         let w = Calendar.current.component(.weekday, from: Date())
@@ -752,13 +987,54 @@ private extension FriendDetailView {
         let mm = m % 60
         return String(format: "%02d:%02d", h, mm)
     }
+}
 
-    var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(palette.cardFill)
-            .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(palette.cardStroke, lineWidth: 1)
-            )
+// MARK: - Color Hex
+
+private extension Color {
+    init(friendDetailHex hex: String) {
+        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+
+        var int: UInt64 = 0
+        Scanner(string: cleaned).scanHexInt64(&int)
+
+        let a: UInt64
+        let r: UInt64
+        let g: UInt64
+        let b: UInt64
+
+        switch cleaned.count {
+        case 3:
+            a = 255
+            r = (int >> 8) * 17
+            g = ((int >> 4) & 0xF) * 17
+            b = (int & 0xF) * 17
+
+        case 6:
+            a = 255
+            r = int >> 16
+            g = (int >> 8) & 0xFF
+            b = int & 0xFF
+
+        case 8:
+            a = int >> 24
+            r = (int >> 16) & 0xFF
+            g = (int >> 8) & 0xFF
+            b = int & 0xFF
+
+        default:
+            a = 255
+            r = 255
+            g = 255
+            b = 255
+        }
+
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
     }
 }

@@ -87,22 +87,21 @@ extension HomeDashboardView {
     }
 
     private var todayWhatHeader: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("BUGÜN NE VAR")
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundStyle(palette.secondaryText.opacity(0.9))
-                .tracking(0.5)
-
-            Text(todayWhatTitle)
-                .font(.system(size: 30, weight: .bold, design: .rounded))
-                .foregroundStyle(palette.primaryText)
-                .fixedSize(horizontal: false, vertical: true)
-
+        ArenaSectionTitle(
+            eyebrow: "BUGÜN NE VAR",
+            title: todayWhatTitle,
+            italic: nil,
+            accent: Color(arenaHex: AppArenaPalette.cyan)
+        )
+        .overlay(alignment: .bottomLeading) {
             Text(todayWhatSubtitle)
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundStyle(palette.secondaryText)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.48))
+                .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 44)
         }
+        .padding(.bottom, 34)
     }
 
     private var progressSummaryCard: some View {
@@ -119,35 +118,43 @@ extension HomeDashboardView {
                 HStack(alignment: .center, spacing: 12) {
                     ZStack {
                         Circle()
-                            .stroke(Color.white.opacity(0.08), lineWidth: 6)
-                            .frame(width: 54, height: 54)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 7)
+                            .frame(width: 58, height: 58)
 
                         Circle()
                             .trim(from: 0, to: max(todayProgressValue, shouldShowNoTaskPromptHero ? 0.02 : 0.06))
                             .stroke(
                                 LinearGradient(
-                                    colors: [progressCardAccent.opacity(0.75), progressCardAccent],
+                                    colors: [
+                                        progressCardAccent.opacity(0.70),
+                                        progressCardAccent,
+                                        Color(arenaHex: AppArenaPalette.cyan).opacity(0.85)
+                                    ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
-                                style: StrokeStyle(lineWidth: 6, lineCap: .round)
+                                style: StrokeStyle(lineWidth: 7, lineCap: .round)
                             )
                             .rotationEffect(.degrees(-90))
-                            .frame(width: 54, height: 54)
+                            .frame(width: 58, height: 58)
 
                         Text("\(Int(todayProgressValue * 100))%")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .font(.system(size: 13, weight: .black, design: .rounded))
                             .foregroundStyle(progressCardAccent)
+                            .monospacedDigit()
                     }
 
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 3) {
                         Text("\(completedTodayBoardCount)/\(max(todayBoardTasks.count, 1))")
-                            .font(.system(size: 26, weight: .bold, design: .rounded))
-                            .foregroundStyle(palette.primaryText)
+                            .font(.system(size: 28, weight: .black, design: .rounded))
+                            .foregroundStyle(.white)
+                            .monospacedDigit()
 
-                        Text(progressCardCaption)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(palette.secondaryText)
+                        Text(progressCardCaption.uppercased())
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .tracking(1.1)
+                            .foregroundStyle(.white.opacity(0.38))
+                            .lineLimit(1)
                     }
 
                     Spacer(minLength: 0)
@@ -155,12 +162,19 @@ extension HomeDashboardView {
 
                 Spacer(minLength: 0)
 
-                Text(progressCardBottomText)
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundStyle(progressCardAccent)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(3)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("TODAY FLOW")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .tracking(1.5)
+                        .foregroundStyle(progressCardAccent.opacity(0.92))
+
+                    Text(progressCardBottomText)
+                        .font(.system(size: 18, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .padding(16)
             .frame(maxWidth: .infinity, minHeight: 190, alignment: .topLeading)
@@ -173,25 +187,32 @@ extension HomeDashboardView {
         Button {
             onOpenInsights()
         } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("🔥 SERİ")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.orange)
-                    .tracking(0.4)
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 7) {
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 12, weight: .black))
+
+                    Text("SERİ")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .tracking(1.3)
+                }
+                .foregroundStyle(Color(arenaHex: AppArenaPalette.gold))
 
                 Text("\(streakCount)")
-                    .font(.system(size: 38, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.orange)
+                    .font(.system(size: 38, weight: .black, design: .rounded))
+                    .foregroundStyle(Color(arenaHex: AppArenaPalette.gold))
+                    .monospacedDigit()
 
                 Text("gün üst üste")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(palette.secondaryText)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.46))
+                    .lineLimit(1)
 
                 Spacer(minLength: 0)
             }
-            .padding(16)
+            .padding(15)
             .frame(maxWidth: .infinity, minHeight: 88, alignment: .topLeading)
-            .background(topCardBackground(accent: .orange))
+            .background(topCardBackground(accent: Color(arenaHex: AppArenaPalette.gold)))
         }
         .buttonStyle(.plain)
     }
@@ -200,26 +221,27 @@ extension HomeDashboardView {
         Button {
             priorityMiniCardAction()
         } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(priorityMiniEyebrow)
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
+            VStack(alignment: .leading, spacing: 7) {
+                Text(priorityMiniEyebrow.uppercased())
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .tracking(1.3)
                     .foregroundStyle(priorityMiniAccent)
-                    .tracking(0.4)
 
                 Text(priorityMiniTitle)
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
-                    .foregroundStyle(palette.primaryText)
+                    .font(.system(size: 17, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Text(priorityMiniSubtitle)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(palette.secondaryText)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.46))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.72)
 
                 Spacer(minLength: 0)
             }
-            .padding(16)
+            .padding(15)
             .frame(maxWidth: .infinity, minHeight: 88, alignment: .topLeading)
             .background(topCardBackground(accent: priorityMiniAccent))
         }
@@ -280,13 +302,40 @@ extension HomeDashboardView {
     }
 
     var progressCardAccent: Color {
-        if shouldShowNoTaskPromptHero { return .purple }
-        if todayPendingBoardCount == 0 && completedTodayBoardCount > 0 { return .green }
-        if todayProgressValue >= 0.6 { return .green }
-        if todayProgressValue > 0 { return .blue }
-        return .blue
+        if shouldShowNoTaskPromptHero {
+            return Color(arenaHex: AppArenaPalette.purple)
+        }
+
+        if todayPendingBoardCount == 0 && completedTodayBoardCount > 0 {
+            return Color(arenaHex: AppArenaPalette.green)
+        }
+
+        if todayProgressValue >= 0.6 {
+            return Color(arenaHex: AppArenaPalette.green)
+        }
+
+        if todayProgressValue > 0 {
+            return Color(arenaHex: AppArenaPalette.blue)
+        }
+
+        return Color(arenaHex: AppArenaPalette.cyan)
     }
 
+    var priorityMiniAccent: Color {
+        if nearestRelevantExam != nil {
+            return Color(arenaHex: AppArenaPalette.coral)
+        }
+
+        if nextEvent != nil {
+            return Color(arenaHex: AppArenaPalette.blue)
+        }
+
+        if todayPendingBoardCount == 0 && completedTodayBoardCount > 0 {
+            return Color(arenaHex: AppArenaPalette.green)
+        }
+
+        return Color(arenaHex: AppArenaPalette.purple)
+    }
     var progressCardCaption: String {
         if shouldShowNoTaskPromptHero {
             return "plan yok"
@@ -378,12 +427,7 @@ extension HomeDashboardView {
         return "Kendin planla"
     }
 
-    var priorityMiniAccent: Color {
-        if nearestRelevantExam != nil { return .pink }
-        if nextEvent != nil { return .blue }
-        if todayPendingBoardCount == 0 && completedTodayBoardCount > 0 { return .green }
-        return .purple
-    }
+    
 
     func priorityMiniCardAction() {
         if nearestRelevantExam != nil {
@@ -944,36 +988,56 @@ extension HomeDashboardView {
 
     func topCardBackground(accent: Color) -> some View {
         RoundedRectangle(cornerRadius: 28, style: .continuous)
-            .fill(palette.cardFill)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        accent.opacity(0.070),
+                        Color(arenaHex: AppArenaPalette.purple).opacity(0.045),
+                        Color.white.opacity(0.040)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
                     .fill(
                         RadialGradient(
                             colors: [
-                                accent.opacity(0.10),
+                                accent.opacity(0.13),
                                 Color.clear
                             ],
                             center: .topTrailing,
                             startRadius: 8,
-                            endRadius: 180
+                            endRadius: 190
                         )
                     )
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(accent.opacity(0.12), lineWidth: 1)
+                    .stroke(accent.opacity(0.16), lineWidth: 1)
             )
+            .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
     }
-
     func heroBackground(accent: Color) -> some View {
         RoundedRectangle(cornerRadius: 28, style: .continuous)
-            .fill(palette.cardFill)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        accent.opacity(0.075),
+                        Color(arenaHex: AppArenaPalette.purple).opacity(0.050),
+                        Color(arenaHex: AppArenaPalette.surface).opacity(0.96)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
                     .fill(
                         RadialGradient(
                             colors: [
-                                accent.opacity(0.10),
+                                accent.opacity(0.14),
                                 Color.clear
                             ],
                             center: .topTrailing,
@@ -984,17 +1048,8 @@ extension HomeDashboardView {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.05),
-                                Color.clear,
-                                Color.clear
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .stroke(accent.opacity(0.15), lineWidth: 1)
             )
+            .shadow(color: Color.black.opacity(0.20), radius: 16, y: 9)
     }
 }

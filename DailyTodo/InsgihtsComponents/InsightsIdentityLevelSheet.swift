@@ -21,6 +21,14 @@ struct InsightsIdentityLevelSheet: View {
         snapshot.nextRequirement
     }
 
+    private var accent: Color {
+        snapshot.isReadyForLevelUp ? Color(arenaHex: AppArenaPalette.gold) : currentLevel.accent
+    }
+
+    private var secondaryAccent: Color {
+        snapshot.isReadyForLevelUp ? Color(arenaHex: AppArenaPalette.coral) : nextLevel.accent
+    }
+
     var body: some View {
         ZStack {
             background
@@ -45,43 +53,54 @@ struct InsightsIdentityLevelSheet: View {
     }
 
     private var background: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-
-            RadialGradient(
-                colors: [
-                    currentLevel.accent.opacity(0.28),
-                    .clear
-                ],
-                center: .topTrailing,
-                startRadius: 20,
-                endRadius: 360
-            )
-            .ignoresSafeArea()
-
-            RadialGradient(
-                colors: [
-                    nextLevel.accent.opacity(0.16),
-                    .clear
-                ],
-                center: .bottomLeading,
-                startRadius: 30,
-                endRadius: 420
-            )
-            .ignoresSafeArea()
-        }
+        ArenaBackground(
+            primaryGlow: accent,
+            secondaryGlow: Color(arenaHex: AppArenaPalette.purple),
+            warmGlow: secondaryAccent,
+            intensity: 0.92
+        )
     }
 
     private var header: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Identity Level")
-                    .font(.system(size: 31, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(accent)
+                        .frame(width: 20, height: 1)
 
-                Text("Bir sonraki statü için gerekenler")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.56))
+                    Text("IDENTITY LEVEL")
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .tracking(2.3)
+                        .foregroundStyle(accent)
+                        .lineLimit(1)
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Text("Identity")
+                        .font(.system(size: 38, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text("level")
+                        .font(.system(size: 35, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    accent,
+                                    secondaryAccent
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+
+                Text("Bir sonraki statü için gerekenler.")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.48))
             }
 
             Spacer()
@@ -90,11 +109,27 @@ struct InsightsIdentityLevelSheet: View {
                 dismiss()
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 13, weight: .black))
+                    .font(.system(size: 15, weight: .black))
                     .foregroundStyle(.white)
-                    .frame(width: 40, height: 40)
-                    .background(.white.opacity(0.08), in: Circle())
-                    .overlay(Circle().stroke(.white.opacity(0.08), lineWidth: 1))
+                    .frame(width: 44, height: 44)
+                    .background(
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.095),
+                                        Color.white.opacity(0.045)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                            )
+                            .shadow(color: Color.black.opacity(0.24), radius: 12, y: 6)
+                    )
             }
             .buttonStyle(.plain)
         }
@@ -102,61 +137,99 @@ struct InsightsIdentityLevelSheet: View {
 
     private var heroCard: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top) {
+            HStack(alignment: .top, spacing: 14) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("MEVCUT STATÜ")
-                        .font(.system(size: 11, weight: .heavy, design: .rounded))
-                        .foregroundStyle(currentLevel.accent)
-                        .tracking(1.5)
+                    HStack(spacing: 8) {
+                        Rectangle()
+                            .fill(accent)
+                            .frame(width: 18, height: 1)
+
+                        Text("CURRENT STATUS")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(1.7)
+                            .foregroundStyle(accent)
+                    }
 
                     Text(currentLevel.title)
-                        .font(.system(size: 33, weight: .heavy, design: .rounded))
+                        .font(.system(size: 31, weight: .black))
                         .foregroundStyle(.white)
                         .lineLimit(2)
+                        .minimumScaleFactor(0.74)
 
                     Text(snapshot.isMaxLevel ? "Maksimum seviyedesin" : "Lv.\(nextLevel.level) için ilerliyorsun")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.58))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.50))
                 }
 
                 Spacer()
 
-                levelBadge(level: currentLevel.level, tint: currentLevel.accent)
+                levelBadge(level: currentLevel.level, tint: accent)
             }
 
-            progressBeam(progress: snapshot.progress, tint: currentLevel.accent)
+            progressBeam(progress: snapshot.progress, tint: accent)
 
-            HStack {
+            HStack(spacing: 8) {
                 Text("\(snapshot.percentText) tamamlandı")
-                    .font(.system(size: 13, weight: .black, design: .rounded))
-                    .foregroundStyle(currentLevel.accent)
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(0.7)
+                    .foregroundStyle(accent)
 
                 Spacer()
 
-                Text(snapshot.statusText)
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(snapshot.isReadyForLevelUp ? .green : .white.opacity(0.42))
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(snapshot.isReadyForLevelUp ? Color(arenaHex: AppArenaPalette.green) : .white.opacity(0.34))
+                        .frame(width: 7, height: 7)
+
+                    Text(snapshot.isReadyForLevelUp ? "LEVEL READY" : snapshot.statusText.uppercased())
+                        .font(.system(size: 9, weight: .black, design: .monospaced))
+                        .tracking(0.7)
+                        .foregroundStyle(snapshot.isReadyForLevelUp ? Color(arenaHex: AppArenaPalette.green) : .white.opacity(0.42))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.70)
+                }
             }
         }
         .padding(18)
-        .background(cardBackground(tint: currentLevel.accent, strength: 0.86))
+        .background(cardBackground(tint: accent, strength: 0.86))
     }
 
     private var requirementsCard: some View {
         VStack(alignment: .leading, spacing: 13) {
-            HStack {
-                Text("Seviye atlama şartları")
-                    .font(.system(size: 22, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
+            HStack(alignment: .center, spacing: 10) {
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 8) {
+                        Rectangle()
+                            .fill(accent)
+                            .frame(width: 18, height: 1)
+
+                        Text("REQUIREMENTS")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(1.7)
+                            .foregroundStyle(accent)
+                    }
+
+                    Text("Seviye şartları")
+                        .font(.system(size: 22, weight: .black))
+                        .foregroundStyle(.white)
+                }
 
                 Spacer()
 
-                Text(snapshot.levelRangeText)
-                    .font(.system(size: 12, weight: .black, design: .rounded))
-                    .foregroundStyle(currentLevel.accent)
+                Text(snapshot.levelRangeText.uppercased())
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .tracking(0.6)
+                    .foregroundStyle(accent)
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(currentLevel.accent.opacity(0.12), in: Capsule())
+                    .frame(height: 28)
+                    .background(
+                        Capsule()
+                            .fill(accent.opacity(0.12))
+                            .overlay(
+                                Capsule()
+                                    .stroke(accent.opacity(0.18), lineWidth: 1)
+                            )
+                    )
             }
 
             requirementRow(
@@ -164,7 +237,8 @@ struct InsightsIdentityLevelSheet: View {
                 title: "Focus oturumu",
                 currentValue: snapshot.focusSessions,
                 targetValue: nextLevel.requiredFocusSessions,
-                ratio: snapshot.focusRatio
+                ratio: snapshot.focusRatio,
+                tint: Color(arenaHex: AppArenaPalette.cyan)
             )
 
             requirementRow(
@@ -172,7 +246,8 @@ struct InsightsIdentityLevelSheet: View {
                 title: "Görev tamamla",
                 currentValue: snapshot.completedTasks,
                 targetValue: nextLevel.requiredCompletedTasks,
-                ratio: snapshot.taskRatio
+                ratio: snapshot.taskRatio,
+                tint: Color(arenaHex: AppArenaPalette.green)
             )
 
             requirementRow(
@@ -180,37 +255,45 @@ struct InsightsIdentityLevelSheet: View {
                 title: "Seri günü",
                 currentValue: snapshot.streakDays,
                 targetValue: nextLevel.requiredStreakDays,
-                ratio: snapshot.streakRatio
+                ratio: snapshot.streakRatio,
+                tint: Color(arenaHex: AppArenaPalette.gold)
             )
         }
         .padding(18)
-        .background(cardBackground(tint: currentLevel.accent, strength: 0.58))
+        .background(cardBackground(tint: accent, strength: 0.58))
     }
 
     private var nextLevelCard: some View {
         HStack(spacing: 14) {
-            levelBadge(level: nextLevel.level, tint: nextLevel.accent)
+            levelBadge(level: nextLevel.level, tint: secondaryAccent)
 
             VStack(alignment: .leading, spacing: 5) {
-                Text(snapshot.isMaxLevel ? "Final statü" : "Sonraki statü")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.48))
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(secondaryAccent)
+                        .frame(width: 16, height: 1)
+
+                    Text(snapshot.isMaxLevel ? "FINAL STATUS" : "NEXT STATUS")
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .tracking(1.4)
+                        .foregroundStyle(secondaryAccent)
+                }
 
                 Text("Lv.\(nextLevel.level) • \(nextLevel.title)")
-                    .font(.system(size: 20, weight: .heavy, design: .rounded))
+                    .font(.system(size: 20, weight: .black))
                     .foregroundStyle(.white)
                     .lineLimit(2)
 
                 Text(nextLevelSummary)
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.55))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.52))
                     .lineLimit(2)
             }
 
             Spacer()
         }
         .padding(18)
-        .background(cardBackground(tint: nextLevel.accent, strength: 0.62))
+        .background(cardBackground(tint: secondaryAccent, strength: 0.62))
     }
 
     private var levelUpButton: some View {
@@ -220,13 +303,41 @@ struct InsightsIdentityLevelSheet: View {
                 onLevelUp()
             }
         } label: {
-            Text("Yeni seviyeye geç")
-                .font(.system(size: 17, weight: .black, design: .rounded))
-                .foregroundStyle(.black)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            HStack(spacing: 10) {
+                Image(systemName: "arrow.up.forward.circle.fill")
+                    .font(.system(size: 17, weight: .black))
+
+                Text("YENİ SEVİYEYE GEÇ")
+                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                    .tracking(0.9)
+
+                Spacer()
+
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 13, weight: .black))
+            }
+            .foregroundStyle(.black)
+            .padding(.horizontal, 18)
+            .frame(maxWidth: .infinity)
+            .frame(height: 58)
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(arenaHex: AppArenaPalette.gold),
+                                Color(arenaHex: AppArenaPalette.coral)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .stroke(Color.white.opacity(0.13), lineWidth: 1)
+                    )
+                    .shadow(color: Color(arenaHex: AppArenaPalette.gold).opacity(0.22), radius: 16, y: 8)
+            )
         }
         .buttonStyle(.plain)
     }
@@ -244,49 +355,79 @@ struct InsightsIdentityLevelSheet: View {
         title: String,
         currentValue: Int,
         targetValue: Int,
-        ratio: Double
+        ratio: Double,
+        tint: Color
     ) -> some View {
         let isCompleted = currentValue >= targetValue
-        let tint: Color = isCompleted ? .green : currentLevel.accent
+        let resolvedTint: Color = isCompleted ? Color(arenaHex: AppArenaPalette.green) : tint
 
         return VStack(spacing: 8) {
             HStack(spacing: 10) {
                 Image(systemName: icon)
                     .font(.system(size: 14, weight: .black))
-                    .foregroundStyle(tint)
-                    .frame(width: 24)
+                    .foregroundStyle(resolvedTint)
+                    .frame(width: 26, height: 26)
+                    .background(
+                        Circle()
+                            .fill(resolvedTint.opacity(0.12))
+                    )
 
                 Text(title)
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .font(.system(size: 14, weight: .black))
                     .foregroundStyle(.white)
 
                 Spacer()
 
                 Text("\(min(currentValue, targetValue))/\(targetValue)")
-                    .font(.system(size: 13, weight: .black, design: .rounded))
-                    .foregroundStyle(tint)
+                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                    .foregroundStyle(resolvedTint)
+                    .monospacedDigit()
             }
 
-            progressBeam(progress: ratio, tint: tint, height: 6)
+            progressBeam(progress: ratio, tint: resolvedTint, height: 6)
         }
         .padding(13)
-        .background(.white.opacity(0.055))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            resolvedTint.opacity(0.060),
+                            Color.white.opacity(0.035)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(resolvedTint.opacity(0.11), lineWidth: 1)
+                )
+        )
     }
 
     private func levelBadge(level: Int, tint: Color) -> some View {
         VStack(spacing: 0) {
-            Text("Lv")
-                .font(.system(size: 10, weight: .black))
-                .foregroundStyle(.white.opacity(0.55))
+            Text("LV")
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .tracking(0.8)
+                .foregroundStyle(.white.opacity(0.52))
 
             Text("\(level)")
-                .font(.system(size: 28, weight: .heavy, design: .rounded))
+                .font(.system(size: 28, weight: .black))
                 .foregroundStyle(.white)
+                .monospacedDigit()
         }
         .frame(width: 66, height: 66)
-        .background(tint.opacity(0.16), in: Circle())
-        .overlay(Circle().stroke(tint.opacity(0.22), lineWidth: 1))
+        .background(
+            Circle()
+                .fill(tint.opacity(0.14))
+                .overlay(
+                    Circle()
+                        .stroke(tint.opacity(0.22), lineWidth: 1)
+                )
+                .shadow(color: tint.opacity(0.18), radius: 12, y: 6)
+        )
     }
 
     private func progressBeam(
@@ -297,20 +438,21 @@ struct InsightsIdentityLevelSheet: View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(.white.opacity(0.08))
+                    .fill(Color.white.opacity(0.075))
 
                 Capsule()
                     .fill(
                         LinearGradient(
                             colors: [
                                 tint,
-                                .white.opacity(0.82)
+                                Color(arenaHex: AppArenaPalette.cyan).opacity(0.82)
                             ],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
                     )
-                    .frame(width: proxy.size.width * min(max(progress, 0), 1))
+                    .frame(width: max(8, proxy.size.width * min(max(progress, 0), 1)))
+                    .shadow(color: tint.opacity(0.18), radius: 7, y: 2)
             }
         }
         .frame(height: height)
@@ -321,30 +463,46 @@ struct InsightsIdentityLevelSheet: View {
             .fill(
                 LinearGradient(
                     colors: [
-                        tint.opacity(0.18 + strength * 0.18),
-                        tint.opacity(0.08),
-                        Color.white.opacity(0.045),
-                        Color.black.opacity(0.88)
+                        tint.opacity(0.075 + strength * 0.035),
+                        Color(arenaHex: AppArenaPalette.purple).opacity(0.040),
+                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
             )
             .overlay(
-                RadialGradient(
-                    colors: [
-                        tint.opacity(0.22),
-                        .clear
-                    ],
-                    center: .topTrailing,
-                    startRadius: 8,
-                    endRadius: 170
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                tint.opacity(0.11 + strength * 0.08),
+                                Color.clear
+                            ],
+                            center: .topTrailing,
+                            startRadius: 8,
+                            endRadius: 180
+                        )
+                    )
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(.white.opacity(0.075), lineWidth: 1)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Color(arenaHex: AppArenaPalette.blue).opacity(0.070),
+                                Color.clear
+                            ],
+                            center: .bottomLeading,
+                            startRadius: 8,
+                            endRadius: 190
+                        )
+                    )
             )
+            .overlay(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(tint.opacity(0.14), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
     }
 }

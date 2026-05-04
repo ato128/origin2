@@ -7,6 +7,31 @@
 
 import SwiftUI
 
+private enum CreateCrewArenaPalette {
+    static let backgroundTop = Color(createCrewHex: "#05060D")
+    static let backgroundMid = Color(createCrewHex: "#070713")
+    static let backgroundBottom = Color(createCrewHex: "#07040C")
+
+    static let blue = Color(createCrewHex: "#1593FF")
+    static let cyan = Color(createCrewHex: "#2DD4FF")
+    static let purple = Color(createCrewHex: "#7C3AED")
+    static let coral = Color(createCrewHex: "#FF5A44")
+    static let gold = Color(createCrewHex: "#FBBF24")
+    static let green = Color(createCrewHex: "#A3E635")
+    static let surface = Color(createCrewHex: "#101118")
+
+    static var appGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(createCrewHex: "#1E6BFF"),
+                Color(createCrewHex: "#7C3AED")
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+}
+
 struct CreateCrewBackendView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var session: SessionStore
@@ -54,163 +79,296 @@ struct CreateCrewBackendView: View {
         "#14B8A6"
     ]
 
+    private var cleanName: String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     private var canSave: Bool {
-        !isSaving && !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !isSaving && !cleanName.isEmpty
     }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                AppBackground()
+        ZStack {
+            background
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 22) {
-                        previewCard
-                        crewInfoSection
-                        iconPickerSection
-                        colorPickerSection
+            ScrollView(showsIndicators: false) {
+                LazyVStack(alignment: .leading, spacing: 14) {
+                    Color.clear.frame(height: 4)
 
-                        if let errorMessage {
-                            errorCard(errorMessage)
-                        }
+                    header
 
-                        Spacer(minLength: 30)
+                    previewCard
+
+                    crewInfoCard
+
+                    iconPickerCard
+
+                    colorPickerCard
+
+                    if let errorMessage {
+                        errorCard(errorMessage)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 18)
-                    .padding(.bottom, 28)
+
+                    saveButton
+
+                    Color.clear.frame(height: 32)
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 20)
             }
-            .navigationTitle(String(localized: "create_crew_title"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(String(localized: "common_cancel")) {
-                        dismiss()
-                    }
-                    .disabled(isSaving)
-                }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+    }
+}
 
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Task { await saveCrew() }
-                    } label: {
-                        if isSaving {
-                            ProgressView()
-                        } else {
-                            Image(systemName: "checkmark")
-                                .font(.headline.bold())
-                        }
-                    }
-                    .disabled(!canSave)
-                }
+// MARK: - Layout
+
+private extension CreateCrewBackendView {
+    var background: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            LinearGradient(
+                colors: [
+                    CreateCrewArenaPalette.backgroundTop,
+                    CreateCrewArenaPalette.backgroundMid,
+                    CreateCrewArenaPalette.backgroundBottom
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            Circle()
+                .fill(CreateCrewArenaPalette.blue.opacity(0.10))
+                .frame(width: 260, height: 260)
+                .blur(radius: 96)
+                .offset(x: 165, y: -245)
+
+            Circle()
+                .fill(CreateCrewArenaPalette.purple.opacity(0.18))
+                .frame(width: 320, height: 320)
+                .blur(radius: 110)
+                .offset(x: -175, y: 500)
+
+            Circle()
+                .fill(hexColor(colorHex).opacity(0.10))
+                .frame(width: 270, height: 270)
+                .blur(radius: 100)
+                .offset(x: 170, y: 280)
+
+            LinearGradient(
+                colors: [
+                    Color.black.opacity(0.16),
+                    Color.clear,
+                    Color.black.opacity(0.42)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        }
+    }
+
+    var header: some View {
+        HStack {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 17, weight: .black))
+                    .foregroundStyle(.white)
+                    .frame(width: 46, height: 46)
+                    .background(
+                        RoundedRectangle(cornerRadius: 17, style: .continuous)
+                            .fill(Color.white.opacity(0.075))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                            )
+                    )
             }
+            .buttonStyle(.plain)
+            .disabled(isSaving)
+
+            Spacer()
+
+            VStack(spacing: 3) {
+                Text("NEW CREW")
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .tracking(2.2)
+                    .foregroundStyle(CreateCrewArenaPalette.cyan)
+
+                Text("Crew Oluştur")
+                    .font(.system(size: 21, weight: .black))
+                    .foregroundStyle(.white)
+            }
+
+            Spacer()
+
+            Button {
+                Task {
+                    await saveCrew()
+                }
+            } label: {
+                ZStack {
+                    if isSaving {
+                        ProgressView()
+                            .tint(.black)
+                    } else {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 18, weight: .black))
+                            .foregroundStyle(.black)
+                    }
+                }
+                .frame(width: 46, height: 46)
+                .background(
+                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                        .fill(canSave ? CreateCrewArenaPalette.green : Color.white.opacity(0.12))
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(!canSave)
+            .opacity(canSave ? 1 : 0.55)
         }
     }
 }
 
-private extension CreateCrewBackendView {
+// MARK: - Cards
 
+private extension CreateCrewBackendView {
     var previewCard: some View {
         let tint = hexColor(colorHex)
+        let displayName = cleanName.isEmpty ? "Yeni Crew" : cleanName
 
-        return VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .center, spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    tint.opacity(0.28),
-                                    tint.opacity(0.12)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 14) {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                tint.opacity(0.95),
+                                CreateCrewArenaPalette.purple.opacity(0.80),
+                                CreateCrewArenaPalette.coral.opacity(0.55)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                         )
-                        .frame(width: 76, height: 76)
-
-                    Image(systemName: icon)
-                        .font(.system(size: 30, weight: .bold))
-                        .foregroundStyle(tint)
-                }
-
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(
-                        name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? String(localized: "create_crew_your_crew")
-                        : name
                     )
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .frame(width: 66, height: 66)
+                    .overlay(
+                        Image(systemName: icon)
+                            .font(.system(size: 29, weight: .black))
+                            .foregroundStyle(.white)
+                    )
 
-                    Text(String(localized: "create_crew_preview_subtitle"))
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.7))
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("CREW PREVIEW")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .tracking(2)
+                        .foregroundStyle(CreateCrewArenaPalette.cyan)
+
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(displayName)
+                            .font(.system(size: 30, weight: .black))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.62)
+
+                        Text("crew")
+                            .font(.system(size: 25, weight: .regular, design: .serif))
+                            .italic()
+                            .foregroundStyle(CreateCrewArenaPalette.cyan)
+                    }
+
+                    Text("Birlikte görev, focus ve takım akışı için yeni alan.")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.50))
                         .lineLimit(2)
                 }
 
                 Spacer()
             }
 
-            HStack(spacing: 10) {
-                previewPill(text: String(localized: "create_crew_preview"), tint: tint)
-                previewPill(text: icon, tint: .white.opacity(0.7))
+            HStack(spacing: 9) {
+                previewPill(text: "ACTIVE", tint: CreateCrewArenaPalette.green)
+                previewPill(text: icon, tint: tint)
+                previewPill(text: colorHex, tint: CreateCrewArenaPalette.gold)
             }
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
         .background(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            tint.opacity(0.12),
+                            CreateCrewArenaPalette.purple.opacity(0.12),
+                            CreateCrewArenaPalette.surface.opacity(0.98)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
                 )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .stroke(tint.opacity(0.18), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.24), radius: 20, y: 12)
         )
     }
 
-    var crewInfoSection: some View {
+    var crewInfoCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionTitle(String(localized: "create_crew_info"))
+            sectionTitle(
+                eyebrow: "CREW INFO",
+                title: "Crew",
+                italic: "bilgisi"
+            )
 
-            VStack(spacing: 0) {
-                textFieldRow(
-                    title: String(localized: "create_crew_name_label"),
-                    placeholder: String(localized: "create_crew_name_placeholder"),
-                    text: $name
-                )
+            fieldBox(
+                title: "CREW NAME",
+                icon: "text.cursor",
+                tint: CreateCrewArenaPalette.blue
+            ) {
+                TextField("Crew adı", text: $name)
+                    .font(.system(size: 18, weight: .black))
+                    .foregroundStyle(.white)
+                    .textInputAutocapitalization(.words)
+                    .autocorrectionDisabled()
+                    .submitLabel(.done)
+                    .onSubmit {
+                        guard canSave else { return }
+                        Task {
+                            await saveCrew()
+                        }
+                    }
 
-                Divider()
-                    .overlay(Color.white.opacity(0.08))
-
-                infoRow(
-                    title: String(localized: "create_crew_selected_icon"),
-                    value: icon
-                )
-
-                Divider()
-                    .overlay(Color.white.opacity(0.08))
-
-                infoRow(
-                    title: String(localized: "create_crew_selected_color"),
-                    value: colorHex
-                )
+                Text("Örnek: Focus, Study Sprint, Code Lab")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.38))
             }
-            .background(sectionCardBackground)
         }
+        .padding(18)
+        .background(cardBackground)
     }
 
-    var iconPickerSection: some View {
+    var iconPickerCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionTitle(String(localized: "create_crew_choose_icon"))
+            sectionTitle(
+                eyebrow: "CREW SYMBOL",
+                title: "İkon",
+                italic: "seç"
+            )
 
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4),
                 spacing: 10
             ) {
                 ForEach(iconOptions, id: \.self) { item in
-                    let isSelected = icon == item
+                    let selected = icon == item
                     let tint = hexColor(colorHex)
 
                     Button {
@@ -220,38 +378,40 @@ private extension CreateCrewBackendView {
                     } label: {
                         ZStack {
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(isSelected ? tint.opacity(0.18) : Color.white.opacity(0.04))
-
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(
-                                    isSelected ? tint.opacity(0.45) : Color.white.opacity(0.06),
-                                    lineWidth: 1
+                                .fill(selected ? tint.opacity(0.18) : Color.white.opacity(0.045))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .stroke(selected ? tint.opacity(0.42) : Color.white.opacity(0.07), lineWidth: 1)
                                 )
 
                             Image(systemName: item)
-                                .font(.system(size: 21, weight: .semibold))
-                                .foregroundStyle(isSelected ? tint : .white.opacity(0.88))
+                                .font(.system(size: 21, weight: .black))
+                                .foregroundStyle(selected ? tint : .white.opacity(0.78))
                         }
                         .frame(height: 58)
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(14)
-            .background(sectionCardBackground)
         }
+        .padding(18)
+        .background(cardBackground)
     }
 
-    var colorPickerSection: some View {
+    var colorPickerCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionTitle(String(localized: "create_crew_choose_color"))
+            sectionTitle(
+                eyebrow: "CREW ACCENT",
+                title: "Renk",
+                italic: "seç"
+            )
 
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 4),
                 spacing: 12
             ) {
                 ForEach(colorOptions, id: \.self) { item in
-                    let isSelected = colorHex == item
+                    let selected = colorHex == item
                     let tint = hexColor(item)
 
                     Button {
@@ -263,107 +423,205 @@ private extension CreateCrewBackendView {
                             Circle()
                                 .fill(tint)
                                 .frame(width: 42, height: 42)
+                                .shadow(color: tint.opacity(selected ? 0.35 : 0.12), radius: selected ? 12 : 4, y: 4)
 
-                            if isSelected {
+                            if selected {
                                 Circle()
                                     .stroke(Color.white.opacity(0.95), lineWidth: 3)
-                                    .frame(width: 50, height: 50)
+                                    .frame(width: 52, height: 52)
 
                                 Image(systemName: "checkmark")
-                                    .font(.caption.bold())
+                                    .font(.system(size: 13, weight: .black))
                                     .foregroundStyle(.white)
                             }
                         }
-                        .frame(maxWidth: .infinity, minHeight: 56)
+                        .frame(maxWidth: .infinity, minHeight: 58)
+                        .background(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(selected ? tint.opacity(0.10) : Color.white.opacity(0.035))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .stroke(selected ? tint.opacity(0.22) : Color.white.opacity(0.05), lineWidth: 1)
+                                )
+                        )
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(14)
-            .background(sectionCardBackground)
         }
+        .padding(18)
+        .background(cardBackground)
     }
 
-    func errorCard(_ message: String) -> some View {
-        Text(message)
-            .font(.subheadline)
-            .foregroundStyle(.red)
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
+    var saveButton: some View {
+        Button {
+            Task {
+                await saveCrew()
+            }
+        } label: {
+            HStack(spacing: 10) {
+                if isSaving {
+                    ProgressView()
+                        .tint(.black)
+                } else {
+                    Image(systemName: "person.3.fill")
+                        .font(.system(size: 18, weight: .black))
+                }
+
+                Text("Crew Oluştur")
+                    .font(.system(size: 16, weight: .black))
+            }
+            .foregroundStyle(.black)
+            .frame(maxWidth: .infinity)
+            .frame(height: 54)
             .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.red.opacity(0.10))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(Color.red.opacity(0.20), lineWidth: 1)
-                    )
+                Capsule()
+                    .fill(canSave ? CreateCrewArenaPalette.green : Color.white.opacity(0.12))
             )
-    }
-
-    func sectionTitle(_ text: String) -> some View {
-        Text(text)
-            .font(.title3.bold())
-            .foregroundStyle(.white)
-    }
-
-    func textFieldRow(title: String, placeholder: String, text: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.white.opacity(0.65))
-
-            TextField(placeholder, text: text)
-                .font(.body)
-                .foregroundStyle(.white)
-                .textInputAutocapitalization(.words)
-                .autocorrectionDisabled()
         }
-        .padding(16)
+        .buttonStyle(.plain)
+        .disabled(!canSave)
+        .opacity(canSave ? 1 : 0.55)
     }
+}
 
-    func infoRow(title: String, value: String) -> some View {
-        HStack {
-            Text(title)
-                .foregroundStyle(.white.opacity(0.72))
+// MARK: - Components
 
-            Spacer()
-
-            Text(value)
-                .foregroundStyle(.white)
+private extension CreateCrewBackendView {
+    func sectionTitle(eyebrow: String, title: String, italic: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("— \(eyebrow) —")
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .tracking(2.4)
+                .foregroundStyle(.white.opacity(0.34))
                 .lineLimit(1)
+                .minimumScaleFactor(0.60)
+
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(title)
+                    .font(.system(size: 24, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text(italic)
+                    .font(.system(size: 23, weight: .regular, design: .serif))
+                    .italic()
+                    .foregroundStyle(.white)
+            }
         }
-        .font(.subheadline)
-        .padding(16)
+    }
+
+    func fieldBox<Content: View>(
+        title: String,
+        icon: String,
+        tint: Color,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(alignment: .top, spacing: 13) {
+            Image(systemName: icon)
+                .font(.system(size: 17, weight: .black))
+                .foregroundStyle(tint)
+                .frame(width: 42, height: 42)
+                .background(
+                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                        .fill(tint.opacity(0.13))
+                )
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title)
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .tracking(1.3)
+                    .foregroundStyle(.white.opacity(0.36))
+
+                content()
+            }
+        }
+        .padding(14)
+        .background(detailSurface(cornerRadius: 22, tint: tint))
     }
 
     func previewPill(text: String, tint: Color) -> some View {
         Text(text)
-            .font(.caption.weight(.semibold))
+            .font(.system(size: 10, weight: .black, design: .monospaced))
+            .foregroundStyle(tint)
             .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .frame(height: 30)
             .background(
                 Capsule()
-                    .fill(tint.opacity(0.14))
+                    .fill(tint.opacity(0.12))
+                    .overlay(
+                        Capsule()
+                            .stroke(tint.opacity(0.20), lineWidth: 1)
+                    )
             )
-            .foregroundStyle(tint)
+            .lineLimit(1)
     }
 
-    var sectionCardBackground: some View {
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(Color.white.opacity(0.06))
-            .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.white.opacity(0.07), lineWidth: 1)
+    func errorCard(_ message: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 18, weight: .black))
+                .foregroundStyle(CreateCrewArenaPalette.coral)
+
+            Text(message)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.74))
+                .lineLimit(3)
+
+            Spacer()
+        }
+        .padding(16)
+        .background(detailSurface(cornerRadius: 22, tint: CreateCrewArenaPalette.coral))
+    }
+
+    func detailSurface(cornerRadius: CGFloat, tint: Color) -> some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        tint.opacity(0.055),
+                        CreateCrewArenaPalette.purple.opacity(0.040),
+                        Color.white.opacity(0.038)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
             )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(tint.opacity(0.13), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.22), radius: 14, y: 8)
+    }
+
+    var cardBackground: some View {
+        RoundedRectangle(cornerRadius: 26, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        CreateCrewArenaPalette.blue.opacity(0.035),
+                        CreateCrewArenaPalette.purple.opacity(0.045),
+                        Color.white.opacity(0.040)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
     }
 }
+
+// MARK: - Logic
 
 private extension CreateCrewBackendView {
     @MainActor
     func saveCrew() async {
         guard let ownerID = session.currentUserID else { return }
 
-        let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanName = cleanName
         guard !cleanName.isEmpty else { return }
 
         isSaving = true
@@ -382,5 +640,59 @@ private extension CreateCrewBackendView {
         }
 
         isSaving = false
+    }
+
+    func hexColor(_ hex: String) -> Color {
+        Color(createCrewHex: hex)
+    }
+}
+
+// MARK: - Color Hex
+
+private extension Color {
+    init(createCrewHex hex: String) {
+        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+
+        var int: UInt64 = 0
+        Scanner(string: cleaned).scanHexInt64(&int)
+
+        let a: UInt64
+        let r: UInt64
+        let g: UInt64
+        let b: UInt64
+
+        switch cleaned.count {
+        case 3:
+            a = 255
+            r = (int >> 8) * 17
+            g = ((int >> 4) & 0xF) * 17
+            b = (int & 0xF) * 17
+
+        case 6:
+            a = 255
+            r = int >> 16
+            g = (int >> 8) & 0xFF
+            b = int & 0xFF
+
+        case 8:
+            a = int >> 24
+            r = (int >> 16) & 0xFF
+            g = (int >> 8) & 0xFF
+            b = int & 0xFF
+
+        default:
+            a = 255
+            r = 255
+            g = 255
+            b = 255
+        }
+
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
     }
 }
