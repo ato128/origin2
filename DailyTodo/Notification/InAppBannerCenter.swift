@@ -37,6 +37,7 @@ final class InAppBannerCenter: ObservableObject {
 
         let task = DispatchWorkItem { [weak self] in
             guard let self else { return }
+
             withAnimation(.spring(response: 0.30, dampingFraction: 0.90)) {
                 self.banner = nil
             }
@@ -48,6 +49,7 @@ final class InAppBannerCenter: ObservableObject {
 
     func hide() {
         dismissTask?.cancel()
+
         withAnimation(.spring(response: 0.28, dampingFraction: 0.90)) {
             banner = nil
         }
@@ -69,6 +71,7 @@ final class InAppBannerCenter: ObservableObject {
                         name: .openFriendChatFromNotification,
                         object: friendshipID
                     )
+                    return
                 }
 
             case "crew_chat":
@@ -77,6 +80,7 @@ final class InAppBannerCenter: ObservableObject {
                         name: .openCrewChatFromNotification,
                         object: crewID
                     )
+                    return
                 }
 
             case "focus_room":
@@ -85,6 +89,7 @@ final class InAppBannerCenter: ObservableObject {
                         name: .openCrewFocusFromNotification,
                         object: crewID
                     )
+                    return
                 }
 
             default:
@@ -110,7 +115,7 @@ struct InAppBannerItem: Identifiable {
 }
 
 struct InAppBannerOverlay: View {
-    @ObservedObject var center = InAppBannerCenter.shared
+    @ObservedObject private var center = InAppBannerCenter.shared
 
     var body: some View {
         ZStack(alignment: .top) {

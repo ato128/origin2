@@ -154,6 +154,7 @@ struct FriendChatView: View {
                 }
 
                 friendStore.setActiveChat(friendshipID)
+                UserDefaults.standard.set(friendshipID.uuidString, forKey: "active_friendship_id")
                 if let currentUserID = session.currentUser?.id {
                     await friendStore.resetUnreadForCurrentUser(
                         friendshipID: friendshipID,
@@ -197,6 +198,7 @@ struct FriendChatView: View {
                 liveRefreshTask = nil
 
                 friendStore.setActiveChat(nil)
+                UserDefaults.standard.removeObject(forKey: "active_friendship_id")
                 friendStore.unsubscribeFriendMessagesRealtime()
                 friendStore.unsubscribeTypingRealtime()
             }
@@ -652,13 +654,25 @@ private extension FriendChatView {
                                     durationText: audioRecorder.durationText()
                                 )
                                 
-                                if let toUserId = friend.backendUserID?.uuidString {
-                                    PushService.shared.sendFriendMessagePush(
-                                        toUserId: toUserId,
-                                        friendshipID: friendshipID.uuidString,
-                                        senderName: senderDisplayName(),
-                                        message: "🎤 Ses mesajı"
-                                    )
+                                if let senderID = session.currentUser?.id {
+                                    let receiverUserID: UUID? = {
+                                        if let friendship = friendStore.friendships.first(where: { $0.id == friendshipID }) {
+                                            return friendship.requester_id == senderID
+                                                ? friendship.addressee_id
+                                                : friendship.requester_id
+                                        }
+
+                                        return friend.backendUserID
+                                    }()
+
+                                    if let receiverUserID {
+                                        PushService.shared.sendFriendMessagePush(
+                                            toUserId: receiverUserID.uuidString,
+                                            friendshipID: friendshipID.uuidString,
+                                            senderName: senderDisplayName(),
+                                            message: "🎤 Ses mesajı"
+                                        )
+                                    }
                                 }
                                 
                                 audioRecorder.recordedURL = nil
@@ -834,15 +848,22 @@ private extension FriendChatView {
                         senderName: senderDisplayName(),
                         caption: clean.isEmpty ? nil : clean
                     )
-
-                    if friendStore.shouldSendFriendPush(friendshipID: friendshipID, currentUserID: senderID) {
-                        PushService.shared.sendFriendMessagePush(
-                            toUserId: receiverUserID.uuidString,
-                            friendshipID: friendshipID.uuidString,
-                            senderName: senderDisplayName(),
-                            message: clean.isEmpty ? "📷 Fotoğraf" : clean
-                        )
+                    await MainActor.run {
+                        ChatFeedbackManager.shared.playSent()
                     }
+
+                    print("📣 FRIEND PHOTO PUSH")
+                    print("📣 senderID:", senderID.uuidString)
+                    print("📣 receiverUserID:", receiverUserID.uuidString)
+                    print("📣 friendshipID:", friendshipID.uuidString)
+
+                    PushService.shared.sendFriendMessagePush(
+                        toUserId: receiverUserID.uuidString,
+                        friendshipID: friendshipID.uuidString,
+                        senderName: senderDisplayName(),
+                        message: clean.isEmpty ? "📷 Fotoğraf" : clean
+                    )
+
                     return
 
                 case .file(let fileURL):
@@ -853,15 +874,22 @@ private extension FriendChatView {
                         senderName: senderDisplayName(),
                         caption: clean.isEmpty ? nil : clean
                     )
-
-                    if friendStore.shouldSendFriendPush(friendshipID: friendshipID, currentUserID: senderID) {
-                        PushService.shared.sendFriendMessagePush(
-                            toUserId: receiverUserID.uuidString,
-                            friendshipID: friendshipID.uuidString,
-                            senderName: senderDisplayName(),
-                            message: clean.isEmpty ? "📎 Dosya" : clean
-                        )
+                    await MainActor.run {
+                        ChatFeedbackManager.shared.playSent()
                     }
+
+                    print("📣 FRIEND FILE PUSH")
+                    print("📣 senderID:", senderID.uuidString)
+                    print("📣 receiverUserID:", receiverUserID.uuidString)
+                    print("📣 friendshipID:", friendshipID.uuidString)
+
+                    PushService.shared.sendFriendMessagePush(
+                        toUserId: receiverUserID.uuidString,
+                        friendshipID: friendshipID.uuidString,
+                        senderName: senderDisplayName(),
+                        message: clean.isEmpty ? "📎 Dosya" : clean
+                    )
+
                     return
                 }
             }
@@ -874,8 +902,12 @@ private extension FriendChatView {
                 senderID: senderID,
                 senderName: senderDisplayName()
             )
+            await MainActor.run {
+                print("🔊 PLAY SENT FEEDBACK")
+                ChatFeedbackManager.shared.playSent()
+            }
 
-            print("📣 ABOUT TO SEND FRIEND PUSH")
+            print("📣 FRIEND TEXT PUSH")
             print("📣 senderID:", senderID.uuidString)
             print("📣 receiverUserID:", receiverUserID.uuidString)
             print("📣 friendshipID:", friendshipID.uuidString)

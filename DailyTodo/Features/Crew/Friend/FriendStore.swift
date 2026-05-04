@@ -1256,30 +1256,45 @@ final class FriendStore: ObservableObject {
     @MainActor
     private func appendFriendMessage(_ item: FriendChatMessageItem, friendshipID: UUID) {
         var items = friendMessagesByFriendship[friendshipID] ?? []
+        let wasExisting: Bool
 
         if let serverID = item.serverID,
            let existingIndex = items.firstIndex(where: { $0.serverID == serverID }) {
             items[existingIndex] = item
+            wasExisting = true
+
         } else if let clientID = item.clientID,
                   let pendingIndex = items.firstIndex(where: {
                       $0.serverID == nil && $0.clientID == clientID
                   }) {
             items[pendingIndex] = item
+            wasExisting = true
+
         } else {
             items.append(item)
+            wasExisting = false
         }
 
         items.sort { lhs, rhs in
             if lhs.createdAt == rhs.createdAt {
                 return lhs.id.uuidString < rhs.id.uuidString
             }
+
             return lhs.createdAt < rhs.createdAt
         }
 
         let trimmedItems = Array(items.suffix(100))
         friendMessagesByFriendship[friendshipID] = trimmedItems
+
         recomputeUnreadState(for: friendshipID)
         objectWillChange.send()
+
+        if !wasExisting,
+           !item.isFromMe,
+           activeChatFriendshipID == friendshipID,
+           isAppActive {
+            ChatFeedbackManager.shared.playIncoming()
+        }
     }
 
     // MARK: - Load Messages

@@ -117,9 +117,29 @@ struct DailyTodoApp: App {
                 InAppBannerOverlay()
             }
             .onAppear {
+                NotificationCenter.default.addObserver(
+                    forName: .didReceiveAPNSToken,
+                    object: nil,
+                    queue: .main
+                ) { _ in
+                    Task {
+                        print("🔥 TOKEN RECEIVED -> SAVING")
+                        await PushTokenStore.shared.saveCurrentToken(
+                            currentUserID: session.currentUser?.id
+                        )
+                    }
+                }
+
                 Task {
                     await session.restoreSupabaseSessionIfNeeded()
 
+                    await PushTokenStore.shared.saveCurrentToken(
+                        currentUserID: session.currentUser?.id
+                    )
+
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+
+                    print("🔥 FORCE TOKEN SAVE")
                     await PushTokenStore.shared.saveCurrentToken(
                         currentUserID: session.currentUser?.id
                     )
@@ -162,10 +182,18 @@ struct DailyTodoApp: App {
                     await PushTokenStore.shared.saveCurrentToken(
                         currentUserID: session.currentUser?.id
                     )
+
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+
+                    print("🔥 FORCE TOKEN SAVE AFTER REGISTER")
+                    await PushTokenStore.shared.saveCurrentToken(
+                        currentUserID: session.currentUser?.id
+                    )
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .didReceiveAPNSToken)) { _ in
                 Task {
+                    print("🔥 TOKEN RECEIVED -> SAVING FROM ONRECEIVE")
                     await PushTokenStore.shared.saveCurrentToken(
                         currentUserID: session.currentUser?.id
                     )
@@ -230,6 +258,13 @@ struct DailyTodoApp: App {
 
                     if let userID = session.currentUser?.id {
                         bootstrapFriendRealtime(for: userID)
+
+                        Task {
+                            print("🔥 FORCE TOKEN SAVE ON ACTIVE")
+                            await PushTokenStore.shared.saveCurrentToken(
+                                currentUserID: userID
+                            )
+                        }
                     }
 
                 case .inactive:
