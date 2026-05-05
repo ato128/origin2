@@ -15,9 +15,9 @@ struct MessagesView: View {
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var session: SessionStore
 
-    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
-
     @State private var searchText = ""
+    @State private var didLoadMessagesHubData = false
+    @State private var rebuildSummariesTask: Task<Void, Never>?
 
     @Query(sort: \Friend.createdAt, order: .reverse)
     private var friends: [Friend]
@@ -153,6 +153,7 @@ struct MessagesView: View {
         let merged: [MessagesHubItem] = friendItems + crewItems
         return merged.sorted(by: conversationSort)
     }
+
     private func conversationSort(
         _ lhs: MessagesHubItem,
         _ rhs: MessagesHubItem
@@ -203,19 +204,25 @@ struct MessagesView: View {
                 .navigationBarBackButtonHidden(true)
                 .toolbar(.hidden, for: .navigationBar)
                 .task {
+                    guard !didLoadMessagesHubData else { return }
+                    didLoadMessagesHubData = true
                     await loadMessagesHubData()
                 }
                 .onReceive(friendStore.$friendships) { _ in
-                    rebuildFriendSummariesIfPossible()
+                    scheduleFriendSummaryRebuild()
                 }
                 .onReceive(friendStore.$friendMessagesByFriendship) { _ in
-                    rebuildFriendSummariesIfPossible()
+                    scheduleFriendSummaryRebuild()
                 }
                 .onReceive(friendStore.$typingStatusByFriendship) { _ in
-                    rebuildFriendSummariesIfPossible()
+                    scheduleFriendSummaryRebuild()
                 }
                 .onReceive(friendStore.$presenceByUserID) { _ in
-                    rebuildFriendSummariesIfPossible()
+                    scheduleFriendSummaryRebuild()
+                }
+                .onDisappear {
+                    rebuildSummariesTask?.cancel()
+                    rebuildSummariesTask = nil
                 }
         }
     }
@@ -900,6 +907,17 @@ private extension MessagesView {
 
 private extension MessagesView {
 
+    func scheduleFriendSummaryRebuild() {
+        rebuildSummariesTask?.cancel()
+
+        rebuildSummariesTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 180_000_000)
+
+            guard !Task.isCancelled else { return }
+            rebuildFriendSummariesIfPossible()
+        }
+    }
+
     func rebuildFriendSummariesIfPossible() {
         guard let currentUserID else { return }
 
@@ -915,10 +933,14 @@ private extension MessagesView {
         for crew in crewStore.crews {
             await crewStore.loadMembers(for: crew.id)
 
-            await crewStore.loadInitialChatMessages(
-                for: crew.id,
-                currentUserID: session.currentUser?.id
-            )
+            let existingMessages = crewStore.chatMessagesByCrew[crew.id] ?? []
+
+            if existingMessages.isEmpty {
+                await crewStore.loadInitialChatMessages(
+                    for: crew.id,
+                    currentUserID: session.currentUser?.id
+                )
+            }
         }
 
         guard let currentUserID = session.currentUser?.id else { return }
@@ -938,7 +960,11 @@ private extension MessagesView {
         )
 
         for friend in backendFriends {
-            if let friendshipID = friend.backendFriendshipID {
+            guard let friendshipID = friend.backendFriendshipID else { continue }
+
+            let existingMessages = friendStore.friendMessagesByFriendship[friendshipID] ?? []
+
+            if existingMessages.isEmpty {
                 await friendStore.loadInitialMessages(
                     for: friendshipID,
                     currentUserID: currentUserID
@@ -1346,4 +1372,3 @@ struct MessagesHubItem: Identifiable {
     let isPinned: Bool
     let isMuted: Bool
 }
-

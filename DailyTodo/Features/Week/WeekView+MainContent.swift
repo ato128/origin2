@@ -167,6 +167,7 @@ extension WeekView {
                     weekMode: weekMode,
 
                     onAppearAction: {
+                        isWeekScreenVisible = true
                         onAppear(proxy: proxy)
                         crewPulse = true
                         commentPulse = true
@@ -199,10 +200,12 @@ extension WeekView {
                     liveTimer: liveTimer,
 
                     onLiveTick: {
+                        guard isWeekScreenVisible else { return }
                         await LiveActivityManager.shared.autoSyncIfNeeded(events: userScopedEvents)
                     },
 
                     onDisappearAction: {
+                        isWeekScreenVisible = false
                         crewStore.unsubscribe()
                     },
 

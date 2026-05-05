@@ -83,7 +83,10 @@ struct FocusFullPageStageV7: View {
                     Circle()
                         .fill(theme.dotColor)
                         .frame(width: 7, height: 7)
-                        .shadow(color: theme.dotColor.opacity(0.40), radius: 7)
+                        .shadow(
+                            color: theme.dotColor.opacity(0.28),
+                            radius: PerformanceSettings.glowShadowRadius
+                        )
 
                     Text(focusSession.isSessionActive && focusSession.selectedMode == mode ? "Aktif session" : statusText)
                         .font(.system(size: 11, weight: .black, design: .monospaced))
@@ -121,13 +124,24 @@ struct FocusFullPageStageV7: View {
         .scaleEffect(isLaunching ? 1.018 : (appeared ? 1 : 0.988))
         .opacity(isLaunching ? 0.98 : (appeared ? 1 : 0))
         .offset(y: isLaunching ? -5 : (appeared ? 0 : 10))
-        .animation(.spring(response: 0.78, dampingFraction: 0.88), value: appeared)
-        .animation(.spring(response: 0.46, dampingFraction: 0.84), value: isLaunching)
-        .animation(.easeInOut(duration: 0.50), value: mode)
+        .animation(.spring(response: 0.62, dampingFraction: 0.90), value: appeared)
+        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isLaunching)
+        .animation(.easeInOut(duration: 0.36), value: mode)
         .onAppear {
             appeared = true
+
+            guard PerformanceSettings.enableSlowAmbientAnimations else {
+                pulse = false
+                drift = false
+                return
+            }
+
             pulse = true
             drift = true
+        }
+        .onDisappear {
+            pulse = false
+            drift = false
         }
     }
 }
@@ -202,40 +216,66 @@ private extension FocusFullPageStageV7 {
 
             RadialGradient(
                 colors: [
-                    theme.primaryBloom.opacity(pulse ? 0.34 : 0.24),
-                    theme.primaryBloom.opacity(0.12),
+                    theme.primaryBloom.opacity((ambientPulsePrimaryOpacity) * PerformanceSettings.radialOpacityMultiplier),
+                    theme.primaryBloom.opacity(0.10 * PerformanceSettings.radialOpacityMultiplier),
                     Color.clear
                 ],
                 center: .topTrailing,
                 startRadius: 8,
                 endRadius: 250
             )
-            .blur(radius: 18)
-            .offset(x: drift ? 12 : -8, y: drift ? -6 : 8)
-            .animation(.easeInOut(duration: 6.0).repeatForever(autoreverses: true), value: drift)
-            .animation(.easeInOut(duration: 5.0).repeatForever(autoreverses: true), value: pulse)
+            .blur(radius: PerformanceSettings.enableHeavyBlurEffects ? 18 : 12)
+            .offset(
+                x: PerformanceSettings.enableSlowAmbientAnimations ? (drift ? 12 : -8) : 4,
+                y: PerformanceSettings.enableSlowAmbientAnimations ? (drift ? -6 : 8) : 0
+            )
+            .animation(
+                PerformanceSettings.enableSlowAmbientAnimations
+                ? .easeInOut(duration: 6.0).repeatForever(autoreverses: true)
+                : .none,
+                value: drift
+            )
+            .animation(
+                PerformanceSettings.enableSlowAmbientAnimations
+                ? .easeInOut(duration: 5.0).repeatForever(autoreverses: true)
+                : .none,
+                value: pulse
+            )
 
             RadialGradient(
                 colors: [
-                    theme.secondaryBloom.opacity(pulse ? 0.28 : 0.18),
-                    theme.secondaryBloom.opacity(0.10),
+                    theme.secondaryBloom.opacity((ambientPulseSecondaryOpacity) * PerformanceSettings.radialOpacityMultiplier),
+                    theme.secondaryBloom.opacity(0.08 * PerformanceSettings.radialOpacityMultiplier),
                     Color.clear
                 ],
                 center: .bottomLeading,
                 startRadius: 8,
                 endRadius: 230
             )
-            .blur(radius: 24)
-            .offset(x: drift ? -12 : 8, y: drift ? 6 : -6)
-            .animation(.easeInOut(duration: 6.8).repeatForever(autoreverses: true), value: drift)
-            .animation(.easeInOut(duration: 5.8).repeatForever(autoreverses: true), value: pulse)
+            .blur(radius: PerformanceSettings.enableHeavyBlurEffects ? 24 : 14)
+            .offset(
+                x: PerformanceSettings.enableSlowAmbientAnimations ? (drift ? -12 : 8) : -4,
+                y: PerformanceSettings.enableSlowAmbientAnimations ? (drift ? 6 : -6) : 0
+            )
+            .animation(
+                PerformanceSettings.enableSlowAmbientAnimations
+                ? .easeInOut(duration: 6.8).repeatForever(autoreverses: true)
+                : .none,
+                value: drift
+            )
+            .animation(
+                PerformanceSettings.enableSlowAmbientAnimations
+                ? .easeInOut(duration: 5.8).repeatForever(autoreverses: true)
+                : .none,
+                value: pulse
+            )
 
             Ellipse()
-                .fill(theme.coreBloom.opacity(isLaunching ? 0.20 : 0.11))
+                .fill(theme.coreBloom.opacity(isLaunching ? 0.16 : 0.09))
                 .frame(width: isLaunching ? 300 : 250, height: isLaunching ? 170 : 140)
-                .blur(radius: isLaunching ? 36 : 30)
+                .blur(radius: PerformanceSettings.enableHeavyBlurEffects ? (isLaunching ? 36 : 30) : 18)
                 .offset(y: isLaunching ? 6 : 24)
-                .animation(.easeInOut(duration: 0.32), value: isLaunching)
+                .animation(.easeInOut(duration: 0.26), value: isLaunching)
 
             RoundedRectangle(cornerRadius: 34, style: .continuous)
                 .fill(
@@ -252,19 +292,32 @@ private extension FocusFullPageStageV7 {
 
             RoundedRectangle(cornerRadius: 34, style: .continuous)
                 .stroke(theme.accent.opacity(0.15), lineWidth: 1)
-                .shadow(color: theme.accent.opacity(0.16), radius: 18, y: 8)
+                .shadow(
+                    color: theme.accent.opacity(0.11),
+                    radius: PerformanceSettings.glowShadowRadius,
+                    y: 6
+                )
         }
-        .drawingGroup()
         .clipShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
+    }
+
+    var ambientPulsePrimaryOpacity: Double {
+        guard PerformanceSettings.enableSlowAmbientAnimations else { return 0.28 }
+        return pulse ? 0.34 : 0.24
+    }
+
+    var ambientPulseSecondaryOpacity: Double {
+        guard PerformanceSettings.enableSlowAmbientAnimations else { return 0.22 }
+        return pulse ? 0.28 : 0.18
     }
 
     var ringStage: some View {
         ZStack {
             Circle()
-                .fill(theme.innerGlow.opacity(isLaunching ? 0.22 : 0.14))
+                .fill(theme.innerGlow.opacity(isLaunching ? 0.18 : 0.12))
                 .frame(width: isLaunching ? 214 : 190, height: isLaunching ? 214 : 190)
-                .blur(radius: isLaunching ? 28 : 22)
-                .animation(.easeInOut(duration: 0.32), value: isLaunching)
+                .blur(radius: PerformanceSettings.enableHeavyBlurEffects ? (isLaunching ? 28 : 22) : 12)
+                .animation(.easeInOut(duration: 0.26), value: isLaunching)
 
             Circle()
                 .stroke(Color.white.opacity(0.070), lineWidth: 13)
@@ -283,9 +336,12 @@ private extension FocusFullPageStageV7 {
                     style: StrokeStyle(lineWidth: 13, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
-                .shadow(color: theme.accent.opacity(0.24), radius: 12)
-                .animation(.easeOut(duration: 0.9), value: appeared)
-                .animation(.easeInOut(duration: 0.42), value: progress)
+                .shadow(
+                    color: theme.accent.opacity(0.18),
+                    radius: PerformanceSettings.glowShadowRadius
+                )
+                .animation(.easeOut(duration: 0.65), value: appeared)
+                .animation(.easeInOut(duration: 0.30), value: progress)
 
             Circle()
                 .stroke(Color.white.opacity(0.035), lineWidth: 1)
@@ -295,7 +351,7 @@ private extension FocusFullPageStageV7 {
                 .fill(
                     RadialGradient(
                         colors: [
-                            theme.accent.opacity(0.10),
+                            theme.accent.opacity(0.10 * PerformanceSettings.radialOpacityMultiplier),
                             Color.clear
                         ],
                         center: .center,

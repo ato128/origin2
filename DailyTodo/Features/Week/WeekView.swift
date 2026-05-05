@@ -10,6 +10,12 @@ import SwiftData
 import UIKit
 import Combine
 
+
+
+private enum WeekPerformanceCache {
+    static let isoFormatter = ISO8601DateFormatter()
+}
+
 enum WeekMode {
     case personal
     case crew
@@ -27,11 +33,11 @@ struct WeekView: View {
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var store: TodoStore
     @EnvironmentObject var friendStore: FriendStore
-    @Environment(\.locale)  var locale
+    @Environment(\.locale) var locale
     @EnvironmentObject var studentStore: StudentStore
 
     @Query(sort: \EventItem.startMinute, order: .forward)
-     var allEvents: [EventItem]
+    var allEvents: [EventItem]
 
     @Query var tasks: [DTTaskItem]
     @Query var workoutExercises: [WorkoutExerciseItem]
@@ -133,9 +139,11 @@ struct WeekView: View {
 
     let liveTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
-    let dayTitles = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
+    let dayTitles = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
 
-    var allEventIDs: [UUID] { userScopedEvents.map(\.id) }
+    var allEventIDs: [UUID] {
+        userScopedEvents.map(\.id)
+    }
 
     var eventsForDay: [EventItem] {
         let calendar = Calendar.current
@@ -156,7 +164,9 @@ struct WeekView: View {
             }
     }
 
-    var eventsForDayIDs: [UUID] { eventsForDay.map(\.id) }
+    var eventsForDayIDs: [UUID] {
+        eventsForDay.map(\.id)
+    }
 
     var totalMinutesForDay: Int {
         eventsForDay.reduce(0) { $0 + $1.durationMinute }
@@ -177,9 +187,10 @@ struct WeekView: View {
     var liveEventForDay: EventItem? {
         guard isTodaySelected else { return nil }
         let now = currentMinuteOfDay()
-        return eventsForDay.first(where: {
+
+        return eventsForDay.first {
             now >= $0.startMinute && now < ($0.startMinute + $0.durationMinute)
-        })
+        }
     }
 
     var currentTimeIndicatorText: String? {
@@ -239,6 +250,8 @@ struct WeekView: View {
     @State var selectedEventForDetail: EventItem?
     @State var showCourseSetupSheet = false
 
+    @State var isWeekScreenVisible = false
+
     var body: some View {
         ZStack {
             ArenaBackground(
@@ -282,7 +295,7 @@ extension WeekView {
                     .fill(
                         RadialGradient(
                             colors: [
-                                Color(arenaHex: AppArenaPalette.cyan).opacity(0.095),
+                                Color(arenaHex: AppArenaPalette.cyan).opacity(0.095 * PerformanceSettings.radialOpacityMultiplier),
                                 Color.clear
                             ],
                             center: .topTrailing,
@@ -295,7 +308,11 @@ extension WeekView {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(Color.white.opacity(0.075), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.18), radius: 12, y: 6)
+            .shadow(
+                color: Color.black.opacity(0.18),
+                radius: PerformanceSettings.cardShadowRadius,
+                y: 6
+            )
     }
 }
 
@@ -344,15 +361,15 @@ extension WeekView {
         let tint = premiumPriorityColor(priority)
 
         if priority == "urgent" {
-            return tint.opacity(active ? 0.22 : 0.12)
+            return tint.opacity(active ? 0.16 : 0.09)
         }
 
         if active {
-            return tint.opacity(0.16)
+            return tint.opacity(0.11)
         }
 
         if soon {
-            return tint.opacity(0.08)
+            return tint.opacity(0.055)
         }
 
         return .clear
@@ -381,6 +398,7 @@ extension WeekView {
         )
         .foregroundStyle(tint)
     }
+
     func premiumMetaPill(icon: String, text: String, tint: Color) -> some View {
         HStack(spacing: 5) {
             Image(systemName: icon)
@@ -404,6 +422,7 @@ extension WeekView {
         )
         .foregroundStyle(tint)
     }
+
     func crewTimelineTaskCard(_ task: WeekCrewTaskItem, isLast: Bool) -> some View {
         let crew = allCrews.first { $0.id == task.crewID }
         let active = isTaskActive(task)
@@ -422,18 +441,21 @@ extension WeekView {
                         width: active ? 16 : (soon ? 13 : 11),
                         height: active ? 16 : (soon ? 13 : 11)
                     )
-                    .shadow(color: glow, radius: active ? 14 : (soon ? 8 : 0))
+                    .shadow(
+                        color: glow,
+                        radius: active ? PerformanceSettings.glowShadowRadius : (soon ? 6 : 0)
+                    )
                     .overlay(
                         Circle()
                             .stroke(.white.opacity(active ? 0.30 : 0.10), lineWidth: 1)
                     )
-                    .scaleEffect(active ? 1.15 : (soon ? 1.06 : 1.0))
+                    .scaleEffect(active ? 1.08 : (soon ? 1.03 : 1.0))
 
                 if !isLast {
                     LinearGradient(
                         colors: [
-                            tint.opacity(active ? 0.55 : 0.22),
-                            Color.white.opacity(0.06)
+                            tint.opacity(active ? 0.48 : 0.20),
+                            Color.white.opacity(0.05)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -525,7 +547,7 @@ extension WeekView {
                             .fill(
                                 RadialGradient(
                                     colors: [
-                                        tint.opacity(active ? 0.16 : 0.08),
+                                        tint.opacity((active ? 0.16 : 0.08) * PerformanceSettings.radialOpacityMultiplier),
                                         Color.clear
                                     ],
                                     center: .topTrailing,
@@ -539,12 +561,25 @@ extension WeekView {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(border, lineWidth: active ? 1.2 : 1)
             )
-            .shadow(color: Color.black.opacity(0.20), radius: 12, y: 6)
-            .shadow(color: glow, radius: active ? 18 : (soon ? 10 : 0))
-            .scaleEffect(active ? 1.015 : 1.0)
+            .shadow(
+                color: Color.black.opacity(0.20),
+                radius: PerformanceSettings.cardShadowRadius,
+                y: 6
+            )
+            .shadow(
+                color: glow,
+                radius: active ? PerformanceSettings.glowShadowRadius : (soon ? 6 : 0)
+            )
+            .scaleEffect(active ? 1.008 : 1.0)
         }
-        .animation(.spring(duration: 0.28), value: active)
-        .animation(.easeInOut(duration: 0.25), value: soon)
+        .animation(
+            .spring(response: 0.24, dampingFraction: 0.88),
+            value: active
+        )
+        .animation(
+            .easeInOut(duration: 0.20),
+            value: soon
+        )
     }
 }
 
@@ -558,8 +593,7 @@ extension WeekView {
 
     func isoDate(_ raw: String?) -> Date? {
         guard let raw else { return nil }
-        let formatter = ISO8601DateFormatter()
-        return formatter.date(from: raw)
+        return WeekPerformanceCache.isoFormatter.date(from: raw)
     }
 
     func timeText(for ev: EventItem) -> String {
@@ -591,7 +625,8 @@ extension WeekView {
 
     func animateSummaryCard() {
         animateSummary = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
             animateSummary = false
         }
     }
@@ -638,6 +673,7 @@ extension WeekView {
             if other.id == ev.id { continue }
             if overlaps(ev, other) { return true }
         }
+
         return false
     }
 
@@ -646,6 +682,7 @@ extension WeekView {
         let aEnd = a.startMinute + a.durationMinute
         let bStart = b.startMinute
         let bEnd = b.startMinute + b.durationMinute
+
         return max(aStart, bStart) < min(aEnd, bEnd)
     }
 
@@ -670,6 +707,8 @@ extension WeekView {
     }
 
     func autoScrollIfNeeded(proxy: ScrollViewProxy) {
+        guard isWeekScreenVisible else { return }
+
         let now = currentMinuteOfDay()
         guard let target = autoScrollTarget(now: now) else { return }
 
@@ -677,7 +716,7 @@ extension WeekView {
         lastAutoScrollTargetID = target.id
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-            withAnimation(.easeInOut(duration: 0.35)) {
+            withAnimation(.easeInOut(duration: 0.26)) {
                 proxy.scrollTo(target.id, anchor: .center)
             }
         }
@@ -707,12 +746,16 @@ extension WeekView {
     }
 
     func shareWeek() {
-        let parts: [String] = (0..<7).map { day in shareTextForDay(day) }
+        let parts: [String] = (0..<7).map { day in
+            shareTextForDay(day)
+        }
+
         presentShare(text: parts.joined(separator: "\n\n"))
     }
 
     func presentShare(text: String) {
         let vc = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+
         if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let root = scene.windows.first?.rootViewController {
             root.present(vc, animated: true)
@@ -736,6 +779,7 @@ extension WeekView {
 
         let lines = tasks.map { task in
             let timeText: String
+
             if let start = task.scheduledStartMinute {
                 timeText = hm(start)
             } else {
@@ -827,6 +871,7 @@ extension WeekView {
             let end = hm(ev.startMinute + ev.durationMinute)
             let loc = (ev.location ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             let locText = loc.isEmpty ? "" : " • \(loc)"
+
             return "• \(start)–\(end)  \(ev.title)\(locText)"
         }
 
@@ -840,11 +885,17 @@ extension WeekView {
     }
 
     func showCopiedToast() {
-        withAnimation { showCopied = true }
+        withAnimation(.easeOut(duration: 0.18)) {
+            showCopied = true
+        }
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
-            withAnimation { showCopied = false }
+            withAnimation(.easeOut(duration: 0.18)) {
+                showCopied = false
+            }
         }
     }
+
     func localizedDayTitle(_ day: Int) -> String {
         let safeDay = max(0, min(6, day))
         let isTR = locale.language.languageCode?.identifier == "tr"
@@ -863,7 +914,7 @@ extension WeekView {
             switch safeDay {
             case 0: return "Mon"
             case 1: return "Tue"
-            case 2: return "Wed"
+            case 2: return "Tue"
             case 3: return "Thu"
             case 4: return "Fri"
             case 5: return "Sat"
@@ -871,6 +922,7 @@ extension WeekView {
             }
         }
     }
+
     func localizedCurrentTimeLive(now: Int, title: String, minutesLeft: Int) -> String {
         if locale.language.languageCode?.identifier == "tr" {
             return "Şu an \(hm(now)) • \(title) devam ediyor • \(minutesLeft) dk kaldı"

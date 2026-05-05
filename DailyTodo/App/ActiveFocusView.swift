@@ -134,9 +134,17 @@ struct ActiveFocusView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
+            guard PerformanceSettings.enableSlowAmbientAnimations else {
+                pulse = false
+                return
+            }
+
             withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) {
                 pulse = true
             }
+        }
+        .onDisappear {
+            pulse = false
         }
     }
 }
@@ -145,6 +153,30 @@ private extension ActiveFocusView {
 
     var ringSize: CGFloat { 292 }
     var ringLineWidth: CGFloat { 16 }
+
+    var stablePulseCoreOpacity: Double {
+        PerformanceSettings.enableSlowAmbientAnimations
+        ? (pulse ? 0.24 : 0.17)
+        : 0.20
+    }
+
+    var stablePulseInnerOpacity: Double {
+        PerformanceSettings.enableSlowAmbientAnimations
+        ? (pulse ? 0.18 : 0.11)
+        : 0.14
+    }
+
+    var stableTopGlowOpacity: Double {
+        PerformanceSettings.enableSlowAmbientAnimations
+        ? (pulse ? 0.26 : 0.18)
+        : 0.21
+    }
+
+    var stableBottomGlowOpacity: Double {
+        PerformanceSettings.enableSlowAmbientAnimations
+        ? (pulse ? 0.18 : 0.12)
+        : 0.14
+    }
 
     // MARK: - Top Bar
 
@@ -219,7 +251,11 @@ private extension ActiveFocusView {
                             Circle()
                                 .stroke(Color.white.opacity(0.11), lineWidth: 1)
                         )
-                        .shadow(color: Color.black.opacity(0.28), radius: 14, y: 7)
+                        .shadow(
+                            color: Color.black.opacity(0.24),
+                            radius: PerformanceSettings.cardShadowRadius,
+                            y: 6
+                        )
                 )
         }
         .buttonStyle(.plain)
@@ -230,15 +266,15 @@ private extension ActiveFocusView {
     var centerStage: some View {
         ZStack {
             Circle()
-                .fill(theme.coreGlow.opacity(pulse ? 0.24 : 0.17))
+                .fill(theme.coreGlow.opacity(stablePulseCoreOpacity * PerformanceSettings.radialOpacityMultiplier))
                 .frame(width: 360, height: 360)
-                .blur(radius: 70)
+                .blur(radius: PerformanceSettings.enableHeavyBlurEffects ? 70 : 34)
 
             Circle()
                 .fill(
                     RadialGradient(
                         colors: [
-                            theme.innerGlow.opacity(pulse ? 0.18 : 0.11),
+                            theme.innerGlow.opacity(stablePulseInnerOpacity * PerformanceSettings.radialOpacityMultiplier),
                             Color.clear
                         ],
                         center: .center,
@@ -247,7 +283,7 @@ private extension ActiveFocusView {
                     )
                 )
                 .frame(width: 308, height: 308)
-                .blur(radius: 26)
+                .blur(radius: PerformanceSettings.enableHeavyBlurEffects ? 26 : 14)
 
             Circle()
                 .stroke(Color.white.opacity(0.065), lineWidth: ringLineWidth)
@@ -268,7 +304,10 @@ private extension ActiveFocusView {
                 )
                 .rotationEffect(.degrees(-90))
                 .frame(width: ringSize, height: ringSize)
-                .shadow(color: theme.accent.opacity(0.26), radius: 14)
+                .shadow(
+                    color: theme.accent.opacity(0.18),
+                    radius: PerformanceSettings.glowShadowRadius
+                )
                 .opacity(focusSession.isPaused ? 0.42 : 1)
 
             Circle()
@@ -279,7 +318,7 @@ private extension ActiveFocusView {
                 .fill(
                     LinearGradient(
                         colors: [
-                            theme.accent.opacity(0.085),
+                            theme.accent.opacity(0.085 * PerformanceSettings.radialOpacityMultiplier),
                             Color.white.opacity(0.018)
                         ],
                         startPoint: .top,
@@ -297,7 +336,7 @@ private extension ActiveFocusView {
                     .font(.system(size: 48, weight: .black))
                     .foregroundStyle(.white)
                     .contentTransition(.numericText())
-                    .animation(.easeInOut(duration: 0.18), value: focusSession.timeString)
+                    .animation(.easeInOut(duration: 0.16), value: focusSession.timeString)
 
                 Text(statusTitle)
                     .font(.system(size: 12, weight: .black, design: .monospaced))
@@ -382,7 +421,7 @@ private extension ActiveFocusView {
                 Spacer()
 
                 Button {
-                    withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
                         showParticipantsExpanded.toggle()
                     }
                 } label: {
@@ -447,7 +486,11 @@ private extension ActiveFocusView {
                     RoundedRectangle(cornerRadius: 26, style: .continuous)
                         .stroke(theme.accent.opacity(0.14), lineWidth: 1)
                 )
-                .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
+                .shadow(
+                    color: Color.black.opacity(0.20),
+                    radius: PerformanceSettings.cardShadowRadius,
+                    y: 6
+                )
         )
     }
 
@@ -459,7 +502,7 @@ private extension ActiveFocusView {
 
             if participants.count > visibleParticipants.count {
                 Button {
-                    withAnimation(.spring(response: 0.30, dampingFraction: 0.86)) {
+                    withAnimation(.spring(response: 0.26, dampingFraction: 0.88)) {
                         showParticipantsExpanded = true
                     }
                 } label: {
@@ -646,7 +689,11 @@ private extension ActiveFocusView {
                             .font(.system(size: 22, weight: .black))
                             .foregroundStyle(.white)
                     )
-                    .shadow(color: Color(arenaHex: AppArenaPalette.coral).opacity(0.24), radius: 14, y: 7)
+                    .shadow(
+                        color: Color(arenaHex: AppArenaPalette.coral).opacity(0.18),
+                        radius: PerformanceSettings.glowShadowRadius,
+                        y: 6
+                    )
             }
             .buttonStyle(.plain)
         }
@@ -719,15 +766,15 @@ private extension ActiveFocusView {
             .ignoresSafeArea()
 
             Circle()
-                .fill(theme.topGlow.opacity(pulse ? 0.26 : 0.18))
+                .fill(theme.topGlow.opacity(stableTopGlowOpacity * PerformanceSettings.radialOpacityMultiplier))
                 .frame(width: 360, height: 360)
-                .blur(radius: 95)
+                .blur(radius: PerformanceSettings.enableHeavyBlurEffects ? 95 : 42)
                 .offset(x: 110, y: -170)
 
             Circle()
-                .fill(theme.bottomGlow.opacity(pulse ? 0.18 : 0.12))
+                .fill(theme.bottomGlow.opacity(stableBottomGlowOpacity * PerformanceSettings.radialOpacityMultiplier))
                 .frame(width: 320, height: 320)
-                .blur(radius: 112)
+                .blur(radius: PerformanceSettings.enableHeavyBlurEffects ? 112 : 48)
                 .offset(x: -120, y: 330)
 
             LinearGradient(

@@ -32,11 +32,39 @@ struct IdentityLevelUpCelebrationView: View {
         Color(arenaHex: AppArenaPalette.gold)
     }
 
+    private var stableGoldBloomOpacity: Double {
+        PerformanceSettings.enableSlowAmbientAnimations
+        ? (pulse ? 0.24 : 0.14)
+        : 0.18
+    }
+
+    private var stableSecondaryBloomOpacity: Double {
+        PerformanceSettings.enableSlowAmbientAnimations
+        ? (pulse ? 0.12 : 0.08)
+        : 0.09
+    }
+
+    private var stableOrbGlowOpacity: Double {
+        PerformanceSettings.enableSlowAmbientAnimations
+        ? (pulse ? 0.24 : 0.15)
+        : 0.18
+    }
+
+    private var stableOrbBlur: CGFloat {
+        if PerformanceSettings.enableHeavyBlurEffects {
+            return PerformanceSettings.enableSlowAmbientAnimations ? (pulse ? 34 : 28) : 30
+        }
+
+        return 18
+    }
+
     var body: some View {
         ZStack {
             background
 
-            particleField
+            if PerformanceSettings.enableSlowAmbientAnimations {
+                particleField
+            }
 
             VStack(spacing: 26) {
                 Spacer(minLength: 74)
@@ -57,8 +85,15 @@ struct IdentityLevelUpCelebrationView: View {
         .onAppear {
             UINotificationFeedbackGenerator().notificationOccurred(.success)
 
-            withAnimation(.spring(response: 0.72, dampingFraction: 0.84)) {
+            withAnimation(.spring(response: 0.58, dampingFraction: 0.86)) {
                 appeared = true
+            }
+
+            guard PerformanceSettings.enableSlowAmbientAnimations else {
+                pulse = false
+                rotateGlow = false
+                particles = false
+                return
             }
 
             withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) {
@@ -69,9 +104,14 @@ struct IdentityLevelUpCelebrationView: View {
                 rotateGlow = true
             }
 
-            withAnimation(.easeOut(duration: 1.0).delay(0.12)) {
+            withAnimation(.easeOut(duration: 0.8).delay(0.10)) {
                 particles = true
             }
+        }
+        .onDisappear {
+            pulse = false
+            rotateGlow = false
+            particles = false
         }
     }
 
@@ -198,7 +238,11 @@ struct IdentityLevelUpCelebrationView: View {
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
                             .stroke(Color.white.opacity(0.14), lineWidth: 1)
                     )
-                    .shadow(color: goldAccent.opacity(0.24), radius: 22, y: 12)
+                    .shadow(
+                        color: goldAccent.opacity(0.18),
+                        radius: PerformanceSettings.glowShadowRadius,
+                        y: 8
+                    )
             )
         }
         .buttonStyle(.plain)
@@ -212,7 +256,7 @@ struct IdentityLevelUpCelebrationView: View {
                 primaryGlow: resolvedAccent,
                 secondaryGlow: Color(arenaHex: AppArenaPalette.purple),
                 warmGlow: goldAccent,
-                intensity: 0.98
+                intensity: 0.92
             )
 
             LinearGradient(
@@ -227,8 +271,8 @@ struct IdentityLevelUpCelebrationView: View {
 
             RadialGradient(
                 colors: [
-                    goldAccent.opacity(pulse ? 0.24 : 0.14),
-                    secondaryAccent.opacity(pulse ? 0.12 : 0.08),
+                    goldAccent.opacity(stableGoldBloomOpacity * PerformanceSettings.radialOpacityMultiplier),
+                    secondaryAccent.opacity(stableSecondaryBloomOpacity * PerformanceSettings.radialOpacityMultiplier),
                     Color.clear
                 ],
                 center: .center,
@@ -260,9 +304,9 @@ struct IdentityLevelUpCelebrationView: View {
     private var levelOrb: some View {
         ZStack {
             Circle()
-                .fill(goldAccent.opacity(pulse ? 0.24 : 0.15))
+                .fill(goldAccent.opacity(stableOrbGlowOpacity * PerformanceSettings.radialOpacityMultiplier))
                 .frame(width: 224, height: 224)
-                .blur(radius: pulse ? 34 : 28)
+                .blur(radius: stableOrbBlur)
 
             Circle()
                 .stroke(
@@ -278,7 +322,13 @@ struct IdentityLevelUpCelebrationView: View {
                     lineWidth: 2
                 )
                 .frame(width: 184, height: 184)
-                .rotationEffect(.degrees(rotateGlow ? 360 : 0))
+                .rotationEffect(
+                    .degrees(
+                        PerformanceSettings.enableSlowAmbientAnimations
+                        ? (rotateGlow ? 360 : 0)
+                        : 0
+                    )
+                )
                 .opacity(0.74)
 
             Circle()
@@ -290,8 +340,8 @@ struct IdentityLevelUpCelebrationView: View {
                     RadialGradient(
                         colors: [
                             Color.white.opacity(0.16),
-                            goldAccent.opacity(0.20),
-                            resolvedAccent.opacity(0.12),
+                            goldAccent.opacity(0.20 * PerformanceSettings.radialOpacityMultiplier),
+                            resolvedAccent.opacity(0.12 * PerformanceSettings.radialOpacityMultiplier),
                             Color.white.opacity(0.030)
                         ],
                         center: .topLeading,
@@ -304,7 +354,11 @@ struct IdentityLevelUpCelebrationView: View {
                     Circle()
                         .stroke(Color.white.opacity(0.13), lineWidth: 1)
                 )
-                .shadow(color: goldAccent.opacity(0.28), radius: 34, y: 18)
+                .shadow(
+                    color: goldAccent.opacity(0.20),
+                    radius: PerformanceSettings.glowShadowRadius,
+                    y: 10
+                )
 
             VStack(spacing: 0) {
                 Text("LV")
@@ -321,29 +375,29 @@ struct IdentityLevelUpCelebrationView: View {
         }
         .scaleEffect(appeared ? 1 : 0.78)
         .opacity(appeared ? 1 : 0)
-        .animation(.spring(response: 0.72, dampingFraction: 0.84), value: appeared)
+        .animation(.spring(response: 0.58, dampingFraction: 0.86), value: appeared)
     }
 
     private var particleField: some View {
         ZStack {
-            ForEach(0..<18, id: \.self) { index in
-                let angle = Double(index) * 20.0
-                let radius = CGFloat(90 + (index % 5) * 28)
+            ForEach(0..<12, id: \.self) { index in
+                let angle = Double(index) * 30.0
+                let radius = CGFloat(82 + (index % 4) * 24)
                 let x = cos(angle * .pi / 180) * radius
                 let y = sin(angle * .pi / 180) * radius
 
                 Circle()
                     .fill(index.isMultiple(of: 3) ? goldAccent : resolvedAccent)
                     .frame(width: CGFloat(4 + (index % 3)), height: CGFloat(4 + (index % 3)))
-                    .opacity(particles ? 0.55 : 0)
+                    .opacity(particles ? 0.42 : 0)
                     .offset(
                         x: particles ? x : 0,
                         y: particles ? y : 0
                     )
-                    .blur(radius: index.isMultiple(of: 4) ? 1.2 : 0)
+                    .blur(radius: index.isMultiple(of: 4) ? 0.8 : 0)
                     .animation(
-                        .easeOut(duration: 1.15)
-                        .delay(Double(index) * 0.018),
+                        .easeOut(duration: 0.9)
+                        .delay(Double(index) * 0.014),
                         value: particles
                     )
             }

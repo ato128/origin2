@@ -1160,8 +1160,6 @@ final class FriendStore: ObservableObject {
         typingResetTask = Task { [weak self] in
             guard let self else { return }
 
-            try? await Task.sleep(nanoseconds: 350_000_000)
-
             await self.setTyping(
                 friendshipID: friendshipID,
                 currentUserID: currentUserID,
@@ -1170,6 +1168,8 @@ final class FriendStore: ObservableObject {
             )
 
             try? await Task.sleep(nanoseconds: 1_800_000_000)
+
+            guard !Task.isCancelled else { return }
 
             await self.setTyping(
                 friendshipID: friendshipID,
@@ -1231,7 +1231,12 @@ final class FriendStore: ObservableObject {
         }
     }
 
-    func setTyping(friendshipID: UUID, currentUserID: UUID?, currentUserName: String, isTyping: Bool) async {
+    func setTyping(
+        friendshipID: UUID,
+        currentUserID: UUID?,
+        currentUserName: String,
+        isTyping: Bool
+    ) async {
         guard let currentUserID else { return }
 
         struct Payload: Encodable {
@@ -1242,15 +1247,49 @@ final class FriendStore: ObservableObject {
             let updated_at: String
         }
 
-        let payload = Payload(friendship_id: friendshipID, user_id: currentUserID, user_name: currentUserName, is_typing: isTyping, updated_at: ISO8601DateFormatter().string(from: Date()))
+        let payload = Payload(
+            friendship_id: friendshipID,
+            user_id: currentUserID,
+            user_name: currentUserName,
+            is_typing: isTyping,
+            updated_at: ISO8601DateFormatter().string(from: Date())
+        )
 
         do {
-            try await SupabaseManager.shared.client.from("friend_typing_status").upsert(payload).execute()
+            try await SupabaseManager.shared.client
+                .from("friend_typing_status")
+                .upsert(
+                    payload,
+                    onConflict: "friendship_id,user_id"
+                )
+                .execute()
         } catch {
+            if isCancellationLikeError(error) {
+                return
+            }
+
             print("SET TYPING ERROR:", error.localizedDescription)
         }
     }
+    
+    private func isCancellationLikeError(_ error: Error) -> Bool {
+        if error is CancellationError {
+            return true
+        }
 
+        let nsError = error as NSError
+
+        if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled {
+            return true
+        }
+
+        let message = error.localizedDescription.lowercased()
+
+        return message.contains("cancelled")
+            || message.contains("canceled")
+            || message.contains("vazgeçildi")
+            || message.contains("cancel")
+    }
     // MARK: - Append
 
     @MainActor

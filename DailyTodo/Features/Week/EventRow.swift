@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct EventRow: View {
-    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
+    
 
     let event: EventItem
     let timeText: String
@@ -24,7 +24,7 @@ struct EventRow: View {
     let onDelete: () -> Void
     let onComplete: (() -> Void)?
 
-    private let palette = ThemePalette()
+    
 
     private var start: Int { event.startMinute }
     private var end: Int { event.startMinute + event.durationMinute }
@@ -163,11 +163,11 @@ struct EventRow: View {
         .padding(.vertical, 12)
         .background(cardBackground)
         .overlay(cardStroke)
-        .shadow(color: Color.black.opacity(0.20), radius: 12, y: 6)
+        .shadow(color: Color.black.opacity(0.20), radius: PerformanceSettings.cardShadowRadius, y: 6)
         .shadow(
-            color: isLive ? accent.opacity(0.14) : .clear,
-            radius: isLive ? 16 : 0,
-            y: isLive ? 7 : 0
+            color: isLive ? accent.opacity(0.10) : .clear,
+            radius: isLive ? PerformanceSettings.glowShadowRadius : 0,
+            y: isLive ? 6 : 0
         )
         .opacity(isDone ? 0.72 : 1.0)
         .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -226,7 +226,7 @@ struct EventRow: View {
                     .fill(
                         RadialGradient(
                             colors: [
-                                accent.opacity(isLive ? 0.18 : 0.105),
+                                accent.opacity((isLive ? 0.18 : 0.105) * PerformanceSettings.radialOpacityMultiplier),
                                 Color.clear
                             ],
                             center: .topTrailing,
@@ -240,7 +240,7 @@ struct EventRow: View {
                     .fill(
                         RadialGradient(
                             colors: [
-                                secondaryAccent.opacity(isLive ? 0.12 : 0.075),
+                                secondaryAccent.opacity((isLive ? 0.12 : 0.075) * PerformanceSettings.radialOpacityMultiplier),
                                 Color.clear
                             ],
                             center: .bottomLeading,

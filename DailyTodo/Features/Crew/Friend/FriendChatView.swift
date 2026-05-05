@@ -48,6 +48,28 @@ private enum FriendChatArenaPalette {
     }
 }
 
+private enum FriendChatFormatters {
+    static let dayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter
+    }()
+
+    static let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter
+    }()
+
+    static let byteFormatter: ByteCountFormatter = {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useKB, .useMB]
+        formatter.countStyle = .file
+        return formatter
+    }()
+}
+
 struct FriendChatView: View {
     let friend: Friend
 
@@ -76,6 +98,9 @@ struct FriendChatView: View {
     @State private var lastScrolledMessageID: UUID?
     @StateObject private var audioRecorder = AudioRecorderManager()
     @State private var liveRefreshTask: Task<Void, Never>?
+    @State private var scrollTask: Task<Void, Never>?
+    @State private var typingStopTask: Task<Void, Never>?
+    @State private var lastTypingTextWasEmpty = true
 
     enum DraftAttachment {
         case photo(UIImage)
@@ -229,6 +254,13 @@ struct FriendChatView: View {
 
                 liveRefreshTask?.cancel()
                 liveRefreshTask = nil
+
+                scrollTask?.cancel()
+                scrollTask = nil
+                
+                typingStopTask?.cancel()
+                typingStopTask = nil
+                lastTypingTextWasEmpty = true
 
                 friendStore.setActiveChat(nil)
                 UserDefaults.standard.removeObject(forKey: "active_friendship_id")
@@ -562,18 +594,32 @@ private extension FriendChatView {
     }
 
     private struct TypingDotsBubble: View {
-        var body: some View {
-            TimelineView(.animation(minimumInterval: 0.35)) { context in
-                let tick = Int(context.date.timeIntervalSinceReferenceDate / 0.35) % 3
+        @State private var tick = 0
+        @State private var task: Task<Void, Never>?
 
-                HStack(spacing: 4) {
-                    ForEach(0..<3, id: \.self) { i in
-                        Circle()
-                            .fill(Color.white.opacity(tick == i ? 0.95 : 0.35))
-                            .frame(width: 6, height: 6)
-                            .scaleEffect(tick == i ? 1.0 : 0.78)
+        var body: some View {
+            HStack(spacing: 4) {
+                ForEach(0..<3, id: \.self) { i in
+                    Circle()
+                        .fill(Color.white.opacity(tick == i ? 0.95 : 0.35))
+                        .frame(width: 6, height: 6)
+                        .scaleEffect(tick == i ? 1.0 : 0.78)
+                        .animation(.easeInOut(duration: 0.18), value: tick)
+                }
+            }
+            .onAppear {
+                task?.cancel()
+
+                task = Task { @MainActor in
+                    while !Task.isCancelled {
+                        tick = (tick + 1) % 3
+                        try? await Task.sleep(nanoseconds: 350_000_000)
                     }
                 }
+            }
+            .onDisappear {
+                task?.cancel()
+                task = nil
             }
         }
     }
@@ -708,27 +754,7 @@ private extension FriendChatView {
                             sendMessage()
                         }
                         .onChange(of: draftMessage) { _, newValue in
-                            guard let friendshipID else { return }
-
-                            let clean = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
-
-                            if clean.isEmpty {
-                                Task {
-                                    await friendStore.setTyping(
-                                        friendshipID: friendshipID,
-                                        currentUserID: session.currentUser?.id,
-                                        currentUserName: senderDisplayName(),
-                                        isTyping: false
-                                    )
-                                }
-                                return
-                            }
-
-                            friendStore.userDidType(
-                                friendshipID: friendshipID,
-                                currentUserID: session.currentUser?.id,
-                                currentUserName: senderDisplayName()
-                            )
+                            handleTypingChange(newValue)
                         }
 
                     Button {
@@ -817,15 +843,19 @@ private extension FriendChatView {
             GeometryReader { geo in
                 Color.clear
                     .onAppear {
-                        composerBarHeight = geo.size.height
+                        let height = geo.size.height
+                        if abs(composerBarHeight - height) > 0.5 {
+                            composerBarHeight = height
+                        }
                     }
                     .onChange(of: geo.size.height) { _, newHeight in
-                        composerBarHeight = newHeight
+                        if abs(composerBarHeight - newHeight) > 0.5 {
+                            composerBarHeight = newHeight
+                        }
                     }
             }
         )
     }
-
     func barHeight(for index: Int) -> CGFloat {
         let normalized = max(0.08, CGFloat((audioRecorder.averagePower + 50) / 50))
         let base = 6 + CGFloat((index % 5) * 2)
@@ -885,10 +915,10 @@ private extension FriendChatView {
         VStack(spacing: 0) {
             LinearGradient(
                 stops: [
-                    .init(color: Color.black.opacity(0.94), location: 0.00),
-                    .init(color: Color.black.opacity(0.86), location: 0.24),
-                    .init(color: Color.black.opacity(0.62), location: 0.50),
-                    .init(color: Color.black.opacity(0.30), location: 0.74),
+                    .init(color: Color.black.opacity(0.96), location: 0.00),
+                    .init(color: Color.black.opacity(0.88), location: 0.24),
+                    .init(color: Color.black.opacity(0.64), location: 0.50),
+                    .init(color: Color.black.opacity(0.31), location: 0.74),
                     .init(color: Color.black.opacity(0.10), location: 0.90),
                     .init(color: Color.clear, location: 1.00)
                 ],
@@ -896,6 +926,18 @@ private extension FriendChatView {
                 endPoint: .bottom
             )
             .frame(height: 168)
+            .overlay(alignment: .top) {
+                LinearGradient(
+                    colors: [
+                        Color(friendChatHex: "#05060D").opacity(0.92),
+                        Color(friendChatHex: "#05060D").opacity(0.58),
+                        Color.clear
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 108)
+            }
             .overlay(alignment: .bottom) {
                 Rectangle()
                     .fill(Color.black.opacity(0.10))
@@ -906,16 +948,6 @@ private extension FriendChatView {
 
             Spacer(minLength: 0)
         }
-        .background(
-            VStack(spacing: 0) {
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-                    .opacity(0.16)
-                    .frame(height: 96)
-
-                Spacer(minLength: 0)
-            }
-        )
     }
 
     var glassCircleBackground: some View {
@@ -932,6 +964,50 @@ private extension FriendChatView {
         }
 
         return tr("chat_you")
+    }
+    
+    func handleTypingChange(_ newValue: String) {
+        guard let friendshipID else { return }
+
+        let clean = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if clean.isEmpty {
+            typingStopTask?.cancel()
+
+            guard lastTypingTextWasEmpty == false else {
+                return
+            }
+
+            lastTypingTextWasEmpty = true
+
+            typingStopTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 220_000_000)
+
+                guard !Task.isCancelled else { return }
+
+                await friendStore.setTyping(
+                    friendshipID: friendshipID,
+                    currentUserID: session.currentUser?.id,
+                    currentUserName: senderDisplayName(),
+                    isTyping: false
+                )
+            }
+
+            return
+        }
+
+        typingStopTask?.cancel()
+        typingStopTask = nil
+
+        if lastTypingTextWasEmpty {
+            lastTypingTextWasEmpty = false
+        }
+
+        friendStore.userDidType(
+            friendshipID: friendshipID,
+            currentUserID: session.currentUser?.id,
+            currentUserName: senderDisplayName()
+        )
     }
 
     func startLiveRefreshFallback() {
@@ -1060,7 +1136,13 @@ private extension FriendChatView {
     }
 
     func scrollToBottom(proxy: ScrollViewProxy, animated: Bool) {
-        DispatchQueue.main.async {
+        scrollTask?.cancel()
+
+        scrollTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: animated ? 80_000_000 : 20_000_000)
+
+            guard !Task.isCancelled else { return }
+
             if animated {
                 withAnimation(.spring(response: 0.30, dampingFraction: 0.88)) {
                     proxy.scrollTo("chat-bottom-anchor", anchor: .bottom)
@@ -1177,18 +1259,32 @@ private extension FriendChatView {
 
 private extension FriendChatView {
     struct TypingDotsView: View {
-        var body: some View {
-            TimelineView(.animation(minimumInterval: 0.35)) { context in
-                let tick = Int(context.date.timeIntervalSinceReferenceDate / 0.35) % 3
+        @State private var tick = 0
+        @State private var task: Task<Void, Never>?
 
-                HStack(spacing: 4) {
-                    ForEach(0..<3, id: \.self) { i in
-                        Circle()
-                            .frame(width: 5, height: 5)
-                            .opacity(tick == i ? 1 : 0.28)
-                            .scaleEffect(tick == i ? 1.0 : 0.8)
+        var body: some View {
+            HStack(spacing: 4) {
+                ForEach(0..<3, id: \.self) { i in
+                    Circle()
+                        .frame(width: 5, height: 5)
+                        .opacity(tick == i ? 1 : 0.28)
+                        .scaleEffect(tick == i ? 1.0 : 0.8)
+                        .animation(.easeInOut(duration: 0.18), value: tick)
+                }
+            }
+            .onAppear {
+                task?.cancel()
+
+                task = Task { @MainActor in
+                    while !Task.isCancelled {
+                        tick = (tick + 1) % 3
+                        try? await Task.sleep(nanoseconds: 350_000_000)
                     }
                 }
+            }
+            .onDisappear {
+                task?.cancel()
+                task = nil
             }
         }
     }
@@ -1210,13 +1306,9 @@ private struct DaySeparatorView: View {
             return tr("chat_yesterday")
         }
 
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-
-        return formatter.string(from: date)
+        return FriendChatFormatters.dayFormatter.string(from: date)
     }
-
+    
     var body: some View {
         HStack {
             line
@@ -1251,9 +1343,7 @@ private struct ChatMessageRow: View {
     @State private var showImageSaveAlert = false
 
     private var timeText: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        return formatter.string(from: message.createdAt)
+        FriendChatFormatters.timeFormatter.string(from: message.createdAt)
     }
 
     private var isImageMessage: Bool {
@@ -1762,10 +1852,7 @@ private struct ChatMessageRow: View {
     }
 
     private func fileSizeText(_ bytes: Int64) -> String {
-        let formatter = ByteCountFormatter()
-        formatter.allowedUnits = [.useKB, .useMB]
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: bytes)
+        FriendChatFormatters.byteFormatter.string(fromByteCount: bytes)
     }
 
     private func shortMimeText(_ mime: String) -> String {
