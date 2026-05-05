@@ -24,16 +24,29 @@ struct ProfileHubView: View {
     @State private var showAuthSheet = false
     @State private var showStudentAcademicSettings = false
 
-    private var palette: ThemePalette { ThemePalette() }
+    private var pageAccent: Color {
+        Color(arenaHex: AppArenaPalette.cyan)
+    }
+
+    private var secondaryAccent: Color {
+        Color(arenaHex: AppArenaPalette.purple)
+    }
+
+    private var warmAccent: Color {
+        Color(arenaHex: AppArenaPalette.gold)
+    }
 
     var body: some View {
         ZStack {
-            AppBackground()
+            ArenaBackground(
+                primaryGlow: pageAccent,
+                secondaryGlow: secondaryAccent,
+                warmGlow: warmAccent,
+                intensity: 0.94
+            )
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    Color.clear.frame(height: 24)
-
+            ScrollView(showsIndicators: false) {
+                LazyVStack(alignment: .leading, spacing: 16) {
                     headerSection
                     accountSection
                     appearanceSection
@@ -43,13 +56,14 @@ struct ProfileHubView: View {
                     supportSection
                     logoutSection
 
-                    Spacer(minLength: 40)
+                    Color.clear.frame(height: 44)
                 }
                 .padding(.horizontal, 16)
+                .padding(.top, 10)
                 .padding(.bottom, 28)
             }
-            .scrollIndicators(.hidden)
         }
+        .preferredColorScheme(.dark)
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showEditProfile) {
@@ -65,146 +79,172 @@ struct ProfileHubView: View {
                 .environmentObject(studentStore)
         }
     }
+}
 
-    private var headerSection: some View {
-        HStack(alignment: .center, spacing: 12) {
+// MARK: - Main Sections
+
+private extension ProfileHubView {
+
+    var headerSection: some View {
+        HStack(alignment: .top, spacing: 12) {
             Button {
                 dismiss()
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(palette.primaryText)
-                    .frame(width: 40, height: 40)
-                    .background(
-                        Circle()
-                            .fill(palette.cardFill)
-                            .overlay(
-                                Circle()
-                                    .stroke(palette.cardStroke, lineWidth: 1)
-                            )
-                    )
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundStyle(.white)
+                    .frame(width: 46, height: 46)
+                    .background(arenaCircleBackground(tint: .white.opacity(0.50)))
             }
             .buttonStyle(.plain)
 
-            Spacer()
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(pageAccent)
+                        .frame(width: 20, height: 1)
 
-            Text("Profil")
-                .font(.system(size: 22, weight: .bold, design: .rounded))
-                .foregroundStyle(palette.primaryText)
+                    Text("PROFILE HUB")
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .tracking(2.3)
+                        .foregroundStyle(pageAccent)
+                        .lineLimit(1)
+                }
 
-            Spacer()
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Text("Profil")
+                        .font(.system(size: 38, weight: .black))
+                        .foregroundStyle(.white)
 
-            Circle()
-                .fill(Color.clear)
-                .frame(width: 40, height: 40)
+                    Text("merkezi")
+                        .font(.system(size: 35, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    pageAccent,
+                                    secondaryAccent
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.70)
+
+                Text("Hesap, öğrenci profili, görünüm ve uygulama ayarların.")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.48))
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 8)
+
+            if session.currentUser != nil {
+                Button {
+                    showEditProfile = true
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 17, weight: .black))
+                        .foregroundStyle(.black)
+                        .frame(width: 48, height: 48)
+                        .background(
+                            Circle()
+                                .fill(pageAccent)
+                                .shadow(color: pageAccent.opacity(0.22), radius: 12, y: 6)
+                        )
+                }
+                .buttonStyle(.plain)
+            } else {
+                Button {
+                    showAuthSheet = true
+                } label: {
+                    Image(systemName: "person.crop.circle.badge.plus")
+                        .font(.system(size: 17, weight: .black))
+                        .foregroundStyle(.black)
+                        .frame(width: 48, height: 48)
+                        .background(
+                            Circle()
+                                .fill(pageAccent)
+                                .shadow(color: pageAccent.opacity(0.22), radius: 12, y: 6)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 
-    private var accountSection: some View {
+    var accountSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Hesap")
-                .font(.system(size: 17, weight: .bold, design: .rounded))
-                .foregroundStyle(palette.primaryText)
+            sectionHeader(
+                eyebrow: "ACCOUNT",
+                title: "Hesap",
+                italic: "profili",
+                subtitle: "Kimlik, akademik bilgiler ve profil düzenlemeleri",
+                icon: "person.crop.circle.fill",
+                tint: pageAccent
+            )
 
             VStack(alignment: .leading, spacing: 16) {
                 if let user = session.currentUser {
-                    HStack(spacing: 14) {
-                        ZStack {
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            Color.blue.opacity(0.42),
-                                            Color.purple.opacity(0.28)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .frame(width: 58, height: 58)
-
-                            Image(systemName: "person.fill")
-                                .font(.system(size: 22, weight: .bold))
-                                .foregroundStyle(.white.opacity(0.95))
-                        }
-
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text(user.fullName.isEmpty ? "Kullanıcı" : user.fullName)
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
-                                .foregroundStyle(palette.primaryText)
-
-                            if let academicLine = academicPrimaryLine {
-                                Text(academicLine)
-                                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                                    .foregroundStyle(.blue)
-                            } else {
-                                Text("@\(user.username)")
-                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(palette.secondaryText)
-                            }
-
-                            if let academicSecondaryLine {
-                                Text(academicSecondaryLine)
-                                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                                    .foregroundStyle(palette.secondaryText)
-                            } else {
-                                Text(user.email)
-                                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                                    .foregroundStyle(palette.tertiaryText)
-                            }
-                        }
-
-                        Spacer()
-                    }
+                    accountIdentityCard(user: user)
 
                     if hasAcademicProfile {
                         HStack(spacing: 10) {
                             miniStatChip(
                                 icon: "graduationcap.fill",
-                                title: gradeChipText
+                                title: gradeChipText,
+                                tint: pageAccent
                             )
 
                             if let institutionChipText {
                                 miniStatChip(
                                     icon: "building.columns.fill",
-                                    title: institutionChipText
+                                    title: institutionChipText,
+                                    tint: warmAccent
                                 )
                             }
                         }
                     }
+
+                    Divider()
+                        .overlay(Color.white.opacity(0.075))
 
                     Button {
                         showEditProfile = true
                     } label: {
                         profileRow(
                             icon: "pencil",
-                            iconColor: .blue,
+                            iconColor: pageAccent,
                             title: "Profili Düzenle",
                             subtitle: "Adını ve kullanıcı adını güncelle"
                         )
                     }
                     .buttonStyle(.plain)
+
                     Divider()
-                        .overlay(Color.white.opacity(0.08))
+                        .overlay(Color.white.opacity(0.075))
 
                     Button {
                         showStudentAcademicSettings = true
                     } label: {
                         profileRow(
                             icon: "graduationcap.fill",
-                            iconColor: .blue,
+                            iconColor: warmAccent,
                             title: "Öğrenci Bilgileri",
                             subtitle: "Üniversite, bölüm, yıl ve derslerini düzenle"
                         )
                     }
                     .buttonStyle(.plain)
+
                 } else {
                     Button {
                         showAuthSheet = true
                     } label: {
                         profileRow(
                             icon: "person.crop.circle.badge.plus",
-                            iconColor: .blue,
+                            iconColor: pageAccent,
                             title: "Giriş Yap",
                             subtitle: "Hesabına giriş yap veya yeni hesap oluştur"
                         )
@@ -213,102 +253,135 @@ struct ProfileHubView: View {
                 }
             }
             .padding(18)
-            .background(sectionCardBackground)
+            .background(arenaCardBackground(tint: pageAccent, radius: 30, strength: 0.70))
         }
     }
 
-    private var appearanceSection: some View {
+    var appearanceSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Görünüm")
-                .font(.system(size: 17, weight: .bold, design: .rounded))
-                .foregroundStyle(palette.primaryText)
+            sectionHeader(
+                eyebrow: "APPEARANCE",
+                title: "Görünüm",
+                italic: "ayarları",
+                subtitle: "Tema ve günlük görünüm tercihlerinin merkezi",
+                icon: "paintpalette.fill",
+                tint: secondaryAccent
+            )
 
             VStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("Tema")
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
-                            .foregroundStyle(palette.primaryText)
+                    HStack(spacing: 12) {
+                        iconBox(icon: "circle.lefthalf.filled", tint: secondaryAccent)
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Tema")
+                                .font(.system(size: 16, weight: .black))
+                                .foregroundStyle(.white)
+
+                            Text("Uygulama görünüm stilini seç")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.48))
+                        }
 
                         Spacer()
-                    }
 
-                    Picker("Tema", selection: $appTheme) {
-                        ForEach(AppTheme.allCases) { theme in
-                            Label(theme.title, systemImage: theme.icon)
-                                .tag(theme.rawValue)
+                        Picker("Tema", selection: $appTheme) {
+                            ForEach(AppTheme.allCases) { theme in
+                                Label(theme.title, systemImage: theme.icon)
+                                    .tag(theme.rawValue)
+                            }
                         }
+                        .pickerStyle(.menu)
+                        .tint(.white)
                     }
-                    .pickerStyle(.menu)
-                    .tint(palette.primaryText)
                 }
 
                 Divider()
-                    .overlay(Color.white.opacity(0.08))
+                    .overlay(Color.white.opacity(0.075))
 
                 toggleRow(
                     icon: "calendar",
-                    iconColor: .orange,
+                    iconColor: warmAccent,
                     title: "Sadece Bugünü Göster",
                     subtitle: "Bugünün görevlerine odaklan",
                     isOn: $showOnlyToday
                 )
             }
             .padding(18)
-            .background(sectionCardBackground)
+            .background(arenaCardBackground(tint: secondaryAccent, radius: 30, strength: 0.58))
         }
     }
 
-    private var productivitySection: some View {
+    var productivitySection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Üretkenlik")
-                .font(.system(size: 17, weight: .bold, design: .rounded))
-                .foregroundStyle(palette.primaryText)
+            sectionHeader(
+                eyebrow: "PRODUCTIVITY",
+                title: "Üretkenlik",
+                italic: "kontrolü",
+                subtitle: "Akıllı motor, bildirim ve focus tercihleri",
+                icon: "brain.head.profile",
+                tint: Color(arenaHex: AppArenaPalette.green)
+            )
 
             VStack(spacing: 16) {
                 toggleRow(
                     icon: "brain.head.profile",
-                    iconColor: .purple,
+                    iconColor: Color(arenaHex: AppArenaPalette.green),
                     title: "Akıllı Görev Motoru",
                     subtitle: "YZ önerileri ve akıllı planlama",
                     isOn: $smartEngineEnabled
                 )
 
                 Divider()
-                    .overlay(Color.white.opacity(0.08))
+                    .overlay(Color.white.opacity(0.075))
 
                 profileRow(
                     icon: "bell.badge.fill",
-                    iconColor: .red,
+                    iconColor: Color(arenaHex: AppArenaPalette.coral),
                     title: "Bildirimler",
                     subtitle: "Hatırlatıcı ve sistem tercihleri"
                 )
 
                 Divider()
-                    .overlay(Color.white.opacity(0.08))
+                    .overlay(Color.white.opacity(0.075))
 
                 profileRow(
                     icon: "timer",
-                    iconColor: .green,
+                    iconColor: Color(arenaHex: AppArenaPalette.green),
                     title: "Focus Tercihleri",
                     subtitle: "Odak seans ayarlarını düzenle"
                 )
             }
             .padding(18)
-            .background(sectionCardBackground)
+            .background(arenaCardBackground(tint: Color(arenaHex: AppArenaPalette.green), radius: 30, strength: 0.52))
         }
     }
 
-    private var languageSection: some View {
+    var languageSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Dil")
-                .font(.system(size: 17, weight: .bold, design: .rounded))
-                .foregroundStyle(palette.primaryText)
+            sectionHeader(
+                eyebrow: "LANGUAGE",
+                title: "Dil",
+                italic: "seçimi",
+                subtitle: "Uygulama dilini burada değiştirebilirsin",
+                icon: "globe",
+                tint: Color(arenaHex: AppArenaPalette.blue)
+            )
 
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Uygulama Dili")
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundStyle(palette.primaryText)
+            HStack(spacing: 12) {
+                iconBox(icon: "character.bubble.fill", tint: Color(arenaHex: AppArenaPalette.blue))
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Uygulama Dili")
+                        .font(.system(size: 16, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text("Arayüz dilini seç")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.48))
+                }
+
+                Spacer()
 
                 Picker(
                     "Uygulama Dili",
@@ -323,18 +396,23 @@ struct ProfileHubView: View {
                     }
                 }
                 .pickerStyle(.menu)
-                .tint(palette.primaryText)
+                .tint(.white)
             }
             .padding(18)
-            .background(sectionCardBackground)
+            .background(arenaCardBackground(tint: Color(arenaHex: AppArenaPalette.blue), radius: 30, strength: 0.50))
         }
     }
 
-    private var appSection: some View {
+    var appSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Uygulama")
-                .font(.system(size: 17, weight: .bold, design: .rounded))
-                .foregroundStyle(palette.primaryText)
+            sectionHeader(
+                eyebrow: "APP FLOW",
+                title: "Uygulama",
+                italic: "akışı",
+                subtitle: "Başlangıç ve izin ekranlarını yeniden yönet",
+                icon: "sparkles",
+                tint: warmAccent
+            )
 
             VStack(spacing: 16) {
                 Button {
@@ -343,7 +421,7 @@ struct ProfileHubView: View {
                 } label: {
                     profileRow(
                         icon: "sparkles",
-                        iconColor: .blue,
+                        iconColor: warmAccent,
                         title: "Onboarding’i Tekrar Göster",
                         subtitle: "Giriş ekranlarını yeniden başlat"
                     )
@@ -351,7 +429,7 @@ struct ProfileHubView: View {
                 .buttonStyle(.plain)
 
                 Divider()
-                    .overlay(Color.white.opacity(0.08))
+                    .overlay(Color.white.opacity(0.075))
 
                 Button {
                     didFinishPermissionOnboarding = false
@@ -359,7 +437,7 @@ struct ProfileHubView: View {
                 } label: {
                     profileRow(
                         icon: "bell.fill",
-                        iconColor: .orange,
+                        iconColor: Color(arenaHex: AppArenaPalette.coral),
                         title: "İzin Ekranını Tekrar Göster",
                         subtitle: "Bildirim ve izin adımlarını yenile"
                     )
@@ -367,46 +445,56 @@ struct ProfileHubView: View {
                 .buttonStyle(.plain)
             }
             .padding(18)
-            .background(sectionCardBackground)
+            .background(arenaCardBackground(tint: warmAccent, radius: 30, strength: 0.56))
         }
     }
 
-    private var supportSection: some View {
+    var supportSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Destek")
-                .font(.system(size: 17, weight: .bold, design: .rounded))
-                .foregroundStyle(palette.primaryText)
+            sectionHeader(
+                eyebrow: "SUPPORT",
+                title: "Destek",
+                italic: "bilgileri",
+                subtitle: "Uygulama hakkında kısa bilgiler",
+                icon: "info.circle.fill",
+                tint: .white.opacity(0.70)
+            )
 
             VStack(spacing: 16) {
                 profileRow(
                     icon: "info.circle.fill",
-                    iconColor: .secondary,
+                    iconColor: .white.opacity(0.66),
                     title: "Hakkında",
                     subtitle: "Uygulama ve sürüm bilgileri"
                 )
 
                 Divider()
-                    .overlay(Color.white.opacity(0.08))
+                    .overlay(Color.white.opacity(0.075))
 
                 profileRow(
                     icon: "heart.fill",
-                    iconColor: .pink,
+                    iconColor: Color(arenaHex: AppArenaPalette.coral),
                     title: "Özenle yapıldı",
                     subtitle: "DailyTodo deneyimini geliştirmeye devam ediyoruz"
                 )
             }
             .padding(18)
-            .background(sectionCardBackground)
+            .background(arenaCardBackground(tint: .white.opacity(0.45), radius: 30, strength: 0.34))
         }
     }
 
-    private var logoutSection: some View {
+    var logoutSection: some View {
         Group {
             if session.currentUser != nil {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Hesap İşlemleri")
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundStyle(palette.primaryText)
+                    sectionHeader(
+                        eyebrow: "ACCOUNT ACTIONS",
+                        title: "Hesap",
+                        italic: "işlemleri",
+                        subtitle: "Oturum yönetimi ve güvenli çıkış",
+                        icon: "rectangle.portrait.and.arrow.right",
+                        tint: Color(arenaHex: AppArenaPalette.coral)
+                    )
 
                     Button {
                         session.signOut()
@@ -414,46 +502,108 @@ struct ProfileHubView: View {
                         dismiss()
                     } label: {
                         HStack(spacing: 12) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(Color.red.opacity(0.14))
-                                    .frame(width: 44, height: 44)
-
-                                Image(systemName: "rectangle.portrait.and.arrow.right")
-                                    .font(.system(size: 18, weight: .bold))
-                                    .foregroundStyle(.red)
-                            }
+                            iconBox(
+                                icon: "rectangle.portrait.and.arrow.right",
+                                tint: Color(arenaHex: AppArenaPalette.coral)
+                            )
 
                             VStack(alignment: .leading, spacing: 3) {
                                 Text("Çıkış Yap")
-                                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                                    .foregroundStyle(.red)
+                                    .font(.system(size: 17, weight: .black))
+                                    .foregroundStyle(Color(arenaHex: AppArenaPalette.coral))
 
                                 Text("Hesabından güvenli çıkış yap")
-                                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                                    .foregroundStyle(palette.secondaryText)
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(.white.opacity(0.48))
                             }
 
                             Spacer()
 
                             Image(systemName: "chevron.right")
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundStyle(palette.tertiaryText)
+                                .font(.system(size: 13, weight: .black))
+                                .foregroundStyle(.white.opacity(0.34))
                         }
                         .padding(18)
-                        .background(sectionCardBackground)
+                        .background(arenaCardBackground(tint: Color(arenaHex: AppArenaPalette.coral), radius: 30, strength: 0.48))
                     }
                     .buttonStyle(.plain)
                 }
             }
         }
     }
+}
 
-    private var hasAcademicProfile: Bool {
+// MARK: - Account
+
+private extension ProfileHubView {
+
+    func accountIdentityCard(user: AppUser) -> some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                pageAccent.opacity(0.42),
+                                secondaryAccent.opacity(0.32),
+                                Color.white.opacity(0.060)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 64, height: 64)
+                    .overlay(
+                        Circle()
+                            .stroke(pageAccent.opacity(0.22), lineWidth: 1)
+                    )
+                    .shadow(color: pageAccent.opacity(0.18), radius: 12, y: 5)
+
+                Image(systemName: "person.fill")
+                    .font(.system(size: 23, weight: .black))
+                    .foregroundStyle(.white.opacity(0.96))
+            }
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(user.fullName.isEmpty ? "Kullanıcı" : user.fullName)
+                    .font(.system(size: 20, weight: .black))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+
+                if let academicLine = academicPrimaryLine {
+                    Text(academicLine)
+                        .font(.system(size: 13, weight: .black))
+                        .foregroundStyle(pageAccent)
+                        .lineLimit(1)
+                } else {
+                    Text("@\(user.username)")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.62))
+                        .lineLimit(1)
+                }
+
+                if let academicSecondaryLine {
+                    Text(academicSecondaryLine)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.46))
+                        .lineLimit(1)
+                } else {
+                    Text(user.email)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.38))
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer()
+        }
+    }
+
+    var hasAcademicProfile: Bool {
         studentStore.profile != nil
     }
 
-    private var academicPrimaryLine: String? {
+    var academicPrimaryLine: String? {
         guard let profile = studentStore.profile else { return nil }
 
         if profile.educationLevel == "university" {
@@ -473,7 +623,7 @@ struct ProfileHubView: View {
         }
     }
 
-    private var academicSecondaryLine: String? {
+    var academicSecondaryLine: String? {
         guard let profile = studentStore.profile else { return nil }
 
         if profile.educationLevel == "university" {
@@ -484,19 +634,243 @@ struct ProfileHubView: View {
         }
     }
 
-    private var gradeChipText: String {
+    var gradeChipText: String {
         guard let profile = studentStore.profile else { return "No grade" }
         return formattedGrade(profile.gradeLevel)
     }
 
-    private var institutionChipText: String? {
+    var institutionChipText: String? {
         guard let profile = studentStore.profile else { return nil }
 
         let trimmed = profile.institutionName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmed.isEmpty ? nil : trimmed
     }
+}
 
-    private func formattedGrade(_ value: String) -> String {
+// MARK: - Components
+
+private extension ProfileHubView {
+
+    func sectionHeader(
+        eyebrow: String,
+        title: String,
+        italic: String,
+        subtitle: String,
+        icon: String,
+        tint: Color
+    ) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(tint)
+                        .frame(width: 18, height: 1)
+
+                    Text(eyebrow)
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .tracking(1.7)
+                        .foregroundStyle(tint)
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(title)
+                        .font(.system(size: 24, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text(italic)
+                        .font(.system(size: 23, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(tint)
+                }
+
+                Text(subtitle)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.48))
+                    .lineLimit(2)
+            }
+
+            Spacer()
+
+            Image(systemName: icon)
+                .font(.system(size: 17, weight: .black))
+                .foregroundStyle(tint)
+                .frame(width: 42, height: 42)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(tint.opacity(0.13))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(tint.opacity(0.16), lineWidth: 1)
+                        )
+                )
+        }
+    }
+
+    func profileRow(
+        icon: String,
+        iconColor: Color,
+        title: String,
+        subtitle: String
+    ) -> some View {
+        HStack(spacing: 12) {
+            iconBox(icon: icon, tint: iconColor)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text(subtitle)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.48))
+                    .lineLimit(2)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .black))
+                .foregroundStyle(.white.opacity(0.34))
+        }
+    }
+
+    func toggleRow(
+        icon: String,
+        iconColor: Color,
+        title: String,
+        subtitle: String,
+        isOn: Binding<Bool>
+    ) -> some View {
+        HStack(spacing: 12) {
+            iconBox(icon: icon, tint: iconColor)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text(subtitle)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.48))
+                    .lineLimit(2)
+            }
+
+            Spacer()
+
+            Toggle("", isOn: isOn)
+                .labelsHidden()
+                .tint(iconColor)
+        }
+    }
+
+    func miniStatChip(
+        icon: String,
+        title: String,
+        tint: Color
+    ) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .black))
+                .foregroundStyle(tint)
+
+            Text(title.uppercased())
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .tracking(0.45)
+                .foregroundStyle(.white.opacity(0.82))
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 28)
+        .background(
+            Capsule()
+                .fill(tint.opacity(0.12))
+                .overlay(
+                    Capsule()
+                        .stroke(tint.opacity(0.15), lineWidth: 1)
+                )
+        )
+    }
+
+    func iconBox(icon: String, tint: Color) -> some View {
+        RoundedRectangle(cornerRadius: 15, style: .continuous)
+            .fill(tint.opacity(0.13))
+            .frame(width: 46, height: 46)
+            .overlay(
+                Image(systemName: icon)
+                    .font(.system(size: 17, weight: .black))
+                    .foregroundStyle(tint)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    .stroke(tint.opacity(0.15), lineWidth: 1)
+            )
+    }
+}
+
+// MARK: - Styles
+
+private extension ProfileHubView {
+
+    func arenaCircleBackground(tint: Color) -> some View {
+        Circle()
+            .fill(
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(0.100),
+                        Color.black.opacity(0.26),
+                        Color.white.opacity(0.050)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                Circle()
+                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.28), radius: 14, y: 7)
+    }
+
+    func arenaCardBackground(tint: Color, radius: CGFloat, strength: Double) -> some View {
+        RoundedRectangle(cornerRadius: radius, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        tint.opacity(0.070 + strength * 0.035),
+                        secondaryAccent.opacity(0.040),
+                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                tint.opacity(0.10 + strength * 0.075),
+                                Color.clear
+                            ],
+                            center: .topTrailing,
+                            startRadius: 8,
+                            endRadius: 220
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .stroke(tint.opacity(0.14), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.20), radius: 13, y: 7)
+    }
+}
+
+// MARK: - Academic Formatting
+
+private extension ProfileHubView {
+
+    func formattedGrade(_ value: String) -> String {
         switch value {
         case "prep":
             return "Hazırlık"
@@ -525,7 +899,7 @@ struct ProfileHubView: View {
         }
     }
 
-    private func formattedTrack(_ value: String?) -> String {
+    func formattedTrack(_ value: String?) -> String {
         switch value {
         case "sayisal":
             return "Sayısal"
@@ -538,110 +912,5 @@ struct ProfileHubView: View {
         default:
             return ""
         }
-    }
-
-    private func miniStatChip(
-        icon: String,
-        title: String
-    ) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(.blue)
-
-            Text(title)
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundStyle(palette.primaryText)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(
-            Capsule()
-                .fill(palette.cardFill.opacity(0.9))
-                .overlay(
-                    Capsule()
-                        .stroke(palette.cardStroke, lineWidth: 1)
-                )
-        )
-    }
-
-    private func profileRow(
-        icon: String,
-        iconColor: Color,
-        title: String,
-        subtitle: String
-    ) -> some View {
-        HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(iconColor.opacity(0.14))
-                    .frame(width: 44, height: 44)
-
-                Image(systemName: icon)
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(iconColor)
-            }
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundStyle(palette.primaryText)
-
-                Text(subtitle)
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(palette.secondaryText)
-            }
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(palette.tertiaryText)
-        }
-    }
-
-    private func toggleRow(
-        icon: String,
-        iconColor: Color,
-        title: String,
-        subtitle: String,
-        isOn: Binding<Bool>
-    ) -> some View {
-        HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(iconColor.opacity(0.14))
-                    .frame(width: 44, height: 44)
-
-                Image(systemName: icon)
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(iconColor)
-            }
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundStyle(palette.primaryText)
-
-                Text(subtitle)
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(palette.secondaryText)
-            }
-
-            Spacer()
-
-            Toggle("", isOn: isOn)
-                .labelsHidden()
-        }
-    }
-
-    private var sectionCardBackground: some View {
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(palette.cardFill)
-            .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(palette.cardStroke, lineWidth: 1)
-            )
     }
 }

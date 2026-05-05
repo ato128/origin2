@@ -12,13 +12,13 @@ struct TasksView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var store: TodoStore
-    
     @EnvironmentObject var session: SessionStore
-    @Query(sort: \ExamItem.examDate, order: .forward) var allExams: [ExamItem]
+
+    @Query(sort: \ExamItem.examDate, order: .forward)
+    var allExams: [ExamItem]
+
     @Query(sort: \ExamStudyPlanItem.examDate, order: .forward)
     private var examPlanItems: [ExamStudyPlanItem]
-
-    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
 
     @State private var selectedFilter: TasksFilter = .today
     @State private var showAddTask = false
@@ -31,8 +31,6 @@ struct TasksView: View {
     @State private var selectedExamForActions: ExamItem?
     @State private var expandedExamIDs: Set<UUID> = []
 
-    private let palette = ThemePalette()
-
     enum TasksFilter: String, CaseIterable, Identifiable {
         case today = "today"
         case all = "all"
@@ -43,16 +41,34 @@ struct TasksView: View {
 
         var localizedTitle: String {
             switch self {
-            case .today:
-                return "Bugün"
-            case .all:
-                return "Tümü"
-            case .done:
-                return "Biten"
-            case .exams:
-                return "Sınavlar"
+            case .today: return "Bugün"
+            case .all: return "Tümü"
+            case .done: return "Biten"
+            case .exams: return "Sınavlar"
             }
         }
+
+        var icon: String {
+            switch self {
+            case .today: return "sun.max.fill"
+            case .all: return "checklist"
+            case .done: return "checkmark.seal.fill"
+            case .exams: return "graduationcap.fill"
+            }
+        }
+    }
+
+    private var pageAccent: Color {
+        switch selectedFilter {
+        case .today: return Color(arenaHex: AppArenaPalette.cyan)
+        case .all: return Color(arenaHex: AppArenaPalette.blue)
+        case .done: return Color(arenaHex: AppArenaPalette.green)
+        case .exams: return Color(arenaHex: AppArenaPalette.gold)
+        }
+    }
+
+    private var secondaryAccent: Color {
+        Color(arenaHex: AppArenaPalette.purple)
     }
 
     var filteredTasks: [DTTaskItem] {
@@ -60,30 +76,26 @@ struct TasksView: View {
 
         switch selectedFilter {
         case .today:
-            tasks = store.items
-                .filter { task in
-                    (isToday(task) && !task.isDone) || pendingRemovalTaskKeys.contains(taskKey(task))
-                }
-            
+            tasks = store.items.filter { task in
+                (isToday(task) && !task.isDone) || pendingRemovalTaskKeys.contains(taskKey(task))
+            }
+
         case .all:
-            tasks = store.items
-                .filter { task in
-                    task.taskType.lowercased() != "exam_study" &&
-                    (!task.isDone || pendingRemovalTaskKeys.contains(taskKey(task)))
-                }
-            
+            tasks = store.items.filter { task in
+                task.taskType.lowercased() != "exam_study" &&
+                (!task.isDone || pendingRemovalTaskKeys.contains(taskKey(task)))
+            }
+
         case .done:
-            tasks = store.items
-                .filter(\.isDone)
-            
+            tasks = store.items.filter(\.isDone)
+
         case .exams:
             tasks = []
-                
         }
 
         return tasks.sorted(by: taskSort)
     }
-    
+
     var userScopedExams: [ExamItem] {
         let currentUserID = session.currentUser?.id.uuidString
 
@@ -94,7 +106,7 @@ struct TasksView: View {
 
         return allExams
     }
-    
+
     var userScopedExamPlans: [ExamStudyPlanItem] {
         guard let currentUserID = session.currentUser?.id.uuidString else { return [] }
 
@@ -133,10 +145,15 @@ struct TasksView: View {
 
     var body: some View {
         ZStack {
-            AppBackground()
+            ArenaBackground(
+                primaryGlow: pageAccent,
+                secondaryGlow: secondaryAccent,
+                warmGlow: Color(arenaHex: AppArenaPalette.coral),
+                intensity: 0.94
+            )
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+            ScrollView(showsIndicators: false) {
+                LazyVStack(alignment: .leading, spacing: 16) {
                     header
                     heroSummaryCard
                     filterSegment
@@ -147,32 +164,34 @@ struct TasksView: View {
                         } else {
                             emptyState
                         }
-                    }else {
+                    } else {
                         if filteredTasks.isEmpty {
                             emptyState
                         } else {
                             LazyVStack(spacing: 12) {
                                 ForEach(Array(filteredTasks.enumerated()), id: \.element.taskUUID) { index, task in
                                     taskCard(task, isTopPriority: index == 0 && !task.isDone)
-                                        .transition(.asymmetric(
-                                            insertion: .opacity,
-                                            removal: .opacity
-                                                .combined(with: .offset(y: 18))
-                                                .combined(with: .scale(scale: 0.96))
-                                        ))
+                                        .transition(
+                                            .asymmetric(
+                                                insertion: .opacity,
+                                                removal: .opacity
+                                                    .combined(with: .offset(y: 18))
+                                                    .combined(with: .scale(scale: 0.96))
+                                            )
+                                        )
                                 }
                             }
                         }
                     }
 
-                    Spacer(minLength: 80)
+                    Color.clear.frame(height: 82)
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
                 .padding(.bottom, 30)
             }
-            .scrollIndicators(.hidden)
         }
+        .preferredColorScheme(.dark)
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showAddTask) {
@@ -207,7 +226,7 @@ struct TasksView: View {
             }
 
             Button("Focus başlat") {
-                // şimdilik placeholder
+                selectedExamForActions = nil
             }
 
             Button("İptal", role: .cancel) {
@@ -221,49 +240,77 @@ struct TasksView: View {
     }
 }
 
+// MARK: - Main UI
+
 private extension TasksView {
+
     var header: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .top, spacing: 12) {
             Button {
                 dismiss()
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(palette.primaryText)
-                    .frame(width: 44, height: 44)
-                    .background(
-                        Circle()
-                            .fill(palette.cardFill)
-                            .overlay(
-                                Circle()
-                                    .stroke(palette.cardStroke, lineWidth: 1)
-                            )
-                    )
+                    .font(.system(size: 18, weight: .black))
+                    .foregroundStyle(.white)
+                    .frame(width: 46, height: 46)
+                    .background(arenaCircleBackground(tint: .white.opacity(0.50)))
             }
             .buttonStyle(.plain)
 
-            Spacer()
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(pageAccent)
+                        .frame(width: 20, height: 1)
 
-            Text("Görevler")
-                .font(.system(size: 24, weight: .bold, design: .rounded))
-                .foregroundStyle(palette.primaryText)
+                    Text("TASK FLOW")
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .tracking(2.3)
+                        .foregroundStyle(pageAccent)
+                        .lineLimit(1)
+                }
 
-            Spacer()
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Text("Görev")
+                        .font(.system(size: 38, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text("akışı")
+                        .font(.system(size: 35, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    pageAccent,
+                                    secondaryAccent
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+
+                Text("Bugünkü görevlerin, sınav hazırlığın ve tamamlanan işlerin tek yerde.")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.48))
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 8)
 
             Button {
                 showAddTask = true
             } label: {
                 Image(systemName: "plus")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(palette.primaryText)
-                    .frame(width: 44, height: 44)
+                    .font(.system(size: 19, weight: .black))
+                    .foregroundStyle(.black)
+                    .frame(width: 48, height: 48)
                     .background(
                         Circle()
-                            .fill(palette.cardFill)
-                            .overlay(
-                                Circle()
-                                    .stroke(palette.cardStroke, lineWidth: 1)
-                            )
+                            .fill(pageAccent)
+                            .shadow(color: pageAccent.opacity(0.22), radius: 12, y: 6)
                     )
             }
             .buttonStyle(.plain)
@@ -271,330 +318,125 @@ private extension TasksView {
     }
 
     var heroSummaryCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Akademik Akışın")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(palette.secondaryText)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack(spacing: 8) {
+                        Rectangle()
+                            .fill(pageAccent)
+                            .frame(width: 18, height: 1)
+
+                        Text("ACADEMIC FLOW")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(1.7)
+                            .foregroundStyle(pageAccent)
+                    }
 
                     Text(summaryTitle)
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(palette.primaryText)
+                        .font(.system(size: 30, weight: .black))
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.76)
+
+                    Text(summarySubtitle)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.50))
+                        .lineLimit(2)
                 }
 
                 Spacer()
 
                 ZStack {
-                    Circle()
-                        .fill(Color.accentColor.opacity(0.14))
-                        .frame(width: 50, height: 50)
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(pageAccent.opacity(0.14))
+                        .frame(width: 58, height: 58)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(pageAccent.opacity(0.18), lineWidth: 1)
+                        )
 
-                    Image(systemName: "checklist")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(Color.accentColor)
+                    Image(systemName: selectedFilter.icon)
+                        .font(.system(size: 22, weight: .black))
+                        .foregroundStyle(pageAccent)
                 }
             }
 
             HStack(spacing: 8) {
-                summaryChip(title: "Açık", value: "\(openCount)", tint: .blue)
-                summaryChip(title: "Biten", value: "\(doneCount)", tint: .green)
-                summaryChip(title: "Bugün", value: "\(todayOpenCount)", tint: .orange)
+                summaryChip(title: "Açık", value: "\(openCount)", tint: Color(arenaHex: AppArenaPalette.blue))
+                summaryChip(title: "Biten", value: "\(doneCount)", tint: Color(arenaHex: AppArenaPalette.green))
+                summaryChip(title: "Bugün", value: "\(todayOpenCount)", tint: Color(arenaHex: AppArenaPalette.gold))
             }
         }
         .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(palette.cardFill)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(
-                            RadialGradient(
-                                colors: [
-                                    Color.accentColor.opacity(0.08),
-                                    Color.clear
-                                ],
-                                center: .topTrailing,
-                                startRadius: 10,
-                                endRadius: 220
-                            )
-                        )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(palette.cardStroke, lineWidth: 1)
-                )
-        )
+        .background(arenaCardBackground(tint: pageAccent, radius: 30, strength: 0.74))
     }
-    
-    var upcomingExamsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Yaklaşan Sınavlar")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundStyle(palette.primaryText)
 
-                    Text("Hazırlığını erkenden başlat")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(palette.secondaryText)
-                }
-
-                Spacer()
-
-                Image(systemName: "graduationcap.fill")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(.orange)
-                    .frame(width: 40, height: 40)
-                    .background(
-                        Circle()
-                            .fill(Color.orange.opacity(0.12))
-                    )
-            }
-
-            VStack(spacing: 10) {
-                ForEach(visibleUpcomingExams, id: \.id) { exam in
-                    upcomingExamRow(exam)
-                }
-            }
+    var summarySubtitle: String {
+        switch selectedFilter {
+        case .today:
+            return todayOpenCount == 0 ? "Bugün sakin görünüyor." : "Bugünün açık görevlerine odaklan."
+        case .all:
+            return "Bütün açık görevlerini tek listede yönet."
+        case .done:
+            return "Tamamladığın işlerin arşivi."
+        case .exams:
+            return "Sınav hazırlık planlarını ve günlerini takip et."
         }
-        .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(palette.cardFill)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(
-                            RadialGradient(
-                                colors: [
-                                    Color.orange.opacity(0.08),
-                                    Color.clear
-                                ],
-                                center: .topTrailing,
-                                startRadius: 10,
-                                endRadius: 220
-                            )
-                        )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(palette.cardStroke, lineWidth: 1)
-                )
-        )
-    }
-    
-    func examPlanAccent(_ item: ExamStudyPlanItem) -> Color {
-        switch item.examType {
-        case .quiz:
-            return .blue
-        case .midterm:
-            return .orange
-        case .final:
-            return .pink
-        }
-    }
-
-    func examPlanIcon(_ item: ExamStudyPlanItem) -> String {
-        switch item.examType {
-        case .quiz:
-            return "pencil.and.list.clipboard"
-        case .midterm:
-            return "doc.text.fill"
-        case .final:
-            return "flag.fill"
-        }
-    }
-
-    func examPlanDateText(_ date: Date) -> String {
-        date.formatted(.dateTime.day().month(.abbreviated).year())
-    }
-
-    func examPlanCountdownText(_ date: Date) -> String {
-        let days = Calendar.current.dateComponents(
-            [.day],
-            from: Calendar.current.startOfDay(for: .now),
-            to: Calendar.current.startOfDay(for: date)
-        ).day ?? 0
-
-        if days <= 0 { return "Bugün" }
-        if days == 1 { return "Yarın" }
-        return "\(days) gün kaldı"
-    }
-    
-    func examScheduleRow(items: [ExamStudyPlanItem], first: ExamStudyPlanItem) -> some View {
-        let completed = items.filter(\.isCompleted).count
-        let total = max(items.count, 1)
-        let ratio = Double(completed) / Double(total)
-        let accent = examPlanAccent(first)
-
-        return HStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .stroke(accent.opacity(0.18), lineWidth: 5)
-                    .frame(width: 48, height: 48)
-
-                Circle()
-                    .trim(from: 0, to: ratio)
-                    .stroke(accent, style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                    .frame(width: 48, height: 48)
-                    .rotationEffect(.degrees(-90))
-
-                Image(systemName: examPlanIcon(first))
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(accent)
-            }
-
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 6) {
-                    Text(first.courseName)
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
-                        .foregroundStyle(palette.primaryText)
-                        .lineLimit(1)
-
-                    Text(first.examType.title)
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundStyle(accent)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 4)
-                        .background(
-                            Capsule()
-                                .fill(accent.opacity(0.14))
-                        )
-                }
-
-                HStack(spacing: 8) {
-                    miniMeta(icon: "calendar", text: examPlanDateText(first.examDate), tint: accent)
-                    miniMeta(icon: "clock.fill", text: examPlanCountdownText(first.examDate), tint: .orange)
-                }
-            }
-
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("\(completed)/\(total)")
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundStyle(accent)
-
-                Text("hazırlık")
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(palette.secondaryText)
-            }
-        }
-        .padding(15)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(palette.secondaryCardFill)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(accent.opacity(0.055))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(accent.opacity(0.12), lineWidth: 1)
-                )
-        )
-    }
-    
-    var examScheduleSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Sınav Takvimi")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(palette.primaryText)
-
-                    Text("Derslerine göre yaklaşan sınavlar")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundStyle(palette.secondaryText)
-                }
-
-                Spacer()
-
-                Image(systemName: "calendar.badge.clock")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(.orange)
-                    .frame(width: 42, height: 42)
-                    .background(
-                        Circle()
-                            .fill(Color.orange.opacity(0.13))
-                    )
-            }
-
-            VStack(spacing: 10) {
-                ForEach(examScheduleGroups, id: \.key) { group in
-                    if let first = group.value.first {
-                        examScheduleRow(items: group.value, first: first)
-                    }
-                }
-            }
-        }
-        .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(palette.cardFill)
-                .overlay(
-                    RadialGradient(
-                        colors: [
-                            Color.orange.opacity(0.10),
-                            Color.clear
-                        ],
-                        center: .topTrailing,
-                        startRadius: 10,
-                        endRadius: 220
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .stroke(palette.cardStroke, lineWidth: 1)
-                )
-        )
     }
 
     var filterSegment: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 7) {
             ForEach(TasksFilter.allCases) { filter in
                 let isSelected = selectedFilter == filter
+                let tint = filterTint(filter)
 
                 Button {
                     withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
                         selectedFilter = filter
                     }
                 } label: {
-                    Text(filter.localizedTitle)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(isSelected ? palette.primaryText : palette.secondaryText)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(
-                                    isSelected
-                                    ? Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.14 : 0.18)
-                                    : palette.secondaryCardFill
-                                )
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(
-                                    isSelected
-                                    ? Color.accentColor.opacity(appTheme == AppTheme.light.rawValue ? 0.22 : 0.30)
-                                    : palette.cardStroke.opacity(0.8),
-                                    lineWidth: 1
-                                )
-                        )
+                    VStack(spacing: 6) {
+                        Image(systemName: filter.icon)
+                            .font(.system(size: 13, weight: .black))
+
+                        Text(filter.localizedTitle)
+                            .font(.system(size: 11, weight: .black, design: .monospaced))
+                            .tracking(0.2)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
+                    }
+                    .foregroundStyle(isSelected ? .white : .white.opacity(0.48))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 58)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(isSelected ? tint.opacity(0.16) : Color.white.opacity(0.035))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(isSelected ? tint.opacity(0.24) : Color.white.opacity(0.065), lineWidth: 1)
+                    )
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 7)
+        .padding(8)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(palette.cardFill)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.045),
+                            Color.white.opacity(0.020),
+                            Color.black.opacity(0.12)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(palette.cardStroke, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(Color.white.opacity(0.075), lineWidth: 1)
                 )
         )
     }
@@ -610,16 +452,20 @@ private extension TasksView {
             selectedTask = task
         } label: {
             ZStack(alignment: .topTrailing) {
-                HStack(spacing: 12) {
+                HStack(spacing: 13) {
                     ZStack {
                         Circle()
-                            .stroke(task.isDone ? Color.green.opacity(0.28) : accent, lineWidth: 2.4)
-                            .frame(width: 28, height: 28)
+                            .fill(accent.opacity(task.isDone ? 0.08 : 0.12))
+                            .frame(width: 42, height: 42)
+
+                        Circle()
+                            .stroke(task.isDone ? Color(arenaHex: AppArenaPalette.green).opacity(0.35) : accent.opacity(0.70), lineWidth: 2.4)
+                            .frame(width: 29, height: 29)
 
                         if task.isDone {
                             Image(systemName: "checkmark")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(.green)
+                                .font(.system(size: 11, weight: .black))
+                                .foregroundStyle(Color(arenaHex: AppArenaPalette.green))
                         } else if isTopPriority {
                             Circle()
                                 .fill(accent)
@@ -627,12 +473,13 @@ private extension TasksView {
                         }
                     }
 
-                    VStack(alignment: .leading, spacing: 5) {
-                        HStack(spacing: 6) {
+                    VStack(alignment: .leading, spacing: 7) {
+                        HStack(spacing: 7) {
                             Text(task.title)
-                                .font(.system(size: 17, weight: .bold))
-                                .foregroundStyle(task.isDone ? palette.secondaryText : palette.primaryText)
-                                .strikethrough(task.isDone, color: palette.secondaryText)
+                                .font(.system(size: 17, weight: .black))
+                                .foregroundStyle(task.isDone ? .white.opacity(0.42) : .white.opacity(0.96))
+                                .strikethrough(task.isDone, color: .white.opacity(0.42))
+                                .lineLimit(1)
 
                             if isTopPriority && !task.isDone {
                                 smallTag("Öncelikli", tint: accent)
@@ -640,8 +487,8 @@ private extension TasksView {
                         }
 
                         Text(taskSubtitle(for: task))
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(palette.secondaryText)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.46))
                             .lineLimit(1)
 
                         HStack(spacing: 8) {
@@ -652,17 +499,17 @@ private extension TasksView {
                             miniMeta(icon: taskTypeSymbol(for: task), text: taskTypeTitle(for: task), tint: accent)
 
                             if let mins = task.workoutDurationMinutes ?? task.scheduledWeekDurationMinutes {
-                                miniMeta(icon: "timer", text: "\(mins) dk", tint: .orange)
+                                miniMeta(icon: "timer", text: "\(mins) dk", tint: Color(arenaHex: AppArenaPalette.gold))
                             }
                         }
                     }
 
-                    Spacer()
+                    Spacer(minLength: 8)
 
                     if task.isDone {
-                        statusBadge(icon: "checkmark.circle.fill", text: "Tamamlandı", tint: .green)
+                        statusBadge(icon: "checkmark.circle.fill", text: "Tamamlandı", tint: Color(arenaHex: AppArenaPalette.green))
                     } else if isOverdueTask {
-                        statusBadge(icon: "exclamationmark.triangle.fill", text: "Gecikmiş", tint: .red)
+                        statusBadge(icon: "exclamationmark.triangle.fill", text: "Gecikmiş", tint: Color(arenaHex: AppArenaPalette.coral))
                     } else {
                         statusBadge(icon: "calendar", text: dueText(for: task), tint: accent)
                     }
@@ -670,44 +517,63 @@ private extension TasksView {
                 .padding(16)
                 .background(
                     ZStack {
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
                             .fill(
-                                isTopPriority && !task.isDone
-                                ? accent.opacity(0.08)
-                                : palette.cardFill
+                                LinearGradient(
+                                    colors: [
+                                        accent.opacity(isTopPriority && !task.isDone ? 0.090 : 0.060),
+                                        secondaryAccent.opacity(0.032),
+                                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(
+                                RadialGradient(
+                                    colors: [
+                                        accent.opacity(isTopPriority && !task.isDone ? 0.120 : 0.070),
+                                        Color.clear
+                                    ],
+                                    center: .topTrailing,
+                                    startRadius: 8,
+                                    endRadius: 180
+                                )
                             )
 
                         if isRecentlyCompleted {
-                            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .fill(Color.green.opacity(0.18))
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .fill(Color(arenaHex: AppArenaPalette.green).opacity(0.18))
                                 .transition(.opacity)
                         }
 
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
                             .stroke(
                                 isRecentlyCompleted
-                                ? Color.green.opacity(0.34)
-                                : (isTopPriority && !task.isDone ? accent.opacity(0.28) : palette.cardStroke),
+                                ? Color(arenaHex: AppArenaPalette.green).opacity(0.34)
+                                : (isTopPriority && !task.isDone ? accent.opacity(0.26) : Color.white.opacity(0.075)),
                                 lineWidth: 1
                             )
                     }
                 )
                 .shadow(
-                    color: isTopPriority && !task.isDone ? accent.opacity(0.10) : .clear,
-                    radius: isTopPriority && !task.isDone ? 10 : 0,
-                    y: isTopPriority && !task.isDone ? 4 : 0
+                    color: isTopPriority && !task.isDone ? accent.opacity(0.10) : Color.black.opacity(0.18),
+                    radius: isTopPriority && !task.isDone ? 11 : 8,
+                    y: 5
                 )
 
                 if isRecentlyCompleted {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(.white)
+                        .font(.system(size: 18, weight: .black))
+                        .foregroundStyle(.black)
                         .frame(width: 36, height: 36)
                         .background(
                             Circle()
-                                .fill(Color.green)
+                                .fill(Color(arenaHex: AppArenaPalette.green))
                         )
-                        .shadow(color: Color.green.opacity(0.22), radius: 8, y: 3)
+                        .shadow(color: Color(arenaHex: AppArenaPalette.green).opacity(0.22), radius: 8, y: 3)
                         .offset(x: -8, y: 8)
                         .transition(.scale(scale: 0.7).combined(with: .opacity))
                 }
@@ -748,54 +614,637 @@ private extension TasksView {
             }
         }
     }
-    
+
+    var examScheduleSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader(
+                eyebrow: "EXAM SCHEDULE",
+                title: "Sınav",
+                italic: "takvimi",
+                subtitle: "Derslerine göre yaklaşan sınav hazırlıkları",
+                icon: "calendar.badge.clock",
+                tint: Color(arenaHex: AppArenaPalette.gold)
+            )
+
+            VStack(spacing: 10) {
+                ForEach(examScheduleGroups, id: \.key) { group in
+                    if let first = group.value.first {
+                        examScheduleRow(items: group.value, first: first)
+                    }
+                }
+            }
+        }
+        .padding(18)
+        .background(arenaCardBackground(tint: Color(arenaHex: AppArenaPalette.gold), radius: 30, strength: 0.70))
+    }
+
+    func examScheduleRow(items: [ExamStudyPlanItem], first: ExamStudyPlanItem) -> some View {
+        let completed = items.filter(\.isCompleted).count
+        let total = max(items.count, 1)
+        let ratio = Double(completed) / Double(total)
+        let accent = examPlanAccent(first)
+
+        return HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .stroke(accent.opacity(0.18), lineWidth: 5)
+                    .frame(width: 50, height: 50)
+
+                Circle()
+                    .trim(from: 0, to: ratio)
+                    .stroke(accent, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                    .frame(width: 50, height: 50)
+                    .rotationEffect(.degrees(-90))
+
+                Image(systemName: examPlanIcon(first))
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(accent)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Text(first.courseName)
+                        .font(.system(size: 18, weight: .black))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+
+                    Text(first.examType.title.uppercased())
+                        .font(.system(size: 9, weight: .black, design: .monospaced))
+                        .tracking(0.5)
+                        .foregroundStyle(accent)
+                        .padding(.horizontal, 7)
+                        .frame(height: 22)
+                        .background(
+                            Capsule()
+                                .fill(accent.opacity(0.14))
+                        )
+                }
+
+                HStack(spacing: 8) {
+                    miniMeta(icon: "calendar", text: examPlanDateText(first.examDate), tint: accent)
+                    miniMeta(icon: "clock.fill", text: examPlanCountdownText(first.examDate), tint: Color(arenaHex: AppArenaPalette.gold))
+                }
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 4) {
+                Text("\(completed)/\(total)")
+                    .font(.system(size: 16, weight: .black, design: .monospaced))
+                    .foregroundStyle(accent)
+
+                Text("HAZIRLIK")
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .tracking(0.7)
+                    .foregroundStyle(.white.opacity(0.40))
+            }
+        }
+        .padding(15)
+        .background(rowBackground(tint: accent, radius: 22))
+    }
+
+    var emptyState: some View {
+        VStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(pageAccent.opacity(0.13))
+                    .frame(width: 76, height: 76)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(pageAccent.opacity(0.16), lineWidth: 1)
+                    )
+
+                Image(systemName: selectedFilter == .exams ? "calendar.badge.clock" : "checklist")
+                    .font(.system(size: 28, weight: .black))
+                    .foregroundStyle(pageAccent)
+            }
+
+            Text(emptyTitle)
+                .font(.system(size: 22, weight: .black))
+                .foregroundStyle(.white)
+
+            Text(emptySubtitle)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.52))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 18)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 42)
+        .background(arenaCardBackground(tint: pageAccent, radius: 30, strength: 0.46))
+    }
+}
+
+// MARK: - Unused / Optional Existing Blocks Kept Compatible
+
+private extension TasksView {
+
+    var upcomingExamsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(
+                eyebrow: "UPCOMING",
+                title: "Yaklaşan",
+                italic: "sınavlar",
+                subtitle: "Hazırlığını erkenden başlat",
+                icon: "graduationcap.fill",
+                tint: Color(arenaHex: AppArenaPalette.gold)
+            )
+
+            VStack(spacing: 10) {
+                ForEach(visibleUpcomingExams, id: \.id) { exam in
+                    upcomingExamRow(exam)
+                }
+            }
+        }
+        .padding(18)
+        .background(arenaCardBackground(tint: Color(arenaHex: AppArenaPalette.gold), radius: 30, strength: 0.66))
+    }
+
     var taskEmptyCompactState: some View {
         VStack(spacing: 12) {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(palette.cardFill)
+                .fill(pageAccent.opacity(0.12))
                 .frame(width: 64, height: 64)
                 .overlay(
                     Image(systemName: "sparkles")
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(palette.secondaryText)
+                        .font(.system(size: 24, weight: .black))
+                        .foregroundStyle(pageAccent)
                 )
 
             Text(emptyTitle)
                 .font(.title3.weight(.bold))
-                .foregroundStyle(palette.primaryText)
+                .foregroundStyle(.white)
 
             Text(emptySubtitle)
                 .font(.subheadline)
-                .foregroundStyle(palette.secondaryText)
+                .foregroundStyle(.white.opacity(0.52))
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 14)
     }
-    
+
+    func upcomingExamRow(_ exam: ExamItem) -> some View {
+        let accent = examAccent(for: exam)
+        let linked = linkedTasks(for: exam)
+        let isExpanded = isExamExpanded(exam)
+        let ratio = examProgressRatio(for: exam)
+
+        return VStack(alignment: .leading, spacing: 0) {
+            Button {
+                toggleExamExpanded(exam)
+            } label: {
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(accent.opacity(0.14))
+                            .frame(width: 46, height: 46)
+
+                        Image(systemName: examSymbol(for: exam))
+                            .font(.system(size: 16, weight: .black))
+                            .foregroundStyle(accent)
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 6) {
+                            Text(exam.title)
+                                .font(.system(size: 18, weight: .black))
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+
+                            smallTag(exam.examType, tint: accent)
+                        }
+
+                        Text(examReadinessText(for: exam))
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.48))
+                            .lineLimit(1)
+
+                        HStack(spacing: 8) {
+                            miniMeta(icon: "calendar", text: examDateText(exam), tint: accent)
+                            miniMeta(icon: "timer", text: "\(exam.preferredStudyMinutes) dk öneri", tint: Color(arenaHex: AppArenaPalette.gold))
+                        }
+                    }
+
+                    Spacer()
+
+                    VStack(alignment: .trailing, spacing: 8) {
+                        statusBadge(
+                            icon: "clock.fill",
+                            text: examCountdownText(exam),
+                            tint: accent
+                        )
+
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 12, weight: .black))
+                            .foregroundStyle(.white.opacity(0.42))
+                    }
+                }
+                .padding(16)
+            }
+            .buttonStyle(.plain)
+            .contextMenu {
+                Button {
+                    addQuickStudyTask(for: exam, title: "Konu tekrarı", topic: exam.courseName)
+                } label: {
+                    Label("Konu tekrarı ekle", systemImage: "book.closed")
+                }
+
+                Button {
+                    addQuickStudyTask(for: exam, title: "Soru çözümü", topic: "Çıkmış sorular")
+                } label: {
+                    Label("Soru çözümü ekle", systemImage: "pencil.and.list.clipboard")
+                }
+
+                Button {
+                    addQuickStudyTask(for: exam, title: "Hızlı tekrar", topic: "Son tekrar")
+                } label: {
+                    Label("Hızlı tekrar ekle", systemImage: "bolt.fill")
+                }
+            }
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text(examProgressText(for: exam))
+                                .font(.system(size: 13, weight: .black))
+                                .foregroundStyle(accent)
+
+                            Spacer()
+
+                            Text("\(completedLinkedMinutes(for: exam))/\(exam.targetStudyMinutes) dk")
+                                .font(.system(size: 11, weight: .black, design: .monospaced))
+                                .foregroundStyle(.white.opacity(0.46))
+                        }
+
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Capsule()
+                                    .fill(Color.white.opacity(0.08))
+
+                                Capsule()
+                                    .fill(accent)
+                                    .frame(width: max(12, geo.size.width * ratio))
+                            }
+                        }
+                        .frame(height: 8)
+                    }
+
+                    if linked.isEmpty {
+                        HStack(spacing: 10) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 13, weight: .black))
+                                .foregroundStyle(accent)
+
+                            Text("Henüz çalışma adımı yok. Uzun basıp hızlıca ekleyebilirsin.")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.50))
+
+                            Spacer()
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color.white.opacity(0.04))
+                        )
+                    } else {
+                        VStack(spacing: 8) {
+                            ForEach(linked, id: \.taskUUID) { task in
+                                examLinkedTaskRow(task: task, accent: accent)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .background(rowBackground(tint: accent, radius: 24))
+    }
+
+    func examLinkedTaskRow(task: DTTaskItem, accent: Color) -> some View {
+        Button {
+            toggleLinkedExamTask(task)
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundStyle(task.isDone ? Color(arenaHex: AppArenaPalette.green) : accent)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(task.title)
+                        .font(.system(size: 14, weight: .black))
+                        .foregroundStyle(task.isDone ? .white.opacity(0.40) : .white.opacity(0.92))
+                        .strikethrough(task.isDone, color: .white.opacity(0.40))
+                        .lineLimit(1)
+
+                    if !task.studyTopic.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text(task.studyTopic)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.white.opacity(task.isDone ? 0.34 : 0.48))
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer()
+
+                if let mins = task.workoutDurationMinutes {
+                    Text("\(mins) dk")
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .foregroundStyle(task.isDone ? .white.opacity(0.40) : Color(arenaHex: AppArenaPalette.gold))
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 11)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(task.isDone ? Color.white.opacity(0.025) : Color.white.opacity(0.05))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(
+                        task.isDone ? Color.white.opacity(0.03) : accent.opacity(0.08),
+                        lineWidth: 1
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Styles
+
+private extension TasksView {
+
+    func sectionHeader(
+        eyebrow: String,
+        title: String,
+        italic: String,
+        subtitle: String,
+        icon: String,
+        tint: Color
+    ) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(tint)
+                        .frame(width: 18, height: 1)
+
+                    Text(eyebrow)
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .tracking(1.7)
+                        .foregroundStyle(tint)
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(title)
+                        .font(.system(size: 24, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text(italic)
+                        .font(.system(size: 23, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(tint)
+                }
+
+                Text(subtitle)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.48))
+            }
+
+            Spacer()
+
+            Image(systemName: icon)
+                .font(.system(size: 17, weight: .black))
+                .foregroundStyle(tint)
+                .frame(width: 42, height: 42)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(tint.opacity(0.13))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(tint.opacity(0.16), lineWidth: 1)
+                        )
+                )
+        }
+    }
+
+    func arenaCircleBackground(tint: Color) -> some View {
+        Circle()
+            .fill(
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(0.100),
+                        Color.black.opacity(0.26),
+                        Color.white.opacity(0.050)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                Circle()
+                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.28), radius: 14, y: 7)
+    }
+
+    func arenaCardBackground(tint: Color, radius: CGFloat, strength: Double) -> some View {
+        RoundedRectangle(cornerRadius: radius, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        tint.opacity(0.070 + strength * 0.035),
+                        secondaryAccent.opacity(0.040),
+                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                tint.opacity(0.10 + strength * 0.075),
+                                Color.clear
+                            ],
+                            center: .topTrailing,
+                            startRadius: 8,
+                            endRadius: 220
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .stroke(tint.opacity(0.14), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.20), radius: 13, y: 7)
+    }
+
+    func rowBackground(tint: Color, radius: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: radius, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        tint.opacity(0.075),
+                        secondaryAccent.opacity(0.032),
+                        Color.white.opacity(0.036)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .stroke(tint.opacity(0.13), lineWidth: 1)
+            )
+    }
+
+    func filterTint(_ filter: TasksFilter) -> Color {
+        switch filter {
+        case .today: return Color(arenaHex: AppArenaPalette.cyan)
+        case .all: return Color(arenaHex: AppArenaPalette.blue)
+        case .done: return Color(arenaHex: AppArenaPalette.green)
+        case .exams: return Color(arenaHex: AppArenaPalette.gold)
+        }
+    }
+
+    func summaryChip(title: String, value: String, tint: Color) -> some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(tint)
+                .frame(width: 7, height: 7)
+                .shadow(color: tint.opacity(0.24), radius: 6)
+
+            Text("\(title) \(value)")
+                .font(.system(size: 11, weight: .black, design: .monospaced))
+                .tracking(0.25)
+                .foregroundStyle(tint)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 30)
+        .background(
+            Capsule()
+                .fill(tint.opacity(0.12))
+                .overlay(
+                    Capsule()
+                        .stroke(tint.opacity(0.15), lineWidth: 1)
+                )
+        )
+    }
+
+    func statusBadge(icon: String, text: String, tint: Color) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .black))
+
+            Text(text.uppercased())
+                .lineLimit(1)
+        }
+        .font(.system(size: 9, weight: .black, design: .monospaced))
+        .tracking(0.45)
+        .padding(.horizontal, 9)
+        .frame(height: 26)
+        .background(
+            Capsule()
+                .fill(tint.opacity(0.14))
+                .overlay(
+                    Capsule()
+                        .stroke(tint.opacity(0.16), lineWidth: 1)
+                )
+        )
+        .foregroundStyle(tint)
+    }
+
+    func miniMeta(icon: String, text: String, tint: Color) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 9, weight: .black))
+
+            Text(text.uppercased())
+                .lineLimit(1)
+        }
+        .font(.system(size: 9, weight: .black, design: .monospaced))
+        .tracking(0.35)
+        .foregroundStyle(tint)
+    }
+
+    func smallTag(_ text: String, tint: Color) -> some View {
+        Text(text.uppercased())
+            .font(.system(size: 8, weight: .black, design: .monospaced))
+            .tracking(0.55)
+            .foregroundStyle(tint)
+            .padding(.horizontal, 7)
+            .frame(height: 22)
+            .background(
+                Capsule()
+                    .fill(tint.opacity(0.14))
+                    .overlay(
+                        Capsule()
+                            .stroke(tint.opacity(0.16), lineWidth: 1)
+                    )
+            )
+    }
+}
+
+// MARK: - Exam Helpers
+
+private extension TasksView {
+
+    func examPlanAccent(_ item: ExamStudyPlanItem) -> Color {
+        switch item.examType {
+        case .quiz: return Color(arenaHex: AppArenaPalette.blue)
+        case .midterm: return Color(arenaHex: AppArenaPalette.gold)
+        case .final: return Color(arenaHex: AppArenaPalette.coral)
+        }
+    }
+
+    func examPlanIcon(_ item: ExamStudyPlanItem) -> String {
+        switch item.examType {
+        case .quiz: return "pencil.and.list.clipboard"
+        case .midterm: return "doc.text.fill"
+        case .final: return "flag.fill"
+        }
+    }
+
+    func examPlanDateText(_ date: Date) -> String {
+        date.formatted(.dateTime.day().month(.abbreviated).year())
+    }
+
+    func examPlanCountdownText(_ date: Date) -> String {
+        let days = Calendar.current.dateComponents(
+            [.day],
+            from: Calendar.current.startOfDay(for: .now),
+            to: Calendar.current.startOfDay(for: date)
+        ).day ?? 0
+
+        if days <= 0 { return "Bugün" }
+        if days == 1 { return "Yarın" }
+        return "\(days) gün kaldı"
+    }
+
     func examAccent(for exam: ExamItem) -> Color {
         switch exam.examType.lowercased() {
-        case "final":
-            return .pink
-        case "quiz":
-            return .blue
-        case "vize":
-            return .orange
-        default:
-            return .purple
+        case "final": return Color(arenaHex: AppArenaPalette.coral)
+        case "quiz": return Color(arenaHex: AppArenaPalette.blue)
+        case "vize": return Color(arenaHex: AppArenaPalette.gold)
+        default: return Color(arenaHex: AppArenaPalette.purple)
         }
     }
 
     func examSymbol(for exam: ExamItem) -> String {
         switch exam.examType.lowercased() {
-        case "final":
-            return "flag.fill"
-        case "quiz":
-            return "pencil.and.list.clipboard"
-        case "vize":
-            return "doc.text.fill"
-        default:
-            return "graduationcap.fill"
+        case "final": return "flag.fill"
+        case "quiz": return "pencil.and.list.clipboard"
+        case "vize": return "doc.text.fill"
+        default: return "graduationcap.fill"
         }
     }
 
@@ -809,19 +1258,15 @@ private extension TasksView {
     func examCountdownText(_ exam: ExamItem) -> String {
         let days = daysUntilExam(exam)
 
-        if days <= 0 {
-            return "Bugün"
-        } else if days == 1 {
-            return "Yarın"
-        } else {
-            return "\(days) gün kaldı"
-        }
+        if days <= 0 { return "Bugün" }
+        if days == 1 { return "Yarın" }
+        return "\(days) gün kaldı"
     }
 
     func examDateText(_ exam: ExamItem) -> String {
         exam.examDate.formatted(date: .abbreviated, time: .shortened)
     }
-    
+
     func linkedTasks(for exam: ExamItem) -> [DTTaskItem] {
         store.items
             .filter { $0.linkedExamID == exam.id }
@@ -876,225 +1321,12 @@ private extension TasksView {
         let course = exam.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
         let note = exam.notes.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        if !course.isEmpty, !note.isEmpty {
-            return "\(course) • \(note)"
-        }
-
-        if !course.isEmpty {
-            return course
-        }
-
-        if !note.isEmpty {
-            return note
-        }
-
+        if !course.isEmpty, !note.isEmpty { return "\(course) • \(note)" }
+        if !course.isEmpty { return course }
+        if !note.isEmpty { return note }
         return "Yaklaşan sınav"
     }
-    
-    func examLinkedTaskRow(task: DTTaskItem, accent: Color) -> some View {
-        Button {
-            toggleLinkedExamTask(task)
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(task.isDone ? .green : accent)
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(task.title)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(task.isDone ? palette.secondaryText : palette.primaryText)
-                        .strikethrough(task.isDone, color: palette.secondaryText.opacity(0.6))
-                        .lineLimit(1)
-
-                    if !task.studyTopic.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text(task.studyTopic)
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(palette.secondaryText.opacity(task.isDone ? 0.7 : 1))
-                            .lineLimit(1)
-                    }
-                }
-
-                Spacer()
-
-                if let mins = task.workoutDurationMinutes {
-                    Text("\(mins) dk")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(task.isDone ? palette.secondaryText : .orange)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 11)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(task.isDone ? Color.white.opacity(0.025) : Color.white.opacity(0.05))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(
-                        task.isDone
-                        ? Color.white.opacity(0.03)
-                        : accent.opacity(0.08),
-                        lineWidth: 1
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-    }
-    
-    func upcomingExamRow(_ exam: ExamItem) -> some View {
-        let accent = examAccent(for: exam)
-        let linked = linkedTasks(for: exam)
-        let isExpanded = isExamExpanded(exam)
-        let ratio = examProgressRatio(for: exam)
-
-        return VStack(alignment: .leading, spacing: 0) {
-            Button {
-                toggleExamExpanded(exam)
-            } label: {
-                HStack(spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(accent.opacity(0.14))
-                            .frame(width: 44, height: 44)
-
-                        Image(systemName: examSymbol(for: exam))
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(accent)
-                    }
-
-                    VStack(alignment: .leading, spacing: 5) {
-                        HStack(spacing: 6) {
-                            Text(exam.title)
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundStyle(palette.primaryText)
-                                .lineLimit(1)
-
-                            smallTag(exam.examType, tint: accent)
-                        }
-
-                        Text(examReadinessText(for: exam))
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(palette.secondaryText)
-                            .lineLimit(1)
-
-                        HStack(spacing: 8) {
-                            miniMeta(icon: "calendar", text: examDateText(exam), tint: accent)
-                            miniMeta(icon: "timer", text: "\(exam.preferredStudyMinutes) dk öneri", tint: .orange)
-                        }
-                    }
-
-                    Spacer()
-
-                    VStack(alignment: .trailing, spacing: 8) {
-                        statusBadge(
-                            icon: "clock.fill",
-                            text: examCountdownText(exam),
-                            tint: accent
-                        )
-
-                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(palette.secondaryText)
-                    }
-                }
-                .padding(16)
-            }
-            .buttonStyle(.plain)
-            .contextMenu {
-                Button {
-                    addQuickStudyTask(for: exam, title: "Konu tekrarı", topic: exam.courseName)
-                } label: {
-                    Label("Konu tekrarı ekle", systemImage: "book.closed")
-                }
-
-                Button {
-                    addQuickStudyTask(for: exam, title: "Soru çözümü", topic: "Çıkmış sorular")
-                } label: {
-                    Label("Soru çözümü ekle", systemImage: "pencil.and.list.clipboard")
-                }
-
-                Button {
-                    addQuickStudyTask(for: exam, title: "Hızlı tekrar", topic: "Son tekrar")
-                } label: {
-                    Label("Hızlı tekrar ekle", systemImage: "bolt.fill")
-                }
-            }
-
-            if isExpanded {
-                VStack(alignment: .leading, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text(examProgressText(for: exam))
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundStyle(accent)
-
-                            Spacer()
-
-                            Text("\(completedLinkedMinutes(for: exam))/\(exam.targetStudyMinutes) dk")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(palette.secondaryText)
-                        }
-
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                Capsule()
-                                    .fill(Color.white.opacity(0.08))
-
-                                Capsule()
-                                    .fill(accent)
-                                    .frame(width: max(12, geo.size.width * ratio))
-                            }
-                        }
-                        .frame(height: 8)
-                    }
-
-                    if linked.isEmpty {
-                        HStack(spacing: 10) {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundStyle(accent)
-
-                            Text("Henüz çalışma adımı yok. Uzun basıp hızlıca ekleyebilirsin.")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(palette.secondaryText)
-
-                            Spacer()
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color.white.opacity(0.04))
-                        )
-                    } else {
-                        VStack(spacing: 8) {
-                            ForEach(linked, id: \.taskUUID) { task in
-                                examLinkedTaskRow(task: task, accent: accent)
-                            }
-                        }
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
-                .transition(.move(edge: .top).combined(with: .opacity))
-            }
-        }
-        .background(
-            ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(palette.secondaryCardFill)
-
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(accent.opacity(isExpanded ? 0.10 : (0.06 + (0.12 * ratio))))
-            }
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(accent.opacity(isExpanded ? 0.18 : 0.10), lineWidth: 1)
-        )
-    }
-    
     func isExamExpanded(_ exam: ExamItem) -> Bool {
         expandedExamIDs.contains(exam.id)
     }
@@ -1128,7 +1360,7 @@ private extension TasksView {
         let taskRatio = Double(completedLinkedTaskCount(for: exam)) / Double(max(exam.targetStudyTaskCount, 1))
         return min(1.0, max(minuteRatio, taskRatio))
     }
-    
+
     func addQuickStudyTask(for exam: ExamItem, title: String, topic: String) {
         store.addExamStudyTask(
             exam: exam,
@@ -1139,41 +1371,18 @@ private extension TasksView {
             dueDate: nil
         )
     }
-    
-    var emptyState: some View {
-        VStack(spacing: 14) {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(palette.cardFill)
-                .frame(width: 72, height: 72)
-                .overlay(
-                    Image(systemName: "checklist")
-                        .font(.system(size: 28, weight: .semibold))
-                        .foregroundStyle(palette.secondaryText)
-                )
+}
 
-            Text(emptyTitle)
-                .font(.title3.weight(.bold))
-                .foregroundStyle(palette.primaryText)
+// MARK: - Task Helpers
 
-            Text(emptySubtitle)
-                .font(.subheadline)
-                .foregroundStyle(palette.secondaryText)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 40)
-    }
+private extension TasksView {
 
     var emptyTitle: String {
         switch selectedFilter {
-        case .today:
-            return "Bugün için görev yok"
-        case .all:
-            return "Henüz görev eklenmedi"
-        case .done:
-            return "Tamamlanan görev görünmüyor"
-        case .exams:
-            return "Sınav takvimi boş"
+        case .today: return "Bugün için görev yok"
+        case .all: return "Henüz görev eklenmedi"
+        case .done: return "Tamamlanan görev görünmüyor"
+        case .exams: return "Sınav takvimi boş"
         }
     }
 
@@ -1204,33 +1413,11 @@ private extension TasksView {
 
     var summaryTitle: String {
         switch selectedFilter {
-        case .today:
-            return "Bugüne odaklan"
-        case .all:
-            return "Tüm görevlerin"
-        case .done:
-            return "Tamamlananlar"
-        case .exams:
-            return "Sınav Takvimin"
+        case .today: return "Bugüne odaklan"
+        case .all: return "Tüm görevlerin"
+        case .done: return "Tamamlananlar"
+        case .exams: return "Sınav Takvimin"
         }
-    }
-
-    func summaryChip(title: String, value: String, tint: Color) -> some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(tint)
-                .frame(width: 7, height: 7)
-
-            Text("\(title) \(value)")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(tint)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .background(
-            Capsule()
-                .fill(tint.opacity(0.12))
-        )
     }
 
     func taskKey(_ task: DTTaskItem) -> String {
@@ -1245,9 +1432,11 @@ private extension TasksView {
         if let due = task.dueDate {
             return Calendar.current.isDateInToday(due)
         }
+
         if let weekDate = task.scheduledWeekDate {
             return Calendar.current.isDateInToday(weekDate)
         }
+
         return false
     }
 
@@ -1330,9 +1519,10 @@ private extension TasksView {
             }
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.15) {
-                withAnimation(.spring(response: 0.30, dampingFraction: 0.88)) {
-                    pendingRemovalTaskKeys.remove(key)
-                    return
+                let animation: Animation = .spring(response: 0.30, dampingFraction: 0.88)
+
+                withAnimation(animation) {
+                    _ = pendingRemovalTaskKeys.remove(key)
                 }
             }
         } else {
@@ -1351,20 +1541,15 @@ private extension TasksView {
 
     func taskAccent(for task: DTTaskItem) -> Color {
         if isOverdue(task) {
-            return .red
+            return Color(arenaHex: AppArenaPalette.coral)
         }
 
         switch task.colorName.lowercased() {
-        case "green":
-            return .green
-        case "orange":
-            return .orange
-        case "pink":
-            return .pink
-        case "purple":
-            return .purple
-        default:
-            return .blue
+        case "green": return Color(arenaHex: AppArenaPalette.green)
+        case "orange": return Color(arenaHex: AppArenaPalette.gold)
+        case "pink": return Color(arenaHex: AppArenaPalette.coral)
+        case "purple": return Color(arenaHex: AppArenaPalette.purple)
+        default: return Color(arenaHex: AppArenaPalette.blue)
         }
     }
 
@@ -1416,6 +1601,7 @@ private extension TasksView {
             if Calendar.current.isDateInToday(target) {
                 return "Bugün teslim"
             }
+
             if Calendar.current.isDateInTomorrow(target) {
                 return "Yarın teslim"
             }
@@ -1445,6 +1631,7 @@ private extension TasksView {
             if let due = task.dueDate ?? task.scheduledWeekDate {
                 return "\(course) • \(due.formatted(date: .omitted, time: .shortened))"
             }
+
             return course
         }
 
@@ -1457,41 +1644,5 @@ private extension TasksView {
         }
 
         return "Detay eklenmedi"
-    }
-
-    func statusBadge(icon: String, text: String, tint: Color) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: icon)
-                .font(.caption2)
-            Text(text)
-        }
-        .font(.system(size: 11, weight: .semibold))
-        .padding(.horizontal, 9)
-        .padding(.vertical, 5)
-        .background(Capsule().fill(tint.opacity(0.14)))
-        .foregroundStyle(tint)
-    }
-
-    func miniMeta(icon: String, text: String, tint: Color) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 10, weight: .bold))
-            Text(text)
-                .lineLimit(1)
-        }
-        .font(.system(size: 11, weight: .semibold))
-        .foregroundStyle(tint)
-    }
-
-    func smallTag(_ text: String, tint: Color) -> some View {
-        Text(text)
-            .font(.system(size: 10, weight: .bold))
-            .foregroundStyle(tint)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 4)
-            .background(
-                Capsule()
-                    .fill(tint.opacity(0.14))
-            )
     }
 }

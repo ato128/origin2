@@ -26,7 +26,9 @@ final class PushTokenStore {
 
     var deviceID: String {
         let key = "push_device_id_v1"
-        if let existing = UserDefaults.standard.string(forKey: key) {
+
+        if let existing = UserDefaults.standard.string(forKey: key),
+           !existing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return existing
         }
 
@@ -47,14 +49,21 @@ final class PushTokenStore {
         }
 
         let cleanToken = rawToken.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanToken.isEmpty else { return }
+
+        guard !cleanToken.isEmpty else {
+            print("PUSH TOKEN SAVE SKIPPED: token empty")
+            return
+        }
 
         let client = SupabaseManager.shared.client
 
         do {
             let authSession = try await client.auth.session
+
             guard authSession.user.id == currentUserID else {
                 print("PUSH TOKEN SAVE BLOCKED: auth uid mismatch")
+                print("AUTH UID:", authSession.user.id)
+                print("CURRENT UID:", currentUserID)
                 return
             }
 
@@ -64,12 +73,14 @@ final class PushTokenStore {
                 let environment: String
                 let platform: String
                 let device_id: String
+                let bundle_id: String
                 let app_version: String?
                 let is_active: Bool
                 let updated_at: String
             }
 
             let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+            let bundleID = Bundle.main.bundleIdentifier ?? "com.atakan.updo"
 
             let payload = Payload(
                 user_id: currentUserID,
@@ -77,6 +88,7 @@ final class PushTokenStore {
                 environment: currentEnvironment,
                 platform: "ios",
                 device_id: deviceID,
+                bundle_id: bundleID,
                 app_version: version,
                 is_active: true,
                 updated_at: ISO8601DateFormatter().string(from: Date())
@@ -84,10 +96,16 @@ final class PushTokenStore {
 
             try await client
                 .from("push_tokens")
-                .upsert(payload, onConflict: "user_id,apns_token,environment")
+                .upsert(
+                    payload,
+                    onConflict: "user_id,apns_token,environment"
+                )
                 .execute()
 
             print("✅ PUSH TOKEN SAVED:", currentEnvironment)
+            print("✅ PUSH TOKEN BUNDLE:", bundleID)
+            print("✅ PUSH TOKEN START:", String(cleanToken.prefix(14)))
+
         } catch {
             print("SAVE PUSH TOKEN ERROR:", error.localizedDescription)
         }
