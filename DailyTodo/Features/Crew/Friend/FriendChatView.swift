@@ -778,26 +778,7 @@ private extension FriendChatView {
                                     durationText: audioRecorder.durationText()
                                 )
 
-                                if let senderID = session.currentUser?.id {
-                                    let receiverUserID: UUID? = {
-                                        if let friendship = friendStore.friendships.first(where: { $0.id == friendshipID }) {
-                                            return friendship.requester_id == senderID
-                                            ? friendship.addressee_id
-                                            : friendship.requester_id
-                                        }
-
-                                        return friend.backendUserID
-                                    }()
-
-                                    if let receiverUserID {
-                                        PushService.shared.sendFriendMessagePush(
-                                            toUserId: receiverUserID.uuidString,
-                                            friendshipID: friendshipID.uuidString,
-                                            senderName: senderDisplayName(),
-                                            message: "🎤 Ses mesajı"
-                                        )
-                                    }
-                                }
+                                
 
                                 audioRecorder.recordedURL = nil
                                 audioRecorder.elapsedSeconds = 0
@@ -1034,20 +1015,7 @@ private extension FriendChatView {
         let clean = draftMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         let attachmentToSend = draftAttachment
 
-        let receiverUserID: UUID? = {
-            if let friendship = friendStore.friendships.first(where: { $0.id == friendshipID }) {
-                return friendship.requester_id == senderID
-                ? friendship.addressee_id
-                : friendship.requester_id
-            }
-
-            return friend.backendUserID
-        }()
-
-        guard let receiverUserID else {
-            print("❌ FRIEND PUSH SKIPPED: receiver userID nil")
-            return
-        }
+        guard !clean.isEmpty || attachmentToSend != nil else { return }
 
         draftMessage = ""
         draftAttachment = nil
@@ -1079,13 +1047,6 @@ private extension FriendChatView {
                         ChatFeedbackManager.shared.playSent()
                     }
 
-                    PushService.shared.sendFriendMessagePush(
-                        toUserId: receiverUserID.uuidString,
-                        friendshipID: friendshipID.uuidString,
-                        senderName: senderDisplayName(),
-                        message: clean.isEmpty ? "📷 Fotoğraf" : clean
-                    )
-
                     return
 
                 case .file(let fileURL):
@@ -1100,13 +1061,6 @@ private extension FriendChatView {
                     await MainActor.run {
                         ChatFeedbackManager.shared.playSent()
                     }
-
-                    PushService.shared.sendFriendMessagePush(
-                        toUserId: receiverUserID.uuidString,
-                        friendshipID: friendshipID.uuidString,
-                        senderName: senderDisplayName(),
-                        message: clean.isEmpty ? "📎 Dosya" : clean
-                    )
 
                     return
                 }
@@ -1125,13 +1079,6 @@ private extension FriendChatView {
                 print("🔊 PLAY SENT FEEDBACK")
                 ChatFeedbackManager.shared.playSent()
             }
-
-            PushService.shared.sendFriendMessagePush(
-                toUserId: receiverUserID.uuidString,
-                friendshipID: friendshipID.uuidString,
-                senderName: senderDisplayName(),
-                message: clean
-            )
         }
     }
 
