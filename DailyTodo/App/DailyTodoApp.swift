@@ -190,6 +190,9 @@ struct DailyTodoApp: App {
                         currentUserID: session.currentUser?.id
                     )
                 }
+                Task {
+                    await ChatBackendClient.shared.testMe()
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: .didReceiveAPNSToken)) { _ in
                 Task {

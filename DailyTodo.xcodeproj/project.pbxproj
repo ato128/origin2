@@ -617,6 +617,11 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		6D10286B2FAAA556008D5AA9 /* Network */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Network;
+			sourceTree = "<group>";
+		};
 		6D215DC22F56458C00F7B9D7 /* WidgetExtension */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -872,6 +877,7 @@
 		6DC0CAAC2F5F7D0000A875ED /* DailyTodo */ = {
 			isa = PBXGroup;
 			children = (
+				6D10286B2FAAA556008D5AA9 /* Network */,
 				6D605CF42F773E060052C76B /* GoogleService-Info.plist */,
 				6DB70E822F73215800F04B43 /* Language */,
 				6DD282942F69AA3200B1281A /* Notification */,
@@ -1238,6 +1244,7 @@
 				6D215DCF2F56458E00F7B9D7 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
+				6D10286B2FAAA556008D5AA9 /* Network */,
 				6D4F2C1A2FA8F7D10056E067 /* CrewRedesign */,
 			);
 			name = DailyTodo;

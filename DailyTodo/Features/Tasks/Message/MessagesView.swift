@@ -18,6 +18,7 @@ struct MessagesView: View {
     @State private var searchText = ""
     @State private var didLoadMessagesHubData = false
     @State private var rebuildSummariesTask: Task<Void, Never>?
+    @State private var backendConversations: [ChatBackendConversationDTO] = []
 
     @Query(sort: \Friend.createdAt, order: .reverse)
     private var friends: [Friend]
@@ -49,55 +50,9 @@ struct MessagesView: View {
     }
 
     private var onlineItems: [MessagesHubItem] {
-        let onlineFriendsItems: [MessagesHubItem] = friendStore.friendChatSummaries
-            .filter { $0.isOnline }
-            .map { summary in
-                MessagesHubItem(
-                    id: "friend-online-\(summary.friendshipID.uuidString)",
-                    kind: .friend,
-                    payload: .friendSummary(summary),
-                    title: firstWord(summary.title),
-                    shortTitle: firstWord(summary.title),
-                    preview: summary.typingText ?? cleanedPreview(summary.lastMessageText),
-                    time: summary.lastMessageAt,
-                    unreadCount: summary.unreadCount,
-                    avatarText: initials(for: summary.title),
-                    tint: hexColor(summary.colorHex),
-                    isOnline: true,
-                    showsPresence: true,
-                    isPinned: summary.isPinned,
-                    isMuted: summary.isMuted
-                )
-            }
-
-        let onlineCrewItems: [MessagesHubItem] = backendCrews
-            .filter { crew in
-                guard let lastDate = lastCrewMessageDate(for: crew) else { return false }
-                return Calendar.current.isDateInToday(lastDate)
-            }
-            .map { crew in
-                let member = currentCrewMember(for: crew)
-
-                return MessagesHubItem(
-                    id: "crew-online-\(crew.id.uuidString)",
-                    kind: .crew,
-                    payload: .crew(crew),
-                    title: crew.name,
-                    shortTitle: crew.name,
-                    preview: lastPreviewText(for: crew),
-                    time: lastCrewMessageDate(for: crew),
-                    unreadCount: crewUnreadCount(for: crew),
-                    avatarText: crew.icon,
-                    tint: tintForCrew(crew),
-                    isOnline: true,
-                    showsPresence: true,
-                    isPinned: member?.is_pinned ?? false,
-                    isMuted: member?.is_muted ?? false
-                )
-            }
-
-        return Array(
-            (onlineFriendsItems + onlineCrewItems)
+        Array(
+            allConversationItems
+                .filter { $0.isOnline }
                 .sorted { a, b in
                     (a.time ?? .distantPast) > (b.time ?? .distantPast)
                 }
@@ -106,22 +61,51 @@ struct MessagesView: View {
     }
 
     private var allConversationItems: [MessagesHubItem] {
-        let friendItems = friendStore.friendChatSummaries.map { summary in
-            MessagesHubItem(
-                id: "friend-\(summary.friendshipID.uuidString)",
+        let friendItems: [MessagesHubItem] = backendFriends.compactMap { friend in
+            guard let friendshipID = friend.backendFriendshipID else {
+                return nil
+            }
+
+            let backendConversation = backendConversation(for: friend)
+            let legacySummary = friendStore.friendChatSummaries.first {
+                $0.friendshipID == friendshipID
+            }
+
+            if backendConversation?.isArchived == true {
+                return nil
+            }
+
+            let title = legacySummary?.title ?? friend.name
+            let lastText = backendConversation?.lastMessageText
+                ?? legacySummary?.lastMessageText
+                ?? lastPreviewText(for: friend)
+
+            let typingText = legacySummary?.typingText
+            let preview = typingText ?? cleanedPreview(lastText)
+
+            let lastDate = backendDate(backendConversation?.lastMessageAt)
+                ?? legacySummary?.lastMessageAt
+                ?? lastFriendMessageDate(for: friend)
+
+            let unread = backendConversation?.unreadCount
+                ?? legacySummary?.unreadCount
+                ?? unreadFriendCount(for: friend)
+
+            return MessagesHubItem(
+                id: "friend-\(friendshipID.uuidString)",
                 kind: .friend,
-                payload: .friendSummary(summary),
-                title: summary.title,
-                shortTitle: firstWord(summary.title),
-                preview: summary.typingText ?? cleanedPreview(summary.lastMessageText),
-                time: summary.lastMessageAt,
-                unreadCount: summary.unreadCount,
-                avatarText: initials(for: summary.title),
-                tint: hexColor(summary.colorHex),
-                isOnline: summary.isOnline,
+                payload: .friend(friend),
+                title: title,
+                shortTitle: firstWord(title),
+                preview: preview.isEmpty ? friend.subtitle : preview,
+                time: lastDate,
+                unreadCount: unread,
+                avatarText: initials(for: title),
+                tint: hexColor(friend.colorHex),
+                isOnline: legacySummary?.isOnline ?? friend.isOnline,
                 showsPresence: true,
-                isPinned: summary.isPinned,
-                isMuted: summary.isMuted
+                isPinned: backendConversation?.isPinned ?? legacySummary?.isPinned ?? false,
+                isMuted: backendConversation?.isMuted ?? legacySummary?.isMuted ?? false
             )
         }
 
@@ -971,6 +955,14 @@ private extension MessagesView {
                 )
             }
         }
+        
+        let conversations = await ChatBackendClient.shared.listConversations()
+
+        await MainActor.run {
+            backendConversations = conversations
+        }
+
+        print("🟢 MESSAGES HUB BACKEND CONVERSATIONS:", conversations.count)
 
         friendStore.rebuildFriendChatSummaries(
             currentUserID: currentUserID,
@@ -983,6 +975,36 @@ private extension MessagesView {
 
 private extension MessagesView {
 
+    private func backendConversation(for friend: Friend) -> ChatBackendConversationDTO? {
+        guard let friendshipID = friend.backendFriendshipID else {
+            return nil
+        }
+
+        return backendConversations.first {
+            $0.supabaseFriendshipId == friendshipID
+        }
+    }
+
+    private func backendDate(_ value: String?) -> Date? {
+        guard let value, !value.isEmpty else {
+            return nil
+        }
+
+        let fractionalFormatter = ISO8601DateFormatter()
+        fractionalFormatter.formatOptions = [
+            .withInternetDateTime,
+            .withFractionalSeconds
+        ]
+
+        if let date = fractionalFormatter.date(from: value) {
+            return date
+        }
+
+        let formatter = ISO8601DateFormatter()
+
+        return formatter.date(from: value)
+    }
+    
     @ViewBuilder
     func destinationView(for item: MessagesHubItem) -> some View {
         switch item.payload {
@@ -1121,6 +1143,37 @@ private extension MessagesView {
 // MARK: - Mutations
 
 private extension MessagesView {
+    
+    private func backendConversationID(for friendshipID: UUID) -> UUID? {
+        backendConversations.first {
+            $0.supabaseFriendshipId == friendshipID
+        }?.id
+    }
+
+    private func applyBackendMemberState(
+        _ state: ChatBackendMemberStateDTO
+    ) {
+        backendConversations = backendConversations.map { conversation in
+            guard conversation.id == state.conversationID else {
+                return conversation
+            }
+
+            return ChatBackendConversationDTO(
+                id: conversation.id,
+                type: conversation.type,
+                supabaseFriendshipId: conversation.supabaseFriendshipId,
+                supabaseCrewId: conversation.supabaseCrewId,
+                title: conversation.title,
+                lastMessageText: conversation.lastMessageText,
+                lastMessageAt: conversation.lastMessageAt,
+                unreadCount: state.unreadCount,
+                isMuted: state.isMuted,
+                isArchived: state.isArchived,
+                isPinned: state.isPinned,
+                updatedAt: state.updatedAt ?? conversation.updatedAt
+            )
+        }
+    }
 
     private func friendSummary(for friend: Friend) -> FriendChatThreadSummary? {
         guard let friendshipID = friend.backendFriendshipID else { return nil }
@@ -1144,90 +1197,144 @@ private extension MessagesView {
     }
 
     private func togglePinFriendChat(_ summary: FriendChatThreadSummary) {
-        guard let currentUserID = session.currentUser?.id else { return }
+        guard let conversationID = backendConversationID(for: summary.friendshipID) else {
+            print("❌ MEMBER STATE PIN SKIPPED: backend conversation not found")
+            return
+        }
 
         Task {
-            await friendStore.setFriendChatPinned(
-                friendshipID: summary.friendshipID,
-                currentUserID: currentUserID,
+            let state = await ChatBackendClient.shared.updateConversationMemberState(
+                conversationID: conversationID,
                 isPinned: !summary.isPinned
             )
+
+            if let state {
+                await MainActor.run {
+                    applyBackendMemberState(state)
+                }
+            }
         }
     }
 
     private func toggleMuteFriendChat(_ summary: FriendChatThreadSummary) {
-        guard let currentUserID = session.currentUser?.id else { return }
+        guard let conversationID = backendConversationID(for: summary.friendshipID) else {
+            print("❌ MEMBER STATE MUTE SKIPPED: backend conversation not found")
+            return
+        }
 
         Task {
-            await friendStore.setFriendChatMuted(
-                friendshipID: summary.friendshipID,
-                currentUserID: currentUserID,
+            let state = await ChatBackendClient.shared.updateConversationMemberState(
+                conversationID: conversationID,
                 isMuted: !summary.isMuted
             )
+
+            if let state {
+                await MainActor.run {
+                    applyBackendMemberState(state)
+                }
+            }
         }
     }
 
     private func archiveFriendChat(_ summary: FriendChatThreadSummary) {
-        guard let currentUserID = session.currentUser?.id else { return }
+        guard let conversationID = backendConversationID(for: summary.friendshipID) else {
+            print("❌ MEMBER STATE ARCHIVE SKIPPED: backend conversation not found")
+            return
+        }
 
         Task {
-            await friendStore.setFriendChatArchived(
-                friendshipID: summary.friendshipID,
-                currentUserID: currentUserID,
+            let state = await ChatBackendClient.shared.updateConversationMemberState(
+                conversationID: conversationID,
                 isArchived: true
             )
+
+            if let state {
+                await MainActor.run {
+                    applyBackendMemberState(state)
+                }
+            }
         }
     }
 
     private func togglePinFriendChat(_ friend: Friend) {
-        guard
-            let friendshipID = friend.backendFriendshipID,
-            let currentUserID = session.currentUser?.id
-        else { return }
+        guard let friendshipID = friend.backendFriendshipID else { return }
 
-        let current = friendSummary(for: friend)?.isPinned ?? false
+        guard let conversationID = backendConversationID(for: friendshipID) else {
+            print("❌ MEMBER STATE PIN SKIPPED: backend conversation not found")
+            return
+        }
+
+        let backendCurrent = backendConversations.first {
+            $0.supabaseFriendshipId == friendshipID
+        }?.isPinned
+
+        let legacyCurrent = friendSummary(for: friend)?.isPinned ?? false
+        let current = backendCurrent ?? legacyCurrent
 
         Task {
-            await friendStore.setFriendChatPinned(
-                friendshipID: friendshipID,
-                currentUserID: currentUserID,
+            let state = await ChatBackendClient.shared.updateConversationMemberState(
+                conversationID: conversationID,
                 isPinned: !current
             )
+
+            if let state {
+                await MainActor.run {
+                    applyBackendMemberState(state)
+                }
+            }
         }
     }
 
     private func toggleMuteFriendChat(_ friend: Friend) {
-        guard
-            let friendshipID = friend.backendFriendshipID,
-            let currentUserID = session.currentUser?.id
-        else { return }
+        guard let friendshipID = friend.backendFriendshipID else { return }
 
-        let current = friendSummary(for: friend)?.isMuted ?? false
+        guard let conversationID = backendConversationID(for: friendshipID) else {
+            print("❌ MEMBER STATE MUTE SKIPPED: backend conversation not found")
+            return
+        }
+
+        let backendCurrent = backendConversations.first {
+            $0.supabaseFriendshipId == friendshipID
+        }?.isMuted
+
+        let legacyCurrent = friendSummary(for: friend)?.isMuted ?? false
+        let current = backendCurrent ?? legacyCurrent
 
         Task {
-            await friendStore.setFriendChatMuted(
-                friendshipID: friendshipID,
-                currentUserID: currentUserID,
+            let state = await ChatBackendClient.shared.updateConversationMemberState(
+                conversationID: conversationID,
                 isMuted: !current
             )
+
+            if let state {
+                await MainActor.run {
+                    applyBackendMemberState(state)
+                }
+            }
         }
     }
 
     private func archiveFriendChat(_ friend: Friend) {
-        guard
-            let friendshipID = friend.backendFriendshipID,
-            let currentUserID = session.currentUser?.id
-        else { return }
+        guard let friendshipID = friend.backendFriendshipID else { return }
+
+        guard let conversationID = backendConversationID(for: friendshipID) else {
+            print("❌ MEMBER STATE ARCHIVE SKIPPED: backend conversation not found")
+            return
+        }
 
         Task {
-            await friendStore.setFriendChatArchived(
-                friendshipID: friendshipID,
-                currentUserID: currentUserID,
+            let state = await ChatBackendClient.shared.updateConversationMemberState(
+                conversationID: conversationID,
                 isArchived: true
             )
+
+            if let state {
+                await MainActor.run {
+                    applyBackendMemberState(state)
+                }
+            }
         }
     }
-
     private func crewMemberState(for crew: WeekCrewItem) -> CrewMemberDTO? {
         guard let currentUserID = session.currentUser?.id else { return nil }
 

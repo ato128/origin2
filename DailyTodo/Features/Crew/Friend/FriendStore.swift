@@ -2320,6 +2320,83 @@ final class FriendStore: ObservableObject {
         }
     }
     
+    func forceMarkMessagesSeenOnExit(
+        friendshipID: UUID,
+        currentUserID: UUID?
+    ) async {
+        let resolvedCurrentUserID: UUID?
+
+        if let currentUserID {
+            resolvedCurrentUserID = currentUserID
+        } else if let session = try? await SupabaseManager.shared.client.auth.session {
+            resolvedCurrentUserID = session.user.id
+        } else {
+            resolvedCurrentUserID = nil
+        }
+
+        guard let resolvedCurrentUserID else { return }
+
+        let nowString = ISO8601DateFormatter().string(from: Date())
+        let nowDate = Date()
+
+        do {
+            try await SupabaseManager.shared.client
+                .from("friend_messages")
+                .update([
+                    "seen_at": nowString,
+                    "message_status": "seen"
+                ])
+                .eq("friendship_id", value: friendshipID.uuidString)
+                .neq("sender_id", value: resolvedCurrentUserID.uuidString)
+                .is("seen_at", value: nil)
+                .execute()
+
+            var items = friendMessagesByFriendship[friendshipID] ?? []
+
+            items = items.map { msg in
+                guard !msg.isFromMe && msg.serverID != nil && msg.seenAt == nil else {
+                    return msg
+                }
+
+                return FriendChatMessageItem(
+                    id: msg.id,
+                    serverID: msg.serverID,
+                    clientID: msg.clientID,
+                    friendshipID: msg.friendshipID,
+                    senderID: msg.senderID,
+                    senderName: msg.senderName,
+                    text: msg.text,
+                    createdAt: msg.createdAt,
+                    reaction: msg.reaction,
+                    isSystemMessage: msg.isSystemMessage,
+                    isFromMe: msg.isFromMe,
+                    isPending: msg.isPending,
+                    isFailed: msg.isFailed,
+                    deliveredAt: msg.deliveredAt ?? nowDate,
+                    seenAt: nowDate,
+                    messageType: msg.messageType,
+                    mediaURL: msg.mediaURL,
+                    fileName: msg.fileName,
+                    fileSizeBytes: msg.fileSizeBytes,
+                    mimeType: msg.mimeType,
+                    messageStatus: "seen"
+                )
+            }
+
+            friendMessagesByFriendship[friendshipID] = items
+            recomputeUnreadState(for: friendshipID)
+
+            if let currentUserID = currentUserID {
+                await resetUnreadForCurrentUser(
+                    friendshipID: friendshipID,
+                    currentUserID: currentUserID
+                )
+            }
+        } catch {
+            print("FORCE MARK MESSAGES SEEN ON EXIT ERROR:", error.localizedDescription)
+        }
+    }
+    
     func setActiveChat(_ friendshipID: UUID?) {
         activeChatFriendshipID = friendshipID
 

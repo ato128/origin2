@@ -11,6 +11,7 @@ import UniformTypeIdentifiers
 import UIKit
 import Photos
 import AVFoundation
+import SwiftData
 
 private enum FriendChatArenaPalette {
     static let backgroundTop = Color(friendChatHex: "#05060D")
@@ -101,6 +102,11 @@ struct FriendChatView: View {
     @State private var scrollTask: Task<Void, Never>?
     @State private var typingStopTask: Task<Void, Never>?
     @State private var lastTypingTextWasEmpty = true
+    @State private var backendConversationID: UUID?
+    @State private var backendMessages: [FriendChatMessageItem] = []
+    
+    @Query(sort: \Friend.createdAt, order: .reverse)
+    private var localFriends: [Friend]
 
     enum DraftAttachment {
         case photo(UIImage)
@@ -117,13 +123,21 @@ struct FriendChatView: View {
         guard let friendshipID else { return [] }
         return friendStore.friendMessagesByFriendship[friendshipID] ?? []
     }
+    
+    private var visibleMessages: [FriendChatMessageItem] {
+        if !backendMessages.isEmpty {
+            return backendMessages
+        }
+
+        return messages
+    }
 
     private var chatRootContent: some View {
         ZStack(alignment: .top) {
             ambientBackground
 
             VStack(spacing: 0) {
-                if messages.isEmpty {
+                if visibleMessages.isEmpty {
                     emptyState
                 } else {
                     messagesList
@@ -249,15 +263,30 @@ struct FriendChatView: View {
 
                 startLiveRefreshFallback()
             }
+            .task {
+                await syncChatBackendFriendshipIfNeeded()
+            }
             .onDisappear {
                 print("🔴 CHAT DISAPPEAR")
+
+                if let friendshipID {
+                    let currentUserID = session.currentUser?.id
+
+                    Task {
+                        await friendStore.forceMarkMessagesSeenOnExit(
+                            friendshipID: friendshipID,
+                            currentUserID: currentUserID
+                        )
+                    }
+                    ChatBackendSocketClient.shared.disconnect()
+                }
 
                 liveRefreshTask?.cancel()
                 liveRefreshTask = nil
 
                 scrollTask?.cancel()
                 scrollTask = nil
-                
+
                 typingStopTask?.cancel()
                 typingStopTask = nil
                 lastTypingTextWasEmpty = true
@@ -567,13 +596,13 @@ private extension FriendChatView {
             .scrollIndicators(.hidden)
             .scrollDismissesKeyboard(.interactively)
             .onAppear {
-                lastScrolledMessageID = messages.last?.id
+                lastScrolledMessageID = visibleMessages.last?.id
 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
                     scrollToBottom(proxy: proxy, animated: false)
                 }
             }
-            .onChange(of: messages.last?.id) { _, newValue in
+            .onChange(of: visibleMessages.last?.id) { _, newValue in
                 guard let newValue else { return }
                 guard newValue != lastScrolledMessageID else { return }
 
@@ -630,7 +659,7 @@ private extension FriendChatView {
         var currentDate: Date?
         var currentMessages: [FriendChatMessageItem] = []
 
-        for message in messages {
+        for message in visibleMessages {
             let day = calendar.startOfDay(for: message.createdAt)
 
             if let cd = currentDate, calendar.isDate(cd, inSameDayAs: day) {
@@ -1068,12 +1097,34 @@ private extension FriendChatView {
 
             guard !clean.isEmpty else { return }
 
+            // 1) Mevcut UI / local / Supabase akışı şimdilik bozulmasın.
             await friendStore.sendMessage(
                 text: clean,
                 friendshipID: friendshipID,
                 senderID: senderID,
                 senderName: senderDisplayName()
             )
+
+            // 2) Aynı text mesajı custom backend’e de yaz.
+            if let backendConversationID {
+                let backendMessage = await ChatBackendClient.shared.sendMessage(
+                    conversationID: backendConversationID,
+                    text: clean
+                )
+
+                if let backendMessage,
+                   let mappedMessage = mapBackendMessage(backendMessage, friendshipID: friendshipID) {
+                    await MainActor.run {
+                        backendMessages.append(mappedMessage)
+                    }
+
+                    print("✅ CHAT BACKEND REAL SEND OK:", backendMessage.id.uuidString)
+                } else {
+                    print("❌ CHAT BACKEND REAL SEND FAILED")
+                }
+            } else {
+                print("❌ CHAT BACKEND REAL SEND SKIPPED: backendConversationID nil")
+            }
 
             await MainActor.run {
                 print("🔊 PLAY SENT FEEDBACK")
@@ -2024,5 +2075,184 @@ private extension Color {
             blue: Double(b) / 255,
             opacity: Double(a) / 255
         )
+    }
+}
+private extension FriendChatView {
+    func syncChatBackendFriendshipIfNeeded() async {
+        let friendshipIDText = friendshipID?.uuidString ?? "nil"
+        print("🟡 CHAT TASK START:", friendshipIDText)
+
+        guard let friendshipID else {
+            print("❌ CHAT BACKEND SYNC SKIPPED: friendshipID nil")
+            return
+        }
+
+        guard let friend = findBackendFriend(for: friendshipID) else {
+            print("❌ CHAT BACKEND SYNC SKIPPED: friend not found in localFriends")
+            return
+        }
+
+        guard let backendFriendshipID = friend.backendFriendshipID else {
+            print("❌ CHAT BACKEND SYNC SKIPPED: backendFriendshipID nil")
+            return
+        }
+
+        guard let backendUserID = friend.backendUserID else {
+            print("❌ CHAT BACKEND SYNC SKIPPED: backendUserID nil")
+            return
+        }
+
+        let conversation = await ChatBackendClient.shared.syncFriendship(
+            friendshipID: backendFriendshipID,
+            friendUserID: backendUserID
+        )
+
+        await ChatBackendClient.shared.listConversations()
+
+        guard let conversationID = conversation?.id else {
+            print("❌ CHAT BACKEND CONVERSATION ID NIL")
+            return
+        }
+
+        let fetchedMessages = await ChatBackendClient.shared.fetchMessages(
+            conversationID: conversationID
+        )
+        
+        await ChatBackendClient.shared.markConversationRead(
+            conversationID: conversationID
+        )
+
+        let mappedMessages = fetchedMessages.compactMap { dto in
+            mapBackendMessage(dto, friendshipID: friendshipID)
+        }
+
+        await MainActor.run {
+            backendConversationID = conversationID
+            backendMessages = mappedMessages
+        }
+        
+        await ChatBackendSocketClient.shared.connect(
+            conversationID: conversationID,
+            onMessageCreated: { dto in
+                guard let mappedMessage = mapBackendMessage(
+                    dto,
+                    friendshipID: friendshipID
+                ) else {
+                    return
+                }
+
+                if backendMessages.contains(where: { $0.id == mappedMessage.id }) {
+                    return
+                }
+
+                backendMessages.append(mappedMessage)
+
+                print("🟢 WS MESSAGE APPENDED:", mappedMessage.id.uuidString)
+
+                if let backendConversationID {
+                    Task {
+                        await ChatBackendClient.shared.markConversationRead(
+                            conversationID: backendConversationID
+                        )
+                    }
+                }
+            },
+            onMessageSeen: { payload in
+                let seenIDs = Set(payload.messages.map { $0.id })
+                let seenDate = Date()
+
+                backendMessages = backendMessages.map { message in
+                    guard seenIDs.contains(message.id) else {
+                        return message
+                    }
+
+                    return FriendChatMessageItem(
+                        id: message.id,
+                        serverID: message.serverID,
+                        clientID: message.clientID,
+                        friendshipID: message.friendshipID,
+                        senderID: message.senderID,
+                        senderName: message.senderName,
+                        text: message.text,
+                        createdAt: message.createdAt,
+                        reaction: message.reaction,
+                        isSystemMessage: message.isSystemMessage,
+                        isFromMe: message.isFromMe,
+                        isPending: message.isPending,
+                        isFailed: message.isFailed,
+                        deliveredAt: message.deliveredAt,
+                        seenAt: seenDate,
+                        messageType: message.messageType,
+                        mediaURL: message.mediaURL,
+                        fileName: message.fileName,
+                        fileSizeBytes: message.fileSizeBytes,
+                        mimeType: message.mimeType,
+                        messageStatus: "seen"
+                    )
+                }
+
+                print("🟢 WS MESSAGE SEEN UPDATED:", seenIDs.count)
+            }
+        )
+
+        print("🟢 CHAT BACKEND UI MESSAGES COUNT:", mappedMessages.count)
+    }
+
+    func findBackendFriend(for friendshipID: UUID) -> Friend? {
+        localFriends.first { friend in
+            friend.backendFriendshipID == friendshipID
+        }
+    }
+
+    func mapBackendMessage(
+        _ dto: ChatBackendMessageDTO,
+        friendshipID: UUID
+    ) -> FriendChatMessageItem? {
+        let currentUserID = session.currentUser?.id
+        let isFromMe = dto.senderID == currentUserID
+
+        return FriendChatMessageItem(
+            id: dto.id,
+            serverID: dto.id,
+            clientID: dto.clientID,
+            friendshipID: friendshipID,
+            senderID: dto.senderID,
+            senderName: isFromMe ? senderDisplayName() : friend.name,
+            text: dto.text ?? "",
+            createdAt: parseBackendDate(dto.createdAt),
+            reaction: nil,
+            isSystemMessage: false,
+            isFromMe: isFromMe,
+            isPending: false,
+            isFailed: false,
+            deliveredAt: nil,
+            seenAt: nil,
+            messageType: dto.messageType,
+            mediaURL: dto.mediaURL,
+            fileName: dto.fileName,
+            fileSizeBytes: dto.fileSizeBytes.map { Int64($0) },
+            mimeType: dto.mimeType,
+            messageStatus: "sent_to_server"
+        )
+    }
+
+    func parseBackendDate(_ value: String) -> Date {
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [
+            .withInternetDateTime,
+            .withFractionalSeconds
+        ]
+
+        if let date = isoFormatter.date(from: value) {
+            return date
+        }
+
+        let fallbackFormatter = ISO8601DateFormatter()
+
+        if let date = fallbackFormatter.date(from: value) {
+            return date
+        }
+
+        return Date()
     }
 }

@@ -78,6 +78,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         UserDefaults.standard.synchronize()
 
         NotificationCenter.default.post(name: .didReceiveAPNSToken, object: nil)
+
+        Task {
+            let saved = await ChatBackendClient.shared.savePushToken(
+                apnsToken: token,
+                environment: "sandbox"
+            )
+
+            print(saved ? "✅ CHAT BACKEND PUSH TOKEN SAVED" : "❌ CHAT BACKEND PUSH TOKEN SAVE FAILED")
+        }
     }
 
     func userNotificationCenter(
