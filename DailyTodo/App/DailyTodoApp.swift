@@ -80,15 +80,15 @@ struct DailyTodoApp: App {
                 for: schema,
                 configurations: [configuration]
             )
-           
-            
 
             FocusCompletionRecorder.shared.configure(container: container)
 
             let context = ModelContext(container)
+
             _todoStore = StateObject(
                 wrappedValue: TodoStore(context: context)
             )
+
             _studentStore = StateObject(
                 wrappedValue: StudentStore(context: context)
             )
@@ -100,206 +100,227 @@ struct DailyTodoApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(
-                openFocusFromNotification: $openFocusFromNotification
-            )
-            .id(languageManager.selectedLanguage)
-            .modelContainer(container)
-            .environmentObject(todoStore)
-            .environmentObject(session)
-            .environmentObject(crewStore)
-            .environmentObject(friendStore)
-            .environmentObject(languageManager)
-            .environmentObject(focusSession)
-            .environment(\.locale, languageManager.activeLocale)
-            .environmentObject(studentStore)
-            .overlay {
-                InAppBannerOverlay()
-            }
-            .onAppear {
-                NotificationCenter.default.addObserver(
-                    forName: .didReceiveAPNSToken,
-                    object: nil,
-                    queue: .main
-                ) { _ in
-                    Task {
-                        print("🔥 TOKEN RECEIVED -> SAVING")
-                        await PushTokenStore.shared.saveCurrentToken(
-                            currentUserID: session.currentUser?.id
-                        )
-                    }
-                }
+            rootContent
+        }
+    }
 
-                Task {
-                    await session.restoreSupabaseSessionIfNeeded()
+    private var rootContent: some View {
+        RootView(
+            openFocusFromNotification: $openFocusFromNotification
+        )
+        .id(languageManager.selectedLanguage)
+        .modelContainer(container)
+        .environmentObject(todoStore)
+        .environmentObject(session)
+        .environmentObject(crewStore)
+        .environmentObject(friendStore)
+        .environmentObject(languageManager)
+        .environmentObject(focusSession)
+        .environment(\.locale, languageManager.activeLocale)
+        .environmentObject(studentStore)
+        .overlay {
+            InAppBannerOverlay()
+        }
+        .onAppear {
+            handleAppAppear()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .didReceiveAPNSToken)) { _ in
+            handleAPNSTokenNotification()
+        }
+        .onChange(of: session.currentUser?.id) { _, newID in
+            handleCurrentUserChanged(newID)
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            handleScenePhaseChanged(newPhase)
+        }
+        .onOpenURL { url in
+            handleIncomingURL(url)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openURLFromNotification)) { output in
+            guard let url = output.object as? URL else { return }
+            handleIncomingURL(url)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .presentActiveCrewFocusFromNotification)) { _ in
+            openFocusFromNotification = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .presentCrewFocusInviteSheet)) { _ in
+            openFocusFromNotification = true
+        }
+    }
 
-                    await PushTokenStore.shared.saveCurrentToken(
-                        currentUserID: session.currentUser?.id
-                    )
+    private func handleAppAppear() {
+        observeAPNSTokenNotificationIfNeeded()
 
-                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+        Task {
+            await session.restoreSupabaseSessionIfNeeded()
 
-                    print("🔥 FORCE TOKEN SAVE")
-                    await PushTokenStore.shared.saveCurrentToken(
-                        currentUserID: session.currentUser?.id
-                    )
-                }
-
-                let context = ModelContext(container)
-
-                WidgetAppSync.refreshFromSwiftData(context: context)
-
-                LiveActivityScheduler.shared.registerBGTask()
-                LiveActivityScheduler.shared.startForegroundLoop(container: container)
-
-                let currentUserID = session.currentUser?.id.uuidString
-                todoStore.setCurrentUserID(currentUserID)
-                studentStore.setCurrentUserID(currentUserID)
-                LiveActivityScheduler.shared.setCurrentUserID(currentUserID)
-
-                syncCurrentUserIDToDefaults(session.currentUser?.id)
-
-                if let userID = session.currentUser?.id {
-                    updateFriendPresence(isOnline: true)
-                    bootstrapFriendRealtime(for: userID)
-                }
-
-                let descriptor = FetchDescriptor<EventItem>(
-                    sortBy: [SortDescriptor(\EventItem.startMinute, order: .forward)]
+            await MainActor.run {
+                PushTokenStore.shared.saveCurrentTokenWithRetry(
+                    reason: "onAppear after session restore"
                 )
-                let allEvents = (try? context.fetch(descriptor)) ?? []
-                let scopedEvents = allEvents.filter { $0.ownerUserID == currentUserID }
-
-                Task {
-                    await NotificationManager.shared.requestPermissionIfNeeded()
-                    await NotificationManager.shared.rescheduleAll(events: scopedEvents)
-
-                    await MainActor.run {
-                        print("📡 REGISTERING FOR REMOTE NOTIFICATIONS FROM ONAPPEAR...")
-                        UIApplication.shared.registerForRemoteNotifications()
-                    }
-
-                    await PushTokenStore.shared.saveCurrentToken(
-                        currentUserID: session.currentUser?.id
-                    )
-
-                    try? await Task.sleep(nanoseconds: 2_000_000_000)
-
-                    print("🔥 FORCE TOKEN SAVE AFTER REGISTER")
-                    await PushTokenStore.shared.saveCurrentToken(
-                        currentUserID: session.currentUser?.id
-                    )
-                }
-                Task {
-                    await ChatBackendClient.shared.testMe()
-                }
             }
-            .onReceive(NotificationCenter.default.publisher(for: .didReceiveAPNSToken)) { _ in
-                Task {
-                    print("🔥 TOKEN RECEIVED -> SAVING FROM ONRECEIVE")
-                    await PushTokenStore.shared.saveCurrentToken(
-                        currentUserID: session.currentUser?.id
-                    )
-                }
-            }
-            .onChange(of: session.currentUser?.id) { _, newID in
-                let userIDString = newID.map { $0.uuidString }
+        }
 
-                todoStore.setCurrentUserID(userIDString)
-                studentStore.setCurrentUserID(userIDString)
-                LiveActivityScheduler.shared.setCurrentUserID(userIDString)
+        let context = ModelContext(container)
 
-                syncCurrentUserIDToDefaults(newID)
-                friendStore.unsubscribePresenceRealtime()
-                friendStore.unsubscribeFriendshipsRealtime()
+        WidgetAppSync.refreshFromSwiftData(context: context)
 
-                if let newID {
-                    updateFriendPresence(isOnline: true)
-                    bootstrapFriendRealtime(for: newID)
-                }
+        LiveActivityScheduler.shared.registerBGTask()
+        LiveActivityScheduler.shared.startForegroundLoop(container: container)
 
-                let context = ModelContext(container)
-                WidgetAppSync.refreshFromSwiftData(context: context)
+        let currentUserID = session.currentUser?.id.uuidString
 
-                Task { @MainActor in
-                    LiveActivityScheduler.shared.rescheduleBackgroundTask(container: container)
-                }
+        todoStore.setCurrentUserID(currentUserID)
+        studentStore.setCurrentUserID(currentUserID)
+        LiveActivityScheduler.shared.setCurrentUserID(currentUserID)
 
-                let descriptor = FetchDescriptor<EventItem>(
-                    sortBy: [SortDescriptor(\EventItem.startMinute, order: .forward)]
+        syncCurrentUserIDToDefaults(session.currentUser?.id)
+
+        if let userID = session.currentUser?.id {
+            updateFriendPresence(isOnline: true)
+            bootstrapFriendRealtime(for: userID)
+        }
+
+        rescheduleLocalNotificationsAndRegisterPush(reason: "onAppear")
+
+        Task {
+            await ChatBackendClient.shared.testMe()
+        }
+    }
+
+    private func observeAPNSTokenNotificationIfNeeded() {
+        NotificationCenter.default.removeObserver(
+            self,
+            name: .didReceiveAPNSToken,
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            forName: .didReceiveAPNSToken,
+            object: nil,
+            queue: .main
+        ) { _ in
+            Task { @MainActor in
+                print("🔥 TOKEN RECEIVED -> SAVE WITH RETRY")
+                PushTokenStore.shared.saveCurrentTokenWithRetry(
+                    reason: "didReceiveAPNSToken observer"
                 )
-                let allEvents = (try? context.fetch(descriptor)) ?? []
-                let scopedEvents = allEvents.filter { $0.ownerUserID == userIDString }
-
-                Task {
-                    await NotificationManager.shared.requestPermissionIfNeeded()
-                    await NotificationManager.shared.rescheduleAll(events: scopedEvents)
-
-                    await MainActor.run {
-                        print("📡 FORCE REGISTER FROM USER CHANGE...")
-                        UIApplication.shared.registerForRemoteNotifications()
-                    }
-
-                    guard let newID else { return }
-
-                    try? await Task.sleep(nanoseconds: 2_500_000_000)
-
-                    print("💾 TOKEN KAYIT DENEMESİ (onChange)...")
-                    await PushTokenStore.shared.saveCurrentToken(currentUserID: newID)
-                }
-            }
-            .onChange(of: scenePhase) { _, newPhase in
-                switch newPhase {
-                case .active:
-                    LiveActivityScheduler.shared.startForegroundLoop(container: container)
-
-                    let context = ModelContext(container)
-                    WidgetAppSync.refreshFromSwiftData(context: context)
-
-                    friendStore.setAppActive(true)
-                    updateFriendPresence(isOnline: true)
-
-                    if let userID = session.currentUser?.id {
-                        bootstrapFriendRealtime(for: userID)
-
-                        Task {
-                            print("🔥 FORCE TOKEN SAVE ON ACTIVE")
-                            await PushTokenStore.shared.saveCurrentToken(
-                                currentUserID: userID
-                            )
-                        }
-                    }
-
-                case .inactive:
-                    friendStore.setAppActive(false)
-
-                case .background:
-                    friendStore.setAppActive(false)
-                    updateFriendPresence(isOnline: false)
-
-                    LiveActivityScheduler.shared.stopForegroundLoop()
-                    LiveActivityScheduler.shared.rescheduleBackgroundTask(container: container)
-
-                @unknown default:
-                    break
-                }
-            }
-            .onOpenURL { url in
-                handleIncomingURL(url)
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .openURLFromNotification)) { output in
-                guard let url = output.object as? URL else { return }
-                handleIncomingURL(url)
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .presentActiveCrewFocusFromNotification)) { _ in
-                openFocusFromNotification = true
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .presentCrewFocusInviteSheet)) { _ in
-                openFocusFromNotification = true
             }
         }
     }
-    
+
+    private func handleAPNSTokenNotification() {
+        Task { @MainActor in
+            print("🔥 TOKEN RECEIVED -> SAVE WITH RETRY FROM ONRECEIVE")
+            PushTokenStore.shared.saveCurrentTokenWithRetry(
+                reason: "didReceiveAPNSToken onReceive"
+            )
+        }
+    }
+
+    private func handleCurrentUserChanged(_ newID: UUID?) {
+        let userIDString = newID.map { $0.uuidString }
+
+        todoStore.setCurrentUserID(userIDString)
+        studentStore.setCurrentUserID(userIDString)
+        LiveActivityScheduler.shared.setCurrentUserID(userIDString)
+
+        syncCurrentUserIDToDefaults(newID)
+
+        friendStore.unsubscribePresenceRealtime()
+        friendStore.unsubscribeFriendshipsRealtime()
+
+        if let newID {
+            updateFriendPresence(isOnline: true)
+            bootstrapFriendRealtime(for: newID)
+        }
+
+        let context = ModelContext(container)
+        WidgetAppSync.refreshFromSwiftData(context: context)
+
+        Task { @MainActor in
+            LiveActivityScheduler.shared.rescheduleBackgroundTask(container: container)
+        }
+
+        rescheduleLocalNotificationsAndRegisterPush(reason: "session user changed")
+
+        guard newID != nil else { return }
+
+        Task {
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+
+            await MainActor.run {
+                print("💾 TOKEN SAVE RETRY (user change)...")
+                PushTokenStore.shared.forceResaveCurrentToken(
+                    reason: "session user changed"
+                )
+            }
+        }
+    }
+
+    private func handleScenePhaseChanged(_ newPhase: ScenePhase) {
+        switch newPhase {
+        case .active:
+            LiveActivityScheduler.shared.startForegroundLoop(container: container)
+
+            let context = ModelContext(container)
+            WidgetAppSync.refreshFromSwiftData(context: context)
+
+            friendStore.setAppActive(true)
+            updateFriendPresence(isOnline: true)
+
+            if let userID = session.currentUser?.id {
+                bootstrapFriendRealtime(for: userID)
+            }
+
+            Task { @MainActor in
+                print("🔥 PUSH TOKEN SAVE ON ACTIVE")
+                PushTokenStore.shared.saveCurrentTokenWithRetry(
+                    reason: "scene active"
+                )
+            }
+
+        case .inactive:
+            friendStore.setAppActive(false)
+
+        case .background:
+            friendStore.setAppActive(false)
+            updateFriendPresence(isOnline: false)
+
+            LiveActivityScheduler.shared.stopForegroundLoop()
+            LiveActivityScheduler.shared.rescheduleBackgroundTask(container: container)
+
+        @unknown default:
+            break
+        }
+    }
+
+    private func rescheduleLocalNotificationsAndRegisterPush(reason: String) {
+        let context = ModelContext(container)
+        let currentUserID = session.currentUser?.id.uuidString
+
+        let descriptor = FetchDescriptor<EventItem>(
+            sortBy: [SortDescriptor(\EventItem.startMinute, order: .forward)]
+        )
+
+        let allEvents = (try? context.fetch(descriptor)) ?? []
+        let scopedEvents = allEvents.filter { $0.ownerUserID == currentUserID }
+
+        Task {
+            await NotificationManager.shared.requestPermissionIfNeeded()
+            await NotificationManager.shared.rescheduleAll(events: scopedEvents)
+
+            await MainActor.run {
+                print("📡 REGISTERING FOR REMOTE NOTIFICATIONS:", reason)
+                UIApplication.shared.registerForRemoteNotifications()
+
+                PushTokenStore.shared.saveCurrentTokenWithRetry(
+                    reason: "register remote notifications - \(reason)"
+                )
+            }
+        }
+    }
+
     private func updateFriendPresence(isOnline: Bool) {
         guard let userID = session.currentUser?.id else { return }
 
@@ -316,8 +337,14 @@ struct DailyTodoApp: App {
             await friendStore.loadAllFriendships(currentUserID: userID)
 
             let otherUserIDs = friendStore.friendships.compactMap { friendship -> UUID? in
-                if friendship.requester_id == userID { return friendship.addressee_id }
-                if friendship.addressee_id == userID { return friendship.requester_id }
+                if friendship.requester_id == userID {
+                    return friendship.addressee_id
+                }
+
+                if friendship.addressee_id == userID {
+                    return friendship.requester_id
+                }
+
                 return nil
             }
 
@@ -359,7 +386,9 @@ struct DailyTodoApp: App {
         if url.host == "friend-chat" {
             guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
                   let friendshipID = components.queryItems?.first(where: { $0.name == "friendship_id" })?.value
-            else { return }
+            else {
+                return
+            }
 
             NotificationCenter.default.post(
                 name: .openFriendChatFromNotification,
@@ -371,7 +400,9 @@ struct DailyTodoApp: App {
         if url.host == "crew-chat" {
             guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
                   let crewID = components.queryItems?.first(where: { $0.name == "crew_id" })?.value
-            else { return }
+            else {
+                return
+            }
 
             NotificationCenter.default.post(
                 name: .openCrewChatFromNotification,
@@ -383,19 +414,30 @@ struct DailyTodoApp: App {
 
     private func handleLiveActivityURL(_ url: URL) {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
-        let action = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+
+        let action = components.path.trimmingCharacters(
+            in: CharacterSet(charactersIn: "/")
+        )
 
         if action == "stop" {
-            Task { await LiveActivityManager.shared.end() }
+            Task {
+                await LiveActivityManager.shared.end()
+            }
         }
     }
 
     private func handleIncomingInviteURL(_ url: URL) {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let code = components.queryItems?.first(where: { $0.name == "code" })?.value,
-              !code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+              !code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else {
+            return
+        }
 
-        NotificationCenter.default.post(name: .openCrewInviteFromLink, object: code)
+        NotificationCenter.default.post(
+            name: .openCrewInviteFromLink,
+            object: code
+        )
     }
 }
 

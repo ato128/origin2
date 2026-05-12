@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import Supabase
 import UIKit
 
 @MainActor
@@ -15,99 +14,110 @@ final class PushTokenStore {
     private init() {}
 
     private let tokenKey = "apns_device_token"
+    private let lastSavedTokenKey = "chat_backend_last_saved_apns_token"
+    private let lastSavedEnvironmentKey = "chat_backend_last_saved_apns_environment"
+    private let lastSaveAttemptAtKey = "chat_backend_push_token_last_attempt_at"
+
+    private var isSaving = false
+    private var pendingSaveTask: Task<Void, Never>?
 
     var currentEnvironment: String {
-        #if DEBUG
-        return "sandbox"
-        #else
-        return "production"
-        #endif
+        ChatBackendEnvironment.apnsEnvironment
     }
 
-    var deviceID: String {
-        let key = "push_device_id_v1"
-
-        if let existing = UserDefaults.standard.string(forKey: key),
-           !existing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return existing
-        }
-
-        let created = UUID().uuidString
-        UserDefaults.standard.set(created, forKey: key)
-        return created
+    var currentToken: String? {
+        UserDefaults.standard
+            .string(forKey: tokenKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    func saveCurrentToken(currentUserID: UUID?) async {
-        guard let currentUserID else {
-            print("PUSH TOKEN SAVE SKIPPED: currentUserID nil")
-            return
-        }
-
-        guard let rawToken = UserDefaults.standard.string(forKey: tokenKey) else {
-            print("PUSH TOKEN SAVE SKIPPED: token bulunamadı")
-            return
-        }
-
-        let cleanToken = rawToken.trimmingCharacters(in: .whitespacesAndNewlines)
+    func storeToken(_ token: String) {
+        let cleanToken = token.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !cleanToken.isEmpty else {
-            print("PUSH TOKEN SAVE SKIPPED: token empty")
+            print("⚪️ PUSH TOKEN STORE SKIPPED: empty token")
             return
         }
 
-        let client = SupabaseManager.shared.client
+        UserDefaults.standard.set(cleanToken, forKey: tokenKey)
+        UserDefaults.standard.synchronize()
 
-        do {
-            let authSession = try await client.auth.session
+        print("✅ PUSH TOKEN STORED:", currentEnvironment)
+        print("✅ PUSH TOKEN START:", String(cleanToken.prefix(14)))
+    }
 
-            guard authSession.user.id == currentUserID else {
-                print("PUSH TOKEN SAVE BLOCKED: auth uid mismatch")
-                print("AUTH UID:", authSession.user.id)
-                print("CURRENT UID:", currentUserID)
-                return
-            }
+    func saveCurrentTokenWithRetry(reason: String) {
+        pendingSaveTask?.cancel()
 
-            struct Payload: Encodable {
-                let user_id: UUID
-                let apns_token: String
-                let environment: String
-                let platform: String
-                let device_id: String
-                let bundle_id: String
-                let app_version: String?
-                let is_active: Bool
-                let updated_at: String
-            }
+        pendingSaveTask = Task { [weak self] in
+            guard let self else { return }
 
-            let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
-            let bundleID = Bundle.main.bundleIdentifier ?? "com.atakan.updo"
+            try? await Task.sleep(nanoseconds: 700_000_000)
 
-            let payload = Payload(
-                user_id: currentUserID,
-                apns_token: cleanToken,
-                environment: currentEnvironment,
-                platform: "ios",
-                device_id: deviceID,
-                bundle_id: bundleID,
-                app_version: version,
-                is_active: true,
-                updated_at: ISO8601DateFormatter().string(from: Date())
-            )
+            guard !Task.isCancelled else { return }
 
-            try await client
-                .from("push_tokens")
-                .upsert(
-                    payload,
-                    onConflict: "user_id,apns_token,environment"
-                )
-                .execute()
-
-            print("✅ PUSH TOKEN SAVED:", currentEnvironment)
-            print("✅ PUSH TOKEN BUNDLE:", bundleID)
-            print("✅ PUSH TOKEN START:", String(cleanToken.prefix(14)))
-
-        } catch {
-            print("SAVE PUSH TOKEN ERROR:", error.localizedDescription)
+            await self.saveCurrentTokenNow(reason: reason)
         }
+    }
+
+    func saveCurrentTokenNow(reason: String) async {
+        guard !isSaving else {
+            print("⚪️ PUSH TOKEN SAVE SKIPPED: already saving")
+            return
+        }
+
+        guard let cleanToken = currentToken, !cleanToken.isEmpty else {
+            print("⚪️ PUSH TOKEN SAVE SKIPPED: token bulunamadı")
+            return
+        }
+
+        let environment = currentEnvironment
+
+        if isAlreadySaved(token: cleanToken, environment: environment) {
+            print("⚪️ PUSH TOKEN SAVE SKIPPED: already saved for \(environment)")
+            return
+        }
+
+        isSaving = true
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: lastSaveAttemptAtKey)
+
+        defer {
+            isSaving = false
+        }
+
+        print("🟡 PUSH TOKEN SAVE START:", reason)
+        print("🟡 PUSH TOKEN ENV:", environment)
+        print("🟡 PUSH TOKEN START:", String(cleanToken.prefix(14)))
+
+        let success = await ChatBackendClient.shared.savePushTokenWithRetry(
+            apnsToken: cleanToken,
+            environment: environment,
+            maxAttempts: 4
+        )
+
+        if success {
+            UserDefaults.standard.set(cleanToken, forKey: lastSavedTokenKey)
+            UserDefaults.standard.set(environment, forKey: lastSavedEnvironmentKey)
+            UserDefaults.standard.synchronize()
+
+            print("✅ PUSH TOKEN SAVE COMPLETE:", environment)
+        } else {
+            print("❌ PUSH TOKEN SAVE FAILED AFTER RETRY")
+        }
+    }
+
+    func forceResaveCurrentToken(reason: String) {
+        UserDefaults.standard.removeObject(forKey: lastSavedTokenKey)
+        UserDefaults.standard.removeObject(forKey: lastSavedEnvironmentKey)
+        UserDefaults.standard.synchronize()
+
+        saveCurrentTokenWithRetry(reason: reason)
+    }
+
+    private func isAlreadySaved(token: String, environment: String) -> Bool {
+        let savedToken = UserDefaults.standard.string(forKey: lastSavedTokenKey)
+        let savedEnvironment = UserDefaults.standard.string(forKey: lastSavedEnvironmentKey)
+
+        return savedToken == token && savedEnvironment == environment
     }
 }

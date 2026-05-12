@@ -14,11 +14,14 @@ struct MessagesView: View {
     @EnvironmentObject var friendStore: FriendStore
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var session: SessionStore
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var searchText = ""
     @State private var didLoadMessagesHubData = false
     @State private var rebuildSummariesTask: Task<Void, Never>?
     @State private var backendConversations: [ChatBackendConversationDTO] = []
+    @State private var backendLiveRefreshTask: Task<Void, Never>?
+    @State private var isRefreshingBackendConversations = false
 
     @Query(sort: \Friend.createdAt, order: .reverse)
     private var friends: [Friend]
@@ -67,29 +70,29 @@ struct MessagesView: View {
             }
 
             let backendConversation = backendConversation(for: friend)
-            let legacySummary = friendStore.friendChatSummaries.first {
-                $0.friendshipID == friendshipID
-            }
 
             if backendConversation?.isArchived == true {
                 return nil
             }
 
-            let title = legacySummary?.title ?? friend.name
-            let lastText = backendConversation?.lastMessageText
-                ?? legacySummary?.lastMessageText
-                ?? lastPreviewText(for: friend)
+            let title = friend.name
+            let isTyping = friendStore.typingStatusByFriendship[friendshipID] == true
 
-            let typingText = legacySummary?.typingText
-            let preview = typingText ?? cleanedPreview(lastText)
+            let backendLastText = backendConversation?.lastMessageText?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+
+            let preview: String
+
+            if isTyping {
+                preview = "Yazıyor..."
+            } else if let backendLastText, !backendLastText.isEmpty {
+                preview = cleanedPreview(backendLastText)
+            } else {
+                preview = friend.subtitle.isEmpty ? "Henüz mesaj yok" : friend.subtitle
+            }
 
             let lastDate = backendDate(backendConversation?.lastMessageAt)
-                ?? legacySummary?.lastMessageAt
-                ?? lastFriendMessageDate(for: friend)
-
-            let unread = backendConversation?.unreadCount
-                ?? legacySummary?.unreadCount
-                ?? unreadFriendCount(for: friend)
+            let unread = backendConversation?.unreadCount ?? 0
 
             return MessagesHubItem(
                 id: "friend-\(friendshipID.uuidString)",
@@ -97,15 +100,15 @@ struct MessagesView: View {
                 payload: .friend(friend),
                 title: title,
                 shortTitle: firstWord(title),
-                preview: preview.isEmpty ? friend.subtitle : preview,
+                preview: preview,
                 time: lastDate,
                 unreadCount: unread,
                 avatarText: initials(for: title),
                 tint: hexColor(friend.colorHex),
-                isOnline: legacySummary?.isOnline ?? friend.isOnline,
+                isOnline: friend.isOnline,
                 showsPresence: true,
-                isPinned: backendConversation?.isPinned ?? legacySummary?.isPinned ?? false,
-                isMuted: backendConversation?.isMuted ?? legacySummary?.isMuted ?? false
+                isPinned: backendConversation?.isPinned ?? false,
+                isMuted: backendConversation?.isMuted ?? false
             )
         }
 
@@ -192,9 +195,23 @@ struct MessagesView: View {
                     didLoadMessagesHubData = true
                     await loadMessagesHubData()
                 }
-                .onReceive(friendStore.$friendships) { _ in
-                    scheduleFriendSummaryRebuild()
+                .onAppear {
+                    guard didLoadMessagesHubData else {
+                        return
+                    }
+
+                    Task {
+                        await refreshBackendConversations()
+                    }
                 }
+                .onChange(of: scenePhase) { _, newPhase in
+                    guard newPhase == .active else { return }
+
+                    Task {
+                        await refreshBackendConversations()
+                    }
+                }
+                
                 .onReceive(friendStore.$friendMessagesByFriendship) { _ in
                     scheduleFriendSummaryRebuild()
                 }
@@ -204,9 +221,30 @@ struct MessagesView: View {
                 .onReceive(friendStore.$presenceByUserID) { _ in
                     scheduleFriendSummaryRebuild()
                 }
+                .onReceive(NotificationCenter.default.publisher(for: .chatBackendConversationUpdated)) { notification in
+                    scheduleBackendConversationRefresh(
+                        reason: "conversation_updated",
+                        notification: notification
+                    )
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .chatBackendMessageCreated)) { notification in
+                    scheduleBackendConversationRefresh(
+                        reason: "message_created",
+                        notification: notification
+                    )
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .chatBackendMessageSeen)) { notification in
+                    scheduleBackendConversationRefresh(
+                        reason: "message_seen",
+                        notification: notification
+                    )
+                }
                 .onDisappear {
                     rebuildSummariesTask?.cancel()
                     rebuildSummariesTask = nil
+
+                    backendLiveRefreshTask?.cancel()
+                    backendLiveRefreshTask = nil
                 }
         }
     }
@@ -634,9 +672,10 @@ private extension MessagesView {
     func contextMenuContent(for item: MessagesHubItem) -> some View {
         switch item.payload {
         case .friend(let friend):
-            let summary = friendSummary(for: friend)
-            let isPinned = summary?.isPinned ?? false
-            let isMuted = summary?.isMuted ?? false
+            let backendConversation = backendConversation(for: friend)
+
+            let isPinned = backendConversation?.isPinned ?? false
+            let isMuted = backendConversation?.isMuted ?? false
 
             Button {
                 togglePinFriendChat(friend)
@@ -943,31 +982,40 @@ private extension MessagesView {
             modelContext: modelContext
         )
 
-        for friend in backendFriends {
-            guard let friendshipID = friend.backendFriendshipID else { continue }
-
-            let existingMessages = friendStore.friendMessagesByFriendship[friendshipID] ?? []
-
-            if existingMessages.isEmpty {
-                await friendStore.loadInitialMessages(
-                    for: friendshipID,
-                    currentUserID: currentUserID
-                )
-            }
-        }
         
-        let conversations = await ChatBackendClient.shared.listConversations()
-
-        await MainActor.run {
-            backendConversations = conversations
-        }
-
-        print("🟢 MESSAGES HUB BACKEND CONVERSATIONS:", conversations.count)
-
+        await refreshBackendConversations(reason: "initial_load")
+        
         friendStore.rebuildFriendChatSummaries(
             currentUserID: currentUserID,
             localFriends: backendFriends
         )
+    }
+    func refreshBackendConversations(reason: String = "manual") async {
+        guard !isRefreshingBackendConversations else {
+            print("⚪️ MESSAGES HUB BACKEND REFRESH SKIPPED: already refreshing")
+            return
+        }
+
+        await MainActor.run {
+            isRefreshingBackendConversations = true
+        }
+
+        await refreshBackendConversations(reason: "initial_load")
+    }
+    
+    func scheduleBackendConversationRefresh(
+        reason: String,
+        notification: Notification? = nil
+    ) {
+        backendLiveRefreshTask?.cancel()
+
+        backendLiveRefreshTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 280_000_000)
+
+            guard !Task.isCancelled else { return }
+
+            await refreshBackendConversations(reason: reason)
+        }
     }
 }
 
@@ -986,23 +1034,7 @@ private extension MessagesView {
     }
 
     private func backendDate(_ value: String?) -> Date? {
-        guard let value, !value.isEmpty else {
-            return nil
-        }
-
-        let fractionalFormatter = ISO8601DateFormatter()
-        fractionalFormatter.formatOptions = [
-            .withInternetDateTime,
-            .withFractionalSeconds
-        ]
-
-        if let date = fractionalFormatter.date(from: value) {
-            return date
-        }
-
-        let formatter = ISO8601DateFormatter()
-
-        return formatter.date(from: value)
+        ChatBackendDateParser.parse(value)
     }
     
     @ViewBuilder
@@ -1264,12 +1296,9 @@ private extension MessagesView {
             return
         }
 
-        let backendCurrent = backendConversations.first {
+        let current = backendConversations.first {
             $0.supabaseFriendshipId == friendshipID
-        }?.isPinned
-
-        let legacyCurrent = friendSummary(for: friend)?.isPinned ?? false
-        let current = backendCurrent ?? legacyCurrent
+        }?.isPinned ?? false
 
         Task {
             let state = await ChatBackendClient.shared.updateConversationMemberState(

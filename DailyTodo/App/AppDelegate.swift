@@ -65,6 +65,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 
     func applicationDidBecomeActive(_ application: UIApplication) {
         application.applicationIconBadgeNumber = 0
+
+        Task { @MainActor in
+            PushTokenStore.shared.saveCurrentTokenWithRetry(reason: "applicationDidBecomeActive")
+        }
     }
 
     func application(
@@ -74,19 +78,19 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         let token = deviceToken.map { String(format: "%02x", $0) }.joined()
         print("🟢 APNS TOKEN:", token)
 
-        UserDefaults.standard.set(token, forKey: "apns_device_token")
-        UserDefaults.standard.synchronize()
+        Task { @MainActor in
+            PushTokenStore.shared.storeToken(token)
+            PushTokenStore.shared.saveCurrentTokenWithRetry(reason: "didRegisterForRemoteNotifications")
+        }
 
         NotificationCenter.default.post(name: .didReceiveAPNSToken, object: nil)
+    }
 
-        Task {
-            let saved = await ChatBackendClient.shared.savePushToken(
-                apnsToken: token,
-                environment: "sandbox"
-            )
-
-            print(saved ? "✅ CHAT BACKEND PUSH TOKEN SAVED" : "❌ CHAT BACKEND PUSH TOKEN SAVE FAILED")
-        }
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        print("🔴 APNS REGISTER FAILED:", error.localizedDescription)
     }
 
     func userNotificationCenter(
@@ -210,8 +214,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
                 name: .presentCrewFocusInviteSheet,
                 object: userInfo
             )
-
-           
 
         default:
             break

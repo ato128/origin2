@@ -10,7 +10,92 @@ import Supabase
 import Auth
 import UIKit
 
-struct ChatBackendMessageDTO: Decodable {
+// MARK: - Backend Environment
+
+enum ChatBackendEnvironment {
+    static var httpBaseURL: String {
+        #if DEBUG
+        return "https://updo-chat-backend-production.up.railway.app"
+        #else
+        return "https://api.updo.app"
+        #endif
+    }
+
+    static var websocketBaseURL: String {
+        #if DEBUG
+        return "wss://updo-chat-backend-production.up.railway.app"
+        #else
+        return "wss://api.updo.app"
+        #endif
+    }
+
+    static var apnsEnvironment: String {
+        #if DEBUG
+        return "sandbox"
+        #else
+        return "production"
+        #endif
+    }
+}
+
+// MARK: - Device ID
+
+enum ChatBackendDeviceIDProvider {
+    static var deviceID: String {
+        let key = "updo_chat_backend_device_id"
+
+        if let existing = UserDefaults.standard.string(forKey: key), !existing.isEmpty {
+            return existing
+        }
+
+        let newID = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+        UserDefaults.standard.set(newID, forKey: key)
+        return newID
+    }
+}
+
+// MARK: - Debug Logger
+
+enum ChatBackendLogger {
+    static func log(_ items: Any...) {
+        #if DEBUG
+        print(items.map { "\($0)" }.joined(separator: " "))
+        #endif
+    }
+
+    static func error(_ items: Any...) {
+        #if DEBUG
+        print(items.map { "\($0)" }.joined(separator: " "))
+        #endif
+    }
+}
+
+// MARK: - Date Parser
+
+enum ChatBackendDateParser {
+    static func parse(_ value: String?) -> Date? {
+        guard let value, !value.isEmpty else { return nil }
+
+        let withFractional = ISO8601DateFormatter()
+        withFractional.formatOptions = [
+            .withInternetDateTime,
+            .withFractionalSeconds
+        ]
+
+        if let date = withFractional.date(from: value) {
+            return date
+        }
+
+        let fallback = ISO8601DateFormatter()
+        fallback.formatOptions = [.withInternetDateTime]
+
+        return fallback.date(from: value)
+    }
+}
+
+// MARK: - DTOs
+
+struct ChatBackendMessageDTO: Decodable, Identifiable, Equatable {
     let id: UUID
     let conversationID: UUID
     let senderID: UUID
@@ -24,6 +109,18 @@ struct ChatBackendMessageDTO: Decodable {
     let createdAt: String
     let editedAt: String?
     let deletedAt: String?
+
+    var createdDate: Date? {
+        ChatBackendDateParser.parse(createdAt)
+    }
+
+    var editedDate: Date? {
+        ChatBackendDateParser.parse(editedAt)
+    }
+
+    var deletedDate: Date? {
+        ChatBackendDateParser.parse(deletedAt)
+    }
 }
 
 struct ChatBackendSendMessageResponse: Decodable {
@@ -38,7 +135,7 @@ struct ChatBackendFetchMessagesResponse: Decodable {
     let error: String?
 }
 
-struct ChatBackendConversationDTO: Decodable {
+struct ChatBackendConversationDTO: Decodable, Identifiable, Equatable {
     let id: UUID
     let type: String
     let supabaseFriendshipId: UUID?
@@ -51,6 +148,14 @@ struct ChatBackendConversationDTO: Decodable {
     let isArchived: Bool
     let isPinned: Bool
     let updatedAt: String?
+
+    var lastMessageDate: Date? {
+        ChatBackendDateParser.parse(lastMessageAt)
+    }
+
+    var updatedDate: Date? {
+        ChatBackendDateParser.parse(updatedAt)
+    }
 }
 
 struct ChatBackendSyncFriendshipResponse: Decodable {
@@ -61,7 +166,15 @@ struct ChatBackendSyncFriendshipResponse: Decodable {
 
 struct ChatBackendMarkReadResponse: Decodable {
     let ok: Bool
+    let read: ChatBackendReadDTO?
     let error: String?
+}
+
+struct ChatBackendReadDTO: Decodable {
+    let conversationID: UUID?
+    let readerID: UUID?
+    let seenCount: Int?
+    let messages: [ChatBackendSeenMessageDTO]?
 }
 
 struct ChatBackendListConversationsResponse: Decodable {
@@ -70,7 +183,7 @@ struct ChatBackendListConversationsResponse: Decodable {
     let error: String?
 }
 
-struct ChatBackendMemberStateDTO: Decodable {
+struct ChatBackendMemberStateDTO: Decodable, Equatable {
     let conversationID: UUID
     let userID: UUID
     let unreadCount: Int
@@ -78,6 +191,10 @@ struct ChatBackendMemberStateDTO: Decodable {
     let isArchived: Bool
     let isPinned: Bool
     let updatedAt: String?
+
+    var updatedDate: Date? {
+        ChatBackendDateParser.parse(updatedAt)
+    }
 }
 
 struct ChatBackendUpdateMemberStateResponse: Decodable {
@@ -92,7 +209,7 @@ struct ChatBackendSavePushTokenResponse: Decodable {
     let error: String?
 }
 
-struct ChatBackendSavedPushTokenDTO: Decodable {
+struct ChatBackendSavedPushTokenDTO: Decodable, Equatable {
     let id: UUID
     let userID: UUID
     let environment: String
@@ -102,40 +219,174 @@ struct ChatBackendSavedPushTokenDTO: Decodable {
     let appVersion: String?
     let isActive: Bool
     let updatedAt: String?
+
+    var updatedDate: Date? {
+        ChatBackendDateParser.parse(updatedAt)
+    }
 }
+
+// MARK: - Backend Error
+
+enum ChatBackendClientError: LocalizedError {
+    case invalidURL
+    case missingAccessToken
+    case apiError(String)
+    case invalidResponse
+    case decodingFailed(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidURL:
+            return "Invalid backend URL"
+        case .missingAccessToken:
+            return "Missing access token"
+        case .apiError(let message):
+            return message
+        case .invalidResponse:
+            return "Invalid backend response"
+        case .decodingFailed(let message):
+            return "Decode failed: \(message)"
+        }
+    }
+}
+
+// MARK: - Client
 
 final class ChatBackendClient {
     static let shared = ChatBackendClient()
+
     private init() {}
 
-    private let baseURL = "https://growing-toll-exchange-pacific.trycloudflare.com"
+    private let baseURL = ChatBackendEnvironment.httpBaseURL
+
+    private var jsonDecoder: JSONDecoder {
+        JSONDecoder()
+    }
+
+    private func accessToken() async throws -> String {
+        let session = try await SupabaseManager.shared.client.auth.session
+        return session.accessToken
+    }
+
+    private func makeURL(path: String, queryItems: [URLQueryItem] = []) throws -> URL {
+        guard var components = URLComponents(string: "\(baseURL)\(path)") else {
+            throw ChatBackendClientError.invalidURL
+        }
+
+        if !queryItems.isEmpty {
+            components.queryItems = queryItems
+        }
+
+        guard let url = components.url else {
+            throw ChatBackendClientError.invalidURL
+        }
+
+        return url
+    }
+
+    private func makeRequest(
+        path: String,
+        method: String,
+        queryItems: [URLQueryItem] = [],
+        body: Any? = nil,
+        timeout: TimeInterval = 15
+    ) async throws -> URLRequest {
+        let token = try await accessToken()
+        let url = try makeURL(path: path, queryItems: queryItems)
+
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.timeoutInterval = timeout
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        if let body {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        }
+
+        return request
+    }
+
+    private func perform<Response: Decodable>(
+        _ request: URLRequest,
+        responseType: Response.Type,
+        debugName: String
+    ) async throws -> Response {
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let http = response as? HTTPURLResponse else {
+            throw ChatBackendClientError.invalidResponse
+        }
+
+        #if DEBUG
+        let responseText = String(data: data, encoding: .utf8) ?? ""
+        ChatBackendLogger.log("✅ CHAT BACKEND \(debugName) STATUS:", http.statusCode)
+        ChatBackendLogger.log("✅ CHAT BACKEND \(debugName) RESPONSE:", responseText)
+        #endif
+
+        do {
+            let decoded = try jsonDecoder.decode(Response.self, from: data)
+
+            if http.statusCode >= 200 && http.statusCode < 300 {
+                return decoded
+            }
+
+            if let apiError = extractAPIError(from: data) {
+                throw ChatBackendClientError.apiError(apiError)
+            }
+
+            throw ChatBackendClientError.apiError("Backend request failed with status \(http.statusCode)")
+        } catch let error as ChatBackendClientError {
+            throw error
+        } catch {
+            throw ChatBackendClientError.decodingFailed(error.localizedDescription)
+        }
+    }
+
+    private func extractAPIError(from data: Data) -> String? {
+        struct ErrorResponse: Decodable {
+            let ok: Bool?
+            let error: String?
+        }
+
+        return try? jsonDecoder.decode(ErrorResponse.self, from: data).error
+    }
+
+    private func isCancelledError(_ error: Error) -> Bool {
+        if let urlError = error as? URLError, urlError.code == .cancelled {
+            return true
+        }
+
+        return (error as NSError).code == NSURLErrorCancelled
+    }
+
+    // MARK: - Debug
 
     func testMe() async {
         do {
-            let session = try await SupabaseManager.shared.client.auth.session
-            let accessToken = session.accessToken
+            let request = try await makeRequest(
+                path: "/v1/me",
+                method: "GET",
+                timeout: 20
+            )
 
-            guard let url = URL(string: "\(baseURL)/v1/me") else {
-                print("❌ CHAT BACKEND URL INVALID")
+            let _: GenericBackendResponse = try await perform(
+                request,
+                responseType: GenericBackendResponse.self,
+                debugName: "/v1/me"
+            )
+        } catch {
+            if isCancelledError(error) {
+                ChatBackendLogger.log("⚪️ CHAT BACKEND /v1/me CANCELLED")
                 return
             }
 
-            var request = URLRequest(url: url)
-            request.httpMethod = "GET"
-            request.timeoutInterval = 15
-            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-            let text = String(data: data, encoding: .utf8) ?? ""
-
-            print("✅ CHAT BACKEND /v1/me STATUS:", status)
-            print("✅ CHAT BACKEND /v1/me RESPONSE:", text)
-        } catch {
-            print("❌ CHAT BACKEND /v1/me ERROR:", error.localizedDescription)
+            ChatBackendLogger.error("⚠️ CHAT BACKEND /v1/me WARNING:", error.localizedDescription)
         }
     }
+
+    // MARK: - Conversations
 
     @discardableResult
     func syncFriendship(
@@ -143,51 +394,36 @@ final class ChatBackendClient {
         friendUserID: UUID
     ) async -> ChatBackendConversationDTO? {
         do {
-            let session = try await SupabaseManager.shared.client.auth.session
-            let accessToken = session.accessToken
-
-            print("🟡 CHAT SYNC DEBUG")
-            print("currentUser:", session.user.id.uuidString)
-            print("friendshipID:", friendshipID.uuidString)
-            print("friendUserID:", friendUserID.uuidString)
-
-            guard let url = URL(string: "\(baseURL)/v1/conversations/sync-friendship") else {
-                print("❌ CHAT BACKEND SYNC URL INVALID")
-                return nil
-            }
+            ChatBackendLogger.log("🟡 CHAT SYNC DEBUG")
+            ChatBackendLogger.log("friendshipID:", friendshipID.uuidString)
+            ChatBackendLogger.log("friendUserID:", friendUserID.uuidString)
 
             let body: [String: String] = [
                 "friendshipID": friendshipID.uuidString,
                 "friendUserID": friendUserID.uuidString
             ]
 
-            let bodyData = try JSONSerialization.data(withJSONObject: body)
+            let request = try await makeRequest(
+                path: "/v1/conversations/sync-friendship",
+                method: "POST",
+                body: body,
+                timeout: 25
+            )
 
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.timeoutInterval = 15
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-            request.httpBody = bodyData
+            let decoded = try await perform(
+                request,
+                responseType: ChatBackendSyncFriendshipResponse.self,
+                debugName: "syncFriendship"
+            )
 
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-            let text = String(data: data, encoding: .utf8) ?? ""
-
-            print("✅ CHAT BACKEND syncFriendship STATUS:", status)
-            print("✅ CHAT BACKEND syncFriendship RESPONSE:", text)
-
-            let decoded = try JSONDecoder().decode(ChatBackendSyncFriendshipResponse.self, from: data)
-
-            if decoded.ok {
-                return decoded.conversation
-            } else {
-                print("❌ CHAT BACKEND syncFriendship API ERROR:", decoded.error ?? "unknown")
+            guard decoded.ok else {
+                ChatBackendLogger.error("❌ CHAT BACKEND syncFriendship API ERROR:", decoded.error ?? "unknown")
                 return nil
             }
+
+            return decoded.conversation
         } catch {
-            print("❌ CHAT BACKEND syncFriendship ERROR:", error.localizedDescription)
+            ChatBackendLogger.error("❌ CHAT BACKEND syncFriendship ERROR:", error.localizedDescription)
             return nil
         }
     }
@@ -195,180 +431,176 @@ final class ChatBackendClient {
     @discardableResult
     func listConversations() async -> [ChatBackendConversationDTO] {
         do {
-            let session = try await SupabaseManager.shared.client.auth.session
-            let accessToken = session.accessToken
+            let request = try await makeRequest(
+                path: "/v1/conversations",
+                method: "GET",
+                timeout: 20
+            )
 
-            guard let url = URL(string: "\(baseURL)/v1/conversations") else {
-                print("❌ CHAT BACKEND conversations URL INVALID")
+            let decoded = try await perform(
+                request,
+                responseType: ChatBackendListConversationsResponse.self,
+                debugName: "conversations"
+            )
+
+            guard decoded.ok else {
+                ChatBackendLogger.error("❌ CHAT BACKEND conversations API ERROR:", decoded.error ?? "unknown")
                 return []
             }
 
-            var request = URLRequest(url: url)
-            request.httpMethod = "GET"
-            request.timeoutInterval = 15
-            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-            let responseText = String(data: data, encoding: .utf8) ?? ""
-
-            print("✅ CHAT BACKEND conversations STATUS:", status)
-            print("✅ CHAT BACKEND conversations RESPONSE:", responseText)
-
-            let decoded = try JSONDecoder().decode(ChatBackendListConversationsResponse.self, from: data)
-
-            if decoded.ok {
-                return decoded.conversations ?? []
-            } else {
-                print("❌ CHAT BACKEND conversations API ERROR:", decoded.error ?? "unknown")
-                return []
-            }
+            return decoded.conversations ?? []
         } catch {
-            print("❌ CHAT BACKEND conversations ERROR:", error.localizedDescription)
+            if isCancelledError(error) {
+                ChatBackendLogger.log("⚪️ CHAT BACKEND conversations CANCELLED")
+                return []
+            }
+
+            ChatBackendLogger.error("❌ CHAT BACKEND conversations ERROR:", error.localizedDescription)
             return []
         }
     }
+
+    // MARK: - Messages
+
     @discardableResult
     func sendMessage(
         conversationID: UUID,
         text: String,
-        clientID: String = UUID().uuidString
+        clientID: String
     ) async -> ChatBackendMessageDTO? {
         do {
-            let session = try await SupabaseManager.shared.client.auth.session
-            let accessToken = session.accessToken
+            let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
-            guard let url = URL(string: "\(baseURL)/v1/conversations/\(conversationID.uuidString)/messages") else {
-                print("❌ CHAT BACKEND SEND URL INVALID")
+            guard !trimmedText.isEmpty else {
+                ChatBackendLogger.error("❌ CHAT BACKEND sendMessage ERROR: empty text")
                 return nil
             }
 
             let body: [String: String] = [
                 "clientID": clientID,
-                "text": text
+                "text": trimmedText
             ]
 
-            let bodyData = try JSONSerialization.data(withJSONObject: body)
+            let request = try await makeRequest(
+                path: "/v1/conversations/\(conversationID.uuidString)/messages",
+                method: "POST",
+                body: body,
+                timeout: 25
+            )
 
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.timeoutInterval = 15
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-            request.httpBody = bodyData
+            ChatBackendLogger.log("🟡 CHAT BACKEND SEND START")
+            ChatBackendLogger.log("conversationID:", conversationID.uuidString)
+            ChatBackendLogger.log("clientID:", clientID)
 
-            print("🟡 CHAT BACKEND SEND START")
-            print("conversationID:", conversationID.uuidString)
-            print("clientID:", clientID)
-            print("text:", text)
+            let decoded = try await perform(
+                request,
+                responseType: ChatBackendSendMessageResponse.self,
+                debugName: "sendMessage"
+            )
 
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-            let responseText = String(data: data, encoding: .utf8) ?? ""
-
-            print("✅ CHAT BACKEND sendMessage STATUS:", status)
-            print("✅ CHAT BACKEND sendMessage RESPONSE:", responseText)
-
-            let decoded = try JSONDecoder().decode(ChatBackendSendMessageResponse.self, from: data)
-
-            if decoded.ok {
-                return decoded.message
-            } else {
-                print("❌ CHAT BACKEND sendMessage API ERROR:", decoded.error ?? "unknown")
+            guard decoded.ok else {
+                ChatBackendLogger.error("❌ CHAT BACKEND sendMessage API ERROR:", decoded.error ?? "unknown")
                 return nil
             }
+
+            return decoded.message
         } catch {
-            print("❌ CHAT BACKEND sendMessage ERROR:", error.localizedDescription)
+            ChatBackendLogger.error("❌ CHAT BACKEND sendMessage ERROR:", error.localizedDescription)
             return nil
         }
     }
+
+    @discardableResult
+    func sendMessage(
+        conversationID: UUID,
+        text: String
+    ) async -> ChatBackendMessageDTO? {
+        await sendMessage(
+            conversationID: conversationID,
+            text: text,
+            clientID: UUID().uuidString
+        )
+    }
+
     @discardableResult
     func fetchMessages(
         conversationID: UUID,
-        limit: Int = 50
+        limit: Int = 50,
+        before: String? = nil
     ) async -> [ChatBackendMessageDTO] {
         do {
-            let session = try await SupabaseManager.shared.client.auth.session
-            let accessToken = session.accessToken
+            let safeLimit = min(max(limit, 1), 100)
 
-            guard let url = URL(string: "\(baseURL)/v1/conversations/\(conversationID.uuidString)/messages?limit=\(limit)") else {
-                print("❌ CHAT BACKEND FETCH URL INVALID")
+            var queryItems: [URLQueryItem] = [
+                URLQueryItem(name: "limit", value: "\(safeLimit)")
+            ]
+
+            if let before, !before.isEmpty {
+                queryItems.append(URLQueryItem(name: "before", value: before))
+            }
+
+            let request = try await makeRequest(
+                path: "/v1/conversations/\(conversationID.uuidString)/messages",
+                method: "GET",
+                queryItems: queryItems,
+                timeout: 25
+            )
+
+            ChatBackendLogger.log("🟡 CHAT BACKEND FETCH START")
+            ChatBackendLogger.log("conversationID:", conversationID.uuidString)
+
+            let decoded = try await perform(
+                request,
+                responseType: ChatBackendFetchMessagesResponse.self,
+                debugName: "fetchMessages"
+            )
+
+            guard decoded.ok else {
+                ChatBackendLogger.error("❌ CHAT BACKEND fetchMessages API ERROR:", decoded.error ?? "unknown")
                 return []
             }
 
-            var request = URLRequest(url: url)
-            request.httpMethod = "GET"
-            request.timeoutInterval = 15
-            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-
-            print("🟡 CHAT BACKEND FETCH START")
-            print("conversationID:", conversationID.uuidString)
-
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-            let responseText = String(data: data, encoding: .utf8) ?? ""
-
-            print("✅ CHAT BACKEND fetchMessages STATUS:", status)
-            print("✅ CHAT BACKEND fetchMessages RESPONSE:", responseText)
-
-            let decoded = try JSONDecoder().decode(ChatBackendFetchMessagesResponse.self, from: data)
-
-            if decoded.ok {
-                return decoded.messages ?? []
-            } else {
-                print("❌ CHAT BACKEND fetchMessages API ERROR:", decoded.error ?? "unknown")
-                return []
-            }
+            return decoded.messages ?? []
         } catch {
-            print("❌ CHAT BACKEND fetchMessages ERROR:", error.localizedDescription)
+            ChatBackendLogger.error("❌ CHAT BACKEND fetchMessages ERROR:", error.localizedDescription)
             return []
         }
     }
-    
+
+    // MARK: - Read
+
     @discardableResult
     func markConversationRead(
         conversationID: UUID
     ) async -> Bool {
         do {
-            let session = try await SupabaseManager.shared.client.auth.session
-            let accessToken = session.accessToken
+            let request = try await makeRequest(
+                path: "/v1/conversations/\(conversationID.uuidString)/read",
+                method: "POST",
+                body: [:] as [String: String],
+                timeout: 20
+            )
 
-            guard let url = URL(string: "\(baseURL)/v1/conversations/\(conversationID.uuidString)/read") else {
-                print("❌ CHAT BACKEND READ URL INVALID")
+            let decoded = try await perform(
+                request,
+                responseType: ChatBackendMarkReadResponse.self,
+                debugName: "markRead"
+            )
+
+            guard decoded.ok else {
+                ChatBackendLogger.error("❌ CHAT BACKEND markRead API ERROR:", decoded.error ?? "unknown")
                 return false
             }
 
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.timeoutInterval = 15
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-            request.httpBody = Data("{}".utf8)
-
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-            let responseText = String(data: data, encoding: .utf8) ?? ""
-
-            print("✅ CHAT BACKEND markRead STATUS:", status)
-            print("✅ CHAT BACKEND markRead RESPONSE:", responseText)
-
-            let decoded = try JSONDecoder().decode(ChatBackendMarkReadResponse.self, from: data)
-
-            if decoded.ok {
-                return true
-            } else {
-                print("❌ CHAT BACKEND markRead API ERROR:", decoded.error ?? "unknown")
-                return false
-            }
+            return true
         } catch {
-            print("❌ CHAT BACKEND markRead ERROR:", error.localizedDescription)
+            ChatBackendLogger.error("❌ CHAT BACKEND markRead ERROR:", error.localizedDescription)
             return false
         }
     }
+
+    // MARK: - Member State
+
     @discardableResult
     func updateConversationMemberState(
         conversationID: UUID,
@@ -377,14 +609,6 @@ final class ChatBackendClient {
         isArchived: Bool? = nil
     ) async -> ChatBackendMemberStateDTO? {
         do {
-            let session = try await SupabaseManager.shared.client.auth.session
-            let accessToken = session.accessToken
-
-            guard let url = URL(string: "\(baseURL)/v1/conversations/\(conversationID.uuidString)/member-state") else {
-                print("❌ CHAT BACKEND MEMBER STATE URL INVALID")
-                return nil
-            }
-
             var body: [String: Bool] = [:]
 
             if let isPinned {
@@ -399,91 +623,137 @@ final class ChatBackendClient {
                 body["isArchived"] = isArchived
             }
 
-            let bodyData = try JSONSerialization.data(withJSONObject: body)
+            let request = try await makeRequest(
+                path: "/v1/conversations/\(conversationID.uuidString)/member-state",
+                method: "PATCH",
+                body: body,
+                timeout: 20
+            )
 
-            var request = URLRequest(url: url)
-            request.httpMethod = "PATCH"
-            request.timeoutInterval = 15
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-            request.httpBody = bodyData
+            let decoded = try await perform(
+                request,
+                responseType: ChatBackendUpdateMemberStateResponse.self,
+                debugName: "memberState"
+            )
 
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-            let responseText = String(data: data, encoding: .utf8) ?? ""
-
-            print("✅ CHAT BACKEND memberState STATUS:", status)
-            print("✅ CHAT BACKEND memberState RESPONSE:", responseText)
-
-            let decoded = try JSONDecoder().decode(ChatBackendUpdateMemberStateResponse.self, from: data)
-
-            if decoded.ok {
-                return decoded.state
-            } else {
-                print("❌ CHAT BACKEND memberState API ERROR:", decoded.error ?? "unknown")
+            guard decoded.ok else {
+                ChatBackendLogger.error("❌ CHAT BACKEND memberState API ERROR:", decoded.error ?? "unknown")
                 return nil
             }
+
+            return decoded.state
         } catch {
-            print("❌ CHAT BACKEND memberState ERROR:", error.localizedDescription)
+            ChatBackendLogger.error("❌ CHAT BACKEND memberState ERROR:", error.localizedDescription)
             return nil
         }
     }
+
+    // MARK: - Push Token
+
     @discardableResult
     func savePushToken(
         apnsToken: String,
-        environment: String,
-        deviceID: String = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+        environment: String = ChatBackendEnvironment.apnsEnvironment,
+        deviceID: String = ChatBackendDeviceIDProvider.deviceID
     ) async -> Bool {
         do {
-            let session = try await SupabaseManager.shared.client.auth.session
-            let accessToken = session.accessToken
+            let cleanToken = apnsToken.trimmingCharacters(in: .whitespacesAndNewlines)
 
-            guard let url = URL(string: "\(baseURL)/v1/push-token") else {
-                print("❌ CHAT BACKEND PUSH TOKEN URL INVALID")
+            guard !cleanToken.isEmpty else {
+                ChatBackendLogger.error("❌ CHAT BACKEND pushToken ERROR: empty token")
                 return false
             }
 
-            let bundleID = Bundle.main.bundleIdentifier
-            let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+            let bundleID = Bundle.main.bundleIdentifier ?? ""
+            let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
 
             let body: [String: Any] = [
-                "apnsToken": apnsToken,
+                "apnsToken": cleanToken,
                 "environment": environment,
                 "platform": "ios",
                 "deviceID": deviceID,
-                "bundleID": bundleID ?? "",
-                "appVersion": appVersion ?? ""
+                "bundleID": bundleID,
+                "appVersion": appVersion
             ]
 
-            let bodyData = try JSONSerialization.data(withJSONObject: body)
+            let request = try await makeRequest(
+                path: "/v1/push-token",
+                method: "POST",
+                body: body,
+                timeout: 25
+            )
 
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.timeoutInterval = 15
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-            request.httpBody = bodyData
+            let decoded = try await perform(
+                request,
+                responseType: ChatBackendSavePushTokenResponse.self,
+                debugName: "pushToken"
+            )
 
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-            let responseText = String(data: data, encoding: .utf8) ?? ""
-
-            print("✅ CHAT BACKEND pushToken STATUS:", status)
-            print("✅ CHAT BACKEND pushToken RESPONSE:", responseText)
-
-            let decoded = try JSONDecoder().decode(ChatBackendSavePushTokenResponse.self, from: data)
-
-            if decoded.ok {
-                return true
-            } else {
-                print("❌ CHAT BACKEND pushToken API ERROR:", decoded.error ?? "unknown")
+            guard decoded.ok else {
+                ChatBackendLogger.error("❌ CHAT BACKEND pushToken API ERROR:", decoded.error ?? "unknown")
                 return false
             }
+
+            return true
         } catch {
-            print("❌ CHAT BACKEND pushToken ERROR:", error.localizedDescription)
+            if isCancelledError(error) {
+                ChatBackendLogger.log("⚪️ CHAT BACKEND pushToken CANCELLED")
+                return false
+            }
+
+            ChatBackendLogger.error("❌ CHAT BACKEND pushToken ERROR:", error.localizedDescription)
             return false
         }
     }
+
+    @discardableResult
+    func savePushTokenWithRetry(
+        apnsToken: String,
+        environment: String = ChatBackendEnvironment.apnsEnvironment,
+        deviceID: String = ChatBackendDeviceIDProvider.deviceID,
+        maxAttempts: Int = 4
+    ) async -> Bool {
+        let safeAttempts = max(1, maxAttempts)
+
+        for attempt in 1...safeAttempts {
+            let success = await savePushToken(
+                apnsToken: apnsToken,
+                environment: environment,
+                deviceID: deviceID
+            )
+
+            if success {
+                return true
+            }
+
+            if Task.isCancelled {
+                return false
+            }
+
+            guard attempt < safeAttempts else {
+                break
+            }
+
+            let delaySeconds = min(Double(attempt) * 1.2, 5.0)
+            let delayNanos = UInt64(delaySeconds * 1_000_000_000)
+
+            ChatBackendLogger.error(
+                "⚠️ CHAT BACKEND pushToken RETRY:",
+                "\(attempt)/\(safeAttempts)",
+                "delay:",
+                "\(delaySeconds)s"
+            )
+
+            try? await Task.sleep(nanoseconds: delayNanos)
+        }
+
+        return false
+    }
+}
+
+// MARK: - Generic Response
+
+private struct GenericBackendResponse: Decodable {
+    let ok: Bool?
+    let error: String?
 }

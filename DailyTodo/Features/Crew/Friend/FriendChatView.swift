@@ -104,6 +104,11 @@ struct FriendChatView: View {
     @State private var lastTypingTextWasEmpty = true
     @State private var backendConversationID: UUID?
     @State private var backendMessages: [FriendChatMessageItem] = []
+    @State private var isSyncingBackendConversation = false
+    @State private var hasCompletedBackendInitialSync = false
+    @State private var backendSyncError: String?
+    @State private var isSendingBackendMessage = false
+    @State private var didBootstrapBackendMessages = false
     
     @Query(sort: \Friend.createdAt, order: .reverse)
     private var localFriends: [Friend]
@@ -125,11 +130,45 @@ struct FriendChatView: View {
     }
     
     private var visibleMessages: [FriendChatMessageItem] {
-        if !backendMessages.isEmpty {
-            return backendMessages
+        backendMessages.sorted { $0.createdAt < $1.createdAt }
+    }
+    
+    private var isBackendReady: Bool {
+        backendConversationID != nil &&
+        hasCompletedBackendInitialSync &&
+        backendSyncError == nil
+    }
+
+    private var hasDraftText: Bool {
+        !draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var hasSendableContent: Bool {
+        hasDraftText || draftAttachment != nil
+    }
+
+    private var canSendCurrentDraft: Bool {
+        if draftAttachment != nil {
+            return true
         }
 
-        return messages
+        if hasDraftText {
+            return isBackendReady && !isSendingBackendMessage
+        }
+
+        return false
+    }
+
+    private var composerDisabledReason: String {
+        if isSyncingBackendConversation {
+            return "Sohbet hazırlanıyor. Birkaç saniye sonra tekrar dene."
+        }
+
+        if backendSyncError != nil {
+            return "Sohbet bağlantısı hazırlanamadı. Sayfayı kapatıp tekrar aç."
+        }
+
+        return "Sohbet henüz hazır değil."
     }
 
     private var chatRootContent: some View {
@@ -227,41 +266,10 @@ struct FriendChatView: View {
                 friendStore.setActiveChat(friendshipID)
                 UserDefaults.standard.set(friendshipID.uuidString, forKey: "active_friendship_id")
 
-                if let currentUserID = session.currentUser?.id {
-                    await friendStore.resetUnreadForCurrentUser(
-                        friendshipID: friendshipID,
-                        currentUserID: currentUserID
-                    )
-                }
-
-                if friendStore.friendMessagesByFriendship[friendshipID] == nil {
-                    await friendStore.loadInitialMessages(
-                        for: friendshipID,
-                        currentUserID: session.currentUser?.id
-                    )
-                } else {
-                    await friendStore.loadNewMessages(
-                        for: friendshipID,
-                        currentUserID: session.currentUser?.id
-                    )
-                }
-
-                await friendStore.markMessagesSeen(
-                    friendshipID: friendshipID,
-                    currentUserID: session.currentUser?.id
-                )
-
-                friendStore.subscribeToFriendMessagesRealtime(
-                    friendshipID: friendshipID,
-                    currentUserID: session.currentUser?.id
-                )
-
                 friendStore.subscribeToTypingRealtime(
                     friendshipID: friendshipID,
                     currentUserID: session.currentUser?.id
                 )
-
-                startLiveRefreshFallback()
             }
             .task {
                 await syncChatBackendFriendshipIfNeeded()
@@ -780,6 +788,14 @@ private extension FriendChatView {
                         .tint(FriendChatArenaPalette.cyan)
                         .submitLabel(.send)
                         .onSubmit {
+                            guard canSendCurrentDraft else {
+                                if hasSendableContent {
+                                    attachmentAlertText = composerDisabledReason
+                                    showAttachmentAlert = true
+                                }
+                                return
+                            }
+
                             sendMessage()
                         }
                         .onChange(of: draftMessage) { _, newValue in
@@ -788,6 +804,12 @@ private extension FriendChatView {
 
                     Button {
                         if hasSendableContent {
+                            guard canSendCurrentDraft else {
+                                attachmentAlertText = composerDisabledReason
+                                showAttachmentAlert = true
+                                return
+                            }
+
                             sendMessage()
                             return
                         }
@@ -806,8 +828,6 @@ private extension FriendChatView {
                                     senderName: senderDisplayName(),
                                     durationText: audioRecorder.durationText()
                                 )
-
-                                
 
                                 audioRecorder.recordedURL = nil
                                 audioRecorder.elapsedSeconds = 0
@@ -841,6 +861,8 @@ private extension FriendChatView {
                         )
                     }
                     .buttonStyle(.plain)
+                    .disabled(hasSendableContent && !canSendCurrentDraft)
+                    .opacity(hasSendableContent && !canSendCurrentDraft ? 0.45 : 1.0)
                 }
                 .padding(.horizontal, 16)
                 .frame(height: 46)
@@ -900,7 +922,7 @@ private extension FriendChatView {
             )
             .shadow(color: Color.black.opacity(0.28), radius: 14, y: 7)
     }
-
+    
     var arenaCapsuleBackground: some View {
         Capsule()
             .fill(
@@ -955,46 +977,46 @@ private extension FriendChatView {
                     .blur(radius: 18)
                     .offset(y: 12)
             }
-
+            
             Spacer(minLength: 0)
         }
     }
-
+    
     var glassCircleBackground: some View {
         arenaCircleBackground
     }
-
+    
     var glassCapsuleBackground: some View {
         arenaCapsuleBackground
     }
-
+    
     func senderDisplayName() -> String {
         if let email = session.currentUser?.email, !email.isEmpty {
             return email.components(separatedBy: "@").first ?? email
         }
-
+        
         return tr("chat_you")
     }
     
     func handleTypingChange(_ newValue: String) {
         guard let friendshipID else { return }
-
+        
         let clean = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
-
+        
         if clean.isEmpty {
             typingStopTask?.cancel()
-
+            
             guard lastTypingTextWasEmpty == false else {
                 return
             }
-
+            
             lastTypingTextWasEmpty = true
-
+            
             typingStopTask = Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 220_000_000)
-
+                
                 guard !Task.isCancelled else { return }
-
+                
                 await friendStore.setTyping(
                     friendshipID: friendshipID,
                     currentUserID: session.currentUser?.id,
@@ -1002,41 +1024,41 @@ private extension FriendChatView {
                     isTyping: false
                 )
             }
-
+            
             return
         }
-
+        
         typingStopTask?.cancel()
         typingStopTask = nil
-
+        
         if lastTypingTextWasEmpty {
             lastTypingTextWasEmpty = false
         }
-
+        
         friendStore.userDidType(
             friendshipID: friendshipID,
             currentUserID: session.currentUser?.id,
             currentUserName: senderDisplayName()
         )
     }
-
+    
     func startLiveRefreshFallback() {
         liveRefreshTask?.cancel()
-
+        
         liveRefreshTask = Task {
             while !Task.isCancelled {
                 guard let friendshipID else { return }
-
+                
                 await friendStore.loadNewMessages(
                     for: friendshipID,
                     currentUserID: session.currentUser?.id
                 )
-
+                
                 try? await Task.sleep(nanoseconds: 1_500_000_000)
             }
         }
     }
-
+    
     func sendMessage() {
         guard let friendshipID else { return }
         guard let senderID = session.currentUser?.id else { return }
@@ -1046,14 +1068,16 @@ private extension FriendChatView {
 
         guard !clean.isEmpty || attachmentToSend != nil else { return }
 
-        draftMessage = ""
-        draftAttachment = nil
-        selectedPhotoItem = nil
-        selectedFileURL = nil
-        capturedImage = nil
-
         Task {
             if let attachment = attachmentToSend {
+                await MainActor.run {
+                    draftMessage = ""
+                    draftAttachment = nil
+                    selectedPhotoItem = nil
+                    selectedFileURL = nil
+                    capturedImage = nil
+                }
+
                 switch attachment {
                 case .photo(let image):
                     guard let jpegData = image.jpegData(compressionQuality: 0.82) else {
@@ -1097,1162 +1121,1316 @@ private extension FriendChatView {
 
             guard !clean.isEmpty else { return }
 
-            // 1) Mevcut UI / local / Supabase akışı şimdilik bozulmasın.
-            await friendStore.sendMessage(
-                text: clean,
-                friendshipID: friendshipID,
-                senderID: senderID,
-                senderName: senderDisplayName()
-            )
-
-            // 2) Aynı text mesajı custom backend’e de yaz.
-            if let backendConversationID {
-                let backendMessage = await ChatBackendClient.shared.sendMessage(
-                    conversationID: backendConversationID,
-                    text: clean
-                )
-
-                if let backendMessage,
-                   let mappedMessage = mapBackendMessage(backendMessage, friendshipID: friendshipID) {
-                    await MainActor.run {
-                        backendMessages.append(mappedMessage)
-                    }
-
-                    print("✅ CHAT BACKEND REAL SEND OK:", backendMessage.id.uuidString)
-                } else {
-                    print("❌ CHAT BACKEND REAL SEND FAILED")
+            guard let backendConversationID else {
+                await MainActor.run {
+                    attachmentAlertText = composerDisabledReason
+                    showAttachmentAlert = true
                 }
-            } else {
-                print("❌ CHAT BACKEND REAL SEND SKIPPED: backendConversationID nil")
+                return
             }
 
             await MainActor.run {
-                print("🔊 PLAY SENT FEEDBACK")
-                ChatFeedbackManager.shared.playSent()
+                isSendingBackendMessage = true
+                draftMessage = ""
+                selectedPhotoItem = nil
+                selectedFileURL = nil
+                capturedImage = nil
             }
-        }
-    }
 
-    func scrollToBottom(proxy: ScrollViewProxy, animated: Bool) {
-        scrollTask?.cancel()
+            let clientID = UUID().uuidString
 
-        scrollTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: animated ? 80_000_000 : 20_000_000)
-
-            guard !Task.isCancelled else { return }
-
-            if animated {
-                withAnimation(.spring(response: 0.30, dampingFraction: 0.88)) {
-                    proxy.scrollTo("chat-bottom-anchor", anchor: .bottom)
-                }
-            } else {
-                proxy.scrollTo("chat-bottom-anchor", anchor: .bottom)
-            }
-        }
-    }
-
-    @ViewBuilder
-    func attachmentPreviewCard(attachment: DraftAttachment) -> some View {
-        HStack(spacing: 12) {
-            switch attachment {
-            case .photo(let image):
-                ZStack(alignment: .topTrailing) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 64, height: 64)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-
-                    removeAttachmentButton
-                        .offset(x: 6, y: -6)
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Fotoğraf hazır")
-                        .font(.system(size: 14, weight: .black))
-                        .foregroundStyle(.white)
-
-                    Text("Göndermeden önce istersen mesaj ekleyebilirsin.")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.48))
-                        .lineLimit(2)
-                }
-
-                Spacer()
-
-            case .file(let url):
-                HStack(spacing: 12) {
-                    ZStack(alignment: .topTrailing) {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Color.white.opacity(0.06))
-                            .frame(width: 64, height: 64)
-                            .overlay(
-                                Image(systemName: "doc.fill")
-                                    .font(.system(size: 24, weight: .semibold))
-                                    .foregroundStyle(FriendChatArenaPalette.cyan)
-                            )
-
-                        removeAttachmentButton
-                            .offset(x: 6, y: -6)
-                    }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(url.lastPathComponent)
-                            .font(.system(size: 14, weight: .black))
-                            .foregroundStyle(.white)
-                            .lineLimit(2)
-
-                        Text("Dosya hazır")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.48))
-                    }
-
-                    Spacer()
-                }
-            }
-        }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            FriendChatArenaPalette.blue.opacity(0.055),
-                            FriendChatArenaPalette.purple.opacity(0.045),
-                            Color.white.opacity(0.040)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.09), lineWidth: 1)
-                )
-                .shadow(color: Color.black.opacity(0.20), radius: 12, y: 7)
-        )
-    }
-
-    var removeAttachmentButton: some View {
-        Button {
-            draftAttachment = nil
-            selectedPhotoItem = nil
-            selectedFileURL = nil
-            capturedImage = nil
-        } label: {
-            Image(systemName: "xmark.circle.fill")
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(.white, Color.black.opacity(0.45))
-                .background(Circle().fill(Color.black.opacity(0.18)))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var hasSendableContent: Bool {
-        !draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || draftAttachment != nil
-    }
-}
-
-// MARK: - Subviews
-
-private extension FriendChatView {
-    struct TypingDotsView: View {
-        @State private var tick = 0
-        @State private var task: Task<Void, Never>?
-
-        var body: some View {
-            HStack(spacing: 4) {
-                ForEach(0..<3, id: \.self) { i in
-                    Circle()
-                        .frame(width: 5, height: 5)
-                        .opacity(tick == i ? 1 : 0.28)
-                        .scaleEffect(tick == i ? 1.0 : 0.8)
-                        .animation(.easeInOut(duration: 0.18), value: tick)
-                }
-            }
-            .onAppear {
-                task?.cancel()
-
-                task = Task { @MainActor in
-                    while !Task.isCancelled {
-                        tick = (tick + 1) % 3
-                        try? await Task.sleep(nanoseconds: 350_000_000)
-                    }
-                }
-            }
-            .onDisappear {
-                task?.cancel()
-                task = nil
-            }
-        }
-    }
-}
-
-// MARK: - Day Separator
-
-private struct DaySeparatorView: View {
-    let date: Date
-
-    private var label: String {
-        let calendar = Calendar.current
-
-        if calendar.isDateInToday(date) {
-            return tr("chat_today")
-        }
-
-        if calendar.isDateInYesterday(date) {
-            return tr("chat_yesterday")
-        }
-
-        return FriendChatFormatters.dayFormatter.string(from: date)
-    }
-    
-    var body: some View {
-        HStack {
-            line
-
-            Text(label)
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(.white.opacity(0.45))
-                .padding(.horizontal, 10)
-
-            line
-        }
-    }
-
-    private var line: some View {
-        Rectangle()
-            .fill(Color.white.opacity(0.10))
-            .frame(height: 0.5)
-    }
-}
-
-// MARK: - Message Row
-
-private struct ChatMessageRow: View {
-    let message: FriendChatMessageItem
-    let palette: ThemePalette
-    let onDelete: () -> Void
-
-    @State private var showTime = false
-    @State private var showImageViewer = false
-    @State private var isSavingImage = false
-    @State private var imageSaveAlertText = ""
-    @State private var showImageSaveAlert = false
-
-    private var timeText: String {
-        FriendChatFormatters.timeFormatter.string(from: message.createdAt)
-    }
-
-    private var isImageMessage: Bool {
-        message.messageType == "image" && message.mediaURL != nil
-    }
-
-    private var isFileMessage: Bool {
-        message.messageType == "file" && message.mediaURL != nil
-    }
-
-    private var isVoiceMessage: Bool {
-        message.messageType == "voice" && message.mediaURL != nil
-    }
-
-    var body: some View {
-        VStack(alignment: message.isFromMe ? .trailing : .leading, spacing: 2) {
-            HStack(alignment: .bottom, spacing: 0) {
-                if message.isFromMe {
-                    Spacer(minLength: 56)
-                }
-
-                VStack(alignment: message.isFromMe ? .trailing : .leading, spacing: 4) {
-                    messageContent
-                        .contextMenu {
-                            if !message.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                Button {
-                                    UIPasteboard.general.string = message.text
-                                } label: {
-                                    Label(tr("common_copy"), systemImage: "doc.on.doc")
-                                }
-                            }
-
-                            if isImageMessage {
-                                Button {
-                                    saveImageToPhotos()
-                                } label: {
-                                    Label("Fotoğrafı Kaydet", systemImage: "square.and.arrow.down")
-                                }
-                            }
-
-                            if message.isFailed && message.isFromMe {
-                                Button {
-                                    Task {
-                                        await FriendStore.sharedRetryBridge?(message)
-                                    }
-                                } label: {
-                                    Label("Tekrar Gönder", systemImage: "arrow.clockwise")
-                                }
-                            }
-
-                            if message.isFromMe {
-                                Button(role: .destructive) {
-                                    onDelete()
-                                } label: {
-                                    Label(tr("common_delete"), systemImage: "trash")
-                                }
-                            }
-                        }
-
-                    if showTime {
-                        Text(timeText)
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.45))
-                            .padding(.horizontal, 4)
-                            .transition(.opacity.combined(with: .scale(scale: 0.9)))
-                    }
-
-                    if message.isFromMe {
-                        HStack(spacing: 0) {
-                            messageStatusSymbol
-                        }
-                        .foregroundStyle(messageStatusColor)
-                        .padding(.horizontal, 6)
-                        .padding(.top, 1)
-                    }
-                }
-
-                if !message.isFromMe {
-                    Spacer(minLength: 56)
-                }
-            }
-        }
-        .padding(.vertical, 3)
-        .onTapGesture {
-            if isImageMessage {
-                showImageViewer = true
-            } else {
-                withAnimation(.spring(response: 0.28)) {
-                    showTime.toggle()
-                }
-            }
-        }
-        .fullScreenCover(isPresented: $showImageViewer) {
-            if let mediaURL = message.mediaURL {
-                FullScreenImageViewer(
-                    imageURLString: mediaURL,
-                    onSave: {
-                        saveImageToPhotos()
-                    }
-                )
-            }
-        }
-        .alert("Bilgi", isPresented: $showImageSaveAlert) {
-            Button("Tamam", role: .cancel) { }
-        } message: {
-            Text(imageSaveAlertText)
-        }
-        .transition(
-            .asymmetric(
-                insertion: .move(edge: message.isFromMe ? .trailing : .leading)
-                    .combined(with: .opacity),
-                removal: .opacity
+            let pendingMessage = makePendingBackendTextMessage(
+                text: clean,
+                clientID: clientID,
+                friendshipID: friendshipID,
+                senderID: senderID
             )
-        )
-    }
 
-    @ViewBuilder
-    private var messageContent: some View {
-        if isImageMessage {
-            imageMessageBubble
-        } else if isFileMessage {
-            fileMessageBubble
-        } else if isVoiceMessage {
-            voiceMessageBubble
-        } else {
-            textMessageBubble
+            await MainActor.run {
+                appendOrReplaceBackendMessage(pendingMessage)
+            }
+
+            let backendMessage = await ChatBackendClient.shared.sendMessage(
+                conversationID: backendConversationID,
+                text: clean,
+                clientID: clientID
+            )
+
+            if let backendMessage,
+               let mappedMessage = mapBackendMessage(backendMessage, friendshipID: friendshipID) {
+                await MainActor.run {
+                    appendOrReplaceBackendMessage(mappedMessage)
+                    isSendingBackendMessage = false
+                    ChatFeedbackManager.shared.playSent()
+                }
+
+                print("✅ CHAT BACKEND REAL SEND OK:", backendMessage.id.uuidString)
+            } else {
+                await MainActor.run {
+                    markBackendMessageFailed(clientID: clientID)
+                    isSendingBackendMessage = false
+                }
+
+                print("❌ CHAT BACKEND REAL SEND FAILED")
+            }
         }
     }
-
-    private var voiceMessageBubble: some View {
-        VoiceMessageBubble(message: message)
-    }
-
-    private struct VoiceMessageBubble: View {
-        let message: FriendChatMessageItem
-
-        @State private var player: AVPlayer?
-        @State private var isPlaying = false
-        @State private var observer: Any?
-
-        var body: some View {
-            Button {
-                togglePlayback()
-            } label: {
+            
+            func scrollToBottom(proxy: ScrollViewProxy, animated: Bool) {
+                scrollTask?.cancel()
+                
+                scrollTask = Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: animated ? 80_000_000 : 20_000_000)
+                    
+                    guard !Task.isCancelled else { return }
+                    
+                    if animated {
+                        withAnimation(.spring(response: 0.30, dampingFraction: 0.88)) {
+                            proxy.scrollTo("chat-bottom-anchor", anchor: .bottom)
+                        }
+                    } else {
+                        proxy.scrollTo("chat-bottom-anchor", anchor: .bottom)
+                    }
+                }
+            }
+            
+            @ViewBuilder
+            func attachmentPreviewCard(attachment: DraftAttachment) -> some View {
                 HStack(spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.white.opacity(message.isFromMe ? 0.18 : 0.08))
-                            .frame(width: 40, height: 40)
-
-                        if message.messageStatus == "uploading" || message.isPending {
-                            ProgressView()
-                                .scaleEffect(0.85)
-                                .tint(message.isFromMe ? .white : FriendChatArenaPalette.blue)
-                        } else {
-                            Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                                .font(.system(size: 15, weight: .bold))
-                                .foregroundStyle(message.isFromMe ? .white : FriendChatArenaPalette.blue)
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: 7) {
-                        HStack(spacing: 3) {
-                            ForEach(0..<20, id: \.self) { i in
-                                Capsule()
-                                    .fill((message.isFromMe ? Color.white : Color.white.opacity(0.9)).opacity(
-                                        isPlaying ? (i % 2 == 0 ? 0.95 : 0.45) : (i % 3 == 0 ? 0.95 : 0.5)
-                                    ))
-                                    .frame(width: 3, height: CGFloat(8 + (i % 6) * 3))
-                                    .scaleEffect(y: isPlaying ? (i % 2 == 0 ? 1.15 : 0.88) : 1.0)
-                                    .animation(.easeInOut(duration: 0.22), value: isPlaying)
-                            }
-                        }
-
-                        Text(message.text.isEmpty ? "Ses mesajı" : message.text)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(message.isFromMe ? .white.opacity(0.88) : .white.opacity(0.72))
-                    }
-
-                    Spacer(minLength: 0)
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-                .background(message.isFromMe ? AnyShapeStyle(FriendChatArenaPalette.sentBubbleGradient) : AnyShapeStyle(Color.white.opacity(0.055)))
-                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(message.isFromMe ? Color.white.opacity(0.08) : Color.white.opacity(0.08), lineWidth: 1)
-                )
-            }
-            .buttonStyle(.plain)
-            .disabled(message.messageStatus == "uploading" || message.isPending)
-            .onDisappear {
-                player?.pause()
-                isPlaying = false
-
-                if let observer {
-                    NotificationCenter.default.removeObserver(observer)
-                }
-            }
-        }
-
-        private func togglePlayback() {
-            guard let mediaURL = message.mediaURL,
-                  let url = URL(string: mediaURL) else { return }
-
-            if isPlaying {
-                player?.pause()
-                isPlaying = false
-                return
-            }
-
-            let item = AVPlayerItem(url: url)
-            let newPlayer = AVPlayer(playerItem: item)
-            player = newPlayer
-
-            if let observer {
-                NotificationCenter.default.removeObserver(observer)
-            }
-
-            observer = NotificationCenter.default.addObserver(
-                forName: .AVPlayerItemDidPlayToEndTime,
-                object: item,
-                queue: .main
-            ) { _ in
-                isPlaying = false
-                player?.seek(to: .zero)
-            }
-
-            newPlayer.play()
-            isPlaying = true
-        }
-    }
-
-    private var textMessageBubble: some View {
-        Text(message.text)
-            .font(.system(size: 17, weight: .medium))
-            .foregroundStyle(message.isFromMe ? .white : .white.opacity(0.96))
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(messageBubbleBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-    }
-
-    private var imageMessageBubble: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ZStack {
-                if let mediaURL = message.mediaURL,
-                   let url = URL(string: mediaURL) {
-                    AsyncImage(url: url, transaction: Transaction(animation: .easeInOut)) { phase in
-                        switch phase {
-                        case .empty:
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                    .fill(Color.white.opacity(0.08))
-
-                                ProgressView()
-                                    .tint(.white.opacity(0.8))
-                            }
-                            .frame(width: 220, height: 260)
-
-                        case .success(let image):
-                            image
+                    switch attachment {
+                    case .photo(let image):
+                        ZStack(alignment: .topTrailing) {
+                            Image(uiImage: image)
                                 .resizable()
                                 .scaledToFill()
-                                .frame(width: 220, height: 260)
-                                .clipped()
-
-                        case .failure:
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                    .fill(Color.white.opacity(0.08))
-
-                                VStack(spacing: 8) {
-                                    Image(systemName: "photo")
-                                        .font(.system(size: 26, weight: .medium))
-
-                                    Text("Görsel yüklenemedi")
-                                        .font(.system(size: 12, weight: .medium))
-                                }
-                                .foregroundStyle(.white.opacity(0.75))
-                            }
-                            .frame(width: 220, height: 260)
-
-                        @unknown default:
-                            EmptyView()
+                                .frame(width: 64, height: 64)
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            
+                            removeAttachmentButton
+                                .offset(x: 6, y: -6)
                         }
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                } else {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(Color.white.opacity(0.08))
-                        .frame(width: 220, height: 260)
-                }
-
-                if message.messageStatus == "uploading" || message.isPending {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(Color.black.opacity(0.22))
-                        .frame(width: 220, height: 260)
-                        .overlay {
-                            VStack(spacing: 10) {
-                                ProgressView()
-                                    .tint(.white)
-
-                                Text(message.messageStatus == "uploading" ? "Fotoğraf yükleniyor" : "Hazırlanıyor")
-                                    .font(.system(size: 12, weight: .semibold))
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Fotoğraf hazır")
+                                .font(.system(size: 14, weight: .black))
+                                .foregroundStyle(.white)
+                            
+                            Text("Göndermeden önce istersen mesaj ekleyebilirsin.")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.48))
+                                .lineLimit(2)
+                        }
+                        
+                        Spacer()
+                        
+                    case .file(let url):
+                        HStack(spacing: 12) {
+                            ZStack(alignment: .topTrailing) {
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(Color.white.opacity(0.06))
+                                    .frame(width: 64, height: 64)
+                                    .overlay(
+                                        Image(systemName: "doc.fill")
+                                            .font(.system(size: 24, weight: .semibold))
+                                            .foregroundStyle(FriendChatArenaPalette.cyan)
+                                    )
+                                
+                                removeAttachmentButton
+                                    .offset(x: 6, y: -6)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(url.lastPathComponent)
+                                    .font(.system(size: 14, weight: .black))
                                     .foregroundStyle(.white)
+                                    .lineLimit(2)
+                                
+                                Text("Dosya hazır")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(.white.opacity(0.48))
+                            }
+                            
+                            Spacer()
+                        }
+                    }
+                }
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    FriendChatArenaPalette.blue.opacity(0.055),
+                                    FriendChatArenaPalette.purple.opacity(0.045),
+                                    Color.white.opacity(0.040)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(Color.white.opacity(0.09), lineWidth: 1)
+                        )
+                        .shadow(color: Color.black.opacity(0.20), radius: 12, y: 7)
+                )
+            }
+            
+            var removeAttachmentButton: some View {
+                Button {
+                    draftAttachment = nil
+                    selectedPhotoItem = nil
+                    selectedFileURL = nil
+                    capturedImage = nil
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(.white, Color.black.opacity(0.45))
+                        .background(Circle().fill(Color.black.opacity(0.18)))
+                }
+                .buttonStyle(.plain)
+            }
+            
+           
+        }
+        
+        // MARK: - Subviews
+        
+        private extension FriendChatView {
+            struct TypingDotsView: View {
+                @State private var tick = 0
+                @State private var task: Task<Void, Never>?
+                
+                var body: some View {
+                    HStack(spacing: 4) {
+                        ForEach(0..<3, id: \.self) { i in
+                            Circle()
+                                .frame(width: 5, height: 5)
+                                .opacity(tick == i ? 1 : 0.28)
+                                .scaleEffect(tick == i ? 1.0 : 0.8)
+                                .animation(.easeInOut(duration: 0.18), value: tick)
+                        }
+                    }
+                    .onAppear {
+                        task?.cancel()
+                        
+                        task = Task { @MainActor in
+                            while !Task.isCancelled {
+                                tick = (tick + 1) % 3
+                                try? await Task.sleep(nanoseconds: 350_000_000)
                             }
                         }
+                    }
+                    .onDisappear {
+                        task?.cancel()
+                        task = nil
+                    }
                 }
-            }
-
-            if !message.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-               message.text != "📷 Fotoğraf" {
-                Text(message.text)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(message.isFromMe ? .white : .white.opacity(0.96))
-                    .padding(.horizontal, 4)
-                    .padding(.bottom, 2)
             }
         }
-        .padding(8)
-        .background(messageBubbleBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-    }
-
-    private func presentShareSheet(url: URL) {
-        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let root = scene.windows.first?.rootViewController else { return }
-
-        let vc = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-        root.present(vc, animated: true)
-    }
-
-    private func downloadFile() {
-        guard let mediaURL = message.mediaURL,
-              let url = URL(string: mediaURL) else {
-            return
+        
+        // MARK: - Day Separator
+        
+        private struct DaySeparatorView: View {
+            let date: Date
+            
+            private var label: String {
+                let calendar = Calendar.current
+                
+                if calendar.isDateInToday(date) {
+                    return tr("chat_today")
+                }
+                
+                if calendar.isDateInYesterday(date) {
+                    return tr("chat_yesterday")
+                }
+                
+                return FriendChatFormatters.dayFormatter.string(from: date)
+            }
+            
+            var body: some View {
+                HStack {
+                    line
+                    
+                    Text(label)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.45))
+                        .padding(.horizontal, 10)
+                    
+                    line
+                }
+            }
+            
+            private var line: some View {
+                Rectangle()
+                    .fill(Color.white.opacity(0.10))
+                    .frame(height: 0.5)
+            }
         }
-
-        URLSession.shared.downloadTask(with: url) { tempURL, _, error in
-            guard let tempURL, error == nil else {
-                print("❌ Dosya indirilemedi")
-                return
+        
+        // MARK: - Message Row
+        
+        private struct ChatMessageRow: View {
+            let message: FriendChatMessageItem
+            let palette: ThemePalette
+            let onDelete: () -> Void
+            
+            @State private var showTime = false
+            @State private var showImageViewer = false
+            @State private var isSavingImage = false
+            @State private var imageSaveAlertText = ""
+            @State private var showImageSaveAlert = false
+            
+            private var timeText: String {
+                FriendChatFormatters.timeFormatter.string(from: message.createdAt)
             }
-
-            let fileName = message.fileName ?? url.lastPathComponent
-            let destination = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
-
-            do {
-                try? FileManager.default.removeItem(at: destination)
-                try FileManager.default.copyItem(at: tempURL, to: destination)
-
-                DispatchQueue.main.async {
-                    presentShareSheet(url: destination)
-                }
-            } catch {
-                print("❌ Dosya kaydedilemedi:", error)
+            
+            private var isImageMessage: Bool {
+                message.messageType == "image" && message.mediaURL != nil
             }
-        }.resume()
-    }
-
-    private var fileMessageBubble: some View {
-        Button {
-            downloadFile()
-        } label: {
-            HStack(spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.white.opacity(message.isFromMe ? 0.16 : 0.08))
-                        .frame(width: 46, height: 46)
-
-                    Image(systemName: "doc.fill")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(message.isFromMe ? .white : FriendChatArenaPalette.blue)
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(message.fileName ?? "Dosya")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(message.isFromMe ? .white : .white.opacity(0.96))
-                        .lineLimit(2)
-
-                    HStack(spacing: 6) {
-                        if let mimeType = message.mimeType, !mimeType.isEmpty {
-                            Text(shortMimeText(mimeType))
+            
+            private var isFileMessage: Bool {
+                message.messageType == "file" && message.mediaURL != nil
+            }
+            
+            private var isVoiceMessage: Bool {
+                message.messageType == "voice" && message.mediaURL != nil
+            }
+            
+            var body: some View {
+                VStack(alignment: message.isFromMe ? .trailing : .leading, spacing: 2) {
+                    HStack(alignment: .bottom, spacing: 0) {
+                        if message.isFromMe {
+                            Spacer(minLength: 56)
                         }
-
-                        if let size = message.fileSizeBytes {
-                            Text(fileSizeText(size))
+                        
+                        VStack(alignment: message.isFromMe ? .trailing : .leading, spacing: 4) {
+                            messageContent
+                                .contextMenu {
+                                    if !message.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                        Button {
+                                            UIPasteboard.general.string = message.text
+                                        } label: {
+                                            Label(tr("common_copy"), systemImage: "doc.on.doc")
+                                        }
+                                    }
+                                    
+                                    if isImageMessage {
+                                        Button {
+                                            saveImageToPhotos()
+                                        } label: {
+                                            Label("Fotoğrafı Kaydet", systemImage: "square.and.arrow.down")
+                                        }
+                                    }
+                                    
+                                    if message.isFailed && message.isFromMe {
+                                        Button {
+                                            Task {
+                                                await FriendStore.sharedRetryBridge?(message)
+                                            }
+                                        } label: {
+                                            Label("Tekrar Gönder", systemImage: "arrow.clockwise")
+                                        }
+                                    }
+                                    
+                                    if message.isFromMe {
+                                        Button(role: .destructive) {
+                                            onDelete()
+                                        } label: {
+                                            Label(tr("common_delete"), systemImage: "trash")
+                                        }
+                                    }
+                                }
+                            
+                            if showTime {
+                                Text(timeText)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(.white.opacity(0.45))
+                                    .padding(.horizontal, 4)
+                                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                            }
+                            
+                            if message.isFromMe {
+                                HStack(spacing: 0) {
+                                    messageStatusSymbol
+                                }
+                                .foregroundStyle(messageStatusColor)
+                                .padding(.horizontal, 6)
+                                .padding(.top, 1)
+                            }
+                        }
+                        
+                        if !message.isFromMe {
+                            Spacer(minLength: 56)
                         }
                     }
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(message.isFromMe ? .white.opacity(0.78) : .white.opacity(0.58))
                 }
-
-                Spacer(minLength: 0)
-
-                Group {
-                    if message.isFailed {
-                        Image(systemName: "exclamationmark.circle.fill")
-                            .foregroundStyle(.red)
-                    } else if message.messageStatus == "uploading" || message.isPending {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                            .tint(message.isFromMe ? .white : FriendChatArenaPalette.blue)
+                .padding(.vertical, 3)
+                .onTapGesture {
+                    if isImageMessage {
+                        showImageViewer = true
                     } else {
-                        Image(systemName: "arrow.down.circle")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundStyle(message.isFromMe ? .white.opacity(0.9) : .white.opacity(0.72))
-                    }
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(messageBubbleBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
-
-    @ViewBuilder
-    private var messageStatusSymbol: some View {
-        if message.isFailed {
-            Image(systemName: "exclamationmark.circle.fill")
-                .font(.system(size: 10, weight: .bold))
-        } else if message.messageStatus == "uploading" {
-            ProgressView()
-                .scaleEffect(0.55)
-                .tint(.white.opacity(0.9))
-        } else if message.isPending {
-            Image(systemName: "clock")
-                .font(.system(size: 9, weight: .medium))
-        } else if message.seenAt != nil {
-            HStack(spacing: -3) {
-                Image(systemName: "checkmark")
-                Image(systemName: "checkmark")
-            }
-            .font(.system(size: 9, weight: .bold))
-        } else if message.deliveredAt != nil {
-            HStack(spacing: -3) {
-                Image(systemName: "checkmark")
-                Image(systemName: "checkmark")
-            }
-            .font(.system(size: 9, weight: .bold))
-        } else if message.serverID != nil {
-            Image(systemName: "checkmark")
-                .font(.system(size: 9, weight: .bold))
-        } else {
-            Image(systemName: "clock")
-                .font(.system(size: 9, weight: .medium))
-        }
-    }
-
-    private var messageStatusColor: Color {
-        if message.isFailed {
-            return .red.opacity(0.92)
-        }
-
-        if message.messageStatus == "uploading" {
-            return Color.white.opacity(0.78)
-        }
-
-        if message.isPending {
-            return Color.white.opacity(0.42)
-        }
-
-        if message.seenAt != nil {
-            return FriendChatArenaPalette.cyan
-        }
-
-        if message.deliveredAt != nil {
-            return Color.white.opacity(0.72)
-        }
-
-        return Color.white.opacity(0.58)
-    }
-
-    @ViewBuilder
-    private var messageBubbleBackground: some View {
-        if message.isFromMe {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(FriendChatArenaPalette.sentBubbleGradient)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                )
-                .shadow(color: FriendChatArenaPalette.blue.opacity(0.16), radius: 8, y: 4)
-        } else {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.060),
-                            Color.white.opacity(0.040)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color.white.opacity(0.085), lineWidth: 1)
-                )
-        }
-    }
-
-    private func fileSizeText(_ bytes: Int64) -> String {
-        FriendChatFormatters.byteFormatter.string(fromByteCount: bytes)
-    }
-
-    private func shortMimeText(_ mime: String) -> String {
-        if mime == "application/pdf" { return "PDF" }
-        if mime.contains("image") { return "Görsel" }
-        return "Dosya"
-    }
-
-    private func saveImageToPhotos() {
-        guard let mediaURL = message.mediaURL,
-              let url = URL(string: mediaURL) else {
-            imageSaveAlertText = "Görsel bulunamadı."
-            showImageSaveAlert = true
-            return
-        }
-
-        isSavingImage = true
-
-        URLSession.shared.dataTask(with: url) { data, _, error in
-            DispatchQueue.main.async {
-                isSavingImage = false
-
-                guard let data,
-                      let image = UIImage(data: data),
-                      error == nil else {
-                    imageSaveAlertText = "Görsel indirilemedi."
-                    showImageSaveAlert = true
-                    return
-                }
-
-                PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
-                    DispatchQueue.main.async {
-                        guard status == .authorized || status == .limited else {
-                            imageSaveAlertText = "Fotoğraflara kaydetme izni verilmedi."
-                            showImageSaveAlert = true
-                            return
+                        withAnimation(.spring(response: 0.28)) {
+                            showTime.toggle()
                         }
-
-                        UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
-                        imageSaveAlertText = "Fotoğraf galerine kaydedildi."
-                        showImageSaveAlert = true
                     }
                 }
-            }
-        }.resume()
-    }
-}
-
-// MARK: - Full Screen Image Viewer
-
-private struct FullScreenImageViewer: View {
-    let imageURLString: String
-    let onSave: () -> Void
-
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        ZStack(alignment: .topTrailing) {
-            Color.black.ignoresSafeArea()
-
-            if let url = URL(string: imageURLString) {
-                AsyncImage(url: url, transaction: Transaction(animation: .easeInOut)) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView()
-                            .tint(.white)
-
-                    case .success(let image):
-                        FullScreenImageContent(image: image)
-
-                    case .failure:
-                        VStack(spacing: 12) {
-                            Image(systemName: "photo")
-                                .font(.system(size: 36))
-
-                            Text("Görsel yüklenemedi")
-                                .font(.system(size: 15, weight: .medium))
-                        }
-                        .foregroundStyle(.white.opacity(0.8))
-
-                    @unknown default:
-                        EmptyView()
-                    }
-                }
-            }
-
-            VStack(spacing: 12) {
-                HStack(spacing: 12) {
-                    Button {
-                        onSave()
-                    } label: {
-                        Image(systemName: "square.and.arrow.down")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 42, height: 42)
-                            .background(.black.opacity(0.35), in: Circle())
-                    }
-
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 42, height: 42)
-                            .background(.black.opacity(0.35), in: Circle())
-                    }
-                }
-                .padding(.top, 18)
-                .padding(.trailing, 16)
-
-                Spacer()
-            }
-            .frame(maxWidth: .infinity, alignment: .trailing)
-        }
-    }
-}
-
-private struct FullScreenImageContent: View {
-    let image: Image
-
-    var body: some View {
-        GeometryReader { geo in
-            image
-                .resizable()
-                .scaledToFit()
-                .frame(width: geo.size.width, height: geo.size.height)
-                .background(Color.black)
-        }
-        .ignoresSafeArea()
-    }
-}
-
-// MARK: - Camera Picker
-
-private struct CameraPicker: UIViewControllerRepresentable {
-    @Environment(\.dismiss) private var dismiss
-    @Binding var image: UIImage?
-
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = .camera
-        picker.allowsEditing = false
-        picker.delegate = context.coordinator
-        return picker
-    }
-
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) { }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
-        let parent: CameraPicker
-
-        init(_ parent: CameraPicker) {
-            self.parent = parent
-        }
-
-        func imagePickerController(
-            _ picker: UIImagePickerController,
-            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
-        ) {
-            if let image = info[.originalImage] as? UIImage {
-                parent.image = image
-            }
-
-            parent.dismiss()
-        }
-
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            parent.dismiss()
-        }
-    }
-}
-
-// MARK: - Color Hex
-
-private extension Color {
-    init(friendChatHex hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let a: UInt64
-        let r: UInt64
-        let g: UInt64
-        let b: UInt64
-
-        switch cleaned.count {
-        case 3:
-            a = 255
-            r = (int >> 8) * 17
-            g = ((int >> 4) & 0xF) * 17
-            b = (int & 0xF) * 17
-
-        case 6:
-            a = 255
-            r = int >> 16
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        case 8:
-            a = int >> 24
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        default:
-            a = 255
-            r = 255
-            g = 255
-            b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-}
-private extension FriendChatView {
-    func syncChatBackendFriendshipIfNeeded() async {
-        let friendshipIDText = friendshipID?.uuidString ?? "nil"
-        print("🟡 CHAT TASK START:", friendshipIDText)
-
-        guard let friendshipID else {
-            print("❌ CHAT BACKEND SYNC SKIPPED: friendshipID nil")
-            return
-        }
-
-        guard let friend = findBackendFriend(for: friendshipID) else {
-            print("❌ CHAT BACKEND SYNC SKIPPED: friend not found in localFriends")
-            return
-        }
-
-        guard let backendFriendshipID = friend.backendFriendshipID else {
-            print("❌ CHAT BACKEND SYNC SKIPPED: backendFriendshipID nil")
-            return
-        }
-
-        guard let backendUserID = friend.backendUserID else {
-            print("❌ CHAT BACKEND SYNC SKIPPED: backendUserID nil")
-            return
-        }
-
-        let conversation = await ChatBackendClient.shared.syncFriendship(
-            friendshipID: backendFriendshipID,
-            friendUserID: backendUserID
-        )
-
-        await ChatBackendClient.shared.listConversations()
-
-        guard let conversationID = conversation?.id else {
-            print("❌ CHAT BACKEND CONVERSATION ID NIL")
-            return
-        }
-
-        let fetchedMessages = await ChatBackendClient.shared.fetchMessages(
-            conversationID: conversationID
-        )
-        
-        await ChatBackendClient.shared.markConversationRead(
-            conversationID: conversationID
-        )
-
-        let mappedMessages = fetchedMessages.compactMap { dto in
-            mapBackendMessage(dto, friendshipID: friendshipID)
-        }
-
-        await MainActor.run {
-            backendConversationID = conversationID
-            backendMessages = mappedMessages
-        }
-        
-        await ChatBackendSocketClient.shared.connect(
-            conversationID: conversationID,
-            onMessageCreated: { dto in
-                guard let mappedMessage = mapBackendMessage(
-                    dto,
-                    friendshipID: friendshipID
-                ) else {
-                    return
-                }
-
-                if backendMessages.contains(where: { $0.id == mappedMessage.id }) {
-                    return
-                }
-
-                backendMessages.append(mappedMessage)
-
-                print("🟢 WS MESSAGE APPENDED:", mappedMessage.id.uuidString)
-
-                if let backendConversationID {
-                    Task {
-                        await ChatBackendClient.shared.markConversationRead(
-                            conversationID: backendConversationID
+                .fullScreenCover(isPresented: $showImageViewer) {
+                    if let mediaURL = message.mediaURL {
+                        FullScreenImageViewer(
+                            imageURLString: mediaURL,
+                            onSave: {
+                                saveImageToPhotos()
+                            }
                         )
                     }
                 }
-            },
-            onMessageSeen: { payload in
-                let seenIDs = Set(payload.messages.map { $0.id })
-                let seenDate = Date()
-
-                backendMessages = backendMessages.map { message in
-                    guard seenIDs.contains(message.id) else {
-                        return message
-                    }
-
-                    return FriendChatMessageItem(
-                        id: message.id,
-                        serverID: message.serverID,
-                        clientID: message.clientID,
-                        friendshipID: message.friendshipID,
-                        senderID: message.senderID,
-                        senderName: message.senderName,
-                        text: message.text,
-                        createdAt: message.createdAt,
-                        reaction: message.reaction,
-                        isSystemMessage: message.isSystemMessage,
-                        isFromMe: message.isFromMe,
-                        isPending: message.isPending,
-                        isFailed: message.isFailed,
-                        deliveredAt: message.deliveredAt,
-                        seenAt: seenDate,
-                        messageType: message.messageType,
-                        mediaURL: message.mediaURL,
-                        fileName: message.fileName,
-                        fileSizeBytes: message.fileSizeBytes,
-                        mimeType: message.mimeType,
-                        messageStatus: "seen"
+                .alert("Bilgi", isPresented: $showImageSaveAlert) {
+                    Button("Tamam", role: .cancel) { }
+                } message: {
+                    Text(imageSaveAlertText)
+                }
+                .transition(
+                    .asymmetric(
+                        insertion: .move(edge: message.isFromMe ? .trailing : .leading)
+                            .combined(with: .opacity),
+                        removal: .opacity
                     )
+                )
+            }
+            
+            @ViewBuilder
+            private var messageContent: some View {
+                if isImageMessage {
+                    imageMessageBubble
+                } else if isFileMessage {
+                    fileMessageBubble
+                } else if isVoiceMessage {
+                    voiceMessageBubble
+                } else {
+                    textMessageBubble
+                }
+            }
+            
+            private var voiceMessageBubble: some View {
+                VoiceMessageBubble(message: message)
+            }
+            
+            private struct VoiceMessageBubble: View {
+                let message: FriendChatMessageItem
+                
+                @State private var player: AVPlayer?
+                @State private var isPlaying = false
+                @State private var observer: Any?
+                
+                var body: some View {
+                    Button {
+                        togglePlayback()
+                    } label: {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.white.opacity(message.isFromMe ? 0.18 : 0.08))
+                                    .frame(width: 40, height: 40)
+                                
+                                if message.messageStatus == "uploading" || message.isPending {
+                                    ProgressView()
+                                        .scaleEffect(0.85)
+                                        .tint(message.isFromMe ? .white : FriendChatArenaPalette.blue)
+                                } else {
+                                    Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                                        .font(.system(size: 15, weight: .bold))
+                                        .foregroundStyle(message.isFromMe ? .white : FriendChatArenaPalette.blue)
+                                }
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 7) {
+                                HStack(spacing: 3) {
+                                    ForEach(0..<20, id: \.self) { i in
+                                        Capsule()
+                                            .fill((message.isFromMe ? Color.white : Color.white.opacity(0.9)).opacity(
+                                                isPlaying ? (i % 2 == 0 ? 0.95 : 0.45) : (i % 3 == 0 ? 0.95 : 0.5)
+                                            ))
+                                            .frame(width: 3, height: CGFloat(8 + (i % 6) * 3))
+                                            .scaleEffect(y: isPlaying ? (i % 2 == 0 ? 1.15 : 0.88) : 1.0)
+                                            .animation(.easeInOut(duration: 0.22), value: isPlaying)
+                                    }
+                                }
+                                
+                                Text(message.text.isEmpty ? "Ses mesajı" : message.text)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(message.isFromMe ? .white.opacity(0.88) : .white.opacity(0.72))
+                            }
+                            
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        .background(message.isFromMe ? AnyShapeStyle(FriendChatArenaPalette.sentBubbleGradient) : AnyShapeStyle(Color.white.opacity(0.055)))
+                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .stroke(message.isFromMe ? Color.white.opacity(0.08) : Color.white.opacity(0.08), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(message.messageStatus == "uploading" || message.isPending)
+                    .onDisappear {
+                        player?.pause()
+                        isPlaying = false
+                        
+                        if let observer {
+                            NotificationCenter.default.removeObserver(observer)
+                        }
+                    }
+                }
+                
+                private func togglePlayback() {
+                    guard let mediaURL = message.mediaURL,
+                          let url = URL(string: mediaURL) else { return }
+                    
+                    if isPlaying {
+                        player?.pause()
+                        isPlaying = false
+                        return
+                    }
+                    
+                    let item = AVPlayerItem(url: url)
+                    let newPlayer = AVPlayer(playerItem: item)
+                    player = newPlayer
+                    
+                    if let observer {
+                        NotificationCenter.default.removeObserver(observer)
+                    }
+                    
+                    observer = NotificationCenter.default.addObserver(
+                        forName: .AVPlayerItemDidPlayToEndTime,
+                        object: item,
+                        queue: .main
+                    ) { _ in
+                        isPlaying = false
+                        player?.seek(to: .zero)
+                    }
+                    
+                    newPlayer.play()
+                    isPlaying = true
+                }
+            }
+            
+            private var textMessageBubble: some View {
+                Text(message.text)
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(message.isFromMe ? .white : .white.opacity(0.96))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(messageBubbleBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            }
+            
+            private var imageMessageBubble: some View {
+                VStack(alignment: .leading, spacing: 8) {
+                    ZStack {
+                        if let mediaURL = message.mediaURL,
+                           let url = URL(string: mediaURL) {
+                            AsyncImage(url: url, transaction: Transaction(animation: .easeInOut)) { phase in
+                                switch phase {
+                                case .empty:
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                            .fill(Color.white.opacity(0.08))
+                                        
+                                        ProgressView()
+                                            .tint(.white.opacity(0.8))
+                                    }
+                                    .frame(width: 220, height: 260)
+                                    
+                                case .success(let image):
+                                    image
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 220, height: 260)
+                                        .clipped()
+                                    
+                                case .failure:
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                            .fill(Color.white.opacity(0.08))
+                                        
+                                        VStack(spacing: 8) {
+                                            Image(systemName: "photo")
+                                                .font(.system(size: 26, weight: .medium))
+                                            
+                                            Text("Görsel yüklenemedi")
+                                                .font(.system(size: 12, weight: .medium))
+                                        }
+                                        .foregroundStyle(.white.opacity(0.75))
+                                    }
+                                    .frame(width: 220, height: 260)
+                                    
+                                @unknown default:
+                                    EmptyView()
+                                }
+                            }
+                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        } else {
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .fill(Color.white.opacity(0.08))
+                                .frame(width: 220, height: 260)
+                        }
+                        
+                        if message.messageStatus == "uploading" || message.isPending {
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .fill(Color.black.opacity(0.22))
+                                .frame(width: 220, height: 260)
+                                .overlay {
+                                    VStack(spacing: 10) {
+                                        ProgressView()
+                                            .tint(.white)
+                                        
+                                        Text(message.messageStatus == "uploading" ? "Fotoğraf yükleniyor" : "Hazırlanıyor")
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .foregroundStyle(.white)
+                                    }
+                                }
+                        }
+                    }
+                    
+                    if !message.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                       message.text != "📷 Fotoğraf" {
+                        Text(message.text)
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(message.isFromMe ? .white : .white.opacity(0.96))
+                            .padding(.horizontal, 4)
+                            .padding(.bottom, 2)
+                    }
+                }
+                .padding(8)
+                .background(messageBubbleBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            }
+            
+            private func presentShareSheet(url: URL) {
+                guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                      let root = scene.windows.first?.rootViewController else { return }
+                
+                let vc = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+                root.present(vc, animated: true)
+            }
+            
+            private func downloadFile() {
+                guard let mediaURL = message.mediaURL,
+                      let url = URL(string: mediaURL) else {
+                    return
+                }
+                
+                URLSession.shared.downloadTask(with: url) { tempURL, _, error in
+                    guard let tempURL, error == nil else {
+                        print("❌ Dosya indirilemedi")
+                        return
+                    }
+                    
+                    let fileName = message.fileName ?? url.lastPathComponent
+                    let destination = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+                    
+                    do {
+                        try? FileManager.default.removeItem(at: destination)
+                        try FileManager.default.copyItem(at: tempURL, to: destination)
+                        
+                        DispatchQueue.main.async {
+                            presentShareSheet(url: destination)
+                        }
+                    } catch {
+                        print("❌ Dosya kaydedilemedi:", error)
+                    }
+                }.resume()
+            }
+            
+            private var fileMessageBubble: some View {
+                Button {
+                    downloadFile()
+                } label: {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color.white.opacity(message.isFromMe ? 0.16 : 0.08))
+                                .frame(width: 46, height: 46)
+                            
+                            Image(systemName: "doc.fill")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundStyle(message.isFromMe ? .white : FriendChatArenaPalette.blue)
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(message.fileName ?? "Dosya")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(message.isFromMe ? .white : .white.opacity(0.96))
+                                .lineLimit(2)
+                            
+                            HStack(spacing: 6) {
+                                if let mimeType = message.mimeType, !mimeType.isEmpty {
+                                    Text(shortMimeText(mimeType))
+                                }
+                                
+                                if let size = message.fileSizeBytes {
+                                    Text(fileSizeText(size))
+                                }
+                            }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(message.isFromMe ? .white.opacity(0.78) : .white.opacity(0.58))
+                        }
+                        
+                        Spacer(minLength: 0)
+                        
+                        Group {
+                            if message.isFailed {
+                                Image(systemName: "exclamationmark.circle.fill")
+                                    .foregroundStyle(.red)
+                            } else if message.messageStatus == "uploading" || message.isPending {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                    .tint(message.isFromMe ? .white : FriendChatArenaPalette.blue)
+                            } else {
+                                Image(systemName: "arrow.down.circle")
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundStyle(message.isFromMe ? .white.opacity(0.9) : .white.opacity(0.72))
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(messageBubbleBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+            
+            @ViewBuilder
+            private var messageStatusSymbol: some View {
+                if message.isFailed {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.system(size: 10, weight: .bold))
+                } else if message.messageStatus == "uploading" {
+                    ProgressView()
+                        .scaleEffect(0.55)
+                        .tint(.white.opacity(0.9))
+                } else if message.isPending {
+                    Image(systemName: "clock")
+                        .font(.system(size: 9, weight: .medium))
+                } else if message.seenAt != nil {
+                    HStack(spacing: -3) {
+                        Image(systemName: "checkmark")
+                        Image(systemName: "checkmark")
+                    }
+                    .font(.system(size: 9, weight: .bold))
+                } else if message.deliveredAt != nil {
+                    HStack(spacing: -3) {
+                        Image(systemName: "checkmark")
+                        Image(systemName: "checkmark")
+                    }
+                    .font(.system(size: 9, weight: .bold))
+                } else if message.serverID != nil {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 9, weight: .bold))
+                } else {
+                    Image(systemName: "clock")
+                        .font(.system(size: 9, weight: .medium))
+                }
+            }
+            
+            private var messageStatusColor: Color {
+                if message.isFailed {
+                    return .red.opacity(0.92)
+                }
+                
+                if message.messageStatus == "uploading" {
+                    return Color.white.opacity(0.78)
+                }
+                
+                if message.isPending {
+                    return Color.white.opacity(0.42)
+                }
+                
+                if message.seenAt != nil {
+                    return FriendChatArenaPalette.cyan
+                }
+                
+                if message.deliveredAt != nil {
+                    return Color.white.opacity(0.72)
+                }
+                
+                return Color.white.opacity(0.58)
+            }
+            
+            @ViewBuilder
+            private var messageBubbleBackground: some View {
+                if message.isFromMe {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(FriendChatArenaPalette.sentBubbleGradient)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        )
+                        .shadow(color: FriendChatArenaPalette.blue.opacity(0.16), radius: 8, y: 4)
+                } else {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.060),
+                                    Color.white.opacity(0.040)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .stroke(Color.white.opacity(0.085), lineWidth: 1)
+                        )
+                }
+            }
+            
+            private func fileSizeText(_ bytes: Int64) -> String {
+                FriendChatFormatters.byteFormatter.string(fromByteCount: bytes)
+            }
+            
+            private func shortMimeText(_ mime: String) -> String {
+                if mime == "application/pdf" { return "PDF" }
+                if mime.contains("image") { return "Görsel" }
+                return "Dosya"
+            }
+            
+            private func saveImageToPhotos() {
+                guard let mediaURL = message.mediaURL,
+                      let url = URL(string: mediaURL) else {
+                    imageSaveAlertText = "Görsel bulunamadı."
+                    showImageSaveAlert = true
+                    return
+                }
+                
+                isSavingImage = true
+                
+                URLSession.shared.dataTask(with: url) { data, _, error in
+                    DispatchQueue.main.async {
+                        isSavingImage = false
+                        
+                        guard let data,
+                              let image = UIImage(data: data),
+                              error == nil else {
+                            imageSaveAlertText = "Görsel indirilemedi."
+                            showImageSaveAlert = true
+                            return
+                        }
+                        
+                        PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
+                            DispatchQueue.main.async {
+                                guard status == .authorized || status == .limited else {
+                                    imageSaveAlertText = "Fotoğraflara kaydetme izni verilmedi."
+                                    showImageSaveAlert = true
+                                    return
+                                }
+                                
+                                UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+                                imageSaveAlertText = "Fotoğraf galerine kaydedildi."
+                                showImageSaveAlert = true
+                            }
+                        }
+                    }
+                }.resume()
+            }
+        }
+        
+        // MARK: - Full Screen Image Viewer
+        
+        private struct FullScreenImageViewer: View {
+            let imageURLString: String
+            let onSave: () -> Void
+            
+            @Environment(\.dismiss) private var dismiss
+            
+            var body: some View {
+                ZStack(alignment: .topTrailing) {
+                    Color.black.ignoresSafeArea()
+                    
+                    if let url = URL(string: imageURLString) {
+                        AsyncImage(url: url, transaction: Transaction(animation: .easeInOut)) { phase in
+                            switch phase {
+                            case .empty:
+                                ProgressView()
+                                    .tint(.white)
+                                
+                            case .success(let image):
+                                FullScreenImageContent(image: image)
+                                
+                            case .failure:
+                                VStack(spacing: 12) {
+                                    Image(systemName: "photo")
+                                        .font(.system(size: 36))
+                                    
+                                    Text("Görsel yüklenemedi")
+                                        .font(.system(size: 15, weight: .medium))
+                                }
+                                .foregroundStyle(.white.opacity(0.8))
+                                
+                            @unknown default:
+                                EmptyView()
+                            }
+                        }
+                    }
+                    
+                    VStack(spacing: 12) {
+                        HStack(spacing: 12) {
+                            Button {
+                                onSave()
+                            } label: {
+                                Image(systemName: "square.and.arrow.down")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 42, height: 42)
+                                    .background(.black.opacity(0.35), in: Circle())
+                            }
+                            
+                            Button {
+                                dismiss()
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 42, height: 42)
+                                    .background(.black.opacity(0.35), in: Circle())
+                            }
+                        }
+                        .padding(.top, 18)
+                        .padding(.trailing, 16)
+                        
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+            }
+        }
+        
+        private struct FullScreenImageContent: View {
+            let image: Image
+            
+            var body: some View {
+                GeometryReader { geo in
+                    image
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .background(Color.black)
+                }
+                .ignoresSafeArea()
+            }
+        }
+        
+        // MARK: - Camera Picker
+        
+        private struct CameraPicker: UIViewControllerRepresentable {
+            @Environment(\.dismiss) private var dismiss
+            @Binding var image: UIImage?
+            
+            func makeUIViewController(context: Context) -> UIImagePickerController {
+                let picker = UIImagePickerController()
+                picker.sourceType = .camera
+                picker.allowsEditing = false
+                picker.delegate = context.coordinator
+                return picker
+            }
+            
+            func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) { }
+            
+            func makeCoordinator() -> Coordinator {
+                Coordinator(self)
+            }
+            
+            final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+                let parent: CameraPicker
+                
+                init(_ parent: CameraPicker) {
+                    self.parent = parent
+                }
+                
+                func imagePickerController(
+                    _ picker: UIImagePickerController,
+                    didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
+                ) {
+                    if let image = info[.originalImage] as? UIImage {
+                        parent.image = image
+                    }
+                    
+                    parent.dismiss()
+                }
+                
+                func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+                    parent.dismiss()
+                }
+            }
+        }
+        
+        // MARK: - Color Hex
+        
+        private extension Color {
+            init(friendChatHex hex: String) {
+                let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+                
+                var int: UInt64 = 0
+                Scanner(string: cleaned).scanHexInt64(&int)
+                
+                let a: UInt64
+                let r: UInt64
+                let g: UInt64
+                let b: UInt64
+                
+                switch cleaned.count {
+                case 3:
+                    a = 255
+                    r = (int >> 8) * 17
+                    g = ((int >> 4) & 0xF) * 17
+                    b = (int & 0xF) * 17
+                    
+                case 6:
+                    a = 255
+                    r = int >> 16
+                    g = (int >> 8) & 0xFF
+                    b = int & 0xFF
+                    
+                case 8:
+                    a = int >> 24
+                    r = (int >> 16) & 0xFF
+                    g = (int >> 8) & 0xFF
+                    b = int & 0xFF
+                    
+                default:
+                    a = 255
+                    r = 255
+                    g = 255
+                    b = 255
+                }
+                
+                self.init(
+                    .sRGB,
+                    red: Double(r) / 255,
+                    green: Double(g) / 255,
+                    blue: Double(b) / 255,
+                    opacity: Double(a) / 255
+                )
+            }
+        }
+        private extension FriendChatView {
+            func syncChatBackendFriendshipIfNeeded() async {
+                await MainActor.run {
+                    isSyncingBackendConversation = true
+                    backendSyncError = nil
+
+                    // Önemli:
+                    // Chat'e her girişte mevcut mesajları silmiyoruz.
+                    // Böylece ekran boşalıp yeniden yüklenmiş gibi davranmaz.
+                    if backendConversationID == nil {
+                        hasCompletedBackendInitialSync = false
+                    }
+                }
+                let friendshipIDText = friendshipID?.uuidString ?? "nil"
+                print("🟡 CHAT BACKEND SYNC START:", friendshipIDText)
+
+                guard let backendFriendshipID = friend.backendFriendshipID else {
+                    await MainActor.run {
+                        isSyncingBackendConversation = false
+                        backendSyncError = "Missing backendFriendshipID"
+                    }
+                    print("❌ CHAT BACKEND SYNC SKIPPED: backendFriendshipID nil")
+                    return
                 }
 
-                print("🟢 WS MESSAGE SEEN UPDATED:", seenIDs.count)
+                guard let backendUserID = friend.backendUserID else {
+                    await MainActor.run {
+                        isSyncingBackendConversation = false
+                        backendSyncError = "Missing backendUserID"
+                    }
+                    print("❌ CHAT BACKEND SYNC SKIPPED: backendUserID nil")
+                    return
+                }
+
+                let conversation = await ChatBackendClient.shared.syncFriendship(
+                    friendshipID: backendFriendshipID,
+                    friendUserID: backendUserID
+                )
+
+                guard let conversationID = conversation?.id else {
+                    await MainActor.run {
+                        isSyncingBackendConversation = false
+                        backendSyncError = "Conversation sync failed"
+                    }
+                    print("❌ CHAT BACKEND CONVERSATION ID NIL")
+                    return
+                }
+
+                let fetchedMessages = await ChatBackendClient.shared.fetchMessages(
+                    conversationID: conversationID
+                )
+
+                guard let friendshipID else {
+                    await MainActor.run {
+                        isSyncingBackendConversation = false
+                        backendSyncError = "Missing friendshipID"
+                    }
+                    return
+                }
+
+                let mappedMessages =
+                    fetchedMessages.compactMap { dto in
+                        mapBackendMessage(dto, friendshipID: friendshipID)
+                    }
+
+                await MainActor.run {
+                    backendConversationID = conversationID
+
+                    if didBootstrapBackendMessages {
+                        mergeBackendMessages(mappedMessages)
+                    } else {
+                        backendMessages = mappedMessages.sorted { $0.createdAt < $1.createdAt }
+                        didBootstrapBackendMessages = true
+                    }
+
+                    hasCompletedBackendInitialSync = true
+                    isSyncingBackendConversation = false
+                    backendSyncError = nil
+                }
+
+                await ChatBackendClient.shared.markConversationRead(
+                    conversationID: conversationID
+                )
+
+                await ChatBackendSocketClient.shared.connect(
+                    conversationID: conversationID,
+                    onMessageCreated: { dto in
+                        guard let mappedMessage = mapBackendMessage(
+                            dto,
+                            friendshipID: friendshipID
+                        ) else {
+                            return
+                        }
+
+                        appendOrReplaceBackendMessage(mappedMessage)
+
+                        print("🟢 WS MESSAGE UPSERTED:", mappedMessage.id.uuidString)
+
+                        Task {
+                            await ChatBackendClient.shared.markConversationRead(
+                                conversationID: conversationID
+                            )
+                        }
+                    },
+                    onMessageSeen: { payload in
+                        let seenIDs = Set(payload.messages.map { $0.id })
+                        let seenDate = Date()
+
+                        backendMessages = backendMessages.map { message in
+                            guard seenIDs.contains(message.id) else {
+                                return message
+                            }
+
+                            return FriendChatMessageItem(
+                                id: message.id,
+                                serverID: message.serverID,
+                                clientID: message.clientID,
+                                friendshipID: message.friendshipID,
+                                senderID: message.senderID,
+                                senderName: message.senderName,
+                                text: message.text,
+                                createdAt: message.createdAt,
+                                reaction: message.reaction,
+                                isSystemMessage: message.isSystemMessage,
+                                isFromMe: message.isFromMe,
+                                isPending: message.isPending,
+                                isFailed: message.isFailed,
+                                deliveredAt: message.deliveredAt,
+                                seenAt: seenDate,
+                                messageType: message.messageType,
+                                mediaURL: message.mediaURL,
+                                fileName: message.fileName,
+                                fileSizeBytes: message.fileSizeBytes,
+                                mimeType: message.mimeType,
+                                messageStatus: "seen"
+                            )
+                        }
+
+                        print("🟢 WS MESSAGE SEEN UPDATED:", seenIDs.count)
+                    }
+                )
+
+                print("🟢 CHAT BACKEND READY:", conversationID.uuidString)
+                print("🟢 CHAT BACKEND UI MESSAGES COUNT:", mappedMessages.count)
             }
-        )
+            
+            
+            
+            func mapBackendMessage(
+                _ dto: ChatBackendMessageDTO,
+                friendshipID: UUID
+            ) -> FriendChatMessageItem? {
+                let currentUserID = session.currentUser?.id
+                let isFromMe = dto.senderID == currentUserID
+                
+                return FriendChatMessageItem(
+                    id: dto.id,
+                    serverID: dto.id,
+                    clientID: dto.clientID,
+                    friendshipID: friendshipID,
+                    senderID: dto.senderID,
+                    senderName: isFromMe ? senderDisplayName() : friend.name,
+                    text: dto.text ?? "",
+                    createdAt: parseBackendDate(dto.createdAt),
+                    reaction: nil,
+                    isSystemMessage: false,
+                    isFromMe: isFromMe,
+                    isPending: false,
+                    isFailed: false,
+                    deliveredAt: nil,
+                    seenAt: nil,
+                    messageType: dto.messageType,
+                    mediaURL: dto.mediaURL,
+                    fileName: dto.fileName,
+                    fileSizeBytes: dto.fileSizeBytes.map { Int64($0) },
+                    mimeType: dto.mimeType,
+                    messageStatus: dto.deletedAt == nil ? "sent" : "deleted"
+                )
+            }
+            
+            func parseBackendDate(_ value: String) -> Date {
+                let isoFormatter = ISO8601DateFormatter()
+                isoFormatter.formatOptions = [
+                    .withInternetDateTime,
+                    .withFractionalSeconds
+                ]
+                
+                if let date = isoFormatter.date(from: value) {
+                    return date
+                }
+                
+                let fallbackFormatter = ISO8601DateFormatter()
+                
+                if let date = fallbackFormatter.date(from: value) {
+                    return date
+                }
+                
+                return Date()
+            }
+            func appendOrReplaceBackendMessage(_ message: FriendChatMessageItem) {
+                if let index = backendMessages.firstIndex(where: { existing in
+                    if existing.id == message.id {
+                        return true
+                    }
 
-        print("🟢 CHAT BACKEND UI MESSAGES COUNT:", mappedMessages.count)
-    }
+                    guard
+                        let existingClientID = existing.clientID,
+                        let newClientID = message.clientID,
+                        !existingClientID.isEmpty,
+                        !newClientID.isEmpty
+                    else {
+                        return false
+                    }
 
-    func findBackendFriend(for friendshipID: UUID) -> Friend? {
-        localFriends.first { friend in
-            friend.backendFriendshipID == friendshipID
+                    return existingClientID == newClientID
+                }) {
+                    backendMessages[index] = message
+                    return
+                }
+
+                backendMessages.append(message)
+            }
+            
+            func mergeBackendMessages(_ incoming: [FriendChatMessageItem]) {
+                var merged = backendMessages
+
+                for message in incoming {
+                    if let index = merged.firstIndex(where: { existing in
+                        if existing.id == message.id {
+                            return true
+                        }
+
+                        guard
+                            let existingClientID = existing.clientID,
+                            let newClientID = message.clientID,
+                            !existingClientID.isEmpty,
+                            !newClientID.isEmpty
+                        else {
+                            return false
+                        }
+
+                        return existingClientID == newClientID
+                    }) {
+                        merged[index] = message
+                    } else {
+                        merged.append(message)
+                    }
+                }
+
+                backendMessages = merged.sorted { $0.createdAt < $1.createdAt }
+            }
+            
+            func markBackendMessageFailed(clientID: String) {
+                guard let index = backendMessages.firstIndex(where: { $0.clientID == clientID }) else {
+                    return
+                }
+                
+                let old = backendMessages[index]
+                
+                backendMessages[index] = FriendChatMessageItem(
+                    id: old.id,
+                    serverID: old.serverID,
+                    clientID: old.clientID,
+                    friendshipID: old.friendshipID,
+                    senderID: old.senderID,
+                    senderName: old.senderName,
+                    text: old.text,
+                    createdAt: old.createdAt,
+                    reaction: old.reaction,
+                    isSystemMessage: old.isSystemMessage,
+                    isFromMe: old.isFromMe,
+                    isPending: false,
+                    isFailed: true,
+                    deliveredAt: old.deliveredAt,
+                    seenAt: old.seenAt,
+                    messageType: old.messageType,
+                    mediaURL: old.mediaURL,
+                    fileName: old.fileName,
+                    fileSizeBytes: old.fileSizeBytes,
+                    mimeType: old.mimeType,
+                    messageStatus: "failed"
+                )
+            }
+            
+            func makePendingBackendTextMessage(
+                text: String,
+                clientID: String,
+                friendshipID: UUID,
+                senderID: UUID
+            ) -> FriendChatMessageItem {
+                FriendChatMessageItem(
+                    id: UUID(),
+                    serverID: nil,
+                    clientID: clientID,
+                    friendshipID: friendshipID,
+                    senderID: senderID,
+                    senderName: senderDisplayName(),
+                    text: text,
+                    createdAt: Date(),
+                    reaction: nil,
+                    isSystemMessage: false,
+                    isFromMe: true,
+                    isPending: true,
+                    isFailed: false,
+                    deliveredAt: nil,
+                    seenAt: nil,
+                    messageType: "text",
+                    mediaURL: nil,
+                    fileName: nil,
+                    fileSizeBytes: nil,
+                    mimeType: nil,
+                    messageStatus: "pending"
+                )
+            }
         }
-    }
-
-    func mapBackendMessage(
-        _ dto: ChatBackendMessageDTO,
-        friendshipID: UUID
-    ) -> FriendChatMessageItem? {
-        let currentUserID = session.currentUser?.id
-        let isFromMe = dto.senderID == currentUserID
-
-        return FriendChatMessageItem(
-            id: dto.id,
-            serverID: dto.id,
-            clientID: dto.clientID,
-            friendshipID: friendshipID,
-            senderID: dto.senderID,
-            senderName: isFromMe ? senderDisplayName() : friend.name,
-            text: dto.text ?? "",
-            createdAt: parseBackendDate(dto.createdAt),
-            reaction: nil,
-            isSystemMessage: false,
-            isFromMe: isFromMe,
-            isPending: false,
-            isFailed: false,
-            deliveredAt: nil,
-            seenAt: nil,
-            messageType: dto.messageType,
-            mediaURL: dto.mediaURL,
-            fileName: dto.fileName,
-            fileSizeBytes: dto.fileSizeBytes.map { Int64($0) },
-            mimeType: dto.mimeType,
-            messageStatus: "sent_to_server"
-        )
-    }
-
-    func parseBackendDate(_ value: String) -> Date {
-        let isoFormatter = ISO8601DateFormatter()
-        isoFormatter.formatOptions = [
-            .withInternetDateTime,
-            .withFractionalSeconds
-        ]
-
-        if let date = isoFormatter.date(from: value) {
-            return date
-        }
-
-        let fallbackFormatter = ISO8601DateFormatter()
-
-        if let date = fallbackFormatter.date(from: value) {
-            return date
-        }
-
-        return Date()
-    }
-}
+    
