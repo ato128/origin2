@@ -218,20 +218,11 @@ struct MessagesView: View {
                 .onReceive(friendStore.$typingStatusByFriendship) { _ in
                     scheduleFriendSummaryRebuild()
                 }
-                .onReceive(friendStore.$presenceByUserID) { _ in
-                    scheduleFriendSummaryRebuild()
-                }
                 .onReceive(NotificationCenter.default.publisher(for: .chatBackendConversationUpdated)) { notification in
-                    scheduleBackendConversationRefresh(
-                        reason: "conversation_updated",
-                        notification: notification
-                    )
+                    upsertBackendConversationFromNotification(notification)
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .chatBackendMessageCreated)) { notification in
-                    scheduleBackendConversationRefresh(
-                        reason: "message_created",
-                        notification: notification
-                    )
+                    upsertBackendConversationFromNotification(notification)
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .chatBackendMessageSeen)) { notification in
                     scheduleBackendConversationRefresh(
@@ -929,6 +920,93 @@ private extension MessagesView {
 // MARK: - Data Loading
 
 private extension MessagesView {
+    
+    
+    func sortedBackendConversations(
+        _ conversations: [ChatBackendConversationDTO]
+    ) -> [ChatBackendConversationDTO] {
+        conversations.sorted { lhs, rhs in
+            if lhs.isPinned != rhs.isPinned {
+                return lhs.isPinned && !rhs.isPinned
+            }
+
+            if lhs.unreadCount > 0 && rhs.unreadCount == 0 {
+                return true
+            }
+
+            if lhs.unreadCount == 0 && rhs.unreadCount > 0 {
+                return false
+            }
+
+            let leftDate = lhs.lastMessageDate ?? lhs.updatedDate ?? .distantPast
+            let rightDate = rhs.lastMessageDate ?? rhs.updatedDate ?? .distantPast
+
+            if leftDate != rightDate {
+                return leftDate > rightDate
+            }
+
+            return (lhs.title ?? "").localizedCaseInsensitiveCompare(rhs.title ?? "") == .orderedAscending
+        }
+    }
+
+    func loadCachedBackendConversations() {
+        guard let currentUserID else { return }
+
+        do {
+            let descriptor = FetchDescriptor<ChatCachedConversation>(
+                sortBy: [
+                    SortDescriptor(\ChatCachedConversation.cachedAt, order: .reverse)
+                ]
+            )
+
+            let cached = try modelContext.fetch(descriptor)
+                .filter { $0.ownerUserID == currentUserID }
+
+            let conversations = cached.map { $0.toDTO() }
+
+            guard !conversations.isEmpty else {
+                print("⚪️ MESSAGES HUB CONVERSATION CACHE EMPTY")
+                return
+            }
+
+            backendConversations = sortedBackendConversations(conversations)
+
+            print("🟢 MESSAGES HUB CONVERSATION CACHE LOADED:", conversations.count)
+        } catch {
+            print("❌ MESSAGES HUB CONVERSATION CACHE LOAD ERROR:", error.localizedDescription)
+        }
+    }
+
+    func upsertCachedBackendConversation(_ conversation: ChatBackendConversationDTO) {
+        guard let currentUserID else { return }
+
+        let cacheKey = "\(currentUserID.uuidString)-\(conversation.id.uuidString)"
+
+        do {
+            let descriptor = FetchDescriptor<ChatCachedConversation>()
+            let cached = try modelContext.fetch(descriptor)
+
+            if let existing = cached.first(where: { $0.cacheKey == cacheKey }) {
+                existing.update(from: conversation)
+            } else {
+                let created = ChatCachedConversation(
+                    ownerUserID: currentUserID,
+                    conversation: conversation
+                )
+                modelContext.insert(created)
+            }
+
+            try modelContext.save()
+        } catch {
+            print("❌ MESSAGES HUB CONVERSATION CACHE UPSERT ERROR:", error.localizedDescription)
+        }
+    }
+
+    func upsertCachedBackendConversations(_ conversations: [ChatBackendConversationDTO]) {
+        for conversation in conversations {
+            upsertCachedBackendConversation(conversation)
+        }
+    }
 
     func scheduleFriendSummaryRebuild() {
         rebuildSummariesTask?.cancel()
@@ -982,7 +1060,8 @@ private extension MessagesView {
             modelContext: modelContext
         )
 
-        
+        loadCachedBackendConversations()
+
         await refreshBackendConversations(reason: "initial_load")
         
         friendStore.rebuildFriendChatSummaries(
@@ -1000,7 +1079,16 @@ private extension MessagesView {
             isRefreshingBackendConversations = true
         }
 
-        await refreshBackendConversations(reason: "initial_load")
+        let conversations = await ChatBackendClient.shared.listConversations()
+        let sorted = sortedBackendConversations(conversations)
+
+        await MainActor.run {
+            backendConversations = sorted
+            upsertCachedBackendConversations(sorted)
+            isRefreshingBackendConversations = false
+        }
+
+        print("🟢 MESSAGES HUB BACKEND REFRESHED:", reason, conversations.count)
     }
     
     func scheduleBackendConversationRefresh(
@@ -1059,6 +1147,30 @@ private extension MessagesView {
                 .environmentObject(crewStore)
                 .environmentObject(session)
         }
+    }
+    
+    func upsertBackendConversationFromNotification(_ notification: Notification) {
+        guard let conversation = notification.userInfo?["conversation"] as? ChatBackendConversationDTO else {
+            scheduleBackendConversationRefresh(
+                reason: "conversation_notification_without_payload",
+                notification: notification
+            )
+            return
+        }
+
+        if let index = backendConversations.firstIndex(where: { $0.id == conversation.id }) {
+            backendConversations[index] = conversation
+        } else {
+            backendConversations.append(conversation)
+        }
+
+        backendConversations = sortedBackendConversations(backendConversations)
+
+        upsertCachedBackendConversation(conversation)
+
+        print("🟢 MESSAGES HUB LIVE UPSERT:", conversation.id.uuidString)
+        print("🟢 MESSAGES HUB LIVE LAST:", conversation.lastMessageText ?? "nil")
+        print("🟢 MESSAGES HUB LIVE UNREAD:", conversation.unreadCount)
     }
 
     private func cleanedPreview(_ text: String) -> String {
@@ -1205,6 +1317,11 @@ private extension MessagesView {
                 updatedAt: state.updatedAt ?? conversation.updatedAt
             )
         }
+        backendConversations = sortedBackendConversations(backendConversations)
+
+        if let updated = backendConversations.first(where: { $0.id == state.conversationID }) {
+            upsertCachedBackendConversation(updated)
+        }
     }
 
     private func friendSummary(for friend: Friend) -> FriendChatThreadSummary? {
@@ -1322,12 +1439,9 @@ private extension MessagesView {
             return
         }
 
-        let backendCurrent = backendConversations.first {
+        let current = backendConversations.first {
             $0.supabaseFriendshipId == friendshipID
-        }?.isMuted
-
-        let legacyCurrent = friendSummary(for: friend)?.isMuted ?? false
-        let current = backendCurrent ?? legacyCurrent
+        }?.isMuted ?? false
 
         Task {
             let state = await ChatBackendClient.shared.updateConversationMemberState(

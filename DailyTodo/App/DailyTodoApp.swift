@@ -63,6 +63,8 @@ struct DailyTodoApp: App {
                 CrewActivity.self,
                 Friend.self,
                 FriendMessage.self,
+                ChatCachedMessage.self,
+                ChatCachedConversation.self,
                 SharedWeekItem.self,
                 FriendFocusSession.self,
                 CrewMessage.self,
@@ -182,6 +184,8 @@ struct DailyTodoApp: App {
         }
 
         rescheduleLocalNotificationsAndRegisterPush(reason: "onAppear")
+        
+        startInboxSocket()
 
         Task {
             await ChatBackendClient.shared.testMe()
@@ -279,6 +283,7 @@ struct DailyTodoApp: App {
                     reason: "scene active"
                 )
             }
+            startInboxSocket()
 
         case .inactive:
             friendStore.setAppActive(false)
@@ -292,6 +297,212 @@ struct DailyTodoApp: App {
 
         @unknown default:
             break
+        }
+    }
+    
+    private func startInboxSocket() {
+        Task { @MainActor in
+            await ChatBackendInboxSocketClient.shared.connect(
+                onMessageCreated: { message, conversation in
+                    upsertInboxCachedConversation(conversation)
+
+                    saveInboxMessageToCache(
+                        message: message,
+                        conversation: conversation
+                    )
+                },
+                onConversationUpdated: { conversation in
+                    upsertInboxCachedConversation(conversation)
+                },
+                onMessageSeen: { payload in
+                    updateInboxSeenCache(payload)
+                }
+            )
+        }
+    }
+
+    private func saveInboxMessageToCache(
+        message: ChatBackendMessageDTO,
+        conversation: ChatBackendConversationDTO?
+    ) {
+        guard let friendshipID = conversation?.supabaseFriendshipId else {
+            print("⚪️ INBOX CACHE SKIPPED: missing friendshipID")
+            return
+        }
+
+        let currentUserID = session.currentUser?.id
+        let isFromMe = message.senderID == currentUserID
+
+        let item = FriendChatMessageItem(
+            id: message.id,
+            serverID: message.id,
+            clientID: message.clientID,
+            friendshipID: friendshipID,
+            senderID: message.senderID,
+            senderName: isFromMe ? "You" : "Friend",
+            text: message.text ?? "",
+            createdAt: message.createdDate ?? Date(),
+            reaction: nil,
+            isSystemMessage: false,
+            isFromMe: isFromMe,
+            isPending: false,
+            isFailed: false,
+            deliveredAt: nil,
+            seenAt: nil,
+            messageType: message.messageType,
+            mediaURL: message.mediaURL,
+            fileName: message.fileName,
+            fileSizeBytes: message.fileSizeBytes.map { Int64($0) },
+            mimeType: message.mimeType,
+            messageStatus: "sent"
+        )
+
+        upsertInboxCachedMessage(
+            item,
+            conversationID: message.conversationID
+        )
+    }
+
+    private func upsertInboxCachedMessage(
+        _ message: FriendChatMessageItem,
+        conversationID: UUID?
+    ) {
+        let context = ModelContext(container)
+
+        let serverKey = message.serverID.map { "server-\($0.uuidString)" }
+        let clientKey = message.clientID.flatMap { $0.isEmpty ? nil : "client-\($0)" }
+
+        do {
+            var existing: ChatCachedMessage?
+
+            if let serverKey {
+                var descriptor = FetchDescriptor<ChatCachedMessage>(
+                    predicate: #Predicate<ChatCachedMessage> { cached in
+                        cached.cacheKey == serverKey
+                    }
+                )
+                descriptor.fetchLimit = 1
+                existing = try context.fetch(descriptor).first
+            }
+
+            if existing == nil, let clientKey {
+                var descriptor = FetchDescriptor<ChatCachedMessage>(
+                    predicate: #Predicate<ChatCachedMessage> { cached in
+                        cached.cacheKey == clientKey
+                    }
+                )
+                descriptor.fetchLimit = 1
+                existing = try context.fetch(descriptor).first
+            }
+
+            if let existing {
+                existing.update(from: message, conversationID: conversationID)
+            } else {
+                let created = ChatCachedMessage(
+                    id: message.serverID ?? message.id,
+                    serverID: message.serverID,
+                    clientID: message.clientID,
+                    conversationID: conversationID,
+                    friendshipID: message.friendshipID,
+                    senderID: message.senderID,
+                    senderName: message.senderName,
+                    text: message.text,
+                    createdAt: message.createdAt,
+                    reaction: message.reaction,
+                    isSystemMessage: message.isSystemMessage,
+                    isFromMe: message.isFromMe,
+                    isPending: message.isPending,
+                    isFailed: message.isFailed,
+                    deliveredAt: message.deliveredAt,
+                    seenAt: message.seenAt,
+                    messageType: message.messageType,
+                    mediaURL: message.mediaURL,
+                    fileName: message.fileName,
+                    fileSizeBytes: message.fileSizeBytes,
+                    mimeType: message.mimeType,
+                    messageStatus: message.messageStatus
+                )
+
+                context.insert(created)
+            }
+
+            try context.save()
+
+            print("🟢 INBOX CACHE UPSERTED:", message.id.uuidString)
+        } catch {
+            print("❌ INBOX CACHE UPSERT ERROR:", error.localizedDescription)
+        }
+    }
+    
+    private func upsertInboxCachedConversation(_ conversation: ChatBackendConversationDTO?) {
+        guard let conversation else { return }
+        guard let ownerUserID = session.currentUser?.id else { return }
+
+        let context = ModelContext(container)
+        let cacheKey = "\(ownerUserID.uuidString)-\(conversation.id.uuidString)"
+
+        do {
+            let descriptor = FetchDescriptor<ChatCachedConversation>()
+            let cached = try context.fetch(descriptor)
+
+            if let existing = cached.first(where: { $0.cacheKey == cacheKey }) {
+                existing.update(from: conversation)
+            } else {
+                let created = ChatCachedConversation(
+                    ownerUserID: ownerUserID,
+                    conversation: conversation
+                )
+                context.insert(created)
+            }
+
+            try context.save()
+
+            print("🟢 INBOX CONVERSATION CACHE UPSERTED:", conversation.id.uuidString)
+        } catch {
+            print("❌ INBOX CONVERSATION CACHE ERROR:", error.localizedDescription)
+        }
+    }
+
+    private func updateInboxSeenCache(_ payload: ChatBackendMessageSeenPayload) {
+        let context = ModelContext(container)
+
+        let conversationID = payload.conversationID
+        let ids = Set(payload.messages.map { $0.id })
+        let seenAt = Date()
+
+        guard !ids.isEmpty else {
+            print("⚪️ INBOX CACHE SEEN SKIPPED: empty ids")
+            return
+        }
+
+        do {
+            let descriptor = FetchDescriptor<ChatCachedMessage>(
+                predicate: #Predicate<ChatCachedMessage> { cached in
+                    cached.conversationID == conversationID
+                }
+            )
+
+            let cachedMessages = try context.fetch(descriptor)
+
+            for cached in cachedMessages {
+                let effectiveID = cached.serverID ?? cached.id
+
+                guard ids.contains(cached.id) || ids.contains(effectiveID) else {
+                    continue
+                }
+
+                cached.seenAt = seenAt
+                cached.isPending = false
+                cached.isFailed = false
+                cached.messageStatus = "seen"
+                cached.updatedAt = Date()
+            }
+
+            try context.save()
+
+            print("🟢 INBOX CACHE SEEN UPDATED:", ids.count)
+        } catch {
+            print("❌ INBOX CACHE SEEN ERROR:", error.localizedDescription)
         }
     }
 

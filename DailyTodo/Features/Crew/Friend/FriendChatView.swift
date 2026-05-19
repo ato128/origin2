@@ -12,6 +12,7 @@ import UIKit
 import Photos
 import AVFoundation
 import SwiftData
+import Supabase
 
 private enum FriendChatArenaPalette {
     static let backgroundTop = Color(friendChatHex: "#05060D")
@@ -77,6 +78,7 @@ struct FriendChatView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var friendStore: FriendStore
     @EnvironmentObject var session: SessionStore
 
@@ -109,6 +111,7 @@ struct FriendChatView: View {
     @State private var backendSyncError: String?
     @State private var isSendingBackendMessage = false
     @State private var didBootstrapBackendMessages = false
+    @State private var didLoadCachedMessages = false
     
     @Query(sort: \Friend.createdAt, order: .reverse)
     private var localFriends: [Friend]
@@ -270,6 +273,8 @@ struct FriendChatView: View {
                     friendshipID: friendshipID,
                     currentUserID: session.currentUser?.id
                 )
+                
+                loadCachedMessagesIfNeeded()
             }
             .task {
                 await syncChatBackendFriendshipIfNeeded()
@@ -277,15 +282,7 @@ struct FriendChatView: View {
             .onDisappear {
                 print("🔴 CHAT DISAPPEAR")
 
-                if let friendshipID {
-                    let currentUserID = session.currentUser?.id
-
-                    Task {
-                        await friendStore.forceMarkMessagesSeenOnExit(
-                            friendshipID: friendshipID,
-                            currentUserID: currentUserID
-                        )
-                    }
+                if friendshipID != nil {
                     ChatBackendSocketClient.shared.disconnect()
                 }
 
@@ -301,18 +298,7 @@ struct FriendChatView: View {
 
                 friendStore.setActiveChat(nil)
                 UserDefaults.standard.removeObject(forKey: "active_friendship_id")
-                friendStore.unsubscribeFriendMessagesRealtime()
                 friendStore.unsubscribeTypingRealtime()
-            }
-            .onChange(of: messages.count) { _, _ in
-                guard let friendshipID else { return }
-
-                Task {
-                    await friendStore.markMessagesSeen(
-                        friendshipID: friendshipID,
-                        currentUserID: session.currentUser?.id
-                    )
-                }
             }
             .alert("Mikrofon izni gerekli", isPresented: $showMicPermissionAlert) {
                 Button("Ayarlar") {
@@ -821,14 +807,12 @@ private extension FriendChatView {
                                 guard let recordedURL = audioRecorder.recordedURL,
                                       let friendshipID else { return }
 
-                                await friendStore.sendVoiceMessage(
+                                await sendBackendVoiceMessage(
                                     audioURL: recordedURL,
+                                    durationText: audioRecorder.durationText(),
                                     friendshipID: friendshipID,
-                                    senderID: session.currentUser?.id,
-                                    senderName: senderDisplayName(),
-                                    durationText: audioRecorder.durationText()
+                                    senderID: session.currentUser?.id
                                 )
-
                                 audioRecorder.recordedURL = nil
                                 audioRecorder.elapsedSeconds = 0
                             } else {
@@ -1088,12 +1072,11 @@ private extension FriendChatView {
                         return
                     }
 
-                    await friendStore.sendPhotoMessage(
+                    await sendBackendPhotoMessage(
                         imageData: jpegData,
+                        caption: clean.isEmpty ? nil : clean,
                         friendshipID: friendshipID,
-                        senderID: senderID,
-                        senderName: senderDisplayName(),
-                        caption: clean.isEmpty ? nil : clean
+                        senderID: senderID
                     )
 
                     await MainActor.run {
@@ -1103,12 +1086,11 @@ private extension FriendChatView {
                     return
 
                 case .file(let fileURL):
-                    await friendStore.sendFileMessage(
+                    await sendBackendFileMessage(
                         fileURL: fileURL,
+                        caption: clean.isEmpty ? nil : clean,
                         friendshipID: friendshipID,
-                        senderID: senderID,
-                        senderName: senderDisplayName(),
-                        caption: clean.isEmpty ? nil : clean
+                        senderID: senderID
                     )
 
                     await MainActor.run {
@@ -1148,6 +1130,10 @@ private extension FriendChatView {
 
             await MainActor.run {
                 appendOrReplaceBackendMessage(pendingMessage)
+                upsertCachedMessage(
+                    pendingMessage,
+                    conversationID: backendConversationID
+                )
             }
 
             let backendMessage = await ChatBackendClient.shared.sendMessage(
@@ -1160,19 +1146,401 @@ private extension FriendChatView {
                let mappedMessage = mapBackendMessage(backendMessage, friendshipID: friendshipID) {
                 await MainActor.run {
                     appendOrReplaceBackendMessage(mappedMessage)
+                    upsertCachedMessage(
+                        mappedMessage,
+                        conversationID: backendConversationID
+                    )
                     isSendingBackendMessage = false
                     ChatFeedbackManager.shared.playSent()
                 }
-
                 print("✅ CHAT BACKEND REAL SEND OK:", backendMessage.id.uuidString)
             } else {
                 await MainActor.run {
                     markBackendMessageFailed(clientID: clientID)
+                    updateCachedMessageFailed(clientID: clientID)
                     isSendingBackendMessage = false
                 }
 
                 print("❌ CHAT BACKEND REAL SEND FAILED")
             }
+        }
+    }
+    
+    func sendBackendPhotoMessage(
+        imageData: Data,
+        caption: String?,
+        friendshipID: UUID,
+        senderID: UUID
+    ) async {
+        guard let backendConversationID else {
+            await MainActor.run {
+                attachmentAlertText = composerDisabledReason
+                showAttachmentAlert = true
+            }
+            return
+        }
+
+        let clientID = UUID().uuidString
+        let fileName = "photo.jpg"
+        let storagePath = "\(friendshipID.uuidString)/images/\(UUID().uuidString).jpg"
+        let fallbackText = caption?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            ? caption!.trimmingCharacters(in: .whitespacesAndNewlines)
+            : "📷 Fotoğraf"
+
+        let pending = FriendChatMessageItem(
+            id: UUID(),
+            serverID: nil,
+            clientID: clientID,
+            friendshipID: friendshipID,
+            senderID: senderID,
+            senderName: senderDisplayName(),
+            text: fallbackText,
+            createdAt: Date(),
+            isFromMe: true,
+            isPending: true,
+            isFailed: false,
+            messageType: "image",
+            mediaURL: nil,
+            fileName: fileName,
+            fileSizeBytes: Int64(imageData.count),
+            mimeType: "image/jpeg",
+            messageStatus: "uploading"
+        )
+
+        await MainActor.run {
+            appendOrReplaceBackendMessage(pending)
+            upsertCachedMessage(pending, conversationID: backendConversationID)
+        }
+
+        do {
+            try await SupabaseManager.shared.client.storage
+                .from("friend-chat-media")
+                .upload(
+                    path: storagePath,
+                    file: imageData,
+                    options: FileOptions(
+                        cacheControl: "3600",
+                        contentType: "image/jpeg",
+                        upsert: false
+                    )
+                )
+
+            let mediaURL = publicBackendMediaURL(path: storagePath)
+
+            guard !mediaURL.isEmpty else {
+                throw NSError(
+                    domain: "FriendChatView",
+                    code: 1001,
+                    userInfo: [NSLocalizedDescriptionKey: "Media URL oluşturulamadı"]
+                )
+            }
+
+            let backendMessage = await ChatBackendClient.shared.sendMessage(
+                conversationID: backendConversationID,
+                text: fallbackText,
+                clientID: clientID,
+                messageType: "image",
+                mediaURL: mediaURL,
+                fileName: fileName,
+                fileSizeBytes: imageData.count,
+                mimeType: "image/jpeg"
+            )
+
+            if let backendMessage,
+               let mapped = mapBackendMessage(backendMessage, friendshipID: friendshipID) {
+                await MainActor.run {
+                    appendOrReplaceBackendMessage(mapped)
+                    upsertCachedMessage(mapped, conversationID: backendConversationID)
+                    ChatFeedbackManager.shared.playSent()
+                }
+            } else {
+                await MainActor.run {
+                    markBackendMessageFailed(clientID: clientID)
+                    updateCachedMessageFailed(clientID: clientID)
+                }
+            }
+        } catch {
+            print("❌ BACKEND PHOTO SEND ERROR:", error.localizedDescription)
+
+            await MainActor.run {
+                markBackendMessageFailed(clientID: clientID)
+                updateCachedMessageFailed(clientID: clientID)
+            }
+        }
+    }
+
+    func sendBackendFileMessage(
+        fileURL: URL,
+        caption: String?,
+        friendshipID: UUID,
+        senderID: UUID
+    ) async {
+        guard let backendConversationID else {
+            await MainActor.run {
+                attachmentAlertText = composerDisabledReason
+                showAttachmentAlert = true
+            }
+            return
+        }
+
+        let didStartAccessing = fileURL.startAccessingSecurityScopedResource()
+        defer {
+            if didStartAccessing {
+                fileURL.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        guard let data = try? Data(contentsOf: fileURL) else {
+            await MainActor.run {
+                attachmentAlertText = "Dosya okunamadı."
+                showAttachmentAlert = true
+            }
+            return
+        }
+
+        let clientID = UUID().uuidString
+        let fileName = fileURL.lastPathComponent
+        let mimeType = mimeTypeForFile(url: fileURL)
+        let safeName = "\(UUID().uuidString)-\(fileName)"
+        let storagePath = "\(friendshipID.uuidString)/files/\(safeName)"
+        let fallbackText = caption?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            ? caption!.trimmingCharacters(in: .whitespacesAndNewlines)
+            : "📎 \(fileName)"
+
+        let pending = FriendChatMessageItem(
+            id: UUID(),
+            serverID: nil,
+            clientID: clientID,
+            friendshipID: friendshipID,
+            senderID: senderID,
+            senderName: senderDisplayName(),
+            text: fallbackText,
+            createdAt: Date(),
+            isFromMe: true,
+            isPending: true,
+            isFailed: false,
+            messageType: "file",
+            mediaURL: nil,
+            fileName: fileName,
+            fileSizeBytes: Int64(data.count),
+            mimeType: mimeType,
+            messageStatus: "uploading"
+        )
+
+        await MainActor.run {
+            appendOrReplaceBackendMessage(pending)
+            upsertCachedMessage(pending, conversationID: backendConversationID)
+        }
+
+        do {
+            try await SupabaseManager.shared.client.storage
+                .from("friend-chat-media")
+                .upload(
+                    path: storagePath,
+                    file: data,
+                    options: FileOptions(
+                        cacheControl: "3600",
+                        contentType: mimeType,
+                        upsert: false
+                    )
+                )
+
+            let mediaURL = publicBackendMediaURL(path: storagePath)
+
+            guard !mediaURL.isEmpty else {
+                throw NSError(
+                    domain: "FriendChatView",
+                    code: 1002,
+                    userInfo: [NSLocalizedDescriptionKey: "Dosya URL oluşturulamadı"]
+                )
+            }
+
+            let backendMessage = await ChatBackendClient.shared.sendMessage(
+                conversationID: backendConversationID,
+                text: fallbackText,
+                clientID: clientID,
+                messageType: "file",
+                mediaURL: mediaURL,
+                fileName: fileName,
+                fileSizeBytes: data.count,
+                mimeType: mimeType
+            )
+
+            if let backendMessage,
+               let mapped = mapBackendMessage(backendMessage, friendshipID: friendshipID) {
+                await MainActor.run {
+                    appendOrReplaceBackendMessage(mapped)
+                    upsertCachedMessage(mapped, conversationID: backendConversationID)
+                    ChatFeedbackManager.shared.playSent()
+                }
+            } else {
+                await MainActor.run {
+                    markBackendMessageFailed(clientID: clientID)
+                    updateCachedMessageFailed(clientID: clientID)
+                }
+            }
+        } catch {
+            print("❌ BACKEND FILE SEND ERROR:", error.localizedDescription)
+
+            await MainActor.run {
+                markBackendMessageFailed(clientID: clientID)
+                updateCachedMessageFailed(clientID: clientID)
+            }
+        }
+    }
+
+    func sendBackendVoiceMessage(
+        audioURL: URL,
+        durationText: String,
+        friendshipID: UUID,
+        senderID: UUID?
+    ) async {
+        guard let senderID else { return }
+
+        guard let backendConversationID else {
+            await MainActor.run {
+                attachmentAlertText = composerDisabledReason
+                showAttachmentAlert = true
+            }
+            return
+        }
+
+        let didStartAccessing = audioURL.startAccessingSecurityScopedResource()
+        defer {
+            if didStartAccessing {
+                audioURL.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        guard let data = try? Data(contentsOf: audioURL) else {
+            await MainActor.run {
+                attachmentAlertText = "Ses dosyası okunamadı."
+                showAttachmentAlert = true
+            }
+            return
+        }
+
+        let clientID = UUID().uuidString
+        let fileName = "voice-\(UUID().uuidString).m4a"
+        let storagePath = "\(friendshipID.uuidString)/voice/\(fileName)"
+        let fallbackText = "🎤 \(durationText)"
+
+        let pending = FriendChatMessageItem(
+            id: UUID(),
+            serverID: nil,
+            clientID: clientID,
+            friendshipID: friendshipID,
+            senderID: senderID,
+            senderName: senderDisplayName(),
+            text: fallbackText,
+            createdAt: Date(),
+            isFromMe: true,
+            isPending: true,
+            isFailed: false,
+            messageType: "voice",
+            mediaURL: nil,
+            fileName: fileName,
+            fileSizeBytes: Int64(data.count),
+            mimeType: "audio/m4a",
+            messageStatus: "uploading"
+        )
+
+        await MainActor.run {
+            appendOrReplaceBackendMessage(pending)
+            upsertCachedMessage(pending, conversationID: backendConversationID)
+        }
+
+        do {
+            try await SupabaseManager.shared.client.storage
+                .from("friend-chat-media")
+                .upload(
+                    path: storagePath,
+                    file: data,
+                    options: FileOptions(
+                        cacheControl: "3600",
+                        contentType: "audio/m4a",
+                        upsert: false
+                    )
+                )
+
+            let mediaURL = publicBackendMediaURL(path: storagePath)
+
+            guard !mediaURL.isEmpty else {
+                throw NSError(
+                    domain: "FriendChatView",
+                    code: 1003,
+                    userInfo: [NSLocalizedDescriptionKey: "Ses URL oluşturulamadı"]
+                )
+            }
+
+            let backendMessage = await ChatBackendClient.shared.sendMessage(
+                conversationID: backendConversationID,
+                text: fallbackText,
+                clientID: clientID,
+                messageType: "voice",
+                mediaURL: mediaURL,
+                fileName: fileName,
+                fileSizeBytes: data.count,
+                mimeType: "audio/m4a"
+            )
+
+            if let backendMessage,
+               let mapped = mapBackendMessage(backendMessage, friendshipID: friendshipID) {
+                await MainActor.run {
+                    appendOrReplaceBackendMessage(mapped)
+                    upsertCachedMessage(mapped, conversationID: backendConversationID)
+                    ChatFeedbackManager.shared.playSent()
+                }
+            } else {
+                await MainActor.run {
+                    markBackendMessageFailed(clientID: clientID)
+                    updateCachedMessageFailed(clientID: clientID)
+                }
+            }
+        } catch {
+            print("❌ BACKEND VOICE SEND ERROR:", error.localizedDescription)
+
+            await MainActor.run {
+                markBackendMessageFailed(clientID: clientID)
+                updateCachedMessageFailed(clientID: clientID)
+            }
+        }
+    }
+
+    func publicBackendMediaURL(path: String) -> String {
+        do {
+            return try SupabaseManager.shared.client.storage
+                .from("friend-chat-media")
+                .getPublicURL(path: path)
+                .absoluteString
+        } catch {
+            print("❌ PUBLIC BACKEND MEDIA URL ERROR:", error.localizedDescription)
+            return ""
+        }
+    }
+
+    func mimeTypeForFile(url: URL) -> String {
+        let ext = url.pathExtension.lowercased()
+
+        switch ext {
+        case "pdf":
+            return "application/pdf"
+        case "jpg", "jpeg":
+            return "image/jpeg"
+        case "png":
+            return "image/png"
+        case "heic":
+            return "image/heic"
+        case "txt":
+            return "text/plain"
+        case "doc":
+            return "application/msword"
+        case "docx":
+            return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        case "m4a":
+            return "audio/m4a"
+        default:
+            return "application/octet-stream"
         }
     }
             
@@ -2186,10 +2554,18 @@ private extension FriendChatView {
                 await MainActor.run {
                     backendConversationID = conversationID
 
+                    upsertCachedMessages(
+                        mappedMessages,
+                        conversationID: conversationID
+                    )
+
                     if didBootstrapBackendMessages {
                         mergeBackendMessages(mappedMessages)
-                    } else {
+                    } else if backendMessages.isEmpty {
                         backendMessages = mappedMessages.sorted { $0.createdAt < $1.createdAt }
+                        didBootstrapBackendMessages = true
+                    } else {
+                        mergeBackendMessages(mappedMessages)
                         didBootstrapBackendMessages = true
                     }
 
@@ -2213,6 +2589,10 @@ private extension FriendChatView {
                         }
 
                         appendOrReplaceBackendMessage(mappedMessage)
+                        upsertCachedMessage(
+                            mappedMessage,
+                            conversationID: conversationID
+                        )
 
                         print("🟢 WS MESSAGE UPSERTED:", mappedMessage.id.uuidString)
 
@@ -2225,6 +2605,12 @@ private extension FriendChatView {
                     onMessageSeen: { payload in
                         let seenIDs = Set(payload.messages.map { $0.id })
                         let seenDate = Date()
+                        
+                        updateCachedMessagesSeen(
+                            ids: seenIDs,
+                            seenAt: seenDate,
+                            conversationID: conversationID
+                        )
 
                         backendMessages = backendMessages.map { message in
                             guard seenIDs.contains(message.id) else {
@@ -2431,6 +2817,175 @@ private extension FriendChatView {
                     mimeType: nil,
                     messageStatus: "pending"
                 )
+            }
+            func loadCachedMessagesIfNeeded() {
+                guard !didLoadCachedMessages else { return }
+                guard let friendshipID else { return }
+
+                didLoadCachedMessages = true
+
+                do {
+                    let descriptor = FetchDescriptor<ChatCachedMessage>(
+                        predicate: #Predicate<ChatCachedMessage> { message in
+                            message.friendshipID == friendshipID
+                        },
+                        sortBy: [
+                            SortDescriptor(\ChatCachedMessage.createdAt, order: .forward)
+                        ]
+                    )
+
+                    let cached = try modelContext.fetch(descriptor)
+                    let items = cached.map { $0.toFriendChatMessageItem() }
+
+                    guard !items.isEmpty else {
+                        print("⚪️ CHAT CACHE EMPTY:", friendshipID.uuidString)
+                        return
+                    }
+
+                    mergeBackendMessages(items)
+
+                    if !hasCompletedBackendInitialSync {
+                        hasCompletedBackendInitialSync = true
+                    }
+
+                    print("🟢 CHAT CACHE LOADED:", items.count)
+                } catch {
+                    print("❌ CHAT CACHE LOAD ERROR:", error.localizedDescription)
+                }
+            }
+
+            func upsertCachedMessage(
+                _ message: FriendChatMessageItem,
+                conversationID: UUID?
+            ) {
+                let serverKey = message.serverID.map { "server-\($0.uuidString)" }
+                let clientKey = message.clientID.flatMap { $0.isEmpty ? nil : "client-\($0)" }
+                let localKey = "local-\(message.id.uuidString)"
+
+                do {
+                    var existing: ChatCachedMessage?
+
+                    if let serverKey {
+                        var descriptor = FetchDescriptor<ChatCachedMessage>(
+                            predicate: #Predicate<ChatCachedMessage> { cached in
+                                cached.cacheKey == serverKey
+                            }
+                        )
+                        descriptor.fetchLimit = 1
+                        existing = try modelContext.fetch(descriptor).first
+                    }
+
+                    if existing == nil, let clientKey {
+                        var descriptor = FetchDescriptor<ChatCachedMessage>(
+                            predicate: #Predicate<ChatCachedMessage> { cached in
+                                cached.cacheKey == clientKey
+                            }
+                        )
+                        descriptor.fetchLimit = 1
+                        existing = try modelContext.fetch(descriptor).first
+                    }
+
+                    if let existing {
+                        existing.update(from: message, conversationID: conversationID)
+                    } else {
+                        let created = ChatCachedMessage(
+                            id: message.serverID ?? message.id,
+                            serverID: message.serverID,
+                            clientID: message.clientID,
+                            conversationID: conversationID,
+                            friendshipID: message.friendshipID,
+                            senderID: message.senderID,
+                            senderName: message.senderName,
+                            text: message.text,
+                            createdAt: message.createdAt,
+                            reaction: message.reaction,
+                            isSystemMessage: message.isSystemMessage,
+                            isFromMe: message.isFromMe,
+                            isPending: message.isPending,
+                            isFailed: message.isFailed,
+                            deliveredAt: message.deliveredAt,
+                            seenAt: message.seenAt,
+                            messageType: message.messageType,
+                            mediaURL: message.mediaURL,
+                            fileName: message.fileName,
+                            fileSizeBytes: message.fileSizeBytes,
+                            mimeType: message.mimeType,
+                            messageStatus: message.messageStatus
+                        )
+
+                        modelContext.insert(created)
+                    }
+
+                    try modelContext.save()
+                } catch {
+                    print("❌ CHAT CACHE UPSERT ERROR:", error.localizedDescription)
+                    print("❌ CHAT CACHE FALLBACK KEY:", serverKey ?? clientKey ?? localKey)
+                }
+            }
+
+            func upsertCachedMessages(
+                _ messages: [FriendChatMessageItem],
+                conversationID: UUID?
+            ) {
+                for message in messages {
+                    upsertCachedMessage(message, conversationID: conversationID)
+                }
+            }
+
+            func updateCachedMessageFailed(clientID: String) {
+                do {
+                    let key = "client-\(clientID)"
+
+                    var descriptor = FetchDescriptor<ChatCachedMessage>(
+                        predicate: #Predicate<ChatCachedMessage> { cached in
+                            cached.cacheKey == key
+                        }
+                    )
+                    descriptor.fetchLimit = 1
+
+                    guard let cached = try modelContext.fetch(descriptor).first else {
+                        return
+                    }
+
+                    cached.isPending = false
+                    cached.isFailed = true
+                    cached.messageStatus = "failed"
+                    cached.updatedAt = Date()
+
+                    try modelContext.save()
+                } catch {
+                    print("❌ CHAT CACHE FAILED UPDATE ERROR:", error.localizedDescription)
+                }
+            }
+
+            func updateCachedMessagesSeen(
+                ids: Set<UUID>,
+                seenAt: Date,
+                conversationID: UUID?
+            ) {
+                guard !ids.isEmpty else { return }
+
+                do {
+                    let descriptor = FetchDescriptor<ChatCachedMessage>(
+                        predicate: #Predicate<ChatCachedMessage> { cached in
+                            cached.conversationID == conversationID
+                        }
+                    )
+
+                    let cachedMessages = try modelContext.fetch(descriptor)
+
+                    for cached in cachedMessages where ids.contains(cached.id) || ids.contains(cached.serverID ?? cached.id) {
+                        cached.seenAt = seenAt
+                        cached.isPending = false
+                        cached.isFailed = false
+                        cached.messageStatus = "seen"
+                        cached.updatedAt = Date()
+                    }
+
+                    try modelContext.save()
+                } catch {
+                    print("❌ CHAT CACHE SEEN UPDATE ERROR:", error.localizedDescription)
+                }
             }
         }
     

@@ -121,3 +121,4 @@ final class PushTokenStore {
         return savedToken == token && savedEnvironment == environment
     }
 }
+

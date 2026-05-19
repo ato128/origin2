@@ -110,6 +110,50 @@ struct ChatBackendMessageDTO: Decodable, Identifiable, Equatable {
     let editedAt: String?
     let deletedAt: String?
 
+    enum CodingKeys: String, CodingKey {
+        case id
+        case conversationID
+        case senderID
+        case clientID
+        case text
+        case messageType
+        case mediaURL
+        case fileName
+        case fileSizeBytes
+        case mimeType
+        case createdAt
+        case editedAt
+        case deletedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        id = try container.decode(UUID.self, forKey: .id)
+        conversationID = try container.decode(UUID.self, forKey: .conversationID)
+        senderID = try container.decode(UUID.self, forKey: .senderID)
+        clientID = try container.decode(String.self, forKey: .clientID)
+
+        text = try container.decodeIfPresent(String.self, forKey: .text)
+        messageType = try container.decode(String.self, forKey: .messageType)
+        mediaURL = try container.decodeIfPresent(String.self, forKey: .mediaURL)
+        fileName = try container.decodeIfPresent(String.self, forKey: .fileName)
+        mimeType = try container.decodeIfPresent(String.self, forKey: .mimeType)
+
+        createdAt = try container.decode(String.self, forKey: .createdAt)
+        editedAt = try container.decodeIfPresent(String.self, forKey: .editedAt)
+        deletedAt = try container.decodeIfPresent(String.self, forKey: .deletedAt)
+
+        if let intValue = try? container.decodeIfPresent(Int.self, forKey: .fileSizeBytes) {
+            fileSizeBytes = intValue
+        } else if let stringValue = try? container.decodeIfPresent(String.self, forKey: .fileSizeBytes),
+                  let intValue = Int(stringValue) {
+            fileSizeBytes = intValue
+        } else {
+            fileSizeBytes = nil
+        }
+    }
+
     var createdDate: Date? {
         ChatBackendDateParser.parse(createdAt)
     }
@@ -459,6 +503,16 @@ final class ChatBackendClient {
             return []
         }
     }
+    
+    struct ChatBackendSendMessagePayload: Encodable {
+        let clientID: String
+        let text: String
+        let messageType: String
+        let mediaURL: String?
+        let fileName: String?
+        let fileSizeBytes: Int?
+        let mimeType: String?
+    }
 
     // MARK: - Messages
 
@@ -466,31 +520,62 @@ final class ChatBackendClient {
     func sendMessage(
         conversationID: UUID,
         text: String,
-        clientID: String
+        clientID: String,
+        messageType: String = "text",
+        mediaURL: String? = nil,
+        fileName: String? = nil,
+        fileSizeBytes: Int? = nil,
+        mimeType: String? = nil
     ) async -> ChatBackendMessageDTO? {
         do {
             let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            let cleanMessageType = messageType.trimmingCharacters(in: .whitespacesAndNewlines)
 
-            guard !trimmedText.isEmpty else {
+            guard !clientID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                ChatBackendLogger.error("❌ CHAT BACKEND sendMessage ERROR: empty clientID")
+                return nil
+            }
+
+            guard !cleanMessageType.isEmpty else {
+                ChatBackendLogger.error("❌ CHAT BACKEND sendMessage ERROR: empty messageType")
+                return nil
+            }
+
+            if cleanMessageType == "text", trimmedText.isEmpty {
                 ChatBackendLogger.error("❌ CHAT BACKEND sendMessage ERROR: empty text")
                 return nil
             }
 
-            let body: [String: String] = [
-                "clientID": clientID,
-                "text": trimmedText
-            ]
+            if cleanMessageType != "text", mediaURL?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false {
+                ChatBackendLogger.error("❌ CHAT BACKEND sendMessage ERROR: missing mediaURL")
+                return nil
+            }
+
+            let payload = ChatBackendSendMessagePayload(
+                clientID: clientID,
+                text: trimmedText,
+                messageType: cleanMessageType,
+                mediaURL: mediaURL,
+                fileName: fileName,
+                fileSizeBytes: fileSizeBytes,
+                mimeType: mimeType
+            )
+
+            let encoder = JSONEncoder()
+            let data = try encoder.encode(payload)
+            let object = try JSONSerialization.jsonObject(with: data)
 
             let request = try await makeRequest(
                 path: "/v1/conversations/\(conversationID.uuidString)/messages",
                 method: "POST",
-                body: body,
-                timeout: 25
+                body: object,
+                timeout: 35
             )
 
             ChatBackendLogger.log("🟡 CHAT BACKEND SEND START")
             ChatBackendLogger.log("conversationID:", conversationID.uuidString)
             ChatBackendLogger.log("clientID:", clientID)
+            ChatBackendLogger.log("messageType:", cleanMessageType)
 
             let decoded = try await perform(
                 request,
@@ -509,7 +594,7 @@ final class ChatBackendClient {
             return nil
         }
     }
-
+    
     @discardableResult
     func sendMessage(
         conversationID: UUID,

@@ -1,18 +1,18 @@
 //
-//  ChatBackendSocketClient.swift
+//  ChatBackendInboxSocketClient.swift
 //  DailyTodo
 //
-//  Created by Atakan Ortaç on 6.05.2026.
+//  Created by Atakan Ortaç on 19.05.2026.
 //
 
 import Foundation
 import Supabase
-import Combine
 import UIKit
+import Combine
 
 @MainActor
-final class ChatBackendSocketClient: NSObject, ObservableObject {
-    static let shared = ChatBackendSocketClient()
+final class ChatBackendInboxSocketClient: NSObject, ObservableObject {
+    static let shared = ChatBackendInboxSocketClient()
 
     private override init() {
         super.init()
@@ -22,34 +22,37 @@ final class ChatBackendSocketClient: NSObject, ObservableObject {
     private let baseSocketURL = ChatBackendEnvironment.websocketBaseURL
 
     private var webSocketTask: URLSessionWebSocketTask?
-    private var activeConversationID: UUID?
-
-    private var onMessageCreated: ((ChatBackendMessageDTO) -> Void)?
-    private var onMessageSeen: ((ChatBackendMessageSeenPayload) -> Void)?
-
     private var shouldReconnect = false
     private var isManuallyDisconnected = false
     private var reconnectAttempt = 0
-    private let maxReconnectAttempt = 5
+    private let maxReconnectAttempt = 8
 
     private var pingTimer: Timer?
+
+    private var onMessageCreated: ((ChatBackendMessageDTO, ChatBackendConversationDTO?) -> Void)?
+    private var onConversationUpdated: ((ChatBackendConversationDTO?) -> Void)?
+    private var onMessageSeen: ((ChatBackendMessageSeenPayload) -> Void)?
 
     private lazy var urlSession: URLSession = {
         URLSession(configuration: .default, delegate: self, delegateQueue: nil)
     }()
 
-    // MARK: - Public API
-
     func connect(
-        conversationID: UUID,
-        onMessageCreated: @escaping (ChatBackendMessageDTO) -> Void,
+        onMessageCreated: @escaping (ChatBackendMessageDTO, ChatBackendConversationDTO?) -> Void,
+        onConversationUpdated: @escaping (ChatBackendConversationDTO?) -> Void,
         onMessageSeen: ((ChatBackendMessageSeenPayload) -> Void)? = nil
     ) async {
-        self.activeConversationID = conversationID
         self.onMessageCreated = onMessageCreated
+        self.onConversationUpdated = onConversationUpdated
         self.onMessageSeen = onMessageSeen
-        self.shouldReconnect = true
-        self.isManuallyDisconnected = false
+
+        shouldReconnect = true
+        isManuallyDisconnected = false
+
+        guard webSocketTask == nil else {
+            ChatBackendLogger.log("⚪️ INBOX WS CONNECT SKIPPED: already connected")
+            return
+        }
 
         await openSocket()
     }
@@ -61,46 +64,19 @@ final class ChatBackendSocketClient: NSObject, ObservableObject {
 
         stopHeartbeat()
 
-        if let activeConversationID {
-            sendRaw([
-                "type": "leave_conversation",
-                "conversationID": activeConversationID.uuidString
-            ])
-        }
-
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         webSocketTask = nil
-        activeConversationID = nil
-        onMessageCreated = nil
-        onMessageSeen = nil
 
-        ChatBackendLogger.log("🔴 WS DISCONNECT")
+        ChatBackendLogger.log("🔴 INBOX WS DISCONNECT")
     }
-
-    func reconnectCurrentConversationIfNeeded() async {
-        guard activeConversationID != nil else { return }
-        guard webSocketTask == nil else { return }
-
-        shouldReconnect = true
-        isManuallyDisconnected = false
-
-        await openSocket()
-    }
-
-    // MARK: - Socket Open
 
     private func openSocket() async {
-        guard let activeConversationID else {
-            ChatBackendLogger.error("❌ WS OPEN FAILED: missing activeConversationID")
-            return
-        }
-
         do {
             let session = try await SupabaseManager.shared.client.auth.session
             let token = session.accessToken
 
             guard var components = URLComponents(string: "\(baseSocketURL)/v1/socket") else {
-                ChatBackendLogger.error("❌ WS URL COMPONENTS FAILED")
+                ChatBackendLogger.error("❌ INBOX WS URL COMPONENTS FAILED")
                 return
             }
 
@@ -109,7 +85,7 @@ final class ChatBackendSocketClient: NSObject, ObservableObject {
             ]
 
             guard let url = components.url else {
-                ChatBackendLogger.error("❌ WS URL INVALID")
+                ChatBackendLogger.error("❌ INBOX WS URL INVALID")
                 return
             }
 
@@ -119,14 +95,12 @@ final class ChatBackendSocketClient: NSObject, ObservableObject {
             webSocketTask = task
             task.resume()
 
-            ChatBackendLogger.log("🟢 WS CONNECT START")
+            ChatBackendLogger.log("🟢 INBOX WS CONNECT START")
 
             listen()
-            sendJoin(conversationID: activeConversationID)
             startHeartbeat()
-
         } catch {
-            ChatBackendLogger.error("❌ WS CONNECT ERROR:", error.localizedDescription)
+            ChatBackendLogger.error("❌ INBOX WS CONNECT ERROR:", error.localizedDescription)
             scheduleReconnectIfNeeded()
         }
     }
@@ -135,15 +109,6 @@ final class ChatBackendSocketClient: NSObject, ObservableObject {
         stopHeartbeat()
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         webSocketTask = nil
-    }
-
-    // MARK: - Join / Leave / Ping
-
-    private func sendJoin(conversationID: UUID) {
-        sendRaw([
-            "type": "join_conversation",
-            "conversationID": conversationID.uuidString
-        ])
     }
 
     private func sendPing() {
@@ -161,17 +126,13 @@ final class ChatBackendSocketClient: NSObject, ObservableObject {
 
             webSocketTask.send(.string(text)) { error in
                 if let error {
-                    ChatBackendLogger.error("❌ WS SEND ERROR:", error.localizedDescription)
-                } else {
-                    ChatBackendLogger.log("📤 WS SEND:", text)
+                    ChatBackendLogger.error("❌ INBOX WS SEND ERROR:", error.localizedDescription)
                 }
             }
         } catch {
-            ChatBackendLogger.error("❌ WS JSON ENCODE ERROR:", error.localizedDescription)
+            ChatBackendLogger.error("❌ INBOX WS JSON ERROR:", error.localizedDescription)
         }
     }
-
-    // MARK: - Listen
 
     private func listen() {
         webSocketTask?.receive { [weak self] result in
@@ -184,7 +145,7 @@ final class ChatBackendSocketClient: NSObject, ObservableObject {
                     self.listen()
 
                 case .failure(let error):
-                    ChatBackendLogger.error("❌ WS RECEIVE ERROR:", error.localizedDescription)
+                    ChatBackendLogger.error("❌ INBOX WS RECEIVE ERROR:", error.localizedDescription)
                     self.webSocketTask = nil
                     self.stopHeartbeat()
                     self.scheduleReconnectIfNeeded()
@@ -207,7 +168,7 @@ final class ChatBackendSocketClient: NSObject, ObservableObject {
             return
         }
 
-        ChatBackendLogger.log("📩 WS RECEIVE:", text)
+        ChatBackendLogger.log("📩 INBOX WS RECEIVE:", text)
 
         guard let data = text.data(using: .utf8) else { return }
 
@@ -217,38 +178,48 @@ final class ChatBackendSocketClient: NSObject, ObservableObject {
             switch event.event {
             case "connected":
                 reconnectAttempt = 0
-                ChatBackendLogger.log("🟢 WS CONNECTED")
-
-            case "joined_conversation":
-                reconnectAttempt = 0
-                ChatBackendLogger.log("🟡 WS JOINED CONVERSATION")
-
-            case "left_conversation":
-                ChatBackendLogger.log("🟠 WS LEFT CONVERSATION")
+                ChatBackendLogger.log("🟢 INBOX WS CONNECTED")
 
             case "pong":
-                ChatBackendLogger.log("🏓 WS PONG")
+                ChatBackendLogger.log("🏓 INBOX WS PONG")
 
             case "message_created":
                 guard let message = event.payload?.message else {
-                    ChatBackendLogger.error("❌ WS MESSAGE_CREATED PAYLOAD MISSING")
+                    ChatBackendLogger.error("❌ INBOX MESSAGE_CREATED MISSING")
                     return
                 }
 
-                onMessageCreated?(message)
+                let conversation = event.payload?.conversation
+
+                onMessageCreated?(message, conversation)
 
                 NotificationCenter.default.post(
                     name: .chatBackendMessageCreated,
                     object: message.conversationID,
                     userInfo: [
                         "conversationID": message.conversationID.uuidString,
-                        "messageID": message.id.uuidString
+                        "messageID": message.id.uuidString,
+                        "conversation": conversation as Any
                     ]
                 )
 
+            case "conversation_updated":
+                let conversation = event.payload?.conversation
+                let conversationID = event.payload?.conversationID ?? conversation?.id
+
+                onConversationUpdated?(conversation)
+
+                NotificationCenter.default.post(
+                    name: .chatBackendConversationUpdated,
+                    object: conversationID,
+                    userInfo: [
+                        "conversationID": conversationID?.uuidString ?? "",
+                        "conversation": conversation as Any
+                    ]
+                )
+                
             case "message_seen":
                 guard let payload = event.payload?.asSeenPayload else {
-                    ChatBackendLogger.error("❌ WS MESSAGE_SEEN PAYLOAD MISSING")
                     return
                 }
 
@@ -263,37 +234,13 @@ final class ChatBackendSocketClient: NSObject, ObservableObject {
                     ]
                 )
 
-            case "message_delivered":
-                ChatBackendLogger.log("✅ WS MESSAGE DELIVERED EVENT RECEIVED")
-
-            case "conversation_updated":
-                let conversationID = event.payload?.conversationID ?? event.payload?.message?.conversationID
-
-                ChatBackendLogger.log(
-                    "🟣 WS CONVERSATION UPDATED EVENT RECEIVED:",
-                    conversationID?.uuidString ?? "nil"
-                )
-
-                NotificationCenter.default.post(
-                    name: .chatBackendConversationUpdated,
-                    object: conversationID,
-                    userInfo: [
-                        "conversationID": conversationID?.uuidString ?? ""
-                    ]
-                )
-
-            case "error":
-                ChatBackendLogger.error("❌ WS SERVER ERROR:", event.payload?.message ?? "unknown")
-
             default:
-                ChatBackendLogger.log("⚪️ WS UNKNOWN EVENT:", event.event)
+                break
             }
         } catch {
-            ChatBackendLogger.error("❌ WS DECODE ERROR:", error.localizedDescription)
+            ChatBackendLogger.error("❌ INBOX WS DECODE ERROR:", error.localizedDescription)
         }
     }
-
-    // MARK: - Heartbeat
 
     private func startHeartbeat() {
         stopHeartbeat()
@@ -310,23 +257,20 @@ final class ChatBackendSocketClient: NSObject, ObservableObject {
         pingTimer = nil
     }
 
-    // MARK: - Reconnect
-
     private func scheduleReconnectIfNeeded() {
         guard shouldReconnect else { return }
         guard !isManuallyDisconnected else { return }
-        guard activeConversationID != nil else { return }
 
         reconnectAttempt += 1
 
         guard reconnectAttempt <= maxReconnectAttempt else {
-            ChatBackendLogger.error("❌ WS RECONNECT STOPPED: max attempts reached")
+            ChatBackendLogger.error("❌ INBOX WS RECONNECT STOPPED")
             return
         }
 
-        let delay = min(pow(2.0, Double(reconnectAttempt)), 20.0)
+        let delay = min(pow(2.0, Double(reconnectAttempt)), 30.0)
 
-        ChatBackendLogger.log("🟡 WS RECONNECT SCHEDULED:", delay, "seconds")
+        ChatBackendLogger.log("🟡 INBOX WS RECONNECT SCHEDULED:", delay)
 
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
@@ -338,8 +282,6 @@ final class ChatBackendSocketClient: NSObject, ObservableObject {
             await self.openSocket()
         }
     }
-
-    // MARK: - App Lifecycle
 
     private func observeAppLifecycle() {
         NotificationCenter.default.addObserver(
@@ -358,42 +300,32 @@ final class ChatBackendSocketClient: NSObject, ObservableObject {
     }
 
     @objc private func appDidEnterBackground() {
-        ChatBackendLogger.log("🟠 WS APP DID ENTER BACKGROUND")
-
+        ChatBackendLogger.log("🟠 INBOX WS APP DID ENTER BACKGROUND")
         stopHeartbeat()
-
-        if let activeConversationID {
-            sendRaw([
-                "type": "leave_conversation",
-                "conversationID": activeConversationID.uuidString
-            ])
-        }
-
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         webSocketTask = nil
     }
 
     @objc private func appWillEnterForeground() {
-        ChatBackendLogger.log("🟢 WS APP WILL ENTER FOREGROUND")
+        ChatBackendLogger.log("🟢 INBOX WS APP WILL ENTER FOREGROUND")
 
-        guard activeConversationID != nil else { return }
+        guard shouldReconnect else { return }
+        guard webSocketTask == nil else { return }
 
         Task { @MainActor in
-            await reconnectCurrentConversationIfNeeded()
+            await openSocket()
         }
     }
 }
 
-// MARK: - URLSessionWebSocketDelegate
-
-extension ChatBackendSocketClient: URLSessionWebSocketDelegate {
+extension ChatBackendInboxSocketClient: URLSessionWebSocketDelegate {
     nonisolated func urlSession(
         _ session: URLSession,
         webSocketTask: URLSessionWebSocketTask,
         didOpenWithProtocol protocol: String?
     ) {
         #if DEBUG
-        print("🟢 WS DID OPEN")
+        print("🟢 INBOX WS DID OPEN")
         #endif
     }
 
@@ -404,70 +336,15 @@ extension ChatBackendSocketClient: URLSessionWebSocketDelegate {
         reason: Data?
     ) {
         #if DEBUG
-        print("🔴 WS DID CLOSE:", closeCode.rawValue)
+        print("🔴 INBOX WS DID CLOSE:", closeCode.rawValue)
         #endif
 
         Task { @MainActor in
-            if ChatBackendSocketClient.shared.webSocketTask === webSocketTask {
-                ChatBackendSocketClient.shared.webSocketTask = nil
-                ChatBackendSocketClient.shared.stopHeartbeat()
-                ChatBackendSocketClient.shared.scheduleReconnectIfNeeded()
+            if ChatBackendInboxSocketClient.shared.webSocketTask === webSocketTask {
+                ChatBackendInboxSocketClient.shared.webSocketTask = nil
+                ChatBackendInboxSocketClient.shared.stopHeartbeat()
+                ChatBackendInboxSocketClient.shared.scheduleReconnectIfNeeded()
             }
         }
     }
-}
-
-// MARK: - Socket DTOs
-
-struct ChatBackendSocketEvent: Decodable {
-    let event: String
-    let payload: ChatBackendSocketPayload?
-}
-
-struct ChatBackendSocketPayload: Decodable {
-    let userID: UUID?
-    let conversationID: UUID?
-    let conversation: ChatBackendConversationDTO?
-    let message: ChatBackendMessageDTO?
-    let readerID: UUID?
-    let messages: [ChatBackendSeenMessageDTO]?
-    let code: String?
-    let error: String?
-
-
-    var asSeenPayload: ChatBackendMessageSeenPayload? {
-        guard let conversationID, let readerID else {
-            return nil
-        }
-
-        return ChatBackendMessageSeenPayload(
-            conversationID: conversationID,
-            readerID: readerID,
-            messages: messages ?? []
-        )
-    }
-}
-
-struct ChatBackendSeenMessageDTO: Decodable, Equatable {
-    let id: UUID
-    let conversationID: UUID
-    let senderID: UUID
-    let clientID: String
-    let seenAt: String
-
-    var seenDate: Date? {
-        ChatBackendDateParser.parse(seenAt)
-    }
-}
-
-struct ChatBackendMessageSeenPayload: Decodable, Equatable {
-    let conversationID: UUID
-    let readerID: UUID
-    let messages: [ChatBackendSeenMessageDTO]
-}
-
-extension Notification.Name {
-    static let chatBackendConversationUpdated = Notification.Name("chatBackendConversationUpdated")
-    static let chatBackendMessageCreated = Notification.Name("chatBackendMessageCreated")
-    static let chatBackendMessageSeen = Notification.Name("chatBackendMessageSeen")
 }

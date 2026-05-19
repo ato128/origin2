@@ -52,5 +52,21 @@
             landmarkType = "21">
          </BreakpointContent>
       </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "A556561C-2CEC-4A2B-923C-8DA1685E2CD1"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../../../../var/folders/p4/5j9mn8hs64qf0b4rx5snnczr0000gp/T/swift-generated-sources/@__swiftmacro_9DailyTodo0023DailyTodoAppswift_elFCffMX440_27_33_05F100A550A887987A54AC7245692B61Ll9PredicatefMf_.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "1"
+            endingLineNumber = "1"
+            landmarkName = "updateInboxSeenCache(_:)"
+            landmarkType = "37">
+         </BreakpointContent>
+      </BreakpointProxy>
    </Breakpoints>
 </Bucket>
