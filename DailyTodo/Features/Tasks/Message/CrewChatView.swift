@@ -6,6 +6,8 @@
 //
 import SwiftUI
 import Combine
+import PhotosUI
+import UIKit
 
 struct CrewChatView: View {
     let crew: WeekCrewItem
@@ -14,6 +16,7 @@ struct CrewChatView: View {
     @Environment(\.locale) private var locale
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var session: SessionStore
+    @Environment(\.modelContext) var modelContext
     @AppStorage("appTheme") var appTheme = AppTheme.gradient.rawValue
 
     @State var draftMessage: String = ""
@@ -27,6 +30,21 @@ struct CrewChatView: View {
     @State var isCurrentlyTyping = false
     @State private var didInitialLoad = false
     @State private var localActiveFocusSession: CrewFocusSessionDTO?
+    @State var backendConversationID: UUID?
+    @State var backendMessages: [CrewChatMessageItem] = []
+    @State var seenMessageIDs: Set<UUID> = []
+    @State var didLoadCachedMessages = false
+    @State var isSyncingBackendConversation = false
+    @State var hasCompletedBackendInitialSync = false
+    @State var backendSyncError: String?
+    @State var isSendingBackendMessage = false
+    @State var didBootstrapBackendMessages = false
+    @State var selectedPhotoItem: PhotosPickerItem?
+    @State var draftPhotoImage: UIImage?
+    @State var showAttachmentAlert = false
+    @State var attachmentAlertText = ""
+    @State var showPhotoPicker = false
+   
 
     @FocusState var isComposerFocused: Bool
 
@@ -43,7 +61,7 @@ struct CrewChatView: View {
             ambientBackground
 
             VStack(spacing: 0) {
-                if messages.isEmpty, crewStore.chatLoadingByCrew[crew.id] == true {
+                if messages.isEmpty, isSyncingBackendConversation, !didLoadCachedMessages  {
                     VStack {
                         Spacer()
                         ProgressView()
@@ -101,6 +119,7 @@ struct CrewChatView: View {
                     
                 }
             }
+            
         }
         .onDisappear {
             typingStopTask?.cancel()
@@ -117,10 +136,41 @@ struct CrewChatView: View {
             }
 
             Task { @MainActor in
-                crewStore.unsubscribeCrewChat()
+                ChatBackendSocketClient.shared.disconnect()
+
                 crewStore.unsubscribeCrewAuxRealtime()
                 crewStore.unsubscribeCrewFocusRealtime()
             }
+        }
+        .onChange(of: selectedPhotoItem) { _, newItem in
+            guard let newItem else { return }
+
+            Task {
+                do {
+                    if let data = try await newItem.loadTransferable(type: Data.self),
+                       let image = UIImage(data: data) {
+                        await MainActor.run {
+                            draftPhotoImage = image
+                        }
+                    }
+                } catch {
+                    await MainActor.run {
+                        attachmentAlertText = "Fotoğraf yüklenemedi: \(error.localizedDescription)"
+                        showAttachmentAlert = true
+                    }
+                }
+            }
+        }
+        .photosPicker(
+            isPresented: $showPhotoPicker,
+            selection: $selectedPhotoItem,
+            matching: .images,
+            photoLibrary: .shared()
+        )
+        .alert("Bilgi", isPresented: $showAttachmentAlert) {
+            Button("Tamam", role: .cancel) { }
+        } message: {
+            Text(attachmentAlertText)
         }
         .sheet(isPresented: $showCrewInfo) {
             NavigationStack {

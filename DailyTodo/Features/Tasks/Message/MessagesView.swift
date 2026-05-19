@@ -113,11 +113,25 @@ struct MessagesView: View {
         }
 
         let crewItems: [MessagesHubItem] = backendCrews.compactMap { crew -> MessagesHubItem? in
-            let member = currentCrewMember(for: crew)
+            let backendConversation = backendConversation(for: crew)
 
-            if member?.is_archived == true {
+            if backendConversation?.isArchived == true {
                 return nil
             }
+
+            let backendLastText = backendConversation?.lastMessageText?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+
+            let preview: String
+
+            if let backendLastText, !backendLastText.isEmpty {
+                preview = cleanedPreview(backendLastText)
+            } else {
+                preview = "Crew conversation"
+            }
+
+            let lastDate = backendDate(backendConversation?.lastMessageAt)
+            let unread = backendConversation?.unreadCount ?? 0
 
             return MessagesHubItem(
                 id: "crew-\(crew.id.uuidString)",
@@ -125,15 +139,15 @@ struct MessagesView: View {
                 payload: .crew(crew),
                 title: crew.name,
                 shortTitle: crew.name,
-                preview: lastPreviewText(for: crew),
-                time: lastCrewMessageDate(for: crew),
-                unreadCount: crewUnreadCount(for: crew),
+                preview: preview,
+                time: lastDate,
+                unreadCount: unread,
                 avatarText: crew.icon,
                 tint: tintForCrew(crew),
                 isOnline: isCrewActiveToday(crew),
                 showsPresence: true,
-                isPinned: member?.is_pinned ?? false,
-                isMuted: member?.is_muted ?? false
+                isPinned: backendConversation?.isPinned ?? false,
+                isMuted: backendConversation?.isMuted ?? false
             )
         }
 
@@ -718,8 +732,9 @@ private extension MessagesView {
             }
 
         case .crew(let crew):
-            let pinned = isCrewPinned(crew)
-            let muted = isCrewMuted(crew)
+            let backendConversation = backendConversation(for: crew)
+            let pinned = backendConversation?.isPinned ?? false
+            let muted = backendConversation?.isMuted ?? false
 
             Button {
                 togglePinCrewChat(crew)
@@ -1034,15 +1049,15 @@ private extension MessagesView {
         for crew in crewStore.crews {
             await crewStore.loadMembers(for: crew.id)
 
-            let existingMessages = crewStore.chatMessagesByCrew[crew.id] ?? []
-
-            if existingMessages.isEmpty {
-                await crewStore.loadInitialChatMessages(
-                    for: crew.id,
-                    currentUserID: session.currentUser?.id
-                )
-            }
+            _ = await ChatBackendClient.shared.syncCrew(
+                crewID: crew.id,
+                crewName: crew.name,
+                memberUserIDs: crewStore.crewMembers
+                    .filter { $0.crew_id == crew.id }
+                    .map(\.user_id)
+            )
         }
+        
 
         guard let currentUserID = session.currentUser?.id else { return }
 
@@ -1120,6 +1135,18 @@ private extension MessagesView {
             $0.supabaseFriendshipId == friendshipID
         }
     }
+    
+    private func backendConversation(for crew: WeekCrewItem) -> ChatBackendConversationDTO? {
+        backendConversations.first {
+            $0.supabaseCrewId == crew.id
+        }
+    }
+
+    private func backendCrewConversationID(for crewID: UUID) -> UUID? {
+        backendConversations.first {
+            $0.supabaseCrewId == crewID
+        }?.id
+    }
 
     private func backendDate(_ value: String?) -> Date? {
         ChatBackendDateParser.parse(value)
@@ -1185,77 +1212,16 @@ private extension MessagesView {
         return String(text[bodyStart...])
     }
 
-    private func lastPreviewText(for friend: Friend) -> String {
-        guard let friendshipID = friend.backendFriendshipID else {
-            return friend.subtitle
-        }
-
-        if let summary = friendStore.friendChatSummaries.first(where: { $0.friendshipID == friendshipID }) {
-            let cleaned = cleanedPreview(summary.lastMessageText)
-            return summary.typingText ?? cleaned
-        }
-
-        guard let last = friendStore.friendMessagesByFriendship[friendshipID]?.last else {
-            return friend.subtitle
-        }
-
-        let cleaned = cleanedPreview(last.text)
-        return last.isFromMe ? "You: \(cleaned)" : cleaned
-    }
-
-    private func lastFriendMessageDate(for friend: Friend) -> Date? {
-        guard let friendshipID = friend.backendFriendshipID else { return nil }
-
-        if let summary = friendStore.friendChatSummaries.first(where: { $0.friendshipID == friendshipID }) {
-            return summary.lastMessageAt
-        }
-
-        return friendStore.friendMessagesByFriendship[friendshipID]?.last?.createdAt
-    }
-
-    private func unreadFriendCount(for friend: Friend) -> Int {
-        guard let friendshipID = friend.backendFriendshipID else { return 0 }
-
-        if let summary = friendStore.friendChatSummaries.first(where: { $0.friendshipID == friendshipID }) {
-            return summary.unreadCount
-        }
-
-        return friendStore.unreadCount(for: friendshipID)
-    }
-
-    private func crewChatMessages(for crew: WeekCrewItem) -> [CrewChatMessageItem] {
-        crewStore.chatMessagesByCrew[crew.id] ?? []
-    }
-
-    private func lastPreviewText(for crew: WeekCrewItem) -> String {
-        guard let last = crewChatMessages(for: crew).last else {
-            return "Crew conversation"
-        }
-
-        if last.isSystemMessage {
-            return last.displayText
-        }
-
-        return "\(last.senderName): \(last.displayText)"
-    }
-
-    private func lastCrewMessageDate(for crew: WeekCrewItem) -> Date? {
-        crewChatMessages(for: crew).last?.createdAt
-    }
-
-    private func crewUnreadCount(for crew: WeekCrewItem) -> Int {
-        guard let currentUserID = session.currentUser?.id else { return 0 }
-
-        return crewStore.crewMembers.first {
-            $0.crew_id == crew.id && $0.user_id == currentUserID
-        }?.unread_count ?? 0
-    }
+    
 
     private func isCrewActiveToday(_ crew: WeekCrewItem) -> Bool {
-        guard let lastDate = lastCrewMessageDate(for: crew) else { return false }
+        guard let lastDate = backendDate(backendConversation(for: crew)?.lastMessageAt) else {
+            return false
+        }
+
         return Calendar.current.isDateInToday(lastDate)
     }
-
+    
     private func firstWord(_ value: String) -> String {
         value.split(separator: " ").first.map(String.init) ?? value
     }
@@ -1478,70 +1444,112 @@ private extension MessagesView {
             }
         }
     }
-    private func crewMemberState(for crew: WeekCrewItem) -> CrewMemberDTO? {
-        guard let currentUserID = session.currentUser?.id else { return nil }
-
-        return crewStore.crewMembers.first {
-            $0.crew_id == crew.id && $0.user_id == currentUserID
-        }
-    }
-
-    private func isCrewPinned(_ crew: WeekCrewItem) -> Bool {
-        crewMemberState(for: crew)?.is_pinned ?? false
-    }
-
-    private func isCrewMuted(_ crew: WeekCrewItem) -> Bool {
-        crewMemberState(for: crew)?.is_muted ?? false
-    }
-
-    private func currentCrewMember(for crew: WeekCrewItem) -> CrewMemberDTO? {
-        guard let currentUserID = session.currentUser?.id else { return nil }
-
-        return crewStore.crewMembers.first {
-            $0.crew_id == crew.id && $0.user_id == currentUserID
-        }
-    }
 
     private func togglePinCrewChat(_ crew: WeekCrewItem) {
-        guard let currentUserID = session.currentUser?.id else { return }
-
-        let current = currentCrewMember(for: crew)?.is_pinned ?? false
+        let current = backendConversation(for: crew)?.isPinned ?? false
 
         Task {
-            await crewStore.setCrewChatPinned(
-                crewID: crew.id,
-                userID: currentUserID,
+            let conversationID: UUID?
+
+            if let existingID = backendCrewConversationID(for: crew.id) {
+                conversationID = existingID
+            } else {
+                conversationID = await ChatBackendClient.shared.syncCrew(
+                    crewID: crew.id,
+                    crewName: crew.name,
+                    memberUserIDs: crewStore.crewMembers
+                        .filter { $0.crew_id == crew.id }
+                        .map(\.user_id)
+                )?.id
+            }
+
+            guard let conversationID else {
+                print("❌ CREW MEMBER STATE PIN SKIPPED: backend conversation not found")
+                return
+            }
+
+            let state = await ChatBackendClient.shared.updateConversationMemberState(
+                conversationID: conversationID,
                 isPinned: !current
             )
+
+            if let state {
+                await MainActor.run {
+                    applyBackendMemberState(state)
+                }
+            }
         }
     }
 
     private func toggleMuteCrewChat(_ crew: WeekCrewItem) {
-        guard let currentUserID = session.currentUser?.id else { return }
-
-        let current = currentCrewMember(for: crew)?.is_muted ?? false
+        let current = backendConversation(for: crew)?.isMuted ?? false
 
         Task {
-            await crewStore.setCrewChatMuted(
-                crewID: crew.id,
-                userID: currentUserID,
+            let conversationID: UUID?
+
+            if let existingID = backendCrewConversationID(for: crew.id) {
+                conversationID = existingID
+            } else {
+                conversationID = await ChatBackendClient.shared.syncCrew(
+                    crewID: crew.id,
+                    crewName: crew.name,
+                    memberUserIDs: crewStore.crewMembers
+                        .filter { $0.crew_id == crew.id }
+                        .map(\.user_id)
+                )?.id
+            }
+
+            guard let conversationID else {
+                print("❌ CREW MEMBER STATE MUTE SKIPPED: backend conversation not found")
+                return
+            }
+
+            let state = await ChatBackendClient.shared.updateConversationMemberState(
+                conversationID: conversationID,
                 isMuted: !current
             )
+
+            if let state {
+                await MainActor.run {
+                    applyBackendMemberState(state)
+                }
+            }
         }
     }
 
     private func archiveCrewChat(_ crew: WeekCrewItem) {
-        guard let currentUserID = session.currentUser?.id else { return }
-
         Task {
-            await crewStore.setCrewChatArchived(
-                crewID: crew.id,
-                userID: currentUserID,
+            let conversationID: UUID?
+
+            if let existingID = backendCrewConversationID(for: crew.id) {
+                conversationID = existingID
+            } else {
+                conversationID = await ChatBackendClient.shared.syncCrew(
+                    crewID: crew.id,
+                    crewName: crew.name,
+                    memberUserIDs: crewStore.crewMembers
+                        .filter { $0.crew_id == crew.id }
+                        .map(\.user_id)
+                )?.id
+            }
+
+            guard let conversationID else {
+                print("❌ CREW MEMBER STATE ARCHIVE SKIPPED: backend conversation not found")
+                return
+            }
+
+            let state = await ChatBackendClient.shared.updateConversationMemberState(
+                conversationID: conversationID,
                 isArchived: true
             )
+
+            if let state {
+                await MainActor.run {
+                    applyBackendMemberState(state)
+                }
+            }
         }
-    }
-}
+    }}
 
 // MARK: - Color
 

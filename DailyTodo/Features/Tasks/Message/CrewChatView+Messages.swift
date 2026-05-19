@@ -10,7 +10,7 @@ import SwiftUI
 extension CrewChatView {
 
     var messages: [CrewChatMessageItem] {
-        crewStore.chatMessagesByCrew[crew.id] ?? []
+        backendMessages.sorted { $0.createdAt < $1.createdAt }
     }
 
     var messagesList: some View {
@@ -45,42 +45,25 @@ extension CrewChatView {
             .onChange(of: messages.count) { _, _ in
                 scrollToBottom(proxy: proxy, animated: true)
 
-                guard let myID = session.currentUser?.id else { return }
-
                 Task(priority: .utility) {
                     try? await Task.sleep(nanoseconds: 700_000_000)
 
-                    await crewStore.markCrewMessagesAsRead(
-                        crewID: crew.id,
-                        userID: myID
-                    )
+                    if let backendConversationID {
+                        await ChatBackendClient.shared.markConversationRead(
+                            conversationID: backendConversationID
+                        )
+                    }
                 }
             }
         }
     }
 
-    func lastReadDate(for userID: UUID) -> Date? {
-        guard let raw = crewStore.crewMessageReads.first(where: {
-            $0.crew_id == crew.id && $0.user_id == userID
-        })?.last_read_at else {
-            return nil
-        }
-
-        return ISO8601DateFormatter().date(from: raw)
-    }
-
     func messageSeenByAnyone(_ message: CrewChatMessageItem) -> Bool {
-        guard let currentUserID = session.currentUser?.id else { return false }
-        guard message.senderID == currentUserID else { return false }
+        guard message.isFromMe else { return false }
+        guard !message.isPending, !message.isFailed else { return false }
 
-        let otherMembers = crewMembers.filter { $0.userID != currentUserID }
-        guard !otherMembers.isEmpty else { return false }
-
-        return otherMembers.contains { member in
-            guard let readDate = lastReadDate(for: member.userID) else { return false }
-
-            return readDate.timeIntervalSince1970 >= message.createdAt.timeIntervalSince1970 - 1
-        }
+        let messageID = message.serverID ?? message.id
+        return seenMessageIDs.contains(messageID)
     }
 
     var crewMembers: [WeekCrewMemberItem] {
@@ -112,7 +95,12 @@ extension CrewChatView {
 
     @ViewBuilder
     func messageStatusView(for message: CrewChatMessageItem) -> some View {
-        if message.isPending {
+        if message.messageStatus == "uploading" {
+            ProgressView()
+                .scaleEffect(0.55)
+                .tint(.white.opacity(0.9))
+
+        } else if message.isPending {
             Image(systemName: "clock")
                 .font(.system(size: 9, weight: .medium))
                 .foregroundStyle(message.isFromMe ? .white.opacity(0.55) : .white.opacity(0.36))
@@ -216,11 +204,15 @@ extension CrewChatView {
                             )
                         }
 
-                        Text(message.displayText)
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(isFromMe ? .white : .white.opacity(0.96))
-                            .multilineTextAlignment(.leading)
-                            .fixedSize(horizontal: false, vertical: true)
+                        if message.messageType == "image" {
+                            crewImageMessageView(message)
+                        } else {
+                            Text(message.displayText)
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundStyle(isFromMe ? .white : .white.opacity(0.96))
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
 
                         if isFromMe {
                             HStack(spacing: 5) {
@@ -233,8 +225,7 @@ extension CrewChatView {
                             .padding(.top, 1)
                         }
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
+                    .padding(message.messageType == "image" ? 8 : 14)
                     .background(messageBubbleBackground(isFromMe: isFromMe))
                     .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                     .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -262,6 +253,94 @@ extension CrewChatView {
                 }
             }
         }
+    }
+
+    func crewImageMessageView(_ message: CrewChatMessageItem) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ZStack {
+                if let mediaURL = message.mediaURL,
+                   let url = URL(string: mediaURL) {
+                    AsyncImage(url: url, transaction: Transaction(animation: .easeInOut)) { phase in
+                        switch phase {
+                        case .empty:
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(Color.white.opacity(0.08))
+                                .frame(width: 220, height: 260)
+                                .overlay {
+                                    ProgressView()
+                                        .tint(.white.opacity(0.8))
+                                }
+
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 220, height: 260)
+                                .clipped()
+                                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+                        case .failure:
+                            imageFailurePlaceholder
+
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
+                } else {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.white.opacity(0.08))
+                        .frame(width: 220, height: 260)
+                        .overlay {
+                            if message.messageStatus == "uploading" || message.isPending {
+                                VStack(spacing: 10) {
+                                    ProgressView()
+                                        .tint(.white)
+
+                                    Text("Fotoğraf yükleniyor")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundStyle(.white)
+                                }
+                            } else if message.isFailed {
+                                VStack(spacing: 8) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .font(.system(size: 24, weight: .bold))
+
+                                    Text("Fotoğraf gönderilemedi")
+                                        .font(.system(size: 12, weight: .semibold))
+                                }
+                                .foregroundStyle(.red.opacity(0.95))
+                            } else {
+                                imageFailurePlaceholder
+                            }
+                        }
+                }
+            }
+
+            if !message.displayText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               message.displayText != "📷 Fotoğraf" {
+                Text(message.displayText)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(message.isFromMe ? .white : .white.opacity(0.96))
+                    .padding(.horizontal, 4)
+                    .padding(.bottom, 2)
+            }
+        }
+    }
+
+    var imageFailurePlaceholder: some View {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .fill(Color.white.opacity(0.08))
+            .frame(width: 220, height: 260)
+            .overlay {
+                VStack(spacing: 8) {
+                    Image(systemName: "photo")
+                        .font(.system(size: 26, weight: .medium))
+
+                    Text("Görsel yüklenemedi")
+                        .font(.system(size: 12, weight: .medium))
+                }
+                .foregroundStyle(.white.opacity(0.75))
+            }
     }
 
     func replyPreviewView(_ replyPreview: String, isFromMe: Bool) -> some View {

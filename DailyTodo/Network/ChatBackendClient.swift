@@ -208,6 +208,12 @@ struct ChatBackendSyncFriendshipResponse: Decodable {
     let error: String?
 }
 
+struct ChatBackendSyncCrewResponse: Decodable {
+    let ok: Bool
+    let conversation: ChatBackendConversationDTO?
+    let error: String?
+}
+
 struct ChatBackendMarkReadResponse: Decodable {
     let ok: Bool
     let read: ChatBackendReadDTO?
@@ -468,6 +474,58 @@ final class ChatBackendClient {
             return decoded.conversation
         } catch {
             ChatBackendLogger.error("❌ CHAT BACKEND syncFriendship ERROR:", error.localizedDescription)
+            return nil
+        }
+    }
+    
+    @discardableResult
+    func syncCrew(
+        crewID: UUID,
+        crewName: String? = nil,
+        memberUserIDs: [UUID] = []
+    ) async -> ChatBackendConversationDTO? {
+        do {
+            ChatBackendLogger.log("🟡 CHAT CREW SYNC DEBUG")
+            ChatBackendLogger.log("crewID:", crewID.uuidString)
+            ChatBackendLogger.log("crewName:", crewName ?? "nil")
+            ChatBackendLogger.log("memberUserIDs:", memberUserIDs.map(\.uuidString).joined(separator: ","))
+
+            var body: [String: Any] = [
+                "crewID": crewID.uuidString,
+                "memberUserIDs": memberUserIDs.map(\.uuidString)
+            ]
+
+            if let crewName,
+               !crewName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                body["crewName"] = crewName
+            }
+
+            let request = try await makeRequest(
+                path: "/v1/conversations/sync-crew",
+                method: "POST",
+                body: body,
+                timeout: 25
+            )
+
+            let decoded = try await perform(
+                request,
+                responseType: ChatBackendSyncCrewResponse.self,
+                debugName: "syncCrew"
+            )
+
+            guard decoded.ok else {
+                ChatBackendLogger.error("❌ CHAT BACKEND syncCrew API ERROR:", decoded.error ?? "unknown")
+                return nil
+            }
+
+            guard let conversation = decoded.conversation else {
+                ChatBackendLogger.error("❌ CHAT BACKEND syncCrew ERROR: conversation nil")
+                return nil
+            }
+
+            return conversation
+        } catch {
+            ChatBackendLogger.error("❌ CHAT BACKEND syncCrew ERROR:", error.localizedDescription)
             return nil
         }
     }

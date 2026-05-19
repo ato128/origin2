@@ -100,7 +100,7 @@ struct FriendChatView: View {
 
     @State private var lastScrolledMessageID: UUID?
     @StateObject private var audioRecorder = AudioRecorderManager()
-    @State private var liveRefreshTask: Task<Void, Never>?
+    
     @State private var scrollTask: Task<Void, Never>?
     @State private var typingStopTask: Task<Void, Never>?
     @State private var lastTypingTextWasEmpty = true
@@ -127,10 +127,7 @@ struct FriendChatView: View {
         friend.backendFriendshipID
     }
 
-    private var messages: [FriendChatMessageItem] {
-        guard let friendshipID else { return [] }
-        return friendStore.friendMessagesByFriendship[friendshipID] ?? []
-    }
+    
     
     private var visibleMessages: [FriendChatMessageItem] {
         backendMessages.sorted { $0.createdAt < $1.createdAt }
@@ -262,9 +259,7 @@ struct FriendChatView: View {
 
                 print("🟡 CHAT TASK START:", friendshipID.uuidString)
 
-                FriendStore.sharedRetryBridge = { message in
-                    await friendStore.retryMessage(message)
-                }
+               
 
                 friendStore.setActiveChat(friendshipID)
                 UserDefaults.standard.set(friendshipID.uuidString, forKey: "active_friendship_id")
@@ -286,8 +281,7 @@ struct FriendChatView: View {
                     ChatBackendSocketClient.shared.disconnect()
                 }
 
-                liveRefreshTask?.cancel()
-                liveRefreshTask = nil
+                
 
                 scrollTask?.cancel()
                 scrollTask = nil
@@ -1026,22 +1020,7 @@ private extension FriendChatView {
         )
     }
     
-    func startLiveRefreshFallback() {
-        liveRefreshTask?.cancel()
-        
-        liveRefreshTask = Task {
-            while !Task.isCancelled {
-                guard let friendshipID else { return }
-                
-                await friendStore.loadNewMessages(
-                    for: friendshipID,
-                    currentUserID: session.currentUser?.id
-                )
-                
-                try? await Task.sleep(nanoseconds: 1_500_000_000)
-            }
-        }
-    }
+    
     
     func sendMessage() {
         guard let friendshipID else { return }
@@ -1790,25 +1769,7 @@ private extension FriendChatView {
                                             Label("Fotoğrafı Kaydet", systemImage: "square.and.arrow.down")
                                         }
                                     }
-                                    
-                                    if message.isFailed && message.isFromMe {
-                                        Button {
-                                            Task {
-                                                await FriendStore.sharedRetryBridge?(message)
-                                            }
-                                        } label: {
-                                            Label("Tekrar Gönder", systemImage: "arrow.clockwise")
-                                        }
-                                    }
-                                    
-                                    if message.isFromMe {
-                                        Button(role: .destructive) {
-                                            onDelete()
-                                        } label: {
-                                            Label(tr("common_delete"), systemImage: "trash")
-                                        }
-                                    }
-                                }
+                            }
                             
                             if showTime {
                                 Text(timeText)

@@ -22,6 +22,13 @@ struct CrewChatMessageItem: Identifiable, Equatable {
     let isPending: Bool
     let isFailed: Bool
 
+    let messageType: String
+    let mediaURL: String?
+    let fileName: String?
+    let fileSizeBytes: Int64?
+    let mimeType: String?
+    let messageStatus: String
+
     let displayText: String
     let replyPreview: String?
 
@@ -39,6 +46,12 @@ struct CrewChatMessageItem: Identifiable, Equatable {
         isFromMe: Bool,
         isPending: Bool,
         isFailed: Bool,
+        messageType: String = "text",
+        mediaURL: String? = nil,
+        fileName: String? = nil,
+        fileSizeBytes: Int64? = nil,
+        mimeType: String? = nil,
+        messageStatus: String = "sent",
         replyMarker: String = "[[reply]]",
         bodyMarker: String = "[[body]]"
     ) {
@@ -55,6 +68,13 @@ struct CrewChatMessageItem: Identifiable, Equatable {
         self.isFromMe = isFromMe
         self.isPending = isPending
         self.isFailed = isFailed
+
+        self.messageType = messageType
+        self.mediaURL = mediaURL
+        self.fileName = fileName
+        self.fileSizeBytes = fileSizeBytes
+        self.mimeType = mimeType
+        self.messageStatus = messageStatus
 
         if text.hasPrefix(replyMarker), let bodyRange = text.range(of: bodyMarker) {
             let previewStart = text.index(text.startIndex, offsetBy: replyMarker.count)

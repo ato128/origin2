@@ -70,7 +70,8 @@ struct DailyTodoApp: App {
                 CrewMessage.self,
                 CrewFocusSession.self,
                 CrewFocusRecord.self,
-                FriendRequest.self
+                FriendRequest.self,
+                ChatCachedConversationMessage.self
             ])
 
             let configuration = ModelConfiguration(

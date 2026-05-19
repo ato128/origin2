@@ -5,6 +5,10 @@
 //  Created by Atakan Ortaç on 16.03.2026.
 //
 import SwiftUI
+import SwiftData
+import PhotosUI
+import UIKit
+import Supabase
 
 extension CrewChatView {
 
@@ -15,7 +19,41 @@ extension CrewChatView {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
+            if let draftPhotoImage {
+                photoAttachmentPreview(image: draftPhotoImage)
+                    .padding(.horizontal, 16)
+            }
+
+            
             HStack(alignment: .center, spacing: 10) {
+                Menu {
+                    Button {
+                        attachmentAlertText = "Dosya gönderme bir sonraki adımda eklenecek."
+                        showAttachmentAlert = true
+                    } label: {
+                        Label("Dosya", systemImage: "doc")
+                    }
+
+                    Button {
+                        attachmentAlertText = "Kamera ile çekme bir sonraki adımda eklenecek."
+                        showAttachmentAlert = true
+                    } label: {
+                        Label("Kamera", systemImage: "camera")
+                    }
+
+                    Button {
+                        showPhotoPicker = true
+                    } label: {
+                        Label("Fotoğraf", systemImage: "photo")
+                    }
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 20, weight: .black))
+                        .foregroundStyle(.white.opacity(0.95))
+                        .frame(width: 42, height: 42)
+                        .background(crewChatCircleComposerBackground)
+                }
+
                 HStack(spacing: 10) {
                     TextField(
                         String(
@@ -47,6 +85,7 @@ extension CrewChatView {
         }
         .padding(.bottom, 10)
         .animation(.easeOut(duration: 0.18), value: replyingTo?.id)
+        .animation(.easeOut(duration: 0.18), value: draftPhotoImage != nil)
     }
 
     @ViewBuilder
@@ -118,7 +157,8 @@ extension CrewChatView {
     }
 
     var composerActionButton: some View {
-        let canSend = !draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasText = !draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let canSend = hasText || draftPhotoImage != nil
 
         return Button {
             if canSend {
@@ -145,15 +185,11 @@ extension CrewChatView {
 
                 Image(systemName: canSend ? "arrow.up" : "mic.fill")
                     .font(.system(size: canSend ? 13 : 17, weight: .black))
-                    .foregroundStyle(
-                        canSend
-                        ? .white
-                        : .white.opacity(0.72)
-                    )
+                    .foregroundStyle(canSend ? .white : .white.opacity(0.72))
             }
         }
         .buttonStyle(.plain)
-        .disabled(!canSend && !draftMessage.isEmpty)
+        .disabled(!canSend)
         .animation(.easeOut(duration: 0.16), value: canSend)
     }
 
@@ -175,6 +211,84 @@ extension CrewChatView {
                     .stroke(Color.white.opacity(0.10), lineWidth: 1)
             )
             .shadow(color: Color.black.opacity(0.20), radius: 12, y: 6)
+    }
+    
+    
+
+    var crewChatCircleComposerBackground: some View {
+        Circle()
+            .fill(
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(0.105),
+                        Color.black.opacity(0.34),
+                        Color.white.opacity(0.055)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                Circle()
+                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.24), radius: 12, y: 6)
+    }
+
+    func photoAttachmentPreview(image: UIImage) -> some View {
+        HStack(spacing: 12) {
+            ZStack(alignment: .topTrailing) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 64, height: 64)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                Button {
+                    draftPhotoImage = nil
+                    selectedPhotoItem = nil
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(.white, Color.black.opacity(0.45))
+                        .background(Circle().fill(Color.black.opacity(0.18)))
+                }
+                .buttonStyle(.plain)
+                .offset(x: 6, y: -6)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Fotoğraf hazır")
+                    .font(.system(size: 14, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text("Göndermeden önce istersen mesaj ekleyebilirsin.")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.48))
+                    .lineLimit(2)
+            }
+
+            Spacer()
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(crewChatComposerHex: "#1593FF").opacity(0.055),
+                            Color(crewChatComposerHex: "#7C3AED").opacity(0.045),
+                            Color.white.opacity(0.040)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.white.opacity(0.09), lineWidth: 1)
+                )
+        )
     }
 
     func currentDisplayName() -> String {
@@ -238,38 +352,492 @@ extension CrewChatView {
 
     func sendMessage() {
         let clean = draftMessage.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !clean.isEmpty else { return }
+        let photoToSend = draftPhotoImage
 
-        let storedText = encodedMessageText(from: clean)
-        let senderID = session.currentUser?.id
+        guard !clean.isEmpty || photoToSend != nil else { return }
+        guard let senderID = session.currentUser?.id else { return }
+
         let senderName = currentDisplayName()
 
-        draftMessage = ""
-        replyingTo = nil
-        isComposerFocused = false
         typingStopTask?.cancel()
         isCurrentlyTyping = false
-
-        Haptics.impact(.light)
 
         if let myID = session.currentUser?.id {
             Task(priority: .utility) {
                 await crewStore.sendTypingEvent(
                     crewID: crew.id,
                     userID: myID,
-                    name: currentDisplayName(),
+                    name: senderName,
                     isTyping: false
                 )
             }
         }
 
-        Task(priority: .userInitiated) {
-            await crewStore.sendCrewMessageOptimistic(
-                crewID: crew.id,
-                senderID: senderID,
-                senderName: senderName,
-                text: storedText
+        Haptics.impact(.light)
+
+        if let photoToSend {
+            draftMessage = ""
+            draftPhotoImage = nil
+            selectedPhotoItem = nil
+            replyingTo = nil
+            isComposerFocused = false
+
+            guard let jpegData = photoToSend.jpegData(compressionQuality: 0.82) else {
+                attachmentAlertText = "Fotoğraf hazırlanamadı."
+                showAttachmentAlert = true
+                return
+            }
+
+            Task(priority: .userInitiated) {
+                await sendBackendPhotoMessage(
+                    imageData: jpegData,
+                    caption: clean.isEmpty ? nil : clean,
+                    senderID: senderID
+                )
+            }
+
+            return
+        }
+
+        let storedText = encodedMessageText(from: clean)
+        let clientID = UUID().uuidString
+
+        draftMessage = ""
+        replyingTo = nil
+        isComposerFocused = false
+
+        let pendingMessage = makePendingBackendTextMessage(
+            text: storedText,
+            clientID: clientID,
+            senderID: senderID
+        )
+
+        appendOrReplaceBackendMessage(pendingMessage)
+
+        if let backendConversationID {
+            upsertCachedMessage(
+                pendingMessage,
+                conversationID: backendConversationID
             )
+        }
+
+        Task(priority: .userInitiated) {
+            let conversationID: UUID?
+
+            if let existingID = backendConversationID {
+                conversationID = existingID
+            } else {
+                conversationID = await ChatBackendClient.shared.syncCrew(
+                    crewID: crew.id,
+                    crewName: crew.name,
+                    memberUserIDs: crewStore.crewMembers
+                        .filter { $0.crew_id == crew.id }
+                        .map(\.user_id)
+                )?.id
+            }
+
+            guard let conversationID else {
+                await MainActor.run {
+                    markBackendMessageFailed(clientID: clientID)
+                }
+                return
+            }
+
+            await MainActor.run {
+                backendConversationID = conversationID
+                isSendingBackendMessage = true
+            }
+
+            let backendMessage = await ChatBackendClient.shared.sendMessage(
+                conversationID: conversationID,
+                text: storedText,
+                clientID: clientID
+            )
+
+            if let backendMessage,
+               let mappedMessage = mapBackendMessage(backendMessage) {
+                await MainActor.run {
+                    appendOrReplaceBackendMessage(mappedMessage)
+                    upsertCachedMessage(
+                        mappedMessage,
+                        conversationID: conversationID
+                    )
+                    isSendingBackendMessage = false
+                    ChatFeedbackManager.shared.playSent()
+                }
+
+                print("✅ CREW CHAT BACKEND SEND OK:", backendMessage.id.uuidString)
+            } else {
+                await MainActor.run {
+                    markBackendMessageFailed(clientID: clientID)
+                    updateCachedMessageFailed(clientID: clientID)
+                    isSendingBackendMessage = false
+                }
+
+                print("❌ CREW CHAT BACKEND SEND FAILED")
+            }
+        }
+    }
+
+    func sendBackendPhotoMessage(
+        imageData: Data,
+        caption: String?,
+        senderID: UUID
+    ) async {
+        let clientID = UUID().uuidString
+        let fileName = "photo.jpg"
+        let storagePath = "crew/\(crew.id.uuidString)/images/\(UUID().uuidString).jpg"
+
+        let cleanCaption = caption?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let fallbackText = cleanCaption?.isEmpty == false
+            ? cleanCaption!
+            : "📷 Fotoğraf"
+
+        let conversationID: UUID?
+
+        if let existingID = backendConversationID {
+            conversationID = existingID
+        } else {
+            conversationID = await ChatBackendClient.shared.syncCrew(
+                crewID: crew.id,
+                crewName: crew.name,
+                memberUserIDs: crewStore.crewMembers
+                    .filter { $0.crew_id == crew.id }
+                    .map(\.user_id)
+            )?.id
+        }
+
+        guard let conversationID else {
+            await MainActor.run {
+                attachmentAlertText = "Crew sohbeti hazırlanamadı."
+                showAttachmentAlert = true
+            }
+            return
+        }
+
+        await MainActor.run {
+            backendConversationID = conversationID
+            isSendingBackendMessage = true
+        }
+
+        let pending = CrewChatMessageItem(
+            id: UUID(),
+            serverID: nil,
+            clientID: clientID,
+            crewID: crew.id,
+            senderID: senderID,
+            senderName: currentDisplayName(),
+            text: fallbackText,
+            createdAt: Date(),
+            reaction: nil,
+            isSystemMessage: false,
+            isFromMe: true,
+            isPending: true,
+            isFailed: false,
+            messageType: "image",
+            mediaURL: nil,
+            fileName: fileName,
+            fileSizeBytes: Int64(imageData.count),
+            mimeType: "image/jpeg",
+            messageStatus: "uploading"
+        )
+
+        await MainActor.run {
+            appendOrReplaceBackendMessage(pending)
+            upsertCachedMessage(pending, conversationID: conversationID)
+        }
+
+        do {
+            try await SupabaseManager.shared.client.storage
+                .from("friend-chat-media")
+                .upload(
+                    path: storagePath,
+                    file: imageData,
+                    options: FileOptions(
+                        cacheControl: "3600",
+                        contentType: "image/jpeg",
+                        upsert: false
+                    )
+                )
+
+            let mediaURL = publicCrewBackendMediaURL(path: storagePath)
+
+            guard !mediaURL.isEmpty else {
+                throw NSError(
+                    domain: "CrewChatView",
+                    code: 1001,
+                    userInfo: [NSLocalizedDescriptionKey: "Media URL oluşturulamadı"]
+                )
+            }
+
+            let backendMessage = await ChatBackendClient.shared.sendMessage(
+                conversationID: conversationID,
+                text: fallbackText,
+                clientID: clientID,
+                messageType: "image",
+                mediaURL: mediaURL,
+                fileName: fileName,
+                fileSizeBytes: imageData.count,
+                mimeType: "image/jpeg"
+            )
+
+            if let backendMessage,
+               let mapped = mapBackendMessage(backendMessage) {
+                await MainActor.run {
+                    appendOrReplaceBackendMessage(mapped)
+                    upsertCachedMessage(mapped, conversationID: conversationID)
+                    isSendingBackendMessage = false
+                    ChatFeedbackManager.shared.playSent()
+                }
+
+                print("✅ CREW CHAT BACKEND PHOTO SEND OK:", backendMessage.id.uuidString)
+            } else {
+                await MainActor.run {
+                    markBackendMessageFailed(clientID: clientID)
+                    updateCachedMessageFailed(clientID: clientID)
+                    isSendingBackendMessage = false
+                }
+
+                print("❌ CREW CHAT BACKEND PHOTO SEND FAILED")
+            }
+        } catch {
+            print("❌ CREW BACKEND PHOTO SEND ERROR:", error.localizedDescription)
+
+            await MainActor.run {
+                markBackendMessageFailed(clientID: clientID)
+                updateCachedMessageFailed(clientID: clientID)
+                isSendingBackendMessage = false
+                attachmentAlertText = "Fotoğraf gönderilemedi: \(error.localizedDescription)"
+                showAttachmentAlert = true
+            }
+        }
+    }
+
+    func publicCrewBackendMediaURL(path: String) -> String {
+        do {
+            return try SupabaseManager.shared.client.storage
+                .from("friend-chat-media")
+                .getPublicURL(path: path)
+                .absoluteString
+        } catch {
+            print("❌ CREW PUBLIC MEDIA URL ERROR:", error.localizedDescription)
+            return ""
+        }
+    }
+
+    func loadCachedMessagesIfNeeded(conversationID: UUID? = nil) {
+        guard !didLoadCachedMessages else { return }
+        guard let ownerUserID = session.currentUser?.id else { return }
+
+        didLoadCachedMessages = true
+
+        do {
+            let descriptor = FetchDescriptor<ChatCachedConversationMessage>(
+                sortBy: [
+                    SortDescriptor(\ChatCachedConversationMessage.createdAt, order: .forward)
+                ]
+            )
+
+            let cached = try modelContext.fetch(descriptor)
+
+            let items = cached
+                .filter { cachedMessage in
+                    guard cachedMessage.ownerUserID == ownerUserID else {
+                        return false
+                    }
+
+                    if let conversationID {
+                        return cachedMessage.conversationID == conversationID
+                    }
+
+                    return cachedMessage.supabaseCrewID == crew.id
+                }
+                .map { $0.toCrewChatMessageItem() }
+                .filter { $0.crewID == crew.id }
+
+            let cachedSeenIDs = Set(
+                cached
+                    .filter { cachedMessage in
+                        cachedMessage.ownerUserID == ownerUserID &&
+                        cachedMessage.supabaseCrewID == crew.id &&
+                        cachedMessage.seenAt != nil
+                    }
+                    .map { $0.serverID ?? $0.id }
+            )
+
+            seenMessageIDs.formUnion(cachedSeenIDs)
+
+            guard !items.isEmpty else {
+                print("⚪️ CREW CHAT CACHE EMPTY:", crew.id.uuidString)
+                return
+            }
+
+            mergeBackendMessages(items)
+            didBootstrapBackendMessages = true
+
+            if !hasCompletedBackendInitialSync {
+                hasCompletedBackendInitialSync = true
+            }
+
+            print("🟢 CREW CHAT CACHE LOADED:", items.count)
+        } catch {
+            print("❌ CREW CHAT CACHE LOAD ERROR:", error.localizedDescription)
+        }
+    }
+
+    func upsertCachedMessage(
+        _ message: CrewChatMessageItem,
+        conversationID: UUID
+    ) {
+        guard let ownerUserID = session.currentUser?.id else { return }
+
+        let serverKey = message.serverID.map {
+            "\(ownerUserID.uuidString)-server-\($0.uuidString)"
+        }
+
+        let clientKey = message.clientID.flatMap {
+            $0.isEmpty ? nil : "\(ownerUserID.uuidString)-client-\($0)"
+        }
+
+        let localKey = "\(ownerUserID.uuidString)-local-\(message.id.uuidString)"
+
+        do {
+            var existing: ChatCachedConversationMessage?
+
+            if let serverKey {
+                var descriptor = FetchDescriptor<ChatCachedConversationMessage>(
+                    predicate: #Predicate<ChatCachedConversationMessage> { cached in
+                        cached.cacheKey == serverKey
+                    }
+                )
+                descriptor.fetchLimit = 1
+                existing = try modelContext.fetch(descriptor).first
+            }
+
+            if existing == nil, let clientKey {
+                var descriptor = FetchDescriptor<ChatCachedConversationMessage>(
+                    predicate: #Predicate<ChatCachedConversationMessage> { cached in
+                        cached.cacheKey == clientKey
+                    }
+                )
+                descriptor.fetchLimit = 1
+                existing = try modelContext.fetch(descriptor).first
+            }
+
+            if let existing {
+                existing.update(
+                    from: message,
+                    ownerUserID: ownerUserID,
+                    conversationID: conversationID
+                )
+            } else {
+                let created = ChatCachedConversationMessage(
+                    ownerUserID: ownerUserID,
+                    conversationID: conversationID,
+                    supabaseCrewID: message.crewID,
+                    id: message.serverID ?? message.id,
+                    serverID: message.serverID,
+                    clientID: message.clientID,
+                    senderID: message.senderID,
+                    senderName: message.senderName,
+                    text: message.text,
+                    createdAt: message.createdAt,
+                    reaction: message.reaction,
+                    isSystemMessage: message.isSystemMessage,
+                    isFromMe: message.isFromMe,
+                    isPending: message.isPending,
+                    isFailed: message.isFailed,
+                    messageType: message.messageType,
+                    mediaURL: message.mediaURL,
+                    fileName: message.fileName,
+                    fileSizeBytes: message.fileSizeBytes,
+                    mimeType: message.mimeType,
+                    messageStatus: message.messageStatus
+                )
+
+                modelContext.insert(created)
+            }
+
+            try modelContext.save()
+        } catch {
+            print("❌ CREW CHAT CACHE UPSERT ERROR:", error.localizedDescription)
+            print("❌ CREW CHAT CACHE FALLBACK KEY:", serverKey ?? clientKey ?? localKey)
+        }
+    }
+
+    func upsertCachedMessages(
+        _ messages: [CrewChatMessageItem],
+        conversationID: UUID
+    ) {
+        for message in messages {
+            upsertCachedMessage(
+                message,
+                conversationID: conversationID
+            )
+        }
+    }
+
+    func updateCachedMessageFailed(clientID: String) {
+        guard let ownerUserID = session.currentUser?.id else { return }
+
+        do {
+            let key = "\(ownerUserID.uuidString)-client-\(clientID)"
+
+            var descriptor = FetchDescriptor<ChatCachedConversationMessage>(
+                predicate: #Predicate<ChatCachedConversationMessage> { cached in
+                    cached.cacheKey == key
+                }
+            )
+            descriptor.fetchLimit = 1
+
+            guard let cached = try modelContext.fetch(descriptor).first else {
+                return
+            }
+
+            cached.isPending = false
+            cached.isFailed = true
+            cached.messageStatus = "failed"
+            cached.updatedAt = Date()
+
+            try modelContext.save()
+        } catch {
+            print("❌ CREW CHAT CACHE FAILED UPDATE ERROR:", error.localizedDescription)
+        }
+    }
+
+    func updateCachedMessagesSeen(
+        ids: Set<UUID>,
+        seenAt: Date,
+        conversationID: UUID
+    ) {
+        guard !ids.isEmpty else { return }
+        guard let ownerUserID = session.currentUser?.id else { return }
+
+        do {
+            let descriptor = FetchDescriptor<ChatCachedConversationMessage>(
+                predicate: #Predicate<ChatCachedConversationMessage> { cached in
+                    cached.ownerUserID == ownerUserID &&
+                    cached.conversationID == conversationID
+                }
+            )
+
+            let cachedMessages = try modelContext.fetch(descriptor)
+
+            for cached in cachedMessages {
+                let cachedID = cached.serverID ?? cached.id
+
+                if ids.contains(cachedID) {
+                    cached.seenAt = seenAt
+                    cached.isPending = false
+                    cached.isFailed = false
+                    cached.messageStatus = "seen"
+                    cached.updatedAt = Date()
+                }
+            }
+
+            try modelContext.save()
+        } catch {
+            print("❌ CREW CHAT CACHE SEEN UPDATE ERROR:", error.localizedDescription)
         }
     }
 
