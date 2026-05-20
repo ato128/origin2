@@ -106,6 +106,8 @@ struct ChatBackendMessageDTO: Decodable, Identifiable, Equatable {
     let fileName: String?
     let fileSizeBytes: Int?
     let mimeType: String?
+    let deliveredAt: String?
+    let seenAt: String?
     let createdAt: String
     let editedAt: String?
     let deletedAt: String?
@@ -121,38 +123,43 @@ struct ChatBackendMessageDTO: Decodable, Identifiable, Equatable {
         case fileName
         case fileSizeBytes
         case mimeType
+        case deliveredAt
+        case seenAt
         case createdAt
         case editedAt
         case deletedAt
     }
 
     init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
+            let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        id = try container.decode(UUID.self, forKey: .id)
-        conversationID = try container.decode(UUID.self, forKey: .conversationID)
-        senderID = try container.decode(UUID.self, forKey: .senderID)
-        clientID = try container.decode(String.self, forKey: .clientID)
+            id = try container.decode(UUID.self, forKey: .id)
+            conversationID = try container.decode(UUID.self, forKey: .conversationID)
+            senderID = try container.decode(UUID.self, forKey: .senderID)
+            clientID = try container.decode(String.self, forKey: .clientID)
 
-        text = try container.decodeIfPresent(String.self, forKey: .text)
-        messageType = try container.decode(String.self, forKey: .messageType)
-        mediaURL = try container.decodeIfPresent(String.self, forKey: .mediaURL)
-        fileName = try container.decodeIfPresent(String.self, forKey: .fileName)
-        mimeType = try container.decodeIfPresent(String.self, forKey: .mimeType)
+            text = try container.decodeIfPresent(String.self, forKey: .text)
+            messageType = try container.decode(String.self, forKey: .messageType)
+            mediaURL = try container.decodeIfPresent(String.self, forKey: .mediaURL)
+            fileName = try container.decodeIfPresent(String.self, forKey: .fileName)
+            mimeType = try container.decodeIfPresent(String.self, forKey: .mimeType)
 
-        createdAt = try container.decode(String.self, forKey: .createdAt)
-        editedAt = try container.decodeIfPresent(String.self, forKey: .editedAt)
-        deletedAt = try container.decodeIfPresent(String.self, forKey: .deletedAt)
+            deliveredAt = try container.decodeIfPresent(String.self, forKey: .deliveredAt)
+            seenAt = try container.decodeIfPresent(String.self, forKey: .seenAt)
 
-        if let intValue = try? container.decodeIfPresent(Int.self, forKey: .fileSizeBytes) {
-            fileSizeBytes = intValue
-        } else if let stringValue = try? container.decodeIfPresent(String.self, forKey: .fileSizeBytes),
-                  let intValue = Int(stringValue) {
-            fileSizeBytes = intValue
-        } else {
-            fileSizeBytes = nil
+            createdAt = try container.decode(String.self, forKey: .createdAt)
+            editedAt = try container.decodeIfPresent(String.self, forKey: .editedAt)
+            deletedAt = try container.decodeIfPresent(String.self, forKey: .deletedAt)
+
+            if let intValue = try? container.decodeIfPresent(Int.self, forKey: .fileSizeBytes) {
+                fileSizeBytes = intValue
+            } else if let stringValue = try? container.decodeIfPresent(String.self, forKey: .fileSizeBytes),
+                      let intValue = Int(stringValue) {
+                fileSizeBytes = intValue
+            } else {
+                fileSizeBytes = nil
+            }
         }
-    }
 
     var createdDate: Date? {
         ChatBackendDateParser.parse(createdAt)

@@ -25,7 +25,8 @@ final class ChatBackendSocketClient: NSObject, ObservableObject {
     private var activeConversationID: UUID?
 
     private var onMessageCreated: ((ChatBackendMessageDTO) -> Void)?
-    private var onMessageSeen: ((ChatBackendMessageSeenPayload) -> Void)?
+        private var onMessageSeen: ((ChatBackendMessageSeenPayload) -> Void)?
+        private var onMessageDelivered: ((ChatBackendMessageDeliveredPayload) -> Void)?
 
     private var shouldReconnect = false
     private var isManuallyDisconnected = false
@@ -41,18 +42,20 @@ final class ChatBackendSocketClient: NSObject, ObservableObject {
     // MARK: - Public API
 
     func connect(
-        conversationID: UUID,
-        onMessageCreated: @escaping (ChatBackendMessageDTO) -> Void,
-        onMessageSeen: ((ChatBackendMessageSeenPayload) -> Void)? = nil
-    ) async {
-        self.activeConversationID = conversationID
-        self.onMessageCreated = onMessageCreated
-        self.onMessageSeen = onMessageSeen
-        self.shouldReconnect = true
-        self.isManuallyDisconnected = false
+            conversationID: UUID,
+            onMessageCreated: @escaping (ChatBackendMessageDTO) -> Void,
+            onMessageSeen: ((ChatBackendMessageSeenPayload) -> Void)? = nil,
+            onMessageDelivered: ((ChatBackendMessageDeliveredPayload) -> Void)? = nil
+        ) async {
+            self.activeConversationID = conversationID
+            self.onMessageCreated = onMessageCreated
+            self.onMessageSeen = onMessageSeen
+            self.onMessageDelivered = onMessageDelivered
+            self.shouldReconnect = true
+            self.isManuallyDisconnected = false
 
-        await openSocket()
-    }
+            await openSocket()
+        }
 
     func disconnect() {
         isManuallyDisconnected = true
@@ -69,12 +72,13 @@ final class ChatBackendSocketClient: NSObject, ObservableObject {
         }
 
         webSocketTask?.cancel(with: .goingAway, reason: nil)
-        webSocketTask = nil
-        activeConversationID = nil
-        onMessageCreated = nil
-        onMessageSeen = nil
+                webSocketTask = nil
+                activeConversationID = nil
+                onMessageCreated = nil
+                onMessageSeen = nil
+                onMessageDelivered = nil
 
-        ChatBackendLogger.log("🔴 WS DISCONNECT")
+                ChatBackendLogger.log("🔴 WS DISCONNECT")
     }
 
     func reconnectCurrentConversationIfNeeded() async {
@@ -264,7 +268,23 @@ final class ChatBackendSocketClient: NSObject, ObservableObject {
                 )
 
             case "message_delivered":
-                ChatBackendLogger.log("✅ WS MESSAGE DELIVERED EVENT RECEIVED")
+                            guard let payload = event.payload?.asDeliveredPayload else {
+                                ChatBackendLogger.error("❌ WS MESSAGE_DELIVERED PAYLOAD MISSING")
+                                return
+                            }
+
+                            onMessageDelivered?(payload)
+
+                            NotificationCenter.default.post(
+                                name: .chatBackendMessageDelivered,
+                                object: payload.conversationID,
+                                userInfo: [
+                                    "conversationID": payload.conversationID.uuidString,
+                                    "recipientID": payload.recipientID.uuidString
+                                ]
+                            )
+
+                            ChatBackendLogger.log("✅ WS MESSAGE DELIVERED:", payload.messages.count)
 
             case "conversation_updated":
                 let conversationID = event.payload?.conversationID ?? event.payload?.message?.conversationID
@@ -430,6 +450,7 @@ struct ChatBackendSocketPayload: Decodable {
     let conversation: ChatBackendConversationDTO?
     let message: ChatBackendMessageDTO?
     let readerID: UUID?
+    let recipientID: UUID?
     let messages: [ChatBackendSeenMessageDTO]?
     let code: String?
     let error: String?
@@ -443,6 +464,18 @@ struct ChatBackendSocketPayload: Decodable {
         return ChatBackendMessageSeenPayload(
             conversationID: conversationID,
             readerID: readerID,
+            messages: messages ?? []
+        )
+    }
+
+    var asDeliveredPayload: ChatBackendMessageDeliveredPayload? {
+        guard let conversationID, let recipientID else {
+            return nil
+        }
+
+        return ChatBackendMessageDeliveredPayload(
+            conversationID: conversationID,
+            recipientID: recipientID,
             messages: messages ?? []
         )
     }
@@ -466,8 +499,15 @@ struct ChatBackendMessageSeenPayload: Decodable, Equatable {
     let messages: [ChatBackendSeenMessageDTO]
 }
 
+struct ChatBackendMessageDeliveredPayload: Decodable, Equatable {
+    let conversationID: UUID
+    let recipientID: UUID
+    let messages: [ChatBackendSeenMessageDTO]
+}
+
 extension Notification.Name {
     static let chatBackendConversationUpdated = Notification.Name("chatBackendConversationUpdated")
     static let chatBackendMessageCreated = Notification.Name("chatBackendMessageCreated")
     static let chatBackendMessageSeen = Notification.Name("chatBackendMessageSeen")
+    static let chatBackendMessageDelivered = Notification.Name("chatBackendMessageDelivered")
 }

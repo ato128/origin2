@@ -112,9 +112,14 @@ struct FriendChatView: View {
     @State private var isSendingBackendMessage = false
     @State private var didBootstrapBackendMessages = false
     @State private var didLoadCachedMessages = false
-    
-    @Query(sort: \Friend.createdAt, order: .reverse)
-    private var localFriends: [Friend]
+        
+        // Pagination state'leri
+        @State private var isLoadingOlderMessages = false
+        @State private var hasMoreOlderMessages = true
+        @State private var lastOlderLoadAttemptAt: Date?
+        
+        @Query(sort: \Friend.createdAt, order: .reverse)
+        private var localFriends: [Friend]
 
     enum DraftAttachment {
         case photo(UIImage)
@@ -275,26 +280,29 @@ struct FriendChatView: View {
                 await syncChatBackendFriendshipIfNeeded()
             }
             .onDisappear {
-                print("🔴 CHAT DISAPPEAR")
+                            print("🔴 CHAT DISAPPEAR")
 
-                if friendshipID != nil {
-                    ChatBackendSocketClient.shared.disconnect()
-                }
+                            if friendshipID != nil {
+                                ChatBackendSocketClient.shared.disconnect()
+                            }
 
-                
+                            
 
-                scrollTask?.cancel()
-                scrollTask = nil
+                            scrollTask?.cancel()
+                            scrollTask = nil
 
-                typingStopTask?.cancel()
-                typingStopTask = nil
-                lastTypingTextWasEmpty = true
+                            typingStopTask?.cancel()
+                            typingStopTask = nil
+                            lastTypingTextWasEmpty = true
 
-                friendStore.setActiveChat(nil)
-                UserDefaults.standard.removeObject(forKey: "active_friendship_id")
-                friendStore.unsubscribeTypingRealtime()
-            }
-            .alert("Mikrofon izni gerekli", isPresented: $showMicPermissionAlert) {
+                            friendStore.setActiveChat(nil)
+                            UserDefaults.standard.removeObject(forKey: "active_friendship_id")
+                            friendStore.unsubscribeTypingRealtime()
+                        }
+                        .onChange(of: scenePhase) { _, newPhase in
+                            handleScenePhaseChange(newPhase)
+                        }
+                        .alert("Mikrofon izni gerekli", isPresented: $showMicPermissionAlert) {
                 Button("Ayarlar") {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
                         UIApplication.shared.open(url)
@@ -491,6 +499,87 @@ private extension FriendChatView {
 
 private extension FriendChatView {
     var emptyState: some View {
+        Group {
+            if !hasCompletedBackendInitialSync && backendSyncError == nil {
+                // Yükleniyor durumu
+                loadingState
+            } else if backendSyncError != nil {
+                // Hata durumu
+                errorState
+            } else {
+                // Gerçekten boş sohbet
+                trueEmptyState
+            }
+        }
+    }
+
+    var loadingState: some View {
+        VStack(spacing: 16) {
+            Spacer()
+
+            ProgressView()
+                .scaleEffect(1.2)
+                .tint(.white.opacity(0.7))
+
+            Text("Mesajlar yükleniyor")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.55))
+
+            Spacer()
+        }
+        .padding(.horizontal, 26)
+        .padding(.top, 80)
+    }
+
+    var errorState: some View {
+        VStack(spacing: 16) {
+            Spacer()
+
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color.red.opacity(0.2))
+                .frame(width: 76, height: 76)
+                .overlay(
+                    Image(systemName: "wifi.exclamationmark")
+                        .font(.system(size: 30, weight: .black))
+                        .foregroundStyle(.white)
+                )
+
+            VStack(spacing: 7) {
+                Text("Bağlantı sorunu")
+                    .font(.system(size: 22, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text("Sohbet yüklenemedi. Sayfayı kapatıp tekrar aç.")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.50))
+                    .multilineTextAlignment(.center)
+            }
+
+            Button {
+                Task {
+                    await syncChatBackendFriendshipIfNeeded()
+                }
+            } label: {
+                Text("Tekrar dene")
+                    .font(.system(size: 14, weight: .black))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 11)
+                    .background(
+                        Capsule()
+                            .fill(FriendChatArenaPalette.appGradient)
+                    )
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 8)
+
+            Spacer()
+        }
+        .padding(.horizontal, 26)
+        .padding(.top, 80)
+    }
+
+    var trueEmptyState: some View {
         VStack(spacing: 16) {
             Spacer()
 
@@ -528,7 +617,30 @@ private extension FriendChatView {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 2) {
-                    ForEach(groupedMessages, id: \.date) { group in
+                                    // En üstte "Daha fazla mesaj yükle" tetikleyici
+                                    if hasMoreOlderMessages && !backendMessages.isEmpty {
+                                        HStack {
+                                            Spacer()
+                                            
+                                            if isLoadingOlderMessages {
+                                                ProgressView()
+                                                    .tint(.white.opacity(0.6))
+                                                    .padding(.vertical, 12)
+                                            } else {
+                                                Color.clear
+                                                    .frame(height: 1)
+                                            }
+                                            
+                                            Spacer()
+                                        }
+                                        .onAppear {
+                                            Task {
+                                                await loadOlderMessagesIfNeeded()
+                                            }
+                                        }
+                                    }
+
+                                    ForEach(groupedMessages, id: \.date) { group in
                         DaySeparatorView(date: group.date)
                             .padding(.vertical, 8)
 
@@ -975,6 +1087,59 @@ private extension FriendChatView {
         
         return tr("chat_you")
     }
+    
+    func handleScenePhaseChange(_ newPhase: ScenePhase) {
+            switch newPhase {
+            case .active:
+                print("🟢 CHAT SCENE PHASE: active")
+
+                // Uygulama foreground'a döndü
+                // Eğer sohbet ekranı hâlâ açıksa, mesajları okundu işaretle
+                guard let friendshipID else { return }
+                guard let backendConversationID else { return }
+
+                // FriendStore'a aktif sohbeti bildir (background'a giderken null olmuş olabilir)
+                friendStore.setActiveChat(friendshipID)
+
+                // Backend'den son mesajları yeniden çek (background'dayken kaçırılmış olabilir)
+                Task {
+                    let fetchedMessages = await ChatBackendClient.shared.fetchMessages(
+                        conversationID: backendConversationID,
+                        limit: 50
+                    )
+
+                    let mappedMessages = fetchedMessages.compactMap { dto in
+                        mapBackendMessage(dto, friendshipID: friendshipID)
+                    }
+
+                    await MainActor.run {
+                        mergeBackendMessages(mappedMessages)
+                        upsertCachedMessages(mappedMessages, conversationID: backendConversationID)
+                    }
+
+                    // Okundu işaretle
+                    await ChatBackendClient.shared.markConversationRead(
+                        conversationID: backendConversationID
+                    )
+
+                    print("🟢 CHAT FOREGROUND SYNC OK")
+                }
+
+                // Socket'i de yeniden bağla (background'da kopmuş olabilir)
+                Task {
+                    await ChatBackendSocketClient.shared.reconnectCurrentConversationIfNeeded()
+                }
+
+            case .background:
+                print("🟠 CHAT SCENE PHASE: background")
+
+            case .inactive:
+                print("⚪️ CHAT SCENE PHASE: inactive")
+
+            @unknown default:
+                break
+            }
+        }
     
     func handleTypingChange(_ newValue: String) {
         guard let friendshipID else { return }
@@ -2449,17 +2614,22 @@ private extension FriendChatView {
         }
         private extension FriendChatView {
             func syncChatBackendFriendshipIfNeeded() async {
-                await MainActor.run {
-                    isSyncingBackendConversation = true
-                    backendSyncError = nil
+                            await MainActor.run {
+                                isSyncingBackendConversation = true
+                                backendSyncError = nil
 
-                    // Önemli:
-                    // Chat'e her girişte mevcut mesajları silmiyoruz.
-                    // Böylece ekran boşalıp yeniden yüklenmiş gibi davranmaz.
-                    if backendConversationID == nil {
-                        hasCompletedBackendInitialSync = false
-                    }
-                }
+                                // Önemli:
+                                // Chat'e her girişte mevcut mesajları silmiyoruz.
+                                // Böylece ekran boşalıp yeniden yüklenmiş gibi davranmaz.
+                                if backendConversationID == nil {
+                                    hasCompletedBackendInitialSync = false
+                                }
+
+                                // Pagination state'ini sıfırla
+                                hasMoreOlderMessages = true
+                                isLoadingOlderMessages = false
+                                lastOlderLoadAttemptAt = nil
+                            }
                 let friendshipIDText = friendshipID?.uuidString ?? "nil"
                 print("🟡 CHAT BACKEND SYNC START:", friendshipIDText)
 
@@ -2531,119 +2701,219 @@ private extension FriendChatView {
                     }
 
                     hasCompletedBackendInitialSync = true
-                    isSyncingBackendConversation = false
-                    backendSyncError = nil
-                }
+                                        isSyncingBackendConversation = false
+                                        backendSyncError = nil
 
-                await ChatBackendClient.shared.markConversationRead(
-                    conversationID: conversationID
-                )
+                                        // İlk yüklemede 50'den az mesaj geldiyse, daha eski mesaj yok demek
+                                        if mappedMessages.count < 50 {
+                                            hasMoreOlderMessages = false
+                                        }
+                                    }
+
+                // Sadece sohbet aktifse ve uygulama foreground'daysa "okundu" işaretle
+                                if friendStore.activeChatFriendshipID == friendshipID,
+                                   friendStore.isAppActive {
+                                    await ChatBackendClient.shared.markConversationRead(
+                                        conversationID: conversationID
+                                    )
+                                }
 
                 await ChatBackendSocketClient.shared.connect(
-                    conversationID: conversationID,
-                    onMessageCreated: { dto in
-                        guard let mappedMessage = mapBackendMessage(
-                            dto,
-                            friendshipID: friendshipID
-                        ) else {
-                            return
-                        }
+                                                    conversationID: conversationID,
+                                                    onMessageCreated: { dto in
+                                                        guard let mappedMessage = mapBackendMessage(
+                                                            dto,
+                                                            friendshipID: friendshipID
+                                                        ) else {
+                                                            return
+                                                        }
 
-                        appendOrReplaceBackendMessage(mappedMessage)
-                        upsertCachedMessage(
-                            mappedMessage,
-                            conversationID: conversationID
-                        )
+                                                        appendOrReplaceBackendMessage(mappedMessage)
+                                                        upsertCachedMessage(
+                                                            mappedMessage,
+                                                            conversationID: conversationID
+                                                        )
 
-                        print("🟢 WS MESSAGE UPSERTED:", mappedMessage.id.uuidString)
+                                                        print("🟢 WS MESSAGE UPSERTED:", mappedMessage.id.uuidString)
 
-                        Task {
-                            await ChatBackendClient.shared.markConversationRead(
-                                conversationID: conversationID
-                            )
-                        }
-                    },
-                    onMessageSeen: { payload in
-                        let seenIDs = Set(payload.messages.map { $0.id })
-                        let seenDate = Date()
-                        
-                        updateCachedMessagesSeen(
-                            ids: seenIDs,
-                            seenAt: seenDate,
-                            conversationID: conversationID
-                        )
+                                                        // Sadece sohbet aktif VE uygulama foreground'daysa "okundu" işaretle
+                                                        Task { @MainActor in
+                                                            guard friendStore.activeChatFriendshipID == friendshipID else {
+                                                                print("⚪️ MARK READ SKIPPED: chat not active")
+                                                                return
+                                                            }
 
-                        backendMessages = backendMessages.map { message in
-                            guard seenIDs.contains(message.id) else {
-                                return message
+                                                            guard friendStore.isAppActive else {
+                                                                print("⚪️ MARK READ SKIPPED: app not active")
+                                                                return
+                                                            }
+
+                                                            // Gönderen başkası mı kontrol et (kendi mesajını "okundu" yapmamak için)
+                                                            guard mappedMessage.isFromMe == false else {
+                                                                return
+                                                            }
+
+                                                            await ChatBackendClient.shared.markConversationRead(
+                                                                conversationID: conversationID
+                                                            )
+                                                        }
+                                                    },
+                                    onMessageSeen: { payload in
+                                        let seenIDs = Set(payload.messages.map { $0.id })
+                                        let seenDate = Date()
+                                        
+                                        updateCachedMessagesSeen(
+                                            ids: seenIDs,
+                                            seenAt: seenDate,
+                                            conversationID: conversationID
+                                        )
+
+                                        backendMessages = backendMessages.map { message in
+                                            guard seenIDs.contains(message.id) else {
+                                                return message
+                                            }
+
+                                            return FriendChatMessageItem(
+                                                id: message.id,
+                                                serverID: message.serverID,
+                                                clientID: message.clientID,
+                                                friendshipID: message.friendshipID,
+                                                senderID: message.senderID,
+                                                senderName: message.senderName,
+                                                text: message.text,
+                                                createdAt: message.createdAt,
+                                                reaction: message.reaction,
+                                                isSystemMessage: message.isSystemMessage,
+                                                isFromMe: message.isFromMe,
+                                                isPending: message.isPending,
+                                                isFailed: message.isFailed,
+                                                deliveredAt: message.deliveredAt,
+                                                seenAt: seenDate,
+                                                messageType: message.messageType,
+                                                mediaURL: message.mediaURL,
+                                                fileName: message.fileName,
+                                                fileSizeBytes: message.fileSizeBytes,
+                                                mimeType: message.mimeType,
+                                                messageStatus: "seen"
+                                            )
+                                        }
+
+                                        print("🟢 WS MESSAGE SEEN UPDATED:", seenIDs.count)
+                                    },
+                                    onMessageDelivered: { payload in
+                                        let deliveredIDs = Set(payload.messages.map { $0.id })
+                                        let deliveredDate = Date()
+
+                                        backendMessages = backendMessages.map { message in
+                                            guard deliveredIDs.contains(message.id) else {
+                                                return message
+                                            }
+
+                                            // Mesaj zaten "seen" durumundaysa, delivered'a düşürme
+                                            if message.seenAt != nil {
+                                                return message
+                                            }
+
+                                            return FriendChatMessageItem(
+                                                id: message.id,
+                                                serverID: message.serverID,
+                                                clientID: message.clientID,
+                                                friendshipID: message.friendshipID,
+                                                senderID: message.senderID,
+                                                senderName: message.senderName,
+                                                text: message.text,
+                                                createdAt: message.createdAt,
+                                                reaction: message.reaction,
+                                                isSystemMessage: message.isSystemMessage,
+                                                isFromMe: message.isFromMe,
+                                                isPending: message.isPending,
+                                                isFailed: message.isFailed,
+                                                deliveredAt: deliveredDate,
+                                                seenAt: message.seenAt,
+                                                messageType: message.messageType,
+                                                mediaURL: message.mediaURL,
+                                                fileName: message.fileName,
+                                                fileSizeBytes: message.fileSizeBytes,
+                                                mimeType: message.mimeType,
+                                                messageStatus: "delivered"
+                                            )
+                                        }
+
+                                        print("🟢 WS MESSAGE DELIVERED UPDATED:", deliveredIDs.count)
+                                    }
+                                )
+
+                                print("🟢 CHAT BACKEND READY:", conversationID.uuidString)
+                                print("🟢 CHAT BACKEND UI MESSAGES COUNT:", mappedMessages.count)
                             }
+                            
 
-                            return FriendChatMessageItem(
-                                id: message.id,
-                                serverID: message.serverID,
-                                clientID: message.clientID,
-                                friendshipID: message.friendshipID,
-                                senderID: message.senderID,
-                                senderName: message.senderName,
-                                text: message.text,
-                                createdAt: message.createdAt,
-                                reaction: message.reaction,
-                                isSystemMessage: message.isSystemMessage,
-                                isFromMe: message.isFromMe,
-                                isPending: message.isPending,
-                                isFailed: message.isFailed,
-                                deliveredAt: message.deliveredAt,
-                                seenAt: seenDate,
-                                messageType: message.messageType,
-                                mediaURL: message.mediaURL,
-                                fileName: message.fileName,
-                                fileSizeBytes: message.fileSizeBytes,
-                                mimeType: message.mimeType,
-                                messageStatus: "seen"
-                            )
-                        }
-
-                        print("🟢 WS MESSAGE SEEN UPDATED:", seenIDs.count)
-                    }
-                )
-
-                print("🟢 CHAT BACKEND READY:", conversationID.uuidString)
-                print("🟢 CHAT BACKEND UI MESSAGES COUNT:", mappedMessages.count)
-            }
             
             
             
             func mapBackendMessage(
-                _ dto: ChatBackendMessageDTO,
-                friendshipID: UUID
-            ) -> FriendChatMessageItem? {
-                let currentUserID = session.currentUser?.id
-                let isFromMe = dto.senderID == currentUserID
-                
-                return FriendChatMessageItem(
-                    id: dto.id,
-                    serverID: dto.id,
-                    clientID: dto.clientID,
-                    friendshipID: friendshipID,
-                    senderID: dto.senderID,
-                    senderName: isFromMe ? senderDisplayName() : friend.name,
-                    text: dto.text ?? "",
-                    createdAt: parseBackendDate(dto.createdAt),
-                    reaction: nil,
-                    isSystemMessage: false,
-                    isFromMe: isFromMe,
-                    isPending: false,
-                    isFailed: false,
-                    deliveredAt: nil,
-                    seenAt: nil,
-                    messageType: dto.messageType,
-                    mediaURL: dto.mediaURL,
-                    fileName: dto.fileName,
-                    fileSizeBytes: dto.fileSizeBytes.map { Int64($0) },
-                    mimeType: dto.mimeType,
-                    messageStatus: dto.deletedAt == nil ? "sent" : "deleted"
-                )
-            }
+                            _ dto: ChatBackendMessageDTO,
+                            friendshipID: UUID
+                        ) -> FriendChatMessageItem? {
+                            let currentUserID = session.currentUser?.id
+                            let isFromMe = dto.senderID == currentUserID
+
+                            // Backend'den gelen seen_at ve delivered_at'i parse et
+                            let parsedDeliveredAt = dto.deliveredAt.flatMap { parseBackendDateOptional($0) }
+                            let parsedSeenAt = dto.seenAt.flatMap { parseBackendDateOptional($0) }
+
+                            // Status'u doğru belirle: seen > delivered > sent > deleted
+                            let resolvedStatus: String = {
+                                if dto.deletedAt != nil { return "deleted" }
+                                if parsedSeenAt != nil { return "seen" }
+                                if parsedDeliveredAt != nil { return "delivered" }
+                                return "sent"
+                            }()
+
+                            return FriendChatMessageItem(
+                                id: dto.id,
+                                serverID: dto.id,
+                                clientID: dto.clientID,
+                                friendshipID: friendshipID,
+                                senderID: dto.senderID,
+                                senderName: isFromMe ? senderDisplayName() : friend.name,
+                                text: dto.text ?? "",
+                                createdAt: parseBackendDate(dto.createdAt),
+                                reaction: nil,
+                                isSystemMessage: false,
+                                isFromMe: isFromMe,
+                                isPending: false,
+                                isFailed: false,
+                                deliveredAt: parsedDeliveredAt,
+                                seenAt: parsedSeenAt,
+                                messageType: dto.messageType,
+                                mediaURL: dto.mediaURL,
+                                fileName: dto.fileName,
+                                fileSizeBytes: dto.fileSizeBytes.map { Int64($0) },
+                                mimeType: dto.mimeType,
+                                messageStatus: resolvedStatus
+                            )
+                        }
+
+                        func parseBackendDateOptional(_ value: String) -> Date? {
+                            let isoFormatter = ISO8601DateFormatter()
+                            isoFormatter.formatOptions = [
+                                .withInternetDateTime,
+                                .withFractionalSeconds
+                            ]
+
+                            if let date = isoFormatter.date(from: value) {
+                                return date
+                            }
+
+                            let fallbackFormatter = ISO8601DateFormatter()
+
+                            if let date = fallbackFormatter.date(from: value) {
+                                return date
+                            }
+
+                            return nil
+                        }
             
             func parseBackendDate(_ value: String) -> Date {
                 let isoFormatter = ISO8601DateFormatter()
@@ -2687,6 +2957,78 @@ private extension FriendChatView {
 
                 backendMessages.append(message)
             }
+            func loadOlderMessagesIfNeeded() async {
+                            // Aynı anda birden fazla istek olmasını engelle
+                            guard !isLoadingOlderMessages else { return }
+                            guard hasMoreOlderMessages else { return }
+                            guard let backendConversationID else { return }
+
+                            // En eski mesajı bul
+                            guard let oldestMessage = backendMessages
+                                .sorted(by: { $0.createdAt < $1.createdAt })
+                                .first else {
+                                return
+                            }
+
+                            // Çok sık istek atılmasını engelle (debounce - 600ms)
+                            if let lastAttempt = lastOlderLoadAttemptAt,
+                               Date().timeIntervalSince(lastAttempt) < 0.6 {
+                                return
+                            }
+
+                            await MainActor.run {
+                                isLoadingOlderMessages = true
+                                lastOlderLoadAttemptAt = Date()
+                            }
+
+                            // ISO 8601 formatında "before" değeri gönder
+                            let isoFormatter = ISO8601DateFormatter()
+                            isoFormatter.formatOptions = [
+                                .withInternetDateTime,
+                                .withFractionalSeconds
+                            ]
+                            let beforeString = isoFormatter.string(from: oldestMessage.createdAt)
+
+                            print("🟡 LOAD OLDER START:", "before:", beforeString)
+
+                            let olderDTOs = await ChatBackendClient.shared.fetchMessages(
+                                conversationID: backendConversationID,
+                                limit: 30,
+                                before: beforeString
+                            )
+
+                            guard let friendshipID else {
+                                await MainActor.run {
+                                    isLoadingOlderMessages = false
+                                }
+                                return
+                            }
+
+                            let olderMessages = olderDTOs.compactMap { dto in
+                                mapBackendMessage(dto, friendshipID: friendshipID)
+                            }
+
+                            await MainActor.run {
+                                // Backend'den gelen mesajları cache'e kaydet
+                                upsertCachedMessages(
+                                    olderMessages,
+                                    conversationID: backendConversationID
+                                )
+
+                                // Mevcut listeye merge et (mergeBackendMessages zaten duplicate'leri engelliyor)
+                                mergeBackendMessages(olderMessages)
+
+                                // Eğer beklenen limit'ten az mesaj geldiyse, daha eski mesaj yok demek
+                                if olderMessages.count < 30 {
+                                    hasMoreOlderMessages = false
+                                    print("🟡 LOAD OLDER: no more messages")
+                                } else {
+                                    print("🟢 LOAD OLDER OK:", olderMessages.count)
+                                }
+
+                                isLoadingOlderMessages = false
+                            }
+                        }
             
             func mergeBackendMessages(_ incoming: [FriendChatMessageItem]) {
                 var merged = backendMessages
@@ -2805,11 +3147,7 @@ private extension FriendChatView {
 
                     mergeBackendMessages(items)
 
-                    if !hasCompletedBackendInitialSync {
-                        hasCompletedBackendInitialSync = true
-                    }
-
-                    print("🟢 CHAT CACHE LOADED:", items.count)
+                                        print("🟢 CHAT CACHE LOADED:", items.count)
                 } catch {
                     print("❌ CHAT CACHE LOAD ERROR:", error.localizedDescription)
                 }
@@ -2948,5 +3286,6 @@ private extension FriendChatView {
                     print("❌ CHAT CACHE SEEN UPDATE ERROR:", error.localizedDescription)
                 }
             }
-        }
+}
+
     
