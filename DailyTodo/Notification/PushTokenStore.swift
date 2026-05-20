@@ -22,8 +22,59 @@ final class PushTokenStore {
     private var pendingSaveTask: Task<Void, Never>?
 
     var currentEnvironment: String {
-        ChatBackendEnvironment.apnsEnvironment
-    }
+            Self.detectAPNsEnvironment()
+        }
+
+        /// APNs environment'ı runtime'da tespit eder.
+        /// Provisioning profile'dan aps-environment değerini okur.
+        /// Bu sayede TestFlight, App Store, Development build'leri ayırt edilir.
+        static func detectAPNsEnvironment() -> String {
+            #if targetEnvironment(simulator)
+            // Simülatör daima sandbox
+            return "sandbox"
+            #else
+            // Gerçek cihaz: provisioning profile'dan oku
+            guard let path = Bundle.main.path(
+                forResource: "embedded",
+                ofType: "mobileprovision"
+            ) else {
+                // Profile bulunamadıysa: App Store build (genellikle production)
+                return "production"
+            }
+
+            do {
+                let data = try Data(contentsOf: URL(fileURLWithPath: path))
+
+                // Provisioning profile binary'inde plist gömülü
+                guard let plistRange = data.range(of: "<plist".data(using: .utf8)!),
+                      let endRange = data.range(of: "</plist>".data(using: .utf8)!) else {
+                    return "production"
+                }
+
+                let plistData = data.subdata(
+                    in: plistRange.lowerBound..<endRange.upperBound
+                )
+
+                guard let plist = try PropertyListSerialization.propertyList(
+                    from: plistData,
+                    options: [],
+                    format: nil
+                ) as? [String: Any],
+                      let entitlements = plist["Entitlements"] as? [String: Any],
+                      let apsEnvironment = entitlements["aps-environment"] as? String
+                else {
+                    return "production"
+                }
+
+                // aps-environment "development" veya "production" döner
+                // Bizim sandbox / production'a çevirelim
+                return apsEnvironment == "development" ? "sandbox" : "production"
+            } catch {
+                print("❌ APNS ENV DETECT ERROR:", error.localizedDescription)
+                return "production"
+            }
+            #endif
+        }
 
     var currentToken: String? {
         UserDefaults.standard
