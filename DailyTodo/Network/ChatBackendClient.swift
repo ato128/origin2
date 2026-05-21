@@ -14,22 +14,16 @@ import UIKit
 
 enum ChatBackendEnvironment {
     static var httpBaseURL: String {
-        #if DEBUG
         return "https://updo-chat-backend-production.up.railway.app"
-        #else
-        return "https://api.updo.app"
-        #endif
     }
 
     static var websocketBaseURL: String {
-        #if DEBUG
         return "wss://updo-chat-backend-production.up.railway.app"
-        #else
-        return "wss://api.updo.app"
-        #endif
     }
 
     static var apnsEnvironment: String {
+        // NOT: Bu artık PushTokenStore'da runtime'da tespit edildiği için
+        // burası fallback olarak kullanılıyor. Doğru değer PushTokenStore.detectAPNsEnvironment()
         #if DEBUG
         return "sandbox"
         #else
