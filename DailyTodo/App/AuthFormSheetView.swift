@@ -24,7 +24,8 @@ struct AuthFormSheetView: View {
 
     var body: some View {
         ZStack {
-            sheetBackground
+            AuthFormArenaBackground()
+                .ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 22) {
@@ -32,17 +33,39 @@ struct AuthFormSheetView: View {
                     formSection
                     submitSection
                 }
-                .padding(20)
-                .padding(.bottom, 28)
+                .padding(.horizontal, 22)
+                .padding(.top, 22)
+                .padding(.bottom, 34)
             }
         }
+        .preferredColorScheme(.dark)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Close") {
+                Button {
                     dismiss()
+                } label: {
+                    HStack(spacing: 7) {
+                        Text("Close")
+                            .font(.system(size: 13, weight: .black, design: .rounded))
+
+                        Image(systemName: "xmark")
+                            .font(.system(size: 12, weight: .black))
+                    }
+                    .foregroundStyle(.white.opacity(0.82))
+                    .padding(.horizontal, 13)
+                    .padding(.vertical, 9)
+                    .background(
+                        Capsule()
+                            .fill(Color.white.opacity(0.075))
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                            )
+                    )
                 }
-                .foregroundStyle(Color.white.opacity(0.82))
+                .buttonStyle(.plain)
             }
         }
     }
@@ -50,25 +73,52 @@ struct AuthFormSheetView: View {
 
 private extension AuthFormSheetView {
     var headerSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(mode.title)
-                .font(.system(size: 32, weight: .black, design: .rounded))
-                .foregroundStyle(.white)
+        VStack(alignment: .leading, spacing: 12) {
+            Text("— \(mode.eyebrow) —")
+                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                .tracking(2.5)
+                .foregroundStyle(Color(authFormHex: AuthFormPalette.appCyan))
+
+            HStack(alignment: .firstTextBaseline, spacing: 7) {
+                Text(mode.titleFirst)
+                    .font(.system(size: 36, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text(mode.titleAccent)
+                    .font(.system(size: 34, weight: .regular, design: .serif))
+                    .italic()
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [
+                                Color(authFormHex: AuthFormPalette.appCyan),
+                                Color(authFormHex: AuthFormPalette.appPurple)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+            .lineLimit(2)
+            .minimumScaleFactor(0.70)
 
             Text(mode.subtitle)
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(Color.white.opacity(0.7))
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.58))
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .padding(.top, 4)
     }
 
     var formSection: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 15) {
             if mode == .signup {
                 premiumField(
                     title: "Name",
                     placeholder: "Your name",
                     text: $name,
-                    systemImage: "person.fill"
+                    systemImage: "person.fill",
+                    capitalization: .words
                 )
             }
 
@@ -76,7 +126,8 @@ private extension AuthFormSheetView {
                 title: "Email",
                 placeholder: "you@example.com",
                 text: $email,
-                systemImage: "envelope.fill"
+                systemImage: "envelope.fill",
+                capitalization: .never
             )
 
             passwordField(
@@ -96,11 +147,7 @@ private extension AuthFormSheetView {
             }
 
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.red.opacity(0.95))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 4)
+                errorCard(errorMessage)
             }
         }
     }
@@ -118,37 +165,45 @@ private extension AuthFormSheetView {
                             .tint(.white)
                     } else {
                         Image(systemName: mode == .login ? "arrow.right.circle.fill" : "checkmark.circle.fill")
+                            .font(.system(size: 18, weight: .black))
                     }
 
                     Text((isLoading || session.isLoading) ? "Please wait..." : mode.buttonTitle)
+                        .font(.system(size: 18, weight: .black, design: .rounded))
                 }
-                .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 18)
+                .frame(height: 58)
                 .background(
                     Capsule()
                         .fill(
-                            LinearGradient(
-                                colors: [Color.blue, Color.purple],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
+                            canSubmit
+                            ? AnyShapeStyle(AuthFormPalette.hotGradient)
+                            : AnyShapeStyle(Color.white.opacity(0.10))
                         )
                 )
-                .opacity(canSubmit ? 1 : 0.55)
+                .overlay(
+                    Capsule()
+                        .stroke(Color.white.opacity(canSubmit ? 0.16 : 0.06), lineWidth: 1)
+                )
+                .shadow(
+                    color: canSubmit ? Color(authFormHex: AuthFormPalette.appPurple).opacity(0.24) : .clear,
+                    radius: 16,
+                    y: 8
+                )
+                .opacity(canSubmit ? 1 : 0.70)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(AuthFormPressButtonStyle())
             .disabled(!canSubmit || isLoading || session.isLoading)
 
             if mode == .login {
                 Text("Forgot password?")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.62))
+                    .font(.system(size: 14, weight: .black, design: .rounded))
+                    .foregroundStyle(Color.white.opacity(0.48))
                     .frame(maxWidth: .infinity)
             }
         }
-        .padding(.top, 8)
+        .padding(.top, 4)
     }
 
     var canSubmit: Bool {
@@ -275,33 +330,32 @@ private extension AuthFormSheetView {
         title: String,
         placeholder: String,
         text: Binding<String>,
-        systemImage: String
+        systemImage: String,
+        capitalization: TextInputAutocapitalization
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Color.white.opacity(0.78))
+            Text(title.uppercased())
+                .font(.system(size: 10, weight: .black, design: .monospaced))
+                .tracking(1.4)
+                .foregroundStyle(Color.white.opacity(0.46))
 
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 Image(systemName: systemImage)
-                    .foregroundStyle(Color.white.opacity(0.5))
-                    .frame(width: 18)
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(Color(authFormHex: AuthFormPalette.appCyan))
+                    .frame(width: 20)
 
                 TextField(placeholder, text: text)
-                    .textInputAutocapitalization(.never)
+                    .textInputAutocapitalization(capitalization)
                     .autocorrectionDisabled()
+                    .keyboardType(title.lowercased() == "email" ? .emailAddress : .default)
+                    .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(.white)
+                    .tint(Color(authFormHex: AuthFormPalette.appCyan))
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 16)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.white.opacity(0.06))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(Color.white.opacity(0.07), lineWidth: 1)
-            )
+            .frame(height: 56)
+            .background(authFormFieldSurface)
         }
     }
 
@@ -312,14 +366,16 @@ private extension AuthFormSheetView {
         showText: Binding<Bool>
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Color.white.opacity(0.78))
+            Text(title.uppercased())
+                .font(.system(size: 10, weight: .black, design: .monospaced))
+                .tracking(1.4)
+                .foregroundStyle(Color.white.opacity(0.46))
 
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 Image(systemName: "lock.fill")
-                    .foregroundStyle(Color.white.opacity(0.5))
-                    .frame(width: 18)
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(Color(authFormHex: AuthFormPalette.appCyan))
+                    .frame(width: 20)
 
                 Group {
                     if showText.wrappedValue {
@@ -330,51 +386,223 @@ private extension AuthFormSheetView {
                 }
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
+                .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(.white)
+                .tint(Color(authFormHex: AuthFormPalette.appCyan))
 
                 Button {
                     showText.wrappedValue.toggle()
                 } label: {
                     Image(systemName: showText.wrappedValue ? "eye.slash.fill" : "eye.fill")
-                        .foregroundStyle(Color.white.opacity(0.58))
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundStyle(Color.white.opacity(0.52))
                 }
                 .buttonStyle(.plain)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 16)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.white.opacity(0.06))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(Color.white.opacity(0.07), lineWidth: 1)
-            )
+            .frame(height: 56)
+            .background(authFormFieldSurface)
         }
     }
 
-    var sheetBackground: some View {
+    var authFormFieldSurface: some View {
+        RoundedRectangle(cornerRadius: 20, style: .continuous)
+            .fill(Color.white.opacity(0.070))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(Color.white.opacity(0.085), lineWidth: 1)
+            )
+    }
+
+    func errorCard(_ text: String) -> some View {
+        HStack(spacing: 11) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 16, weight: .black))
+                .foregroundStyle(Color(authFormHex: AuthFormPalette.coral))
+
+            Text(text)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(.white.opacity(0.82))
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer()
+        }
+        .padding(13)
+        .background(
+            RoundedRectangle(cornerRadius: 19, style: .continuous)
+                .fill(Color(authFormHex: AuthFormPalette.coral).opacity(0.12))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 19, style: .continuous)
+                .stroke(Color(authFormHex: AuthFormPalette.coral).opacity(0.22), lineWidth: 1)
+        )
+    }
+}
+
+// MARK: - Palette
+
+private enum AuthFormPalette {
+    static let backgroundTop = "#05060D"
+    static let backgroundMid = "#070713"
+    static let backgroundBottom = "#07040C"
+
+    static let appBlue = "#1593FF"
+    static let appBlueSoft = "#1E6BFF"
+    static let appCyan = "#2DD4FF"
+    static let appPurple = "#7C3AED"
+    static let coral = "#FF5A44"
+    static let gold = "#FBBF24"
+
+    static var hotGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(authFormHex: appBlue),
+                Color(authFormHex: appPurple),
+                Color(authFormHex: coral)
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+}
+
+// MARK: - Background
+
+private struct AuthFormArenaBackground: View {
+    var body: some View {
         ZStack {
-            Color.black
-                .ignoresSafeArea()
+            Color.black.ignoresSafeArea()
 
             LinearGradient(
                 colors: [
-                    Color.blue.opacity(0.16),
-                    Color.purple.opacity(0.12),
-                    Color.clear
+                    Color(authFormHex: AuthFormPalette.backgroundTop),
+                    Color(authFormHex: AuthFormPalette.backgroundMid),
+                    Color(authFormHex: AuthFormPalette.backgroundBottom)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            Circle()
+                .fill(Color(authFormHex: AuthFormPalette.appBlue).opacity(0.12))
+                .frame(width: 270, height: 270)
+                .blur(radius: 98)
+                .offset(x: 165, y: -220)
+
+            Circle()
+                .fill(Color(authFormHex: AuthFormPalette.appPurple).opacity(0.16))
+                .frame(width: 330, height: 330)
+                .blur(radius: 115)
+                .offset(x: -180, y: 500)
+
+            Circle()
+                .fill(Color(authFormHex: AuthFormPalette.coral).opacity(0.070))
+                .frame(width: 280, height: 280)
+                .blur(radius: 105)
+                .offset(x: 170, y: 285)
+
+            LinearGradient(
+                colors: [
+                    Color.black.opacity(0.16),
+                    Color.black.opacity(0.0),
+                    Color.black.opacity(0.42)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
             )
             .ignoresSafeArea()
         }
     }
 }
 
+// MARK: - Button Style
+
+private struct AuthFormPressButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.975 : 1.0)
+            .opacity(configuration.isPressed ? 0.92 : 1.0)
+            .animation(.spring(response: 0.22, dampingFraction: 0.82), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Color Hex
+
+private extension Color {
+    init(authFormHex hex: String) {
+        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+
+        var int: UInt64 = 0
+        Scanner(string: cleaned).scanHexInt64(&int)
+
+        let a: UInt64
+        let r: UInt64
+        let g: UInt64
+        let b: UInt64
+
+        switch cleaned.count {
+        case 3:
+            a = 255
+            r = (int >> 8) * 17
+            g = ((int >> 4) & 0xF) * 17
+            b = (int & 0xF) * 17
+
+        case 6:
+            a = 255
+            r = int >> 16
+            g = (int >> 8) & 0xFF
+            b = int & 0xFF
+
+        case 8:
+            a = int >> 24
+            r = (int >> 16) & 0xFF
+            g = (int >> 8) & 0xFF
+            b = int & 0xFF
+
+        default:
+            a = 255
+            r = 21
+            g = 147
+            b = 255
+        }
+
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
+    }
+}
+
+// MARK: - Mode
+
 enum AuthMode {
     case login
     case signup
+
+    var eyebrow: String {
+        switch self {
+        case .login: return "WELCOME BACK"
+        case .signup: return "NEW ACCOUNT"
+        }
+    }
+
+    var titleFirst: String {
+        switch self {
+        case .login: return "Login"
+        case .signup: return "Create"
+        }
+    }
+
+    var titleAccent: String {
+        switch self {
+        case .login: return "now"
+        case .signup: return "account"
+        }
+    }
 
     var title: String {
         switch self {
@@ -385,8 +613,10 @@ enum AuthMode {
 
     var subtitle: String {
         switch self {
-        case .login: return "Welcome back. Continue planning your day."
-        case .signup: return "Start fresh with a new DailyTodo account."
+        case .login:
+            return "Welcome back. Continue planning your day."
+        case .signup:
+            return "Start fresh with a new Updo account."
         }
     }
 

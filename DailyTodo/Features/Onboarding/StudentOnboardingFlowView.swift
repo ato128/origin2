@@ -14,6 +14,56 @@ struct OnboardingCourseDraft: Identifiable, Hashable {
     var isSuggested: Bool = false
 }
 
+private enum StudentOnboardingArenaPalette {
+    static let backgroundTop = "#05060D"
+    static let backgroundMid = "#070713"
+    static let backgroundBottom = "#07040C"
+
+    static let appBlue = "#1593FF"
+    static let appBlueSoft = "#1E6BFF"
+    static let appCyan = "#2DD4FF"
+    static let appPurple = "#7C3AED"
+    static let appViolet = "#8B5CF6"
+    static let coral = "#FF5A44"
+    static let gold = "#FBBF24"
+    static let green = "#A3E635"
+
+    static var appGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(studentOnboardingHex: appBlueSoft),
+                Color(studentOnboardingHex: appPurple)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    static var hotGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(studentOnboardingHex: appBlue),
+                Color(studentOnboardingHex: appPurple),
+                Color(studentOnboardingHex: coral)
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+
+    static var cardGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(studentOnboardingHex: appBlue).opacity(0.050),
+                Color(studentOnboardingHex: appPurple).opacity(0.065),
+                Color.white.opacity(0.045)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+}
+
 struct StudentOnboardingFlowView: View {
     @EnvironmentObject var studentStore: StudentStore
     @FocusState private var focusedField: FocusField?
@@ -68,7 +118,8 @@ struct StudentOnboardingFlowView: View {
 
     var body: some View {
         ZStack {
-            AppBackground()
+            StudentOnboardingArenaBackground()
+                .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 topBar
@@ -317,11 +368,19 @@ struct StudentOnboardingFlowView: View {
                     }
                 } label: {
                     Image(systemName: "chevron.left")
-                        .font(.system(size: 17, weight: .bold))
+                        .font(.system(size: 17, weight: .black))
                         .foregroundStyle(.white)
                         .frame(width: 44, height: 44)
-                        .background(.white.opacity(0.08), in: Circle())
+                        .background(
+                            Circle()
+                                .fill(Color.white.opacity(0.075))
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                )
+                        )
                 }
+                .buttonStyle(.plain)
             } else {
                 Color.clear
                     .frame(width: 44, height: 44)
@@ -329,9 +388,26 @@ struct StudentOnboardingFlowView: View {
 
             Spacer()
 
-            Text(stepTitle)
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(.white)
+            HStack(spacing: 8) {
+                Rectangle()
+                    .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue))
+                    .frame(width: 18, height: 1)
+
+                Text("STEP \(currentStep + 1) / \(totalSteps)")
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                    .tracking(1.5)
+                    .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(
+                Capsule()
+                    .fill(Color.white.opacity(0.075))
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                    )
+            )
 
             Spacer()
 
@@ -344,34 +420,34 @@ struct StudentOnboardingFlowView: View {
     }
 
     private var progressSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 9) {
             HStack {
-                Text("Step \(currentStep + 1) of \(totalSteps)")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.66))
+                Text(progressLabel.uppercased())
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(1.8)
+                    .foregroundStyle(.white.opacity(0.42))
 
                 Spacer()
 
-                Text(progressLabel)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.blue)
+                Text(stepTitle)
+                    .font(.system(size: 12, weight: .black, design: .rounded))
+                    .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
             }
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(.white.opacity(0.07))
+                        .fill(Color.white.opacity(0.07))
                         .frame(height: 7)
 
                     Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [.blue, .purple, .pink],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                        .fill(StudentOnboardingArenaPalette.hotGradient)
                         .frame(width: geo.size.width * progressValue, height: 7)
+                        .shadow(
+                            color: Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.28),
+                            radius: 10,
+                            y: 4
+                        )
                 }
             }
             .frame(height: 7)
@@ -409,6 +485,19 @@ struct StudentOnboardingFlowView: View {
                     .lineSpacing(2)
             }
         }
+    }
+    
+    private func splitHeroTitle(_ value: String) -> (first: String, accent: String) {
+        let parts = value.split(separator: " ").map(String.init)
+
+        guard parts.count > 1 else {
+            return (value, "")
+        }
+
+        let first = parts.dropLast().joined(separator: " ")
+        let accent = parts.last ?? ""
+
+        return (first, accent)
     }
 
     @ViewBuilder
@@ -693,10 +782,24 @@ struct StudentOnboardingFlowView: View {
     }
     
     private var courseSuggestionsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Suggestions")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(.white.opacity(0.72))
+        VStack(alignment: .leading, spacing: 11) {
+            HStack {
+                Text("Suggestions")
+                    .font(.system(size: 18, weight: .black))
+                    .foregroundStyle(.white)
+
+                Spacer()
+
+                Text("\(filteredCourseSuggestions.count)")
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                    .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold))
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold).opacity(0.12))
+                    )
+            }
 
             VStack(spacing: 10) {
                 ForEach(filteredCourseSuggestions) { course in
@@ -706,70 +809,88 @@ struct StudentOnboardingFlowView: View {
                     } label: {
                         HStack(spacing: 12) {
                             RoundedRectangle(cornerRadius: 3, style: .continuous)
-                                .fill(.blue.opacity(0.9))
-                                .frame(width: 4, height: 44)
+                                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold))
+                                .frame(width: 4, height: 46)
 
                             VStack(alignment: .leading, spacing: 5) {
                                 HStack(spacing: 8) {
                                     if !course.course_code.isEmpty {
                                         Text(course.course_code)
-                                            .font(.system(size: 12, weight: .heavy))
-                                            .foregroundStyle(.blue)
+                                            .font(.system(size: 11, weight: .black, design: .monospaced))
+                                            .tracking(0.8)
+                                            .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold))
                                     }
 
-                                    Text("Suggestion")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundStyle(.white.opacity(0.72))
+                                    Text("ADD")
+                                        .font(.system(size: 9, weight: .black, design: .monospaced))
+                                        .tracking(0.9)
+                                        .foregroundStyle(.black.opacity(0.78))
                                         .padding(.horizontal, 7)
                                         .padding(.vertical, 4)
                                         .background(
                                             Capsule()
-                                                .fill(.white.opacity(0.08))
+                                                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold))
                                         )
                                 }
 
                                 Text(course.course_name)
-                                    .font(.system(size: 15, weight: .semibold))
+                                    .font(.system(size: 15, weight: .black))
                                     .foregroundStyle(.white)
                                     .multilineTextAlignment(.leading)
 
                                 Text("Year \(course.year_number) • Term \(course.term_number ?? 0)")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(.white.opacity(0.45))
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundStyle(.white.opacity(0.44))
                             }
 
                             Spacer()
+
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 20, weight: .black))
+                                .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold))
                         }
                         .padding(.horizontal, 14)
                         .padding(.vertical, 14)
                         .background(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(.white.opacity(0.08))
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .fill(Color.white.opacity(0.060))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                        .stroke(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold).opacity(0.14), lineWidth: 1)
+                                )
                         )
                     }
                     .buttonStyle(.plain)
                 }
             }
         }
+        .padding(18)
+        .background(studentOnboardingSurface(radius: 26))
     }
     
     private var selectedCoursesSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 13) {
             HStack {
-                Label("Selected courses", systemImage: "list.bullet")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(.white)
+                HStack(spacing: 9) {
+                    Image(systemName: "list.bullet.rectangle")
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
+
+                    Text("Selected courses")
+                        .font(.system(size: 18, weight: .black))
+                        .foregroundStyle(.white)
+                }
 
                 Spacer()
 
                 Text("\(localCourses.count)")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.blue)
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                    .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
                     .padding(.horizontal, 9)
                     .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(.blue.opacity(0.14))
+                            .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.13))
                     )
             }
 
@@ -796,18 +917,21 @@ struct StudentOnboardingFlowView: View {
             }
         }
         .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(.white.opacity(0.06))
-        )
+        .background(studentOnboardingSurface(radius: 26))
     }
     
     private var courseBuilderCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 13) {
             HStack {
-                Label("Course builder", systemImage: "square.and.pencil")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(.white)
+                HStack(spacing: 9) {
+                    Image(systemName: "square.and.pencil")
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
+
+                    Text("Course builder")
+                        .font(.system(size: 18, weight: .black))
+                        .foregroundStyle(.white)
+                }
 
                 Spacer()
 
@@ -822,14 +946,19 @@ struct StudentOnboardingFlowView: View {
                 TextField(
                     "",
                     text: $draftCourseCode,
-                    prompt: Text("Code").foregroundStyle(.white.opacity(0.34))
+                    prompt: Text("Code").foregroundStyle(.white.opacity(0.30))
                 )
                 .textInputAutocapitalization(.characters)
+                .font(.system(size: 15, weight: .black, design: .monospaced))
                 .padding(.horizontal, 14)
-                .frame(width: 104, height: 50)
+                .frame(width: 104, height: 52)
                 .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(.white.opacity(0.08))
+                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                        .fill(Color.white.opacity(0.070))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                        )
                 )
                 .foregroundStyle(.white)
                 .focused($focusedField, equals: .courseCode)
@@ -845,14 +974,19 @@ struct StudentOnboardingFlowView: View {
                 TextField(
                     "",
                     text: $draftCourseName,
-                    prompt: Text("Course name").foregroundStyle(.white.opacity(0.34))
+                    prompt: Text("Course name").foregroundStyle(.white.opacity(0.30))
                 )
                 .textInputAutocapitalization(.words)
+                .font(.system(size: 15, weight: .bold))
                 .padding(.horizontal, 14)
-                .frame(height: 50)
+                .frame(height: 52)
                 .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(.white.opacity(0.08))
+                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                        .fill(Color.white.opacity(0.070))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                        )
                 )
                 .foregroundStyle(.white)
                 .focused($focusedField, equals: .courseName)
@@ -865,29 +999,34 @@ struct StudentOnboardingFlowView: View {
                 addDraftCourse()
                 focusedField = nil
             } label: {
-                Text("Add Course")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(
-                        RoundedRectangle(cornerRadius: 17, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [.blue, .purple, .pink],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                    )
+                HStack(spacing: 9) {
+                    Text("Add Course")
+                        .font(.system(size: 15, weight: .black))
+
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .black))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(StudentOnboardingArenaPalette.hotGradient)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(Color.white.opacity(0.14), lineWidth: 1)
+                        )
+                        .shadow(
+                            color: Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.20),
+                            radius: 14,
+                            y: 7
+                        )
+                )
             }
             .buttonStyle(.plain)
         }
         .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(.white.opacity(0.08))
-        )
+        .background(studentOnboardingSurface(radius: 26))
     }
     
     
@@ -941,10 +1080,6 @@ struct StudentOnboardingFlowView: View {
 
     private var bottomBar: some View {
         VStack(spacing: 0) {
-            Rectangle()
-                .fill(.white.opacity(0.06))
-                .frame(height: 1)
-
             HStack(spacing: 14) {
                 if currentStep > 0 {
                     Button {
@@ -953,20 +1088,25 @@ struct StudentOnboardingFlowView: View {
                         }
                     } label: {
                         Text("Back")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 108, height: 54)
+                            .font(.system(size: 15, weight: .black, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.88))
+                            .frame(width: 108, height: 56)
                             .background(
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .fill(.white.opacity(0.08))
+                                RoundedRectangle(cornerRadius: 19, style: .continuous)
+                                    .fill(Color.white.opacity(0.075))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 19, style: .continuous)
+                                            .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                    )
                             )
                     }
+                    .buttonStyle(.plain)
                 }
 
                 Button {
                     handleContinue()
                 } label: {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 9) {
                         if isSubmitting {
                             ProgressView()
                                 .tint(.white)
@@ -974,49 +1114,86 @@ struct StudentOnboardingFlowView: View {
                         }
 
                         Text(currentStep == totalSteps - 1 ? "Finish" : "Continue")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(.white)
+                            .font(.system(size: 17, weight: .black, design: .rounded))
+
+                        Image(systemName: currentStep == totalSteps - 1 ? "checkmark.circle.fill" : "arrow.right")
+                            .font(.system(size: 16, weight: .black))
                     }
+                    .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 54)
+                    .frame(height: 56)
                     .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        RoundedRectangle(cornerRadius: 19, style: .continuous)
                             .fill(
                                 canContinueCurrentStep
-                                ? LinearGradient(colors: [.blue, .purple, .pink], startPoint: .leading, endPoint: .trailing)
-                                : LinearGradient(colors: [.gray.opacity(0.4), .gray.opacity(0.35)], startPoint: .leading, endPoint: .trailing)
+                                ? AnyShapeStyle(StudentOnboardingArenaPalette.hotGradient)
+                                : AnyShapeStyle(Color.white.opacity(0.10))
                             )
                     )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 19, style: .continuous)
+                            .stroke(Color.white.opacity(canContinueCurrentStep ? 0.16 : 0.06), lineWidth: 1)
+                    )
+                    .shadow(
+                        color: canContinueCurrentStep
+                        ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.24)
+                        : .clear,
+                        radius: 16,
+                        y: 8
+                    )
                 }
+                .buttonStyle(.plain)
                 .disabled(!canContinueCurrentStep)
             }
             .padding(.horizontal, 24)
-            .padding(.top, 14)
+            .padding(.top, 16)
             .padding(.bottom, 22)
-            .background(.ultraThinMaterial.opacity(0.35))
         }
+        .background(
+            LinearGradient(
+                colors: [
+                    Color.black.opacity(0.0),
+                    Color.black.opacity(0.82),
+                    Color.black.opacity(0.96)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        )
     }
 
     private var savingOverlay: some View {
         ZStack {
-            Color.black.opacity(0.28)
+            Color.black.opacity(0.42)
                 .ignoresSafeArea()
 
             VStack(spacing: 14) {
                 ProgressView()
                     .tint(.white)
-                    .scaleEffect(1.05)
+                    .scaleEffect(1.08)
 
                 Text("Saving your setup...")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.9))
+                    .font(.system(size: 15, weight: .black, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.92))
+
+                Text("Courses, profile and goals are being prepared.")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.48))
+                    .multilineTextAlignment(.center)
             }
             .padding(.horizontal, 26)
             .padding(.vertical, 22)
             .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(.white.opacity(0.10))
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(StudentOnboardingArenaPalette.cardGradient)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 26, style: .continuous)
+                            .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.35), radius: 24, y: 14)
             )
+            .padding(.horizontal, 32)
         }
     }
 
@@ -1400,52 +1577,63 @@ struct StudentOnboardingFlowView: View {
 
 private extension StudentOnboardingFlowView {
     func compactFeatureCard(icon: String, title: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(.blue)
-                .frame(width: 28)
-
+        HStack(spacing: 13) {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.18),
+                            Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.13)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 48, height: 48)
+                .overlay(
+                    Image(systemName: icon)
+                        .font(.system(size: 19, weight: .black))
+                        .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
+                )
+            
             Text(title)
-                .font(.system(size: 17, weight: .semibold))
+                .font(.system(size: 17, weight: .black))
                 .foregroundStyle(.white)
-
+            
             Spacer()
+            
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .black))
+                .foregroundStyle(.white.opacity(0.24))
         }
-        .padding(.horizontal, 18)
-        .frame(height: 58)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(.white.opacity(0.08))
-        )
+        .padding(13)
+        .background(studentOnboardingSurface(radius: 24))
     }
-
+    
     func compactInfoGroup(title: String, items: [(String, String)]) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             Text(title)
-                .font(.system(size: 18, weight: .bold))
+                .font(.system(size: 18, weight: .black))
                 .foregroundStyle(.white)
-
+            
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(items, id: \.1) { item in
                     Label {
                         Text(item.1)
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.84))
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.76))
                     } icon: {
                         Image(systemName: item.0)
-                            .foregroundStyle(.blue)
+                            .font(.system(size: 14, weight: .black))
+                            .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
                     }
                 }
             }
         }
         .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(.white.opacity(0.08))
-        )
+        .background(studentOnboardingSurface(radius: 24))
     }
-
+    
     func compactCourseRow(
         course: OnboardingCourseDraft,
         isSuggested: Bool,
@@ -1453,57 +1641,73 @@ private extension StudentOnboardingFlowView {
     ) -> some View {
         HStack(spacing: 12) {
             RoundedRectangle(cornerRadius: 3, style: .continuous)
-                .fill(.blue.opacity(0.9))
-                .frame(width: 4, height: 42)
-
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan),
+                            Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: 4, height: 44)
+            
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
                     if !course.code.isEmpty {
                         Text(course.code)
-                            .font(.system(size: 12, weight: .heavy))
-                            .foregroundStyle(.blue)
+                            .font(.system(size: 11, weight: .black, design: .monospaced))
+                            .tracking(0.8)
+                            .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
                     }
-
+                    
                     if isSuggested {
-                        Text("Suggested")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.72))
+                        Text("SUGGESTED")
+                            .font(.system(size: 9, weight: .black, design: .monospaced))
+                            .tracking(0.9)
+                            .foregroundStyle(.white.opacity(0.62))
                             .padding(.horizontal, 7)
                             .padding(.vertical, 4)
                             .background(
                                 Capsule()
-                                    .fill(.white.opacity(0.08))
+                                    .fill(Color.white.opacity(0.075))
                             )
                     }
                 }
-
+                
                 Text(course.name)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 16, weight: .black))
                     .foregroundStyle(.white)
                     .lineLimit(2)
             }
-
+            
             Spacer(minLength: 10)
-
+            
             Button(role: .destructive, action: onDelete) {
                 Image(systemName: "trash")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.red)
+                    .font(.system(size: 13, weight: .black))
+                    .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.coral))
                     .frame(width: 34, height: 34)
                     .background(
                         Circle()
-                            .fill(.white.opacity(0.05))
+                            .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.coral).opacity(0.10))
                     )
             }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 14)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(.white.opacity(0.08))
+                .fill(Color.white.opacity(0.060))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                )
         )
     }
-
+    
     func selectionCard(
         title: String,
         subtitle: String,
@@ -1513,40 +1717,64 @@ private extension StudentOnboardingFlowView {
     ) -> some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 12) {
-                Text(badge)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.72))
+                Text(badge.uppercased())
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(1.3)
+                    .foregroundStyle(isSelected ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan) : .white.opacity(0.46))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(.white.opacity(0.08))
+                            .fill(isSelected ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.13) : Color.white.opacity(0.07))
                     )
-
+                
                 Spacer()
-
+                
                 Text(title)
-                    .font(.system(size: 21, weight: .bold))
+                    .font(.system(size: 23, weight: .black))
                     .foregroundStyle(.white)
-
+                
                 Text(subtitle)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.56))
+                    .lineLimit(2)
             }
             .padding(18)
-            .frame(maxWidth: .infinity, minHeight: 156, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 158, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(isSelected ? .white.opacity(0.14) : .white.opacity(0.07))
+                RoundedRectangle(cornerRadius: 25, style: .continuous)
+                    .fill(
+                        isSelected
+                        ? LinearGradient(
+                            colors: [
+                                Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.16),
+                                Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.12),
+                                Color.white.opacity(0.050)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        : StudentOnboardingArenaPalette.cardGradient
+                    )
                     .overlay(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(isSelected ? .blue.opacity(0.72) : .white.opacity(0.08), lineWidth: 1.15)
+                        RoundedRectangle(cornerRadius: 25, style: .continuous)
+                            .stroke(
+                                isSelected
+                                ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.34)
+                                : Color.white.opacity(0.075),
+                                lineWidth: 1.15
+                            )
+                    )
+                    .shadow(
+                        color: isSelected ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.15) : Color.black.opacity(0.18),
+                        radius: 16,
+                        y: 8
                     )
             )
         }
         .buttonStyle(.plain)
     }
-
+    
     func selectionRowCard(
         title: String,
         subtitle: String,
@@ -1554,39 +1782,37 @@ private extension StudentOnboardingFlowView {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            HStack {
+            HStack(spacing: 13) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
-                        .font(.system(size: 19, weight: .bold))
+                        .font(.system(size: 19, weight: .black))
                         .foregroundStyle(.white)
-
+                    
                     Text(subtitle)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.52))
                 }
-
+                
                 Spacer()
-
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(.blue)
-                }
+                
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 19, weight: .black))
+                    .foregroundStyle(isSelected ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan) : .white.opacity(0.28))
             }
             .padding(.horizontal, 18)
             .frame(height: 84)
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(isSelected ? .blue.opacity(0.18) : .white.opacity(0.07))
+                    .fill(isSelected ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.13) : Color.white.opacity(0.060))
                     .overlay(
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(isSelected ? .blue.opacity(0.72) : .white.opacity(0.07), lineWidth: 1.1)
+                            .stroke(isSelected ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.32) : Color.white.opacity(0.075), lineWidth: 1)
                     )
             )
         }
         .buttonStyle(.plain)
     }
-
+    
     func selectionNumberCard(
         title: String,
         isSelected: Bool,
@@ -1594,23 +1820,26 @@ private extension StudentOnboardingFlowView {
     ) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(.white)
+                .font(.system(size: 20, weight: .black))
+                .foregroundStyle(isSelected ? .black : .white)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
                 .frame(height: 108)
                 .background(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(isSelected ? .blue.opacity(0.18) : .white.opacity(0.07))
+                        .fill(
+                            isSelected
+                            ? AnyShapeStyle(StudentOnboardingArenaPalette.appGradient)
+                            : AnyShapeStyle(Color.white.opacity(0.065))
+                        )
                         .overlay(
                             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .stroke(isSelected ? .blue.opacity(0.72) : .white.opacity(0.08), lineWidth: 1.15)
+                                .stroke(isSelected ? Color.white.opacity(0.12) : Color.white.opacity(0.075), lineWidth: 1)
                         )
                 )
         }
         .buttonStyle(.plain)
     }
-
     func selectionChip(
         icon: String,
         title: String,
@@ -1620,33 +1849,47 @@ private extension StudentOnboardingFlowView {
         Button(action: action) {
             VStack(spacing: 10) {
                 Image(systemName: icon)
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(.blue)
-
+                    .font(.system(size: 18, weight: .black))
+                    .foregroundStyle(isSelected ? .black : Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
+                
                 Text(title)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundStyle(isSelected ? .black : .white)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 92)
+            .frame(height: 94)
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(isSelected ? .blue.opacity(0.22) : .white.opacity(0.08))
+                    .fill(
+                        isSelected
+                        ? AnyShapeStyle(StudentOnboardingArenaPalette.appGradient)
+                        : AnyShapeStyle(Color.white.opacity(0.065))
+                    )
                     .overlay(
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(isSelected ? .blue.opacity(0.75) : .white.opacity(0.08), lineWidth: 1.15)
+                            .stroke(isSelected ? Color.white.opacity(0.12) : Color.white.opacity(0.075), lineWidth: 1)
                     )
             )
         }
         .buttonStyle(.plain)
     }
-
+    
+    func studentOnboardingSurface(radius: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: radius, style: .continuous)
+            .fill(StudentOnboardingArenaPalette.cardGradient)
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.20), radius: 14, y: 8)
+    }
+    
     func premiumTextField(title: String, text: Binding<String>, placeholder: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.76))
-
+            
             TextField("", text: text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.34)))
                 .textInputAutocapitalization(.words)
                 .padding(.horizontal, 14)
@@ -1658,16 +1901,16 @@ private extension StudentOnboardingFlowView {
                 .foregroundStyle(.white)
         }
     }
-
+    
     func majorRow(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack {
                 Text(title)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.white)
-
+                
                 Spacer()
-
+                
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.blue)
@@ -1682,7 +1925,7 @@ private extension StudentOnboardingFlowView {
         }
         .buttonStyle(.plain)
     }
-
+    
     func premiumGoalCard(
         title: String,
         value: String,
@@ -1693,28 +1936,134 @@ private extension StudentOnboardingFlowView {
     ) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text(title)
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(.white)
-
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 18, weight: .black))
+                        .foregroundStyle(.white)
+                    
+                    Text(helper)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.46))
+                }
+                
                 Spacer()
-
+                
                 Text(value)
-                    .font(.system(size: 15, weight: .heavy))
-                    .foregroundStyle(.blue)
+                    .font(.system(size: 13, weight: .black, design: .monospaced))
+                    .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(
+                        Capsule()
+                            .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.13))
+                    )
             }
-
+            
             Slider(value: slider, in: range, step: step)
-                .tint(.blue)
-
-            Text(helper)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.white.opacity(0.54))
+                .tint(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
         }
         .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(.white.opacity(0.08))
+        .background(studentOnboardingSurface(radius: 25))
+    }
+}
+private struct StudentOnboardingArenaBackground: View {
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            LinearGradient(
+                colors: [
+                    Color(studentOnboardingHex: StudentOnboardingArenaPalette.backgroundTop),
+                    Color(studentOnboardingHex: StudentOnboardingArenaPalette.backgroundMid),
+                    Color(studentOnboardingHex: StudentOnboardingArenaPalette.backgroundBottom)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            Circle()
+                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.12))
+                .frame(width: 280, height: 280)
+                .blur(radius: 100)
+                .offset(x: 170, y: -250)
+
+            Circle()
+                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.17))
+                .frame(width: 330, height: 330)
+                .blur(radius: 115)
+                .offset(x: -180, y: 500)
+
+            Circle()
+                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.coral).opacity(0.075))
+                .frame(width: 280, height: 280)
+                .blur(radius: 105)
+                .offset(x: 170, y: 300)
+
+            Circle()
+                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold).opacity(0.050))
+                .frame(width: 240, height: 240)
+                .blur(radius: 95)
+                .offset(x: -170, y: -180)
+
+            LinearGradient(
+                colors: [
+                    Color.black.opacity(0.18),
+                    Color.black.opacity(0.0),
+                    Color.black.opacity(0.44)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        }
+    }
+}
+
+private extension Color {
+    init(studentOnboardingHex hex: String) {
+        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+
+        var int: UInt64 = 0
+        Scanner(string: cleaned).scanHexInt64(&int)
+
+        let a: UInt64
+        let r: UInt64
+        let g: UInt64
+        let b: UInt64
+
+        switch cleaned.count {
+        case 3:
+            a = 255
+            r = (int >> 8) * 17
+            g = ((int >> 4) & 0xF) * 17
+            b = (int & 0xF) * 17
+
+        case 6:
+            a = 255
+            r = int >> 16
+            g = (int >> 8) & 0xFF
+            b = int & 0xFF
+
+        case 8:
+            a = int >> 24
+            r = (int >> 16) & 0xFF
+            g = (int >> 8) & 0xFF
+            b = int & 0xFF
+
+        default:
+            a = 255
+            r = 21
+            g = 147
+            b = 255
+        }
+
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
         )
     }
 }

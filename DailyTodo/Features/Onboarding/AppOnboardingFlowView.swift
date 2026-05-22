@@ -36,6 +36,59 @@ private enum ScheduleSetupMode {
     case manualLater
 }
 
+private enum OnboardingArenaPalette {
+    static let backgroundTop = "#05060D"
+    static let backgroundMid = "#070713"
+    static let backgroundBottom = "#07040C"
+
+    static let appBlue = "#1593FF"
+    static let appBlueSoft = "#1E6BFF"
+    static let appCyan = "#2DD4FF"
+    static let appPurple = "#7C3AED"
+    static let appViolet = "#8B5CF6"
+    static let coral = "#FF5A44"
+    static let gold = "#FBBF24"
+    static let green = "#A3E635"
+
+    static let surface = "#101118"
+    static let surface2 = "#171821"
+
+    static var appGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(onboardingHex: appBlueSoft),
+                Color(onboardingHex: appPurple)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    static var hotGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(onboardingHex: appBlue),
+                Color(onboardingHex: appPurple),
+                Color(onboardingHex: coral)
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+
+    static var softCardGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(onboardingHex: appBlue).opacity(0.050),
+                Color(onboardingHex: appPurple).opacity(0.065),
+                Color.white.opacity(0.045)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+}
+
 struct AppOnboardingFlowView: View {
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var studentStore: StudentStore
@@ -110,6 +163,7 @@ struct AppOnboardingFlowView: View {
                 finishingScreen
             }
         }
+        .preferredColorScheme(.dark)
         .onAppear {
             normalizeStage()
             crewStore.setCurrentUser(session.currentUser?.id)
@@ -184,7 +238,9 @@ struct AppOnboardingFlowView: View {
 private extension AppOnboardingFlowView {
     var featureOverviewScreen: some View {
         OnboardingShell(
-            title: "Updo’ya hoş geldin",
+            eyebrow: "STUDENT OS",
+            titleFirst: "Updo’ya",
+            titleAccent: "hoş geldin",
             subtitle: "Görevler, ders programı, focus, arkadaşlar ve gelişim takibi tek öğrenci sisteminde birleşir.",
             progressText: "1 / 5",
             canSkip: false,
@@ -195,18 +251,20 @@ private extension AppOnboardingFlowView {
             skipAction: nil
         ) {
             VStack(spacing: 10) {
-                FeatureOverviewGridItem(icon: "checkmark.circle.fill", title: "Tasks", subtitle: "Günlük görevlerini toparla", tint: .green)
-                FeatureOverviewGridItem(icon: "calendar", title: "Week", subtitle: "Ders ve çalışma akışını planla", tint: .blue)
-                FeatureOverviewGridItem(icon: "timer", title: "Focus", subtitle: "Odak oturumlarıyla ilerle", tint: .orange)
-                FeatureOverviewGridItem(icon: "person.3.fill", title: "Crew", subtitle: "Arkadaşlarınla beraber çalış", tint: .purple)
-                FeatureOverviewGridItem(icon: "chart.bar.xaxis", title: "Insights", subtitle: "Ritim, seri ve gelişimini gör", tint: .pink)
+                FeatureOverviewGridItem(icon: "checkmark.circle.fill", title: "Tasks", subtitle: "Günlük görevlerini toparla", tint: Color(onboardingHex: OnboardingArenaPalette.green))
+                FeatureOverviewGridItem(icon: "calendar", title: "Week", subtitle: "Ders ve çalışma akışını planla", tint: Color(onboardingHex: OnboardingArenaPalette.appBlue))
+                FeatureOverviewGridItem(icon: "timer", title: "Focus", subtitle: "Odak oturumlarıyla ilerle", tint: Color(onboardingHex: OnboardingArenaPalette.coral))
+                FeatureOverviewGridItem(icon: "person.3.fill", title: "Crew", subtitle: "Arkadaşlarınla beraber çalış", tint: Color(onboardingHex: OnboardingArenaPalette.appPurple))
+                FeatureOverviewGridItem(icon: "chart.bar.xaxis", title: "Insights", subtitle: "Ritim, seri ve gelişimini gör", tint: Color(onboardingHex: OnboardingArenaPalette.gold))
             }
         }
     }
 
     var friendsScreen: some View {
         OnboardingShell(
-            title: "Arkadaşlarını ekle",
+            eyebrow: "SOCIAL SETUP",
+            titleFirst: "Arkadaşlarını",
+            titleAccent: "ekle",
             subtitle: "Kullanıcı adıyla arkadaş isteği gönder. İstersen bu adımı sonra tamamlayabilirsin.",
             progressText: "3 / 5",
             canSkip: true,
@@ -222,7 +280,7 @@ private extension AppOnboardingFlowView {
                     placeholder: "örn. hasan",
                     text: $friendUsername,
                     icon: "at",
-                    tint: .blue,
+                    tint: Color(onboardingHex: OnboardingArenaPalette.appBlue),
                     isLoading: friendState.isLoading
                 ) {
                     Task { await addFriendByUsername() }
@@ -234,7 +292,7 @@ private extension AppOnboardingFlowView {
                         title: foundFriendProfile.full_name ?? foundFriendProfile.username ?? "Kullanıcı",
                         subtitle: "@\(foundFriendProfile.username ?? "user")",
                         icon: "person.fill.checkmark",
-                        tint: .green,
+                        tint: Color(onboardingHex: OnboardingArenaPalette.green),
                         trailingText: "Gönderildi"
                     )
                 } else {
@@ -242,7 +300,7 @@ private extension AppOnboardingFlowView {
                         icon: "sparkles",
                         title: "Daha sonra da ekleyebilirsin",
                         subtitle: "Arkadaş, chat ve beraber focus özellikleri uygulama içinde açık kalır.",
-                        tint: .blue
+                        tint: Color(onboardingHex: OnboardingArenaPalette.appBlue)
                     )
                 }
 
@@ -255,7 +313,9 @@ private extension AppOnboardingFlowView {
 
     var crewScreen: some View {
         OnboardingShell(
-            title: "Crew oluştur",
+            eyebrow: "CREW SETUP",
+            titleFirst: "Crew",
+            titleAccent: "oluştur",
             subtitle: "Ders grubu, proje ekibi veya arkadaş çalışma grubu için küçük bir crew başlat.",
             progressText: "4 / 5",
             canSkip: true,
@@ -270,7 +330,8 @@ private extension AppOnboardingFlowView {
                     title: "Crew adı",
                     placeholder: "örn. CMPE Study Crew",
                     text: $crewName,
-                    icon: selectedCrewIcon
+                    icon: selectedCrewIcon,
+                    tint: Color.updoHex(selectedCrewColorHex)
                 )
                 .focused($focusedField, equals: .crewName)
 
@@ -284,6 +345,7 @@ private extension AppOnboardingFlowView {
                 } label: {
                     PremiumPrimaryMiniButton(
                         title: crewState.isLoading ? "Oluşturuluyor..." : "Crew oluştur",
+                        subtitle: "Crew uygulama içinde de görünecek",
                         icon: "plus",
                         tint: Color.updoHex(selectedCrewColorHex),
                         isLoading: crewState.isLoading
@@ -302,7 +364,7 @@ private extension AppOnboardingFlowView {
                         placeholder: "Arkadaşının kullanıcı adı",
                         text: $crewMemberUsername,
                         icon: "at",
-                        tint: .green,
+                        tint: Color(onboardingHex: OnboardingArenaPalette.green),
                         isLoading: crewMemberState.isLoading
                     ) {
                         Task { await addMemberToCreatedCrew() }
@@ -314,7 +376,7 @@ private extension AppOnboardingFlowView {
                             title: addedCrewMemberProfile.full_name ?? addedCrewMemberProfile.username ?? "Kullanıcı",
                             subtitle: "@\(addedCrewMemberProfile.username ?? "user")",
                             icon: "person.2.fill",
-                            tint: .green,
+                            tint: Color(onboardingHex: OnboardingArenaPalette.green),
                             trailingText: "Eklendi"
                         )
                     }
@@ -327,7 +389,7 @@ private extension AppOnboardingFlowView {
                         icon: "person.badge.plus",
                         title: "Arkadaş ekleme hazır",
                         subtitle: "Crew oluşturduktan sonra istersen hemen arkadaşını ekleyebilirsin.",
-                        tint: .purple
+                        tint: Color(onboardingHex: OnboardingArenaPalette.appPurple)
                     )
                 }
             }
@@ -336,7 +398,9 @@ private extension AppOnboardingFlowView {
 
     var scheduleScreen: some View {
         OnboardingShell(
-            title: "Ders programını hazırla",
+            eyebrow: "WEEK SETUP",
+            titleFirst: "Ders programını",
+            titleAccent: "hazırla",
             subtitle: "Seçtiğin dersleri haftaya yerleştir. Kaydedince Week ekranında görünür.",
             progressText: "5 / 5",
             canSkip: true,
@@ -352,7 +416,7 @@ private extension AppOnboardingFlowView {
                         title: "Şimdi ekle",
                         icon: "calendar.badge.plus",
                         isSelected: selectedScheduleMode == .addNow,
-                        tint: .blue
+                        tint: Color(onboardingHex: OnboardingArenaPalette.appBlue)
                     ) {
                         selectedScheduleMode = .addNow
                     }
@@ -361,7 +425,7 @@ private extension AppOnboardingFlowView {
                         title: "Sonra",
                         icon: "clock.arrow.circlepath",
                         isSelected: selectedScheduleMode == .manualLater,
-                        tint: .purple
+                        tint: Color(onboardingHex: OnboardingArenaPalette.appPurple)
                     ) {
                         selectedScheduleMode = .manualLater
                     }
@@ -379,7 +443,7 @@ private extension AppOnboardingFlowView {
                     icon: "graduationcap.fill",
                     title: "\(studentStore.courses.count) ders hazır",
                     subtitle: "Student setup’ta seçtiğin dersler Week programına eklenebilir.",
-                    tint: .green
+                    tint: Color(onboardingHex: OnboardingArenaPalette.green)
                 )
             }
         }
@@ -394,8 +458,9 @@ private extension AppOnboardingFlowView {
                 )
             } else {
                 Text("Ders")
-                    .font(.system(size: 13, weight: .black, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.70))
+                    .font(.system(size: 13, weight: .black, design: .monospaced))
+                    .tracking(1.2)
+                    .foregroundStyle(.white.opacity(0.58))
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -411,7 +476,7 @@ private extension AppOnboardingFlowView {
                                     .padding(.vertical, 9)
                                     .background(
                                         Capsule()
-                                            .fill(selectedCourseID == course.id ? .white : .white.opacity(0.08))
+                                            .fill(selectedCourseID == course.id ? Color(onboardingHex: OnboardingArenaPalette.appBlue) : .white.opacity(0.08))
                                     )
                             }
                             .buttonStyle(.plain)
@@ -431,7 +496,7 @@ private extension AppOnboardingFlowView {
                                 .frame(maxWidth: .infinity)
                                 .background(
                                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .fill(selectedWeekday == index ? .white : .white.opacity(0.08))
+                                        .fill(selectedWeekday == index ? Color(onboardingHex: OnboardingArenaPalette.appBlue) : .white.opacity(0.08))
                                 )
                         }
                         .buttonStyle(.plain)
@@ -464,7 +529,7 @@ private extension AppOnboardingFlowView {
                                 .frame(height: 36)
                                 .background(
                                     Capsule()
-                                        .fill(selectedDuration == duration ? .white : .white.opacity(0.08))
+                                        .fill(selectedDuration == duration ? Color(onboardingHex: OnboardingArenaPalette.appBlue) : .white.opacity(0.08))
                                 )
                         }
                         .buttonStyle(.plain)
@@ -478,7 +543,7 @@ private extension AppOnboardingFlowView {
                         title: "Programa ekle",
                         subtitle: selectedCourse?.name ?? "Ders seç",
                         icon: "calendar.badge.plus",
-                        tint: .blue,
+                        tint: Color(onboardingHex: OnboardingArenaPalette.appBlue),
                         isLoading: false
                     )
                 }
@@ -491,7 +556,7 @@ private extension AppOnboardingFlowView {
 
     var finishingScreen: some View {
         ZStack {
-            AppBackground()
+            OnboardingArenaBackground()
                 .ignoresSafeArea()
 
             ProgressView()
@@ -678,7 +743,9 @@ private extension AppOnboardingFlowView {
 // MARK: - Shell
 
 private struct OnboardingShell<Content: View>: View {
-    let title: String
+    let eyebrow: String
+    let titleFirst: String
+    let titleAccent: String
     let subtitle: String
     let progressText: String
     let canSkip: Bool
@@ -692,7 +759,9 @@ private struct OnboardingShell<Content: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(
-        title: String,
+        eyebrow: String,
+        titleFirst: String,
+        titleAccent: String,
         subtitle: String,
         progressText: String,
         canSkip: Bool,
@@ -703,7 +772,9 @@ private struct OnboardingShell<Content: View>: View {
         skipAction: (() -> Void)?,
         @ViewBuilder content: () -> Content
     ) {
-        self.title = title
+        self.eyebrow = eyebrow
+        self.titleFirst = titleFirst
+        self.titleAccent = titleAccent
         self.subtitle = subtitle
         self.progressText = progressText
         self.canSkip = canSkip
@@ -717,48 +788,60 @@ private struct OnboardingShell<Content: View>: View {
 
     var body: some View {
         ZStack {
-            AppBackground()
+            OnboardingArenaBackground()
                 .ignoresSafeArea()
-
-            OnboardingStaticGlow()
-                .allowsHitTesting(false)
 
             VStack(spacing: 0) {
                 floatingTopBar
 
-                VStack(alignment: .leading, spacing: 16) {
-                    hero
-                    content
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        hero
+                        content
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 18)
+                    .padding(.bottom, isKeyboardActive ? 26 : 112)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .transition(
+                        reduceMotion
+                        ? .identity
+                        : .opacity.combined(with: .scale(scale: 0.985))
+                    )
                 }
-                .padding(.horizontal, 24)
-                .padding(.top, 16)
-                .padding(.bottom, 10)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .transition(
-                    reduceMotion
-                    ? .identity
-                    : .opacity.combined(with: .scale(scale: 0.985))
-                )
+                .scrollDismissesKeyboard(.interactively)
+            }
 
-                if !isKeyboardActive {
+            if !isKeyboardActive {
+                VStack {
+                    Spacer()
                     floatingBottomBar
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .preferredColorScheme(.dark)
         .contentShape(Rectangle())
     }
 
     private var floatingTopBar: some View {
         HStack {
-            Text(progressText)
-                .font(.system(size: 14, weight: .black, design: .rounded))
-                .foregroundStyle(.white.opacity(0.82))
-                .padding(.horizontal, 15)
-                .padding(.vertical, 9)
-                .background(.white.opacity(0.10), in: Capsule())
-                .overlay(Capsule().stroke(.white.opacity(0.08), lineWidth: 1))
+            HStack(spacing: 8) {
+                Rectangle()
+                    .fill(Color(onboardingHex: OnboardingArenaPalette.appBlue))
+                    .frame(width: 18, height: 1)
+
+                Text(progressText)
+                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                    .tracking(1.4)
+                    .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.appCyan))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(
+                Capsule()
+                    .fill(Color.white.opacity(0.075))
+                    .overlay(Capsule().stroke(Color.white.opacity(0.10), lineWidth: 1))
+            )
 
             Spacer()
 
@@ -767,12 +850,15 @@ private struct OnboardingShell<Content: View>: View {
                     skipAction?()
                 } label: {
                     Text("Skip")
-                        .font(.system(size: 14, weight: .black, design: .rounded))
+                        .font(.system(size: 13, weight: .black, design: .rounded))
                         .foregroundStyle(.white.opacity(0.78))
-                        .padding(.horizontal, 17)
-                        .padding(.vertical, 9)
-                        .background(.white.opacity(0.10), in: Capsule())
-                        .overlay(Capsule().stroke(.white.opacity(0.08), lineWidth: 1))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule()
+                                .fill(Color.white.opacity(0.075))
+                                .overlay(Capsule().stroke(Color.white.opacity(0.10), lineWidth: 1))
+                        )
                 }
                 .buttonStyle(.plain)
             }
@@ -782,24 +868,44 @@ private struct OnboardingShell<Content: View>: View {
     }
 
     private var hero: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("STUDENT OS")
-                .font(.system(size: 11, weight: .black, design: .rounded))
-                .tracking(1.6)
-                .foregroundStyle(.blue)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Text("— \(eyebrow) —")
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .tracking(2.3)
+                    .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.appCyan))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.65)
+            }
 
-            Text(title)
-                .font(.system(size: 33, weight: .black, design: .rounded))
-                .foregroundStyle(.white)
-                .lineSpacing(0)
-                .minimumScaleFactor(0.78)
-                .fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .firstTextBaseline, spacing: 7) {
+                Text(titleFirst)
+                    .font(.system(size: 36, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text(titleAccent)
+                    .font(.system(size: 34, weight: .regular, design: .serif))
+                    .italic()
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [
+                                Color(onboardingHex: OnboardingArenaPalette.appCyan),
+                                Color(onboardingHex: OnboardingArenaPalette.appPurple)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+            .lineLimit(2)
+            .minimumScaleFactor(0.68)
 
             Text(subtitle)
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.60))
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.58))
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 1)
         }
     }
 
@@ -817,25 +923,29 @@ private struct OnboardingShell<Content: View>: View {
             .frame(height: 58)
             .background(
                 Capsule()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.15, green: 0.58, blue: 1.00),
-                                Color(red: 0.72, green: 0.26, blue: 1.00),
-                                Color(red: 1.00, green: 0.20, blue: 0.43)
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
+                    .fill(OnboardingArenaPalette.hotGradient)
             )
             .overlay(Capsule().stroke(.white.opacity(0.16), lineWidth: 1))
-            .shadow(color: .pink.opacity(0.20), radius: 16, y: 8)
+            .shadow(color: Color(onboardingHex: OnboardingArenaPalette.appPurple).opacity(0.26), radius: 18, y: 9)
         }
         .buttonStyle(OnboardingPressButtonStyle())
         .padding(.horizontal, 24)
-        .padding(.top, 8)
         .padding(.bottom, 22)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color.black.opacity(0.0),
+                    Color.black.opacity(0.80),
+                    Color.black.opacity(0.96)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            .frame(height: 132)
+            .allowsHitTesting(false),
+            alignment: .bottom
+        )
     }
 }
 
@@ -852,7 +962,7 @@ private struct FeatureOverviewGridItem: View {
             ZStack {
                 RoundedRectangle(cornerRadius: 17, style: .continuous)
                     .fill(tint.opacity(0.16))
-                    .frame(width: 46, height: 46)
+                    .frame(width: 48, height: 48)
 
                 Image(systemName: icon)
                     .font(.system(size: 20, weight: .black))
@@ -866,10 +976,14 @@ private struct FeatureOverviewGridItem: View {
 
                 Text(subtitle)
                     .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.56))
+                    .foregroundStyle(.white.opacity(0.52))
             }
 
             Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .black))
+                .foregroundStyle(.white.opacity(0.22))
         }
         .padding(12)
         .background(CardSurface(radius: 24))
@@ -881,20 +995,21 @@ private struct PremiumInputField: View {
     let placeholder: String
     @Binding var text: String
     let icon: String
+    var tint: Color = Color(onboardingHex: OnboardingArenaPalette.appBlue)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.72))
+                .foregroundStyle(.white.opacity(0.68))
 
             HStack(spacing: 12) {
                 Image(systemName: icon)
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(tint)
                     .frame(width: 24)
 
-                TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.34)))
+                TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.30)))
                     .textInputAutocapitalization(.words)
                     .autocorrectionDisabled()
                     .foregroundStyle(.white)
@@ -921,7 +1036,7 @@ private struct InlineAddInput: View {
         VStack(alignment: .leading, spacing: 9) {
             Text(title)
                 .font(.system(size: 14, weight: .black, design: .rounded))
-                .foregroundStyle(.white.opacity(0.78))
+                .foregroundStyle(.white.opacity(0.72))
 
             HStack(spacing: 12) {
                 Image(systemName: icon)
@@ -929,7 +1044,7 @@ private struct InlineAddInput: View {
                     .foregroundStyle(tint)
                     .frame(width: 24)
 
-                TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.32)))
+                TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.30)))
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .font(.system(size: 17, weight: .bold, design: .rounded))
@@ -949,7 +1064,7 @@ private struct InlineAddInput: View {
                         } else {
                             Image(systemName: "plus")
                                 .font(.system(size: 16, weight: .black))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(.black.opacity(0.72))
                         }
                     }
                 }
@@ -982,7 +1097,7 @@ private struct CrewStylePicker: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Crew görünümü")
                 .font(.system(size: 14, weight: .black, design: .rounded))
-                .foregroundStyle(.white.opacity(0.78))
+                .foregroundStyle(.white.opacity(0.72))
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 9) {
@@ -992,7 +1107,7 @@ private struct CrewStylePicker: View {
                         } label: {
                             Image(systemName: icon)
                                 .font(.system(size: 18, weight: .black))
-                                .foregroundStyle(selectedIcon == icon ? .white : .white.opacity(0.58))
+                                .foregroundStyle(selectedIcon == icon ? .white : .white.opacity(0.52))
                                 .frame(width: 50, height: 50)
                                 .background(
                                     RoundedRectangle(cornerRadius: 17, style: .continuous)
@@ -1044,6 +1159,7 @@ private struct CrewStylePicker: View {
 
 private struct PremiumPrimaryMiniButton: View {
     let title: String
+    let subtitle: String
     let icon: String
     let tint: Color
     let isLoading: Bool
@@ -1070,16 +1186,16 @@ private struct PremiumPrimaryMiniButton: View {
                     .font(.system(size: 18, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
 
-                Text("Crew uygulama içinde de görünecek")
+                Text(subtitle)
                     .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.56))
+                    .foregroundStyle(.white.opacity(0.52))
             }
 
             Spacer()
 
             Image(systemName: "chevron.right")
                 .font(.system(size: 13, weight: .black))
-                .foregroundStyle(.white.opacity(0.38))
+                .foregroundStyle(.white.opacity(0.32))
         }
         .padding(14)
         .background(CardSurface(radius: 25))
@@ -1107,7 +1223,7 @@ private struct OnboardingInfoCard: View {
 
                 Text(subtitle)
                     .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.58))
+                    .foregroundStyle(.white.opacity(0.54))
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -1145,7 +1261,7 @@ private struct OnboardingProfilePreviewCard: View {
 
                 Text(subtitle)
                     .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(.white.opacity(0.52))
             }
 
             Spacer()
@@ -1220,7 +1336,7 @@ private struct StepperPill: View {
             VStack(spacing: 1) {
                 Text(title)
                     .font(.system(size: 10, weight: .black, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .foregroundStyle(.white.opacity(0.45))
 
                 Text(value)
                     .font(.system(size: 20, weight: .black, design: .rounded))
@@ -1275,14 +1391,14 @@ private struct OnboardingActionRow: View {
 
                 Text(subtitle)
                     .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.58))
+                    .foregroundStyle(.white.opacity(0.54))
             }
 
             Spacer()
 
             Image(systemName: "chevron.right")
                 .font(.system(size: 13, weight: .black))
-                .foregroundStyle(.white.opacity(0.38))
+                .foregroundStyle(.white.opacity(0.32))
         }
         .padding(13)
         .background(CardSurface(radius: 24))
@@ -1293,11 +1409,17 @@ private struct StatusCard: View {
     let text: String
     let isSuccess: Bool
 
+    var tint: Color {
+        isSuccess
+        ? Color(onboardingHex: OnboardingArenaPalette.green)
+        : Color(onboardingHex: OnboardingArenaPalette.gold)
+    }
+
     var body: some View {
         HStack(spacing: 11) {
             Image(systemName: isSuccess ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                 .font(.system(size: 17, weight: .black))
-                .foregroundStyle(isSuccess ? .green : .orange)
+                .foregroundStyle(tint)
 
             Text(text)
                 .font(.system(size: 13, weight: .bold, design: .rounded))
@@ -1309,11 +1431,11 @@ private struct StatusCard: View {
         .padding(13)
         .background(
             RoundedRectangle(cornerRadius: 19, style: .continuous)
-                .fill((isSuccess ? Color.green : Color.orange).opacity(0.13))
+                .fill(tint.opacity(0.13))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 19, style: .continuous)
-                .stroke((isSuccess ? Color.green : Color.orange).opacity(0.22), lineWidth: 1)
+                .stroke(tint.opacity(0.22), lineWidth: 1)
         )
     }
 }
@@ -1323,58 +1445,66 @@ private struct CardSurface: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: radius, style: .continuous)
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color.white.opacity(0.105),
-                        Color.white.opacity(0.060),
-                        Color.white.opacity(0.040)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+            .fill(OnboardingArenaPalette.softCardGradient)
             .overlay(
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
                     .stroke(.white.opacity(0.075), lineWidth: 1)
             )
+            .shadow(color: Color.black.opacity(0.20), radius: 14, y: 8)
     }
 }
 
-private struct OnboardingStaticGlow: View {
+private struct OnboardingArenaBackground: View {
     var body: some View {
         ZStack {
-            RadialGradient(
-                colors: [
-                    Color.blue.opacity(0.16),
-                    .clear
-                ],
-                center: UnitPoint(x: 0.96, y: 0.04),
-                startRadius: 20,
-                endRadius: 280
-            )
-
-            RadialGradient(
-                colors: [
-                    Color.purple.opacity(0.13),
-                    .clear
-                ],
-                center: UnitPoint(x: 0.02, y: 0.86),
-                startRadius: 30,
-                endRadius: 300
-            )
+            Color.black.ignoresSafeArea()
 
             LinearGradient(
                 colors: [
-                    Color.white.opacity(0.018),
-                    .clear,
-                    Color.black.opacity(0.08)
+                    Color(onboardingHex: OnboardingArenaPalette.backgroundTop),
+                    Color(onboardingHex: OnboardingArenaPalette.backgroundMid),
+                    Color(onboardingHex: OnboardingArenaPalette.backgroundBottom)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
+            .ignoresSafeArea()
+
+            Circle()
+                .fill(Color(onboardingHex: OnboardingArenaPalette.appBlue).opacity(0.12))
+                .frame(width: 280, height: 280)
+                .blur(radius: 100)
+                .offset(x: 170, y: -250)
+
+            Circle()
+                .fill(Color(onboardingHex: OnboardingArenaPalette.appPurple).opacity(0.16))
+                .frame(width: 330, height: 330)
+                .blur(radius: 115)
+                .offset(x: -180, y: 500)
+
+            Circle()
+                .fill(Color(onboardingHex: OnboardingArenaPalette.coral).opacity(0.08))
+                .frame(width: 280, height: 280)
+                .blur(radius: 105)
+                .offset(x: 170, y: 300)
+
+            Circle()
+                .fill(Color(onboardingHex: OnboardingArenaPalette.gold).opacity(0.050))
+                .frame(width: 240, height: 240)
+                .blur(radius: 95)
+                .offset(x: -170, y: -180)
+
+            LinearGradient(
+                colors: [
+                    Color.black.opacity(0.18),
+                    Color.black.opacity(0.0),
+                    Color.black.opacity(0.44)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
         }
-        .ignoresSafeArea()
     }
 }
 
@@ -1413,19 +1543,53 @@ private enum OnboardingHaptics {
 
 private extension Color {
     static func updoHex(_ hex: String) -> Color {
+        Color(onboardingHex: hex)
+    }
+
+    init(onboardingHex hex: String) {
         var cleaned = hex.trimmingCharacters(in: .whitespacesAndNewlines)
         cleaned = cleaned.replacingOccurrences(of: "#", with: "")
 
-        guard cleaned.count == 6,
-              let int = UInt64(cleaned, radix: 16)
-        else {
-            return .blue
+        var int: UInt64 = 0
+        Scanner(string: cleaned).scanHexInt64(&int)
+
+        let a: UInt64
+        let r: UInt64
+        let g: UInt64
+        let b: UInt64
+
+        switch cleaned.count {
+        case 3:
+            a = 255
+            r = (int >> 8) * 17
+            g = ((int >> 4) & 0xF) * 17
+            b = (int & 0xF) * 17
+
+        case 6:
+            a = 255
+            r = int >> 16
+            g = (int >> 8) & 0xFF
+            b = int & 0xFF
+
+        case 8:
+            a = int >> 24
+            r = (int >> 16) & 0xFF
+            g = (int >> 8) & 0xFF
+            b = int & 0xFF
+
+        default:
+            a = 255
+            r = 21
+            g = 147
+            b = 255
         }
 
-        let r = Double((int >> 16) & 0xFF) / 255.0
-        let g = Double((int >> 8) & 0xFF) / 255.0
-        let b = Double(int & 0xFF) / 255.0
-
-        return Color(red: r, green: g, blue: b)
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
     }
 }
