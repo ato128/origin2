@@ -1,10 +1,3 @@
-//
-//  WidgetExtension.swift
-//  WidgetExtension
-//
-//  Created by Atakan Ortaç on 3.03.2026.
-//
-
 import WidgetKit
 import SwiftUI
 
@@ -25,59 +18,27 @@ struct ScheduleProvider: TimelineProvider {
             payload: WidgetPayload(
                 weekday: 0,
                 events: [
-                    WidgetEvent(
-                        id: "1",
-                        title: "Math",
-                        weekday: 0,
-                        startMinute: 9 * 60,
-                        durationMinute: 60,
-                        location: "A-101",
-                        colorHex: "#3B82F6"
-                    ),
-                    WidgetEvent(
-                        id: "2",
-                        title: "Physics",
-                        weekday: 0,
-                        startMinute: 11 * 60,
-                        durationMinute: 90,
-                        location: "Lab",
-                        colorHex: "#EF4444"
-                    ),
-                    WidgetEvent(
-                        id: "3",
-                        title: "Chem",
-                        weekday: 0,
-                        startMinute: 14 * 60,
-                        durationMinute: 60,
-                        location: "B-202",
-                        colorHex: "#22C55E"
-                    )
+                    WidgetEvent(id: "1", title: "Physics - II", weekday: 0, startMinute: 9 * 60, durationMinute: 60, location: "Lab", colorHex: "#2DD4FF"),
+                    WidgetEvent(id: "2", title: "Calculus - II", weekday: 0, startMinute: 11 * 60, durationMinute: 90, location: "B-202", colorHex: "#7C3AED"),
+                    WidgetEvent(id: "3", title: "Software", weekday: 0, startMinute: 14 * 60, durationMinute: 60, location: "A-101", colorHex: "#1593FF")
                 ]
             )
         )
     }
 
     func getSnapshot(in context: Context, completion: @escaping (ScheduleEntry) -> Void) {
-        let payload = WidgetShared.readPayload()
-        completion(ScheduleEntry(date: Date(), payload: payload))
+        completion(ScheduleEntry(date: Date(), payload: WidgetShared.readPayload()))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<ScheduleEntry>) -> Void) {
-        let payload = WidgetShared.readPayload()
         let now = Date()
-
-        let entry = ScheduleEntry(date: now, payload: payload)
+        let entry = ScheduleEntry(date: now, payload: WidgetShared.readPayload())
 
         let cal = Calendar.current
         let nextMinute = cal.date(bySetting: .second, value: 0, of: now)?
             .addingTimeInterval(60) ?? now.addingTimeInterval(60)
 
-        completion(
-            Timeline(
-                entries: [entry],
-                policy: .after(nextMinute)
-            )
-        )
+        completion(Timeline(entries: [entry], policy: .after(nextMinute)))
     }
 }
 
@@ -87,13 +48,11 @@ struct ScheduleWidgetView: View {
     let entry: ScheduleProvider.Entry
     @Environment(\.widgetFamily) private var family
 
-    private let dayTitles = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
+    private let dayTitles = ["PZT", "SAL", "ÇAR", "PER", "CUM", "CMT", "PAZ"]
 
     private var isSmall: Bool { family == .systemSmall }
 
-    private var todayWeekday: Int {
-        widgetWeekdayToday()
-    }
+    private var todayWeekday: Int { widgetWeekdayToday() }
 
     private var todayEvents: [WidgetEvent] {
         (entry.payload?.events ?? [])
@@ -101,34 +60,26 @@ struct ScheduleWidgetView: View {
             .sorted { $0.startMinute < $1.startMinute }
     }
 
-    private var nowMinute: Int {
-        currentMinuteOfDay()
-    }
+    private var nowMinute: Int { currentMinuteOfDay() }
 
     private var liveEvent: WidgetEvent? {
-        todayEvents.first(where: { ev in
-            let start = ev.startMinute
-            let end = ev.startMinute + ev.durationMinute
-            return nowMinute >= start && nowMinute < end
-        })
+        todayEvents.first { ev in
+            nowMinute >= ev.startMinute && nowMinute < ev.startMinute + ev.durationMinute
+        }
     }
 
     private var nextEvent: WidgetEvent? {
-        todayEvents.first(where: { $0.startMinute > nowMinute })
+        todayEvents.first { $0.startMinute > nowMinute }
     }
 
-    private var accentColor: Color {
-        if let liveEvent {
-            return softTint(from: hexColor(liveEvent.colorHex))
-        }
-        if let nextEvent {
-            return softTint(from: hexColor(nextEvent.colorHex))
-        }
-        return Color.blue.opacity(0.95)
+    private var accent: Color {
+        if let liveEvent { return hexColor(liveEvent.colorHex) }
+        if let nextEvent { return hexColor(nextEvent.colorHex) }
+        return UpdoWidgetPalette.cyan
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: isSmall ? 10 : 12) {
+        VStack(alignment: .leading, spacing: isSmall ? 9 : 11) {
             headerRow
 
             if let liveEvent {
@@ -139,210 +90,250 @@ struct ScheduleWidgetView: View {
                 emptySection
             }
 
+            if !isSmall || liveEvent == nil {
+                Spacer(minLength: 0)
+            }
+
             lessonRows
         }
         .padding(isSmall ? 14 : 16)
-        .widgetPremiumBackground(accentColor: accentColor)
+        .widgetUpdoBackground(accent: accent)
     }
 
     // MARK: - Header
 
     private var headerRow: some View {
-        HStack(spacing: 8) {
-            Text("Bugün")
-                .font(.system(size: isSmall ? 17 : 18, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+        HStack(spacing: 7) {
+            // Cyan section-label imzası ("— BUGÜN")
+            Rectangle()
+                .fill(UpdoWidgetPalette.cyan)
+                .frame(width: 14, height: 2.5)
+                .clipShape(Capsule())
+
+            Text("BUGÜN")
+                .font(.system(size: 11, weight: .heavy, design: .rounded))
+                .tracking(1.5)
+                .foregroundStyle(UpdoWidgetPalette.cyan)
 
             if !todayEvents.isEmpty {
                 Text("\(todayEvents.count)")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.72))
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule()
-                            .fill(Color.white.opacity(0.08))
-                    )
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .frame(width: 17, height: 17)
+                    .background(Circle().fill(Color.white.opacity(0.08)))
             }
 
             Spacer()
 
             Text(dayTitles[safeIndex(todayWeekday)])
-                .font(.system(size: 12.5, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.82))
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .tracking(1)
+                .foregroundStyle(.white.opacity(0.45))
         }
     }
 
-    // MARK: - Live / Next / Empty
+    // MARK: - Live
 
     private func liveSection(for event: WidgetEvent) -> some View {
         let left = minutesLeft(event, now: nowMinute)
         let progress = progressForLive(event, now: nowMinute)
-        let tint = softTint(from: hexColor(event.colorHex))
+        let tint = hexColor(event.colorHex)
 
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Text("Şu an: \(event.title)")
-                    .font(.system(size: isSmall ? 15 : 16, weight: .semibold, design: .rounded))
+        return VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 7) {
+                // Nabız atan canlı nokta
+                PulseDot(color: UpdoWidgetPalette.green)
+
+                Text(event.title)
+                    .font(.system(size: isSmall ? 15 : 17, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.78)
+                    .minimumScaleFactor(0.7)
 
-                Text("LIVE")
-                    .font(.system(size: 9.5, weight: .bold, design: .rounded))
-                    .foregroundStyle(.green)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule()
-                            .fill(Color.green.opacity(0.14))
-                    )
-                    .overlay(
-                        Capsule()
-                            .stroke(Color.green.opacity(0.24), lineWidth: 0.8)
-                    )
-
-                Spacer(minLength: 6)
+                Spacer(minLength: 4)
 
                 Text("\(left) dk")
-                    .font(.system(size: 12.5, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.92))
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .monospacedDigit()
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule().fill(tint.opacity(0.18))
+                    )
+                    .overlay(
+                        Capsule().stroke(tint.opacity(0.35), lineWidth: 0.8)
+                    )
             }
 
+            // Glow'lu progress bar
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(Color.white.opacity(0.12))
+                        .fill(Color.white.opacity(0.10))
                         .frame(height: 7)
 
                     Capsule()
                         .fill(
                             LinearGradient(
-                                colors: [
-                                    tint,
-                                    tint.opacity(0.88)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
+                                colors: [tint, tint.opacity(0.7)],
+                                startPoint: .leading, endPoint: .trailing
                             )
                         )
                         .frame(width: max(14, geo.size.width * progress), height: 7)
+                        .shadow(color: tint.opacity(0.6), radius: 4, y: 0)
                 }
             }
             .frame(height: 7)
 
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(.white.opacity(0.68))
-                    .frame(width: 7, height: 7)
+            HStack(spacing: 6) {
+                Image(systemName: "clock.fill")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.4))
 
-                Text("\(hm(event.startMinute))-\(hm(event.startMinute + event.durationMinute))")
-                    .font(.system(size: 12.5, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.72))
+                Text("\(hm(event.startMinute))–\(hm(event.startMinute + event.durationMinute))")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.6))
                     .monospacedDigit()
+
+                if let loc = event.location, !loc.isEmpty, !isSmall {
+                    Text("·")
+                        .foregroundStyle(.white.opacity(0.3))
+                    Image(systemName: "mappin")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.4))
+                    Text(loc)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .lineLimit(1)
+                }
             }
         }
     }
+
+    // MARK: - Next
 
     private func nextSection(for event: WidgetEvent) -> some View {
         let mins = max(0, event.startMinute - nowMinute)
-        let tint = softTint(from: hexColor(event.colorHex))
+        let tint = hexColor(event.colorHex)
 
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Text("Sıradaki: \(event.title)")
-                    .font(.system(size: isSmall ? 15 : 16, weight: .semibold, design: .rounded))
+        return VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 7) {
+                Image(systemName: "arrow.right.circle.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(tint)
+
+                Text(event.title)
+                    .font(.system(size: isSmall ? 15 : 17, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.7)
 
-                Spacer()
+                Spacer(minLength: 4)
 
                 Text("\(mins) dk")
-                    .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
                     .foregroundStyle(tint)
+                    .monospacedDigit()
             }
 
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(tint)
-                    .frame(width: 7, height: 7)
+            HStack(spacing: 6) {
+                Image(systemName: "clock")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.4))
 
-                Text("\(hm(event.startMinute))-\(hm(event.startMinute + event.durationMinute))")
-                    .font(.system(size: 12.5, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.72))
+                Text("\(hm(event.startMinute))–\(hm(event.startMinute + event.durationMinute))")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.6))
                     .monospacedDigit()
+
+                Text("· Sıradaki")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.4))
             }
         }
     }
+
+    // MARK: - Empty
 
     private var emptySection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Bugün sakin")
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
+            HStack(spacing: 8) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(UpdoWidgetPalette.signatureGradient.opacity(0.22))
+                        .frame(width: 34, height: 34)
+                    Image(systemName: "moon.stars.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(UpdoWidgetPalette.cyan)
+                }
 
-            Text("Planlanmış ders görünmüyor.")
-                .font(.system(size: 12.5, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.62))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Bugün sakin")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+
+                    Text("Planlanmış ders yok")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.5))
+                }
+            }
         }
     }
 
-    // MARK: - Rows
+    // MARK: - Lesson rows
 
     private var lessonRows: some View {
         let rows: [WidgetEvent]
-
         if liveEvent != nil {
-            rows = Array(todayEvents.prefix(2))
+            rows = Array(todayEvents.filter { $0.startMinute > nowMinute }.prefix(isSmall ? 1 : 2))
         } else if nextEvent != nil {
-            rows = Array(todayEvents.dropFirst().prefix(2))
+            rows = Array(todayEvents.dropFirst().prefix(isSmall ? 1 : 2))
         } else {
-            rows = Array(todayEvents.prefix(2))
+            rows = []
         }
 
-        return VStack(alignment: .leading, spacing: 10) {
-            ForEach(rows, id: \.id) { event in
-                lessonRow(for: event)
+        return VStack(alignment: .leading, spacing: 7) {
+            if !rows.isEmpty {
+                Divider()
+                    .overlay(Color.white.opacity(0.06))
+                    .padding(.vertical, 1)
             }
+            ForEach(rows, id: \.id) { lessonRow(for: $0) }
         }
     }
 
     private func lessonRow(for event: WidgetEvent) -> some View {
-        let tint = softTint(from: hexColor(event.colorHex))
-
-        return HStack(spacing: 10) {
-            Circle()
+        let tint = hexColor(event.colorHex)
+        return HStack(spacing: 9) {
+            // Renkli sol şerit
+            Capsule()
                 .fill(tint)
-                .frame(width: 7, height: 7)
+                .frame(width: 3, height: 14)
 
             Text(event.title)
-                .font(.system(size: isSmall ? 12.5 : 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.92))
+                .font(.system(size: isSmall ? 12 : 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.85))
                 .lineLimit(1)
-                .minimumScaleFactor(0.74)
+                .minimumScaleFactor(0.7)
 
-            Spacer(minLength: 8)
+            Spacer(minLength: 6)
 
-            Text("\(hm(event.startMinute))-\(hm(event.startMinute + event.durationMinute))")
-                .font(.system(size: isSmall ? 11.5 : 12, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.62))
+            Text("\(hm(event.startMinute))–\(hm(event.startMinute + event.durationMinute))")
+                .font(.system(size: isSmall ? 11 : 12, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.5))
                 .monospacedDigit()
                 .lineLimit(1)
-                .minimumScaleFactor(0.82)
         }
     }
 
     // MARK: - Helpers
 
-    private func safeIndex(_ i: Int) -> Int {
-        max(0, min(6, i))
-    }
+    private func safeIndex(_ i: Int) -> Int { max(0, min(6, i)) }
 
     private func hm(_ minute: Int) -> String {
         let m = max(0, min(1439, minute))
-        let h = m / 60
-        let mm = m % 60
-        return String(format: "%02d:%02d", h, mm)
+        return String(format: "%02d:%02d", m / 60, m % 60)
     }
 
     private func currentMinuteOfDay() -> Int {
@@ -359,60 +350,58 @@ struct ScheduleWidgetView: View {
         let start = event.startMinute
         let end = event.startMinute + event.durationMinute
         guard end > start else { return 0 }
-        let p = Double(now - start) / Double(end - start)
-        return min(1, max(0, p))
+        return min(1, max(0, Double(now - start) / Double(end - start)))
     }
 
     private func minutesLeft(_ event: WidgetEvent, now: Int) -> Int {
-        let end = event.startMinute + event.durationMinute
-        return max(0, end - now)
-    }
-
-    private func softTint(from color: Color) -> Color {
-        color.opacity(0.94)
+        max(0, event.startMinute + event.durationMinute - now)
     }
 }
 
-// MARK: - Premium Background
+// MARK: - Pulse Dot (canlı nokta)
+
+private struct PulseDot: View {
+    let color: Color
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(color.opacity(0.30))
+                .frame(width: 14, height: 14)
+            Circle()
+                .fill(color)
+                .frame(width: 7, height: 7)
+                .shadow(color: color.opacity(0.8), radius: 3)
+        }
+    }
+}
+
+// MARK: - Updo Background
 
 private extension View {
     @ViewBuilder
-    func widgetPremiumBackground(accentColor: Color) -> some View {
+    func widgetUpdoBackground(accent: Color) -> some View {
         if #available(iOSApplicationExtension 17.0, *) {
             self.containerBackground(for: .widget) {
                 ZStack {
                     LinearGradient(
                         colors: [
-                            Color(red: 0.26, green: 0.27, blue: 0.33),
-                            Color(red: 0.20, green: 0.21, blue: 0.28),
-                            Color(red: 0.14, green: 0.15, blue: 0.20)
+                            UpdoWidgetPalette.bgTop,
+                            UpdoWidgetPalette.bgMid,
+                            UpdoWidgetPalette.bgBottom
                         ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-
-                    RadialGradient(
-                        colors: [
-                            Color.purple.opacity(0.16),
-                            Color.clear
-                        ],
-                        center: .topLeading,
-                        startRadius: 10,
-                        endRadius: 180
+                        startPoint: .topLeading, endPoint: .bottomTrailing
                     )
                     RadialGradient(
-                        colors: [
-                            accentColor.opacity(0.08),
-                            Color.clear
-                        ],
-                        center: .bottomTrailing,
-                        startRadius: 10,
-                        endRadius: 220
+                        colors: [UpdoWidgetPalette.purple.opacity(0.18), .clear],
+                        center: .topLeading, startRadius: 8, endRadius: 200
                     )
-
+                    RadialGradient(
+                        colors: [accent.opacity(0.14), .clear],
+                        center: .bottomTrailing, startRadius: 8, endRadius: 230
+                    )
                     RoundedRectangle(cornerRadius: 30, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                        .padding(1)
+                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                        .padding(0.5)
                 }
             }
         } else {
@@ -420,32 +409,19 @@ private extension View {
                 ZStack {
                     LinearGradient(
                         colors: [
-                            Color(red: 0.24, green: 0.25, blue: 0.31),
-                            Color(red: 0.18, green: 0.19, blue: 0.26),
-                            Color(red: 0.13, green: 0.14, blue: 0.19)
+                            UpdoWidgetPalette.bgTop,
+                            UpdoWidgetPalette.bgMid,
+                            UpdoWidgetPalette.bgBottom
                         ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+                        startPoint: .topLeading, endPoint: .bottomTrailing
                     )
-
                     RadialGradient(
-                        colors: [
-                            Color.purple.opacity(0.22),
-                            Color.clear
-                        ],
-                        center: .topLeading,
-                        startRadius: 10,
-                        endRadius: 180
+                        colors: [UpdoWidgetPalette.purple.opacity(0.20), .clear],
+                        center: .topLeading, startRadius: 8, endRadius: 200
                     )
-
                     RadialGradient(
-                        colors: [
-                            accentColor.opacity(0.08),
-                            Color.clear
-                        ],
-                        center: .bottomTrailing,
-                        startRadius: 10,
-                        endRadius: 220
+                        colors: [accent.opacity(0.14), .clear],
+                        center: .bottomTrailing, startRadius: 8, endRadius: 230
                     )
                 }
             )
@@ -473,3 +449,4 @@ func weekdayIndexToday() -> Int {
     let w = Calendar.current.component(.weekday, from: Date())
     return (w + 5) % 7
 }
+

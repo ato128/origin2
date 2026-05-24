@@ -197,7 +197,6 @@
 		6DB70E792F72ED8400F04B43 /* SharedFocusRunTime.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E782F72ED8400F04B43 /* SharedFocusRunTime.swift */; };
 		6DB70E7B2F72EE1300F04B43 /* FocusAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E7A2F72EE1300F04B43 /* FocusAttributes.swift */; };
 		6DB70E7D2F72EECF00F04B43 /* FocusLiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E7C2F72EECF00F04B43 /* FocusLiveActivityManager.swift */; };
-		6DB70E7F2F72EEEE00F04B43 /* FocusLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E7E2F72EEEE00F04B43 /* FocusLiveActivityWidget.swift */; };
 		6DB70E802F72F28900F04B43 /* FocusLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E7E2F72EEEE00F04B43 /* FocusLiveActivityWidget.swift */; };
 		6DB70E812F72F2AD00F04B43 /* FocusAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E7A2F72EE1300F04B43 /* FocusAttributes.swift */; };
 		6DB70E842F73217400F04B43 /* AppLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB70E832F73217400F04B43 /* AppLanguage.swift */; };
@@ -1419,7 +1418,6 @@
 				6D4F2BA52F9C12830056E067 /* StudentAcademicSettingsView.swift in Sources */,
 				6D02C9D72F5B4D95008193F3 /* SmartInsights.swift in Sources */,
 				6D5FE3E62F66F3F8007C124D /* View+HideKeyboard.swift in Sources */,
-				6DB70E7F2F72EEEE00F04B43 /* FocusLiveActivityWidget.swift in Sources */,
 				6D4F2BC92F9EC86B0056E067 /* ExamPlannerSheet.swift in Sources */,
 				6DBE921F2F703864001DF813 /* BackendCreateCrewTaskSheet.swift in Sources */,
 				6DB0046F2F997DB7009F2F3B /* UniversityPickerSheet.swift in Sources */,

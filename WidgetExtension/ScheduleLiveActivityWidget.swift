@@ -12,360 +12,238 @@ import SwiftUI
 struct ScheduleLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: ScheduleAttributes.self) { context in
-            PremiumLiveActivityLockScreenView(context: context)
-                .activityBackgroundTint(Color.black.opacity(0.92))
+            ScheduleLockScreenView(context: context)
+                .activityBackgroundTint(UpdoWidgetPalette.bgMid.opacity(0.96))
                 .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             let now = Date()
             let start = context.state.startDate
             let end = context.state.endDate
-            let accent = liveAccentColor(for: context)
+            let accent = scheduleAccent(for: context)
 
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     HStack(spacing: 10) {
-                        ZStack {
-                            Circle()
-                                .fill(accent.opacity(0.18))
-                                .frame(width: 22, height: 22)
-                                .shadow(color: accent.opacity(0.20), radius: 4)
-
-                            Image(systemName: liveIconName(now: now, start: start, end: end))
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(accent)
-                        }
-
+                        ScheduleIconBubble(accent: accent, now: now, start: start, end: end, size: 34)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(context.state.title)
-                                .font(.subheadline.weight(.semibold))
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.7)
-                                .layoutPriority(1)
-
-                            HStack(alignment: .firstTextBaseline) {
-                                Text(remainingText(from: now, start: start, end: end))
-                                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                                    .monospacedDigit()
-
-                                Spacer()
-                            }
+                            Text(scheduleStatus(now: now, start: start, end: end))
+                                .font(.system(size: 11, weight: .medium, design: .rounded))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
                         }
                     }
                 }
 
                 DynamicIslandExpandedRegion(.trailing) {
                     Link(destination: URL(string: "dailytodo://live/stop")!) {
-                        ZStack {
-                            Circle()
-                                .fill(Color.white.opacity(0.10))
-                                .frame(width: 28, height: 28)
-
-                            Image(systemName: "xmark")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(.white)
-                        }
+                        Image(systemName: "xmark")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 28, height: 28)
+                            .background(Circle().fill(Color.white.opacity(0.10)))
                     }
                 }
 
                 DynamicIslandExpandedRegion(.bottom) {
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 9) {
                         HStack(alignment: .firstTextBaseline) {
-                            Text(remainingText(from: now, start: start, end: end))
-                                .font(.system(size: 28, weight: .bold, design: .rounded))
+                            scheduleTimer(now: now, start: start, end: end)
+                                .font(.system(size: 26, weight: .heavy, design: .rounded))
                                 .monospacedDigit()
-
+                                .foregroundStyle(.white)
                             Spacer()
-
-                            Text(statusLabel(now: now, start: start, end: end))
-                                .font(.caption.weight(.medium))
+                            Text("\(hmDate(start))–\(hmDate(end))")
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
                                 .foregroundStyle(.secondary)
+                                .monospacedDigit()
                         }
-
-                        ZStack(alignment: .leading) {
-                            Capsule()
-                                .fill(Color.white.opacity(0.10))
-                                .frame(height: 6)
-
-                            GeometryReader { proxy in
-                                Capsule()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [
-                                                accent,
-                                                accent.opacity(0.72)
-                                            ],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                    .frame(
-                                        width: max(10, proxy.size.width * progressValue(now: now, start: start, end: end)),
-                                        height: 6
-                                    )
-                            }
-                            .frame(height: 6)
-                        }
-                        .frame(height: 6)
+                        GlowProgressBar(progress: scheduleProgress(now: now, start: start, end: end), accent: accent, height: 7)
                     }
-                    .padding(.top, 4)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(accent.opacity(0.04))
-                    )
+                    .padding(.top, 2)
                 }
             } compactLeading: {
-                ZStack {
-                    Circle()
-                        .fill(accent.opacity(0.18))
-                        .frame(width: 22, height: 22)
-
-                    Image(systemName: liveIconName(now: now, start: start, end: end))
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(accent)
-                }
+                ScheduleIconBubble(accent: accent, now: now, start: start, end: end, size: 22)
             } compactTrailing: {
-                Text(compactRemainingText(from: now, start: start, end: end))
+                scheduleCompactTimer(now: now, start: start, end: end)
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(.white)
             } minimal: {
-                ZStack {
-                    Circle()
-                        .fill(accent.opacity(0.18))
-                        .frame(width: 22, height: 22)
-
-                    Image(systemName: liveIconName(now: now, start: start, end: end))
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(accent)
-                }
+                ScheduleIconBubble(accent: accent, now: now, start: start, end: end, size: 22)
             }
+            .keylineTint(accent)
         }
     }
 }
 
-private struct PremiumLiveActivityLockScreenView: View {
+// MARK: - Lock Screen
+
+private struct ScheduleLockScreenView: View {
     let context: ActivityViewContext<ScheduleAttributes>
 
     var body: some View {
-        let accent = liveAccentColor(for: context)
+        let accent = scheduleAccent(for: context)
         let now = Date()
         let start = context.state.startDate
         let end = context.state.endDate
 
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 10) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    accent.opacity(0.26),
-                                    accent.opacity(0.10)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 42, height: 42)
+        VStack(alignment: .leading, spacing: 13) {
+            HStack(spacing: 11) {
+                ScheduleIconBubble(accent: accent, now: now, start: start, end: end, size: 42)
 
-                    Image(systemName: liveIconName(now: now, start: start, end: end))
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(accent)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Rectangle()
+                            .fill(UpdoWidgetPalette.cyan)
+                            .frame(width: 12, height: 2.5)
+                            .clipShape(Capsule())
+                        Text("BUGÜN")
+                            .font(.system(size: 10, weight: .heavy, design: .rounded))
+                            .tracking(1.4)
+                            .foregroundStyle(UpdoWidgetPalette.cyan)
+                    }
                     Text(context.state.title)
-                        .font(.headline.weight(.semibold))
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
                         .lineLimit(1)
-
-                    Text(statusLabel(now: now, start: start, end: end))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()
 
                 Link(destination: URL(string: "dailytodo://live/stop")!) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.white.opacity(0.08))
-                            .frame(width: 34, height: 34)
-
-                        Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(.white)
-                    }
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 32, height: 32)
+                        .background(Circle().fill(Color.white.opacity(0.08)))
                 }
             }
 
-            VStack(alignment: .leading, spacing: 10) {
-                PremiumTimeLabel(context: context)
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-
-                PremiumProgressBar(context: context)
+            VStack(alignment: .leading, spacing: 9) {
+                HStack(alignment: .firstTextBaseline) {
+                    scheduleTimer(now: now, start: start, end: end)
+                        .font(.system(size: 32, weight: .heavy, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Text(scheduleStatus(now: now, start: start, end: end))
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(accent)
+                }
+                GlowProgressBar(progress: scheduleProgress(now: now, start: start, end: end), accent: accent, height: 8)
             }
         }
         .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.02))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    accent.opacity(0.08),
-                                    Color.clear
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+            ZStack {
+                LinearGradient(
+                    colors: [UpdoWidgetPalette.bgTop, UpdoWidgetPalette.bgBottom],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
                 )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(accent.opacity(0.10), lineWidth: 1)
-                )
-                .shadow(color: accent.opacity(0.10), radius: 10, y: 4)
-        )
-    }
-}
-
-private struct PremiumTimeLabel: View {
-    let context: ActivityViewContext<ScheduleAttributes>
-
-    var body: some View {
-        let now = Date()
-        let start = context.state.startDate
-        let end = context.state.endDate
-
-        Group {
-            if now < start {
-                Text(timerInterval: now...start, countsDown: true)
-            } else if now < end {
-                Text(timerInterval: now...end, countsDown: true)
-            } else {
-                Text("Bitti")
+                RadialGradient(colors: [accent.opacity(0.14), .clear], center: .topTrailing, startRadius: 6, endRadius: 200)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(accent.opacity(0.14), lineWidth: 1)
             }
-        }
-        .foregroundStyle(.white)
+        )
     }
 }
 
-private struct PremiumProgressBar: View {
-    let context: ActivityViewContext<ScheduleAttributes>
+// MARK: - Shared subviews
 
+private struct ScheduleIconBubble: View {
+    let accent: Color
+    let now: Date, start: Date, end: Date
+    let size: CGFloat
     var body: some View {
-        let progress = progressValue(
-            now: Date(),
-            start: context.state.startDate,
-            end: context.state.endDate
-        )
+        ZStack {
+            RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
+                .fill(accent.opacity(0.2))
+                .shadow(color: accent.opacity(0.3), radius: 5)
+            Image(systemName: scheduleIcon(now: now, start: start, end: end))
+                .font(.system(size: size * 0.42, weight: .semibold))
+                .foregroundStyle(accent)
+        }
+        .frame(width: size, height: size)
+    }
+}
 
-        let accent = liveAccentColor(for: context)
-
+struct GlowProgressBar: View {
+    let progress: CGFloat
+    let accent: Color
+    var height: CGFloat = 8
+    var body: some View {
         ZStack(alignment: .leading) {
-            Capsule()
-                .fill(Color.white.opacity(0.12))
-                .frame(height: 8)
-
+            Capsule().fill(Color.white.opacity(0.12)).frame(height: height)
             GeometryReader { proxy in
                 Capsule()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                accent.opacity(0.95),
-                                accent.opacity(0.72),
-                                accent.opacity(0.50)
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .shadow(color: accent.opacity(0.24), radius: 4)
-                    .overlay(
-                        Capsule()
-                            .fill(Color.white.opacity(0.10))
-                            .blur(radius: 0.5)
-                    )
-                    .frame(
-                        width: max(10, proxy.size.width * progress),
-                        height: 8
-                    )
+                    .fill(LinearGradient(colors: [accent, accent.opacity(0.65)], startPoint: .leading, endPoint: .trailing))
+                    .frame(width: max(10, proxy.size.width * progress), height: height)
+                    .shadow(color: accent.opacity(0.6), radius: 4)
             }
-            .frame(height: 8)
+            .frame(height: height)
         }
-        .frame(height: 8)
+        .frame(height: height)
     }
 }
 
 // MARK: - Helpers
 
-private func liveAccentColor(for context: ActivityViewContext<ScheduleAttributes>) -> Color {
+private func scheduleAccent(for context: ActivityViewContext<ScheduleAttributes>) -> Color {
     hexColor(context.state.colorHex)
 }
 
-private func liveIconName(now: Date, start: Date, end: Date) -> String {
+private func scheduleIcon(now: Date, start: Date, end: Date) -> String {
+    if now < start { return "clock.fill" }
+    if now < end { return "books.vertical.fill" }
+    return "checkmark.circle.fill"
+}
+
+private func scheduleStatus(now: Date, start: Date, end: Date) -> String {
+    if now < start { return "Başlamak üzere" }
+    if now < end { return "Şu an aktif" }
+    return "Tamamlandı"
+}
+
+@ViewBuilder
+private func scheduleTimer(now: Date, start: Date, end: Date) -> some View {
     if now < start {
-        return "clock.fill"
+        Text(timerInterval: now...start, countsDown: true)
     } else if now < end {
-        return "books.vertical.fill"
+        Text(timerInterval: now...end, countsDown: true)
     } else {
-        return "checkmark.circle.fill"
+        Text("Bitti")
     }
 }
 
-private func remainingText(from now: Date, start: Date, end: Date) -> String {
-    let target = now < start ? start : end
-    let remaining = max(0, Int(target.timeIntervalSince(now)))
-
-    let hours = remaining / 3600
-    let minutes = (remaining % 3600) / 60
-
-    if hours < 1 {
-        return "\(max(1, minutes)) dk"
-    } else {
-        return "\(hours) sa \(minutes) dk"
-    }
-}
-
-private func compactRemainingText(from now: Date, start: Date, end: Date) -> String {
-    let target = now < start ? start : end
-    let remaining = max(0, Int(target.timeIntervalSince(now)))
-
-    let hours = remaining / 3600
-    let minutes = (remaining % 3600) / 60
-
-    if hours < 1 {
-        return "\(max(1, minutes))d"
-    } else {
-        return "\(hours)s \(minutes)d"
-    }
-}
-
-private func statusLabel(now: Date, start: Date, end: Date) -> String {
+@ViewBuilder
+private func scheduleCompactTimer(now: Date, start: Date, end: Date) -> some View {
     if now < start {
-        return "Başlamasına kalan süre"
+        Text(timerInterval: now...start, countsDown: true)
     } else if now < end {
-        return "Bitmesine kalan süre"
+        Text(timerInterval: now...end, countsDown: true)
     } else {
-        return "Etkinlik tamamlandı"
+        Text("·")
     }
 }
 
-private func progressValue(now: Date, start: Date, end: Date) -> CGFloat {
+private func scheduleProgress(now: Date, start: Date, end: Date) -> CGFloat {
     if now < start {
         let total = start.timeIntervalSince(now)
-        let maxWindow: TimeInterval = 600
-        return CGFloat(max(0.05, 1 - (total / maxWindow)))
+        let window: TimeInterval = 600
+        return CGFloat(max(0.05, 1 - (total / window)))
     }
-
     if now >= end { return 1 }
-
     let total = end.timeIntervalSince(start)
     guard total > 0 else { return 0 }
-
-    let elapsed = now.timeIntervalSince(start)
-    return CGFloat(elapsed / total)
+    return CGFloat(now.timeIntervalSince(start) / total)
 }
+
+private func hmDate(_ date: Date) -> String {
+    let c = Calendar.current.dateComponents([.hour, .minute], from: date)
+    return String(format: "%02d:%02d", c.hour ?? 0, c.minute ?? 0)
+}
+
