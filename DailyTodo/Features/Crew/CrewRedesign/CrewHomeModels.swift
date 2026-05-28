@@ -102,6 +102,36 @@ enum CrewCommunityScope: String, CaseIterable, Identifiable {
             return "globe"
         }
     }
+    
+    func headerEyebrow(studentContext: CrewArenaStudentContext) -> String {
+        switch self {
+        case .department:
+            let department = studentContext.departmentShortName
+            let courseCount = studentContext.courseCount
+
+            if courseCount > 0 {
+                return "\(department) · \(courseCount) DERS · LIVE"
+            }
+
+            return "\(department) · AKADEMİK ARENA"
+
+        case .university:
+            let university = studentContext.universityShortName
+
+            if university == "Üniversite" {
+                return "CAMPUS · LIVE"
+            }
+
+            return "\(university) · CAMPUS · LIVE"
+
+        case .country:
+            let country = studentContext.institutionCountry?.uppercased() ?? "TÜRKİYE"
+            return "\(country) · LIVE"
+
+        case .global:
+            return "GLOBAL · STUDY ARENA"
+        }
+    }
 
     var headerEyebrow: String {
         switch self {
@@ -318,6 +348,12 @@ struct CrewSocialCrewCardData: Identifiable, Equatable {
     let weeklyFocusMinutes: Int
     let rankText: String
     let streakDays: Int
+    
+    let lastMessageText: String?
+    let unreadCount: Int
+    let isPinned: Bool
+    let isMuted: Bool
+    let isArchived: Bool
 
     var progress: Double {
         guard taskCount > 0 else { return 0 }

@@ -46,6 +46,7 @@ final class CrewStore: ObservableObject {
     private var subscribedFocusCrewID: UUID?
     
     private var globalFocusChannel: RealtimeChannelV2?
+    private var isSubscribingGlobalFocus = false
 
     private var taskChannel: RealtimeChannelV2?
     private var memberChannel: RealtimeChannelV2?
@@ -1010,204 +1011,242 @@ final class CrewStore: ObservableObject {
     }
     
     func subscribeToCrewRealtime(crewID: UUID) {
-        if subscribedCrewRealtimeID == crewID {
+        if subscribedCrewRealtimeID == crewID,
+           taskChannel != nil,
+           memberChannel != nil,
+           activityChannel != nil,
+           focusChannel != nil {
             return
         }
 
-        let client = SupabaseManager.shared.client
-        Task {
-            await taskChannel?.unsubscribe()
-            await memberChannel?.unsubscribe()
-            await activityChannel?.unsubscribe()
-            await focusChannel?.unsubscribe()
-        }
+        let oldTaskChannel = taskChannel
+        let oldMemberChannel = memberChannel
+        let oldActivityChannel = activityChannel
+        let oldFocusChannel = focusChannel
 
         taskChannel = nil
         memberChannel = nil
         activityChannel = nil
         focusChannel = nil
+        subscribedCrewRealtimeID = nil
 
-        taskChannel = client.realtimeV2.channel("crew-tasks-\(crewID.uuidString)")
-        memberChannel = client.realtimeV2.channel("crew-members-\(crewID.uuidString)")
-        activityChannel = client.realtimeV2.channel("crew-activities-\(crewID.uuidString)")
-        focusChannel = client.realtimeV2.channel("crew-focus-records-\(crewID.uuidString)")
-        subscribedCrewRealtimeID = crewID
+        Task { @MainActor in
+            await oldTaskChannel?.unsubscribe()
+            await oldMemberChannel?.unsubscribe()
+            await oldActivityChannel?.unsubscribe()
+            await oldFocusChannel?.unsubscribe()
 
-    
+            let client = SupabaseManager.shared.client
 
-        _ = taskChannel?.onPostgresChange(
-            InsertAction.self,
-            schema: "public",
-            table: "crew_tasks",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] action in
-            guard let self else { return }
-            Task { @MainActor in
-                do {
-                    let jsonData = try JSONSerialization.data(withJSONObject: action.record)
-                    let dto = try JSONDecoder().decode(CrewTaskDTO.self, from: jsonData)
-                    self.upsertLocalTask(dto)
-                    await self.refreshCrewStats(for: crewID)
-                } catch {
-                    print("CREW TASK INSERT REALTIME DECODE ERROR:", error.localizedDescription)
-                    await self.loadTasks(for: crewID)
+            let newTaskChannel = client.realtimeV2.channel("crew-tasks-\(crewID.uuidString)")
+            let newMemberChannel = client.realtimeV2.channel("crew-members-\(crewID.uuidString)")
+            let newActivityChannel = client.realtimeV2.channel("crew-activities-\(crewID.uuidString)")
+            let newFocusChannel = client.realtimeV2.channel("crew-focus-records-\(crewID.uuidString)")
+
+            _ = newTaskChannel.onPostgresChange(
+                InsertAction.self,
+                schema: "public",
+                table: "crew_tasks",
+                filter: "crew_id=eq.\(crewID.uuidString)"
+            ) { [weak self] action in
+                guard let self else { return }
+
+                Task { @MainActor in
+                    do {
+                        let jsonData = try JSONSerialization.data(withJSONObject: action.record)
+                        let dto = try JSONDecoder().decode(CrewTaskDTO.self, from: jsonData)
+
+                        self.upsertLocalTask(dto)
+                        await self.refreshCrewStats(for: crewID)
+                    } catch {
+                        print("CREW TASK INSERT REALTIME DECODE ERROR:", error.localizedDescription)
+                        await self.loadTasks(for: crewID)
+                    }
                 }
             }
-        }
 
-        _ = taskChannel?.onPostgresChange(
-            UpdateAction.self,
-            schema: "public",
-            table: "crew_tasks",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] action in
-            guard let self else { return }
-            Task { @MainActor in
-                do {
-                    let jsonData = try JSONSerialization.data(withJSONObject: action.record)
-                    let dto = try JSONDecoder().decode(CrewTaskDTO.self, from: jsonData)
-                    self.upsertLocalTask(dto)
-                    await self.refreshCrewStats(for: crewID)
-                } catch {
-                    print("CREW TASK UPDATE REALTIME DECODE ERROR:", error.localizedDescription)
-                    await self.loadTasks(for: crewID)
+            _ = newTaskChannel.onPostgresChange(
+                UpdateAction.self,
+                schema: "public",
+                table: "crew_tasks",
+                filter: "crew_id=eq.\(crewID.uuidString)"
+            ) { [weak self] action in
+                guard let self else { return }
+
+                Task { @MainActor in
+                    do {
+                        let jsonData = try JSONSerialization.data(withJSONObject: action.record)
+                        let dto = try JSONDecoder().decode(CrewTaskDTO.self, from: jsonData)
+
+                        self.upsertLocalTask(dto)
+                        await self.refreshCrewStats(for: crewID)
+                    } catch {
+                        print("CREW TASK UPDATE REALTIME DECODE ERROR:", error.localizedDescription)
+                        await self.loadTasks(for: crewID)
+                    }
                 }
             }
-        }
 
-        _ = taskChannel?.onPostgresChange(
-            DeleteAction.self,
-            schema: "public",
-            table: "crew_tasks",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] action in
-            guard let self else { return }
-            Task { @MainActor in
-                if let idString = action.oldRecord["id"] as? String,
-                   let taskID = UUID(uuidString: idString) {
-                    self.removeLocalTask(taskID: taskID)
-                    await self.refreshCrewStats(for: crewID)
-                } else {
-                    print("CREW TASK DELETE REALTIME: task id not found in oldRecord")
-                    await self.loadTasks(for: crewID)
+            _ = newTaskChannel.onPostgresChange(
+                DeleteAction.self,
+                schema: "public",
+                table: "crew_tasks",
+                filter: "crew_id=eq.\(crewID.uuidString)"
+            ) { [weak self] action in
+                guard let self else { return }
+
+                Task { @MainActor in
+                    if let idString = action.oldRecord["id"] as? String,
+                       let taskID = UUID(uuidString: idString) {
+                        self.removeLocalTask(taskID: taskID)
+                        await self.refreshCrewStats(for: crewID)
+                    } else {
+                        print("CREW TASK DELETE REALTIME: task id not found in oldRecord")
+                        await self.loadTasks(for: crewID)
+                    }
                 }
             }
-        }
 
-     _ =   memberChannel?.onPostgresChange(
-            InsertAction.self,
-            schema: "public",
-            table: "crew_members",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] _ in
-            Task { @MainActor in
-                guard let self else { return }
-                await self.loadMembers(for: crewID)
-                await self.loadMemberProfiles(for: self.crewMembers)
-                await self.loadMemberCount(for: crewID)
+            _ = newMemberChannel.onPostgresChange(
+                InsertAction.self,
+                schema: "public",
+                table: "crew_members",
+                filter: "crew_id=eq.\(crewID.uuidString)"
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    guard let self else { return }
+
+                    await self.loadMembers(for: crewID)
+                    await self.loadMemberProfiles(for: self.crewMembers)
+                    await self.loadMemberCount(for: crewID)
+                }
             }
-        }
 
-     _ =   memberChannel?.onPostgresChange(
-            UpdateAction.self,
-            schema: "public",
-            table: "crew_members",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] _ in
-            Task { @MainActor in
-                guard let self else { return }
-                await self.loadMembers(for: crewID)
-                await self.loadMemberProfiles(for: self.crewMembers)
-                await self.loadMemberCount(for: crewID)
+            _ = newMemberChannel.onPostgresChange(
+                UpdateAction.self,
+                schema: "public",
+                table: "crew_members",
+                filter: "crew_id=eq.\(crewID.uuidString)"
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    guard let self else { return }
+
+                    await self.loadMembers(for: crewID)
+                    await self.loadMemberProfiles(for: self.crewMembers)
+                    await self.loadMemberCount(for: crewID)
+                }
             }
-        }
 
-        _ =    memberChannel?.onPostgresChange(
-            DeleteAction.self,
-            schema: "public",
-            table: "crew_members",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] _ in
-            Task { @MainActor in
-                guard let self else { return }
-                await self.loadMembers(for: crewID)
-                await self.loadMemberProfiles(for: self.crewMembers)
-                await self.loadMemberCount(for: crewID)
+            _ = newMemberChannel.onPostgresChange(
+                DeleteAction.self,
+                schema: "public",
+                table: "crew_members",
+                filter: "crew_id=eq.\(crewID.uuidString)"
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    guard let self else { return }
+
+                    await self.loadMembers(for: crewID)
+                    await self.loadMemberProfiles(for: self.crewMembers)
+                    await self.loadMemberCount(for: crewID)
+                }
             }
-        }
 
-        _ =     activityChannel?.onPostgresChange(
-            InsertAction.self,
-            schema: "public",
-            table: "crew_activities",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] _ in
-            Task { @MainActor in
-                await self?.loadActivities(for: crewID)
+            _ = newActivityChannel.onPostgresChange(
+                InsertAction.self,
+                schema: "public",
+                table: "crew_activities",
+                filter: "crew_id=eq.\(crewID.uuidString)"
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    await self?.loadActivities(for: crewID)
+                }
             }
-        }
 
-        _ =     activityChannel?.onPostgresChange(
-            UpdateAction.self,
-            schema: "public",
-            table: "crew_activities",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] _ in
-            Task { @MainActor in
-                await self?.loadActivities(for: crewID)
+            _ = newActivityChannel.onPostgresChange(
+                UpdateAction.self,
+                schema: "public",
+                table: "crew_activities",
+                filter: "crew_id=eq.\(crewID.uuidString)"
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    await self?.loadActivities(for: crewID)
+                }
             }
-        }
 
-        _ =     activityChannel?.onPostgresChange(
-            DeleteAction.self,
-            schema: "public",
-            table: "crew_activities",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] _ in
-            Task { @MainActor in
-                await self?.loadActivities(for: crewID)
+            _ = newActivityChannel.onPostgresChange(
+                DeleteAction.self,
+                schema: "public",
+                table: "crew_activities",
+                filter: "crew_id=eq.\(crewID.uuidString)"
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    await self?.loadActivities(for: crewID)
+                }
             }
-        }
 
-        _ =         focusChannel?.onPostgresChange(
-            InsertAction.self,
-            schema: "public",
-            table: "crew_focus_records",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] _ in
-            Task { @MainActor in
-                await self?.loadFocusRecords(for: crewID)
+            _ = newFocusChannel.onPostgresChange(
+                InsertAction.self,
+                schema: "public",
+                table: "crew_focus_records",
+                filter: "crew_id=eq.\(crewID.uuidString)"
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    await self?.loadFocusRecords(for: crewID)
+                }
             }
-        }
 
-        _ =      focusChannel?.onPostgresChange(
-            UpdateAction.self,
-            schema: "public",
-            table: "crew_focus_records",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] _ in
-            Task { @MainActor in
-                await self?.loadFocusRecords(for: crewID)
+            _ = newFocusChannel.onPostgresChange(
+                UpdateAction.self,
+                schema: "public",
+                table: "crew_focus_records",
+                filter: "crew_id=eq.\(crewID.uuidString)"
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    await self?.loadFocusRecords(for: crewID)
+                }
             }
-        }
 
-        _ =      focusChannel?.onPostgresChange(
-            DeleteAction.self,
-            schema: "public",
-            table: "crew_focus_records",
-            filter: "crew_id=eq.\(crewID.uuidString)"
-        ) { [weak self] _ in
-            Task { @MainActor in
-                await self?.loadFocusRecords(for: crewID)
+            _ = newFocusChannel.onPostgresChange(
+                DeleteAction.self,
+                schema: "public",
+                table: "crew_focus_records",
+                filter: "crew_id=eq.\(crewID.uuidString)"
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    await self?.loadFocusRecords(for: crewID)
+                }
             }
-        }
 
-        Task {
-            
-            try? await taskChannel?.subscribeWithError()
-            try? await memberChannel?.subscribeWithError()
-            try? await activityChannel?.subscribeWithError()
-            try? await focusChannel?.subscribeWithError()
+            taskChannel = newTaskChannel
+            memberChannel = newMemberChannel
+            activityChannel = newActivityChannel
+            focusChannel = newFocusChannel
+            subscribedCrewRealtimeID = crewID
+
+            do {
+                try await newTaskChannel.subscribeWithError()
+                try await newMemberChannel.subscribeWithError()
+                try await newActivityChannel.subscribeWithError()
+                try await newFocusChannel.subscribeWithError()
+
+                print("✅ CREW REALTIME SUBSCRIBED:", crewID.uuidString)
+            } catch {
+                print("CREW REALTIME SUBSCRIBE ERROR:", error.localizedDescription)
+
+                await newTaskChannel.unsubscribe()
+                await newMemberChannel.unsubscribe()
+                await newActivityChannel.unsubscribe()
+                await newFocusChannel.unsubscribe()
+
+                if subscribedCrewRealtimeID == crewID {
+                    taskChannel = nil
+                    memberChannel = nil
+                    activityChannel = nil
+                    focusChannel = nil
+                    subscribedCrewRealtimeID = nil
+                }
+            }
         }
     }
 
@@ -1229,16 +1268,16 @@ final class CrewStore: ObservableObject {
     }
     
     func subscribeToGlobalFocusRealtime() {
-        let client = SupabaseManager.shared.client
-
-        Task {
-            await globalFocusChannel?.unsubscribe()
+        if globalFocusChannel != nil || isSubscribingGlobalFocus {
+            return
         }
 
-        globalFocusChannel = client.realtimeV2.channel("global-focus")
+        isSubscribingGlobalFocus = true
 
-        // SESSION CHANGES
-        _ = globalFocusChannel?.onPostgresChange(
+        let client = SupabaseManager.shared.client
+        let channel = client.realtimeV2.channel("global-focus")
+
+        _ = channel.onPostgresChange(
             InsertAction.self,
             schema: "public",
             table: "crew_focus_sessions"
@@ -1248,7 +1287,7 @@ final class CrewStore: ObservableObject {
             }
         }
 
-        _ = globalFocusChannel?.onPostgresChange(
+        _ = channel.onPostgresChange(
             UpdateAction.self,
             schema: "public",
             table: "crew_focus_sessions"
@@ -1258,7 +1297,7 @@ final class CrewStore: ObservableObject {
             }
         }
 
-        _ = globalFocusChannel?.onPostgresChange(
+        _ = channel.onPostgresChange(
             DeleteAction.self,
             schema: "public",
             table: "crew_focus_sessions"
@@ -1268,8 +1307,7 @@ final class CrewStore: ObservableObject {
             }
         }
 
-        // PARTICIPANT CHANGES
-        _ = globalFocusChannel?.onPostgresChange(
+        _ = channel.onPostgresChange(
             InsertAction.self,
             schema: "public",
             table: "crew_focus_participants"
@@ -1279,7 +1317,7 @@ final class CrewStore: ObservableObject {
             }
         }
 
-        _ = globalFocusChannel?.onPostgresChange(
+        _ = channel.onPostgresChange(
             UpdateAction.self,
             schema: "public",
             table: "crew_focus_participants"
@@ -1289,8 +1327,28 @@ final class CrewStore: ObservableObject {
             }
         }
 
-        Task {
-            try? await globalFocusChannel?.subscribeWithError()
+        _ = channel.onPostgresChange(
+            DeleteAction.self,
+            schema: "public",
+            table: "crew_focus_participants"
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.reloadAllParticipants()
+            }
+        }
+
+        globalFocusChannel = channel
+
+        Task { @MainActor in
+            do {
+                try await channel.subscribeWithError()
+                print("✅ GLOBAL FOCUS REALTIME SUBSCRIBED")
+            } catch {
+                print("GLOBAL FOCUS REALTIME SUBSCRIBE ERROR:", error.localizedDescription)
+                globalFocusChannel = nil
+            }
+
+            isSubscribingGlobalFocus = false
         }
     }
     
@@ -1640,6 +1698,7 @@ final class CrewStore: ObservableObject {
         unsubscribeCrewChat()
         unsubscribeCrewAuxRealtime()
         unsubscribeCrewFocusRealtime()
+        unsubscribeGlobalFocusRealtime()
         unsubscribeCrewsListRealtime()
     }
 
@@ -1652,12 +1711,17 @@ final class CrewStore: ObservableObject {
                 .execute()
 
             let decoded = try JSONDecoder().decode([CrewMemberDTO].self, from: response.data)
-            crewMembers = decoded
+
+            crewMembers.removeAll { $0.crew_id == crewID }
+            crewMembers.append(contentsOf: decoded)
+
+            memberCountByCrew[crewID] = decoded.count
+
         } catch {
             print("LOAD MEMBERS ERROR:", error.localizedDescription)
         }
     }
-
+    
     func loadMemberProfiles(for members: [CrewMemberDTO]) async {
         let ids = Array(Set(members.map { $0.user_id.uuidString }))
 
@@ -1690,7 +1754,13 @@ final class CrewStore: ObservableObject {
                 .execute()
 
             let decoded = try JSONDecoder().decode([CrewTaskDTO].self, from: response.data)
-            crewTasks = decoded
+
+            crewTasks.removeAll { $0.crew_id == crewID }
+            crewTasks.append(contentsOf: decoded)
+
+            taskCountByCrew[crewID] = decoded.count
+            completedTaskCountByCrew[crewID] = decoded.filter { $0.is_done }.count
+
         } catch {
             print("LOAD TASKS ERROR:", error.localizedDescription)
         }
@@ -1706,7 +1776,10 @@ final class CrewStore: ObservableObject {
                 .execute()
 
             let decoded = try JSONDecoder().decode([CrewActivityDTO].self, from: response.data)
-            crewActivities = decoded
+
+            crewActivities.removeAll { $0.crew_id == crewID }
+            crewActivities.append(contentsOf: decoded)
+
         } catch {
             print("LOAD ACTIVITIES ERROR:", error.localizedDescription)
         }
@@ -1722,12 +1795,14 @@ final class CrewStore: ObservableObject {
                 .execute()
 
             let decoded = try JSONDecoder().decode([CrewFocusRecordDTO].self, from: response.data)
-            crewFocusRecords = decoded
+
+            crewFocusRecords.removeAll { $0.crew_id == crewID }
+            crewFocusRecords.append(contentsOf: decoded)
+
         } catch {
             print("LOAD FOCUS RECORDS ERROR:", error.localizedDescription)
         }
     }
-
     func loadMemberCount(for crewID: UUID) async {
         do {
             let response = try await SupabaseManager.shared.client
@@ -1774,11 +1849,68 @@ final class CrewStore: ObservableObject {
         }
     }
 
+    func loadHomeCacheForAllCrews() async {
+        for crew in crews {
+            await loadMembers(for: crew.id)
+            await loadTasks(for: crew.id)
+            await loadFocusRecords(for: crew.id)
+            await loadActiveFocusSession(for: crew.id)
+
+            if let session = activeFocusSessionByCrew[crew.id] {
+                await loadFocusParticipants(sessionID: session.id)
+            }
+        }
+    }
+    
     func loadStatsForAllCrews() async {
         for crew in crews {
             await loadMemberCount(for: crew.id)
             await loadTaskCount(for: crew.id)
             await loadCompletedTaskCount(for: crew.id)
+        }
+    }
+
+    
+    
+    func loadFocusStateForAllCrews() async {
+        for crew in crews {
+            await loadActiveFocusSession(for: crew.id)
+
+            if let session = activeFocusSessionByCrew[crew.id] {
+                await loadFocusParticipants(sessionID: session.id)
+            }
+
+            await loadFocusRecords(for: crew.id)
+        }
+    }
+    
+    func loadCurrentUserMembershipsForHome() async {
+        guard let currentUserID else { return }
+
+        let crewIDs = crews.map(\.id.uuidString)
+
+        guard !crewIDs.isEmpty else {
+            crewMembers = []
+            return
+        }
+
+        do {
+            let response = try await SupabaseManager.shared.client
+                .from("crew_members")
+                .select()
+                .eq("user_id", value: currentUserID.uuidString)
+                .in("crew_id", values: crewIDs)
+                .execute()
+
+            let decoded = try JSONDecoder().decode([CrewMemberDTO].self, from: response.data)
+
+            let otherCrewMembers = crewMembers.filter { member in
+                !crewIDs.contains(member.crew_id.uuidString) || member.user_id != currentUserID
+            }
+
+            crewMembers = otherCrewMembers + decoded
+        } catch {
+            print("LOAD CURRENT USER MEMBERSHIPS FOR HOME ERROR:", error.localizedDescription)
         }
     }
 
@@ -2542,6 +2674,8 @@ final class CrewStore: ObservableObject {
 
         let nowString = CrewDateParser.string(from: Date())
 
+        let cachedParticipants = focusParticipantsBySession[sessionID] ?? []
+
         let endPayload = EndPayload(
             is_active: false,
             is_paused: false,
@@ -2549,31 +2683,38 @@ final class CrewStore: ObservableObject {
             ended_at: nowString
         )
 
-        // 1) Önce session'ı kesin kapat
         try await SupabaseManager.shared.client
             .from("crew_focus_sessions")
             .update(endPayload)
             .eq("id", value: sessionID.uuidString)
             .execute()
 
-        // 2) Önce local state'i yenile
-        await loadActiveFocusSession(for: crewID)
-
         let endParticipantsPayload = EndCrewFocusParticipantPayload(
             is_active: false,
             left_at: nowString
         )
 
-        // 3) Geri kalanları ayrı ayrı dene
         do {
-            for participantName in participantNames {
-                let matchingParticipant = focusParticipantsBySession[sessionID]?.first(where: {
-                    $0.member_name == participantName
-                })
+            let cleanParticipantNames = participantNames
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+
+            let finalParticipantNames = cleanParticipantNames.isEmpty
+                ? cachedParticipants.map(\.member_name)
+                : cleanParticipantNames
+
+            for participantName in finalParticipantNames {
+                let matchingParticipant = cachedParticipants.first { participant in
+                    participant.member_name.trimmingCharacters(in: .whitespacesAndNewlines)
+                        .caseInsensitiveCompare(participantName) == .orderedSame
+                }
+
+                let resolvedUserID = matchingParticipant?.user_id
+                    ?? (participantName.caseInsensitiveCompare(hostName) == .orderedSame ? hostUserID : nil)
 
                 let recordPayload = CreateCrewFocusRecordPayloadV2(
                     crew_id: crewID,
-                    user_id: matchingParticipant?.user_id,
+                    user_id: resolvedUserID,
                     member_name: participantName,
                     minutes: max(1, completedMinutes)
                 )
@@ -2634,7 +2775,6 @@ final class CrewStore: ObservableObject {
         focusParticipantsBySession.removeValue(forKey: sessionID)
 
         await loadActiveFocusSession(for: crewID)
-        await loadFocusParticipants(sessionID: sessionID)
         await loadFocusRecords(for: crewID)
     }
     
@@ -2737,6 +2877,16 @@ final class CrewStore: ObservableObject {
         focusParticipantsChannel = nil
         subscribedFocusCrewID = nil
     }
+    func unsubscribeGlobalFocusRealtime() {
+        let channelToUnsub = globalFocusChannel
+        globalFocusChannel = nil
+        isSubscribingGlobalFocus = false
+
+        Task {
+            await channelToUnsub?.unsubscribe()
+        }
+    }
+    
     struct CreateCrewFocusSessionPayload: Encodable {
         let crew_id: UUID
         let host_user_id: UUID?
@@ -2867,5 +3017,94 @@ final class CrewStore: ObservableObject {
         }
     }
 }
+// MARK: - Crew Home Adapter
 
+extension CrewStore {
+    var crewHomeSummary: CrewHomeSummary {
+        let visibleCrews = crews.filter { crew in
+            guard let currentUserID else { return true }
+
+            let myMemberState = crewMembers.first {
+                $0.crew_id == crew.id && $0.user_id == currentUserID
+            }
+
+            return myMemberState?.is_archived != true
+        }
+
+        let liveCount = activeFocusSessionByCrew.values.count
+
+        return CrewHomeSummary(
+            crewCount: visibleCrews.count,
+            friendCount: 0,
+            requestCount: 0,
+            liveCount: liveCount
+        )
+    }
+
+    var crewHomeCrewCards: [CrewSocialCrewCardData] {
+        let visibleCrews = crews.filter { crew in
+            guard let currentUserID else { return true }
+
+            let myMemberState = crewMembers.first {
+                $0.crew_id == crew.id && $0.user_id == currentUserID
+            }
+
+            return myMemberState?.is_archived != true
+        }
+
+        return visibleCrews.enumerated().map { index, crew in
+            let memberCount = memberCountByCrew[crew.id] ?? crewMembers.filter { $0.crew_id == crew.id }.count
+            let taskCount = taskCountByCrew[crew.id] ?? crewTasks.filter { $0.crew_id == crew.id }.count
+            let completedTaskCount = completedTaskCountByCrew[crew.id] ?? crewTasks.filter {
+                $0.crew_id == crew.id && $0.is_done
+            }.count
+
+            let focusMinutes = crewFocusRecords
+                .filter { $0.crew_id == crew.id }
+                .map(\.minutes)
+                .reduce(0, +)
+
+            let hasActiveSession = activeFocusSessionByCrew[crew.id] != nil
+
+            let weeklyFocusMinutes: Int = focusMinutes > 0
+            ? focusMinutes
+            : CrewHomeFormatters.pseudoFocusMinutes(
+                memberCount: memberCount,
+                completedTaskCount: completedTaskCount,
+                taskCount: taskCount,
+                isLive: hasActiveSession
+            )
+
+            let myMemberState = currentUserID.flatMap { userID in
+                crewMembers.first {
+                    $0.crew_id == crew.id && $0.user_id == userID
+                }
+            }
+
+            return CrewSocialCrewCardData(
+                id: crew.id,
+                name: crew.name,
+                icon: crew.icon,
+                colorHex: crew.color_hex,
+                memberCount: max(memberCount, 1),
+                taskCount: taskCount,
+                completedTaskCount: completedTaskCount,
+                isLive: hasActiveSession,
+                weeklyFocusMinutes: weeklyFocusMinutes,
+                rankText: CrewHomeFormatters.pseudoRankText(index: index),
+                streakDays: CrewHomeFormatters.pseudoStreakDays(
+                    memberCount: memberCount,
+                    completedTaskCount: completedTaskCount,
+                    isLive: hasActiveSession
+                ),
+                lastMessageText: crew.last_message_text,
+                unreadCount: myMemberState?.unread_count ?? 0,
+                isPinned: myMemberState?.is_pinned ?? false,
+                isMuted: myMemberState?.is_muted ?? false,
+                isArchived: myMemberState?.is_archived ?? false
+            )
+            
+        }
+    }
+}
 

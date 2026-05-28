@@ -39,6 +39,7 @@ struct CrewView: View {
 
     @State private var selectedCrewIDForDetail: UUID?
     @State private var selectedFriendIDForDetail: UUID?
+    @StateObject private var arenaStore = ArenaStore()
 
     init(initialTab: CrewTabMode = .crews) {
         self.initialTab = initialTab
@@ -50,6 +51,7 @@ struct CrewView: View {
                 initialTab: initialTab,
                 summary: crewHomeSummary,
                 studentContext: crewArenaStudentContext,
+                arenaStore: arenaStore,
                 crews: crewHomeCrewCards,
                 friends: crewHomeFriendCards,
                 incomingRequests: crewHomeIncomingRequestCards,
@@ -141,26 +143,62 @@ struct CrewView: View {
                 guard !didLoad else { return }
                 guard let userID = session.currentUser?.id else { return }
 
+                didLoad = true
+                
                 await initialLoadIfNeeded()
+
                 crewStore.subscribeToCrewsListRealtime(for: userID)
+                crewStore.subscribeToGlobalFocusRealtime()
+
+                friendStore.subscribeToFriendshipsRealtime(currentUserID: userID)
+
+                let otherUserIDs = friendStore.friendships.compactMap { friendship -> UUID? in
+                    if friendship.requester_id == userID {
+                        return friendship.addressee_id
+                    } else if friendship.addressee_id == userID {
+                        return friendship.requester_id
+                    } else {
+                        return nil
+                    }
+                }
+
+                friendStore.subscribeToPresenceRealtime(for: otherUserIDs)
 
                 didLoad = true
             }
-            .onChange(of: session.currentUser?.id) { newID in
+            .onChange(of: session.currentUser?.id) { _, newID in
                 Task {
                     if newID == nil {
                         crewStore.resetForUserChange()
+                        friendStore.unsubscribeFriendshipsRealtime()
+                        friendStore.unsubscribePresenceRealtime()
                         didLoad = false
                         return
                     }
 
                     crewStore.resetForUserChange()
+                    friendStore.unsubscribeFriendshipsRealtime()
+                    friendStore.unsubscribePresenceRealtime()
                     didLoad = false
 
                     await reloadAllCrewAndFriendData(forceCrews: true)
 
                     if let newID {
                         crewStore.subscribeToCrewsListRealtime(for: newID)
+                        crewStore.subscribeToGlobalFocusRealtime()
+                        friendStore.subscribeToFriendshipsRealtime(currentUserID: newID)
+
+                        let otherUserIDs = friendStore.friendships.compactMap { friendship -> UUID? in
+                            if friendship.requester_id == newID {
+                                return friendship.addressee_id
+                            } else if friendship.addressee_id == newID {
+                                return friendship.requester_id
+                            } else {
+                                return nil
+                            }
+                        }
+
+                        friendStore.subscribeToPresenceRealtime(for: otherUserIDs)
                     }
                 }
             }
@@ -224,26 +262,91 @@ private extension CrewView {
 
     var crewHomeSummary: CrewHomeSummary {
         CrewHomeSummary(
-            crewCount: crewStore.crews.count,
+            crewCount: visibleCrewCount,
             friendCount: backendFriends.count,
             requestCount: incomingRequests.count + sentRequests.count,
             liveCount: activeFriendFocusCount + crewStore.activeFocusSessionByCrew.count
         )
     }
+    var visibleCrewCount: Int {
+        crewStore.crews.filter { crew in
+            guard let currentUserID else { return true }
 
+            let myMemberState = crewStore.crewMembers.first {
+                $0.crew_id == crew.id && $0.user_id == currentUserID
+            }
+
+            return myMemberState?.is_archived != true
+        }.count
+    }
+    
     var crewHomeCrewCards: [CrewSocialCrewCardData] {
-        crewStore.crews.enumerated().map { index, crew in
+        let userID = currentUserID
+
+        let visibleCrews = crewStore.crews
+            .filter { crew in
+                guard let userID else { return true }
+
+                let myMemberState = crewStore.crewMembers.first { member in
+                    member.crew_id == crew.id && member.user_id == userID
+                }
+
+                return myMemberState?.is_archived != true
+            }
+            .sorted { lhs, rhs in
+                let lhsMember = userID.flatMap { resolvedUserID in
+                    crewStore.crewMembers.first { member in
+                        member.crew_id == lhs.id && member.user_id == resolvedUserID
+                    }
+                }
+
+                let rhsMember = userID.flatMap { resolvedUserID in
+                    crewStore.crewMembers.first { member in
+                        member.crew_id == rhs.id && member.user_id == resolvedUserID
+                    }
+                }
+
+                let lhsPinned = lhsMember?.is_pinned ?? false
+                let rhsPinned = rhsMember?.is_pinned ?? false
+
+                if lhsPinned != rhsPinned {
+                    return lhsPinned && !rhsPinned
+                }
+
+                let lhsDate = lhs.last_message_at.flatMap { CrewDateParser.parse($0) }
+                    ?? CrewDateParser.parse(lhs.created_at)
+                    ?? .distantPast
+
+                let rhsDate = rhs.last_message_at.flatMap { CrewDateParser.parse($0) }
+                    ?? CrewDateParser.parse(rhs.created_at)
+                    ?? .distantPast
+
+                return lhsDate > rhsDate
+            }
+
+        return visibleCrews.enumerated().map { index, crew in
             let memberCount = crewStore.memberCountByCrew[crew.id] ?? 0
             let taskCount = crewStore.taskCountByCrew[crew.id] ?? 0
             let completedTaskCount = crewStore.completedTaskCountByCrew[crew.id] ?? 0
             let isLive = crewStore.activeFocusSessionByCrew[crew.id] != nil
 
-            let weeklyFocusMinutes = CrewHomeFormatters.pseudoFocusMinutes(
+            let realFocusMinutes = crewStore.crewFocusRecords
+                .filter { record in
+                    record.crew_id == crew.id
+                }
+                .map(\.minutes)
+                .reduce(0, +)
+
+            let fallbackFocusMinutes = CrewHomeFormatters.pseudoFocusMinutes(
                 memberCount: memberCount,
                 completedTaskCount: completedTaskCount,
                 taskCount: taskCount,
                 isLive: isLive
             )
+
+            let weeklyFocusMinutes = realFocusMinutes > 0
+                ? realFocusMinutes
+                : fallbackFocusMinutes
 
             let streakDays = CrewHomeFormatters.pseudoStreakDays(
                 memberCount: memberCount,
@@ -251,22 +354,33 @@ private extension CrewView {
                 isLive: isLive
             )
 
+            let myMemberState = userID.flatMap { resolvedUserID in
+                crewStore.crewMembers.first { member in
+                    member.crew_id == crew.id && member.user_id == resolvedUserID
+                }
+            }
+
             return CrewSocialCrewCardData(
                 id: crew.id,
                 name: crew.name,
                 icon: crew.icon,
                 colorHex: crew.color_hex,
-                memberCount: memberCount,
+                memberCount: max(memberCount, 1),
                 taskCount: taskCount,
                 completedTaskCount: completedTaskCount,
                 isLive: isLive,
                 weeklyFocusMinutes: weeklyFocusMinutes,
                 rankText: CrewHomeFormatters.pseudoRankText(index: index),
-                streakDays: streakDays
+                streakDays: streakDays,
+                lastMessageText: crew.last_message_text,
+                unreadCount: myMemberState?.unread_count ?? 0,
+                isPinned: myMemberState?.is_pinned ?? false,
+                isMuted: myMemberState?.is_muted ?? false,
+                isArchived: myMemberState?.is_archived ?? false
             )
         }
     }
-
+    
     var crewHomeFriendCards: [CrewSocialFriendCardData] {
         backendFriends.map { friend in
             let activeSession = activeFocusSession(for: friend)
@@ -450,12 +564,18 @@ private extension CrewView {
     func initialLoadIfNeeded() async {
         guard session.currentUser?.id != nil else { return }
 
+        
+
         await crewStore.loadCrews(force: true)
         await crewStore.loadStatsForAllCrews()
+        await crewStore.loadCurrentUserMembershipsForHome()
+        await crewStore.loadHomeCacheForAllCrews()
+
         await reloadBackendFriends(force: false)
     }
 
     func reloadAllCrewAndFriendData(forceCrews: Bool) async {
+
         if forceCrews {
             await crewStore.loadCrews(force: true)
         } else if crewStore.crews.isEmpty {
@@ -463,9 +583,12 @@ private extension CrewView {
         }
 
         await crewStore.loadStatsForAllCrews()
+        await crewStore.loadCurrentUserMembershipsForHome()
+        await crewStore.loadHomeCacheForAllCrews()
+
         await reloadBackendFriends(force: forceCrews)
     }
-
+    
     func reloadBackendFriends(force: Bool) async {
         guard let currentUserID = session.currentUser?.id else { return }
 
@@ -503,6 +626,8 @@ private extension CrewView {
             modelContext: modelContext
         )
 
+        friendStore.subscribeToPresenceRealtime(for: otherUserIDs)
+        
         friendStore.markFriendsCacheRefreshed()
     }
 }

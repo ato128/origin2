@@ -100,6 +100,7 @@ struct CrewHomeView: View {
 
     let summary: CrewHomeSummary
     let studentContext: CrewArenaStudentContext
+    @ObservedObject var arenaStore: ArenaStore
 
     let crews: [CrewSocialCrewCardData]
     let friends: [CrewSocialFriendCardData]
@@ -123,6 +124,7 @@ struct CrewHomeView: View {
         initialTab: CrewTabMode,
         summary: CrewHomeSummary,
         studentContext: CrewArenaStudentContext = .empty,
+        arenaStore: ArenaStore,
         crews: [CrewSocialCrewCardData],
         friends: [CrewSocialFriendCardData],
         incomingRequests: [CrewSocialRequestCardData],
@@ -138,6 +140,7 @@ struct CrewHomeView: View {
         self.initialTab = initialTab
         self.summary = summary
         self.studentContext = studentContext
+        self.arenaStore = arenaStore
         self.crews = crews
         self.friends = friends
         self.incomingRequests = incomingRequests
@@ -219,6 +222,7 @@ struct CrewHomeView: View {
                     CrewArenaHeader(
                         mode: mode,
                         scope: communityScope,
+                        studentContext: studentContext,
                         liveCount: summary.liveCount,
                         requestCount: summary.requestCount,
                         primaryIcon: headerPrimaryIcon,
@@ -249,7 +253,14 @@ struct CrewHomeView: View {
                         CrewCommunityContent(
                             scope: $communityScope,
                             range: $leaderboardRange,
-                            studentContext: studentContext
+                            studentContext: studentContext,
+                            arenaStore: arenaStore,
+                            onStartFocus: {
+                                NotificationCenter.default.post(
+                                    name: .openFocusTabFromHome,
+                                    object: nil
+                                )
+                            }
                         )
                     }
 
@@ -325,6 +336,7 @@ private struct CrewArenaBackground: View {
 private struct CrewArenaHeader: View {
     let mode: CrewHomeMode
     let scope: CrewCommunityScope
+    let studentContext: CrewArenaStudentContext
     let liveCount: Int
     let requestCount: Int
     let primaryIcon: String
@@ -338,7 +350,7 @@ private struct CrewArenaHeader: View {
         case .social:
             return "AKTİF ALAN · \(liveCount) LIVE"
         case .community:
-            return scope.headerEyebrow
+            return scope.headerEyebrow(studentContext: studentContext)
         }
     }
 
@@ -855,6 +867,11 @@ private struct CrewSocialCrewCard: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.65)
 
+                    if crew.isPinned {
+                        Image(systemName: "pin.fill")
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundStyle(Color(crewHex: CrewArenaPalette.gold))
+                    }
                     Text(crew.rankText)
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .foregroundStyle(.white.opacity(0.90))
@@ -939,6 +956,33 @@ private struct CrewSocialCrewCard: View {
 
                     Spacer()
 
+                    if let lastMessageText = crew.lastMessageText,
+                       !lastMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        HStack(spacing: 8) {
+                            Image(systemName: crew.isMuted ? "bell.slash.fill" : "bubble.left.fill")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(.white.opacity(0.38))
+
+                            Text(lastMessageText)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.52))
+                                .lineLimit(1)
+
+                            Spacer()
+
+                            if crew.unreadCount > 0 {
+                                Text("\(crew.unreadCount)")
+                                    .font(.system(size: 10, weight: .black, design: .rounded))
+                                    .foregroundStyle(.black)
+                                    .frame(minWidth: 19, minHeight: 19)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color(crewHex: CrewArenaPalette.gold))
+                                    )
+                            }
+                        }
+                    }
+                    
                     HStack(spacing: 8) {
                         Circle()
                             .fill(crew.isLive ? Color(crewHex: CrewArenaPalette.crewCoral) : Color(crewHex: CrewArenaPalette.liveGreen))
@@ -1258,19 +1302,30 @@ private struct CrewCommunityContent: View {
     @Binding var range: CrewLeaderboardRange
 
     let studentContext: CrewArenaStudentContext
+    @ObservedObject var arenaStore: ArenaStore
+    let onStartFocus: () -> Void
+    
+    
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             CrewCommunityScopeSwitch(selectedScope: $scope)
 
             CrewCommunityHero(
-                summary: CrewCommunityMockFactory.summary(
+                summary: arenaStore.summary ?? CrewCommunityMockFactory.summary(
                     for: scope,
                     studentContext: studentContext
                 )
             )
 
-            CrewWeeklyBattleCard(challenge: CrewCommunityMockFactory.weeklyChallenge)
+            if let weeklyChallenge = arenaStore.weeklyChallenge {
+                CrewWeeklyBattleCard(challenge: weeklyChallenge)
+            } else {
+                CrewArenaPreparingCard(
+                    title: "Haftalık challenge hazırlanıyor",
+                    subtitle: "Arena backend bağlı. Gerçek challenge verileri geldiğinde burada görünecek."
+                )
+            }
 
             HStack(alignment: .center) {
                 CrewSectionTitle(
@@ -1285,9 +1340,46 @@ private struct CrewCommunityContent: View {
                 CrewRangePicker(selectedRange: $range)
             }
 
-            CrewPodiumCard(entries: CrewCommunityMockFactory.students)
+            if arenaStore.leaderboard.isEmpty {
+                CrewArenaEmptyLeaderboardCard(
+                    onStartFocus: onStartFocus
+                )
+            } else {
+                CrewPodiumCard(entries: arenaStore.leaderboard)
+            }
 
-            CrewTopCrewsSection(crews: CrewCommunityMockFactory.topCrews)
+            if arenaStore.topCrews.isEmpty {
+                CrewArenaPreparingCard(
+                    title: "Top crews yakında",
+                    subtitle: "Bölüm, kampüs ve ülke crew sıralamaları backend’den geldikçe burada listelenecek."
+                )
+            } else {
+                CrewTopCrewsSection(crews: arenaStore.topCrews)
+            }
+        }
+        .task {
+            await arenaStore.load(
+                scope: scope,
+                range: range
+            )
+        }
+        .onChange(of: scope) { newScope in
+            Task {
+                await arenaStore.load(
+                    scope: newScope,
+                    range: range,
+                    force: true
+                )
+            }
+        }
+        .onChange(of: range) { newRange in
+            Task {
+                await arenaStore.load(
+                    scope: scope,
+                    range: newRange,
+                    force: true
+                )
+            }
         }
     }
 }
@@ -1653,7 +1745,7 @@ private struct CrewPodiumCard: View {
                     .font(.system(size: 18, weight: .black))
                     .foregroundStyle(.white)
 
-                Text("Week 18")
+                Text("LIVE RANK")
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
                     .foregroundStyle(Color(crewHex: CrewArenaPalette.gold))
                     .padding(.horizontal, 9)
@@ -1814,7 +1906,7 @@ private struct CrewTopCrewsSection: View {
                 }
             }
 
-            ForEach(Array(crews.prefix(3))) { crew in
+            ForEach(Array(crews.prefix(5))) { crew in
                 CrewCommunityLeaderboardRow(crew: crew)
             }
         }
@@ -1824,13 +1916,36 @@ private struct CrewTopCrewsSection: View {
 private struct CrewCommunityLeaderboardRow: View {
     let crew: CrewCommunityCrewEntry
 
+    private var focusLabel: String {
+        if crew.focusMinutes <= 0 {
+            return "Henüz focus yok"
+        }
+
+        return "\(crew.focusTimeText) focus"
+    }
+
+    private var memberLabel: String {
+        "\(crew.memberCount) üye"
+    }
+
+    private var rankColor: Color {
+        if crew.rank == 1 {
+            return Color(crewHex: CrewArenaPalette.gold)
+        }
+
+        if crew.rank == 2 {
+            return Color(crewHex: CrewArenaPalette.liveGreen)
+        }
+
+        return Color(crewHex: CrewArenaPalette.crewCoral)
+    }
+
     var body: some View {
         HStack(spacing: 12) {
-            VStack(spacing: 0) {
-                Text("\(crew.rank)")
-                    .font(.system(size: 27, weight: .regular, design: .serif))
-                    .italic()
-                    .foregroundStyle(crew.rank <= 2 ? Color(crewHex: CrewArenaPalette.liveGreen) : Color(crewHex: CrewArenaPalette.crewCoral))
+            VStack(spacing: 2) {
+                Text("#\(crew.rank)")
+                    .font(.system(size: 21, weight: .black, design: .rounded))
+                    .foregroundStyle(rankColor)
 
                 if crew.deltaRank != 0 {
                     Text(crew.deltaRank > 0 ? "↑\(crew.deltaRank)" : "↓\(abs(crew.deltaRank))")
@@ -1838,55 +1953,81 @@ private struct CrewCommunityLeaderboardRow: View {
                         .foregroundStyle(crew.deltaRank > 0 ? Color(crewHex: CrewArenaPalette.liveGreen) : Color(crewHex: CrewArenaPalette.crewCoral))
                 }
             }
-            .frame(width: 32)
+            .frame(width: 38)
 
             ZStack(alignment: .bottomTrailing) {
-                RoundedRectangle(cornerRadius: 15, style: .continuous)
-                    .fill(Color(crewHex: crew.colorHex).opacity(0.20))
-                    .frame(width: 48, height: 48)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(crewHex: crew.colorHex).opacity(0.24),
+                                Color(crewHex: CrewArenaPalette.appPurple).opacity(0.12)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 52, height: 52)
                     .overlay(
                         Text(crew.icon)
-                            .font(.system(size: 23))
+                            .font(.system(size: 24))
                     )
 
                 if crew.isLive {
                     Circle()
                         .fill(Color(crewHex: CrewArenaPalette.liveGreen))
-                        .frame(width: 9, height: 9)
-                        .overlay(Circle().stroke(Color(crewHex: CrewArenaPalette.surface), lineWidth: 2))
+                        .frame(width: 11, height: 11)
+                        .overlay(
+                            Circle()
+                                .stroke(Color(crewHex: CrewArenaPalette.surface), lineWidth: 2)
+                        )
+                        .offset(x: 2, y: 2)
                 }
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 5) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
                     Text(crew.name)
-                        .font(.system(size: 15, weight: .black))
+                        .font(.system(size: 16, weight: .black))
                         .foregroundStyle(.white)
                         .lineLimit(1)
 
-                    Text(crew.badges.joined())
-                        .font(.system(size: 12))
-                        .lineLimit(1)
+                    if !crew.badges.isEmpty {
+                        Text(crew.badges.joined())
+                            .font(.system(size: 12))
+                            .lineLimit(1)
+                    }
                 }
 
-                HStack(spacing: 5) {
-                    Text(crew.focusTimeText)
+                HStack(spacing: 7) {
+                    Text(focusLabel)
                         .font(.system(size: 11, weight: .black, design: .monospaced))
-                        .foregroundStyle(Color(crewHex: CrewArenaPalette.crewCoral))
+                        .foregroundStyle(
+                            crew.focusMinutes > 0
+                            ? Color(crewHex: CrewArenaPalette.crewCoral)
+                            : .white.opacity(0.38)
+                        )
+                        .lineLimit(1)
 
-                    Text("· \(crew.universityShort) · \(crew.memberText)")
+                    Text("·")
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.24))
+
+                    Text("\(crew.universityShort) · \(memberLabel)")
                         .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.34))
+                        .foregroundStyle(.white.opacity(0.42))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.70)
                 }
             }
 
-            Spacer()
+            Spacer(minLength: 8)
 
             Text(crew.joinState.title)
-                .font(.system(size: 11, weight: .black, design: .monospaced))
+                .font(.system(size: 10, weight: .black, design: .monospaced))
                 .foregroundStyle(crew.joinState == .join ? .black : Color(crewHex: crew.colorHex))
-                .padding(.horizontal, 12)
-                .frame(height: 38)
+                .padding(.horizontal, 11)
+                .frame(height: 36)
                 .background(
                     RoundedRectangle(cornerRadius: 13, style: .continuous)
                         .fill(
@@ -1900,7 +2041,7 @@ private struct CrewCommunityLeaderboardRow: View {
                         )
                 )
         }
-        .padding(12)
+        .padding(13)
         .background(CrewSurface(cornerRadius: 22))
     }
 }
@@ -1982,6 +2123,101 @@ private struct CrewRangePicker: View {
                         .stroke(.white.opacity(0.10), lineWidth: 1)
                 )
         )
+    }
+}
+
+private struct CrewArenaPreparingCard: View {
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        HStack(spacing: 13) {
+            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                .fill(Color(crewHex: CrewArenaPalette.gold).opacity(0.14))
+                .frame(width: 50, height: 50)
+                .overlay(
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 20, weight: .black))
+                        .foregroundStyle(Color(crewHex: CrewArenaPalette.gold))
+                )
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(title)
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text(subtitle)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.46))
+                    .lineLimit(2)
+            }
+
+            Spacer()
+        }
+        .padding(14)
+        .background(CrewSurface(cornerRadius: 22))
+    }
+}
+private struct CrewArenaEmptyLeaderboardCard: View {
+    let onStartFocus: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 13) {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(crewHex: CrewArenaPalette.gold).opacity(0.22),
+                                Color(crewHex: CrewArenaPalette.crewCoral).opacity(0.14)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 54, height: 54)
+                    .overlay(
+                        Image(systemName: "trophy.fill")
+                            .font(.system(size: 21, weight: .black))
+                            .foregroundStyle(Color(crewHex: CrewArenaPalette.gold))
+                    )
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("İlk sıraya sen çık")
+                        .font(.system(size: 17, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text("Focus oturumu tamamlayınca bölüm, kampüs ve ülke sıralamasında görünürsün.")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.50))
+                        .lineLimit(2)
+                }
+
+                Spacer()
+            }
+
+            Button {
+                onStartFocus()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "timer")
+                        .font(.system(size: 13, weight: .black))
+
+                    Text("Focus başlat")
+                        .font(.system(size: 13, weight: .black))
+                }
+                .foregroundStyle(.black)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(
+                    Capsule()
+                        .fill(Color(crewHex: CrewArenaPalette.gold))
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(15)
+        .background(CrewSurface(cornerRadius: 24))
     }
 }
 
