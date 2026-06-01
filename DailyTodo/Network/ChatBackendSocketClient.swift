@@ -454,6 +454,19 @@ struct ChatBackendSocketPayload: Decodable {
     let messages: [ChatBackendSeenMessageDTO]?
     let code: String?
     let error: String?
+    
+    
+    let session: CrewFocusSessionDTO?
+    let participant: CrewFocusParticipantDTO?
+    let sessionID: UUID?
+    
+    let task: CrewTaskDTO?
+        let activity: CrewActivityDTO?
+        let member: CrewMemberDTO?
+        let record: CrewFocusRecordDTO?
+        let taskID: UUID?
+        let memberID: UUID?
+        let crewID: UUID?
 
 
     var asSeenPayload: ChatBackendMessageSeenPayload? {
@@ -510,4 +523,25 @@ extension Notification.Name {
     static let chatBackendMessageCreated = Notification.Name("chatBackendMessageCreated")
     static let chatBackendMessageSeen = Notification.Name("chatBackendMessageSeen")
     static let chatBackendMessageDelivered = Notification.Name("chatBackendMessageDelivered")
+
+    // YENİ — Crew focus realtime events:
+    static let crewFocusSessionStarted = Notification.Name("crewFocusSessionStarted")
+    static let crewFocusSessionBegun = Notification.Name("crewFocusSessionBegun")
+    static let crewFocusSessionPaused = Notification.Name("crewFocusSessionPaused")
+    static let crewFocusSessionResumed = Notification.Name("crewFocusSessionResumed")
+    static let crewFocusSessionEnded = Notification.Name("crewFocusSessionEnded")
+    static let crewFocusParticipantJoined = Notification.Name("crewFocusParticipantJoined")
+    static let crewFocusParticipantLeft = Notification.Name("crewFocusParticipantLeft")
+    
+    // YENİ — Parça 6:
+        static let crewTaskCreated = Notification.Name("crewTaskCreated")
+        static let crewTaskUpdated = Notification.Name("crewTaskUpdated")
+        static let crewTaskToggled = Notification.Name("crewTaskToggled")
+        static let crewTaskCompletedAfterFocus = Notification.Name("crewTaskCompletedAfterFocus")
+        static let crewTaskDeleted = Notification.Name("crewTaskDeleted")
+        static let crewActivityCreated = Notification.Name("crewActivityCreated")
+        static let crewMemberAdded = Notification.Name("crewMemberAdded")
+        static let crewMemberRemoved = Notification.Name("crewMemberRemoved")
+        static let crewMemberUpdated = Notification.Name("crewMemberUpdated")
+        static let crewFocusRecordCreated = Notification.Name("crewFocusRecordCreated")
 }

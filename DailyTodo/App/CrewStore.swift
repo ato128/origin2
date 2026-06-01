@@ -31,7 +31,7 @@ final class CrewStore: ObservableObject {
     @Published var crewFocusRecords: [CrewFocusRecordDTO] = []
     @Published var crewMessageReads: [CrewMessageReadDTO] = []
     @Published var crewTypingStatuses: [CrewTypingStatusDTO] = []
-
+    
     @Published var chatMessagesByCrew: [UUID: [CrewChatMessageItem]] = [:]
     @Published var activeFocusSessionByCrew: [UUID: CrewFocusSessionDTO] = [:]
     @Published var focusParticipantsBySession: [UUID: [CrewFocusParticipantDTO]] = [:]
@@ -40,20 +40,20 @@ final class CrewStore: ObservableObject {
     @Published var chatLastLoadedAtByCrew: [UUID: Date] = [:]
     @Published var hasLoadedChatInitiallyByCrew: [UUID: Bool] = [:]
     @Published var chatLoadingByCrew: [UUID: Bool] = [:]
-
+    
     private var activeFocusChannel: RealtimeChannelV2?
     private var focusParticipantsChannel: RealtimeChannelV2?
     private var subscribedFocusCrewID: UUID?
     
     private var globalFocusChannel: RealtimeChannelV2?
     private var isSubscribingGlobalFocus = false
-
+    
     private var taskChannel: RealtimeChannelV2?
     private var memberChannel: RealtimeChannelV2?
     private var activityChannel: RealtimeChannelV2?
     private var focusChannel: RealtimeChannelV2?
     private var lastTypingStateByCrew: [UUID: Bool] = [:]
-
+    
     private var crewMessagesChannel: RealtimeChannelV2?
     private var subscribedCrewMessageID: UUID?
     private var hasLoadedCrews = false
@@ -70,7 +70,7 @@ final class CrewStore: ObservableObject {
     private var isSubscribingCrewAux = false
     
     
-   
+    
     private var crewsStatsTaskChannel: RealtimeChannelV2?
     private var crewsStatsMemberChannel: RealtimeChannelV2?
     
@@ -87,27 +87,29 @@ final class CrewStore: ObservableObject {
     
     func removeMember(_ member: CrewMemberDTO, from crewID: UUID) async throws {
         let oldMembers = crewMembers
-
-        // optimistic local remove
+        
+        // Optimistic local remove
         crewMembers.removeAll { $0.id == member.id }
-
-        do {
-            try await SupabaseManager.shared.client
-                .from("crew_members")
-                .delete()
-                .eq("id", value: member.id.uuidString)
-                .eq("crew_id", value: crewID.uuidString)
-                .execute()
-
-            await loadMembers(for: crewID)
-            await loadMemberProfiles(for: crewMembers)
-            await refreshCrewStats(for: crewID)
-
-        } catch {
+        
+        let success = await CrewBackendClient.shared.removeMember(
+            crewID: crewID,
+            memberID: member.id
+        )
+        
+        guard success else {
+            // Rollback
             crewMembers = oldMembers
-            print("REMOVE MEMBER ERROR:", error.localizedDescription)
-            throw error
+            print("REMOVE MEMBER ERROR: backend failed")
+            throw NSError(
+                domain: "CrewStore",
+                code: 500,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to remove member."]
+            )
         }
+        
+        await loadMembers(for: crewID)
+        await loadMemberProfiles(for: crewMembers)
+        await refreshCrewStats(for: crewID)
     }
     func deleteCrew(
         crewID: UUID,
@@ -120,7 +122,7 @@ final class CrewStore: ObservableObject {
                 userInfo: [NSLocalizedDescriptionKey: "Crew not found."]
             )
         }
-
+        
         guard crew.owner_id == currentUserID else {
             throw NSError(
                 domain: "CrewStore",
@@ -128,7 +130,8 @@ final class CrewStore: ObservableObject {
                 userInfo: [NSLocalizedDescriptionKey: "Only the crew owner can delete this crew."]
             )
         }
-
+        
+        // Optimistic update için yedek
         let oldCrews = crews
         let oldMembers = crewMembers
         let oldTasks = crewTasks
@@ -142,7 +145,8 @@ final class CrewStore: ObservableObject {
         let oldMemberCountByCrew = memberCountByCrew
         let oldTaskCountByCrew = taskCountByCrew
         let oldCompletedTaskCountByCrew = completedTaskCountByCrew
-
+        
+        // Optimistic UI update
         withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
             crews.removeAll { $0.id == crewID }
             crewMembers.removeAll { $0.crew_id == crewID }
@@ -157,117 +161,59 @@ final class CrewStore: ObservableObject {
             taskCountByCrew.removeValue(forKey: crewID)
             completedTaskCountByCrew.removeValue(forKey: crewID)
         }
-
-        do {
-            if subscribedCrewRealtimeID == crewID {
-                unsubscribe()
-            }
-
-            if subscribedCrewMessageID == crewID {
-                unsubscribeCrewChat()
-            }
-
-            if subscribedFocusCrewID == crewID {
-                unsubscribeCrewFocusRealtime()
-            }
-
-            try await SupabaseManager.shared.client
-                .from("crew_focus_participants")
-                .delete()
-                .eq("crew_id", value: crewID.uuidString)
-                .execute()
-
-            try await SupabaseManager.shared.client
-                .from("crew_focus_sessions")
-                .delete()
-                .eq("crew_id", value: crewID.uuidString)
-                .execute()
-
-            try await SupabaseManager.shared.client
-                .from("crew_messages")
-                .delete()
-                .eq("crew_id", value: crewID.uuidString)
-                .execute()
-
-            try await SupabaseManager.shared.client
-                .from("crew_message_reads")
-                .delete()
-                .eq("crew_id", value: crewID.uuidString)
-                .execute()
-
-            try await SupabaseManager.shared.client
-                .from("crew_typing_status")
-                .delete()
-                .eq("crew_id", value: crewID.uuidString)
-                .execute()
-
-            try await SupabaseManager.shared.client
-                .from("crew_tasks")
-                .delete()
-                .eq("crew_id", value: crewID.uuidString)
-                .execute()
-
-            try await SupabaseManager.shared.client
-                .from("crew_activities")
-                .delete()
-                .eq("crew_id", value: crewID.uuidString)
-                .execute()
-
-            try await SupabaseManager.shared.client
-                .from("crew_focus_records")
-                .delete()
-                .eq("crew_id", value: crewID.uuidString)
-                .execute()
-
-            try await SupabaseManager.shared.client
-                .from("crew_invites")
-                .delete()
-                .eq("crew_id", value: crewID.uuidString)
-                .execute()
-
-            try await SupabaseManager.shared.client
-                .from("crew_members")
-                .delete()
-                .eq("crew_id", value: crewID.uuidString)
-                .execute()
-
-            try await SupabaseManager.shared.client
-                .from("crews")
-                .delete()
-                .eq("id", value: crewID.uuidString)
-                .eq("owner_id", value: currentUserID.uuidString)
-                .execute()
-
-            print("✅ CREW DELETED:", crewID.uuidString)
-        } catch {
-            crews = oldCrews
-            crewMembers = oldMembers
-            crewTasks = oldTasks
-            crewActivities = oldActivities
-            crewFocusRecords = oldFocusRecords
-            crewMessageReads = oldMessageReads
-            crewTypingStatuses = oldTypingStatuses
-            chatMessagesByCrew = oldChatMessagesByCrew
-            activeFocusSessionByCrew = oldActiveFocusSessionByCrew
-            focusParticipantsBySession = oldFocusParticipantsBySession
-            memberCountByCrew = oldMemberCountByCrew
-            taskCountByCrew = oldTaskCountByCrew
-            completedTaskCountByCrew = oldCompletedTaskCountByCrew
-
-            print("DELETE CREW ERROR:", error.localizedDescription)
-            throw error
+        
+        // Realtime subscription'ları kapat (Supabase realtime için)
+        if subscribedCrewRealtimeID == crewID {
+            unsubscribe()
         }
+        
+        if subscribedCrewMessageID == crewID {
+            unsubscribeCrewChat()
+        }
+        
+        if subscribedFocusCrewID == crewID {
+            unsubscribeCrewFocusRealtime()
+        }
+        
+        // Backend ÇAĞRISI — CASCADE FK ile tüm bağımlı kayıtlar otomatik silinir
+        let success = await CrewBackendClient.shared.deleteCrew(crewID: crewID)
+        
+        if success {
+            print("✅ CREW DELETED:", crewID.uuidString)
+            return
+        }
+        
+        // Backend hatası → rollback
+        crews = oldCrews
+        crewMembers = oldMembers
+        crewTasks = oldTasks
+        crewActivities = oldActivities
+        crewFocusRecords = oldFocusRecords
+        crewMessageReads = oldMessageReads
+        crewTypingStatuses = oldTypingStatuses
+        chatMessagesByCrew = oldChatMessagesByCrew
+        activeFocusSessionByCrew = oldActiveFocusSessionByCrew
+        focusParticipantsBySession = oldFocusParticipantsBySession
+        memberCountByCrew = oldMemberCountByCrew
+        taskCountByCrew = oldTaskCountByCrew
+        completedTaskCountByCrew = oldCompletedTaskCountByCrew
+        
+        throw NSError(
+            domain: "CrewStore",
+            code: 500,
+            userInfo: [NSLocalizedDescriptionKey: "Failed to delete crew."]
+        )
     }
-
+    
     // MARK: - Chat Helpers
-
+    
     
     
     
     private func isoDate(_ raw: String?) -> Date {
         CrewDateParser.parse(raw) ?? Date()
     }
-
+    
     private func mapDTOToChatItem(
         _ dto: CrewMessageDTO,
         currentUserID: UUID?
@@ -288,7 +234,7 @@ final class CrewStore: ObservableObject {
             isFailed: false
         )
     }
-
+    
     private func sortAndTrimChatItems(_ items: [CrewChatMessageItem]) -> [CrewChatMessageItem] {
         let sorted = items.sorted { lhs, rhs in
             if lhs.createdAt == rhs.createdAt {
@@ -296,13 +242,13 @@ final class CrewStore: ObservableObject {
             }
             return lhs.createdAt < rhs.createdAt
         }
-
+        
         return Array(sorted.suffix(100))
     }
-
+    
     private func mergeChatItem(_ item: CrewChatMessageItem, into crewID: UUID) {
         var items = chatMessagesByCrew[crewID] ?? []
-
+        
         if let serverID = item.serverID,
            let existingIndex = items.firstIndex(where: { $0.serverID == serverID }) {
             items[existingIndex] = item
@@ -314,10 +260,10 @@ final class CrewStore: ObservableObject {
         } else {
             items.append(item)
         }
-
+        
         chatMessagesByCrew[crewID] = sortAndTrimChatItems(items)
     }
-
+    
     private func setChatMessages(
         _ items: [CrewChatMessageItem],
         for crewID: UUID,
@@ -329,17 +275,17 @@ final class CrewStore: ObservableObject {
            !existing.isEmpty {
             return
         }
-
+        
         chatMessagesByCrew[crewID] = sortAndTrimChatItems(items)
     }
-
+    
     private func appendChatMessage(
         _ item: CrewChatMessageItem,
         for crewID: UUID
     ) {
         mergeChatItem(item, into: crewID)
     }
-
+    
     private func replacePendingMessageByClientID(
         crewID: UUID,
         clientID: String,
@@ -347,7 +293,7 @@ final class CrewStore: ObservableObject {
     ) {
         mergeChatItem(item, into: crewID)
     }
-
+    
     func handleIncomingMessage(
         _ dto: CrewMessageDTO,
         currentUserID: UUID?
@@ -355,15 +301,15 @@ final class CrewStore: ObservableObject {
         let item = mapDTOToChatItem(dto, currentUserID: currentUserID)
         mergeChatItem(item, into: dto.crew_id)
     }
-
+    
     private func markPendingMessageFailed(
         crewID: UUID,
         localID: UUID
     ) {
         var items = chatMessagesByCrew[crewID] ?? []
-
+        
         guard let index = items.firstIndex(where: { $0.id == localID }) else { return }
-
+        
         let old = items[index]
         items[index] = CrewChatMessageItem(
             id: old.id,
@@ -380,7 +326,7 @@ final class CrewStore: ObservableObject {
             isPending: false,
             isFailed: true
         )
-
+        
         chatMessagesByCrew[crewID] = sortAndTrimChatItems(items)
     }
     
@@ -400,10 +346,10 @@ final class CrewStore: ObservableObject {
                 .limit(1)
                 .single()
                 .execute()
-
+            
             let dto = try JSONDecoder().decode(CrewMessageDTO.self, from: response.data)
             let item = mapDTOToChatItem(dto, currentUserID: currentUserID)
-
+            
             replacePendingMessageByClientID(
                 crewID: crewID,
                 clientID: clientID,
@@ -418,7 +364,7 @@ final class CrewStore: ObservableObject {
         guard let last = chatLastLoadedAtByCrew[crewID] else { return true }
         return Date().timeIntervalSince(last) > maxAge
     }
-
+    
     
     // MARK: - Chat Load
     
@@ -430,10 +376,10 @@ final class CrewStore: ObservableObject {
             await loadInitialChatMessages(for: crewID, currentUserID: currentUserID)
             return
         }
-
+        
         do {
             let iso = CrewDateParser.string(from: latest)
-
+            
             let response = try await SupabaseManager.shared.client
                 .from("crew_messages")
                 .select()
@@ -441,13 +387,13 @@ final class CrewStore: ObservableObject {
                 .gt("created_at", value: iso)
                 .order("created_at", ascending: true)
                 .execute()
-
+            
             let decoded = try JSONDecoder().decode([CrewMessageDTO].self, from: response.data)
-
+            
             for dto in decoded {
                 handleIncomingMessage(dto, currentUserID: currentUserID)
             }
-
+            
             if !decoded.isEmpty {
                 chatLastLoadedAtByCrew[crewID] = Date()
             }
@@ -462,31 +408,31 @@ final class CrewStore: ObservableObject {
            crewReadsChannel != nil {
             return
         }
-
+        
         if isSubscribingCrewAux {
             return
         }
-
+        
         isSubscribingCrewAux = true
-
+        
         let client = SupabaseManager.shared.client
-
+        
         Task { @MainActor in
             if let existingTyping = crewTypingChannel {
                 await existingTyping.unsubscribe()
             }
-
+            
             if let existingReads = crewReadsChannel {
                 await existingReads.unsubscribe()
             }
-
+            
             crewTypingChannel = nil
             crewReadsChannel = nil
             subscribedAuxCrewID = nil
-
+            
             let typingChannel = client.realtimeV2.channel("crew-typing-\(crewID.uuidString)")
             let readsChannel = client.realtimeV2.channel("crew-reads-\(crewID.uuidString)")
-
+            
             _ = typingChannel.onPostgresChange(
                 InsertAction.self,
                 schema: "public",
@@ -498,7 +444,7 @@ final class CrewStore: ObservableObject {
                     await self.loadCrewTypingStatuses(for: crewID)
                 }
             }
-
+            
             _ = typingChannel.onPostgresChange(
                 UpdateAction.self,
                 schema: "public",
@@ -510,7 +456,7 @@ final class CrewStore: ObservableObject {
                     await self.loadCrewTypingStatuses(for: crewID)
                 }
             }
-
+            
             _ = readsChannel.onPostgresChange(
                 InsertAction.self,
                 schema: "public",
@@ -522,7 +468,7 @@ final class CrewStore: ObservableObject {
                     await self.loadCrewMessageReads(for: crewID)
                 }
             }
-
+            
             _ = readsChannel.onPostgresChange(
                 UpdateAction.self,
                 schema: "public",
@@ -534,11 +480,11 @@ final class CrewStore: ObservableObject {
                     await self.loadCrewMessageReads(for: crewID)
                 }
             }
-
+            
             crewTypingChannel = typingChannel
             crewReadsChannel = readsChannel
             subscribedAuxCrewID = crewID
-
+            
             do {
                 try await typingChannel.subscribeWithError()
                 try await readsChannel.subscribeWithError()
@@ -548,11 +494,11 @@ final class CrewStore: ObservableObject {
                 crewReadsChannel = nil
                 subscribedAuxCrewID = nil
             }
-
+            
             isSubscribingCrewAux = false
         }
     }
-
+    
     func unsubscribeCrewAuxRealtime() {
         let typingToUnsub = crewTypingChannel
         let readsToUnsub = crewReadsChannel
@@ -560,20 +506,20 @@ final class CrewStore: ObservableObject {
         crewReadsChannel = nil
         subscribedAuxCrewID = nil
         isSubscribingCrewAux = false
-
+        
         Task {
             await typingToUnsub?.unsubscribe()
             await readsToUnsub?.unsubscribe()
         }
     }
-
+    
     func loadInitialChatMessages(
         for crewID: UUID,
         currentUserID: UUID?
     ) async {
         chatLoadingByCrew[crewID] = true
         defer { chatLoadingByCrew[crewID] = false }
-
+        
         do {
             let response = try await SupabaseManager.shared.client
                 .from("crew_messages")
@@ -582,16 +528,16 @@ final class CrewStore: ObservableObject {
                 .order("created_at", ascending: false)
                 .limit(50)
                 .execute()
-
+            
             let decoded = try JSONDecoder().decode([CrewMessageDTO].self, from: response.data)
             let items = decoded.reversed().map { mapDTOToChatItem($0, currentUserID: currentUserID) }
-
+            
             setChatMessages(items, for: crewID, preserveExistingIfIncomingEmpty: true)
             chatLastLoadedAtByCrew[crewID] = Date()
             hasLoadedChatInitiallyByCrew[crewID] = true
         } catch {
             print("LOAD INITIAL CHAT MESSAGES ERROR:", error.localizedDescription)
-
+            
             if chatMessagesByCrew[crewID] == nil {
                 setChatMessages([], for: crewID, preserveExistingIfIncomingEmpty: false)
             }
@@ -610,12 +556,12 @@ final class CrewStore: ObservableObject {
            !cached.isEmpty {
             return
         }
-
+        
         await loadInitialChatMessages(for: crewID, currentUserID: currentUserID)
     }
-
+    
     // MARK: - Chat Send
-
+    
     func sendCrewMessageOptimistic(
         crewID: UUID,
         senderID: UUID?,
@@ -624,7 +570,7 @@ final class CrewStore: ObservableObject {
     ) async {
         let localID = UUID()
         let clientID = UUID().uuidString
-
+        
         let pendingItem = CrewChatMessageItem(
             id: localID,
             serverID: nil,
@@ -640,9 +586,9 @@ final class CrewStore: ObservableObject {
             isPending: true,
             isFailed: false
         )
-
+        
         appendChatMessage(pendingItem, for: crewID)
-
+        
         do {
             struct Payload: Encodable {
                 let crew_id: UUID
@@ -653,7 +599,7 @@ final class CrewStore: ObservableObject {
                 let reaction: String?
                 let client_id: String
             }
-
+            
             let payload = Payload(
                 crew_id: crewID,
                 sender_id: senderID,
@@ -663,7 +609,7 @@ final class CrewStore: ObservableObject {
                 reaction: nil,
                 client_id: clientID
             )
-
+            
             try await SupabaseManager.shared.client
                 .from("crew_messages")
                 .insert(payload)
@@ -673,7 +619,7 @@ final class CrewStore: ObservableObject {
                 crewID: crewID,
                 senderID: senderID
             )
-
+            
             await fetchInsertedMessage(
                 crewID: crewID,
                 clientID: clientID,
@@ -685,12 +631,12 @@ final class CrewStore: ObservableObject {
                 text: text,
                 senderID: senderID
             )
-
+            
             await incrementUnreadForOthers(
                 crewID: crewID,
                 senderID: senderID
             )
-
+            
         } catch {
             print("SEND CREW MESSAGE OPTIMISTIC ERROR:", error.localizedDescription)
             markPendingMessageFailed(crewID: crewID, localID: localID)
@@ -702,7 +648,7 @@ final class CrewStore: ObservableObject {
         senderID: UUID?
     ) async {
         guard let senderID else { return }
-
+        
         do {
             try await SupabaseManager.shared.client.rpc(
                 "increment_crew_unread_counts",
@@ -726,13 +672,13 @@ final class CrewStore: ObservableObject {
                 let user_id: UUID
                 let last_read_at: String
             }
-
+            
             let payload = ReadPayload(
                 crew_id: crewID,
                 user_id: userID,
                 last_read_at: CrewDateParser.string(from: Date())
             )
-
+            
             try await SupabaseManager.shared.client
                 .from("crew_message_reads")
                 .upsert(payload, onConflict: "crew_id,user_id")
@@ -751,9 +697,9 @@ final class CrewStore: ObservableObject {
         if lastTypingStateByCrew[crewID] == isTyping {
             return
         }
-
+        
         lastTypingStateByCrew[crewID] = isTyping
-
+        
         struct TypingPayload: Encodable {
             let crew_id: UUID
             let user_id: UUID
@@ -761,7 +707,7 @@ final class CrewStore: ObservableObject {
             let is_typing: Bool
             let updated_at: String
         }
-
+        
         let payload = TypingPayload(
             crew_id: crewID,
             user_id: userID,
@@ -769,7 +715,7 @@ final class CrewStore: ObservableObject {
             is_typing: isTyping,
             updated_at: CrewDateParser.string(from: Date())
         )
-
+        
         do {
             try await SupabaseManager.shared.client
                 .from("crew_typing_status")
@@ -787,9 +733,9 @@ final class CrewStore: ObservableObject {
                 .select()
                 .eq("crew_id", value: crewID.uuidString)
                 .execute()
-
+            
             let decoded = try JSONDecoder().decode([CrewTypingStatusDTO].self, from: response.data)
-
+            
             crewTypingStatuses.removeAll { $0.crew_id == crewID }
             crewTypingStatuses.append(contentsOf: decoded)
         } catch {
@@ -804,7 +750,7 @@ final class CrewStore: ObservableObject {
                 .select()
                 .eq("crew_id", value: crewID.uuidString)
                 .execute()
-
+            
             let decoded = try JSONDecoder().decode([CrewMessageReadDTO].self, from: response.data)
             crewMessageReads.removeAll { $0.crew_id == crewID }
             crewMessageReads.append(contentsOf: decoded)
@@ -814,28 +760,16 @@ final class CrewStore: ObservableObject {
     }
     
     func completeCrewTaskAfterFocus(taskID: UUID, crewID: UUID) async throws {
-        struct Payload: Encodable {
-            let is_done: Bool
-            let status: String
-        }
-
-        try await SupabaseManager.shared.client
-            .from("crew_tasks")
-            .update(
-                Payload(
-                    is_done: true,
-                    status: "done"
-                )
-            )
-            .eq("id", value: taskID.uuidString)
-            .eq("crew_id", value: crewID.uuidString)
-            .execute()
-
+        _ = try await CrewBackendClient.shared.completeTaskAfterFocus(
+            taskID: taskID,
+            crewID: crewID
+        )
+        
         await loadTasks(for: crewID)
         await loadTaskCount(for: crewID)
-        await loadCompletedTaskCount(for: crewID)
+        // loadCompletedTaskCount loadTaskCount içinde dolduruluyor, ekstra çağrıya gerek yok
     }
-
+    
     func createCrewMessage(
         crewID: UUID,
         senderID: UUID?,
@@ -853,7 +787,7 @@ final class CrewStore: ObservableObject {
             let reaction: String?
             let client_id: String
         }
-
+        
         let payload = Payload(
             crew_id: crewID,
             sender_id: senderID,
@@ -864,33 +798,33 @@ final class CrewStore: ObservableObject {
             reaction: nil,
             client_id: UUID().uuidString
         )
-
+        
         try await SupabaseManager.shared.client
             .from("crew_messages")
             .insert(payload)
             .execute()
-
+        
         await updateCrewLastMessageMetadata(
             crewID: crewID,
             text: text,
             senderID: senderID
         )
-
+        
         await incrementUnreadForOthers(
             crewID: crewID,
             senderID: senderID
         )
-
+        
         guard !isSystemMessage else { return }
-
+        
         let crewName = crews.first(where: { $0.id == crewID })?.name ?? "Crew"
-
+        
         let targetMembers = crewMembers.filter {
             $0.crew_id == crewID &&
             $0.user_id != senderID &&
             $0.is_muted != true
         }
-
+        
         for member in targetMembers {
             PushService.shared.sendCrewMessagePush(
                 toUserId: member.user_id.uuidString,
@@ -901,9 +835,9 @@ final class CrewStore: ObservableObject {
             )
         }
     }
-
+    
     // MARK: - Chat Realtime
-
+    
     func subscribeToCrewMessagesRealtime(
         crewID: UUID,
         currentUserID: UUID?
@@ -911,30 +845,30 @@ final class CrewStore: ObservableObject {
         if subscribedCrewMessageID == crewID, crewMessagesChannel != nil {
             return
         }
-
+        
         if isSubscribingCrewMessages {
             return
         }
-
+        
         isSubscribingCrewMessages = true
-
+        
         let client = SupabaseManager.shared.client
-
+        
         Task { @MainActor in
             // Race condition guard
             guard subscribedCrewMessageID != crewID else {
                 isSubscribingCrewMessages = false
                 return
             }
-
+            
             if let existing = crewMessagesChannel {
                 await existing.unsubscribe()
                 crewMessagesChannel = nil
                 subscribedCrewMessageID = nil
             }
-
+            
             let channel = client.realtimeV2.channel("crew-messages-\(crewID.uuidString)")
-
+            
             _ = channel.onPostgresChange(
                 InsertAction.self,
                 schema: "public",
@@ -952,7 +886,7 @@ final class CrewStore: ObservableObject {
                     }
                 }
             }
-
+            
             _ = channel.onPostgresChange(
                 UpdateAction.self,
                 schema: "public",
@@ -970,10 +904,10 @@ final class CrewStore: ObservableObject {
                     }
                 }
             }
-
+            
             crewMessagesChannel = channel
             subscribedCrewMessageID = crewID
-
+            
             do {
                 try await channel.subscribeWithError()
             } catch {
@@ -981,7 +915,7 @@ final class CrewStore: ObservableObject {
                 crewMessagesChannel = nil
                 subscribedCrewMessageID = nil
             }
-
+            
             isSubscribingCrewMessages = false
         }
     }
@@ -990,14 +924,14 @@ final class CrewStore: ObservableObject {
         crewMessagesChannel = nil
         subscribedCrewMessageID = nil
         isSubscribingCrewMessages = false
-
+        
         Task {
             await channelToUnsub?.unsubscribe()
         }
     }
-
+    
     // MARK: - General Crew Realtime
-
+    
     private func upsertLocalTask(_ task: CrewTaskDTO) {
         if let index = crewTasks.firstIndex(where: { $0.id == task.id }) {
             crewTasks[index] = task
@@ -1005,7 +939,7 @@ final class CrewStore: ObservableObject {
             crewTasks.insert(task, at: 0)
         }
     }
-
+    
     private func removeLocalTask(taskID: UUID) {
         crewTasks.removeAll { $0.id == taskID }
     }
@@ -1018,31 +952,31 @@ final class CrewStore: ObservableObject {
            focusChannel != nil {
             return
         }
-
+        
         let oldTaskChannel = taskChannel
         let oldMemberChannel = memberChannel
         let oldActivityChannel = activityChannel
         let oldFocusChannel = focusChannel
-
+        
         taskChannel = nil
         memberChannel = nil
         activityChannel = nil
         focusChannel = nil
         subscribedCrewRealtimeID = nil
-
+        
         Task { @MainActor in
             await oldTaskChannel?.unsubscribe()
             await oldMemberChannel?.unsubscribe()
             await oldActivityChannel?.unsubscribe()
             await oldFocusChannel?.unsubscribe()
-
+            
             let client = SupabaseManager.shared.client
-
+            
             let newTaskChannel = client.realtimeV2.channel("crew-tasks-\(crewID.uuidString)")
             let newMemberChannel = client.realtimeV2.channel("crew-members-\(crewID.uuidString)")
             let newActivityChannel = client.realtimeV2.channel("crew-activities-\(crewID.uuidString)")
             let newFocusChannel = client.realtimeV2.channel("crew-focus-records-\(crewID.uuidString)")
-
+            
             _ = newTaskChannel.onPostgresChange(
                 InsertAction.self,
                 schema: "public",
@@ -1050,12 +984,12 @@ final class CrewStore: ObservableObject {
                 filter: "crew_id=eq.\(crewID.uuidString)"
             ) { [weak self] action in
                 guard let self else { return }
-
+                
                 Task { @MainActor in
                     do {
                         let jsonData = try JSONSerialization.data(withJSONObject: action.record)
                         let dto = try JSONDecoder().decode(CrewTaskDTO.self, from: jsonData)
-
+                        
                         self.upsertLocalTask(dto)
                         await self.refreshCrewStats(for: crewID)
                     } catch {
@@ -1064,7 +998,7 @@ final class CrewStore: ObservableObject {
                     }
                 }
             }
-
+            
             _ = newTaskChannel.onPostgresChange(
                 UpdateAction.self,
                 schema: "public",
@@ -1072,12 +1006,12 @@ final class CrewStore: ObservableObject {
                 filter: "crew_id=eq.\(crewID.uuidString)"
             ) { [weak self] action in
                 guard let self else { return }
-
+                
                 Task { @MainActor in
                     do {
                         let jsonData = try JSONSerialization.data(withJSONObject: action.record)
                         let dto = try JSONDecoder().decode(CrewTaskDTO.self, from: jsonData)
-
+                        
                         self.upsertLocalTask(dto)
                         await self.refreshCrewStats(for: crewID)
                     } catch {
@@ -1086,7 +1020,7 @@ final class CrewStore: ObservableObject {
                     }
                 }
             }
-
+            
             _ = newTaskChannel.onPostgresChange(
                 DeleteAction.self,
                 schema: "public",
@@ -1094,7 +1028,7 @@ final class CrewStore: ObservableObject {
                 filter: "crew_id=eq.\(crewID.uuidString)"
             ) { [weak self] action in
                 guard let self else { return }
-
+                
                 Task { @MainActor in
                     if let idString = action.oldRecord["id"] as? String,
                        let taskID = UUID(uuidString: idString) {
@@ -1106,7 +1040,7 @@ final class CrewStore: ObservableObject {
                     }
                 }
             }
-
+            
             _ = newMemberChannel.onPostgresChange(
                 InsertAction.self,
                 schema: "public",
@@ -1115,13 +1049,13 @@ final class CrewStore: ObservableObject {
             ) { [weak self] _ in
                 Task { @MainActor in
                     guard let self else { return }
-
+                    
                     await self.loadMembers(for: crewID)
                     await self.loadMemberProfiles(for: self.crewMembers)
                     await self.loadMemberCount(for: crewID)
                 }
             }
-
+            
             _ = newMemberChannel.onPostgresChange(
                 UpdateAction.self,
                 schema: "public",
@@ -1130,13 +1064,13 @@ final class CrewStore: ObservableObject {
             ) { [weak self] _ in
                 Task { @MainActor in
                     guard let self else { return }
-
+                    
                     await self.loadMembers(for: crewID)
                     await self.loadMemberProfiles(for: self.crewMembers)
                     await self.loadMemberCount(for: crewID)
                 }
             }
-
+            
             _ = newMemberChannel.onPostgresChange(
                 DeleteAction.self,
                 schema: "public",
@@ -1145,13 +1079,13 @@ final class CrewStore: ObservableObject {
             ) { [weak self] _ in
                 Task { @MainActor in
                     guard let self else { return }
-
+                    
                     await self.loadMembers(for: crewID)
                     await self.loadMemberProfiles(for: self.crewMembers)
                     await self.loadMemberCount(for: crewID)
                 }
             }
-
+            
             _ = newActivityChannel.onPostgresChange(
                 InsertAction.self,
                 schema: "public",
@@ -1162,7 +1096,7 @@ final class CrewStore: ObservableObject {
                     await self?.loadActivities(for: crewID)
                 }
             }
-
+            
             _ = newActivityChannel.onPostgresChange(
                 UpdateAction.self,
                 schema: "public",
@@ -1173,7 +1107,7 @@ final class CrewStore: ObservableObject {
                     await self?.loadActivities(for: crewID)
                 }
             }
-
+            
             _ = newActivityChannel.onPostgresChange(
                 DeleteAction.self,
                 schema: "public",
@@ -1184,7 +1118,7 @@ final class CrewStore: ObservableObject {
                     await self?.loadActivities(for: crewID)
                 }
             }
-
+            
             _ = newFocusChannel.onPostgresChange(
                 InsertAction.self,
                 schema: "public",
@@ -1195,7 +1129,7 @@ final class CrewStore: ObservableObject {
                     await self?.loadFocusRecords(for: crewID)
                 }
             }
-
+            
             _ = newFocusChannel.onPostgresChange(
                 UpdateAction.self,
                 schema: "public",
@@ -1206,7 +1140,7 @@ final class CrewStore: ObservableObject {
                     await self?.loadFocusRecords(for: crewID)
                 }
             }
-
+            
             _ = newFocusChannel.onPostgresChange(
                 DeleteAction.self,
                 schema: "public",
@@ -1217,28 +1151,28 @@ final class CrewStore: ObservableObject {
                     await self?.loadFocusRecords(for: crewID)
                 }
             }
-
+            
             taskChannel = newTaskChannel
             memberChannel = newMemberChannel
             activityChannel = newActivityChannel
             focusChannel = newFocusChannel
             subscribedCrewRealtimeID = crewID
-
+            
             do {
                 try await newTaskChannel.subscribeWithError()
                 try await newMemberChannel.subscribeWithError()
                 try await newActivityChannel.subscribeWithError()
                 try await newFocusChannel.subscribeWithError()
-
+                
                 print("✅ CREW REALTIME SUBSCRIBED:", crewID.uuidString)
             } catch {
                 print("CREW REALTIME SUBSCRIBE ERROR:", error.localizedDescription)
-
+                
                 await newTaskChannel.unsubscribe()
                 await newMemberChannel.unsubscribe()
                 await newActivityChannel.unsubscribe()
                 await newFocusChannel.unsubscribe()
-
+                
                 if subscribedCrewRealtimeID == crewID {
                     taskChannel = nil
                     memberChannel = nil
@@ -1249,7 +1183,7 @@ final class CrewStore: ObservableObject {
             }
         }
     }
-
+    
     func unsubscribe() {
         Task {
             
@@ -1258,7 +1192,7 @@ final class CrewStore: ObservableObject {
             await activityChannel?.unsubscribe()
             await focusChannel?.unsubscribe()
         }
-
+        
         
         taskChannel = nil
         memberChannel = nil
@@ -1271,12 +1205,12 @@ final class CrewStore: ObservableObject {
         if globalFocusChannel != nil || isSubscribingGlobalFocus {
             return
         }
-
+        
         isSubscribingGlobalFocus = true
-
+        
         let client = SupabaseManager.shared.client
         let channel = client.realtimeV2.channel("global-focus")
-
+        
         _ = channel.onPostgresChange(
             InsertAction.self,
             schema: "public",
@@ -1286,7 +1220,7 @@ final class CrewStore: ObservableObject {
                 await self?.reloadAllActiveSessions()
             }
         }
-
+        
         _ = channel.onPostgresChange(
             UpdateAction.self,
             schema: "public",
@@ -1296,7 +1230,7 @@ final class CrewStore: ObservableObject {
                 await self?.reloadAllActiveSessions()
             }
         }
-
+        
         _ = channel.onPostgresChange(
             DeleteAction.self,
             schema: "public",
@@ -1306,7 +1240,7 @@ final class CrewStore: ObservableObject {
                 await self?.reloadAllActiveSessions()
             }
         }
-
+        
         _ = channel.onPostgresChange(
             InsertAction.self,
             schema: "public",
@@ -1316,7 +1250,7 @@ final class CrewStore: ObservableObject {
                 await self?.reloadAllParticipants()
             }
         }
-
+        
         _ = channel.onPostgresChange(
             UpdateAction.self,
             schema: "public",
@@ -1326,7 +1260,7 @@ final class CrewStore: ObservableObject {
                 await self?.reloadAllParticipants()
             }
         }
-
+        
         _ = channel.onPostgresChange(
             DeleteAction.self,
             schema: "public",
@@ -1336,9 +1270,9 @@ final class CrewStore: ObservableObject {
                 await self?.reloadAllParticipants()
             }
         }
-
+        
         globalFocusChannel = channel
-
+        
         Task { @MainActor in
             do {
                 try await channel.subscribeWithError()
@@ -1347,7 +1281,7 @@ final class CrewStore: ObservableObject {
                 print("GLOBAL FOCUS REALTIME SUBSCRIBE ERROR:", error.localizedDescription)
                 globalFocusChannel = nil
             }
-
+            
             isSubscribingGlobalFocus = false
         }
     }
@@ -1357,89 +1291,58 @@ final class CrewStore: ObservableObject {
             await loadActiveFocusSession(for: crew.id)
         }
     }
-
+    
     func reloadAllParticipants() async {
         for (_, session) in activeFocusSessionByCrew {
             await loadFocusParticipants(sessionID: session.id)
         }
     }
-
+    
     // MARK: - Existing Loads / Actions
-
+    
     func loadCrews(force: Bool = false) async {
         guard let currentUserID else {
             crews = []
             return
         }
-
+        
         if hasLoadedCrews && !force {
             return
         }
-
+        
         isLoading = true
         defer { isLoading = false }
-
-        do {
-            // Önce kullanıcının üye olduğu crew id'lerini al
-            let memberResponse = try await SupabaseManager.shared.client
-                .from("crew_members")
-                .select("crew_id")
-                .eq("user_id", value: currentUserID.uuidString)
-                .execute()
-
-            struct CrewMemberCrewIDDTO: Codable {
-                let crew_id: UUID
-            }
-
-            let memberDecoded = try JSONDecoder().decode([CrewMemberCrewIDDTO].self, from: memberResponse.data)
-            let crewIDs = memberDecoded.map(\.crew_id.uuidString)
-
-            guard !crewIDs.isEmpty else {
-                crews = []
-                hasLoadedCrews = true
-                return
-            }
-
-            let response = try await SupabaseManager.shared.client
-                .from("crews")
-                .select()
-                .in("id", values: crewIDs)
-                .order("created_at", ascending: false)
-                .execute()
-
-            let decoded = try JSONDecoder().decode([CrewDTO].self, from: response.data)
-            crews = decoded
-            hasLoadedCrews = true
-        } catch {
-            print("LOAD CREWS ERROR:", error.localizedDescription)
-            crews = []
-        }
+        
+        let backendCrews = await CrewBackendClient.shared.listCrews()
+        crews = backendCrews
+        hasLoadedCrews = true
     }
+    
     func subscribeToCrewsListRealtime(for userID: UUID) {
         if subscribedCrewsListUserID == userID {
             return
         }
-
+        
         let client = SupabaseManager.shared.client
-
+        
         Task {
             await crewsListChannel?.unsubscribe()
             await crewsMemberListChannel?.unsubscribe()
             await crewsStatsTaskChannel?.unsubscribe()
             await crewsStatsMemberChannel?.unsubscribe()
         }
-
+        
         crewsListChannel = nil
         crewsMemberListChannel = nil
         crewsStatsTaskChannel = nil
         crewsStatsMemberChannel = nil
-
+        
         crewsListChannel = client.realtimeV2.channel("crews-list-\(userID.uuidString)")
         crewsMemberListChannel = client.realtimeV2.channel("crew-members-list-\(userID.uuidString)")
         crewsStatsTaskChannel = client.realtimeV2.channel("crews-stats-tasks-\(userID.uuidString)")
         crewsStatsMemberChannel = client.realtimeV2.channel("crews-stats-members-\(userID.uuidString)")
         subscribedCrewsListUserID = userID
-
+        
         _ = crewsListChannel?.onPostgresChange(
             InsertAction.self,
             schema: "public",
@@ -1450,7 +1353,7 @@ final class CrewStore: ObservableObject {
                 do {
                     let jsonData = try JSONSerialization.data(withJSONObject: action.record)
                     let dto = try JSONDecoder().decode(CrewDTO.self, from: jsonData)
-
+                    
                     if dto.owner_id == userID {
                         self.upsertLocalCrew(dto)
                         await self.refreshCrewStats(for: dto.id)
@@ -1463,7 +1366,7 @@ final class CrewStore: ObservableObject {
                 }
             }
         }
-
+        
         _ = crewsListChannel?.onPostgresChange(
             UpdateAction.self,
             schema: "public",
@@ -1474,7 +1377,7 @@ final class CrewStore: ObservableObject {
                 do {
                     let jsonData = try JSONSerialization.data(withJSONObject: action.record)
                     let dto = try JSONDecoder().decode(CrewDTO.self, from: jsonData)
-
+                    
                     if self.crews.contains(where: { $0.id == dto.id }) || dto.owner_id == userID {
                         self.upsertLocalCrew(dto)
                     }
@@ -1483,7 +1386,7 @@ final class CrewStore: ObservableObject {
                 }
             }
         }
-
+        
         _ = crewsListChannel?.onPostgresChange(
             DeleteAction.self,
             schema: "public",
@@ -1500,7 +1403,7 @@ final class CrewStore: ObservableObject {
                 }
             }
         }
-
+        
         _ = crewsMemberListChannel?.onPostgresChange(
             InsertAction.self,
             schema: "public",
@@ -1513,7 +1416,7 @@ final class CrewStore: ObservableObject {
                 await self.loadStatsForAllCrews()
             }
         }
-
+        
         _ = crewsMemberListChannel?.onPostgresChange(
             DeleteAction.self,
             schema: "public",
@@ -1526,7 +1429,7 @@ final class CrewStore: ObservableObject {
                 await self.loadStatsForAllCrews()
             }
         }
-
+        
         _ = crewsStatsTaskChannel?.onPostgresChange(
             InsertAction.self,
             schema: "public",
@@ -1543,7 +1446,7 @@ final class CrewStore: ObservableObject {
                 }
             }
         }
-
+        
         _ = crewsStatsTaskChannel?.onPostgresChange(
             UpdateAction.self,
             schema: "public",
@@ -1560,7 +1463,7 @@ final class CrewStore: ObservableObject {
                 }
             }
         }
-
+        
         _ = crewsStatsTaskChannel?.onPostgresChange(
             DeleteAction.self,
             schema: "public",
@@ -1577,7 +1480,7 @@ final class CrewStore: ObservableObject {
                 }
             }
         }
-
+        
         _ = crewsStatsMemberChannel?.onPostgresChange(
             InsertAction.self,
             schema: "public",
@@ -1594,7 +1497,7 @@ final class CrewStore: ObservableObject {
                 }
             }
         }
-
+        
         _ = crewsStatsMemberChannel?.onPostgresChange(
             UpdateAction.self,
             schema: "public",
@@ -1611,7 +1514,7 @@ final class CrewStore: ObservableObject {
                 }
             }
         }
-
+        
         _ = crewsStatsMemberChannel?.onPostgresChange(
             DeleteAction.self,
             schema: "public",
@@ -1628,7 +1531,7 @@ final class CrewStore: ObservableObject {
                 }
             }
         }
-
+        
         Task {
             try? await crewsListChannel?.subscribeWithError()
             try? await crewsMemberListChannel?.subscribeWithError()
@@ -1645,7 +1548,7 @@ final class CrewStore: ObservableObject {
             await crewsStatsTaskChannel?.unsubscribe()
             await crewsStatsMemberChannel?.unsubscribe()
         }
-
+        
         crewsListChannel = nil
         crewsMemberListChannel = nil
         crewsStatsTaskChannel = nil
@@ -1660,7 +1563,7 @@ final class CrewStore: ObservableObject {
             crews.insert(crew, at: 0)
         }
     }
-
+    
     private func removeLocalCrew(id: UUID) {
         crews.removeAll { $0.id == id }
         memberCountByCrew[id] = nil
@@ -1693,7 +1596,7 @@ final class CrewStore: ObservableObject {
         hasLoadedChatInitiallyByCrew = [:]
         chatLoadingByCrew = [:]
         hasLoadedCrews = false
-
+        
         unsubscribe()
         unsubscribeCrewChat()
         unsubscribeCrewAuxRealtime()
@@ -1701,107 +1604,60 @@ final class CrewStore: ObservableObject {
         unsubscribeGlobalFocusRealtime()
         unsubscribeCrewsListRealtime()
     }
-
+    
     func loadMembers(for crewID: UUID) async {
-        do {
-            let response = try await SupabaseManager.shared.client
-                .from("crew_members")
-                .select()
-                .eq("crew_id", value: crewID.uuidString)
-                .execute()
-
-            let decoded = try JSONDecoder().decode([CrewMemberDTO].self, from: response.data)
-
-            crewMembers.removeAll { $0.crew_id == crewID }
-            crewMembers.append(contentsOf: decoded)
-
-            memberCountByCrew[crewID] = decoded.count
-
-        } catch {
-            print("LOAD MEMBERS ERROR:", error.localizedDescription)
-        }
+        let members = await CrewBackendClient.shared.listMembers(crewID: crewID)
+        
+        crewMembers.removeAll { $0.crew_id == crewID }
+        crewMembers.append(contentsOf: members)
+        
+        memberCountByCrew[crewID] = members.count
     }
     
     func loadMemberProfiles(for members: [CrewMemberDTO]) async {
         let ids = Array(Set(members.map { $0.user_id.uuidString }))
-
+        
         guard !ids.isEmpty else {
             memberProfiles = []
             return
         }
-
+        
         do {
             let response = try await SupabaseManager.shared.client
                 .from("profiles")
                 .select()
                 .in("id", values: ids)
                 .execute()
-
+            
             let decoded = try JSONDecoder().decode([ProfileDTO].self, from: response.data)
             memberProfiles = decoded
         } catch {
             print("LOAD MEMBER PROFILES ERROR:", error.localizedDescription)
         }
     }
-
+    
     func loadTasks(for crewID: UUID) async {
-        do {
-            let response = try await SupabaseManager.shared.client
-                .from("crew_tasks")
-                .select()
-                .eq("crew_id", value: crewID.uuidString)
-                .order("created_at", ascending: false)
-                .execute()
-
-            let decoded = try JSONDecoder().decode([CrewTaskDTO].self, from: response.data)
-
-            crewTasks.removeAll { $0.crew_id == crewID }
-            crewTasks.append(contentsOf: decoded)
-
-            taskCountByCrew[crewID] = decoded.count
-            completedTaskCountByCrew[crewID] = decoded.filter { $0.is_done }.count
-
-        } catch {
-            print("LOAD TASKS ERROR:", error.localizedDescription)
-        }
+        let tasks = await CrewBackendClient.shared.listTasks(crewID: crewID)
+        
+        crewTasks.removeAll { $0.crew_id == crewID }
+        crewTasks.append(contentsOf: tasks)
+        
+        taskCountByCrew[crewID] = tasks.count
+        completedTaskCountByCrew[crewID] = tasks.filter { $0.is_done }.count
     }
-
+    
     func loadActivities(for crewID: UUID) async {
-        do {
-            let response = try await SupabaseManager.shared.client
-                .from("crew_activities")
-                .select()
-                .eq("crew_id", value: crewID.uuidString)
-                .order("created_at", ascending: false)
-                .execute()
-
-            let decoded = try JSONDecoder().decode([CrewActivityDTO].self, from: response.data)
-
-            crewActivities.removeAll { $0.crew_id == crewID }
-            crewActivities.append(contentsOf: decoded)
-
-        } catch {
-            print("LOAD ACTIVITIES ERROR:", error.localizedDescription)
-        }
+        let activities = await CrewBackendClient.shared.listActivities(crewID: crewID)
+        
+        crewActivities.removeAll { $0.crew_id == crewID }
+        crewActivities.append(contentsOf: activities)
     }
-
+    
     func loadFocusRecords(for crewID: UUID) async {
-        do {
-            let response = try await SupabaseManager.shared.client
-                .from("crew_focus_records")
-                .select()
-                .eq("crew_id", value: crewID.uuidString)
-                .order("created_at", ascending: false)
-                .execute()
-
-            let decoded = try JSONDecoder().decode([CrewFocusRecordDTO].self, from: response.data)
-
-            crewFocusRecords.removeAll { $0.crew_id == crewID }
-            crewFocusRecords.append(contentsOf: decoded)
-
-        } catch {
-            print("LOAD FOCUS RECORDS ERROR:", error.localizedDescription)
-        }
+        let records = await CrewBackendClient.shared.listFocusRecords(crewID: crewID)
+        
+        crewFocusRecords.removeAll { $0.crew_id == crewID }
+        crewFocusRecords.append(contentsOf: records)
     }
     func loadMemberCount(for crewID: UUID) async {
         do {
@@ -1810,52 +1666,35 @@ final class CrewStore: ObservableObject {
                 .select("id", head: false, count: .exact)
                 .eq("crew_id", value: crewID.uuidString)
                 .execute()
-
+            
             memberCountByCrew[crewID] = response.count ?? 0
         } catch {
             print("LOAD MEMBER COUNT ERROR:", error.localizedDescription)
             memberCountByCrew[crewID] = 0
         }
     }
-
+    
     func loadTaskCount(for crewID: UUID) async {
-        do {
-            let response = try await SupabaseManager.shared.client
-                .from("crew_tasks")
-                .select("id", head: false, count: .exact)
-                .eq("crew_id", value: crewID.uuidString)
-                .execute()
-
-            taskCountByCrew[crewID] = response.count ?? 0
-        } catch {
-            print("LOAD TASK COUNT ERROR:", error.localizedDescription)
-            taskCountByCrew[crewID] = 0
-        }
+        let counts = await CrewBackendClient.shared.taskCounts(crewID: crewID)
+        taskCountByCrew[crewID] = counts.total
+        completedTaskCountByCrew[crewID] = counts.completed
     }
-
+    
     func loadCompletedTaskCount(for crewID: UUID) async {
-        do {
-            let response = try await SupabaseManager.shared.client
-                .from("crew_tasks")
-                .select("id", head: false, count: .exact)
-                .eq("crew_id", value: crewID.uuidString)
-                .eq("is_done", value: true)
-                .execute()
-
-            completedTaskCountByCrew[crewID] = response.count ?? 0
-        } catch {
-            print("LOAD COMPLETED TASK COUNT ERROR:", error.localizedDescription)
-            completedTaskCountByCrew[crewID] = 0
-        }
+        // loadTaskCount zaten hem total hem completed dolduruyor (tek query)
+        // Bu fonksiyon eski API uyumluluğu için duruyor — aynı işi yapar
+        let counts = await CrewBackendClient.shared.taskCounts(crewID: crewID)
+        taskCountByCrew[crewID] = counts.total
+        completedTaskCountByCrew[crewID] = counts.completed
     }
-
+    
     func loadHomeCacheForAllCrews() async {
         for crew in crews {
             await loadMembers(for: crew.id)
             await loadTasks(for: crew.id)
             await loadFocusRecords(for: crew.id)
             await loadActiveFocusSession(for: crew.id)
-
+            
             if let session = activeFocusSessionByCrew[crew.id] {
                 await loadFocusParticipants(sessionID: session.id)
             }
@@ -1869,31 +1708,31 @@ final class CrewStore: ObservableObject {
             await loadCompletedTaskCount(for: crew.id)
         }
     }
-
+    
     
     
     func loadFocusStateForAllCrews() async {
         for crew in crews {
             await loadActiveFocusSession(for: crew.id)
-
+            
             if let session = activeFocusSessionByCrew[crew.id] {
                 await loadFocusParticipants(sessionID: session.id)
             }
-
+            
             await loadFocusRecords(for: crew.id)
         }
     }
     
     func loadCurrentUserMembershipsForHome() async {
         guard let currentUserID else { return }
-
+        
         let crewIDs = crews.map(\.id.uuidString)
-
+        
         guard !crewIDs.isEmpty else {
             crewMembers = []
             return
         }
-
+        
         do {
             let response = try await SupabaseManager.shared.client
                 .from("crew_members")
@@ -1901,109 +1740,86 @@ final class CrewStore: ObservableObject {
                 .eq("user_id", value: currentUserID.uuidString)
                 .in("crew_id", values: crewIDs)
                 .execute()
-
+            
             let decoded = try JSONDecoder().decode([CrewMemberDTO].self, from: response.data)
-
+            
             let otherCrewMembers = crewMembers.filter { member in
                 !crewIDs.contains(member.crew_id.uuidString) || member.user_id != currentUserID
             }
-
+            
             crewMembers = otherCrewMembers + decoded
         } catch {
             print("LOAD CURRENT USER MEMBERSHIPS FOR HOME ERROR:", error.localizedDescription)
         }
     }
-
+    
     func createActivity(
         crewID: UUID,
         memberName: String,
         actionText: String
     ) async {
-        do {
-            try await SupabaseManager.shared.client
-                .from("crew_activities")
-                .insert([
-                    "crew_id": crewID.uuidString,
-                    "member_name": memberName,
-                    "action_text": actionText
-                ])
-                .execute()
-        } catch {
-            print("CREATE ACTIVITY ERROR:", error.localizedDescription)
-        }
+        _ = await CrewBackendClient.shared.createActivity(
+            crewID: crewID,
+            memberName: memberName,
+            actionText: actionText
+        )
     }
-
+    
     func createFocusRecord(
         crewID: UUID,
         userID: UUID?,
         memberName: String,
         minutes: Int
     ) async {
-        do {
-            let payload = CreateFocusRecordPayload(
-                crew_id: crewID.uuidString,
-                user_id: userID?.uuidString,
-                member_name: memberName,
-                minutes: minutes
-            )
-
-            try await SupabaseManager.shared.client
-                .from("crew_focus_records")
-                .insert(payload)
-                .execute()
-        } catch {
-            print("CREATE FOCUS RECORD ERROR:", error.localizedDescription)
-        }
+        _ = await CrewBackendClient.shared.createFocusRecord(
+            crewID: crewID,
+            userID: userID,
+            memberName: memberName,
+            minutes: minutes
+        )
     }
     
     private func updateLocalTask(_ taskID: UUID, mutate: (inout CrewTaskDTO) -> Void) {
         guard let index = crewTasks.firstIndex(where: { $0.id == taskID }) else { return }
         mutate(&crewTasks[index])
     }
-
+    
     func toggleTask(_ task: CrewTaskDTO) async {
         guard let index = crewTasks.firstIndex(where: { $0.id == task.id }) else { return }
-
+        
         let oldTask = crewTasks[index]
         let newIsDone = !oldTask.is_done
         let newStatus = newIsDone ? "done" : "todo"
-
-        struct ToggleTaskPayload: Encodable {
-            let is_done: Bool
-            let status: String
-        }
-
+        
         // 1) Animasyonlu optimistic local update
         withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
             crewTasks[index].is_done = newIsDone
             crewTasks[index].status = newStatus
         }
-
+        
         do {
-            try await SupabaseManager.shared.client
-                .from("crew_tasks")
-                .update(
-                    ToggleTaskPayload(
-                        is_done: newIsDone,
-                        status: newStatus
-                    )
-                )
-                .eq("id", value: task.id.uuidString)
-                .execute()
-
+            // Backend toggle — server otomatik flip yapar (atomic)
+            let updatedTask = try await CrewBackendClient.shared.toggleTask(taskID: task.id)
+            
+            // Server'dan dönen kesin değer ile senkronize et
+            if let i = crewTasks.firstIndex(where: { $0.id == updatedTask.id }) {
+                crewTasks[i] = updatedTask
+            }
+            
+            // Activity log
             let profile = memberProfiles.first(where: { $0.id == task.created_by })
             let actorName = profile?.full_name ?? profile?.username ?? "You"
-
+            
             await createActivity(
                 crewID: task.crew_id,
                 memberName: actorName,
                 actionText: newIsDone
-                    ? "completed task \(task.title)"
-                    : "reopened task \(task.title)"
+                ? "completed task \(task.title)"
+                : "reopened task \(task.title)"
             )
-
+            
             await refreshCrewStats(for: task.crew_id)
-
+            
         } catch {
             // 2) Hata olursa animasyonlu rollback
             withAnimation(.spring(response: 0.30, dampingFraction: 0.90)) {
@@ -2026,54 +1842,31 @@ final class CrewStore: ObservableObject {
         scheduledDurationMinute: Int? = nil
     ) async throws {
         let clean = title.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        struct CreateTaskPayload: Encodable {
-            let title: String
-            let crew_id: UUID
-            let created_by: UUID
-            let assigned_to: UUID?
-            let details: String
-            let priority: String
-            let status: String
-            let show_on_week: Bool
-            let scheduled_weekday: Int?
-            let scheduled_start_minute: Int?
-            let scheduled_duration_minute: Int?
-        }
-
-        let payload = CreateTaskPayload(
+        
+        let createdTask = try await CrewBackendClient.shared.createTask(
+            crewID: crewID,
             title: clean,
-            crew_id: crewID,
-            created_by: userID,
-            assigned_to: assignedTo,
+            assignedTo: assignedTo,
             details: details,
             priority: priority,
             status: status,
-            show_on_week: showOnWeek,
-            scheduled_weekday: scheduledWeekday,
-            scheduled_start_minute: scheduledStartMinute,
-            scheduled_duration_minute: scheduledDurationMinute
+            showOnWeek: showOnWeek,
+            scheduledWeekday: scheduledWeekday,
+            scheduledStartMinute: scheduledStartMinute,
+            scheduledDurationMinute: scheduledDurationMinute
         )
-
-        let response = try await SupabaseManager.shared.client
-            .from("crew_tasks")
-            .insert(payload)
-            .select()
-            .single()
-            .execute()
-
-        let createdTask = try JSONDecoder().decode(CrewTaskDTO.self, from: response.data)
+        
         upsertLocalTask(createdTask)
-
+        
         let profile = memberProfiles.first(where: { $0.id == userID })
         let actorName = profile?.full_name ?? profile?.username ?? "You"
-
+        
         await createActivity(
             crewID: crewID,
             memberName: actorName,
             actionText: "created task \(clean)"
         )
-
+        
         await refreshCrewStats(for: crewID)
     }
     func updateTask(
@@ -2089,38 +1882,20 @@ final class CrewStore: ObservableObject {
         scheduledStartMinute: Int?,
         scheduledDurationMinute: Int?
     ) async throws {
-        struct TaskUpdatePayload: Encodable {
-            let title: String
-            let assigned_to: UUID?
-            let is_done: Bool
-            let details: String
-            let priority: String
-            let status: String
-            let show_on_week: Bool
-            let scheduled_weekday: Int?
-            let scheduled_start_minute: Int?
-            let scheduled_duration_minute: Int?
-        }
-
-        try await SupabaseManager.shared.client
-            .from("crew_tasks")
-            .update(
-                TaskUpdatePayload(
-                    title: title,
-                    assigned_to: assignedTo,
-                    is_done: isDone,
-                    details: details,
-                    priority: priority,
-                    status: status,
-                    show_on_week: showOnWeek,
-                    scheduled_weekday: scheduledWeekday,
-                    scheduled_start_minute: scheduledStartMinute,
-                    scheduled_duration_minute: scheduledDurationMinute
-                )
-            )
-            .eq("id", value: taskID.uuidString)
-            .execute()
-
+        _ = try await CrewBackendClient.shared.updateTask(
+            taskID: taskID,
+            title: title,
+            assignedTo: assignedTo,
+            isDone: isDone,
+            details: details,
+            priority: priority,
+            status: status,
+            showOnWeek: showOnWeek,
+            scheduledWeekday: scheduledWeekday,
+            scheduledStartMinute: scheduledStartMinute,
+            scheduledDurationMinute: scheduledDurationMinute
+        )
+        
         updateLocalTask(taskID) { task in
             task.title = title
             task.assigned_to = assignedTo
@@ -2133,34 +1908,37 @@ final class CrewStore: ObservableObject {
             task.scheduled_start_minute = scheduledStartMinute
             task.scheduled_duration_minute = scheduledDurationMinute
         }
-
+        
         if let crewID = crewTasks.first(where: { $0.id == taskID })?.crew_id {
             await refreshCrewStats(for: crewID)
         }
     }
-
     func deleteTask(taskID: UUID, crewID: UUID, title: String? = nil) async throws {
-        try await SupabaseManager.shared.client
-            .from("crew_tasks")
-            .delete()
-            .eq("id", value: taskID.uuidString)
-            .execute()
-
+        let success = await CrewBackendClient.shared.deleteTask(taskID: taskID)
+        
+        guard success else {
+            throw NSError(
+                domain: "CrewStore",
+                code: 500,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to delete task."]
+            )
+        }
+        
         removeLocalTask(taskID: taskID)
-
+        
         await createActivity(
             crewID: crewID,
             memberName: "You",
             actionText: "deleted task \(title ?? "")"
         )
-
+        
         await refreshCrewStats(for: crewID)
     }
-
+    
     func addMember(by username: String, to crewID: UUID) async throws {
         let cleanUsername = username
             .trimmingCharacters(in: .whitespacesAndNewlines)
-
+        
         guard !cleanUsername.isEmpty else {
             throw NSError(
                 domain: "CrewStore",
@@ -2168,58 +1946,41 @@ final class CrewStore: ObservableObject {
                 userInfo: [NSLocalizedDescriptionKey: "Username boş olamaz."]
             )
         }
-
+        
         do {
-            // 1) Username ile kullanıcıyı bul
-            let userResponse = try await SupabaseManager.shared.client
-                .from("profiles")
-                .select("id, email, username, full_name")
-                .eq("username", value: cleanUsername)
-                .execute()
-
-            let profiles = try JSONDecoder().decode([ProfileDTO].self, from: userResponse.data)
-
-            guard let profile = profiles.first else {
-                throw NSError(
-                    domain: "CrewStore",
-                    code: 2,
-                    userInfo: [NSLocalizedDescriptionKey: "Bu username ile kullanıcı bulunamadı."]
-                )
-            }
-
-            // 2) Zaten crew içinde mi kontrol et
-            let existingResponse = try await SupabaseManager.shared.client
-                .from("crew_members")
-                .select()
-                .eq("crew_id", value: crewID.uuidString)
-                .eq("user_id", value: profile.id.uuidString)
-                .execute()
-
-            let existingMembers = try JSONDecoder().decode([CrewMemberDTO].self, from: existingResponse.data)
-
-            if !existingMembers.isEmpty {
-                throw NSError(
-                    domain: "CrewStore",
-                    code: 3,
-                    userInfo: [NSLocalizedDescriptionKey: "Bu kullanıcı zaten crew içinde."]
-                )
-            }
-
-            // 3) Üyeyi ekle
-            try await SupabaseManager.shared.client
-                .from("crew_members")
-                .insert([
-                    "crew_id": crewID.uuidString,
-                    "user_id": profile.id.uuidString,
-                    "role": "member"
-                ])
-                .execute()
-
-            // 4) Refresh
+            _ = try await CrewBackendClient.shared.addMember(
+                crewID: crewID,
+                username: cleanUsername
+            )
+            
+            // Refresh
             await loadMembers(for: crewID)
             await loadMemberProfiles(for: crewMembers)
             await refreshCrewStats(for: crewID)
-
+            
+        } catch let error as CrewBackendClientError {
+            // Türkçe hata mesajları (backend İngilizce dönüyor)
+            let message: String
+            switch error {
+            case .apiError(let raw):
+                if raw.contains("no user with this username") {
+                    message = "Bu username ile kullanıcı bulunamadı."
+                } else if raw.contains("already a member") {
+                    message = "Bu kullanıcı zaten crew içinde."
+                } else if raw.contains("Unauthorized") {
+                    message = "Bu işlem için yetkin yok."
+                } else {
+                    message = raw
+                }
+            default:
+                message = error.localizedDescription
+            }
+            
+            throw NSError(
+                domain: "CrewStore",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: message]
+            )
         } catch {
             print("ADD MEMBER ERROR:", error.localizedDescription)
             throw error
@@ -2227,148 +1988,90 @@ final class CrewStore: ObservableObject {
     }
     func createCrew(name: String, icon: String, colorHex: String, ownerID: UUID) async throws -> CrewDTO {
         let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        let crewResponse = try await SupabaseManager.shared.client
-            .from("crews")
-            .insert([
-                "owner_id": ownerID.uuidString,
-                "name": cleanName,
-                "icon": icon,
-                "color_hex": colorHex
-            ])
-            .select()
-            .single()
-            .execute()
-
-        let createdCrew = try JSONDecoder().decode(CrewDTO.self, from: crewResponse.data)
-
-        try await SupabaseManager.shared.client
-            .from("crew_members")
-            .insert([
-                "crew_id": createdCrew.id.uuidString,
-                "user_id": ownerID.uuidString,
-                "role": "owner"
-            ])
-            .execute()
-
+        
+        guard let createdCrew = await CrewBackendClient.shared.createCrew(
+            name: cleanName,
+            icon: icon,
+            colorHex: colorHex
+        ) else {
+            throw NSError(
+                domain: "CrewStore",
+                code: 500,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to create crew."]
+            )
+        }
+        
         await loadCrews(force: true)
         await refreshCrewStats(for: createdCrew.id)
-
+        
         return createdCrew
     }
-
+    
     func joinCrew(with code: String, userID: UUID) async throws {
-        let response = try await SupabaseManager.shared.client
-            .from("crew_invites")
-            .select()
-            .eq("code", value: code.uppercased())
-            .single()
-            .execute()
-
-        let invite = try JSONDecoder().decode(CrewInviteDTO.self, from: response.data)
-
-        try await SupabaseManager.shared.client
-            .from("crew_members")
-            .insert([
-                "crew_id": invite.crew_id.uuidString,
-                "user_id": userID.uuidString,
-                "role": "member"
-            ])
-            .execute()
-
+        let crewID = try await CrewBackendClient.shared.acceptInvite(code: code)
+        
         await loadCrews(force: true)
-        await refreshCrewStats(for: invite.crew_id)
+        await refreshCrewStats(for: crewID)
     }
-
+    
     func createInvite(for crewID: UUID, userID: UUID) async throws -> String {
-        let code = UUID().uuidString.prefix(6).uppercased()
-
-        try await SupabaseManager.shared.client
-            .from("crew_invites")
-            .insert([
-                "crew_id": crewID.uuidString,
-                "code": String(code),
-                "created_by": userID.uuidString
-            ])
-            .execute()
-
-        return String(code)
+        let code = try await CrewBackendClient.shared.createInvite(crewID: crewID)
+        return code
     }
-
+    
     struct CrewInviteDTO: Codable {
         let id: UUID
         let crew_id: UUID
         let code: String
     }
     func loadActiveFocusSession(for crewID: UUID) async {
-        do {
-            let response = try await SupabaseManager.shared.client
-                .from("crew_focus_sessions")
-                .select()
-                .eq("crew_id", value: crewID.uuidString)
-                .eq("is_active", value: true)
-                .order("created_at", ascending: false)
-                .limit(3)
-                .execute()
-
-            let decoded = try JSONDecoder().decode([CrewFocusSessionDTO].self, from: response.data)
+        let session = await CrewBackendClient.shared.getActiveFocusSession(crewID: crewID)
+     
+        if let session {
+            // Backend zaten "validity" kontrollerini yapıyor (paused remaining > 0,
+            // ended_at null, vs.). Yine de iOS tarafı için ek validity kontrolü:
             let now = Date()
-
-            let validSession = decoded.first { session in
+     
+            let isStillValid: Bool = {
                 guard session.is_active else { return false }
                 guard session.ended_at == nil else { return false }
-
+     
                 if session.is_paused {
                     return (session.paused_remaining_seconds ?? 0) > 0
                 }
-
+     
                 guard let startedAt = CrewDateParser.parse(session.started_at) else { return false }
-
                 let endDate = startedAt.addingTimeInterval(
                     TimeInterval(session.duration_minutes * 60)
                 )
-
                 return endDate > now
-            }
-
-            if let validSession {
-                activeFocusSessionByCrew[crewID] = validSession
+            }()
+     
+            if isStillValid {
+                activeFocusSessionByCrew[crewID] = session
             } else {
                 activeFocusSessionByCrew.removeValue(forKey: crewID)
-            }
-            if validSession == nil {
-                activeFocusSessionByCrew.removeValue(forKey: crewID)
-
+                // İlişkili participant cache'i de temizle
                 for (key, value) in focusParticipantsBySession {
                     if value.first?.crew_id == crewID {
                         focusParticipantsBySession.removeValue(forKey: key)
                     }
                 }
             }
-
-        } catch {
-            print("LOAD ACTIVE FOCUS SESSION ERROR:", error.localizedDescription)
+        } else {
             activeFocusSessionByCrew.removeValue(forKey: crewID)
+            for (key, value) in focusParticipantsBySession {
+                if value.first?.crew_id == crewID {
+                    focusParticipantsBySession.removeValue(forKey: key)
+                }
+            }
         }
-        
     }
     func loadFocusParticipants(sessionID: UUID) async {
-        do {
-            let response = try await SupabaseManager.shared.client
-                .from("crew_focus_participants")
-                .select()
-                .eq("session_id", value: sessionID.uuidString)
-                .eq("is_active", value: true)
-                .order("joined_at", ascending: true)
-                .execute()
-
-            let decoded = try JSONDecoder().decode([CrewFocusParticipantDTO].self, from: response.data)
-            focusParticipantsBySession[sessionID] = decoded
-        } catch {
-            print("LOAD FOCUS PARTICIPANTS ERROR:", error.localizedDescription)
-            focusParticipantsBySession[sessionID] = []
-        }
+        let participants = await CrewBackendClient.shared.listFocusParticipants(sessionID: sessionID)
+        focusParticipantsBySession[sessionID] = participants
     }
+    
     func startCrewFocusSession(
         crewID: UUID,
         hostUserID: UUID?,
@@ -2379,69 +2082,29 @@ final class CrewStore: ObservableObject {
         durationMinutes: Int,
         participantCount: Int
     ) async throws -> CrewFocusSessionDTO {
-        let startedAt = Date()
-
-        let invitedUsers = max(0, participantCount - 1)
-        let requiredUsers = max(1, participantCount)
-
-        let payload = CreateCrewFocusSessionPayload(
-            crew_id: crewID,
-            host_user_id: hostUserID,
-            host_name: hostName,
-            title: title,
-            task_id: taskID,
-            task_title: taskTitle,
-            duration_minutes: durationMinutes,
-            started_at: CrewDateParser.string(from: startedAt),
-            started_live_at: nil,
-            is_active: true,
-            is_waiting: true,
-            is_paused: false,
-            paused_remaining_seconds: nil,
-            invited_count: invitedUsers,
-            required_count: requiredUsers
-        )
-
-        let response = try await SupabaseManager.shared.client
-            .from("crew_focus_sessions")
-            .insert(payload)
-            .select()
-            .single()
-            .execute()
-
-        let session = try JSONDecoder().decode(CrewFocusSessionDTO.self, from: response.data)
-
-        let participantPayload = CreateCrewFocusParticipantPayload(
-            session_id: session.id,
-            crew_id: crewID,
-            user_id: hostUserID,
-            member_name: hostName,
-            joined_at: CrewDateParser.string(from: Date()),
-            is_active: true
-        )
-
-        try await SupabaseManager.shared.client
-            .from("crew_focus_participants")
-            .insert(participantPayload)
-            .execute()
-
-        await loadActiveFocusSession(for: crewID)
-        await loadFocusParticipants(sessionID: session.id)
-
-        try await createCrewMessage(
+        let session = try await CrewBackendClient.shared.startFocusSession(
             crewID: crewID,
-            senderID: hostUserID,
-            senderName: hostName,
-            text: "started a \(durationMinutes) min shared focus session",
-            isSystemMessage: true
+            hostName: hostName,
+            title: title,
+            taskID: taskID,
+            taskTitle: taskTitle,
+            durationMinutes: durationMinutes,
+            participantCount: participantCount
         )
-
+     
+        // Local state update (broadcast da gelecek ama anlık ihtiyaç için)
+        activeFocusSessionByCrew[crewID] = session
+        await loadFocusParticipants(sessionID: session.id)
+     
+       
+     
+        // Activity (Railway)
         await createActivity(
             crewID: crewID,
             memberName: hostName,
             actionText: "started a \(durationMinutes) min shared focus session"
         )
-
+     
         return session
     }
     func joinCrewFocusSession(
@@ -2450,82 +2113,32 @@ final class CrewStore: ObservableObject {
         userID: UUID?,
         memberName: String
     ) async throws {
-        let response = try await SupabaseManager.shared.client
-            .from("crew_focus_sessions")
-            .select()
-            .eq("id", value: sessionID.uuidString)
-            .eq("crew_id", value: crewID.uuidString)
-            .limit(1)
-            .execute()
-
-        let sessions = try JSONDecoder().decode([CrewFocusSessionDTO].self, from: response.data)
-
-        guard let session = sessions.first else {
-            activeFocusSessionByCrew.removeValue(forKey: crewID)
-            throw NSError(
-                domain: "CrewStore",
-                code: 404,
-                userInfo: [NSLocalizedDescriptionKey: "Focus session bulunamadı."]
+        do {
+            _ = try await CrewBackendClient.shared.joinFocusSession(
+                sessionID: sessionID,
+                crewID: crewID,
+                memberName: memberName
             )
-        }
-
-        let now = Date()
-
-        let isStillValid: Bool = {
-            guard session.is_active else { return false }
-            if session.ended_at != nil { return false }
-
-            if session.is_paused {
-                return (session.paused_remaining_seconds ?? 0) > 0
+        } catch let error as CrewBackendClientError {
+            // Backend "session has ended" hatası → eski Türkçe mesaj
+            if case .apiError(let message) = error,
+               message.contains("session has ended") || message.contains("does not exist") {
+                activeFocusSessionByCrew.removeValue(forKey: crewID)
+                focusParticipantsBySession.removeValue(forKey: sessionID)
+                throw NSError(
+                    domain: "CrewStore",
+                    code: 410,
+                    userInfo: [NSLocalizedDescriptionKey: "Bu focus oturumu sona ermiş."]
+                )
             }
-
-            guard let startedAt = CrewDateParser.parse(session.started_at) else { return false }
-            let endDate = startedAt.addingTimeInterval(TimeInterval(session.duration_minutes * 60))
-            return endDate > now
-        }()
-
-        guard isStillValid else {
-            activeFocusSessionByCrew.removeValue(forKey: crewID)
-            focusParticipantsBySession.removeValue(forKey: sessionID)
-
-            throw NSError(
-                domain: "CrewStore",
-                code: 410,
-                userInfo: [NSLocalizedDescriptionKey: "Bu focus oturumu sona ermiş."]
-            )
+            throw error
         }
-
-        struct Payload: Encodable {
-            let session_id: UUID
-            let crew_id: UUID
-            let user_id: UUID?
-            let member_name: String
-            let is_active: Bool
-        }
-
-        let payload = Payload(
-            session_id: sessionID,
-            crew_id: crewID,
-            user_id: userID,
-            member_name: memberName,
-            is_active: true
-        )
-
-        try await SupabaseManager.shared.client
-            .from("crew_focus_participants")
-            .upsert(payload, onConflict: "session_id,crew_id,user_id")
-            .execute()
-
+     
+        // Refresh
         await loadActiveFocusSession(for: crewID)
         await loadFocusParticipants(sessionID: sessionID)
-
-        try await createCrewMessage(
-            crewID: crewID,
-            senderID: userID,
-            senderName: memberName,
-            text: "joined the shared focus session",
-            isSystemMessage: true
-        )
+     
+       
     }
     func leaveCrewFocusSession(
         sessionID: UUID,
@@ -2533,54 +2146,32 @@ final class CrewStore: ObservableObject {
         userID: UUID?,
         memberName: String
     ) async throws {
-        struct LeavePayload: Encodable {
-            let is_active: Bool
-            let left_at: String
-        }
-
-        let payload = LeavePayload(
-            is_active: false,
-            left_at: CrewDateParser.string(from: Date())
+        let success = await CrewBackendClient.shared.leaveFocusSession(
+            sessionID: sessionID,
+            crewID: crewID
+        )
+     
+        guard success else {
+            throw NSError(
+                domain: "CrewStore",
+                code: 500,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to leave focus session."]
             )
-        
-
-        try await SupabaseManager.shared.client
-            .from("crew_focus_participants")
-            .update(payload)
-            .eq("session_id", value: sessionID.uuidString)
-            .eq("crew_id", value: crewID.uuidString)
-            .eq("user_id", value: userID?.uuidString)
-            .eq("is_active", value: true)
-            .execute()
-
+        }
+     
         await loadFocusParticipants(sessionID: sessionID)
     }
     func beginWaitingCrewFocusSession(
         sessionID: UUID,
         crewID: UUID
     ) async throws {
-        struct BeginPayload: Encodable {
-            let is_waiting: Bool
-            let started_live_at: String
-        }
-
-        let payload = BeginPayload(
-            is_waiting: false,
-            started_live_at: CrewDateParser.string(from: Date())
+        let session = try await CrewBackendClient.shared.beginWaitingFocusSession(
+            sessionID: sessionID,
+            crewID: crewID
         )
-
-        try await SupabaseManager.shared.client
-            .from("crew_focus_sessions")
-            .update(payload)
-            .eq("id", value: sessionID.uuidString)
-            .eq("crew_id", value: crewID.uuidString)
-            .execute()
-
-        await loadActiveFocusSession(for: crewID)
-
-        if let updated = activeFocusSessionByCrew[crewID] {
-            await loadFocusParticipants(sessionID: updated.id)
-        }
+     
+        activeFocusSessionByCrew[crewID] = session
+        await loadFocusParticipants(sessionID: session.id)
     }
     
     func pauseCrewFocusSession(
@@ -2590,31 +2181,15 @@ final class CrewStore: ObservableObject {
         hostName: String,
         pausedRemainingSeconds: Int
     ) async throws {
-        struct PausePayload: Encodable {
-            let is_paused: Bool
-            let paused_remaining_seconds: Int
-        }
-
-        let payload = PausePayload(
-            is_paused: true,
-            paused_remaining_seconds: pausedRemainingSeconds
-        )
-
-        try await SupabaseManager.shared.client
-            .from("crew_focus_sessions")
-            .update(payload)
-            .eq("id", value: sessionID.uuidString)
-            .execute()
-
-        await loadActiveFocusSession(for: crewID)
-
-        try await createCrewMessage(
+        let session = try await CrewBackendClient.shared.pauseFocusSession(
+            sessionID: sessionID,
             crewID: crewID,
-            senderID: hostUserID,
-            senderName: hostName,
-            text: "paused the shared focus session",
-            isSystemMessage: true
+            pausedRemainingSeconds: pausedRemainingSeconds
         )
+     
+        activeFocusSessionByCrew[crewID] = session
+     
+       
     }
     func resumeCrewFocusSession(
         sessionID: UUID,
@@ -2624,37 +2199,16 @@ final class CrewStore: ObservableObject {
         durationMinutes: Int,
         pausedRemainingSeconds: Int
     ) async throws {
-        struct ResumePayload: Encodable {
-            let is_paused: Bool
-            let paused_remaining_seconds: Int?
-            let started_at: String
-        }
-
-        let totalSeconds = durationMinutes * 60
-        let elapsedSeconds = max(0, totalSeconds - pausedRemainingSeconds)
-        let newStartedAt = Date().addingTimeInterval(-TimeInterval(elapsedSeconds))
-
-        let payload = ResumePayload(
-            is_paused: false,
-            paused_remaining_seconds: nil,
-            started_at: CrewDateParser.string(from: newStartedAt)
-        )
-
-        try await SupabaseManager.shared.client
-            .from("crew_focus_sessions")
-            .update(payload)
-            .eq("id", value: sessionID.uuidString)
-            .execute()
-
-        await loadActiveFocusSession(for: crewID)
-
-        try await createCrewMessage(
+        let session = try await CrewBackendClient.shared.resumeFocusSession(
+            sessionID: sessionID,
             crewID: crewID,
-            senderID: hostUserID,
-            senderName: hostName,
-            text: "resumed the shared focus session",
-            isSystemMessage: true
+            durationMinutes: durationMinutes,
+            pausedRemainingSeconds: pausedRemainingSeconds
         )
+     
+        activeFocusSessionByCrew[crewID] = session
+     
+      
     }
     func endCrewFocusSession(
         sessionID: UUID,
@@ -2665,84 +2219,35 @@ final class CrewStore: ObservableObject {
         participantNames: [String],
         taskID: UUID?
     ) async throws {
-        struct EndPayload: Encodable {
-            let is_active: Bool
-            let is_paused: Bool
-            let paused_remaining_seconds: Int?
-            let ended_at: String
-        }
-
-        let nowString = CrewDateParser.string(from: Date())
-
+        // Eski cached participant'lar — eğer participantNames boşsa fallback
         let cachedParticipants = focusParticipantsBySession[sessionID] ?? []
-
-        let endPayload = EndPayload(
-            is_active: false,
-            is_paused: false,
-            paused_remaining_seconds: nil,
-            ended_at: nowString
+     
+        let cleanedNames = participantNames
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+     
+        let finalNames = cleanedNames.isEmpty
+            ? cachedParticipants.map(\.member_name)
+            : cleanedNames
+     
+        // Backend ATOMİK transaction:
+        //   1) session.is_active = false, ended_at set
+        //   2) tüm aktif participant'ları kapat
+        //   3) her participant için focus_record yaz
+        _ = try await CrewBackendClient.shared.endFocusSession(
+            sessionID: sessionID,
+            crewID: crewID,
+            hostUserID: hostUserID,
+            hostName: hostName,
+            completedMinutes: completedMinutes,
+            participantNames: finalNames
         )
-
-        try await SupabaseManager.shared.client
-            .from("crew_focus_sessions")
-            .update(endPayload)
-            .eq("id", value: sessionID.uuidString)
-            .execute()
-
-        let endParticipantsPayload = EndCrewFocusParticipantPayload(
-            is_active: false,
-            left_at: nowString
-        )
-
-        do {
-            let cleanParticipantNames = participantNames
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty }
-
-            let finalParticipantNames = cleanParticipantNames.isEmpty
-                ? cachedParticipants.map(\.member_name)
-                : cleanParticipantNames
-
-            for participantName in finalParticipantNames {
-                let matchingParticipant = cachedParticipants.first { participant in
-                    participant.member_name.trimmingCharacters(in: .whitespacesAndNewlines)
-                        .caseInsensitiveCompare(participantName) == .orderedSame
-                }
-
-                let resolvedUserID = matchingParticipant?.user_id
-                    ?? (participantName.caseInsensitiveCompare(hostName) == .orderedSame ? hostUserID : nil)
-
-                let recordPayload = CreateCrewFocusRecordPayloadV2(
-                    crew_id: crewID,
-                    user_id: resolvedUserID,
-                    member_name: participantName,
-                    minutes: max(1, completedMinutes)
-                )
-
-                try await SupabaseManager.shared.client
-                    .from("crew_focus_records")
-                    .insert(recordPayload)
-                    .execute()
-            }
-        } catch {
-            print("END SESSION / FOCUS RECORD ERROR:", error.localizedDescription)
-        }
-
-        do {
-            try await SupabaseManager.shared.client
-                .from("crew_focus_participants")
-                .update(endParticipantsPayload)
-                .eq("session_id", value: sessionID.uuidString)
-                .eq("crew_id", value: crewID.uuidString)
-                .execute()
-        } catch {
-            print("END SESSION / PARTICIPANTS UPDATE ERROR:", error.localizedDescription)
-        }
-
+     
+        // Task tamamlama (eğer focus bir task ile başlatılmışsa)
         if let taskID {
             do {
                 try await completeCrewTaskAfterFocus(taskID: taskID, crewID: crewID)
-
+     
                 await createActivity(
                     crewID: crewID,
                     memberName: hostName,
@@ -2752,32 +2257,24 @@ final class CrewStore: ObservableObject {
                 print("END SESSION / COMPLETE TASK ERROR:", error.localizedDescription)
             }
         }
-
-        do {
-            try await createCrewMessage(
-                crewID: crewID,
-                senderID: hostUserID,
-                senderName: hostName,
-                text: "ended the shared focus session",
-                isSystemMessage: true
-            )
-        } catch {
-            print("END SESSION / MESSAGE ERROR:", error.localizedDescription)
-        }
-
+     
+       
+     
+        // Activity
         await createActivity(
             crewID: crewID,
             memberName: hostName,
             actionText: "completed a shared focus session"
         )
-
+     
+        // Local cleanup
         activeFocusSessionByCrew.removeValue(forKey: crewID)
         focusParticipantsBySession.removeValue(forKey: sessionID)
-
+     
+        // Final refresh
         await loadActiveFocusSession(for: crewID)
         await loadFocusRecords(for: crewID)
     }
-    
     func updateCrewLastMessageMetadata(
         crewID: UUID,
         text: String,
@@ -2788,24 +2285,380 @@ final class CrewStore: ObservableObject {
             let last_message_at: String
             let last_sender_id: UUID?
         }
-
+        
         let payload = Payload(
             last_message_text: text,
             last_message_at: CrewDateParser.string(from: Date()),
             last_sender_id: senderID
         )
-
+        
         do {
             try await SupabaseManager.shared.client
                 .from("crews")
                 .update(payload)
                 .eq("id", value: crewID.uuidString)
                 .execute()
-
+            
             await loadCrews(force: true)
-
+            
         } catch {
             print("UPDATE LAST MESSAGE ERROR:", error.localizedDescription)
+        }
+    }
+    
+    func startObservingFocusSocketEvents() {
+        let nc = NotificationCenter.default
+     
+        // Session lifecycle events
+        nc.addObserver(
+            forName: .crewFocusSessionStarted,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            Task { @MainActor in
+                self?.handleFocusSessionEvent(notification: notification)
+            }
+        }
+     
+        nc.addObserver(
+            forName: .crewFocusSessionBegun,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            Task { @MainActor in
+                self?.handleFocusSessionEvent(notification: notification)
+            }
+        }
+     
+        nc.addObserver(
+            forName: .crewFocusSessionPaused,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            Task { @MainActor in
+                self?.handleFocusSessionEvent(notification: notification)
+            }
+        }
+     
+        nc.addObserver(
+            forName: .crewFocusSessionResumed,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            Task { @MainActor in
+                self?.handleFocusSessionEvent(notification: notification)
+            }
+        }
+     
+        nc.addObserver(
+            forName: .crewFocusSessionEnded,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            Task { @MainActor in
+                self?.handleFocusSessionEndedEvent(notification: notification)
+            }
+        }
+     
+        // Participant events
+        nc.addObserver(
+            forName: .crewFocusParticipantJoined,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            Task { @MainActor in
+                self?.handleFocusParticipantJoinedEvent(notification: notification)
+            }
+        }
+     
+        nc.addObserver(
+            forName: .crewFocusParticipantLeft,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            Task { @MainActor in
+                self?.handleFocusParticipantLeftEvent(notification: notification)
+            }
+        }
+        
+        nc.addObserver(
+               forName: .crewTaskCreated,
+               object: nil,
+               queue: .main
+           ) { [weak self] notification in
+               Task { @MainActor in
+                   self?.handleTaskCreatedEvent(notification: notification)
+               }
+           }
+        
+           nc.addObserver(
+               forName: .crewTaskUpdated,
+               object: nil,
+               queue: .main
+           ) { [weak self] notification in
+               Task { @MainActor in
+                   self?.handleTaskUpdatedEvent(notification: notification)
+               }
+           }
+        
+           nc.addObserver(
+               forName: .crewTaskToggled,
+               object: nil,
+               queue: .main
+           ) { [weak self] notification in
+               Task { @MainActor in
+                   self?.handleTaskUpdatedEvent(notification: notification)
+               }
+           }
+        
+           nc.addObserver(
+               forName: .crewTaskCompletedAfterFocus,
+               object: nil,
+               queue: .main
+           ) { [weak self] notification in
+               Task { @MainActor in
+                   self?.handleTaskUpdatedEvent(notification: notification)
+               }
+           }
+        
+           nc.addObserver(
+               forName: .crewTaskDeleted,
+               object: nil,
+               queue: .main
+           ) { [weak self] notification in
+               Task { @MainActor in
+                   self?.handleTaskDeletedEvent(notification: notification)
+               }
+           }
+        nc.addObserver(
+               forName: .crewActivityCreated,
+               object: nil,
+               queue: .main
+           ) { [weak self] notification in
+               Task { @MainActor in
+                   self?.handleActivityCreatedEvent(notification: notification)
+               }
+           }
+        
+           // ─────────────────────────────────────────────────────────────────
+           // Members (REFRESH)
+           // ─────────────────────────────────────────────────────────────────
+        
+           nc.addObserver(
+               forName: .crewMemberAdded,
+               object: nil,
+               queue: .main
+           ) { [weak self] notification in
+               Task { @MainActor in
+                   self?.handleMemberChangedEvent(notification: notification)
+               }
+           }
+        
+           nc.addObserver(
+               forName: .crewMemberRemoved,
+               object: nil,
+               queue: .main
+           ) { [weak self] notification in
+               Task { @MainActor in
+                   self?.handleMemberChangedEvent(notification: notification)
+               }
+           }
+        
+           nc.addObserver(
+               forName: .crewMemberUpdated,
+               object: nil,
+               queue: .main
+           ) { [weak self] notification in
+               Task { @MainActor in
+                   self?.handleMemberUpdatedEvent(notification: notification)
+               }
+           }
+        
+           // ─────────────────────────────────────────────────────────────────
+           // Focus Records (REFRESH)
+           // ─────────────────────────────────────────────────────────────────
+        
+           nc.addObserver(
+               forName: .crewFocusRecordCreated,
+               object: nil,
+               queue: .main
+           ) { [weak self] notification in
+               Task { @MainActor in
+                   self?.handleFocusRecordCreatedEvent(notification: notification)
+               }
+           }
+    }
+     
+    // MARK: - Event Handlers
+     
+    @MainActor
+    private func handleFocusSessionEvent(notification: Notification) {
+        guard
+            let session = notification.userInfo?["session"] as? CrewFocusSessionDTO
+        else { return }
+     
+        activeFocusSessionByCrew[session.crew_id] = session
+     
+        // Participants'ı da yenile
+        Task { @MainActor in
+            await self.loadFocusParticipants(sessionID: session.id)
+        }
+    }
+     
+    @MainActor
+    private func handleFocusSessionEndedEvent(notification: Notification) {
+        guard
+            let session = notification.userInfo?["session"] as? CrewFocusSessionDTO
+        else { return }
+     
+        // End event'i — local cleanup
+        activeFocusSessionByCrew.removeValue(forKey: session.crew_id)
+        focusParticipantsBySession.removeValue(forKey: session.id)
+     
+        // Focus records yenile
+        Task { @MainActor in
+            await self.loadFocusRecords(for: session.crew_id)
+        }
+    }
+     
+    @MainActor
+    private func handleFocusParticipantJoinedEvent(notification: Notification) {
+        guard
+            let sessionID = notification.userInfo?["sessionID"] as? UUID,
+            let participant = notification.userInfo?["participant"] as? CrewFocusParticipantDTO
+        else { return }
+     
+        var participants = focusParticipantsBySession[sessionID] ?? []
+     
+        // Idempotent: aynı user_id varsa güncelle, yoksa ekle
+        if let index = participants.firstIndex(where: {
+            $0.user_id == participant.user_id && $0.user_id != nil
+        }) {
+            participants[index] = participant
+        } else {
+            participants.append(participant)
+        }
+     
+        focusParticipantsBySession[sessionID] = participants
+    }
+     
+    @MainActor
+    private func handleFocusParticipantLeftEvent(notification: Notification) {
+        guard
+            let sessionID = notification.userInfo?["sessionID"] as? UUID,
+            let userID = notification.userInfo?["userID"] as? UUID
+        else { return }
+
+        // Participant'ı kaldır (DTO immutable olduğu için soft remove yapamayız)
+        if var participants = focusParticipantsBySession[sessionID] {
+            participants.removeAll { $0.user_id == userID }
+            focusParticipantsBySession[sessionID] = participants
+        }
+    }
+    
+    // MARK: - Task Event Handlers (Granular)
+     
+    @MainActor
+    private func handleTaskCreatedEvent(notification: Notification) {
+        guard let task = notification.userInfo?["task"] as? CrewTaskDTO else { return }
+     
+        // Idempotent: zaten varsa güncelle, yoksa ekle
+        upsertLocalTask(task)
+     
+        // Sayımları senkron et (kendi local listenin sayımı)
+        let tasksInCrew = crewTasks.filter { $0.crew_id == task.crew_id }
+        taskCountByCrew[task.crew_id] = tasksInCrew.count
+        completedTaskCountByCrew[task.crew_id] = tasksInCrew.filter { $0.is_done }.count
+    }
+     
+    @MainActor
+    private func handleTaskUpdatedEvent(notification: Notification) {
+        guard let task = notification.userInfo?["task"] as? CrewTaskDTO else { return }
+     
+        upsertLocalTask(task)
+     
+        // Sayımları senkron et (is_done değişmiş olabilir)
+        let tasksInCrew = crewTasks.filter { $0.crew_id == task.crew_id }
+        completedTaskCountByCrew[task.crew_id] = tasksInCrew.filter { $0.is_done }.count
+    }
+     
+    @MainActor
+    private func handleTaskDeletedEvent(notification: Notification) {
+        guard
+            let taskID = notification.userInfo?["taskID"] as? UUID,
+            let crewID = notification.userInfo?["crewID"] as? UUID
+        else { return }
+     
+        removeLocalTask(taskID: taskID)
+     
+        // Sayımları senkron et
+        let tasksInCrew = crewTasks.filter { $0.crew_id == crewID }
+        taskCountByCrew[crewID] = tasksInCrew.count
+        completedTaskCountByCrew[crewID] = tasksInCrew.filter { $0.is_done }.count
+    }
+     
+    // MARK: - Activity Event Handlers (Refresh)
+     
+    @MainActor
+    private func handleActivityCreatedEvent(notification: Notification) {
+        guard let activity = notification.userInfo?["activity"] as? CrewActivityDTO else { return }
+     
+        // Granular ekle: aynı id varsa atla
+        if !crewActivities.contains(where: { $0.id == activity.id }) {
+            // En başa ekle (yeni → eski sırada)
+            crewActivities.insert(activity, at: 0)
+        }
+    }
+     
+    // MARK: - Member Event Handlers (Refresh)
+     
+    @MainActor
+    private func handleMemberChangedEvent(notification: Notification) {
+        // Add veya Remove — her ikisi de refresh ile basitçe halloluyor
+        // Member event'leri öyle sık olmaz, ekstra HTTP zararsız.
+     
+        // Hangi crew'a ait?
+        var targetCrewID: UUID?
+     
+        if let member = notification.userInfo?["member"] as? CrewMemberDTO {
+            targetCrewID = member.crew_id
+        } else if let crewID = notification.userInfo?["crewID"] as? UUID {
+            targetCrewID = crewID
+        }
+     
+        guard let crewID = targetCrewID else { return }
+     
+        Task { @MainActor in
+            await self.loadMembers(for: crewID)
+            await self.loadMemberProfiles(for: self.crewMembers)
+            await self.loadMemberCount(for: crewID)
+        }
+    }
+     
+    @MainActor
+    private func handleMemberUpdatedEvent(notification: Notification) {
+        guard let member = notification.userInfo?["member"] as? CrewMemberDTO else { return }
+     
+        // Sadece kendi state'imiz değiştiyse lokal güncelle
+        // (Diğer kullanıcıların pin/mute/archive durumu bizi ilgilendirmez)
+        guard let currentUserID, member.user_id == currentUserID else { return }
+     
+        if let index = crewMembers.firstIndex(where: {
+            $0.crew_id == member.crew_id && $0.user_id == currentUserID
+        }) {
+            crewMembers[index] = member
+        }
+    }
+     
+    // MARK: - Focus Record Event Handlers (Refresh)
+     
+    @MainActor
+    private func handleFocusRecordCreatedEvent(notification: Notification) {
+        guard let record = notification.userInfo?["record"] as? CrewFocusRecordDTO else { return }
+     
+        // Granular ekle: aynı id varsa atla
+        if !crewFocusRecords.contains(where: { $0.id == record.id }) {
+            crewFocusRecords.insert(record, at: 0)
         }
     }
     
@@ -2814,14 +2667,14 @@ final class CrewStore: ObservableObject {
         senderID: UUID?
     ) async {
         guard let senderID else { return }
-
+        
         let others = crewMembers.filter {
             $0.crew_id == crewID && $0.user_id != senderID
         }
-
+        
         for member in others {
             let current = member.unread_count ?? 0
-
+            
             do {
                 try await SupabaseManager.shared.client
                     .from("crew_members")
@@ -2838,12 +2691,12 @@ final class CrewStore: ObservableObject {
         crewID: UUID,
         userID: UUID
     ) async {
-
+        
         struct Payload: Encodable {
             let unread_count: Int
             let last_read_at: String
         }
-
+        
         do {
             try await SupabaseManager.shared.client
                 .from("crew_members")
@@ -2856,7 +2709,7 @@ final class CrewStore: ObservableObject {
                 .eq("crew_id", value: crewID.uuidString)
                 .eq("user_id", value: userID.uuidString)
                 .execute()
-
+            
         } catch {
             print("RESET UNREAD ERROR:", error.localizedDescription)
         }
@@ -2866,13 +2719,13 @@ final class CrewStore: ObservableObject {
         let is_active: Bool
         let left_at: String
     }
-   
+    
     func unsubscribeCrewFocusRealtime() {
         Task {
             await activeFocusChannel?.unsubscribe()
             await focusParticipantsChannel?.unsubscribe()
         }
-
+        
         activeFocusChannel = nil
         focusParticipantsChannel = nil
         subscribedFocusCrewID = nil
@@ -2881,7 +2734,7 @@ final class CrewStore: ObservableObject {
         let channelToUnsub = globalFocusChannel
         globalFocusChannel = nil
         isSubscribingGlobalFocus = false
-
+        
         Task {
             await channelToUnsub?.unsubscribe()
         }
@@ -2904,7 +2757,7 @@ final class CrewStore: ObservableObject {
         let invited_count: Int
         let required_count: Int
     }
-
+    
     struct CreateCrewFocusParticipantPayload: Encodable {
         let session_id: UUID
         let crew_id: UUID
@@ -2913,7 +2766,7 @@ final class CrewStore: ObservableObject {
         let joined_at: String
         let is_active: Bool
     }
-
+    
     struct CreateCrewFocusRecordPayloadV2: Encodable {
         let crew_id: UUID
         let user_id: UUID?
@@ -2921,35 +2774,35 @@ final class CrewStore: ObservableObject {
         let minutes: Int
     }
     // MARK: - Crew Chat Personal State
-
+    
     private struct CrewMemberPersonalStatePatch: Encodable {
         let is_pinned: Bool?
         let is_muted: Bool?
         let is_archived: Bool?
-
+        
         enum CodingKeys: String, CodingKey {
             case is_pinned
             case is_muted
             case is_archived
         }
-
+        
         func encode(to encoder: Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
-
+            
             if let is_pinned {
                 try container.encode(is_pinned, forKey: .is_pinned)
             }
-
+            
             if let is_muted {
                 try container.encode(is_muted, forKey: .is_muted)
             }
-
+            
             if let is_archived {
                 try container.encode(is_archived, forKey: .is_archived)
             }
         }
     }
-
+    
     func setCrewChatPinned(
         crewID: UUID,
         userID: UUID,
@@ -2965,7 +2818,7 @@ final class CrewStore: ObservableObject {
             )
         )
     }
-
+    
     func setCrewChatMuted(
         crewID: UUID,
         userID: UUID,
@@ -2981,7 +2834,7 @@ final class CrewStore: ObservableObject {
             )
         )
     }
-
+    
     func setCrewChatArchived(
         crewID: UUID,
         userID: UUID,
@@ -2997,23 +2850,36 @@ final class CrewStore: ObservableObject {
             )
         )
     }
-
+    
     private func updateCrewMemberPersonalState(
         crewID: UUID,
         userID: UUID,
         patch: CrewMemberPersonalStatePatch
     ) async {
-        do {
-            try await SupabaseManager.shared.client
-                .from("crew_members")
-                .update(patch)
-                .eq("crew_id", value: crewID.uuidString)
-                .eq("user_id", value: userID.uuidString)
-                .execute()
-
-           
-        } catch {
-            print("UPDATE CREW MEMBER PERSONAL STATE ERROR:", error.localizedDescription)
+        _ = await CrewBackendClient.shared.updateMyMemberState(
+            crewID: crewID,
+            isPinned: patch.is_pinned,
+            isMuted: patch.is_muted,
+            isArchived: patch.is_archived
+        )
+        
+        // Lokal state'i de güncelle (optimistic değil, server'dan gelmiş gibi)
+        // Eski Supabase versiyonunda bu yoktu çünkü realtime hallediyordu.
+        // Realtime hâlâ çalışıyor (henüz kaldırmadık) ama backend'e gittikten
+        // sonra Supabase realtime tetiklenmediği için lokal state'i kendimiz
+        // güncelliyoruz.
+        if let i = crewMembers.firstIndex(where: {
+            $0.crew_id == crewID && $0.user_id == userID
+        }) {
+            if let isPinned = patch.is_pinned {
+                crewMembers[i].is_pinned = isPinned
+            }
+            if let isMuted = patch.is_muted {
+                crewMembers[i].is_muted = isMuted
+            }
+            if let isArchived = patch.is_archived {
+                crewMembers[i].is_archived = isArchived
+            }
         }
     }
 }

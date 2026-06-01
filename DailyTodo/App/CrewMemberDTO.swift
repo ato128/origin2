@@ -15,11 +15,11 @@ struct CrewMemberDTO: Codable, Identifiable, Equatable {
     let created_at: String?
 
     // Personal chat state
-    let unread_count: Int?
-    let is_pinned: Bool?
-    let is_muted: Bool?
-    let is_archived: Bool?
-    let last_read_at: String?
+    var unread_count: Int?
+    var is_pinned: Bool?
+    var is_muted: Bool?
+    var is_archived: Bool?
+    var last_read_at: String?
 
     enum CodingKeys: String, CodingKey {
         case id

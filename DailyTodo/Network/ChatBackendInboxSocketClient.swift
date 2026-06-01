@@ -233,6 +233,60 @@ final class ChatBackendInboxSocketClient: NSObject, ObservableObject {
                         "readerID": payload.readerID.uuidString
                     ]
                 )
+            case "crew_focus_session_started":
+                            postCrewFocusSessionEvent(.crewFocusSessionStarted, payload: event.payload)
+
+                        case "crew_focus_session_begun":
+                            postCrewFocusSessionEvent(.crewFocusSessionBegun, payload: event.payload)
+
+                        case "crew_focus_session_paused":
+                            postCrewFocusSessionEvent(.crewFocusSessionPaused, payload: event.payload)
+
+                        case "crew_focus_session_resumed":
+                            postCrewFocusSessionEvent(.crewFocusSessionResumed, payload: event.payload)
+
+                        case "crew_focus_session_ended":
+                            postCrewFocusSessionEvent(.crewFocusSessionEnded, payload: event.payload)
+
+                        case "crew_focus_participant_joined":
+                            postCrewFocusParticipantJoinedEvent(payload: event.payload)
+
+                        case "crew_focus_participant_left":
+                            postCrewFocusParticipantLeftEvent(payload: event.payload)
+                
+                // ════════════════════════════════════════════════════════════
+                            // CREW TASKS / ACTIVITIES / MEMBERS / RECORDS
+                            // ════════════════════════════════════════════════════════════
+
+                            case "crew_task_created":
+                                postCrewTaskEvent(.crewTaskCreated, payload: event.payload)
+
+                            case "crew_task_updated":
+                                postCrewTaskEvent(.crewTaskUpdated, payload: event.payload)
+
+                            case "crew_task_toggled":
+                                postCrewTaskEvent(.crewTaskToggled, payload: event.payload)
+
+                            case "crew_task_completed_after_focus":
+                                postCrewTaskEvent(.crewTaskCompletedAfterFocus, payload: event.payload)
+
+                            case "crew_task_deleted":
+                                postCrewTaskDeletedEvent(payload: event.payload)
+
+                            case "crew_activity_created":
+                                postCrewActivityEvent(payload: event.payload)
+
+                            case "crew_member_added":
+                                postCrewMemberEvent(.crewMemberAdded, payload: event.payload)
+
+                            case "crew_member_removed":
+                                postCrewMemberRemovedEvent(payload: event.payload)
+
+                            case "crew_member_updated":
+                                postCrewMemberEvent(.crewMemberUpdated, payload: event.payload)
+
+                            case "crew_focus_record_created":
+                                postCrewFocusRecordEvent(payload: event.payload)
 
             default:
                 break
@@ -241,7 +295,177 @@ final class ChatBackendInboxSocketClient: NSObject, ObservableObject {
             ChatBackendLogger.error("❌ INBOX WS DECODE ERROR:", error.localizedDescription)
         }
     }
+    // MARK: - Crew Focus Event Helpers
 
+    
+    // MARK: - Crew Task/Activity/Member/Record Event Helpers
+
+        private func postCrewTaskEvent(
+            _ name: Notification.Name,
+            payload: ChatBackendSocketPayload?
+        ) {
+            guard let task = payload?.task else {
+                ChatBackendLogger.error("❌ INBOX WS:", name.rawValue, "missing task")
+                return
+            }
+
+            NotificationCenter.default.post(
+                name: name,
+                object: task.crew_id,
+                userInfo: [
+                    "crewID": task.crew_id,
+                    "task": task
+                ]
+            )
+        }
+
+        private func postCrewTaskDeletedEvent(payload: ChatBackendSocketPayload?) {
+            guard
+                let taskID = payload?.taskID,
+                let crewID = payload?.crewID
+            else {
+                ChatBackendLogger.error("❌ INBOX WS: task_deleted missing payload")
+                return
+            }
+
+            NotificationCenter.default.post(
+                name: .crewTaskDeleted,
+                object: crewID,
+                userInfo: [
+                    "taskID": taskID,
+                    "crewID": crewID
+                ]
+            )
+        }
+
+        private func postCrewActivityEvent(payload: ChatBackendSocketPayload?) {
+            guard let activity = payload?.activity else {
+                ChatBackendLogger.error("❌ INBOX WS: activity_created missing activity")
+                return
+            }
+
+            NotificationCenter.default.post(
+                name: .crewActivityCreated,
+                object: activity.crew_id,
+                userInfo: [
+                    "crewID": activity.crew_id,
+                    "activity": activity
+                ]
+            )
+        }
+
+        private func postCrewMemberEvent(
+            _ name: Notification.Name,
+            payload: ChatBackendSocketPayload?
+        ) {
+            guard let member = payload?.member else {
+                ChatBackendLogger.error("❌ INBOX WS:", name.rawValue, "missing member")
+                return
+            }
+
+            NotificationCenter.default.post(
+                name: name,
+                object: member.crew_id,
+                userInfo: [
+                    "crewID": member.crew_id,
+                    "member": member
+                ]
+            )
+        }
+
+        private func postCrewMemberRemovedEvent(payload: ChatBackendSocketPayload?) {
+            guard
+                let memberID = payload?.memberID,
+                let crewID = payload?.crewID
+            else {
+                ChatBackendLogger.error("❌ INBOX WS: member_removed missing payload")
+                return
+            }
+
+            NotificationCenter.default.post(
+                name: .crewMemberRemoved,
+                object: crewID,
+                userInfo: [
+                    "memberID": memberID,
+                    "crewID": crewID,
+                    "userID": payload?.userID as Any
+                ]
+            )
+        }
+
+        private func postCrewFocusRecordEvent(payload: ChatBackendSocketPayload?) {
+            guard let record = payload?.record else {
+                ChatBackendLogger.error("❌ INBOX WS: focus_record_created missing record")
+                return
+            }
+
+            NotificationCenter.default.post(
+                name: .crewFocusRecordCreated,
+                object: record.crew_id,
+                userInfo: [
+                    "crewID": record.crew_id,
+                    "record": record
+                ]
+            )
+        }
+        private func postCrewFocusSessionEvent(
+            _ name: Notification.Name,
+            payload: ChatBackendSocketPayload?
+        ) {
+            guard let session = payload?.session else {
+                ChatBackendLogger.error("❌ INBOX WS:", name.rawValue, "missing session")
+                return
+            }
+
+            NotificationCenter.default.post(
+                name: name,
+                object: session.crew_id,
+                userInfo: [
+                    "crewID": session.crew_id,
+                    "session": session
+                ]
+            )
+        }
+
+        private func postCrewFocusParticipantJoinedEvent(payload: ChatBackendSocketPayload?) {
+            guard
+                let sessionID = payload?.sessionID,
+                let participant = payload?.participant
+            else {
+                ChatBackendLogger.error("❌ INBOX WS: participant_joined missing payload")
+                return
+            }
+
+            NotificationCenter.default.post(
+                name: .crewFocusParticipantJoined,
+                object: participant.crew_id,
+                userInfo: [
+                    "sessionID": sessionID,
+                    "crewID": participant.crew_id,
+                    "participant": participant
+                ]
+            )
+        }
+
+        private func postCrewFocusParticipantLeftEvent(payload: ChatBackendSocketPayload?) {
+            guard
+                let sessionID = payload?.sessionID,
+                let userID = payload?.userID
+            else {
+                ChatBackendLogger.error("❌ INBOX WS: participant_left missing payload")
+                return
+            }
+
+            NotificationCenter.default.post(
+                name: .crewFocusParticipantLeft,
+                object: nil,
+                userInfo: [
+                    "sessionID": sessionID,
+                    "userID": userID
+                ]
+            )
+        }
+    
     private func startHeartbeat() {
         stopHeartbeat()
 
