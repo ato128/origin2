@@ -5,6 +5,8 @@
 //  Created by Atakan Ortaç on 4.05.2026.
 //
 
+
+
 import SwiftUI
 
 // MARK: - Crew Arena Palette
@@ -205,7 +207,6 @@ struct CrewHomeView: View {
                     onAddFriend()
                 }
             } else {
-                // Community tarafında şimdilik create crew mantıklı kalabilir
                 onCreateCrew()
             }
         }
@@ -384,6 +385,12 @@ private struct CrewArenaHeader: View {
         : Color(crewHex: CrewArenaPalette.goldSoft)
     }
 
+    /// Animasyon trigger için kullanılan composite key.
+    /// scope veya mode değişince animasyon tetiklenir.
+    private var animationKey: String {
+        "\(mode.rawValue)-\(scope.rawValue)"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
@@ -397,6 +404,7 @@ private struct CrewArenaHeader: View {
                             )
                             .frame(width: 20, height: 1)
 
+                        // Eyebrow — scope/mode değişince fade + slide
                         Text(eyebrow)
                             .font(.system(size: 11, weight: .semibold, design: .monospaced))
                             .tracking(2.6)
@@ -407,12 +415,24 @@ private struct CrewArenaHeader: View {
                             )
                             .lineLimit(1)
                             .minimumScaleFactor(0.68)
+                            .id("eyebrow-\(eyebrow)")
+                            .transition(.asymmetric(
+                                insertion: .opacity.combined(with: .move(edge: .top)),
+                                removal: .opacity.combined(with: .move(edge: .bottom))
+                            ))
                     }
+                    .animation(.spring(response: 0.4, dampingFraction: 0.85), value: eyebrow)
 
+                    // Title — scope/mode değişince fade + slide
                     HStack(alignment: .firstTextBaseline, spacing: 7) {
                         Text(titleFirst)
                             .font(.system(size: 39, weight: .black))
                             .foregroundStyle(.white)
+                            .id("title-first-\(titleFirst)")
+                            .transition(.asymmetric(
+                                insertion: .opacity.combined(with: .move(edge: .leading)),
+                                removal: .opacity.combined(with: .move(edge: .trailing))
+                            ))
 
                         Text(titleAccent)
                             .font(.system(size: 36, weight: .regular, design: .serif))
@@ -424,9 +444,15 @@ private struct CrewArenaHeader: View {
                                     endPoint: .bottomTrailing
                                 )
                             )
+                            .id("title-accent-\(titleAccent)")
+                            .transition(.asymmetric(
+                                insertion: .opacity.combined(with: .move(edge: .trailing)),
+                                removal: .opacity.combined(with: .move(edge: .leading))
+                            ))
                     }
                     .lineLimit(1)
                     .minimumScaleFactor(0.74)
+                    .animation(.spring(response: 0.4, dampingFraction: 0.85), value: animationKey)
                 }
 
                 Spacer()
@@ -1304,28 +1330,40 @@ private struct CrewCommunityContent: View {
     let studentContext: CrewArenaStudentContext
     @ObservedObject var arenaStore: ArenaStore
     let onStartFocus: () -> Void
-    
-    
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             CrewCommunityScopeSwitch(selectedScope: $scope)
 
+            // HERO — scope değişince fade + slide animasyon
             CrewCommunityHero(
                 summary: arenaStore.summary ?? CrewCommunityMockFactory.summary(
                     for: scope,
                     studentContext: studentContext
                 )
             )
+            .id("hero-\(scope.rawValue)")
+            .transition(.asymmetric(
+                insertion: .opacity.combined(with: .move(edge: .top)),
+                removal: .opacity.combined(with: .move(edge: .bottom))
+            ))
+            .opacity(arenaStore.isLoading ? 0.65 : 1.0)
+            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: scope)
+            .animation(.easeInOut(duration: 0.25), value: arenaStore.isLoading)
 
-            if let weeklyChallenge = arenaStore.weeklyChallenge {
-                CrewWeeklyBattleCard(challenge: weeklyChallenge)
-            } else {
-                CrewArenaPreparingCard(
-                    title: "Haftalık challenge hazırlanıyor",
-                    subtitle: "Arena backend bağlı. Gerçek challenge verileri geldiğinde burada görünecek."
-                )
+            // WEEKLY CHALLENGE — sadece loading opacity
+            Group {
+                if let weeklyChallenge = arenaStore.weeklyChallenge {
+                    CrewWeeklyBattleCard(challenge: weeklyChallenge)
+                } else {
+                    CrewArenaPreparingCard(
+                        title: "Haftalık challenge hazırlanıyor",
+                        subtitle: "Arena backend bağlı. Gerçek challenge verileri geldiğinde burada görünecek."
+                    )
+                }
             }
+            .opacity(arenaStore.isLoading ? 0.65 : 1.0)
+            .animation(.easeInOut(duration: 0.25), value: arenaStore.isLoading)
 
             HStack(alignment: .center) {
                 CrewSectionTitle(
@@ -1340,22 +1378,40 @@ private struct CrewCommunityContent: View {
                 CrewRangePicker(selectedRange: $range)
             }
 
-            if arenaStore.leaderboard.isEmpty {
-                CrewArenaEmptyLeaderboardCard(
-                    onStartFocus: onStartFocus
-                )
-            } else {
-                CrewPodiumCard(entries: arenaStore.leaderboard)
+            // LEADERBOARD — scope/range değişince fade
+            Group {
+                if arenaStore.leaderboard.isEmpty {
+                    CrewArenaEmptyLeaderboardCard(
+                        onStartFocus: onStartFocus
+                    )
+                } else {
+                    CrewPodiumCard(entries: arenaStore.leaderboard)
+                }
             }
+            .id("leaderboard-\(scope.rawValue)-\(range.rawValue)")
+            .transition(.opacity.combined(with: .move(edge: .bottom)))
+            .opacity(arenaStore.isLoading ? 0.65 : 1.0)
+            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: scope)
+            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: range)
+            .animation(.easeInOut(duration: 0.25), value: arenaStore.isLoading)
 
-            if arenaStore.topCrews.isEmpty {
-                CrewArenaPreparingCard(
-                    title: "Top crews yakında",
-                    subtitle: "Bölüm, kampüs ve ülke crew sıralamaları backend’den geldikçe burada listelenecek."
-                )
-            } else {
-                CrewTopCrewsSection(crews: arenaStore.topCrews)
+            // TOP CREWS — scope değişince fade
+            Group {
+                if arenaStore.topCrews.isEmpty {
+                    CrewArenaPreparingCard(
+                        title: "Top crews yakında",
+                        subtitle: "Bölüm, kampüs ve ülke crew sıralamaları backend’den geldikçe burada listelenecek."
+                    )
+                } else {
+                    CrewTopCrewsSection(crews: arenaStore.topCrews)
+                }
             }
+            .id("topcrews-\(scope.rawValue)-\(range.rawValue)")
+            .transition(.opacity.combined(with: .move(edge: .bottom)))
+            .opacity(arenaStore.isLoading ? 0.65 : 1.0)
+            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: scope)
+            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: range)
+            .animation(.easeInOut(duration: 0.25), value: arenaStore.isLoading)
         }
         .task {
             await arenaStore.load(
@@ -1391,7 +1447,7 @@ private struct CrewCommunityScopeSwitch: View {
         HStack(spacing: 6) {
             ForEach(CrewCommunityScope.allCases) { scope in
                 Button {
-                    withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
+                    withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
                         selectedScope = scope
                     }
                 } label: {
