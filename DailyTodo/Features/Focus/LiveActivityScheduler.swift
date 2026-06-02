@@ -18,6 +18,7 @@ final class LiveActivityScheduler {
 
     private let taskID = "com.atakan.DailyTodo.liveactivity.refresh"
     private var timer: Timer?
+    private var didRegisterBGTask = false   // ← YENİ
 
     // Burayı SENİN gerçek App Group id'in ile birebir aynı yap
     private let appGroupID = "group.com.atakan.updo"
@@ -63,6 +64,12 @@ final class LiveActivityScheduler {
     }
 
     func registerBGTask() {
+        guard !didRegisterBGTask else {
+            print("⚪️ BG TASK ALREADY REGISTERED, skipping")
+            return
+        }
+        didRegisterBGTask = true
+
         BGTaskScheduler.shared.register(forTaskWithIdentifier: taskID, using: nil) { task in
             guard let task = task as? BGAppRefreshTask else { return }
             self.handleBGTask(task: task)

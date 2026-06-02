@@ -124,6 +124,22 @@ struct DailyTodoApp: App {
         .overlay {
             InAppBannerOverlay()
         }
+        .sheet(item: $focusSession.completionSummary) { summary in
+            FocusCelebrationView(summary: summary) {
+                focusSession.dismissCompletionSummary()
+            }
+        }
+        .sheet(item: $focusSession.completionSummary) { summary in
+            FocusCelebrationView(summary: summary) {
+                focusSession.dismissCompletionSummary()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .presentFocusCompletionFromPush)) { output in
+            handleFocusCompletionPush(output.object as? [AnyHashable: Any])
+        }
+        .onAppear {
+            handleAppAppear()
+        }
         .onAppear {
             handleAppAppear()
         }
@@ -261,6 +277,52 @@ struct DailyTodoApp: App {
                 )
             }
         }
+    }
+    
+    private func handleFocusCompletionPush(_ userInfo: [AnyHashable: Any]?) {
+        guard let userInfo else { return }
+     
+        let durationMinutes: Int = {
+            if let intValue = userInfo["duration_minutes"] as? Int {
+                return intValue
+            }
+            if let stringValue = userInfo["duration_minutes"] as? String,
+               let parsed = Int(stringValue) {
+                return parsed
+            }
+            return 0
+        }()
+     
+        guard durationMinutes > 0 else { return }
+     
+        let previousMinutes: Int? = {
+            if let intValue = userInfo["previous_minutes"] as? Int {
+                return intValue > 0 ? intValue : nil
+            }
+            if let stringValue = userInfo["previous_minutes"] as? String,
+               let parsed = Int(stringValue), parsed > 0 {
+                return parsed
+            }
+            return nil
+        }()
+     
+        // Synthetic completion summary oluştur ve göster
+        // (push'tan geldi, lokal session'ımız yoktu, push'taki bilgileri kullanıyoruz)
+        let summary = FocusCompletionSummary(
+            id: UUID(),
+            mode: .crew,
+            durationMinutes: durationMinutes,
+            completedAt: Date(),
+            totalTodayMinutes: durationMinutes,
+            streakDays: 1,
+            completedSessionsToday: 1,
+            goal: .study,
+            style: .silent,
+            participantCount: 1,
+            previousMinutes: previousMinutes
+        )
+     
+        focusSession.completionSummary = summary
     }
 
     private func handleScenePhaseChanged(_ newPhase: ScenePhase) {

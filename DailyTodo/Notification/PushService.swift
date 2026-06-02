@@ -194,4 +194,95 @@ final class PushService {
             "environment": currentEnvironment
         ])
     }
+
+    // ════════════════════════════════════════════════════════════════
+    // YENİ — Focus Ended Push
+    // ════════════════════════════════════════════════════════════════
+
+    /// Crew focus bitince participantlara gönderilir.
+    /// `durationMinutes`: tamamlanmış dakika (UI'da "X dk tamamladın" göstermek için).
+    func sendCrewFocusEndedPush(
+        toUserId: String,
+        crewID: String,
+        crewName: String,
+        durationMinutes: Int,
+        previousMinutes: Int?,
+        badge: Int = 0
+    ) {
+        let cleanToUserId = toUserId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanCrewID = crewID.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !cleanToUserId.isEmpty, !cleanCrewID.isEmpty else {
+            print("CREW FOCUS ENDED PUSH SKIPPED: missing toUserId or crewID")
+            return
+        }
+
+        let cleanCrewName = crewName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Crew Focus"
+            : crewName
+
+        let message = "\(durationMinutes) dakika focus tamamladın 🎉"
+
+        print("🚀 CREW FOCUS ENDED PUSH SEND CALLED -> \(cleanToUserId)")
+
+        var body: [String: Any] = [
+            "toUserId": cleanToUserId,
+            "title": cleanCrewName,
+            "message": message,
+            "type": "crew_focus_ended",
+            "crew_id": cleanCrewID,
+            "duration_minutes": durationMinutes,
+            "deep_link": "dailytodo://focus?crew_id=\(cleanCrewID)",
+            "badge": badge,
+            "environment": currentEnvironment
+        ]
+
+        if let previousMinutes {
+            body["previous_minutes"] = previousMinutes
+        }
+
+        performRequest(bodyObject: body)
+    }
+
+    /// Crew focus'tan birisi ayrılınca diğerlerine gönderilir.
+    /// `leaverName`: ayrılan kişinin görünen adı.
+    func sendCrewFocusLeftPush(
+        toUserId: String,
+        crewID: String,
+        crewName: String,
+        leaverName: String,
+        badge: Int = 0
+    ) {
+        let cleanToUserId = toUserId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanCrewID = crewID.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !cleanToUserId.isEmpty, !cleanCrewID.isEmpty else {
+            print("CREW FOCUS LEFT PUSH SKIPPED: missing toUserId or crewID")
+            return
+        }
+
+        let cleanCrewName = crewName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Crew Focus"
+            : crewName
+
+        let cleanLeaverName = leaverName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Birisi"
+            : leaverName
+
+        let message = "\(cleanLeaverName) focus'tan ayrıldı"
+
+        print("🚀 CREW FOCUS LEFT PUSH SEND CALLED -> \(cleanToUserId)")
+
+        performRequest(bodyObject: [
+            "toUserId": cleanToUserId,
+            "title": cleanCrewName,
+            "message": message,
+            "type": "crew_focus_left",
+            "crew_id": cleanCrewID,
+            "leaver_name": cleanLeaverName,
+            "deep_link": "dailytodo://crew-chat?crew_id=\(cleanCrewID)",
+            "badge": badge,
+            "environment": currentEnvironment
+        ])
+    }
 }

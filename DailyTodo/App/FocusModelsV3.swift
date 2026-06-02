@@ -178,6 +178,7 @@ struct FocusCompletionSummary: Identifiable, Codable {
     let goal: FocusGoal
     let style: FocusStyle
     let participantCount: Int
+    let previousMinutes: Int? 
 }
 
 enum FocusGoal: String, CaseIterable, Identifiable, Codable {

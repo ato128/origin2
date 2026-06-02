@@ -157,6 +157,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         case "focus_room":
             return false
 
+        case "crew_focus_ended", "crew_focus_left", "focus_ended_local":
+            return false
+
         default:
             return false
         }
@@ -215,6 +218,22 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
                 object: userInfo
             )
 
+        // ════════════════════════════════════════════════════════════
+        // YENİ — Crew Focus Ended (push'a tıkla → tebrikler ekranı)
+        // ════════════════════════════════════════════════════════════
+        case "crew_focus_ended":
+            NotificationCenter.default.post(
+                name: .presentFocusCompletionFromPush,
+                object: userInfo
+            )
+
+        // ════════════════════════════════════════════════════════════
+        // YENİ — Crew Focus Left (sadece bilgi, açma)
+        // ════════════════════════════════════════════════════════════
+        case "crew_focus_left":
+            // Push zaten görünür hale geldi, ek bir UI açmaya gerek yok
+            print("📢 CREW FOCUS LEFT:", userInfo["leaver_name"] ?? "")
+
         default:
             break
         }
@@ -239,4 +258,7 @@ extension Notification.Name {
     static let presentActiveCrewFocusFromNotification = Notification.Name("presentActiveCrewFocusFromNotification")
     static let openCrewFocusInviteFromNotification = Notification.Name("openCrewFocusInviteFromNotification")
     static let openCrewFocusFromNotification = Notification.Name("openCrewFocusFromNotification")
+
+    // YENİ — Crew focus ended push'a tıklayınca tebrikler ekranı açılacak
+    static let presentFocusCompletionFromPush = Notification.Name("presentFocusCompletionFromPush")
 }

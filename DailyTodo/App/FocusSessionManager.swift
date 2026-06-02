@@ -9,6 +9,7 @@ import SwiftUI
 import Foundation
 import Combine
 import AVFoundation
+import UserNotifications
 
 @MainActor
 final class FocusSessionManager: ObservableObject {
@@ -26,6 +27,7 @@ final class FocusSessionManager: ObservableObject {
     @Published var currentCrewBackendSessionID: UUID?
 
     private let storageKey = "active_focus_session_state_v1"
+    private let lastFocusMinutesKey = "last_focus_minutes_v1"
     private let audioManager = FocusAudioManager.shared
     private let liveActivityManager = FocusLiveActivityManager.shared
 
@@ -95,8 +97,6 @@ final class FocusSessionManager: ObservableObject {
             return true
         }
     }
-    
-   
 
     func expandSession() {
         guard isSessionActive else { return }
@@ -132,26 +132,42 @@ final class FocusSessionManager: ObservableObject {
            let crewStore {
 
             let host = isCurrentUserHost
+            let completedMins = resolvedCompletedMinutes(for: session)
+            let participantSnapshot = session.participants
+            let leaverName = currentUserDisplayName
+            let leaverID = currentUserID
 
             Task {
                 do {
                     if host {
+                        // Host bitiriyor → herkese "tamamlandı" push (completeAndPersist'te)
                         try await crewStore.endCrewFocusSession(
                             sessionID: backendSessionID,
                             crewID: crewID,
                             hostUserID: currentUserID,
-                            hostName: currentUserDisplayName,
-                            completedMinutes: resolvedCompletedMinutes(for: session),
-                            participantNames: session.participants.map(\.name),
+                            hostName: leaverName,
+                            completedMinutes: completedMins,
+                            participantNames: participantSnapshot.map(\.name),
                             taskID: nil
                         )
                     } else {
+                        // Üye ayrılıyor → diğerlerine "X ayrıldı" push
                         try await crewStore.leaveCrewFocusSession(
                             sessionID: backendSessionID,
                             crewID: crewID,
                             userID: currentUserID,
-                            memberName: currentUserDisplayName
+                            memberName: leaverName
                         )
+
+                        // Sadece üye ayrılırken push gönder (host'tan ayrılma = focus bitiyor zaten)
+                        if let leaverID {
+                            await self.sendLeftPushToOthers(
+                                crewID: crewID,
+                                leaverID: leaverID,
+                                leaverName: leaverName,
+                                participants: participantSnapshot
+                            )
+                        }
                     }
                 } catch {
                     print(error.localizedDescription)
@@ -421,8 +437,7 @@ final class FocusSessionManager: ObservableObject {
         let title = "\(goal.title) Focus"
 
         do {
-            let dto = try await
-            crewStore.startCrewFocusSession(
+            let dto = try await crewStore.startCrewFocusSession(
                 crewID: crew.id,
                 hostUserID: currentUserID,
                 hostName: hostName,
@@ -433,7 +448,6 @@ final class FocusSessionManager: ObservableObject {
                 participantCount: 1
             )
 
-            
             await crewStore.loadActiveFocusSession(for: crew.id)
             await crewStore.loadFocusParticipants(sessionID: dto.id)
 
@@ -542,8 +556,6 @@ final class FocusSessionManager: ObservableObject {
         }
     }
 
-   
-
     private func finishSession(_ session: FocusSessionState) {
         if session.mode == .crew,
            let crewID = currentCrewID,
@@ -566,19 +578,14 @@ final class FocusSessionManager: ObservableObject {
                     print("AUTO END CREW SESSION ERROR:", error.localizedDescription)
                 }
 
-              
-
                 completeAndPersist(session)
             }
 
             return
         }
 
-       
         completeAndPersist(session)
     }
-    
-    // FocusSessionManager.swift içine EKLE
 
     private func completeAndPersist(_ session: FocusSessionState) {
         stopLifecycleTimer()
@@ -598,6 +605,12 @@ final class FocusSessionManager: ObservableObject {
             isCompleted: true
         )
 
+        // Önce kaydedilmiş "geçen sefer" değerini oku
+        let previousMinutes: Int? = {
+            let value = UserDefaults.standard.integer(forKey: lastFocusMinutesKey)
+            return value > 0 ? value : nil
+        }()
+
         let summary = FocusCompletionSummary(
             id: UUID(),
             mode: session.mode,
@@ -608,16 +621,56 @@ final class FocusSessionManager: ObservableObject {
             completedSessionsToday: max(1, weekFocusSessions - 2),
             goal: session.goal,
             style: session.style,
-            participantCount: session.participants.count
+            participantCount: session.participants.count,
+            previousMinutes: previousMinutes
         )
 
+        // Şimdi bu süreyi "son focus" olarak kaydet
+        UserDefaults.standard.set(session.durationMinutes, forKey: lastFocusMinutesKey)
         lastFinishedSession = session
         completionSummary = summary
+
+        // ═══════════════════════════════════════════════════════════
+        // BİLDİRİMLER (YENİ)
+        // ═══════════════════════════════════════════════════════════
+
+        // 1) Kişisel veya Friend → LOCAL notification
+        //    (kullanıcı app'tedeyse iOS göstermez ama Lock Screen'de görünür)
+        if session.mode == .personal || session.mode == .friend {
+            scheduleLocalFocusEndedNotification(
+                durationMinutes: session.durationMinutes,
+                previousMinutes: previousMinutes
+            )
+        }
+
+        // 2) Crew → diğer participantlara PUSH (host bitirdiyse veya timer 0'sa)
+        if session.mode == .crew,
+           let crewID = currentCrewID {
+            let crewName = crewStore?.crews.first(where: { $0.id == crewID })?.name ?? "Crew"
+
+            // Participant user_id'lerini topla
+            let participantIDs = collectParticipantUserIDs(
+                from: session.participants,
+                crewID: crewID
+            )
+
+            Task { [weak self] in
+                await self?.sendCrewFocusEndedPush(
+                    crewID: crewID,
+                    crewName: crewName,
+                    participantIDs: participantIDs,
+                    durationMinutes: session.durationMinutes,
+                    previousMinutes: previousMinutes
+                )
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
 
         currentSession = nil
         isSessionActive = false
         isMinimized = false
-        isExpanded = true
+        isExpanded = false
         currentCrewID = nil
         currentCrewBackendSessionID = nil
 
@@ -723,6 +776,114 @@ final class FocusSessionManager: ObservableObject {
             )
         }
     }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // YENİ — Bildirim Helper'ları
+    // ═══════════════════════════════════════════════════════════════════
+
+    /// Crew participant'larının user_id listesini topla.
+    /// FocusParticipant.id participantın DB ID'si, user_id değil.
+    /// Bu yüzden crewStore.focusParticipantsBySession'dan çekiyoruz.
+    private func collectParticipantUserIDs(
+        from participants: [FocusParticipant],
+        crewID: UUID
+    ) -> [UUID] {
+        guard let backendSessionID = currentCrewBackendSessionID,
+              let crewStore else {
+            return []
+        }
+
+        let dtos = crewStore.focusParticipantsBySession[backendSessionID] ?? []
+        return dtos.compactMap { $0.user_id }
+    }
+
+    /// Kişisel veya Friend focus bitince LOCAL notification göster.
+    private func scheduleLocalFocusEndedNotification(
+        durationMinutes: Int,
+        previousMinutes: Int?
+    ) {
+        let content = UNMutableNotificationContent()
+        content.title = "Focus tamamlandı 🎉"
+
+        if let previousMinutes, previousMinutes > 0 {
+            let delta = durationMinutes - previousMinutes
+
+            if delta > 0 {
+                content.body = "\(durationMinutes) dakika tamamladın · geçen seferden \(delta) dk fazla 🚀"
+            } else if delta < 0 {
+                content.body = "\(durationMinutes) dakika tamamladın · geçen sefer \(previousMinutes) dk"
+            } else {
+                content.body = "\(durationMinutes) dakika tamamladın · geçen seferki süreyi tutturdun 👏"
+            }
+        } else {
+            content.body = "\(durationMinutes) dakika başarıyla tamamladın"
+        }
+
+        content.sound = .default
+        content.userInfo = [
+            "type": "focus_ended_local",
+            "duration_minutes": durationMinutes
+        ]
+
+        // 1 saniye sonra tetiklensin (anında değil ki UI tebrikler ekranı önce açılsın)
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+
+        let request = UNNotificationRequest(
+            identifier: "focus_ended_\(UUID().uuidString)",
+            content: content,
+            trigger: trigger
+        )
+
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error {
+                print("❌ LOCAL FOCUS NOTIF ERROR:", error.localizedDescription)
+            } else {
+                print("✅ LOCAL FOCUS NOTIF SCHEDULED")
+            }
+        }
+    }
+
+    /// Crew focus bitince participantlara push.
+    private func sendCrewFocusEndedPush(
+        crewID: UUID,
+        crewName: String,
+        participantIDs: [UUID],
+        durationMinutes: Int,
+        previousMinutes: Int?
+    ) async {
+        await FocusInviteService.shared.sendEndNotifications(
+            crewID: crewID,
+            crewName: crewName,
+            participantIDs: participantIDs,
+            durationMinutes: durationMinutes,
+            previousMinutes: previousMinutes
+        )
+    }
+
+    /// Crew focus'tan ayrılan üye için diğerlerine push.
+    private func sendLeftPushToOthers(
+        crewID: UUID,
+        leaverID: UUID,
+        leaverName: String,
+        participants: [FocusParticipant]
+    ) async {
+        let crewName = crewStore?.crews.first(where: { $0.id == crewID })?.name ?? "Crew"
+
+        // Diğer participantların user_id'lerini al
+        let otherParticipantIDs = collectParticipantUserIDs(
+            from: participants,
+            crewID: crewID
+        ).filter { $0 != leaverID }
+
+        await FocusInviteService.shared.sendLeftNotifications(
+            crewID: crewID,
+            crewName: crewName,
+            leaverID: leaverID,
+            leaverName: leaverName,
+            otherParticipantIDs: otherParticipantIDs
+        )
+    }
+
     private func syncLiveActivityIfNeeded() async {
         guard let session = currentSession else {
             await liveActivityManager.end()
@@ -879,7 +1040,7 @@ final class FocusSessionManager: ObservableObject {
     var readyCount: Int {
         currentSession?.participants.filter { $0.isReady || $0.isActive }.count ?? 0
     }
-    
+
     var hasBlockingActiveSession: Bool {
         isSessionActive && currentSession != nil
     }

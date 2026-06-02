@@ -138,4 +138,81 @@ final class FocusInviteService {
 
         print("FOCUS INVITE SENT -> \(toUserID.uuidString)")
     }
+
+    // ════════════════════════════════════════════════════════════════
+    // YENİ — Focus End Notifications
+    // ════════════════════════════════════════════════════════════════
+
+    /// Crew focus bitince tüm participantlara "tamamlandı" push'u gönderir.
+    /// Host bunu çağırır. Kendisine de push gider (gerekirse — şu an gönderiyoruz
+    /// çünkü diğer cihazlarında da bildirim görsün).
+    ///
+    /// `participantIDs`: focus'taki tüm aktif katılımcıların user_id'leri (host dahil)
+    func sendEndNotifications(
+        crewID: UUID,
+        crewName: String,
+        participantIDs: [UUID],
+        durationMinutes: Int,
+        previousMinutes: Int? = nil
+    ) async {
+        let currentUserIDString = UserDefaults.standard.string(forKey: "current_user_id")
+
+        // Host kendisine push gönderebilir (diğer cihazları için).
+        // Eğer istemezsek burada filter ederiz. Şimdilik herkese.
+        let uniqueIDs = Array(Set(participantIDs))
+
+        guard !uniqueIDs.isEmpty else {
+            print("FOCUS END PUSH: gönderilecek kullanıcı yok")
+            return
+        }
+
+        print("FOCUS END PUSH SEND -> \(uniqueIDs.count) kullanıcıya")
+
+        for userID in uniqueIDs {
+            // Kendisine gönderme (kişisel cihaz local notification yapacak)
+            if userID.uuidString == currentUserIDString {
+                continue
+            }
+
+            PushService.shared.sendCrewFocusEndedPush(
+                toUserId: userID.uuidString,
+                crewID: crewID.uuidString,
+                crewName: crewName,
+                durationMinutes: durationMinutes,
+                previousMinutes: previousMinutes
+            )
+        }
+    }
+
+    /// Crew focus'tan birisi ayrılınca diğerlerine push gönderir.
+    /// `leaverID`: ayrılan kişinin user_id'si (kendisine push gitmez)
+    /// `participantIDs`: focus'taki diğer aktif katılımcılar
+    func sendLeftNotifications(
+        crewID: UUID,
+        crewName: String,
+        leaverID: UUID,
+        leaverName: String,
+        otherParticipantIDs: [UUID]
+    ) async {
+        // Ayrılanı listeden çıkar (kendisine "X ayrıldı" gitmesin)
+        let filteredIDs = Array(
+            Set(otherParticipantIDs.filter { $0 != leaverID })
+        )
+
+        guard !filteredIDs.isEmpty else {
+            print("FOCUS LEFT PUSH: bildirilecek diğer kullanıcı yok")
+            return
+        }
+
+        print("FOCUS LEFT PUSH SEND -> \(filteredIDs.count) kullanıcıya")
+
+        for userID in filteredIDs {
+            PushService.shared.sendCrewFocusLeftPush(
+                toUserId: userID.uuidString,
+                crewID: crewID.uuidString,
+                crewName: crewName,
+                leaverName: leaverName
+            )
+        }
+    }
 }

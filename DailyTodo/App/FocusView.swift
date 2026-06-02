@@ -115,6 +115,7 @@ struct FocusView: View {
             ActiveFocusView()
                 .environmentObject(focusSession)
         }
+        
         .onAppear {
             pageAppeared = true
             focusSession.configure(sessionStore: session, crewStore: crewStore)

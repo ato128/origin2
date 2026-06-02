@@ -282,6 +282,7 @@
 		6DC0CAC32F5F7D0000A875ED /* CrewMember.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA942F5F7D0000A875ED /* CrewMember.swift */; };
 		6DC0CAC52F5F7D0000A875ED /* CrewActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA922F5F7D0000A875ED /* CrewActivity.swift */; };
 		6DC0CAC82F5F7D0000A875ED /* LiveActivityScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAA32F5F7D0000A875ED /* LiveActivityScheduler.swift */; };
+		6DC1C0292FCEF66C00CF8D62 /* FocusCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC1C0282FCEF66B00CF8D62 /* FocusCelebrationView.swift */; };
 		6DC8F52A2F78A42E00361A6D /* PushService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC8F5292F78A42E00361A6D /* PushService.swift */; };
 		6DD282822F68C0FA00B1281A /* DailyTodo.entitlements.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6D81C1072F59E87500B65AF8 /* DailyTodo.entitlements.plist */; };
 		6DD282842F68C1FE00B1281A /* TasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD282832F68C1FE00B1281A /* TasksView.swift */; };
@@ -582,6 +583,7 @@
 		6DC0CAA82F5F7D0000A875ED /* ScheduleShare.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleShare.swift; sourceTree = "<group>"; };
 		6DC0CAAA2F5F7D0000A875ED /* TaskNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskNotifications.swift; sourceTree = "<group>"; };
 		6DC0CAAB2F5F7D0000A875ED /* TodoListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoListView.swift; sourceTree = "<group>"; };
+		6DC1C0282FCEF66B00CF8D62 /* FocusCelebrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusCelebrationView.swift; sourceTree = "<group>"; };
 		6DC8F5292F78A42E00361A6D /* PushService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushService.swift; sourceTree = "<group>"; };
 		6DD282832F68C1FE00B1281A /* TasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TasksView.swift; sourceTree = "<group>"; };
 		6DD282852F68CBC100B1281A /* TaskCompleteAnimation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskCompleteAnimation.swift; sourceTree = "<group>"; };
@@ -1139,6 +1141,7 @@
 				6DB004702F998044009F2F3B /* CurriculumCatalog.swift */,
 				6DB004722F999F24009F2F3B /* StudentCatalogService.swift */,
 				6DB004762F99A1D1009F2F3B /* AppSecrets.swift */,
+				6DC1C0282FCEF66B00CF8D62 /* FocusCelebrationView.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -1570,6 +1573,7 @@
 				6D5FE4492F689760007C124D /* CrewBadgeHelpers.swift in Sources */,
 				6D2004B22F644F300022C810 /* InsightsV2Models.swift in Sources */,
 				6DB0042D2F930980009F2F3B /* InsightsPremiumView.swift in Sources */,
+				6DC1C0292FCEF66C00CF8D62 /* FocusCelebrationView.swift in Sources */,
 				6D2A2AC32F8843D70051459D /* FocusFullPageStageV7.swift in Sources */,
 				6DB0041D2F92FAA6009F2F3B /* InsightsachievementSectionV2.swift in Sources */,
 				6DD282862F68CBC100B1281A /* TaskCompleteAnimation.swift in Sources */,
