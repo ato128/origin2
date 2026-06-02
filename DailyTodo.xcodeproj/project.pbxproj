@@ -283,6 +283,7 @@
 		6DC0CAC52F5F7D0000A875ED /* CrewActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA922F5F7D0000A875ED /* CrewActivity.swift */; };
 		6DC0CAC82F5F7D0000A875ED /* LiveActivityScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAA32F5F7D0000A875ED /* LiveActivityScheduler.swift */; };
 		6DC1C0292FCEF66C00CF8D62 /* FocusCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC1C0282FCEF66B00CF8D62 /* FocusCelebrationView.swift */; };
+		6DC1C02B2FCF671E00CF8D62 /* CrewFocusInviteSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC1C02A2FCF671E00CF8D62 /* CrewFocusInviteSheet.swift */; };
 		6DC8F52A2F78A42E00361A6D /* PushService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC8F5292F78A42E00361A6D /* PushService.swift */; };
 		6DD282822F68C0FA00B1281A /* DailyTodo.entitlements.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6D81C1072F59E87500B65AF8 /* DailyTodo.entitlements.plist */; };
 		6DD282842F68C1FE00B1281A /* TasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD282832F68C1FE00B1281A /* TasksView.swift */; };
@@ -584,6 +585,7 @@
 		6DC0CAAA2F5F7D0000A875ED /* TaskNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskNotifications.swift; sourceTree = "<group>"; };
 		6DC0CAAB2F5F7D0000A875ED /* TodoListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoListView.swift; sourceTree = "<group>"; };
 		6DC1C0282FCEF66B00CF8D62 /* FocusCelebrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusCelebrationView.swift; sourceTree = "<group>"; };
+		6DC1C02A2FCF671E00CF8D62 /* CrewFocusInviteSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewFocusInviteSheet.swift; sourceTree = "<group>"; };
 		6DC8F5292F78A42E00361A6D /* PushService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushService.swift; sourceTree = "<group>"; };
 		6DD282832F68C1FE00B1281A /* TasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TasksView.swift; sourceTree = "<group>"; };
 		6DD282852F68CBC100B1281A /* TaskCompleteAnimation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskCompleteAnimation.swift; sourceTree = "<group>"; };
@@ -1142,6 +1144,7 @@
 				6DB004722F999F24009F2F3B /* StudentCatalogService.swift */,
 				6DB004762F99A1D1009F2F3B /* AppSecrets.swift */,
 				6DC1C0282FCEF66B00CF8D62 /* FocusCelebrationView.swift */,
+				6DC1C02A2FCF671E00CF8D62 /* CrewFocusInviteSheet.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -1629,6 +1632,7 @@
 				6D20045C2F61DA7B0022C810 /* WeekView+PersonalUI.swift in Sources */,
 				6D215DA72F56035A00F7B9D7 /* EventItem.swift in Sources */,
 				6D5FE44D2F689D74007C124D /* CrewLeaderboardRow.swift in Sources */,
+				6DC1C02B2FCF671E00CF8D62 /* CrewFocusInviteSheet.swift in Sources */,
 				6DBE91D92F6C79F4001DF813 /* CrewMessageReadDTO.swift in Sources */,
 				6DBE91F12F6DD54C001DF813 /* FriendRequest.swift in Sources */,
 				6DD286BB2F7AE6BF005A73FA /* HomeDashboardView+Week.swift in Sources */,

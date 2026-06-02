@@ -14,13 +14,25 @@ final class FocusInviteService {
 
     private let functionURL = URL(string: "https://srzvzaczgydwtopnlrvx.supabase.co/functions/v1/send-message-push")!
 
+    // ISO 8601 formatter for started_at
+    private let iso8601: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
     func sendInvites(
         sessionID: UUID,
         crewID: UUID,
         participantIDs: [UUID],
         hostName: String,
         duration: Int,
-        taskTitle: String? = nil
+        taskTitle: String? = nil,
+        // YENİ PARAMETRELER
+        crewName: String? = nil,
+        startedAt: Date? = nil,
+        participantNames: [String]? = nil,
+        totalParticipants: Int? = nil
     ) async {
         let currentUserIDString = UserDefaults.standard.string(forKey: "current_user_id")
 
@@ -44,6 +56,11 @@ final class FocusInviteService {
         let normalizedTaskTitle = taskTitle?
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
+        let normalizedCrewName = crewName?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let startedAtString = startedAt.map { iso8601.string(from: $0) }
+
         for participantID in filteredParticipantIDs {
             do {
                 try await sendSingleInvite(
@@ -53,7 +70,11 @@ final class FocusInviteService {
                     crewID: crewID,
                     hostName: hostName,
                     duration: duration,
-                    taskTitle: normalizedTaskTitle
+                    taskTitle: normalizedTaskTitle,
+                    crewName: normalizedCrewName,
+                    startedAtString: startedAtString,
+                    participantNames: participantNames,
+                    totalParticipants: totalParticipants
                 )
             } catch {
                 print("FOCUS INVITE SEND ERROR [\(participantID.uuidString)]:", error.localizedDescription)
@@ -68,7 +89,11 @@ final class FocusInviteService {
         crewID: UUID,
         hostName: String,
         duration: Int,
-        taskTitle: String?
+        taskTitle: String?,
+        crewName: String?,
+        startedAtString: String?,
+        participantNames: [String]?,
+        totalParticipants: Int?
     ) async throws {
         guard let inviteSecret = Bundle.main.object(forInfoDictionaryKey: "FOCUS_INVITE_SECRET") as? String,
               !inviteSecret.isEmpty else {
@@ -98,9 +123,17 @@ final class FocusInviteService {
             bodyText = "\(hostName) \(duration) dk focus başlattı. Katılmak ister misin?"
         }
 
+        // Eğer crew adı varsa title'a koy, yoksa default "Takım odakta"
+        let title: String = {
+            if let crewName, !crewName.isEmpty {
+                return "\(crewName) · Focus"
+            }
+            return "Takım odakta"
+        }()
+
         var body: [String: Any] = [
             "toUserId": toUserID.uuidString,
-            "title": "Takım odakta",
+            "title": title,
             "message": bodyText,
             "type": "crew_focus_invite",
             "crew_id": crewID.uuidString,
@@ -115,10 +148,26 @@ final class FocusInviteService {
             body["task_title"] = taskTitle
         }
 
+        // YENİ ALANLAR
+        if let crewName, !crewName.isEmpty {
+            body["crew_name"] = crewName
+        }
+
+        if let startedAtString {
+            body["started_at"] = startedAtString
+        }
+
+        if let participantNames, !participantNames.isEmpty {
+            body["participant_names"] = participantNames
+        }
+
+        if let totalParticipants {
+            body["total_participants"] = totalParticipants
+        }
+
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        print("FOCUS INVITE ACCESS TOKEN EMPTY:", accessToken.isEmpty)
-        print("FOCUS INVITE HEADERS:", request.allHTTPHeaderFields ?? [:])
+        print("FOCUS INVITE BODY:", body)
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
@@ -140,14 +189,9 @@ final class FocusInviteService {
     }
 
     // ════════════════════════════════════════════════════════════════
-    // YENİ — Focus End Notifications
+    // Focus End Notifications (mevcut)
     // ════════════════════════════════════════════════════════════════
 
-    /// Crew focus bitince tüm participantlara "tamamlandı" push'u gönderir.
-    /// Host bunu çağırır. Kendisine de push gider (gerekirse — şu an gönderiyoruz
-    /// çünkü diğer cihazlarında da bildirim görsün).
-    ///
-    /// `participantIDs`: focus'taki tüm aktif katılımcıların user_id'leri (host dahil)
     func sendEndNotifications(
         crewID: UUID,
         crewName: String,
@@ -157,8 +201,6 @@ final class FocusInviteService {
     ) async {
         let currentUserIDString = UserDefaults.standard.string(forKey: "current_user_id")
 
-        // Host kendisine push gönderebilir (diğer cihazları için).
-        // Eğer istemezsek burada filter ederiz. Şimdilik herkese.
         let uniqueIDs = Array(Set(participantIDs))
 
         guard !uniqueIDs.isEmpty else {
@@ -169,7 +211,6 @@ final class FocusInviteService {
         print("FOCUS END PUSH SEND -> \(uniqueIDs.count) kullanıcıya")
 
         for userID in uniqueIDs {
-            // Kendisine gönderme (kişisel cihaz local notification yapacak)
             if userID.uuidString == currentUserIDString {
                 continue
             }
@@ -184,9 +225,6 @@ final class FocusInviteService {
         }
     }
 
-    /// Crew focus'tan birisi ayrılınca diğerlerine push gönderir.
-    /// `leaverID`: ayrılan kişinin user_id'si (kendisine push gitmez)
-    /// `participantIDs`: focus'taki diğer aktif katılımcılar
     func sendLeftNotifications(
         crewID: UUID,
         crewName: String,
@@ -194,7 +232,6 @@ final class FocusInviteService {
         leaverName: String,
         otherParticipantIDs: [UUID]
     ) async {
-        // Ayrılanı listeden çıkar (kendisine "X ayrıldı" gitmesin)
         let filteredIDs = Array(
             Set(otherParticipantIDs.filter { $0 != leaverID })
         )

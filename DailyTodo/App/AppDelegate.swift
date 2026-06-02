@@ -100,6 +100,17 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     ) {
         let userInfo = notification.request.content.userInfo
 
+        // ✅ DAVET geldiğinde DOĞRUDAN sheet aç, banner gösterme
+        if let type = userInfo["type"] as? String, type == "crew_focus_invite" {
+            // Banner gösterme — sheet otomatik açılacak
+            NotificationCenter.default.post(
+                name: .presentCrewFocusInviteSheet,
+                object: userInfo
+            )
+            completionHandler([])  // Sound/banner gösterme
+            return
+        }
+
         if shouldShowCustomInAppBanner(for: userInfo) {
             let title = notification.request.content.title.isEmpty
                 ? "Yeni bildirim"
@@ -152,7 +163,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             return activeCrewID == incomingCrewID
 
         case "crew_focus_invite":
-            return false
+            // Davet için banner SUPPRESS et, sheet otomatik açılacak
+            return true
 
         case "focus_room":
             return false
@@ -213,25 +225,19 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             }
 
         case "crew_focus_invite":
+            // Push'a tıklandığında sheet aç
             NotificationCenter.default.post(
                 name: .presentCrewFocusInviteSheet,
                 object: userInfo
             )
 
-        // ════════════════════════════════════════════════════════════
-        // YENİ — Crew Focus Ended (push'a tıkla → tebrikler ekranı)
-        // ════════════════════════════════════════════════════════════
         case "crew_focus_ended":
             NotificationCenter.default.post(
                 name: .presentFocusCompletionFromPush,
                 object: userInfo
             )
 
-        // ════════════════════════════════════════════════════════════
-        // YENİ — Crew Focus Left (sadece bilgi, açma)
-        // ════════════════════════════════════════════════════════════
         case "crew_focus_left":
-            // Push zaten görünür hale geldi, ek bir UI açmaya gerek yok
             print("📢 CREW FOCUS LEFT:", userInfo["leaver_name"] ?? "")
 
         default:
@@ -259,6 +265,5 @@ extension Notification.Name {
     static let openCrewFocusInviteFromNotification = Notification.Name("openCrewFocusInviteFromNotification")
     static let openCrewFocusFromNotification = Notification.Name("openCrewFocusFromNotification")
 
-    // YENİ — Crew focus ended push'a tıklayınca tebrikler ekranı açılacak
     static let presentFocusCompletionFromPush = Notification.Name("presentFocusCompletionFromPush")
 }

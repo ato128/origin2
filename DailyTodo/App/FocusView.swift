@@ -7,15 +7,6 @@
 import SwiftUI
 import SwiftData
 
-private struct CrewFocusInvitePayload: Identifiable {
-    let id = UUID()
-    let crewID: UUID
-    let sessionID: UUID
-    let hostName: String
-    let durationMinutes: Int
-    let taskTitle: String?
-}
-
 struct FocusView: View {
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var focusSession: FocusSessionManager
@@ -42,8 +33,6 @@ struct FocusView: View {
     @State private var selectedCrewID: UUID?
     @State private var selectedCrewTaskID: UUID?
     @State private var selectedParticipantIDs: Set<UUID> = []
-    @State private var invitePayload: CrewFocusInvitePayload?
-    @State private var isJoiningInvite = false
     
     var body: some View {
         ZStack {
@@ -73,8 +62,6 @@ struct FocusView: View {
                         )
                         
                         compactControlsSection
-                        
-                        inviteBannerCard
                         
                         bigStartButton
                         
@@ -115,7 +102,6 @@ struct FocusView: View {
             ActiveFocusView()
                 .environmentObject(focusSession)
         }
-        
         .onAppear {
             pageAppeared = true
             focusSession.configure(sessionStore: session, crewStore: crewStore)
@@ -186,11 +172,6 @@ struct FocusView: View {
                 preferredGoal: selectedGoal,
                 preferredStyle: selectedStyle
             )
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .presentCrewFocusInviteSheet)) { output in
-            guard let userInfo = output.object as? [AnyHashable: Any],
-                  let payload = parseInvitePayload(userInfo) else { return }
-            invitePayload = payload
         }
         .onReceive(NotificationCenter.default.publisher(for: .presentActiveCrewFocusFromNotification)) { output in
             guard let crewIDString = output.object as? String,
@@ -872,110 +853,6 @@ private extension FocusView {
         }
     }
     
-    var inviteBannerCard: some View {
-        Group {
-            if let payload = invitePayload {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 10) {
-                        Text("LIVE")
-                            .font(.system(size: 10, weight: .black, design: .monospaced))
-                            .foregroundStyle(.black)
-                            .padding(.horizontal, 9)
-                            .frame(height: 25)
-                            .background(
-                                Capsule()
-                                    .fill(Color(arenaHex: AppArenaPalette.green))
-                            )
-
-                        Text("FOCUS DAVETİ")
-                            .font(.system(size: 10, weight: .black, design: .monospaced))
-                            .tracking(1.7)
-                            .foregroundStyle(Color(arenaHex: AppArenaPalette.green))
-                    }
-
-                    Text("\(payload.hostName) seni \(payload.durationMinutes) dk crew focusa çağırıyor.")
-                        .font(.system(size: 17, weight: .black))
-                        .foregroundStyle(.white)
-                        .lineLimit(2)
-
-                    if let taskTitle = payload.taskTitle, !taskTitle.isEmpty {
-                        Text("Görev: \(taskTitle)")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.62))
-                            .lineLimit(1)
-                    }
-
-                    HStack(spacing: 10) {
-                        Button {
-                            Task {
-                                await joinInviteSession(payload)
-                            }
-                        } label: {
-                            HStack(spacing: 8) {
-                                if isJoiningInvite {
-                                    ProgressView()
-                                        .tint(.black)
-                                } else {
-                                    Image(systemName: "person.badge.plus")
-                                }
-
-                                Text(isJoiningInvite ? "Katılıyor..." : "Katıl")
-                                    .font(.system(size: 14, weight: .black))
-                            }
-                            .foregroundStyle(.black)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 44)
-                            .background(
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .fill(Color(arenaHex: AppArenaPalette.green))
-                            )
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(isJoiningInvite)
-
-                        Button {
-                            invitePayload = nil
-                        } label: {
-                            Text("Şimdi değil")
-                                .font(.system(size: 14, weight: .black))
-                                .foregroundStyle(.white.opacity(0.78))
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 44)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        .fill(Color.white.opacity(0.060))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                                        )
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(18)
-                .background(
-                    RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(arenaHex: AppArenaPalette.green).opacity(0.075),
-                                    Color(arenaHex: AppArenaPalette.blue).opacity(0.040),
-                                    Color.white.opacity(0.035)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                                .stroke(Color(arenaHex: AppArenaPalette.green).opacity(0.18), lineWidth: 1)
-                        )
-                )
-            }
-        }
-    }
-    
     var effectiveStageMode: FocusMode {
         if focusSession.isSessionActive {
             return focusSession.selectedMode
@@ -1426,73 +1303,6 @@ private extension FocusView {
         }
     }
 
-    func crewInviteJoinSheet(payload: CrewFocusInvitePayload) -> some View {
-        NavigationStack {
-            VStack(spacing: 18) {
-                VStack(spacing: 8) {
-                    Text("Takım odakta")
-                        .font(.system(size: 28, weight: .heavy, design: .rounded))
-
-                    Text("\(payload.hostName) \(payload.durationMinutes) dk focus başlattı.")
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-
-                    if let taskTitle = payload.taskTitle, !taskTitle.isEmpty {
-                        Text("Görev: \(taskTitle)")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(.primary)
-                    }
-                }
-
-                Button {
-                    Task {
-                        await joinInviteSession(payload)
-                    }
-                } label: {
-                    HStack(spacing: 10) {
-                        if isJoiningInvite {
-                            ProgressView()
-                                .tint(.white)
-                        } else {
-                            Image(systemName: "person.badge.plus")
-                        }
-
-                        Text(isJoiningInvite ? "Katılıyor..." : "Katıl")
-                            .font(.system(size: 17, weight: .heavy, design: .rounded))
-                    }
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color.green.opacity(0.95),
-                                        Color.blue.opacity(0.85)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                    )
-                }
-                .buttonStyle(.plain)
-                .disabled(isJoiningInvite)
-
-                Button("Şimdi değil") {
-                    invitePayload = nil
-                }
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-
-                Spacer()
-            }
-            .padding(20)
-        }
-        .presentationDetents([.medium])
-    }
-
     func startCrewSessionFromSheet() async {
         guard let crewID = selectedCrewID else { return }
 
@@ -1552,7 +1362,6 @@ private extension FocusView {
                 participantCount: selectedParticipantIDs.count
             )
 
-           
             await crewStore.loadActiveFocusSession(for: crewID)
             await crewStore.loadFocusParticipants(sessionID: dto.id)
 
@@ -1569,13 +1378,31 @@ private extension FocusView {
                 )
             }
 
+            // YENİ — Davet push için ek bilgiler
+            let crewObject = crewStore.crews.first(where: { $0.id == crewID })
+            let crewName = crewObject?.name ?? "Crew"
+
+            let liveParticipantNames: [String] = {
+                var names = participants.map(\.member_name)
+                if names.isEmpty {
+                    names = [hostName]
+                }
+                return names
+            }()
+
+            let totalCount = invitedParticipantIDs.count + 1
+
             await FocusInviteService.shared.sendInvites(
                 sessionID: dto.id,
                 crewID: crewID,
                 participantIDs: Array(invitedParticipantIDs),
                 hostName: hostName,
                 duration: resolvedMinutes,
-                taskTitle: task?.title
+                taskTitle: task?.title,
+                crewName: crewName,
+                startedAt: Date(),
+                participantNames: liveParticipantNames,
+                totalParticipants: totalCount
             )
         } catch {
             print("CREW START SHEET ERROR:", error.localizedDescription)
@@ -1592,79 +1419,6 @@ private extension FocusView {
         member.role.lowercased() == "owner" || member.user_id == focusSession.currentUserID
     }
 
-    func joinInviteSession(_ payload: CrewFocusInvitePayload) async {
-        isJoiningInvite = true
-        defer { isJoiningInvite = false }
-
-        do {
-            try await crewStore.joinCrewFocusSession(
-                sessionID: payload.sessionID,
-                crewID: payload.crewID,
-                userID: focusSession.currentUserID,
-                memberName: focusSession.currentUserDisplayName
-            )
-
-            await crewStore.loadActiveFocusSession(for: payload.crewID)
-
-            guard let dto = crewStore.activeFocusSessionByCrew[payload.crewID] else {
-                await MainActor.run {
-                    invitePayload = nil
-                }
-                return
-            }
-
-            await crewStore.loadFocusParticipants(sessionID: dto.id)
-            let participants = crewStore.focusParticipantsBySession[dto.id] ?? []
-
-            await MainActor.run {
-                selectedMode = .crew
-                focusSession.hydrateFromCrewSessionDTO(
-                    dto,
-                    crewID: payload.crewID,
-                    participantsDTO: participants,
-                    preferredGoal: selectedGoal,
-                    preferredStyle: selectedStyle
-                )
-                invitePayload = nil
-                focusSession.expandSession()
-            }
-        } catch {
-            print("JOIN INVITE ERROR:", error.localizedDescription)
-        }
-    }
-
-    func parseInvitePayload(_ userInfo: [AnyHashable: Any]) -> CrewFocusInvitePayload? {
-        guard
-            let crewIDString = userInfo["crew_id"] as? String,
-            let sessionIDString = userInfo["session_id"] as? String,
-            let hostName = userInfo["host_name"] as? String,
-            let crewID = UUID(uuidString: crewIDString),
-            let sessionID = UUID(uuidString: sessionIDString)
-        else {
-            return nil
-        }
-
-        let taskTitle = userInfo["task_title"] as? String
-
-        let duration: Int
-        if let intValue = userInfo["duration_minutes"] as? Int {
-            duration = intValue
-        } else if let stringValue = userInfo["duration_minutes"] as? String,
-                  let parsed = Int(stringValue) {
-            duration = parsed
-        } else {
-            duration = 25
-        }
-
-        return CrewFocusInvitePayload(
-            crewID: crewID,
-            sessionID: sessionID,
-            hostName: hostName,
-            durationMinutes: duration,
-            taskTitle: taskTitle
-        )
-    }
-    
     func loadCrewStartDependenciesIfNeeded() async {
         guard let crewID = selectedCrewID else { return }
 
@@ -1844,8 +1598,6 @@ private extension FocusView {
         case .friend: return "Eşleşti"
         }
     }
-
-   
 
     var modeCTA: String {
         switch selectedMode {

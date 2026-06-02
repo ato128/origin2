@@ -28,6 +28,7 @@ struct DailyTodoApp: App {
     @StateObject private var studentStore: StudentStore
 
     @State private var openFocusFromNotification: Bool = false
+    @State private var crewFocusInvitePayload: CrewFocusInvitePayload?
 
     init() {
         do {
@@ -129,16 +130,17 @@ struct DailyTodoApp: App {
                 focusSession.dismissCompletionSummary()
             }
         }
-        .sheet(item: $focusSession.completionSummary) { summary in
-            FocusCelebrationView(summary: summary) {
-                focusSession.dismissCompletionSummary()
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .presentFocusCompletionFromPush)) { output in
-            handleFocusCompletionPush(output.object as? [AnyHashable: Any])
-        }
-        .onAppear {
-            handleAppAppear()
+        .sheet(item: $crewFocusInvitePayload) { payload in
+            CrewFocusInviteSheet(
+                payload: payload,
+                onJoin: {
+                    handleCrewFocusInviteJoin(payload)
+                },
+                onDismiss: {
+                    crewFocusInvitePayload = nil
+                }
+            )
+            .interactiveDismissDisabled(false)
         }
         .onAppear {
             handleAppAppear()
@@ -162,8 +164,12 @@ struct DailyTodoApp: App {
         .onReceive(NotificationCenter.default.publisher(for: .presentActiveCrewFocusFromNotification)) { _ in
             openFocusFromNotification = true
         }
-        .onReceive(NotificationCenter.default.publisher(for: .presentCrewFocusInviteSheet)) { _ in
-            openFocusFromNotification = true
+        .onReceive(NotificationCenter.default.publisher(for: .presentCrewFocusInviteSheet)) { output in
+            guard let userInfo = output.object as? [AnyHashable: Any] else { return }
+            handleCrewFocusInviteReceived(userInfo)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .presentFocusCompletionFromPush)) { output in
+            handleFocusCompletionPush(output.object as? [AnyHashable: Any])
         }
     }
 
@@ -206,6 +212,74 @@ struct DailyTodoApp: App {
 
         Task {
             await ChatBackendClient.shared.testMe()
+        }
+    }
+    
+    private func handleCrewFocusInviteReceived(_ userInfo: [AnyHashable: Any]) {
+        print("📨 RECEIVED INVITE NOTIFICATION:", userInfo)
+        
+        guard let payload = CrewFocusInvitePayload.from(userInfo: userInfo) else {
+            print("⚠️ CrewFocusInvitePayload parse FAILED")
+            return
+        }
+        
+        print("✅ INVITE PARSED:", payload.crewName, payload.hostName)
+     
+        // Zaten aktif focus varsa veya zaten bu davete bakıyorsak göstermeyelim
+        if focusSession.isSessionActive,
+           focusSession.currentCrewBackendSessionID == payload.sessionID {
+            print("⚪️ INVITE SKIPPED: already in this session")
+            return
+        }
+     
+        // Önce kapat (varsa eski payload), sonra yenisini set et
+        crewFocusInvitePayload = nil
+     
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            crewFocusInvitePayload = payload
+            print("📤 INVITE SHEET ATANDI")
+        }
+    }
+     
+    private func handleCrewFocusInviteJoin(_ payload: CrewFocusInvitePayload) {
+        Task {
+            do {
+                try await crewStore.joinCrewFocusSession(
+                    sessionID: payload.sessionID,
+                    crewID: payload.crewID,
+                    userID: session.currentUser?.id,
+                    memberName: focusSession.currentUserDisplayName
+                )
+     
+                await crewStore.loadActiveFocusSession(for: payload.crewID)
+     
+                guard let dto = crewStore.activeFocusSessionByCrew[payload.crewID] else {
+                    await MainActor.run {
+                        crewFocusInvitePayload = nil
+                    }
+                    return
+                }
+     
+                await crewStore.loadFocusParticipants(sessionID: dto.id)
+                let participants = crewStore.focusParticipantsBySession[dto.id] ?? []
+     
+                await MainActor.run {
+                    focusSession.hydrateFromCrewSessionDTO(
+                        dto,
+                        crewID: payload.crewID,
+                        participantsDTO: participants,
+                        preferredGoal: .study,
+                        preferredStyle: .silent
+                    )
+                    crewFocusInvitePayload = nil
+                    focusSession.expandSession()
+                }
+            } catch {
+                print("JOIN INVITE FROM SHEET ERROR:", error.localizedDescription)
+                await MainActor.run {
+                    crewFocusInvitePayload = nil
+                }
+            }
         }
     }
 
@@ -306,8 +380,6 @@ struct DailyTodoApp: App {
             return nil
         }()
      
-        // Synthetic completion summary oluştur ve göster
-        // (push'tan geldi, lokal session'ımız yoktu, push'taki bilgileri kullanıyoruz)
         let summary = FocusCompletionSummary(
             id: UUID(),
             mode: .crew,

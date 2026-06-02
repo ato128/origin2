@@ -50,6 +50,36 @@
             endingLineNumber = "657"
             landmarkName = "BackendEditCrewTaskView"
             landmarkType = "21">
+            <Locations>
+               <Location
+                  uuid = "2B33879A-11D7-4B4E-B258-ADBCD85F8FB3 - c52ce34998bbcf4"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "closure #1 () -&gt; SwiftUI.TupleView&lt;(SwiftUI.Text, SwiftUI.LazyVGrid&lt;SwiftUI.ForEach&lt;Swift.Array&lt;Swift.String&gt;, Swift.String, &lt;&lt;opaque return type of SwiftUI.View.buttonStyle&lt;&#x3c4;_0_0 where &#x3c4;_1_0: SwiftUI.PrimitiveButtonStyle&gt;(&#x3c4;_1_0) -&gt; some&gt;&gt;.0&gt;&gt;)&gt; in DailyTodo.BackendEditCrewTaskView.optionGrid(title: Swift.String, options: Swift.Array&lt;Swift.String&gt;, selection: SwiftUI.Binding&lt;Swift.String&gt;, colorProvider: (Swift.String) -&gt; SwiftUI.Color, labelProvider: (Swift.String) -&gt; Swift.String) -&gt; some"
+                  moduleName = "DailyTodo.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/atakanortac/Desktop/origin2/DailyTodo/Features/Crew/BackendEditCrewTaskView.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "657"
+                  endingLineNumber = "657">
+               </Location>
+               <Location
+                  uuid = "2B33879A-11D7-4B4E-B258-ADBCD85F8FB3 - c52ce34998bbcf4"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "closure #1 () -&gt; SwiftUI.TupleView&lt;(SwiftUI.Text, SwiftUI.LazyVGrid&lt;SwiftUI.ForEach&lt;Swift.Array&lt;Swift.String&gt;, Swift.String, &lt;&lt;opaque return type of SwiftUI.View.buttonStyle&lt;&#x3c4;_0_0 where &#x3c4;_1_0: SwiftUI.PrimitiveButtonStyle&gt;(&#x3c4;_1_0) -&gt; some&gt;&gt;.0&gt;&gt;)&gt; in DailyTodo.BackendEditCrewTaskView.optionGrid(title: Swift.String, options: Swift.Array&lt;Swift.String&gt;, selection: SwiftUI.Binding&lt;Swift.String&gt;, colorProvider: (Swift.String) -&gt; SwiftUI.Color, labelProvider: (Swift.String) -&gt; Swift.String) -&gt; some"
+                  moduleName = "DailyTodo.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/atakanortac/Desktop/origin2/DailyTodo/Features/Crew/BackendEditCrewTaskView.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "657"
+                  endingLineNumber = "657">
+               </Location>
+            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
