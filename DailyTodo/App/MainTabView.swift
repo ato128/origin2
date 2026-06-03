@@ -51,12 +51,35 @@ struct MainTabView: View {
 
     @State private var tab: AppTab = .tasks
     @State private var pendingChatRoute: PendingChatRoute?
+    @State private var showTasksSheet: Bool = false
 
     var body: some View {
         TabView(selection: $tab) {
 
             NavigationStack {
-                TodoListView(selectedTab: $tab)
+                HomeView(
+                    onAddTask: {
+                        showTasksSheet = true
+                    },
+                    onOpenWeek: {
+                        tab = .week
+                    },
+                    onOpenInsights: {
+                        tab = .insights
+                    },
+                    onOpenFocus: {
+                        tab = .focus
+                    },
+                    onOpenCrew: {
+                        tab = .crew
+                    },
+                    onOpenChat: {
+                        tab = .crew
+                    },
+                    onOpenTasks: {
+                        showTasksSheet = true
+                    }
+                )
             }
             .tabItem { Label("Tasks", systemImage: "checklist") }
             .tag(AppTab.tasks)
@@ -91,6 +114,13 @@ struct MainTabView: View {
         .sheet(item: $pendingChatRoute) { route in
             NavigationStack {
                 pendingChatDestination(route)
+            }
+        }
+        .sheet(isPresented: $showTasksSheet) {
+            NavigationStack {
+                TasksView()
+                    .environmentObject(store)
+                    .environmentObject(session)
             }
         }
         .onAppear {

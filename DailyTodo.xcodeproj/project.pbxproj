@@ -284,6 +284,7 @@
 		6DC0CAC82F5F7D0000A875ED /* LiveActivityScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAA32F5F7D0000A875ED /* LiveActivityScheduler.swift */; };
 		6DC1C0292FCEF66C00CF8D62 /* FocusCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC1C0282FCEF66B00CF8D62 /* FocusCelebrationView.swift */; };
 		6DC1C02B2FCF671E00CF8D62 /* CrewFocusInviteSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC1C02A2FCF671E00CF8D62 /* CrewFocusInviteSheet.swift */; };
+		6DC1C02D2FD0274200CF8D62 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC1C02C2FD0274200CF8D62 /* HomeView.swift */; };
 		6DC8F52A2F78A42E00361A6D /* PushService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC8F5292F78A42E00361A6D /* PushService.swift */; };
 		6DD282822F68C0FA00B1281A /* DailyTodo.entitlements.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6D81C1072F59E87500B65AF8 /* DailyTodo.entitlements.plist */; };
 		6DD282842F68C1FE00B1281A /* TasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD282832F68C1FE00B1281A /* TasksView.swift */; };
@@ -586,6 +587,7 @@
 		6DC0CAAB2F5F7D0000A875ED /* TodoListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoListView.swift; sourceTree = "<group>"; };
 		6DC1C0282FCEF66B00CF8D62 /* FocusCelebrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusCelebrationView.swift; sourceTree = "<group>"; };
 		6DC1C02A2FCF671E00CF8D62 /* CrewFocusInviteSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewFocusInviteSheet.swift; sourceTree = "<group>"; };
+		6DC1C02C2FD0274200CF8D62 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		6DC8F5292F78A42E00361A6D /* PushService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushService.swift; sourceTree = "<group>"; };
 		6DD282832F68C1FE00B1281A /* TasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TasksView.swift; sourceTree = "<group>"; };
 		6DD282852F68CBC100B1281A /* TaskCompleteAnimation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskCompleteAnimation.swift; sourceTree = "<group>"; };
@@ -843,6 +845,7 @@
 				6D9E21412F803E1300946892 /* HomeDashboardExamHelpers.swift */,
 				6DBCED2D2F85D4DC00788909 /* HomeOverviewCards.swift */,
 				6D4F2BA22F9C09F20056E067 /* CourseSetupSheet.swift */,
+				6DC1C02C2FD0274200CF8D62 /* HomeView.swift */,
 			);
 			path = Home;
 			sourceTree = "<group>";
@@ -1435,6 +1438,7 @@
 				6D215DD92F5645F200F7B9D7 /* WidgetShared.swift in Sources */,
 				6DB70E752F72D56A00F04B43 /* WeekView+Lifecycle.swift in Sources */,
 				6D5FE4472F687756007C124D /* CrewFocusRecord.swift in Sources */,
+				6DC1C02D2FD0274200CF8D62 /* HomeView.swift in Sources */,
 				6DB0041B2F92FA88009F2F3B /* InsightsIdentityCardV2.swift in Sources */,
 				6D2A2ADD2F89DEFC0051459D /* FocusQuickControlsV6.swift in Sources */,
 				6DBE91B52F6B6906001DF813 /* CrewDTO.swift in Sources */,

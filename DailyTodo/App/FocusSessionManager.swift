@@ -1048,6 +1048,10 @@ final class FocusSessionManager: ObservableObject {
     var durationMinutes: Int {
         currentSession?.durationMinutes ?? 25
     }
+    
+    var requestedMinutes: Int {
+        durationMinutes
+    }
 
     var isPaused: Bool {
         currentSession?.isPaused ?? false
