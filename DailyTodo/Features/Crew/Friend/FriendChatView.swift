@@ -1121,6 +1121,9 @@ private extension FriendChatView {
                     await ChatBackendClient.shared.markConversationRead(
                         conversationID: backendConversationID
                     )
+                    await MainActor.run {
+                        AppBadgeManager.shared.clearBadge()
+                    }
 
                     print("🟢 CHAT FOREGROUND SYNC OK")
                 }

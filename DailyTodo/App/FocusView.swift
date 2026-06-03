@@ -176,17 +176,21 @@ struct FocusView: View {
         .onReceive(NotificationCenter.default.publisher(for: .presentActiveCrewFocusFromNotification)) { output in
             guard let crewIDString = output.object as? String,
                   let crewID = UUID(uuidString: crewIDString) else { return }
-            
+
             Task {
                 await crewStore.loadActiveFocusSession(for: crewID)
-                
-                guard let dto = crewStore.activeFocusSessionByCrew[crewID] else { return }
-                
+
+                guard let dto = crewStore.activeFocusSessionByCrew[crewID] else {
+                    print("⚪️ ACTIVE CREW FOCUS NOT FOUND:", crewID.uuidString)
+                    return
+                }
+
                 await crewStore.loadFocusParticipants(sessionID: dto.id)
                 let participants = crewStore.focusParticipantsBySession[dto.id] ?? []
-                
+
                 await MainActor.run {
                     selectedMode = .crew
+
                     focusSession.hydrateFromCrewSessionDTO(
                         dto,
                         crewID: crewID,
@@ -194,6 +198,10 @@ struct FocusView: View {
                         preferredGoal: selectedGoal,
                         preferredStyle: selectedStyle
                     )
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                        focusSession.expandSession()
+                    }
                 }
             }
         }
@@ -1348,7 +1356,7 @@ private extension FocusView {
         }
 
         let task = activeCrewTasks.first(where: { $0.id == selectedCrewTaskID })
-        let hostName = focusSession.currentUserDisplayName
+        let hostName = resolvedCurrentDisplayName
 
         do {
             let dto = try await crewStore.startCrewFocusSession(
@@ -1369,6 +1377,7 @@ private extension FocusView {
 
             await MainActor.run {
                 selectedMode = .crew
+
                 focusSession.hydrateFromCrewSessionDTO(
                     dto,
                     crewID: crewID,
@@ -1376,6 +1385,10 @@ private extension FocusView {
                     preferredGoal: selectedGoal,
                     preferredStyle: selectedStyle
                 )
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                    focusSession.expandSession()
+                }
             }
 
             // YENİ — Davet push için ek bilgiler
@@ -1426,6 +1439,27 @@ private extension FocusView {
         await crewStore.loadMemberProfiles(for: crewStore.crewMembers)
         await crewStore.loadTasks(for: crewID)
         await crewStore.loadActiveFocusSession(for: crewID)
+    }
+    
+    var resolvedCurrentDisplayName: String {
+        if let user = session.currentUser {
+            let fullName = user.fullName.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !fullName.isEmpty {
+                return fullName
+            }
+
+            let username = user.username.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !username.isEmpty {
+                return username
+            }
+
+            let email = user.email.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !email.isEmpty {
+                return email.components(separatedBy: "@").first ?? email
+            }
+        }
+
+        return focusSession.currentUserDisplayName
     }
 
     var activeCrewTasks: [CrewTaskDTO] {

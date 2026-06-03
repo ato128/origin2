@@ -148,6 +148,18 @@ struct DailyTodoApp: App {
         .onReceive(NotificationCenter.default.publisher(for: .didReceiveAPNSToken)) { _ in
             handleAPNSTokenNotification()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .focusSessionRecordSaved)) { _ in
+            let context = ModelContext(container)
+            let currentUserID = session.currentUser?.id.uuidString
+
+            Task {
+                await SmartNotificationScheduler.shared.reschedule(
+                    context: context,
+                    currentUserID: currentUserID,
+                    reason: "focus record saved"
+                )
+            }
+        }
         .onChange(of: session.currentUser?.id) { _, newID in
             handleCurrentUserChanged(newID)
         }
@@ -171,6 +183,24 @@ struct DailyTodoApp: App {
         .onReceive(NotificationCenter.default.publisher(for: .presentFocusCompletionFromPush)) { output in
             handleFocusCompletionPush(output.object as? [AnyHashable: Any])
         }
+    }
+    
+    private var resolvedCurrentDisplayName: String {
+        if let user = session.currentUser {
+            if !user.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return user.fullName
+            }
+
+            if !user.username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return user.username
+            }
+
+            if !user.email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return user.email.components(separatedBy: "@").first ?? user.email
+            }
+        }
+
+        return focusSession.currentUserDisplayName
     }
 
     private func handleAppAppear() {
@@ -248,7 +278,7 @@ struct DailyTodoApp: App {
                     sessionID: payload.sessionID,
                     crewID: payload.crewID,
                     userID: session.currentUser?.id,
-                    memberName: focusSession.currentUserDisplayName
+                    memberName: resolvedCurrentDisplayName
                 )
      
                 await crewStore.loadActiveFocusSession(for: payload.crewID)
@@ -402,6 +432,8 @@ struct DailyTodoApp: App {
         case .active:
             LiveActivityScheduler.shared.startForegroundLoop(container: container)
 
+            focusSession.reconcileExpiredSessionIfNeeded(reason: "scene active")
+            
             let context = ModelContext(container)
             WidgetAppSync.refreshFromSwiftData(context: context)
 
@@ -655,7 +687,12 @@ struct DailyTodoApp: App {
         Task {
             await NotificationManager.shared.requestPermissionIfNeeded()
             await NotificationManager.shared.rescheduleAll(events: scopedEvents)
-
+            await SmartNotificationScheduler.shared.reschedule(
+                context: context,
+                currentUserID: currentUserID,
+                reason: reason
+            )
+            
             await MainActor.run {
                 print("📡 REGISTERING FOR REMOTE NOTIFICATIONS:", reason)
                 UIApplication.shared.registerForRemoteNotifications()
@@ -721,6 +758,20 @@ struct DailyTodoApp: App {
 
         if url.host == "week" {
             NotificationCenter.default.post(name: .openWeekFromWidget, object: nil)
+            return
+        }
+        
+        if url.host == "focus" {
+            NotificationCenter.default.post(name: .openFocusTabFromHome, object: nil)
+
+            if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+               let crewID = components.queryItems?.first(where: { $0.name == "crew_id" })?.value {
+                NotificationCenter.default.post(
+                    name: .openCrewFocusFromNotification,
+                    object: crewID
+                )
+            }
+
             return
         }
 

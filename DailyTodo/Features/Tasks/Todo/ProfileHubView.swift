@@ -14,15 +14,15 @@ struct ProfileHubView: View {
     @EnvironmentObject var languageManager: LanguageManager
     @EnvironmentObject var studentStore: StudentStore
 
-    @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     @AppStorage("smartEngineEnabled") private var smartEngineEnabled = true
     @AppStorage("showOnlyToday") private var showOnlyToday = false
-    @AppStorage("didFinishOnboarding") private var didFinishOnboarding = true
-    @AppStorage("didFinishPermissionOnboarding") private var didFinishPermissionOnboarding = true
 
     @State private var showEditProfile = false
     @State private var showAuthSheet = false
     @State private var showStudentAcademicSettings = false
+    @State private var showNotificationSettings = false
+    @State private var showAboutApp = false
+    @State private var showMadeWithCare = false
 
     private var pageAccent: Color {
         Color(arenaHex: AppArenaPalette.cyan)
@@ -49,10 +49,8 @@ struct ProfileHubView: View {
                 LazyVStack(alignment: .leading, spacing: 16) {
                     headerSection
                     accountSection
-                    appearanceSection
                     productivitySection
                     languageSection
-                    appSection
                     supportSection
                     logoutSection
 
@@ -77,6 +75,15 @@ struct ProfileHubView: View {
         .sheet(isPresented: $showStudentAcademicSettings) {
             StudentAcademicSettingsView()
                 .environmentObject(studentStore)
+        }
+        .sheet(isPresented: $showNotificationSettings) {
+            SmartNotificationSettingsView()
+        }
+        .sheet(isPresented: $showAboutApp) {
+            AboutUpdoView()
+        }
+        .sheet(isPresented: $showMadeWithCare) {
+            MadeWithCareView()
         }
     }
 }
@@ -257,69 +264,16 @@ private extension ProfileHubView {
         }
     }
 
-    var appearanceSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            sectionHeader(
-                eyebrow: "APPEARANCE",
-                title: "Görünüm",
-                italic: "ayarları",
-                subtitle: "Tema ve günlük görünüm tercihlerinin merkezi",
-                icon: "paintpalette.fill",
-                tint: secondaryAccent
-            )
-
-            VStack(spacing: 16) {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 12) {
-                        iconBox(icon: "circle.lefthalf.filled", tint: secondaryAccent)
-
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("Tema")
-                                .font(.system(size: 16, weight: .black))
-                                .foregroundStyle(.white)
-
-                            Text("Uygulama görünüm stilini seç")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.48))
-                        }
-
-                        Spacer()
-
-                        Picker("Tema", selection: $appTheme) {
-                            ForEach(AppTheme.allCases) { theme in
-                                Label(theme.title, systemImage: theme.icon)
-                                    .tag(theme.rawValue)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .tint(.white)
-                    }
-                }
-
-                Divider()
-                    .overlay(Color.white.opacity(0.075))
-
-                toggleRow(
-                    icon: "calendar",
-                    iconColor: warmAccent,
-                    title: "Sadece Bugünü Göster",
-                    subtitle: "Bugünün görevlerine odaklan",
-                    isOn: $showOnlyToday
-                )
-            }
-            .padding(18)
-            .background(arenaCardBackground(tint: secondaryAccent, radius: 30, strength: 0.58))
-        }
-    }
+    
 
     var productivitySection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
-                eyebrow: "PRODUCTIVITY",
-                title: "Üretkenlik",
-                italic: "kontrolü",
-                subtitle: "Akıllı motor, bildirim ve focus tercihleri",
-                icon: "brain.head.profile",
+                eyebrow: "SMART SYSTEM",
+                title: "Akıllı",
+                italic: "akış",
+                subtitle: "Bildirimler, öneriler ve günlük çalışma ritmin",
+                icon: "sparkles",
                 tint: Color(arenaHex: AppArenaPalette.green)
             )
 
@@ -328,19 +282,35 @@ private extension ProfileHubView {
                     icon: "brain.head.profile",
                     iconColor: Color(arenaHex: AppArenaPalette.green),
                     title: "Akıllı Görev Motoru",
-                    subtitle: "YZ önerileri ve akıllı planlama",
+                    subtitle: "Görev, sınav ve focus önerilerini daha anlamlı hale getirir",
                     isOn: $smartEngineEnabled
                 )
 
                 Divider()
                     .overlay(Color.white.opacity(0.075))
 
-                profileRow(
-                    icon: "bell.badge.fill",
-                    iconColor: Color(arenaHex: AppArenaPalette.coral),
-                    title: "Bildirimler",
-                    subtitle: "Hatırlatıcı ve sistem tercihleri"
+                toggleRow(
+                    icon: "calendar",
+                    iconColor: warmAccent,
+                    title: "Sadece Bugünü Göster",
+                    subtitle: "Ana ekranda bugünün akışına daha net odaklan",
+                    isOn: $showOnlyToday
                 )
+
+                Divider()
+                    .overlay(Color.white.opacity(0.075))
+
+                Button {
+                    showNotificationSettings = true
+                } label: {
+                    profileRow(
+                        icon: "bell.badge.fill",
+                        iconColor: Color(arenaHex: AppArenaPalette.coral),
+                        title: "Akıllı Bildirimler",
+                        subtitle: "Sınav, seri, görev ve focus hatırlatmalarını yönet"
+                    )
+                }
+                .buttonStyle(.plain)
 
                 Divider()
                     .overlay(Color.white.opacity(0.075))
@@ -349,11 +319,18 @@ private extension ProfileHubView {
                     icon: "timer",
                     iconColor: Color(arenaHex: AppArenaPalette.green),
                     title: "Focus Tercihleri",
-                    subtitle: "Odak seans ayarlarını düzenle"
+                    subtitle: "Odak seans ayarları yakında burada olacak"
                 )
+                .opacity(0.72)
             }
             .padding(18)
-            .background(arenaCardBackground(tint: Color(arenaHex: AppArenaPalette.green), radius: 30, strength: 0.52))
+            .background(
+                arenaCardBackground(
+                    tint: Color(arenaHex: AppArenaPalette.green),
+                    radius: 30,
+                    strength: 0.52
+                )
+            )
         }
     }
 
@@ -403,86 +380,58 @@ private extension ProfileHubView {
         }
     }
 
-    var appSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            sectionHeader(
-                eyebrow: "APP FLOW",
-                title: "Uygulama",
-                italic: "akışı",
-                subtitle: "Başlangıç ve izin ekranlarını yeniden yönet",
-                icon: "sparkles",
-                tint: warmAccent
-            )
-
-            VStack(spacing: 16) {
-                Button {
-                    didFinishOnboarding = false
-                    dismiss()
-                } label: {
-                    profileRow(
-                        icon: "sparkles",
-                        iconColor: warmAccent,
-                        title: "Onboarding’i Tekrar Göster",
-                        subtitle: "Giriş ekranlarını yeniden başlat"
-                    )
-                }
-                .buttonStyle(.plain)
-
-                Divider()
-                    .overlay(Color.white.opacity(0.075))
-
-                Button {
-                    didFinishPermissionOnboarding = false
-                    dismiss()
-                } label: {
-                    profileRow(
-                        icon: "bell.fill",
-                        iconColor: Color(arenaHex: AppArenaPalette.coral),
-                        title: "İzin Ekranını Tekrar Göster",
-                        subtitle: "Bildirim ve izin adımlarını yenile"
-                    )
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(18)
-            .background(arenaCardBackground(tint: warmAccent, radius: 30, strength: 0.56))
-        }
-    }
+    
 
     var supportSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
-                eyebrow: "SUPPORT",
-                title: "Destek",
-                italic: "bilgileri",
-                subtitle: "Uygulama hakkında kısa bilgiler",
+                eyebrow: "UPDO",
+                title: "Uygulama",
+                italic: "hakkında",
+                subtitle: "Updo’nun amacı, sürüm bilgileri ve yapım notları",
                 icon: "info.circle.fill",
-                tint: .white.opacity(0.70)
+                tint: .white.opacity(0.72)
             )
 
             VStack(spacing: 16) {
-                profileRow(
-                    icon: "info.circle.fill",
-                    iconColor: .white.opacity(0.66),
-                    title: "Hakkında",
-                    subtitle: "Uygulama ve sürüm bilgileri"
-                )
+                Button {
+                    showAboutApp = true
+                } label: {
+                    profileRow(
+                        icon: "info.circle.fill",
+                        iconColor: pageAccent,
+                        title: "Hakkında",
+                        subtitle: "Updo’nun ne için tasarlandığını ve sürüm bilgisini gör"
+                    )
+                }
+                .buttonStyle(.plain)
 
                 Divider()
                     .overlay(Color.white.opacity(0.075))
 
-                profileRow(
-                    icon: "heart.fill",
-                    iconColor: Color(arenaHex: AppArenaPalette.coral),
-                    title: "Özenle yapıldı",
-                    subtitle: "DailyTodo deneyimini geliştirmeye devam ediyoruz"
-                )
+                Button {
+                    showMadeWithCare = true
+                } label: {
+                    profileRow(
+                        icon: "heart.fill",
+                        iconColor: Color(arenaHex: AppArenaPalette.coral),
+                        title: "Özenle yapıldı",
+                        subtitle: "Bu deneyimin arkasındaki fikir ve tasarım yaklaşımı"
+                    )
+                }
+                .buttonStyle(.plain)
             }
             .padding(18)
-            .background(arenaCardBackground(tint: .white.opacity(0.45), radius: 30, strength: 0.34))
+            .background(
+                arenaCardBackground(
+                    tint: .white.opacity(0.45),
+                    radius: 30,
+                    strength: 0.34
+                )
+            )
         }
     }
-
+    
     var logoutSection: some View {
         Group {
             if session.currentUser != nil {
@@ -911,6 +860,640 @@ private extension ProfileHubView {
             return "Dil"
         default:
             return ""
+        }
+    }
+}
+// MARK: - Smart Notification Settings
+
+private struct SmartNotificationSettingsView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @AppStorage("smartNotificationsEnabled") private var smartNotificationsEnabled = true
+    @AppStorage("smartExamNotificationsEnabled") private var smartExamNotificationsEnabled = true
+    @AppStorage("smartStreakNotificationsEnabled") private var smartStreakNotificationsEnabled = true
+    @AppStorage("smartDailyFocusNotificationsEnabled") private var smartDailyFocusNotificationsEnabled = true
+    @AppStorage("smartTaskNotificationsEnabled") private var smartTaskNotificationsEnabled = true
+
+    private var cyan: Color { Color(arenaHex: AppArenaPalette.cyan) }
+    private var gold: Color { Color(arenaHex: AppArenaPalette.gold) }
+    private var coral: Color { Color(arenaHex: AppArenaPalette.coral) }
+    private var green: Color { Color(arenaHex: AppArenaPalette.green) }
+    private var purple: Color { Color(arenaHex: AppArenaPalette.purple) }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                ArenaBackground(
+                    primaryGlow: cyan,
+                    secondaryGlow: purple,
+                    warmGlow: gold,
+                    intensity: 0.92
+                )
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        heroCard
+
+                        settingsCard
+
+                        quietCard
+
+                        philosophyCard
+
+                        Color.clear.frame(height: 24)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                    .padding(.bottom, 28)
+                }
+            }
+            .preferredColorScheme(.dark)
+            .navigationBarBackButtonHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
+        }
+        .onChange(of: smartNotificationsEnabled) { _, newValue in
+            guard newValue == false else { return }
+
+            Task {
+                await SmartNotificationScheduler.shared.cancelAllSmartNotifications()
+                SmartNotificationHistory.shared.reset()
+            }
+        }
+    }
+
+    private var heroCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background(circleBackground)
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                Image(systemName: "bell.badge.fill")
+                    .font(.system(size: 18, weight: .black))
+                    .foregroundStyle(coral)
+                    .frame(width: 44, height: 44)
+                    .background(iconBackground(coral))
+            }
+
+            VStack(alignment: .leading, spacing: 7) {
+                Text("SMART NOTIFICATIONS")
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(2.2)
+                    .foregroundStyle(coral)
+
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Text("Akıllı")
+                        .font(.system(size: 38, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text("bildirimler")
+                        .font(.system(size: 34, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(coral)
+                }
+
+                Text("Updo gün içinde sadece gerçekten değerli olduğunda hatırlatır. Amaç rahatsız etmek değil, ritmini korumak.")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.52))
+                    .lineSpacing(3)
+            }
+        }
+        .padding(18)
+        .background(cardBackground(coral, strength: 0.60))
+    }
+
+    private var settingsCard: some View {
+        VStack(spacing: 16) {
+            toggleRow(
+                icon: "sparkles",
+                tint: cyan,
+                title: "Akıllı Bildirimler",
+                subtitle: "Tüm akıllı hatırlatmaları aç veya kapat",
+                isOn: $smartNotificationsEnabled
+            )
+
+            Divider().overlay(Color.white.opacity(0.075))
+
+            toggleRow(
+                icon: "graduationcap.fill",
+                tint: gold,
+                title: "Sınav Hatırlatmaları",
+                subtitle: "Sınava yaklaşırken plan ve tekrar önerileri",
+                isOn: $smartExamNotificationsEnabled
+            )
+            .disabled(!smartNotificationsEnabled)
+            .opacity(smartNotificationsEnabled ? 1 : 0.45)
+
+            Divider().overlay(Color.white.opacity(0.075))
+
+            toggleRow(
+                icon: "flame.fill",
+                tint: coral,
+                title: "Seri Koruma",
+                subtitle: "Ritmin bozulmadan önce kısa focus önerisi",
+                isOn: $smartStreakNotificationsEnabled
+            )
+            .disabled(!smartNotificationsEnabled)
+            .opacity(smartNotificationsEnabled ? 1 : 0.45)
+
+            Divider().overlay(Color.white.opacity(0.075))
+
+            toggleRow(
+                icon: "timer",
+                tint: green,
+                title: "Focus Önerileri",
+                subtitle: "Günün akışına göre hafif odak önerileri",
+                isOn: $smartDailyFocusNotificationsEnabled
+            )
+            .disabled(!smartNotificationsEnabled)
+            .opacity(smartNotificationsEnabled ? 1 : 0.45)
+
+            Divider().overlay(Color.white.opacity(0.075))
+
+            toggleRow(
+                icon: "checklist",
+                tint: purple,
+                title: "Görev Hatırlatmaları",
+                subtitle: "Bugünkü kalan veya geciken görevler için uyarılar",
+                isOn: $smartTaskNotificationsEnabled
+            )
+            .disabled(!smartNotificationsEnabled)
+            .opacity(smartNotificationsEnabled ? 1 : 0.45)
+        }
+        .padding(18)
+        .background(cardBackground(cyan, strength: 0.46))
+    }
+
+    private var quietCard: some View {
+        HStack(spacing: 13) {
+            iconBox("moon.zzz.fill", tint: .white.opacity(0.70))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Sessiz Saatler")
+                    .font(.system(size: 17, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text("22:30 – 08:00 arasında akıllı bildirim planlanmaz.")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.50))
+                    .lineLimit(2)
+            }
+
+            Spacer()
+        }
+        .padding(18)
+        .background(cardBackground(.white.opacity(0.46), strength: 0.28))
+    }
+
+    private var philosophyCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                iconBox("hand.raised.fill", tint: gold)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Spam değil, koç gibi")
+                        .font(.system(size: 17, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text("Günde maksimum birkaç anlamlı dokunuş")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.50))
+                }
+            }
+
+            Text("Updo, aynı gün aynı kategoriden tekrar tekrar bildirim göndermez. Bildirimler arasında mesafe bırakır ve yalnızca aksiyon değeri varsa devreye girer.")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.48))
+                .lineSpacing(3)
+        }
+        .padding(18)
+        .background(cardBackground(gold, strength: 0.38))
+    }
+
+    private func toggleRow(
+        icon: String,
+        tint: Color,
+        title: String,
+        subtitle: String,
+        isOn: Binding<Bool>
+    ) -> some View {
+        HStack(spacing: 12) {
+            iconBox(icon, tint: tint)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text(subtitle)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.48))
+                    .lineLimit(2)
+            }
+
+            Spacer()
+
+            Toggle("", isOn: isOn)
+                .labelsHidden()
+                .tint(tint)
+        }
+    }
+
+    private func iconBox(_ icon: String, tint: Color) -> some View {
+        RoundedRectangle(cornerRadius: 15, style: .continuous)
+            .fill(tint.opacity(0.13))
+            .frame(width: 46, height: 46)
+            .overlay(
+                Image(systemName: icon)
+                    .font(.system(size: 17, weight: .black))
+                    .foregroundStyle(tint)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    .stroke(tint.opacity(0.15), lineWidth: 1)
+            )
+    }
+
+    private var circleBackground: some View {
+        Circle()
+            .fill(Color.white.opacity(0.08))
+            .overlay(Circle().stroke(Color.white.opacity(0.12), lineWidth: 1))
+    }
+
+    private func iconBackground(_ tint: Color) -> some View {
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .fill(tint.opacity(0.13))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(tint.opacity(0.16), lineWidth: 1)
+            )
+    }
+
+    private func cardBackground(_ tint: Color, strength: Double) -> some View {
+        RoundedRectangle(cornerRadius: 30, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        tint.opacity(0.070 + strength * 0.035),
+                        Color(arenaHex: AppArenaPalette.purple).opacity(0.035),
+                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .stroke(tint.opacity(0.14), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.20), radius: 13, y: 7)
+    }
+}
+// MARK: - About Updo
+
+private struct AboutUpdoView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    private var cyan: Color { Color(arenaHex: AppArenaPalette.cyan) }
+    private var blue: Color { Color(arenaHex: AppArenaPalette.blue) }
+    private var purple: Color { Color(arenaHex: AppArenaPalette.purple) }
+    private var gold: Color { Color(arenaHex: AppArenaPalette.gold) }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                ArenaBackground(
+                    primaryGlow: cyan,
+                    secondaryGlow: purple,
+                    warmGlow: gold,
+                    intensity: 0.94
+                )
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        header
+
+                        missionCard
+
+                        featureGrid
+
+                        versionCard
+
+                        Color.clear.frame(height: 24)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                    .padding(.bottom, 28)
+                }
+            }
+            .preferredColorScheme(.dark)
+            .navigationBarBackButtonHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(Color.white.opacity(0.08)))
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                appLogo
+            }
+
+            VStack(alignment: .leading, spacing: 7) {
+                Text("ABOUT UPDO")
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(2.2)
+                    .foregroundStyle(cyan)
+
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Text("Student")
+                        .font(.system(size: 38, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text("operating system")
+                        .font(.system(size: 31, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(cyan)
+                }
+                .lineLimit(2)
+
+                Text("Updo; görev, ders, sınav, focus ve crew akışını tek yerde toplayan günlük öğrenci kontrol merkezidir.")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.52))
+                    .lineSpacing(3)
+            }
+        }
+        .padding(18)
+        .background(cardBackground(cyan, strength: 0.56))
+    }
+
+    private var appLogo: some View {
+        ZStack {
+            Image(systemName: "scope")
+                .font(.system(size: 42, weight: .ultraLight))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [.white, cyan, blue, purple],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            Image(systemName: "location.north.fill")
+                .font(.system(size: 17, weight: .black))
+                .foregroundStyle(.white)
+        }
+        .frame(width: 54, height: 54)
+        .background(
+            Circle()
+                .fill(Color.white.opacity(0.07))
+                .overlay(Circle().stroke(cyan.opacity(0.20), lineWidth: 1))
+        )
+    }
+
+    private var missionCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Neden var?")
+                .font(.system(size: 22, weight: .black))
+                .foregroundStyle(.white)
+
+            Text("Öğrencilikte problem genelde yapılacak şeylerin çok olması değil; neye, ne zaman odaklanacağını bilememektir. Updo bu karmaşayı sade bir günlük akışa çevirir.")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.52))
+                .lineSpacing(4)
+        }
+        .padding(18)
+        .background(cardBackground(blue, strength: 0.38))
+    }
+
+    private var featureGrid: some View {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+            miniFeature("Görevler", "checklist", cyan)
+            miniFeature("Hafta", "calendar", blue)
+            miniFeature("Focus", "timer", gold)
+            miniFeature("Crew", "person.3.fill", purple)
+        }
+    }
+
+    private func miniFeature(_ title: String, _ icon: String, _ tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .black))
+                .foregroundStyle(tint)
+
+            Text(title)
+                .font(.system(size: 16, weight: .black))
+                .foregroundStyle(.white)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(cardBackground(tint, strength: 0.28))
+    }
+
+    private var versionCard: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "app.badge.fill")
+                .font(.system(size: 18, weight: .black))
+                .foregroundStyle(gold)
+                .frame(width: 46, height: 46)
+                .background(
+                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                        .fill(gold.opacity(0.13))
+                )
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Updo")
+                    .font(.system(size: 17, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text("Version 1.0 • Built for students")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.48))
+            }
+
+            Spacer()
+        }
+        .padding(18)
+        .background(cardBackground(gold, strength: 0.30))
+    }
+
+    private func cardBackground(_ tint: Color, strength: Double) -> some View {
+        RoundedRectangle(cornerRadius: 30, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        tint.opacity(0.070 + strength * 0.035),
+                        Color(arenaHex: AppArenaPalette.purple).opacity(0.035),
+                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .stroke(tint.opacity(0.14), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.20), radius: 13, y: 7)
+    }
+}
+// MARK: - Made With Care
+
+private struct MadeWithCareView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    private var coral: Color { Color(arenaHex: AppArenaPalette.coral) }
+    private var gold: Color { Color(arenaHex: AppArenaPalette.gold) }
+    private var cyan: Color { Color(arenaHex: AppArenaPalette.cyan) }
+    private var purple: Color { Color(arenaHex: AppArenaPalette.purple) }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                ArenaBackground(
+                    primaryGlow: coral,
+                    secondaryGlow: purple,
+                    warmGlow: gold,
+                    intensity: 0.94
+                )
+
+                VStack(spacing: 22) {
+                    HStack {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 15, weight: .black))
+                                .foregroundStyle(.white)
+                                .frame(width: 44, height: 44)
+                                .background(Circle().fill(Color.white.opacity(0.08)))
+                        }
+                        .buttonStyle(.plain)
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+
+                    Spacer()
+
+                    VStack(spacing: 22) {
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    RadialGradient(
+                                        colors: [
+                                            coral.opacity(0.35),
+                                            gold.opacity(0.16),
+                                            Color.clear
+                                        ],
+                                        center: .center,
+                                        startRadius: 4,
+                                        endRadius: 88
+                                    )
+                                )
+                                .frame(width: 180, height: 180)
+
+                            Image(systemName: "heart.fill")
+                                .font(.system(size: 58, weight: .black))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white,
+                                            coral,
+                                            gold
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .shadow(color: coral.opacity(0.34), radius: 22, y: 8)
+                        }
+
+                        VStack(spacing: 8) {
+                            Text("Özenle yapıldı")
+                                .font(.system(size: 38, weight: .regular, design: .serif))
+                                .italic()
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [Color.white, coral, gold],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+
+                            Text("Updo, öğrencinin gününü daha net, daha sakin ve daha sürdürülebilir hale getirmek için tasarlandı.")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.55))
+                                .multilineTextAlignment(.center)
+                                .lineSpacing(4)
+                                .padding(.horizontal, 24)
+                        }
+
+                        VStack(spacing: 12) {
+                            careLine("Karmaşayı azaltmak", "sparkles", cyan)
+                            careLine("Odak ritmini korumak", "timer", gold)
+                            careLine("Öğrenci hayatını tek akışta toplamak", "scope", coral)
+                        }
+                        .padding(18)
+                        .background(
+                            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                                .fill(Color(arenaHex: AppArenaPalette.surface).opacity(0.88))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                                )
+                        )
+                        .padding(.horizontal, 16)
+                    }
+
+                    Spacer()
+                    Spacer()
+                }
+            }
+            .preferredColorScheme(.dark)
+            .navigationBarBackButtonHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
+        }
+    }
+
+    private func careLine(_ text: String, _ icon: String, _ tint: Color) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .black))
+                .foregroundStyle(tint)
+                .frame(width: 34, height: 34)
+                .background(
+                    Circle()
+                        .fill(tint.opacity(0.12))
+                )
+
+            Text(text)
+                .font(.system(size: 15, weight: .black))
+                .foregroundStyle(.white.opacity(0.86))
+
+            Spacer()
         }
     }
 }

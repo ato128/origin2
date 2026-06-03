@@ -2120,25 +2120,46 @@ final class CrewStore: ObservableObject {
                 memberName: memberName
             )
         } catch let error as CrewBackendClientError {
-            // Backend "session has ended" hatası → eski Türkçe mesaj
             if case .apiError(let message) = error,
                message.contains("session has ended") || message.contains("does not exist") {
                 activeFocusSessionByCrew.removeValue(forKey: crewID)
                 focusParticipantsBySession.removeValue(forKey: sessionID)
+
                 throw NSError(
                     domain: "CrewStore",
                     code: 410,
                     userInfo: [NSLocalizedDescriptionKey: "Bu focus oturumu sona ermiş."]
                 )
             }
+
             throw error
         }
-     
-        // Refresh
+
         await loadActiveFocusSession(for: crewID)
         await loadFocusParticipants(sessionID: sessionID)
-     
-       
+
+        let participants = focusParticipantsBySession[sessionID] ?? []
+        let activeParticipantIDs = participants.compactMap { dto -> UUID? in
+            guard dto.is_active else { return nil }
+            return dto.user_id
+        }
+
+        let crewName = crews.first(where: { $0.id == crewID })?.name ?? "Crew"
+
+        await FocusInviteService.shared.sendJoinedNotifications(
+            crewID: crewID,
+            crewName: crewName,
+            sessionID: sessionID,
+            joinedUserID: userID,
+            joinedName: memberName,
+            activeParticipantIDs: activeParticipantIDs
+        )
+
+        await createActivity(
+            crewID: crewID,
+            memberName: memberName,
+            actionText: "joined the shared focus session"
+        )
     }
     func leaveCrewFocusSession(
         sessionID: UUID,

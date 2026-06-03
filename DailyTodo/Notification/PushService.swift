@@ -285,4 +285,48 @@ final class PushService {
             "environment": currentEnvironment
         ])
     }
+    /// Crew focus'a birisi katılınca mevcut participantlara gönderilir.
+    /// `joinedName`: katılan kişinin görünen adı.
+    func sendCrewFocusJoinedPush(
+        toUserId: String,
+        crewID: String,
+        crewName: String,
+        sessionID: String,
+        joinedName: String,
+        badge: Int = 0
+    ) {
+        let cleanToUserId = toUserId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanCrewID = crewID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanSessionID = sessionID.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !cleanToUserId.isEmpty, !cleanCrewID.isEmpty, !cleanSessionID.isEmpty else {
+            print("CREW FOCUS JOINED PUSH SKIPPED: missing toUserId, crewID or sessionID")
+            return
+        }
+
+        let cleanCrewName = crewName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Crew Focus"
+            : crewName
+
+        let cleanJoinedName = joinedName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Birisi"
+            : joinedName
+
+        let message = "\(cleanJoinedName) focus'a katıldı"
+
+        print("🚀 CREW FOCUS JOINED PUSH SEND CALLED -> \(cleanToUserId)")
+
+        performRequest(bodyObject: [
+            "toUserId": cleanToUserId,
+            "title": cleanCrewName,
+            "message": message,
+            "type": "crew_focus_joined",
+            "crew_id": cleanCrewID,
+            "session_id": cleanSessionID,
+            "joined_name": cleanJoinedName,
+            "deep_link": "dailytodo://focus?crew_id=\(cleanCrewID)&session_id=\(cleanSessionID)",
+            "badge": badge,
+            "environment": currentEnvironment
+        ])
+    }
 }

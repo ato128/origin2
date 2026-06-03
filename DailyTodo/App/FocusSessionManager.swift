@@ -363,6 +363,10 @@ final class FocusSessionManager: ObservableObject {
         startLifecycleTimer()
         syncAudioForCurrentState()
 
+        if dto.is_active && !dto.is_paused {
+            scheduleFocusEndBackupNotification(for: session)
+        }
+
         Task {
             await syncLiveActivityIfNeeded()
         }
@@ -426,6 +430,8 @@ final class FocusSessionManager: ObservableObject {
         save()
         startLifecycleTimer()
         audioManager.play(style: style)
+
+        scheduleFocusEndBackupNotification(for: session)
 
         Task {
             await syncLiveActivityIfNeeded()
@@ -509,8 +515,11 @@ final class FocusSessionManager: ObservableObject {
         }
 
         if session.endDate <= Date() {
-            clearSessionLocally()
-            UserDefaults.standard.removeObject(forKey: storageKey)
+            currentSession = session
+            isSessionActive = true
+            now = Date()
+
+            finishSession(session)
             return
         }
 
@@ -521,6 +530,18 @@ final class FocusSessionManager: ObservableObject {
 
         Task {
             await syncLiveActivityIfNeeded()
+        }
+    }
+    
+    func reconcileExpiredSessionIfNeeded(reason: String) {
+        guard let session = currentSession else { return }
+        guard !session.isPaused else { return }
+
+        now = Date()
+
+        if session.endDate <= Date() {
+            print("✅ RECONCILE EXPIRED FOCUS:", reason)
+            finishSession(session)
         }
     }
 
@@ -606,11 +627,11 @@ final class FocusSessionManager: ObservableObject {
     private func completeAndPersist(_ session: FocusSessionState) {
         stopLifecycleTimer()
         audioManager.stop()
+        cancelFocusEndBackupNotification(for: session)
 
         let ended = Date()
         let totalSeconds = session.durationMinutes * 60
 
-        // Kullanıcı erken kapattıysa gerçekten tamamlanan dakika hesaplanır
         let completedMinutes = max(1, resolvedCompletedMinutes(for: session))
         let completedSeconds = max(1, elapsedSeconds)
 
@@ -624,7 +645,6 @@ final class FocusSessionManager: ObservableObject {
             isCompleted: completedSeconds >= totalSeconds - 5
         )
 
-        // Önce kaydedilmiş "geçen sefer" değerini oku
         let previousMinutes: Int? = {
             let value = UserDefaults.standard.integer(forKey: lastFocusMinutesKey)
             return value > 0 ? value : nil
@@ -644,24 +664,59 @@ final class FocusSessionManager: ObservableObject {
             previousMinutes: previousMinutes
         )
 
-        // Şimdi bu süreyi "son focus" olarak kaydet
         UserDefaults.standard.set(completedMinutes, forKey: lastFocusMinutesKey)
+
         lastFinishedSession = session
         completionSummary = summary
 
-        // ═══════════════════════════════════════════════════════════
-        // BİLDİRİMLER
-        // ═══════════════════════════════════════════════════════════
+        let completedLiveTitle: String = {
+            switch session.mode {
+            case .personal:
+                return "\(session.goal.title) Focus"
+            case .crew:
+                return "Crew Focus"
+            case .friend:
+                return "Friend Focus"
+            }
+        }()
 
-        // 1) Kişisel veya Friend → LOCAL notification
-        if session.mode == .personal || session.mode == .friend {
-            scheduleLocalFocusEndedNotification(
-                durationMinutes: completedMinutes,
-                previousMinutes: previousMinutes
+        let completedLiveSubtitle: String = {
+            switch session.mode {
+            case .personal:
+                return "Kişisel focus tamamlandı"
+            case .crew:
+                return "Crew focus tamamlandı"
+            case .friend:
+                return "Shared focus tamamlandı"
+            }
+        }()
+
+        // Önce Live Activity'yi completed state'e geçir.
+        Task {
+            await liveActivityManager.finishThenEnd(
+                title: completedLiveTitle,
+                subtitle: completedLiveSubtitle,
+                modeRaw: session.mode.rawValue,
+                startDate: session.startDate,
+                completedAt: ended
             )
         }
 
-        // 2) Crew → diğer participantlara PUSH
+        // Personal/Friend için local notification.
+        // Eğer session arka planda bitmişse backup notification zaten endDate'te düşmüştür.
+        // App sonradan açılınca duplicate bildirim göndermeyelim.
+        if session.mode == .personal || session.mode == .friend {
+            if shouldScheduleImmediateCompletionNotification(endedAt: ended) {
+                scheduleLocalFocusEndedNotification(
+                    durationMinutes: completedMinutes,
+                    previousMinutes: previousMinutes
+                )
+            } else {
+                print("⚪️ LOCAL COMPLETION NOTIF SKIPPED: backup notification already handled")
+            }
+        }
+
+        // Crew için participant push.
         if session.mode == .crew,
            let crewID = currentCrewID {
             let crewName = crewStore?.crews.first(where: { $0.id == crewID })?.name ?? "Crew"
@@ -682,10 +737,6 @@ final class FocusSessionManager: ObservableObject {
             }
         }
 
-        // ═══════════════════════════════════════════════════════════
-        // State sıfırla
-        // ═══════════════════════════════════════════════════════════
-
         currentSession = nil
         isSessionActive = false
         isMinimized = false
@@ -699,13 +750,7 @@ final class FocusSessionManager: ObservableObject {
             name: Notification.Name("focus_completed"),
             object: nil
         )
-
-        // Live Activity'i hemen bitir (spinner kalmasın)
-        Task {
-            await liveActivityManager.end()
-        }
     }
-
     private func clearSessionLocally() {
         stopLifecycleTimer()
         audioManager.stop()
@@ -734,6 +779,7 @@ final class FocusSessionManager: ObservableObject {
         currentSession = session
 
         save()
+        cancelFocusEndBackupNotification(for: session)
         audioManager.pause()
 
         Task {
@@ -755,6 +801,7 @@ final class FocusSessionManager: ObservableObject {
         currentSession = session
 
         save()
+        scheduleFocusEndBackupNotification(for: session)
         audioManager.resume()
 
         Task {
@@ -800,6 +847,133 @@ final class FocusSessionManager: ObservableObject {
 
     // MARK: - Bildirim Helper'ları
 
+    private func smartFocusCompletionBody(
+        durationMinutes: Int,
+        previousMinutes: Int?
+    ) -> String {
+        guard let previousMinutes, previousMinutes > 0 else {
+            return "\(durationMinutes) dakika focus tamamladın. Güzel başlangıç 🎯"
+        }
+
+        let delta = durationMinutes - previousMinutes
+
+        if delta >= 5 {
+            return "\(durationMinutes) dakika tamamladın · geçen seferden \(delta) dk daha fazla. İyileşiyorsun 🚀"
+        }
+
+        if delta > 0 {
+            return "\(durationMinutes) dakika tamamladın · geçen seferden \(delta) dk daha iyi 👏"
+        }
+
+        if delta == 0 {
+            return "\(durationMinutes) dakika tamamladın · ritmini korudun 🔥"
+        }
+
+        return "\(durationMinutes) dakika tamamladın · bugün kısa tuttun ama akışı bozmadın ✅"
+    }
+
+    private func lastSavedFocusMinutes() -> Int? {
+        let value = UserDefaults.standard.integer(forKey: lastFocusMinutesKey)
+        return value > 0 ? value : nil
+    }
+
+    private func shouldScheduleImmediateCompletionNotification(
+        endedAt: Date
+    ) -> Bool {
+        Date().timeIntervalSince(endedAt) < 12
+    }
+
+    private func focusEndBackupNotificationID(for session: FocusSessionState) -> String {
+        "focus_end_backup_\(session.id.uuidString)"
+    }
+
+    private func scheduleFocusEndBackupNotification(for session: FocusSessionState) {
+        let center = UNUserNotificationCenter.current()
+        let previousMinutes = lastSavedFocusMinutes()
+        let identifier = focusEndBackupNotificationID(for: session)
+
+        center.getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized ||
+                  settings.authorizationStatus == .provisional ||
+                  settings.authorizationStatus == .ephemeral else {
+                print("⚠️ FOCUS END BACKUP NOTIF SKIPPED: permission not granted")
+                return
+            }
+
+            let triggerDate = session.endDate
+
+            guard triggerDate > Date().addingTimeInterval(3) else {
+                print("⚠️ FOCUS END BACKUP NOTIF SKIPPED: endDate too close")
+                return
+            }
+
+            let content = UNMutableNotificationContent()
+
+            switch session.mode {
+            case .personal:
+                content.title = "Focus tamamlandı 🎉"
+            case .crew:
+                content.title = "Crew focus tamamlandı 🎉"
+            case .friend:
+                content.title = "Friend focus tamamlandı 🎉"
+            }
+
+            content.body = self.smartFocusCompletionBody(
+                durationMinutes: session.durationMinutes,
+                previousMinutes: previousMinutes
+            )
+
+            content.sound = .default
+            content.userInfo = [
+                "type": "focus_ended_local",
+                "session_id": session.id.uuidString,
+                "mode": session.mode.rawValue,
+                "duration_minutes": session.durationMinutes,
+                "previous_minutes": previousMinutes ?? 0
+            ]
+
+            if #available(iOS 15.0, *) {
+                content.interruptionLevel = .timeSensitive
+            }
+
+            let components = Calendar.current.dateComponents(
+                [.year, .month, .day, .hour, .minute, .second],
+                from: triggerDate
+            )
+
+            let trigger = UNCalendarNotificationTrigger(
+                dateMatching: components,
+                repeats: false
+            )
+
+            center.removePendingNotificationRequests(withIdentifiers: [identifier])
+
+            let request = UNNotificationRequest(
+                identifier: identifier,
+                content: content,
+                trigger: trigger
+            )
+
+            center.add(request) { error in
+                if let error {
+                    print("❌ FOCUS END BACKUP NOTIF ERROR:", error.localizedDescription)
+                } else {
+                    print("✅ FOCUS END BACKUP NOTIF SCHEDULED:", triggerDate)
+                }
+            }
+        }
+    }
+
+    private func cancelFocusEndBackupNotification(for session: FocusSessionState) {
+        let identifier = focusEndBackupNotificationID(for: session)
+
+        UNUserNotificationCenter.current().removePendingNotificationRequests(
+            withIdentifiers: [identifier]
+        )
+
+        print("🧹 FOCUS END BACKUP NOTIF CANCELLED:", identifier)
+    }
+    
     private func collectParticipantUserIDs(
         from participants: [FocusParticipant],
         crewID: UUID
@@ -831,19 +1005,10 @@ final class FocusSessionManager: ObservableObject {
         let content = UNMutableNotificationContent()
         content.title = "Focus tamamlandı 🎉"
 
-        if let previousMinutes, previousMinutes > 0 {
-            let delta = durationMinutes - previousMinutes
-
-            if delta > 0 {
-                content.body = "\(durationMinutes) dakika tamamladın · geçen seferden \(delta) dk fazla 🚀"
-            } else if delta < 0 {
-                content.body = "\(durationMinutes) dakika tamamladın · geçen sefer \(previousMinutes) dk"
-            } else {
-                content.body = "\(durationMinutes) dakika tamamladın · geçen seferki süreyi tutturdun 👏"
-            }
-        } else {
-            content.body = "\(durationMinutes) dakika başarıyla tamamladın"
-        }
+        content.body = smartFocusCompletionBody(
+            durationMinutes: durationMinutes,
+            previousMinutes: previousMinutes
+        )
 
         content.sound = .default
         content.interruptionLevel = .timeSensitive   // Lock Screen'de daha güçlü görünür
@@ -853,7 +1018,7 @@ final class FocusSessionManager: ObservableObject {
         ]
 
         // 2 saniye sonra tetiklensin (live activity end'ine zaman tanı)
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 2, repeats: false)
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 3, repeats: false)
 
         let request = UNNotificationRequest(
             identifier: "focus_ended_\(UUID().uuidString)",

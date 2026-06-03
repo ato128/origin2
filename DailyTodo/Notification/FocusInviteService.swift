@@ -252,4 +252,39 @@ final class FocusInviteService {
             )
         }
     }
+    func sendJoinedNotifications(
+        crewID: UUID,
+        crewName: String,
+        sessionID: UUID,
+        joinedUserID: UUID?,
+        joinedName: String,
+        activeParticipantIDs: [UUID]
+    ) async {
+        let filteredIDs = Array(
+            Set(
+                activeParticipantIDs.filter { id in
+                    guard let joinedUserID else { return true }
+                    return id != joinedUserID
+                }
+            )
+        )
+
+        guard !filteredIDs.isEmpty else {
+            print("FOCUS JOINED PUSH: bildirilecek diğer kullanıcı yok")
+            return
+        }
+
+        print("FOCUS JOINED PUSH SEND -> \(filteredIDs.count) kullanıcıya")
+
+        for userID in filteredIDs {
+            PushService.shared.sendCrewFocusJoinedPush(
+                toUserId: userID.uuidString,
+                crewID: crewID.uuidString,
+                crewName: crewName,
+                sessionID: sessionID.uuidString,
+                joinedName: joinedName,
+                badge: 0
+            )
+        }
+    }
 }

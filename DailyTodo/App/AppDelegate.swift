@@ -169,7 +169,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         case "focus_room":
             return false
 
-        case "crew_focus_ended", "crew_focus_left", "focus_ended_local":
+        case "crew_focus_ended", "crew_focus_left", "crew_focus_joined", "focus_ended_local":
             return false
 
         default:
@@ -239,7 +239,23 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 
         case "crew_focus_left":
             print("📢 CREW FOCUS LEFT:", userInfo["leaver_name"] ?? "")
+            
+        case "crew_focus_joined":
+            print("📢 CREW FOCUS JOINED:", userInfo["joined_name"] ?? "")
+            
+            NotificationCenter.default.post(
+                name: .crewFocusJoinedFromNotification,
+                object: userInfo
+            )
 
+            if let crewID = userInfo["crew_id"] as? String {
+                NotificationCenter.default.post(
+                    name: .openCrewFocusFromNotification,
+                    object: crewID
+                )
+                
+            }
+            
         default:
             break
         }
@@ -266,4 +282,5 @@ extension Notification.Name {
     static let openCrewFocusFromNotification = Notification.Name("openCrewFocusFromNotification")
 
     static let presentFocusCompletionFromPush = Notification.Name("presentFocusCompletionFromPush")
+    static let crewFocusJoinedFromNotification = Notification.Name("crewFocusJoinedFromNotification")
 }

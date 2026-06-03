@@ -10,12 +10,32 @@ import SwiftUI
 import SwiftData
 import Foundation
 
-enum AppTab: Hashable {
+enum AppTab: Hashable, CaseIterable {
     case tasks
     case week
     case crew
     case focus
     case insights
+
+    var title: String {
+        switch self {
+        case .tasks:    return "Home"
+        case .week:     return "Week"
+        case .crew:     return "Crew"
+        case .focus:    return "Focus"
+        case .insights: return "Insights"
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .tasks:    return "house.fill"
+        case .week:     return "calendar"
+        case .crew:     return "person.3.fill"
+        case .focus:    return "timer"
+        case .insights: return "chart.bar.fill"
+        }
+    }
 }
 
 extension Notification.Name {
@@ -54,63 +74,18 @@ struct MainTabView: View {
     @State private var showTasksSheet: Bool = false
 
     var body: some View {
-        TabView(selection: $tab) {
+        ZStack(alignment: .bottom) {
+            // Aktif ekran
+            screenForTab(tab)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .transition(.opacity)
 
-            NavigationStack {
-                HomeView(
-                    onAddTask: {
-                        showTasksSheet = true
-                    },
-                    onOpenWeek: {
-                        tab = .week
-                    },
-                    onOpenInsights: {
-                        tab = .insights
-                    },
-                    onOpenFocus: {
-                        tab = .focus
-                    },
-                    onOpenCrew: {
-                        tab = .crew
-                    },
-                    onOpenChat: {
-                        tab = .crew
-                    },
-                    onOpenTasks: {
-                        showTasksSheet = true
-                    }
-                )
-            }
-            .tabItem { Label("Tasks", systemImage: "checklist") }
-            .tag(AppTab.tasks)
-
-            NavigationStack {
-                WeekView()
-            }
-            .tabItem { Label("Week", systemImage: "calendar") }
-            .tag(AppTab.week)
-
-            NavigationStack {
-                CrewView(initialTab: .crews)
-            }
-            .tabItem { Label("Crew", systemImage: "person.3.fill") }
-            .tag(AppTab.crew)
-
-            NavigationStack {
-                FocusView()
-                    .environmentObject(session)
-                    .environmentObject(crewStore)
-            }
-            .tabItem { Label("Focus", systemImage: "timer") }
-            .tag(AppTab.focus)
-
-            NavigationStack {
-                InsightsView()
-                    .environmentObject(store)
-            }
-            .tabItem { Label("Insights", systemImage: "chart.bar") }
-            .tag(AppTab.insights)
+            // Custom tab bar
+            HomeTabBar(selectedTab: $tab)
+                .padding(.horizontal, 22)
+                .padding(.bottom, 6)
         }
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .sheet(item: $pendingChatRoute) { route in
             NavigationStack {
                 pendingChatDestination(route)
@@ -128,7 +103,7 @@ struct MainTabView: View {
 
             store.setCurrentUserID(session.currentUser?.id.uuidString)
             crewStore.setCurrentUser(session.currentUser?.id)
-            crewStore.resetForUserChange()
+            
         }
         .onChange(of: session.currentUser?.id) { _, newUserID in
             print("MAIN TAB USER CHANGED:", newUserID?.uuidString ?? "nil")
@@ -173,7 +148,9 @@ struct MainTabView: View {
             openCrewChatFromNotification(crewID: crewID)
         }
         .onReceive(NotificationCenter.default.publisher(for: .openCrewFocusFromNotification)) { output in
-            tab = .focus
+            withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
+                tab = .focus
+            }
 
             if let payload = output.object as? [AnyHashable: Any] {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
@@ -182,17 +159,81 @@ struct MainTabView: View {
                         object: payload
                     )
                 }
-            } else if let crewID = output.object as? String {
+                return
+            }
+
+            if let crewID = output.object as? String {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                     NotificationCenter.default.post(
                         name: .presentActiveCrewFocusFromNotification,
                         object: crewID
                     )
                 }
+                return
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
+                NotificationCenter.default.post(
+                    name: .openFocusTabFromHome,
+                    object: nil
+                )
             }
         }
     }
 }
+
+// MARK: - Tab screens
+
+private extension MainTabView {
+    @ViewBuilder
+    func screenForTab(_ tab: AppTab) -> some View {
+        switch tab {
+        case .tasks:
+            NavigationStack {
+                HomeView(
+                    onAddTask: { showTasksSheet = true },
+                    onOpenWeek: { setTab(.week) },
+                    onOpenInsights: { setTab(.insights) },
+                    onOpenFocus: { setTab(.focus) },
+                    onOpenCrew: { setTab(.crew) },
+                    onOpenChat: { setTab(.crew) },
+                    onOpenTasks: { showTasksSheet = true }
+                )
+            }
+
+        case .week:
+            NavigationStack {
+                WeekView()
+            }
+
+        case .crew:
+            NavigationStack {
+                CrewView(initialTab: .crews)
+            }
+
+        case .focus:
+            NavigationStack {
+                FocusView()
+                    .environmentObject(session)
+                    .environmentObject(crewStore)
+            }
+
+        case .insights:
+            NavigationStack {
+                InsightsView()
+                    .environmentObject(store)
+            }
+        }
+    }
+
+    func setTab(_ newTab: AppTab) {
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
+            tab = newTab
+        }
+    }
+}
+
+// MARK: - Routing helpers
 
 private extension MainTabView {
 
@@ -317,5 +358,257 @@ private extension MainTabView {
             icon: crew.icon,
             colorHex: crew.color_hex
         )
+    }
+}
+
+
+
+// MARK: - Custom Tab Bar
+
+struct HomeTabBar: View {
+    @Binding var selectedTab: AppTab
+
+    @Namespace private var namespace
+    @State private var pressedTab: AppTab?
+
+    private let barHeight: CGFloat = 66
+
+    private var cyan: Color { Color(arenaHex: "#2DD4FF") }
+    private var blue: Color { Color(arenaHex: "#1593FF") }
+    private var violet: Color { Color(arenaHex: "#7C3AED") }
+
+    var body: some View {
+        HStack(spacing: 5) {
+            ForEach(AppTab.allCases, id: \.self) { tab in
+                tabButton(tab)
+            }
+        }
+        .padding(.horizontal, 8)
+        .frame(height: barHeight)
+        .background(barBackground)
+        .overlay(barBorder)
+        .clipShape(RoundedRectangle(cornerRadius: 33, style: .continuous))
+        .shadow(color: Color.black.opacity(0.54), radius: 26, y: 16)
+        .shadow(color: Color.black.opacity(0.28), radius: 10, y: 5)
+        .compositingGroup()
+    }
+
+    private var barBackground: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 33, style: .continuous)
+                .fill(Color(arenaHex: "#050611").opacity(0.96))
+
+            RoundedRectangle(cornerRadius: 33, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.075),
+                            Color.white.opacity(0.030),
+                            Color.black.opacity(0.28)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+
+            RoundedRectangle(cornerRadius: 33, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            cyan.opacity(0.026),
+                            blue.opacity(0.020),
+                            violet.opacity(0.024),
+                            Color.clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            RoundedRectangle(cornerRadius: 33, style: .continuous)
+                .stroke(Color.black.opacity(0.44), lineWidth: 1.2)
+                .blur(radius: 0.2)
+        }
+    }
+
+    private var barBorder: some View {
+        RoundedRectangle(cornerRadius: 33, style: .continuous)
+            .stroke(
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(0.135),
+                        Color.white.opacity(0.050),
+                        blue.opacity(0.075)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                lineWidth: 1
+            )
+    }
+
+    @ViewBuilder
+    private func tabButton(_ tab: AppTab) -> some View {
+        let isSelected = selectedTab == tab
+        let isPressed = pressedTab == tab
+
+        Button {
+            select(tab)
+        } label: {
+            HStack(spacing: isSelected ? 8 : 0) {
+                ZStack {
+                    if isSelected {
+                        Circle()
+                            .fill(
+                                RadialGradient(
+                                    colors: [
+                                        cyan.opacity(0.20),
+                                        blue.opacity(0.10),
+                                        Color.clear
+                                    ],
+                                    center: .center,
+                                    startRadius: 2,
+                                    endRadius: 20
+                                )
+                            )
+                            .frame(width: 34, height: 34)
+                            .blur(radius: 1)
+                    }
+
+                    Image(systemName: tab.iconName)
+                        .font(.system(size: 16, weight: .black))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(
+                            isSelected
+                            ? AnyShapeStyle(activeIconGradient)
+                            : AnyShapeStyle(Color.white.opacity(0.40))
+                        )
+                        .scaleEffect(isPressed ? 0.84 : (isSelected ? 1.04 : 1.0))
+                        .animation(.spring(response: 0.25, dampingFraction: 0.72), value: isPressed)
+                }
+                .frame(width: 34, height: 34)
+
+                if isSelected {
+                    Text(tab.title)
+                        .font(.system(size: 12, weight: .black))
+                        .foregroundStyle(activeTextGradient)
+                        .lineLimit(1)
+                        .transition(
+                            .asymmetric(
+                                insertion: .opacity.combined(with: .move(edge: .trailing)),
+                                removal: .opacity
+                            )
+                        )
+                }
+            }
+            .frame(maxWidth: isSelected ? 112 : 48)
+            .frame(height: 49)
+            .background {
+                if isSelected {
+                    RoundedRectangle(cornerRadius: 24.5, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(arenaHex: "#0A1220").opacity(0.98),
+                                    Color(arenaHex: "#0A1020").opacity(0.96),
+                                    Color(arenaHex: "#0B0716").opacity(0.98)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 24.5, style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            cyan.opacity(0.135),
+                                            blue.opacity(0.080),
+                                            violet.opacity(0.060)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 24.5, style: .continuous)
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(0.14),
+                                            cyan.opacity(0.14),
+                                            violet.opacity(0.09)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1
+                                )
+                        )
+                        .shadow(color: cyan.opacity(0.10), radius: 12, y: 5)
+                        .matchedGeometryEffect(id: "selected-tab-bg", in: namespace)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    guard pressedTab != tab else { return }
+                    withAnimation(.spring(response: 0.22, dampingFraction: 0.70)) {
+                        pressedTab = tab
+                    }
+                }
+                .onEnded { _ in
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.76)) {
+                        pressedTab = nil
+                    }
+                }
+        )
+        .animation(.spring(response: 0.42, dampingFraction: 0.82), value: selectedTab)
+    }
+
+    private var activeIconGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color.white,
+                cyan.opacity(0.98),
+                blue.opacity(0.94),
+                violet.opacity(0.88)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var activeTextGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color.white.opacity(0.98),
+                cyan.opacity(0.94),
+                blue.opacity(0.82)
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+
+    private func select(_ tab: AppTab) {
+        if tab == selectedTab {
+            let generator = UIImpactFeedbackGenerator(style: .soft)
+            generator.prepare()
+            generator.impactOccurred(intensity: 0.45)
+            return
+        }
+
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.prepare()
+        generator.impactOccurred(intensity: 0.65)
+
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
+            selectedTab = tab
+        }
     }
 }

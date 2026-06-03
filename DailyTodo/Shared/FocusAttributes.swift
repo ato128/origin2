@@ -19,6 +19,10 @@ struct FocusAttributes: ActivityAttributes {
         var isResting: Bool
         var pausedRemainingSeconds: Int?
         var pausedProgress: Double?
+
+        // ✅ New
+        var isCompleted: Bool = false
+        var completedAt: Date? = nil
     }
 
     var name: String

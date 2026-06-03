@@ -4,7 +4,6 @@
 //
 //  Created by Atakan Ortaç on 3.06.2026.
 //
-
 import SwiftUI
 import SwiftData
 import Combine
@@ -38,12 +37,14 @@ struct HomeView: View {
 
     @State private var showProfileHub = false
     @State private var showMessages = false
+    @State private var showTimelineDetail = false
     @State private var pageAppeared = false
     @State private var now: Date = Date()
 
     @State private var pulse = false
     @State private var breathe = false
     @State private var shimmer = false
+    @State private var shimmerPhase: CGFloat = -1.2
 
     private let secondTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     private let pulseTimer = Timer.publish(every: 1.2, on: .main, in: .common).autoconnect()
@@ -103,8 +104,24 @@ struct HomeView: View {
                 MessagesView()
             }
         }
+        .sheet(isPresented: $showTimelineDetail) {
+            TimelineDetailSheet(
+                events: todayEvents,
+                currentMinute: currentMinuteOfDay,
+                weeklyMinutes: weeklyFocusMinutes,
+                accentPrimary: accentPrimary,
+                accentSecondary: accentSecondary,
+                accentCyan: accentCyan,
+                accentGold: accentGold,
+                accentGreen: accentGreen,
+                accentWarm: accentWarm
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
         .onAppear {
             pageAppeared = true
+            startShimmerLoop()
         }
         .onReceive(secondTimer) { value in
             now = value
@@ -123,6 +140,12 @@ struct HomeView: View {
             withAnimation(.easeInOut(duration: 3.2)) {
                 shimmer.toggle()
             }
+        }
+    }
+
+    private func startShimmerLoop() {
+        withAnimation(.linear(duration: 2.6).repeatForever(autoreverses: false)) {
+            shimmerPhase = 1.4
         }
     }
 }
@@ -274,15 +297,16 @@ private extension HomeView {
                     .minimumScaleFactor(0.64)
             }
 
-            VStack(alignment: .leading, spacing: -2) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(state.title)
-                    .font(.system(size: 44, weight: .black))
+                    .font(.system(size: 34, weight: .black))
                     .foregroundStyle(.white)
-                    .lineLimit(2)
+                    .lineLimit(1)
                     .minimumScaleFactor(0.58)
+                    .layoutPriority(1)
 
                 Text(state.italicLine)
-                    .font(.system(size: 39, weight: .regular, design: .serif))
+                    .font(.system(size: 30, weight: .regular, design: .serif))
                     .italic()
                     .foregroundStyle(
                         LinearGradient(
@@ -346,21 +370,24 @@ private extension HomeView {
         let timeStr = focusSession.timeString
         let progress = max(0.025, focusSession.progress)
         let elapsedText = elapsedSecondsText
+        let remaining = focusSession.remainingSeconds
+        let isCritical = remaining > 0 && remaining <= 60
+        let isPaused = focusSession.isPaused
 
         return VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .center) {
                 HStack(spacing: 8) {
                     Circle()
-                        .fill(accentGreen)
+                        .fill(isCritical ? accentGold : accentGreen)
                         .frame(width: 7, height: 7)
                         .scaleEffect(pulse ? 1.45 : 1.0)
                         .opacity(pulse ? 0.45 : 1.0)
-                        .shadow(color: accentGreen.opacity(0.70), radius: 7)
+                        .shadow(color: (isCritical ? accentGold : accentGreen).opacity(0.70), radius: 7)
 
-                    Text("AKTİF FOCUS")
+                    Text(isCritical ? "BİTMEK ÜZERE" : (isPaused ? "DURAKLATILDI" : "AKTİF FOCUS"))
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .tracking(1.9)
-                        .foregroundStyle(accentCyan)
+                        .foregroundStyle(isCritical ? accentGold : accentCyan)
                 }
 
                 Spacer()
@@ -372,13 +399,14 @@ private extension HomeView {
             }
 
             HStack(alignment: .center, spacing: 14) {
-                VStack(alignment: .leading, spacing: 6) {
-                    countdownDisplay(text: timeStr)
-
-                    Text(activeFocusGoalText)
-                        .font(.system(size: 13, weight: .black))
-                        .foregroundStyle(.white.opacity(0.82))
-                }
+                PremiumCountdownView(
+                    text: timeStr,
+                    isCritical: isCritical,
+                    isPaused: isPaused,
+                    warm: accentWarm,
+                    gold: accentGold,
+                    pulse: pulse
+                )
 
                 Spacer(minLength: 8)
 
@@ -386,7 +414,7 @@ private extension HomeView {
                     Button {
                         focusSession.togglePause()
                     } label: {
-                        Image(systemName: focusSession.isPaused ? "play.fill" : "pause.fill")
+                        Image(systemName: isPaused ? "play.fill" : "pause.fill")
                             .font(.system(size: 15, weight: .black))
                             .foregroundStyle(.white)
                             .frame(width: 48, height: 48)
@@ -418,28 +446,53 @@ private extension HomeView {
                 }
             }
 
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 999, style: .continuous)
-                        .fill(Color.white.opacity(0.08))
+            ZStack(alignment: .leading) {
+                GeometryReader { proxy in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 999, style: .continuous)
+                            .fill(Color.white.opacity(0.08))
 
-                    RoundedRectangle(cornerRadius: 999, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: shimmer
-                                    ? [accentPrimary, accentSecondary, accentCyan]
-                                    : [accentCyan, accentSecondary, accentPrimary],
-                                startPoint: .leading,
-                                endPoint: .trailing
+                        // Fill
+                        RoundedRectangle(cornerRadius: 999, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: isCritical
+                                        ? [accentGold, accentWarm]
+                                        : [accentPrimary, accentSecondary, accentCyan],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
                             )
-                        )
-                        .frame(width: proxy.size.width * progress)
+                            .frame(width: proxy.size.width * progress)
+                            .opacity(isPaused ? 0.55 : 1.0)
+
+                        // Shimmer overlay
+                        if !isPaused {
+                            RoundedRectangle(cornerRadius: 999, style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        stops: [
+                                            .init(color: .white.opacity(0), location: 0.0),
+                                            .init(color: .white.opacity(0.55), location: 0.5),
+                                            .init(color: .white.opacity(0), location: 1.0)
+                                        ],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .frame(width: 60)
+                                .offset(x: proxy.size.width * shimmerPhase)
+                                .frame(width: proxy.size.width * progress, alignment: .leading)
+                                .clipShape(RoundedRectangle(cornerRadius: 999, style: .continuous))
+                        }
+                    }
                 }
+                .frame(height: 5)
             }
             .frame(height: 5)
 
             HStack {
-                Text("Odak devam ediyor")
+                Text(isPaused ? "Duraklatıldı" : "Odak devam ediyor")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.46))
 
@@ -452,42 +505,12 @@ private extension HomeView {
             }
         }
         .padding(16)
-        .background(homeSurface(cornerRadius: 28, tint: accentCyan, secondaryTint: accentPrimary))
+        .background(homeSurface(cornerRadius: 28, tint: isCritical ? accentGold : accentCyan, secondaryTint: accentPrimary))
         .scaleEffect(breathe ? 1.004 : 1.0)
         .shadow(color: Color.black.opacity(0.22), radius: 18, y: 10)
         .opacity(pageAppeared ? 1 : 0)
         .offset(y: pageAppeared ? 0 : 12)
         .animation(.spring(response: 0.6, dampingFraction: 0.86).delay(0.08), value: pageAppeared)
-    }
-
-    func countdownDisplay(text: String) -> some View {
-        let parts = text.split(separator: ":").map(String.init)
-
-        return HStack(alignment: .firstTextBaseline, spacing: 2) {
-            ForEach(Array(parts.enumerated()), id: \.offset) { idx, part in
-                if idx > 0 {
-                    Text(":")
-                        .font(.system(size: 36, weight: .black, design: .serif))
-                        .italic()
-                        .foregroundStyle(.white.opacity(0.38))
-                        .offset(y: -2)
-                }
-
-                Text(part)
-                    .font(.system(size: 58, weight: .black, design: .serif))
-                    .italic()
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: idx == 0
-                                ? [.white, accentCyan, accentPrimary]
-                                : [.white, accentSecondary, accentPrimary],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .kerning(-2)
-            }
-        }
     }
 
     var suggestedFocusCard: some View {
@@ -605,7 +628,38 @@ private extension HomeView {
 private extension HomeView {
     var timelineSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionTitle("BUGÜNÜN AKIŞI")
+            HStack(spacing: 10) {
+                sectionTitle("BUGÜNÜN AKIŞI")
+
+                Spacer()
+
+                if !todayEvents.isEmpty {
+                    Button {
+                        showTimelineDetail = true
+                    } label: {
+                        HStack(spacing: 5) {
+                            Text("DETAY")
+                                .font(.system(size: 9, weight: .black, design: .monospaced))
+                                .tracking(1.4)
+
+                            Image(systemName: "arrow.up.right")
+                                .font(.system(size: 9, weight: .black))
+                        }
+                        .foregroundStyle(accentCyan)
+                        .padding(.horizontal, 10)
+                        .frame(height: 24)
+                        .background(
+                            Capsule()
+                                .fill(accentCyan.opacity(0.12))
+                                .overlay(
+                                    Capsule()
+                                        .stroke(accentCyan.opacity(0.20), lineWidth: 1)
+                                )
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
 
             if todayEvents.isEmpty {
                 emptyTimeline
@@ -622,7 +676,7 @@ private extension HomeView {
         HStack(spacing: 10) {
             Rectangle()
                 .fill(Color.white.opacity(0.08))
-                .frame(height: 1)
+                .frame(width: 28, height: 1)
 
             Text(title)
                 .font(.system(size: 9, weight: .black, design: .monospaced))
@@ -634,54 +688,57 @@ private extension HomeView {
                         endPoint: .trailing
                     )
                 )
-
-            Rectangle()
-                .fill(Color.white.opacity(0.08))
-                .frame(height: 1)
         }
     }
 
     var filledTimeline: some View {
-        VStack(alignment: .leading, spacing: 13) {
-            HStack(spacing: 6) {
-                Text("\(todayEvents.count)")
-                    .font(.system(size: 21, weight: .black))
-                    .foregroundStyle(.white)
+        Button {
+            showTimelineDetail = true
+        } label: {
+            VStack(alignment: .leading, spacing: 13) {
+                HStack(spacing: 6) {
+                    Text("\(todayEvents.count)")
+                        .font(.system(size: 21, weight: .black))
+                        .foregroundStyle(.white)
 
-                Text("etkinlik")
-                    .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(.white.opacity(0.62))
-
-                if pastEventsCount > 0 {
-                    Text("·")
-                        .foregroundStyle(.white.opacity(0.28))
-
-                    Text("\(pastEventsCount) tamamlandı")
+                    Text("etkinlik")
                         .font(.system(size: 12, weight: .black))
-                        .foregroundStyle(accentGreen.opacity(0.92))
+                        .foregroundStyle(.white.opacity(0.62))
+
+                    if pastEventsCount > 0 {
+                        Text("·")
+                            .foregroundStyle(.white.opacity(0.28))
+
+                        Text("\(pastEventsCount) tamamlandı")
+                            .font(.system(size: 12, weight: .black))
+                            .foregroundStyle(accentGreen.opacity(0.92))
+                    }
+
+                    Spacer()
+
+                    Text(timeRangeText)
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .tracking(0.7)
+                        .foregroundStyle(.white.opacity(0.52))
                 }
 
-                Spacer()
-
-                Text(timeRangeText)
-                    .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .tracking(0.7)
-                    .foregroundStyle(.white.opacity(0.52))
+                CurvedTimelineView(
+                    events: todayEvents,
+                    currentMinute: currentMinuteOfDay,
+                    pulse: pulse,
+                    shimmerPhase: shimmerPhase,
+                    accentPrimary: accentPrimary,
+                    accentSecondary: accentSecondary,
+                    accentActive: accentCyan,
+                    accentGold: accentGold
+                )
+                .frame(height: 116)
             }
-
-            CurvedTimelineView(
-                events: todayEvents,
-                currentMinute: currentMinuteOfDay,
-                pulse: pulse,
-                accentPrimary: accentPrimary,
-                accentSecondary: accentSecondary,
-                accentActive: accentCyan
-            )
-            .frame(height: 108)
+            .padding(15)
+            .background(homeSurface(cornerRadius: 28, tint: accentCyan, secondaryTint: accentPrimary))
+            .shadow(color: Color.black.opacity(0.20), radius: 16, y: 9)
         }
-        .padding(15)
-        .background(homeSurface(cornerRadius: 28, tint: accentCyan, secondaryTint: accentPrimary))
-        .shadow(color: Color.black.opacity(0.20), radius: 16, y: 9)
+        .buttonStyle(.plain)
     }
 
     var emptyTimeline: some View {
@@ -1235,15 +1292,71 @@ private extension HomeView {
     }
 }
 
-// MARK: - Smart Timeline View
+// MARK: - Premium Countdown View (Serif Italic, native numeric transition)
+
+private struct PremiumCountdownView: View {
+    let text: String
+    let isCritical: Bool
+    let isPaused: Bool
+    let warm: Color
+    let gold: Color
+    let pulse: Bool
+
+    var body: some View {
+        let parts = text.split(separator: ":").map(String.init)
+
+        HStack(alignment: .firstTextBaseline, spacing: 0) {
+            ForEach(Array(parts.enumerated()), id: \.offset) { idx, part in
+                if idx > 0 {
+                    Text(":")
+                        .font(.system(size: 50, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(separatorColor)
+                        .opacity(separatorOpacity)
+                        .offset(y: -4)
+                        .padding(.horizontal, 1)
+                }
+
+                Text(part)
+                    .font(.system(size: 62, weight: .bold, design: .serif))
+                    .italic()
+                    .foregroundStyle(digitColor)
+                    .kerning(-1.5)
+                    .contentTransition(.numericText(countsDown: true))
+                    .animation(.spring(response: 0.40, dampingFraction: 0.86), value: part)
+            }
+        }
+        .opacity(isPaused ? 0.55 : 1.0)
+        .animation(.easeInOut(duration: 0.30), value: isPaused)
+    }
+
+    private var digitColor: Color {
+        isCritical ? warm : .white
+    }
+
+    private var separatorColor: Color {
+        isCritical ? warm.opacity(0.65) : .white
+    }
+
+    // Yanıp sönen ayraç: 1 saniyede bir tick
+    private var separatorOpacity: Double {
+        if isPaused { return 0.18 }
+        return pulse ? 0.70 : 0.22
+    }
+}
+
+// MARK: - Smart Timeline View (ana ekran küçük)
 
 private struct CurvedTimelineView: View {
     let events: [EventItem]
     let currentMinute: Int
     let pulse: Bool
+    let shimmerPhase: CGFloat
+
     let accentPrimary: Color
     let accentSecondary: Color
     let accentActive: Color
+    let accentGold: Color
 
     private let dayStartMin: Double = 6 * 60
     private let dayEndMin: Double = 24 * 60
@@ -1259,7 +1372,9 @@ private struct CurvedTimelineView: View {
 
             ZStack {
                 hourMarkers(width: width, height: height)
-                smartRhythmTrack(width: width, height: height)
+                futureDashedPath(width: width, height: height)
+                pastFilledPath(width: width, height: height)
+                shimmerOverlay(width: width, height: height)
                 eventDots(width: width, height: height)
 
                 if dayContainsNow {
@@ -1290,27 +1405,58 @@ private struct CurvedTimelineView: View {
     }
 
     @ViewBuilder
-    func smartRhythmTrack(width: CGFloat, height: CGFloat) -> some View {
+    func futureDashedPath(width: CGFloat, height: CGFloat) -> some View {
         let path = rhythmPath(width: width, height: height)
+        let progress = currentDayProgress
 
         path
+            .trim(from: CGFloat(progress), to: 1)
             .stroke(
-                trackCyan.opacity(0.115),
+                trackCyan.opacity(0.18),
                 style: StrokeStyle(
-                    lineWidth: 3,
+                    lineWidth: 2.2,
+                    lineCap: .round,
+                    lineJoin: .round,
+                    dash: [3, 5]
+                )
+            )
+    }
+
+    @ViewBuilder
+    func pastFilledPath(width: CGFloat, height: CGFloat) -> some View {
+        let path = rhythmPath(width: width, height: height)
+        let progress = currentDayProgress
+
+        path
+            .trim(from: 0, to: CGFloat(progress))
+            .stroke(
+                LinearGradient(
+                    colors: [trackViolet, trackBlue, trackCyan],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                ),
+                style: StrokeStyle(
+                    lineWidth: 3.5,
                     lineCap: .round,
                     lineJoin: .round
                 )
             )
+            .shadow(color: trackCyan.opacity(0.20), radius: 6)
+    }
+
+    @ViewBuilder
+    func shimmerOverlay(width: CGFloat, height: CGFloat) -> some View {
+        let path = rhythmPath(width: width, height: height)
+        let progress = currentDayProgress
 
         path
-            .trim(from: 0, to: CGFloat(currentDayProgress))
+            .trim(from: 0, to: CGFloat(progress))
             .stroke(
                 LinearGradient(
-                    colors: [
-                        trackViolet,
-                        trackBlue,
-                        trackCyan
+                    stops: [
+                        .init(color: .white.opacity(0.0), location: max(0, shimmerPhase - 0.18)),
+                        .init(color: .white.opacity(0.55), location: shimmerPhase),
+                        .init(color: .white.opacity(0.0), location: min(1, shimmerPhase + 0.18))
                     ],
                     startPoint: .leading,
                     endPoint: .trailing
@@ -1321,26 +1467,7 @@ private struct CurvedTimelineView: View {
                     lineJoin: .round
                 )
             )
-            .shadow(color: trackCyan.opacity(0.16), radius: 5)
-    }
-
-    func rhythmPath(width: CGFloat, height: CGFloat) -> Path {
-        var path = Path()
-        let samples = 96
-
-        for index in 0...samples {
-            let progress = Double(index) / Double(samples)
-            let minute = dayStartMin + progress * (dayEndMin - dayStartMin)
-            let point = pointForMinute(Int(minute), width: width, height: height)
-
-            if index == 0 {
-                path.move(to: point)
-            } else {
-                path.addLine(to: point)
-            }
-        }
-
-        return path
+            .blendMode(.screen)
     }
 
     @ViewBuilder
@@ -1359,26 +1486,26 @@ private struct CurvedTimelineView: View {
             ZStack {
                 if isActive {
                     Circle()
-                        .fill(accentActive.opacity(0.20))
-                        .frame(width: 24, height: 24)
-                        .scaleEffect(pulse ? 1.32 : 1.0)
+                        .fill(accentActive.opacity(0.22))
+                        .frame(width: 28, height: 28)
+                        .scaleEffect(pulse ? 1.35 : 1.0)
                         .opacity(pulse ? 0.0 : 0.65)
                         .position(p)
                 }
 
                 Circle()
                     .fill(dotColor(isPast: isPast, isActive: isActive))
-                    .frame(width: isActive ? 11 : 8, height: isActive ? 11 : 8)
+                    .frame(width: isActive ? 12 : 8, height: isActive ? 12 : 8)
                     .overlay(
                         Circle()
                             .stroke(
-                                Color.white.opacity(isActive ? 0.84 : 0.18),
+                                Color.white.opacity(isActive ? 0.92 : 0.18),
                                 lineWidth: isActive ? 2 : 1
                             )
                     )
                     .shadow(
-                        color: isActive ? accentActive.opacity(0.38) : Color.clear,
-                        radius: isActive ? 7 : 0
+                        color: isActive ? accentActive.opacity(0.45) : Color.clear,
+                        radius: isActive ? 8 : 0
                     )
                     .position(p)
 
@@ -1417,21 +1544,38 @@ private struct CurvedTimelineView: View {
     func nowIndicator(width: CGFloat, height: CGFloat) -> some View {
         let p = pointForMinute(currentMinute, width: width, height: height)
 
+        // Outer halo
         Circle()
-            .fill(accentActive.opacity(0.18))
-            .frame(width: 26, height: 26)
-            .scaleEffect(pulse ? 1.32 : 1.0)
-            .opacity(pulse ? 0.0 : 0.56)
+            .fill(accentActive.opacity(0.15))
+            .frame(width: 38, height: 38)
+            .scaleEffect(pulse ? 1.45 : 1.0)
+            .opacity(pulse ? 0.0 : 0.50)
             .position(p)
 
+        // Mid halo
         Circle()
-            .fill(accentActive)
-            .frame(width: 12, height: 12)
+            .fill(accentActive.opacity(0.22))
+            .frame(width: 24, height: 24)
+            .scaleEffect(pulse ? 1.18 : 1.0)
+            .opacity(pulse ? 0.18 : 0.78)
+            .position(p)
+
+        // Core dot
+        Circle()
+            .fill(
+                RadialGradient(
+                    colors: [.white, accentActive],
+                    center: .center,
+                    startRadius: 1,
+                    endRadius: 8
+                )
+            )
+            .frame(width: 14, height: 14)
             .overlay(
                 Circle()
-                    .stroke(Color.white.opacity(0.92), lineWidth: 2)
+                    .stroke(Color.white.opacity(0.96), lineWidth: 2)
             )
-            .shadow(color: accentActive.opacity(0.42), radius: 8)
+            .shadow(color: accentActive.opacity(0.55), radius: 10)
             .position(p)
     }
 
@@ -1450,16 +1594,16 @@ private struct CurvedTimelineView: View {
     }
 
     func yForMinute(_ minute: Int, height: CGFloat) -> CGFloat {
-        let base = height * 0.58
+        let base = height * 0.60
         let energy = workloadEnergy(at: minute)
+        let lift = CGFloat(energy) * height * 0.36
 
-        let lift = CGFloat(energy) * height * 0.34
         let progress = progressForMinute(minute)
         let softWave = sin(progress * Double.pi * 2.0) * Double(height) * 0.030
 
         let y = Double(base - lift) + softWave
 
-        return CGFloat(max(Double(height * 0.20), min(Double(height * 0.76), y)))
+        return CGFloat(max(Double(height * 0.18), min(Double(height * 0.78), y)))
     }
 
     func workloadEnergy(at minute: Int) -> Double {
@@ -1481,10 +1625,29 @@ private struct CurvedTimelineView: View {
             let influence = exp(-pow(distance / spread, 2.0))
             let durationWeight = min(1.0, duration / 120.0)
 
-            total += influence * (0.38 + durationWeight * 0.34)
+            total += influence * (0.40 + durationWeight * 0.36)
         }
 
-        return max(0.10, min(0.92, total))
+        return max(0.10, min(0.95, total))
+    }
+
+    func rhythmPath(width: CGFloat, height: CGFloat) -> Path {
+        var path = Path()
+        let samples = 120
+
+        for index in 0...samples {
+            let progress = Double(index) / Double(samples)
+            let minute = dayStartMin + progress * (dayEndMin - dayStartMin)
+            let point = pointForMinute(Int(minute), width: width, height: height)
+
+            if index == 0 {
+                path.move(to: point)
+            } else {
+                path.addLine(to: point)
+            }
+        }
+
+        return path
     }
 
     var currentDayProgress: Double {
@@ -1577,6 +1740,8 @@ private struct HomeMetricCard: View {
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.62)
+                    .contentTransition(.numericText())
+                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: value)
 
                 Text(unit)
                     .font(.system(size: 12, weight: .black))
@@ -1622,5 +1787,421 @@ private struct HomeMetricCard: View {
                 )
         )
         .shadow(color: Color.black.opacity(0.16), radius: 12, y: 7)
+    }
+}
+
+// MARK: - Timeline Detail Sheet
+
+private struct TimelineDetailSheet: View {
+    let events: [EventItem]
+    let currentMinute: Int
+    let weeklyMinutes: Int
+
+    let accentPrimary: Color
+    let accentSecondary: Color
+    let accentCyan: Color
+    let accentGold: Color
+    let accentGreen: Color
+    let accentWarm: Color
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var pulse = false
+    @State private var selectedEventID: UUID?
+
+    private let pulseTimer = Timer.publish(every: 1.2, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        ZStack {
+            ArenaBackground(
+                primaryGlow: accentSecondary,
+                secondaryGlow: accentPrimary,
+                warmGlow: accentWarm,
+                intensity: 0.88
+            )
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 22) {
+                    headerSection
+                    bigTimeline
+                    peakInsights
+                    eventListSection
+
+                    Color.clear.frame(height: 40)
+                }
+                .padding(.horizontal, 18)
+                .padding(.top, 8)
+            }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .onReceive(pulseTimer) { _ in
+            withAnimation(.easeInOut(duration: 1.2)) { pulse.toggle() }
+        }
+    }
+
+    // MARK: Header
+
+    var headerSection: some View {
+        VStack(alignment: .leading, spacing: 11) {
+            HStack(spacing: 9) {
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [accentCyan, accentSecondary],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: 22, height: 1)
+
+                Text("BUGÜNÜN AKIŞI · DETAY")
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(2.35)
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [accentCyan, accentSecondary],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("Günün")
+                    .font(.system(size: 38, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text("ritmi")
+                    .font(.system(size: 34, weight: .regular, design: .serif))
+                    .italic()
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [accentCyan, accentSecondary, accentPrimary],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                Spacer()
+            }
+
+            Text("\(events.count) etkinlik · \(pastEventsCount) tamamlandı · şu an \(formatHHmm(currentMinute))")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.50))
+        }
+    }
+
+    // MARK: Big timeline
+
+    var bigTimeline: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("DETAYLI GÖRÜNÜM")
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .tracking(1.8)
+                    .foregroundStyle(accentCyan.opacity(0.85))
+
+                Spacer()
+
+                Text(timeRangeText)
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.50))
+            }
+
+            CurvedTimelineView(
+                events: events,
+                currentMinute: currentMinute,
+                pulse: pulse,
+                shimmerPhase: 0.5,
+                accentPrimary: accentPrimary,
+                accentSecondary: accentSecondary,
+                accentActive: accentCyan,
+                accentGold: accentGold
+            )
+            .frame(height: 200)
+        }
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.078),
+                            accentCyan.opacity(0.072),
+                            accentPrimary.opacity(0.062),
+                            Color.white.opacity(0.030)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(accentCyan.opacity(0.18), lineWidth: 1)
+                )
+        )
+        .shadow(color: Color.black.opacity(0.20), radius: 16, y: 9)
+    }
+
+    // MARK: Peak insights
+
+    var peakInsights: some View {
+        HStack(spacing: 10) {
+            insightCard(
+                eyebrow: "ZİRVE",
+                title: peakHourText,
+                subtitle: "yoğunluğun zirvesi",
+                icon: "flame.fill",
+                tint: accentGold
+            )
+
+            insightCard(
+                eyebrow: "SAKİN",
+                title: quietHourText,
+                subtitle: "boş zaman penceresi",
+                icon: "moon.zzz.fill",
+                tint: accentCyan
+            )
+        }
+    }
+
+    func insightCard(eyebrow: String, title: String, subtitle: String, icon: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(eyebrow)
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .tracking(1.4)
+                    .foregroundStyle(tint.opacity(0.92))
+
+                Spacer()
+
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .black))
+                    .foregroundStyle(tint.opacity(0.72))
+            }
+
+            Text(title)
+                .font(.system(size: 22, weight: .black))
+                .foregroundStyle(.white)
+
+            Text(subtitle)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.45))
+                .lineLimit(2)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.05),
+                            tint.opacity(0.04),
+                            Color.black.opacity(0.02)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(tint.opacity(0.13), lineWidth: 1)
+                )
+        )
+    }
+
+    // MARK: Event list
+
+    var eventListSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("ETKİNLİKLER")
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .tracking(1.8)
+                    .foregroundStyle(accentCyan.opacity(0.85))
+
+                Spacer()
+
+                Text("\(events.count) toplam")
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.50))
+            }
+
+            VStack(spacing: 10) {
+                ForEach(events, id: \.id) { event in
+                    eventRow(event)
+                }
+            }
+        }
+    }
+
+    func eventRow(_ event: EventItem) -> some View {
+        let isPast = (event.startMinute + event.durationMinute) <= currentMinute
+        let isActive = event.startMinute <= currentMinute &&
+                       currentMinute < (event.startMinute + event.durationMinute)
+
+        let statusText: String
+        let statusColor: Color
+
+        if isActive {
+            statusText = "ŞU AN"
+            statusColor = accentGreen
+        } else if isPast {
+            statusText = "TAMAM"
+            statusColor = accentCyan.opacity(0.50)
+        } else {
+            let mins = event.startMinute - currentMinute
+            if mins < 60 {
+                statusText = "\(mins) DK"
+            } else {
+                statusText = "\(mins / 60) SA"
+            }
+            statusColor = accentPrimary
+        }
+
+        return HStack(spacing: 14) {
+            VStack(spacing: 2) {
+                Text(formatHHmm(event.startMinute))
+                    .font(.system(size: 14, weight: .black, design: .monospaced))
+                    .foregroundStyle(isActive ? accentGreen : .white.opacity(0.85))
+
+                Text("\(event.durationMinute)dk")
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.40))
+            }
+            .frame(width: 56)
+
+            Rectangle()
+                .fill(
+                    isActive ? accentGreen :
+                    (isPast ? accentCyan.opacity(0.35) : accentPrimary.opacity(0.55))
+                )
+                .frame(width: 3)
+                .frame(maxHeight: 38)
+                .clipShape(Capsule())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(event.title)
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(isPast ? .white.opacity(0.50) : .white)
+                    .lineLimit(1)
+
+                if let loc = event.location?.trimmingCharacters(in: .whitespacesAndNewlines), !loc.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "mappin")
+                            .font(.system(size: 9, weight: .bold))
+
+                        Text(loc)
+                            .font(.system(size: 11, weight: .semibold))
+                            .lineLimit(1)
+                    }
+                    .foregroundStyle(.white.opacity(0.42))
+                }
+            }
+
+            Spacer()
+
+            Text(statusText)
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .tracking(0.8)
+                .foregroundStyle(statusColor)
+                .padding(.horizontal, 9)
+                .frame(height: 22)
+                .background(
+                    Capsule()
+                        .fill(statusColor.opacity(0.13))
+                        .overlay(
+                            Capsule()
+                                .stroke(statusColor.opacity(0.18), lineWidth: 1)
+                        )
+                )
+        }
+        .padding(13)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(
+                    isActive
+                        ? accentGreen.opacity(0.08)
+                        : Color.white.opacity(0.035)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(
+                            isActive ? accentGreen.opacity(0.30) : Color.white.opacity(0.07),
+                            lineWidth: 1
+                        )
+                )
+        )
+    }
+
+    // MARK: Helpers
+
+    var pastEventsCount: Int {
+        events.filter { ($0.startMinute + $0.durationMinute) <= currentMinute }.count
+    }
+
+    var timeRangeText: String {
+        guard let first = events.first, let last = events.last else { return "06–24" }
+        let firstHour = first.startMinute / 60
+        let lastHour = (last.startMinute + last.durationMinute) / 60
+        return String(format: "%02d–%02d", firstHour, lastHour)
+    }
+
+    var peakHourText: String {
+        guard !events.isEmpty else { return "—" }
+
+        var bestHour = 12
+        var bestScore = 0.0
+
+        for hour in 6...23 {
+            let minute = hour * 60
+            var score = 0.0
+
+            for event in events {
+                let mid = Double(event.startMinute + event.durationMinute / 2)
+                let dist = abs(Double(minute) - mid)
+                let spread = max(48.0, Double(event.durationMinute) * 0.58)
+                score += exp(-pow(dist / spread, 2.0))
+            }
+
+            if score > bestScore {
+                bestScore = score
+                bestHour = hour
+            }
+        }
+
+        return String(format: "%02d:00", bestHour)
+    }
+
+    var quietHourText: String {
+        guard !events.isEmpty else { return "Tüm gün" }
+
+        var bestHour = 6
+        var lowestScore = Double.infinity
+
+        for hour in 6...23 {
+            let minute = hour * 60
+            var score = 0.0
+
+            for event in events {
+                let mid = Double(event.startMinute + event.durationMinute / 2)
+                let dist = abs(Double(minute) - mid)
+                let spread = max(48.0, Double(event.durationMinute) * 0.58)
+                score += exp(-pow(dist / spread, 2.0))
+            }
+
+            if score < lowestScore {
+                lowestScore = score
+                bestHour = hour
+            }
+        }
+
+        return String(format: "%02d:00", bestHour)
+    }
+
+    func formatHHmm(_ minute: Int) -> String {
+        let h = minute / 60
+        let m = minute % 60
+        return String(format: "%02d:%02d", h, m)
     }
 }

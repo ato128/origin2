@@ -105,7 +105,7 @@ struct MessagesView: View {
                 unreadCount: unread,
                 avatarText: initials(for: title),
                 tint: hexColor(friend.colorHex),
-                isOnline: friend.isOnline,
+                isOnline: isFriendOnline(friend),
                 showsPresence: true,
                 isPinned: backendConversation?.isPinned ?? false,
                 isMuted: backendConversation?.isMuted ?? false
@@ -144,8 +144,8 @@ struct MessagesView: View {
                 unreadCount: unread,
                 avatarText: crew.icon,
                 tint: tintForCrew(crew),
-                isOnline: isCrewActiveToday(crew),
-                showsPresence: true,
+                isOnline: false,
+                showsPresence: false,
                 isPinned: backendConversation?.isPinned ?? false,
                 isMuted: backendConversation?.isMuted ?? false
             )
@@ -210,6 +210,8 @@ struct MessagesView: View {
                     await loadMessagesHubData()
                 }
                 .onAppear {
+                    AppBadgeManager.shared.clearBadge()
+
                     guard didLoadMessagesHubData else {
                         return
                     }
@@ -1101,6 +1103,14 @@ private extension MessagesView {
             backendConversations = sorted
             upsertCachedBackendConversations(sorted)
             isRefreshingBackendConversations = false
+
+            let totalUnread = sorted.reduce(0) { $0 + $1.unreadCount }
+
+            if totalUnread <= 0 {
+                AppBadgeManager.shared.clearBadge()
+            } else {
+                AppBadgeManager.shared.setBadge(totalUnread)
+            }
         }
 
         print("🟢 MESSAGES HUB BACKEND REFRESHED:", reason, conversations.count)
@@ -1247,6 +1257,18 @@ private extension MessagesView {
 
     private func tintForCrew(_ crew: WeekCrewItem) -> Color {
         hexColor(crew.colorHex)
+    }
+    
+    private func friendPresence(for friend: Friend) -> FriendPresenceDTO? {
+        guard let userID = friend.backendUserID else {
+            return nil
+        }
+
+        return friendStore.presenceByUserID[userID]
+    }
+
+    private func isFriendOnline(_ friend: Friend) -> Bool {
+        FriendPresenceEngine.isOnline(friendPresence(for: friend))
     }
 }
 
