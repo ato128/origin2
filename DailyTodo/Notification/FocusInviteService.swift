@@ -12,7 +12,9 @@ final class FocusInviteService {
     static let shared = FocusInviteService()
     private init() {}
 
-    private let functionURL = URL(string: "https://srzvzaczgydwtopnlrvx.supabase.co/functions/v1/send-message-push")!
+    private var functionURL: URL {
+        URL(string: "\(ChatBackendEnvironment.httpBaseURL)/v1/focus/invite")!
+    }
 
     // ISO 8601 formatter for started_at
     private let iso8601: ISO8601DateFormatter = {
@@ -47,11 +49,7 @@ final class FocusInviteService {
             return
         }
 
-        guard let anonKey = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String,
-              !anonKey.isEmpty else {
-            print("FOCUS INVITE ERROR: SUPABASE_ANON_KEY bulunamadı")
-            return
-        }
+       
 
         let normalizedTaskTitle = taskTitle?
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -64,7 +62,6 @@ final class FocusInviteService {
         for participantID in filteredParticipantIDs {
             do {
                 try await sendSingleInvite(
-                    anonKey: anonKey,
                     toUserID: participantID,
                     sessionID: sessionID,
                     crewID: crewID,
@@ -83,7 +80,6 @@ final class FocusInviteService {
     }
 
     private func sendSingleInvite(
-        anonKey: String,
         toUserID: UUID,
         sessionID: UUID,
         crewID: UUID,
@@ -95,11 +91,7 @@ final class FocusInviteService {
         participantNames: [String]?,
         totalParticipants: Int?
     ) async throws {
-        guard let inviteSecret = Bundle.main.object(forInfoDictionaryKey: "FOCUS_INVITE_SECRET") as? String,
-              !inviteSecret.isEmpty else {
-            print("FOCUS INVITE ERROR: FOCUS_INVITE_SECRET bulunamadı")
-            return
-        }
+       
 
         guard let accessToken = SupabaseManager.shared.client.auth.currentSession?.accessToken,
               !accessToken.isEmpty else {
@@ -109,10 +101,9 @@ final class FocusInviteService {
 
         var request = URLRequest(url: functionURL)
         request.httpMethod = "POST"
+        request.timeoutInterval = 20
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(anonKey, forHTTPHeaderField: "apikey")
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        request.setValue(inviteSecret, forHTTPHeaderField: "x-focus-invite-secret")
 
         let deepLink = "dailytodo://focus?crew_id=\(crewID.uuidString)&session_id=\(sessionID.uuidString)"
 
@@ -133,36 +124,28 @@ final class FocusInviteService {
 
         var body: [String: Any] = [
             "toUserId": toUserID.uuidString,
-            "title": title,
-            "message": bodyText,
-            "type": "crew_focus_invite",
-            "crew_id": crewID.uuidString,
-            "session_id": sessionID.uuidString,
-            "host_name": hostName,
-            "duration_minutes": duration,
-            "deep_link": deepLink,
+            "crewID": crewID.uuidString,
+            "crewName": crewName ?? "Crew",
+            "sessionID": sessionID.uuidString,
+            "hostName": hostName,
+            "durationMinutes": duration,
+            "deepLink": deepLink,
             "badge": 1
         ]
-
         if let taskTitle, !taskTitle.isEmpty {
-            body["task_title"] = taskTitle
-        }
-
-        // YENİ ALANLAR
-        if let crewName, !crewName.isEmpty {
-            body["crew_name"] = crewName
+            body["taskTitle"] = taskTitle
         }
 
         if let startedAtString {
-            body["started_at"] = startedAtString
+            body["startedAt"] = startedAtString
         }
 
         if let participantNames, !participantNames.isEmpty {
-            body["participant_names"] = participantNames
+            body["participantNames"] = participantNames
         }
 
         if let totalParticipants {
-            body["total_participants"] = totalParticipants
+            body["totalParticipants"] = totalParticipants
         }
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)

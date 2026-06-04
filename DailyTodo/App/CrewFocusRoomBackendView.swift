@@ -220,13 +220,51 @@ private extension CrewFocusRoomBackendView {
 
     func handleSessionEndedFromUI() {
         guard !isClosingView else { return }
+        guard !isWaitingRoom else { return }
+
         isClosingView = true
 
-        crewStore.activeFocusSessionByCrew.removeValue(forKey: crew.id)
-        crewStore.focusParticipantsBySession.removeValue(forKey: localSession.id)
+        let sessionSnapshot = localSession
+        let participantNames = localParticipants
+            .map { $0.member_name.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            dismiss()
+        let completedMinutes = max(1, sessionSnapshot.duration_minutes)
+        let hostName = sessionSnapshot.host_name
+        let hostUserID = sessionSnapshot.host_user_id
+
+        Task {
+            if isHost {
+                do {
+                    try await crewStore.endCrewFocusSession(
+                        sessionID: sessionSnapshot.id,
+                        crewID: sessionSnapshot.crew_id,
+                        hostUserID: hostUserID,
+                        hostName: hostName,
+                        completedMinutes: completedMinutes,
+                        participantNames: participantNames,
+                        taskID: nil
+                    )
+
+                    print("✅ CREW ROOM AUTO END PERSISTED:", sessionSnapshot.id.uuidString)
+                } catch {
+                    print("❌ CREW ROOM AUTO END ERROR:", error.localizedDescription)
+                }
+            } else {
+                print("⚪️ CREW ROOM AUTO END SKIPPED: current user is not host")
+            }
+
+            await crewStore.loadActiveFocusSession(for: sessionSnapshot.crew_id)
+            await crewStore.loadFocusRecords(for: sessionSnapshot.crew_id)
+
+            await MainActor.run {
+                crewStore.activeFocusSessionByCrew.removeValue(forKey: sessionSnapshot.crew_id)
+                crewStore.focusParticipantsBySession.removeValue(forKey: sessionSnapshot.id)
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    dismiss()
+                }
+            }
         }
     }
 

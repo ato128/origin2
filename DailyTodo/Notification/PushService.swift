@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Supabase
 
 final class PushService {
     static let shared = PushService()
@@ -62,6 +63,62 @@ final class PushService {
 
             if !(200...299).contains(statusCode) {
                 print("🔴 PUSH FAILED HTTP:", statusCode)
+            }
+        }
+        .resume()
+    }
+    private func performBackendFocusRequest(
+        path: String,
+        bodyObject: [String: Any]
+    ) {
+        guard let url = URL(string: "\(ChatBackendEnvironment.httpBaseURL)/v1\(path)") else {
+            print("FOCUS BACKEND PUSH URL ERROR")
+            return
+        }
+
+        guard JSONSerialization.isValidJSONObject(bodyObject) else {
+            print("FOCUS BACKEND PUSH BODY ERROR: invalid JSON")
+            return
+        }
+
+        guard let body = try? JSONSerialization.data(withJSONObject: bodyObject) else {
+            print("FOCUS BACKEND PUSH BODY SERIALIZE ERROR")
+            return
+        }
+
+        guard let accessToken = SupabaseManager.shared.client.auth.currentSession?.accessToken,
+              !accessToken.isEmpty else {
+            print("FOCUS BACKEND PUSH ERROR: access token yok")
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 20
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.httpBody = body
+
+        print("🚀 FOCUS BACKEND PUSH URL:", url.absoluteString)
+        print("🚀 FOCUS BACKEND PUSH BODY:", String(data: body, encoding: .utf8) ?? "nil")
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error {
+                print("🔴 FOCUS BACKEND PUSH ERROR:", error.localizedDescription)
+                return
+            }
+
+            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+            let responseText = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
+
+            print("🟡 FOCUS BACKEND PUSH STATUS:", statusCode)
+
+            if !responseText.isEmpty {
+                print("🟣 FOCUS BACKEND PUSH RESPONSE:", responseText)
+            }
+
+            if !(200...299).contains(statusCode) {
+                print("🔴 FOCUS BACKEND PUSH FAILED:", statusCode)
             }
         }
         .resume()
@@ -221,29 +278,23 @@ final class PushService {
             ? "Crew Focus"
             : crewName
 
-        let message = "\(durationMinutes) dakika focus tamamladın 🎉"
-
-        print("🚀 CREW FOCUS ENDED PUSH SEND CALLED -> \(cleanToUserId)")
-
         var body: [String: Any] = [
-            "toUserId": cleanToUserId,
-            "title": cleanCrewName,
-            "message": message,
-            "type": "crew_focus_ended",
-            "crew_id": cleanCrewID,
-            "duration_minutes": durationMinutes,
-            "deep_link": "dailytodo://focus?crew_id=\(cleanCrewID)",
-            "badge": badge,
-            "environment": currentEnvironment
+            "toUserIDs": [cleanToUserId],
+            "crewID": cleanCrewID,
+            "crewName": cleanCrewName,
+            "durationMinutes": durationMinutes,
+            "badge": badge
         ]
 
         if let previousMinutes {
-            body["previous_minutes"] = previousMinutes
+            body["previousMinutes"] = previousMinutes
         }
 
-        performRequest(bodyObject: body)
+        performBackendFocusRequest(
+            path: "/focus/ended",
+            bodyObject: body
+        )
     }
-
     /// Crew focus'tan birisi ayrılınca diğerlerine gönderilir.
     /// `leaverName`: ayrılan kişinin görünen adı.
     func sendCrewFocusLeftPush(
@@ -269,21 +320,16 @@ final class PushService {
             ? "Birisi"
             : leaverName
 
-        let message = "\(cleanLeaverName) focus'tan ayrıldı"
-
-        print("🚀 CREW FOCUS LEFT PUSH SEND CALLED -> \(cleanToUserId)")
-
-        performRequest(bodyObject: [
-            "toUserId": cleanToUserId,
-            "title": cleanCrewName,
-            "message": message,
-            "type": "crew_focus_left",
-            "crew_id": cleanCrewID,
-            "leaver_name": cleanLeaverName,
-            "deep_link": "dailytodo://crew-chat?crew_id=\(cleanCrewID)",
-            "badge": badge,
-            "environment": currentEnvironment
-        ])
+        performBackendFocusRequest(
+            path: "/focus/left",
+            bodyObject: [
+                "toUserIDs": [cleanToUserId],
+                "crewID": cleanCrewID,
+                "crewName": cleanCrewName,
+                "leaverName": cleanLeaverName,
+                "badge": badge
+            ]
+        )
     }
     /// Crew focus'a birisi katılınca mevcut participantlara gönderilir.
     /// `joinedName`: katılan kişinin görünen adı.
@@ -312,21 +358,16 @@ final class PushService {
             ? "Birisi"
             : joinedName
 
-        let message = "\(cleanJoinedName) focus'a katıldı"
-
-        print("🚀 CREW FOCUS JOINED PUSH SEND CALLED -> \(cleanToUserId)")
-
-        performRequest(bodyObject: [
-            "toUserId": cleanToUserId,
-            "title": cleanCrewName,
-            "message": message,
-            "type": "crew_focus_joined",
-            "crew_id": cleanCrewID,
-            "session_id": cleanSessionID,
-            "joined_name": cleanJoinedName,
-            "deep_link": "dailytodo://focus?crew_id=\(cleanCrewID)&session_id=\(cleanSessionID)",
-            "badge": badge,
-            "environment": currentEnvironment
-        ])
+        performBackendFocusRequest(
+            path: "/focus/joined",
+            bodyObject: [
+                "toUserIDs": [cleanToUserId],
+                "crewID": cleanCrewID,
+                "crewName": cleanCrewName,
+                "sessionID": cleanSessionID,
+                "joinedName": cleanJoinedName,
+                "badge": badge
+            ]
+        )
     }
 }

@@ -225,11 +225,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             }
 
         case "crew_focus_invite":
-            // Push'a tıklandığında sheet aç
             NotificationCenter.default.post(
                 name: .presentCrewFocusInviteSheet,
                 object: userInfo
             )
+            return
 
         case "crew_focus_ended":
             NotificationCenter.default.post(
@@ -248,13 +248,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
                 object: userInfo
             )
 
-            if let crewID = userInfo["crew_id"] as? String {
-                NotificationCenter.default.post(
-                    name: .openCrewFocusFromNotification,
-                    object: crewID
-                )
-                
-            }
+            
             
         default:
             break

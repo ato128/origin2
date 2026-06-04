@@ -25,6 +25,7 @@ final class FocusSessionManager: ObservableObject {
 
     @Published var currentCrewID: UUID?
     @Published var currentCrewBackendSessionID: UUID?
+    @Published var currentCrewHostUserID: UUID?
 
     private let storageKey = "active_focus_session_state_v1"
     private let lastFocusMinutesKey = "last_focus_minutes_v1"
@@ -144,6 +145,10 @@ final class FocusSessionManager: ObservableObject {
             let participantSnapshot = session.participants
             let leaverName = currentUserDisplayName
             let leaverID = currentUserID
+            let backendParticipants = crewStore.focusParticipantsBySession[backendSessionID] ?? []
+            let otherParticipantIDsSnapshot = backendParticipants
+                .compactMap { $0.user_id }
+                .filter { $0 != currentUserID }
 
             // Crew session backend güncelle (async)
             Task { [weak self] in
@@ -171,14 +176,11 @@ final class FocusSessionManager: ObservableObject {
                         )
 
                         // Diğerlerine "X ayrıldı" push
-                        if let leaverID {
-                            await self.sendLeftPushToOthers(
-                                crewID: crewID,
-                                leaverID: leaverID,
-                                leaverName: leaverName,
-                                participants: participantSnapshot
-                            )
-                        }
+                        await self.sendLeftPushToOthers(
+                            crewID: crewID,
+                            leaverName: leaverName,
+                            otherParticipantIDs: otherParticipantIDsSnapshot
+                        )
                     }
                 } catch {
                     print("CLOSE SESSION BACKEND ERROR:", error.localizedDescription)
@@ -188,12 +190,12 @@ final class FocusSessionManager: ObservableObject {
             // Crew için tebrikler + bildirim:
             // - Host → tebrikler + end push diğerlerine (completeAndPersist içinde)
             // - Üye → kendi tebrikler ekranı (kendisi ayrıldı, "X dk yaptın" göstermek mantıklı)
-            completeAndPersist(session)
+            completeAndPersist(session, shouldPersistCrewBackend: false)
             return
         }
 
         // Personal/Friend: tebrikler + lokal bildirim
-        completeAndPersist(session)
+        completeAndPersist(session, shouldPersistCrewBackend: false)
     }
 
     func pauseSession() {
@@ -324,7 +326,7 @@ final class FocusSessionManager: ObservableObject {
         let goal = preferredGoal ?? existingGoal ?? .study
         let style = preferredStyle ?? existingStyle ?? .silent
 
-        let startDate = CrewDateParser.parse(dto.started_at) ?? Date()
+        let startDate = CrewDateParser.parse(dto.started_live_at ?? dto.started_at) ?? Date()
 
         let resolvedEndDate: Date
         if dto.is_paused {
@@ -355,9 +357,10 @@ final class FocusSessionManager: ObservableObject {
         currentSession = session
         currentCrewID = crewID
         currentCrewBackendSessionID = dto.id
+        currentCrewHostUserID = dto.host_user_id
         isSessionActive = dto.is_active
-        isExpanded = dto.is_active
-        isMinimized = false
+        isExpanded = false
+        isMinimized = dto.is_active
 
         save()
         startLifecycleTimer()
@@ -592,39 +595,18 @@ final class FocusSessionManager: ObservableObject {
     }
 
     private func finishSession(_ session: FocusSessionState) {
-        if session.mode == .crew,
-           let crewID = currentCrewID,
-           let backendSessionID = currentCrewBackendSessionID,
-           let crewStore,
-           isCurrentUserHost {
-
-            Task {
-                do {
-                    try await crewStore.endCrewFocusSession(
-                        sessionID: backendSessionID,
-                        crewID: crewID,
-                        hostUserID: currentUserID,
-                        hostName: currentUserDisplayName,
-                        completedMinutes: session.durationMinutes,
-                        participantNames: session.participants.map(\.name),
-                        taskID: nil
-                    )
-                } catch {
-                    print("AUTO END CREW SESSION ERROR:", error.localizedDescription)
-                }
-
-                completeAndPersist(session)
-            }
-
-            return
-        }
-
-        completeAndPersist(session)
+        completeAndPersist(
+            session,
+            shouldPersistCrewBackend: true
+        )
     }
 
     // MARK: - Completion (Tebrikler + Bildirimler + Live Activity end)
 
-    private func completeAndPersist(_ session: FocusSessionState) {
+    private func completeAndPersist(
+        _ session: FocusSessionState,
+        shouldPersistCrewBackend: Bool = true
+    ) {
         stopLifecycleTimer()
         audioManager.stop()
         cancelFocusEndBackupNotification(for: session)
@@ -691,7 +673,6 @@ final class FocusSessionManager: ObservableObject {
             }
         }()
 
-        // Önce Live Activity'yi completed state'e geçir.
         Task {
             await liveActivityManager.finishThenEnd(
                 title: completedLiveTitle,
@@ -702,9 +683,6 @@ final class FocusSessionManager: ObservableObject {
             )
         }
 
-        // Personal/Friend için local notification.
-        // Eğer session arka planda bitmişse backup notification zaten endDate'te düşmüştür.
-        // App sonradan açılınca duplicate bildirim göndermeyelim.
         if session.mode == .personal || session.mode == .friend {
             if shouldScheduleImmediateCompletionNotification(endedAt: ended) {
                 scheduleLocalFocusEndedNotification(
@@ -716,8 +694,8 @@ final class FocusSessionManager: ObservableObject {
             }
         }
 
-        // Crew için participant push.
-        if session.mode == .crew,
+        if shouldPersistCrewBackend,
+           session.mode == .crew,
            let crewID = currentCrewID {
             let crewName = crewStore?.crews.first(where: { $0.id == crewID })?.name ?? "Crew"
 
@@ -726,14 +704,34 @@ final class FocusSessionManager: ObservableObject {
                 crewID: crewID
             )
 
+            let backendSessionID = currentCrewBackendSessionID
+            let hostUserID = currentUserID
+            let hostName = currentUserDisplayName
+            let shouldPersistAsHost = isCurrentUserHost
+
             Task { [weak self] in
-                await self?.sendCrewFocusEndedPush(
-                    crewID: crewID,
-                    crewName: crewName,
-                    participantIDs: participantIDs,
-                    durationMinutes: completedMinutes,
-                    previousMinutes: previousMinutes
-                )
+                guard let self else { return }
+
+                if shouldPersistAsHost {
+                    await self.persistCrewFocusCompletionToBackend(
+                        session: session,
+                        crewID: crewID,
+                        backendSessionID: backendSessionID,
+                        hostUserID: hostUserID,
+                        hostName: hostName,
+                        completedMinutes: completedMinutes
+                    )
+
+                    await self.sendCrewFocusEndedPush(
+                        crewID: crewID,
+                        crewName: crewName,
+                        participantIDs: participantIDs,
+                        durationMinutes: completedMinutes,
+                        previousMinutes: previousMinutes
+                    )
+                } else {
+                    print("⚪️ CREW FOCUS BACKEND PERSIST SKIPPED: current user is not host")
+                }
             }
         }
 
@@ -743,6 +741,7 @@ final class FocusSessionManager: ObservableObject {
         isExpanded = false
         currentCrewID = nil
         currentCrewBackendSessionID = nil
+        currentCrewHostUserID = nil
 
         UserDefaults.standard.removeObject(forKey: storageKey)
 
@@ -762,6 +761,7 @@ final class FocusSessionManager: ObservableObject {
         completionSummary = nil
         currentCrewID = nil
         currentCrewBackendSessionID = nil
+        currentCrewHostUserID = nil
 
         UserDefaults.standard.removeObject(forKey: storageKey)
 
@@ -1050,26 +1050,74 @@ final class FocusSessionManager: ObservableObject {
             previousMinutes: previousMinutes
         )
     }
+    
+    private func persistCrewFocusCompletionToBackend(
+        session: FocusSessionState,
+        crewID: UUID,
+        backendSessionID: UUID?,
+        hostUserID: UUID?,
+        hostName: String,
+        completedMinutes: Int,
+        taskID: UUID? = nil
+    ) async {
+        guard let crewStore else {
+            print("❌ CREW FOCUS BACKEND PERSIST SKIPPED: crewStore nil")
+            return
+        }
+
+        let participantNames = session.participants
+            .map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        if let backendSessionID {
+            do {
+                try await crewStore.endCrewFocusSession(
+                    sessionID: backendSessionID,
+                    crewID: crewID,
+                    hostUserID: hostUserID,
+                    hostName: hostName,
+                    completedMinutes: completedMinutes,
+                    participantNames: participantNames,
+                    taskID: taskID
+                )
+
+                print("✅ CREW FOCUS BACKEND PERSISTED:", crewID.uuidString)
+                return
+            } catch {
+                print("❌ CREW FOCUS END BACKEND ERROR:", error.localizedDescription)
+            }
+        }
+
+        await crewStore.createFocusRecord(
+            crewID: crewID,
+            userID: hostUserID,
+            memberName: hostName,
+            minutes: completedMinutes
+        )
+
+        print("✅ CREW FOCUS BACKEND FALLBACK RECORD CREATED:", crewID.uuidString)
+    }
 
     private func sendLeftPushToOthers(
         crewID: UUID,
-        leaverID: UUID,
         leaverName: String,
-        participants: [FocusParticipant]
+        otherParticipantIDs: [UUID]
     ) async {
         let crewName = crewStore?.crews.first(where: { $0.id == crewID })?.name ?? "Crew"
 
-        let otherParticipantIDs = collectParticipantUserIDs(
-            from: participants,
-            crewID: crewID
-        ).filter { $0 != leaverID }
+        let uniqueIDs = Array(Set(otherParticipantIDs))
+
+        guard !uniqueIDs.isEmpty else {
+            print("FOCUS LEFT PUSH SKIPPED: no other participants")
+            return
+        }
 
         await FocusInviteService.shared.sendLeftNotifications(
             crewID: crewID,
             crewName: crewName,
-            leaverID: leaverID,
+            leaverID: currentUserID ?? UUID(),
             leaverName: leaverName,
-            otherParticipantIDs: otherParticipantIDs
+            otherParticipantIDs: uniqueIDs
         )
     }
 
@@ -1144,6 +1192,11 @@ final class FocusSessionManager: ObservableObject {
     }
 
     var isCurrentUserHost: Bool {
+        if let currentCrewHostUserID,
+           let currentUserID {
+            return currentCrewHostUserID == currentUserID
+        }
+
         guard let currentSession else { return false }
         return currentSession.participants.first(where: { $0.isHost })?.name == currentUserDisplayName
     }

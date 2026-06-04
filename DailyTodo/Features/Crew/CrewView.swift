@@ -206,6 +206,7 @@ struct CrewView: View {
                 guard newPhase == .active else { return }
 
                 Task {
+                    await crewStore.loadHomeCacheForAllCrews()
                     await reloadBackendFriends(force: false)
                 }
             }
@@ -213,6 +214,17 @@ struct CrewView: View {
                 if let code = notification.object as? String {
                     pendingInviteCode = code
                     showJoinCrewSheet = true
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: Notification.Name("focus_completed"))) { _ in
+                Task {
+                    await crewStore.loadHomeCacheForAllCrews()
+
+                    await arenaStore.load(
+                        scope: .department,
+                        range: .week,
+                        force: true
+                    )
                 }
             }
         }

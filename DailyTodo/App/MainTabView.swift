@@ -162,22 +162,9 @@ struct MainTabView: View {
                 return
             }
 
-            if let crewID = output.object as? String {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                    NotificationCenter.default.post(
-                        name: .presentActiveCrewFocusFromNotification,
-                        object: crewID
-                    )
-                }
-                return
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
-                NotificationCenter.default.post(
-                    name: .openFocusTabFromHome,
-                    object: nil
-                )
-            }
+            // Önemli:
+            // Notification/deep link yüzünden ActiveFocusView otomatik açılmasın.
+            // Sadece Focus tabına geçsin. ActiveFocusView yalnızca join butonundan sonra açılmalı.
         }
     }
 }

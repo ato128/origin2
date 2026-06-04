@@ -255,16 +255,18 @@ struct DailyTodoApp: App {
         
         print("✅ INVITE PARSED:", payload.crewName, payload.hostName)
      
-        // Zaten aktif focus varsa veya zaten bu davete bakıyorsak göstermeyelim
+        handleCrewFocusInviteReceivedPayload(payload)
+    }
+    
+    private func handleCrewFocusInviteReceivedPayload(_ payload: CrewFocusInvitePayload) {
         if focusSession.isSessionActive,
            focusSession.currentCrewBackendSessionID == payload.sessionID {
             print("⚪️ INVITE SKIPPED: already in this session")
             return
         }
-     
-        // Önce kapat (varsa eski payload), sonra yenisini set et
+
         crewFocusInvitePayload = nil
-     
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             crewFocusInvitePayload = payload
             print("📤 INVITE SHEET ATANDI")
@@ -301,8 +303,9 @@ struct DailyTodoApp: App {
                         preferredGoal: .study,
                         preferredStyle: .silent
                     )
+
                     crewFocusInvitePayload = nil
-                    focusSession.expandSession()
+                    openFocusFromNotification = true
                 }
             } catch {
                 print("JOIN INVITE FROM SHEET ERROR:", error.localizedDescription)
@@ -762,16 +765,7 @@ struct DailyTodoApp: App {
         }
         
         if url.host == "focus" {
-            NotificationCenter.default.post(name: .openFocusTabFromHome, object: nil)
-
-            if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-               let crewID = components.queryItems?.first(where: { $0.name == "crew_id" })?.value {
-                NotificationCenter.default.post(
-                    name: .openCrewFocusFromNotification,
-                    object: crewID
-                )
-            }
-
+            handleFocusInviteURL(url)
             return
         }
 
@@ -806,6 +800,52 @@ struct DailyTodoApp: App {
                 object: crewID
             )
             return
+        }
+    }
+    
+    private func handleFocusInviteURL(_ url: URL) {
+        NotificationCenter.default.post(name: .openFocusTabFromHome, object: nil)
+
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let crewIDString = components.queryItems?.first(where: { $0.name == "crew_id" })?.value,
+              let sessionIDString = components.queryItems?.first(where: { $0.name == "session_id" })?.value,
+              let crewID = UUID(uuidString: crewIDString),
+              let sessionID = UUID(uuidString: sessionIDString)
+        else {
+            print("⚠️ FOCUS INVITE URL PARSE FAILED:", url.absoluteString)
+            return
+        }
+
+        Task {
+            await crewStore.loadActiveFocusSession(for: crewID)
+
+            guard let dto = crewStore.activeFocusSessionByCrew[crewID],
+                  dto.id == sessionID,
+                  dto.is_active,
+                  dto.ended_at == nil
+            else {
+                print("⚪️ FOCUS INVITE URL SESSION NOT ACTIVE:", sessionIDString)
+                return
+            }
+
+            await crewStore.loadFocusParticipants(sessionID: dto.id)
+            let participants = crewStore.focusParticipantsBySession[dto.id] ?? []
+
+            let payload = CrewFocusInvitePayload(
+                crewID: crewID,
+                sessionID: dto.id,
+                crewName: crewStore.crews.first(where: { $0.id == crewID })?.name ?? "Crew",
+                hostName: dto.host_name,
+                durationMinutes: dto.duration_minutes,
+                taskTitle: dto.task_title,
+                startedAt: CrewDateParser.parse(dto.started_live_at ?? dto.started_at),
+                participantNames: participants.map(\.member_name),
+                totalParticipants: max((dto.invited_count ?? 0) + 1, participants.count)
+            )
+
+            await MainActor.run {
+                handleCrewFocusInviteReceivedPayload(payload)
+            }
         }
     }
 
