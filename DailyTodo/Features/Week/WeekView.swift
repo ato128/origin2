@@ -10,633 +10,750 @@ import SwiftData
 import UIKit
 import Combine
 
-
-
-private enum WeekPerformanceCache {
-    static let isoFormatter = ISO8601DateFormatter()
-}
-
-enum WeekMode {
-    case personal
-    case crew
-}
-
-enum PlanAheadMode: String, CaseIterable {
-    case personal = "Personal"
-    case crew = "Crew"
-}
+// MARK: - WeekView (Apple Calendar Style, Personal Only)
 
 struct WeekView: View {
 
-    @Environment(\.modelContext) var context
-    @EnvironmentObject var crewStore: CrewStore
-    @EnvironmentObject var session: SessionStore
-    @EnvironmentObject var store: TodoStore
-    @EnvironmentObject var friendStore: FriendStore
-    @Environment(\.locale) var locale
-    @EnvironmentObject var studentStore: StudentStore
+    // MARK: Environment
+
+    @Environment(\.modelContext) private var context
+    @Environment(\.locale) private var locale
+
+    @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var friendStore: FriendStore
+    @EnvironmentObject private var studentStore: StudentStore
 
     @Query(sort: \EventItem.startMinute, order: .forward)
-    var allEvents: [EventItem]
+    private var allEvents: [EventItem]
 
-    @Query var tasks: [DTTaskItem]
-    @Query var workoutExercises: [WorkoutExerciseItem]
+    // MARK: State
 
-    var allCrews: [WeekCrewItem] {
-        crewStore.crews.map {
-            WeekCrewItem(
-                id: $0.id,
-                name: $0.name,
-                icon: $0.icon,
-                colorHex: $0.color_hex
-            )
-        }
-    }
+    /// Şu an gösterilen tarih (sayfa). Swipe ile değişir.
+    @State private var currentDate: Date = Date()
 
-    var allCrewTasks: [WeekCrewTaskItem] {
-        crewStore.crewTasks.map { task in
-            let assignedProfile = crewStore.memberProfiles.first(where: { $0.id == task.assigned_to })
-            let creatorProfile = crewStore.memberProfiles.first(where: { $0.id == task.created_by })
+    /// Takvim sheet
+    @State private var showCalendarSheet = false
 
-            let assignedName: String = {
-                guard let assignedProfile else { return "Unassigned" }
+    /// Add event sheet
+    @State private var showingAdd = false
+    @State private var editingEvent: EventItem? = nil
 
-                if let fullName = assignedProfile.full_name,
-                   !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    return fullName
-                }
+    /// Animasyon için
+    @State private var pageDirection: Int = 0 // -1: geri, +1: ileri
+    @State private var entranceShown = false
 
-                if let username = assignedProfile.username,
-                   !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    return username
-                }
+    /// Live timer (her dakika)
+    private let liveTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+    @State private var liveTick: Int = 0
 
-                return "Unassigned"
-            }()
-
-            let createdByName =
-                creatorProfile?.full_name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
-                ? creatorProfile!.full_name!
-                : (creatorProfile?.username ?? creatorProfile?.email ?? "Unknown")
-
-            return WeekCrewTaskItem(
-                id: task.id,
-                crewID: task.crew_id,
-                title: task.title,
-                details: task.details ?? "",
-                assignedTo: assignedName,
-                createdBy: createdByName,
-                priority: task.priority,
-                status: task.is_done ? "done" : task.status,
-                showOnWeek: task.show_on_week,
-                scheduledWeekday: task.scheduled_weekday,
-                scheduledStartMinute: task.scheduled_start_minute,
-                scheduledDurationMinute: task.scheduled_duration_minute,
-                scheduledDate: nil,
-                isDone: task.is_done,
-                createdAt: isoDate(task.created_at) ?? Date()
-            )
-        }
-    }
-
-    var allCrewActivities: [WeekCrewActivityItem] {
-        crewStore.crewActivities.map {
-            WeekCrewActivityItem(
-                id: $0.id,
-                crewID: $0.crew_id,
-                memberName: $0.member_name,
-                actionText: $0.action_text,
-                createdAt: isoDate($0.created_at) ?? Date()
-            )
-        }
-    }
-
-    var crewMap: [UUID: WeekCrewItem] {
-        Dictionary(uniqueKeysWithValues: allCrews.map { ($0.id, $0) })
-    }
-
-    var currentUserID: UUID? {
-        session.currentUser?.id
-    }
-
-    var userScopedEvents: [EventItem] {
-        guard let currentUserID else { return [] }
-        return allEvents.filter { $0.ownerUserID == currentUserID.uuidString }
-    }
-
-    var userScopedTasks: [DTTaskItem] {
-        store.items
-    }
-
-    var allEventsAccessible: [EventItem] {
-        userScopedEvents
-    }
-
-    var selectedCrew: WeekCrewItem? {
-        guard let selectedCrewID else { return nil }
-        return allCrews.first(where: { $0.id == selectedCrewID })
-    }
-
-    let liveTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
-
-    let dayTitles = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
-
-    var allEventIDs: [UUID] {
-        userScopedEvents.map(\.id)
-    }
-
-    var eventsForDay: [EventItem] {
-        let calendar = Calendar.current
-        let targetDate = targetDateForSelectedDay()
-
-        return userScopedEvents
-            .filter { ev in
-                guard !ev.isCompleted else { return false }
-
-                if let scheduledDate = ev.scheduledDate {
-                    return calendar.isDate(scheduledDate, inSameDayAs: targetDate)
-                } else {
-                    return ev.weekday == selectedDay
-                }
-            }
-            .sorted { lhs, rhs in
-                lhs.startMinute < rhs.startMinute
-            }
-    }
-
-    var eventsForDayIDs: [UUID] {
-        eventsForDay.map(\.id)
-    }
-
-    var totalMinutesForDay: Int {
-        eventsForDay.reduce(0) { $0 + $1.durationMinute }
-    }
-
-    var firstEventOfDay: EventItem? {
-        eventsForDay.first
-    }
-
-    var lastEventOfDay: EventItem? {
-        eventsForDay.last
-    }
-
-    var isTodaySelected: Bool {
-        selectedDay == weekdayIndexToday()
-    }
-
-    var liveEventForDay: EventItem? {
-        guard isTodaySelected else { return nil }
-        let now = currentMinuteOfDay()
-
-        return eventsForDay.first {
-            now >= $0.startMinute && now < ($0.startMinute + $0.durationMinute)
-        }
-    }
-
-    var currentTimeIndicatorText: String? {
-        guard isTodaySelected else { return nil }
-
-        let now = currentMinuteOfDay()
-
-        if let live = eventsForDay.first(where: {
-            now >= $0.startMinute && now < ($0.startMinute + $0.durationMinute)
-        }) {
-            let left = max(0, (live.startMinute + live.durationMinute) - now)
-            return localizedCurrentTimeLive(now: now, title: live.title, minutesLeft: left)
-        }
-
-        if let next = eventsForDay.first(where: { $0.startMinute > now }) {
-            return localizedCurrentTimeNext(now: now, nextStart: next.startMinute)
-        }
-
-        if !eventsForDay.isEmpty {
-            return localizedCurrentTimeFinished(now: now)
-        }
-
-        return nil
-    }
-
-    @State var selectedDay: Int = 0
-    @State var showingAdd: Bool = false
-    @State var showingCreateCrewTask = false
-    @State var showCrewPickerSheet = false
-    @State var editingEvent: EventItem? = nil
-    @State var weekMode: WeekMode = .personal
-    @State var showCopied: Bool = false
-    @State var crewPulse = false
-    @State var commentPulse = false
-    @State var selectedTaskForEdit: WeekCrewTaskItem?
-    @State var selectedCrewTask: WeekCrewTaskItem?
-    @State var selectedCrewForDetail: WeekCrewItem?
-    @State var showCrewEntrance = false
-    @State var showCrewTaskHeader = false
-    @State var showCrewTaskCards = false
-    @State var didAnimateCrewCards = false
-    @State var didInitialAutoScroll: Bool = false
-    @State var lastAutoScrollTargetID: UUID? = nil
-    @State var didSetInitialDay: Bool = false
-    @State var animateSummary = false
-    @State var pulseTodayDot = false
-    @State var showCompletedCrewTasks = false
-    @State var showPersonalEntrance = false
-    @State var showPersonalEventCards = false
-    @State var crewScrollOffset: CGFloat = 0
-    @State var personalScrollOffset: CGFloat = 0
-    @State var scrollY: CGFloat = 0
-    @State var selectedCrewID: UUID?
-    @State var showPlanAheadSheet = false
-    @State var planAheadDate: Date = Date()
-    @State var planAheadMode: PlanAheadMode = .personal
-    @State var selectedEventForDetail: EventItem?
-    @State var showCourseSetupSheet = false
-
-    @State var isWeekScreenVisible = false
+    // MARK: Body
 
     var body: some View {
         ZStack {
             ArenaBackground(
-                primaryGlow: weekMode == .crew
-                    ? Color(arenaHex: AppArenaPalette.coral)
-                    : Color(arenaHex: AppArenaPalette.blue),
+                primaryGlow: heroAccent,
                 secondaryGlow: Color(arenaHex: AppArenaPalette.purple),
-                warmGlow: weekMode == .crew
-                    ? Color(arenaHex: AppArenaPalette.gold)
-                    : Color(arenaHex: AppArenaPalette.cyan),
+                warmGlow: Color(arenaHex: AppArenaPalette.cyan),
                 intensity: 0.94
             )
+            .animation(.easeInOut(duration: 0.45), value: heroAccent)
 
-            weekMainContent
+            VStack(spacing: 0) {
+                topBar
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 6)
+
+                dayPagedContent
+            }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .sheet(isPresented: $showCalendarSheet) {
+            CalendarSheet(
+                selectedDate: $currentDate,
+                allEvents: userScopedEvents,
+                onPick: { picked in
+                    pageDirection = picked > currentDate ? 1 : -1
+                    withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
+                        currentDate = picked
+                    }
+                    showCalendarSheet = false
+                }
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showingAdd) {
+            NavigationStack {
+                AddEventView(
+                    defaultWeekday: weekdayIndex(from: currentDate),
+                    defaultDate: currentDate
+                )
+                .environmentObject(session)
+                .environmentObject(friendStore)
+                .environmentObject(studentStore)
+            }
+        }
+        .sheet(item: $editingEvent) { event in
+            NavigationStack {
+                AddEventView(
+                    defaultWeekday: event.weekday,
+                    defaultDate: event.scheduledDate
+                )
+                .environmentObject(session)
+                .environmentObject(friendStore)
+                .environmentObject(studentStore)
+            }
+        }
+        .onAppear {
+            studentStore.reload()
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.86)) {
+                entranceShown = true
+            }
+        }
+        .onReceive(liveTimer) { _ in
+            liveTick &+= 1
         }
     }
-}
 
-// MARK: - Main UI Extras
-extension WeekView {
+    // MARK: Top Bar
 
-    var activeCrewTaskCount: Int {
-        allCrewTasksForSelectedDay.filter { !$0.isDone }.count
-    }
+    private var topBar: some View {
+        HStack(spacing: 10) {
+            // Takvim icon → modal
+            Button {
+                Haptics.impact(.light)
+                showCalendarSheet = true
+            } label: {
+                circularIconButton(systemName: "calendar")
+            }
+            .buttonStyle(.plain)
 
-    var sectionCardBackground: some View {
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color(arenaHex: AppArenaPalette.blue).opacity(0.065),
-                        Color(arenaHex: AppArenaPalette.purple).opacity(0.040),
-                        Color(arenaHex: AppArenaPalette.surface).opacity(0.92)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                Color(arenaHex: AppArenaPalette.cyan).opacity(0.095 * PerformanceSettings.radialOpacityMultiplier),
-                                Color.clear
-                            ],
-                            center: .topTrailing,
-                            startRadius: 6,
-                            endRadius: 180
+            Spacer(minLength: 8)
+
+            // Tarih + state label
+            VStack(spacing: 2) {
+                Text(eyebrowText)
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .tracking(1.8)
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [heroAccent, Color(arenaHex: AppArenaPalette.blue)],
+                            startPoint: .leading,
+                            endPoint: .trailing
                         )
                     )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
-            )
-            .shadow(
-                color: Color.black.opacity(0.18),
-                radius: PerformanceSettings.cardShadowRadius,
-                y: 6
-            )
-    }
-}
+                    .lineLimit(1)
 
-// MARK: - Legacy Crew Mode
-extension WeekView {
-
-    func premiumCardFill(_ priority: String, active: Bool, soon: Bool) -> LinearGradient {
-        let tint = premiumPriorityColor(priority)
-
-        return LinearGradient(
-            colors: [
-                tint.opacity(priority == "urgent" ? 0.115 : (active ? 0.095 : 0.070)),
-                Color(arenaHex: AppArenaPalette.purple).opacity(active ? 0.052 : 0.034),
-                Color.white.opacity(active ? 0.040 : 0.028)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
-    func markWorkoutTaskDone(taskID: PersistentIdentifier) {
-        guard let task = userScopedTasks.first(where: { $0.id == taskID }) else { return }
-        task.isDone = true
-        task.completedAt = Date()
-    }
-
-    func premiumBorderColor(_ priority: String, active: Bool, soon: Bool) -> Color {
-        let tint = premiumPriorityColor(priority)
-
-        if priority == "urgent" {
-            return tint.opacity(active ? 0.34 : 0.24)
-        }
-
-        if active {
-            return tint.opacity(0.28)
-        }
-
-        if soon {
-            return tint.opacity(0.20)
-        }
-
-        return Color.white.opacity(0.075)
-    }
-
-    func premiumGlowColor(_ priority: String, active: Bool, soon: Bool) -> Color {
-        let tint = premiumPriorityColor(priority)
-
-        if priority == "urgent" {
-            return tint.opacity(active ? 0.16 : 0.09)
-        }
-
-        if active {
-            return tint.opacity(0.11)
-        }
-
-        if soon {
-            return tint.opacity(0.055)
-        }
-
-        return .clear
-    }
-
-    func premiumPriorityBadge(_ priority: String, tint: Color) -> some View {
-        HStack(spacing: 6) {
-            if priority == "urgent" {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 10, weight: .black))
+                Text(longDateText)
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
             }
 
-            Text(priorityTitle(priority).uppercased())
-                .font(.system(size: 9, weight: .black, design: .monospaced))
-                .tracking(0.7)
+            Spacer(minLength: 8)
+
+            // Navigasyon
+            HStack(spacing: 6) {
+                Button {
+                    navigate(by: -1)
+                } label: {
+                    smallNavButton(systemName: "chevron.left")
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    navigate(by: 1)
+                } label: {
+                    smallNavButton(systemName: "chevron.right")
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .padding(.horizontal, 10)
-        .frame(height: 26)
-        .background(
-            Capsule()
-                .fill(tint.opacity(0.13))
-                .overlay(
-                    Capsule()
-                        .stroke(tint.opacity(0.18), lineWidth: 1)
-                )
-        )
-        .foregroundStyle(tint)
     }
 
-    func premiumMetaPill(icon: String, text: String, tint: Color) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: icon)
-                .font(.system(size: 9, weight: .black))
-
-            Text(text.uppercased())
-                .font(.system(size: 9, weight: .black, design: .monospaced))
-                .tracking(0.45)
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
-        }
-        .padding(.horizontal, 9)
-        .frame(height: 25)
-        .background(
-            Capsule()
-                .fill(Color.white.opacity(0.055))
-                .overlay(
-                    Capsule()
-                        .stroke(Color.white.opacity(0.075), lineWidth: 1)
-                )
-        )
-        .foregroundStyle(tint)
-    }
-
-    func crewTimelineTaskCard(_ task: WeekCrewTaskItem, isLast: Bool) -> some View {
-        let crew = allCrews.first { $0.id == task.crewID }
-        let active = isTaskActive(task)
-        let soon = isTaskStartingSoon(task)
-
-        let tint = premiumPriorityColor(task.priority)
-        let cardFill = premiumCardFill(task.priority, active: active, soon: soon)
-        let border = premiumBorderColor(task.priority, active: active, soon: soon)
-        let glow = premiumGlowColor(task.priority, active: active, soon: soon)
-
-        return HStack(alignment: .top, spacing: 14) {
-            VStack(spacing: 0) {
+    private func circularIconButton(systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 15, weight: .black))
+            .foregroundStyle(Color(arenaHex: AppArenaPalette.cyan))
+            .frame(width: 40, height: 40)
+            .background(
                 Circle()
-                    .fill(tint)
-                    .frame(
-                        width: active ? 16 : (soon ? 13 : 11),
-                        height: active ? 16 : (soon ? 13 : 11)
-                    )
-                    .shadow(
-                        color: glow,
-                        radius: active ? PerformanceSettings.glowShadowRadius : (soon ? 6 : 0)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.095),
+                                Color.white.opacity(0.045)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
                     .overlay(
                         Circle()
-                            .stroke(.white.opacity(active ? 0.30 : 0.10), lineWidth: 1)
+                            .stroke(Color.white.opacity(0.11), lineWidth: 1)
                     )
-                    .scaleEffect(active ? 1.08 : (soon ? 1.03 : 1.0))
+                    .shadow(color: Color.black.opacity(0.24), radius: 10, y: 6)
+            )
+    }
 
-                if !isLast {
-                    LinearGradient(
-                        colors: [
-                            tint.opacity(active ? 0.48 : 0.20),
-                            Color.white.opacity(0.05)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
+    private func smallNavButton(systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 11, weight: .black))
+            .foregroundStyle(Color.white.opacity(0.65))
+            .frame(width: 32, height: 32)
+            .background(
+                Circle()
+                    .fill(Color.white.opacity(0.045))
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white.opacity(0.07), lineWidth: 1)
                     )
-                    .frame(width: 2)
-                    .frame(maxHeight: .infinity)
-                    .padding(.top, 6)
+            )
+    }
+
+    // MARK: Paged Day Content
+
+    private var dayPagedContent: some View {
+        // Drag gesture ile sayfa geçişi
+        ZStack {
+            dayContent
+                .id(dateKey(currentDate))
+                .transition(
+                    .asymmetric(
+                        insertion: .move(edge: pageDirection >= 0 ? .trailing : .leading)
+                            .combined(with: .opacity),
+                        removal: .move(edge: pageDirection >= 0 ? .leading : .trailing)
+                            .combined(with: .opacity)
+                    )
+                )
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 22)
+                .onEnded { value in
+                    let threshold: CGFloat = 70
+                    if value.translation.width < -threshold {
+                        navigate(by: 1)
+                    } else if value.translation.width > threshold {
+                        navigate(by: -1)
+                    }
+                }
+        )
+    }
+
+    @ViewBuilder
+    private var dayContent: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                heroSection
+                    .padding(.horizontal, 18)
+                    .padding(.top, 12)
+
+                statsRow
+                    .padding(.horizontal, 18)
+
+                if let active = activeEventNow {
+                    activeBanner(active)
+                        .padding(.horizontal, 18)
+                }
+
+                eventsList
+                    .padding(.horizontal, 18)
+
+                swipeIndicator
+                    .padding(.top, 10)
+                    .padding(.bottom, 110)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .scrollIndicators(.hidden)
+    }
+
+    // MARK: Hero
+
+    private var heroSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            // Eyebrow
+            HStack(spacing: 8) {
+                Rectangle()
+                    .fill(heroAccent)
+                    .frame(width: 22, height: 1)
+
+                Text(eyebrowText)
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(2.35)
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [heroAccent, Color(arenaHex: AppArenaPalette.blue)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+
+                if let count = heroEventCount {
+                    Text("· \(count) DERS")
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .tracking(1.4)
+                        .foregroundStyle(heroAccent.opacity(0.78))
                 }
             }
-            .frame(width: 18)
 
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 8) {
-                    if let start = task.scheduledStartMinute {
-                        HStack(spacing: 5) {
-                            Image(systemName: "clock")
-                            Text(hm(start))
-                        }
-                        .font(.system(size: 12, weight: .black, design: .monospaced))
-                        .foregroundStyle(active ? tint : .white.opacity(0.48))
-                    }
+            // Title
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(heroTitle)
+                    .font(.system(size: 34, weight: .black))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.58)
+                    .layoutPriority(1)
 
-                    Spacer()
+                Text(heroItalic)
+                    .font(.system(size: 30, weight: .regular, design: .serif))
+                    .italic()
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [
+                                heroAccent,
+                                Color(arenaHex: AppArenaPalette.purple)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.58)
+            }
 
-                    premiumPriorityBadge(task.priority, tint: tint)
-                }
+            // Subtitle
+            Text(heroSubtitle)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.50))
+                .lineLimit(2)
+                .padding(.top, 2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 
-                Text(task.title)
+    // MARK: Stats Row
+
+    private var statsRow: some View {
+        HStack(spacing: 8) {
+            statChip(
+                title: "TOPLAM",
+                value: "\(eventsForCurrentDate.count)",
+                suffix: "ders",
+                tint: heroAccent
+            )
+
+            statChip(
+                title: "TAMAM",
+                value: "\(completedCount)",
+                suffix: "/\(eventsForCurrentDate.count)",
+                tint: Color(arenaHex: AppArenaPalette.green)
+            )
+
+            statChip(
+                title: "SÜRE",
+                value: hourValue,
+                suffix: hourSuffix,
+                tint: Color(arenaHex: AppArenaPalette.purple)
+            )
+        }
+    }
+
+    private func statChip(title: String, value: String, suffix: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 5) {
+                Rectangle()
+                    .fill(tint)
+                    .frame(width: 14, height: 1)
+
+                Text(title)
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .tracking(1.2)
+                    .foregroundStyle(tint)
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                Text(value)
                     .font(.system(size: 18, weight: .black))
                     .foregroundStyle(.white)
-                    .lineLimit(2)
+                    .monospacedDigit()
 
-                if let crew {
-                    HStack(spacing: 6) {
-                        Image(systemName: "person.3.fill")
-                        Text(crew.name)
-                    }
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
-                }
+                Text(suffix)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.45))
+            }
+        }
+        .padding(.horizontal, 11)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(tint.opacity(0.075))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(tint.opacity(0.16), lineWidth: 1)
+                )
+        )
+    }
 
-                HStack(spacing: 10) {
-                    premiumMetaPill(
-                        icon: "flag.fill",
-                        text: statusTitle(task.status),
-                        tint: .white.opacity(0.58)
+    // MARK: Active Banner
+
+    private func activeBanner(_ event: EventItem) -> some View {
+        let warm = Color(arenaHex: AppArenaPalette.coral)
+        let now = currentMinuteOfDay()
+        let left = max(0, (event.startMinute + event.durationMinute) - now)
+
+        return HStack(spacing: 12) {
+            Circle()
+                .fill(warm)
+                .frame(width: 8, height: 8)
+                .shadow(color: warm.opacity(0.55), radius: 6)
+                .overlay(
+                    Circle()
+                        .stroke(warm.opacity(0.35), lineWidth: 6)
+                        .scaleEffect(1.8)
+                        .opacity(0.4)
+                )
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("ŞU AN · CANLI")
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .tracking(1.5)
+                    .foregroundStyle(warm)
+
+                Text(event.title)
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 6)
+
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(timeRange(event))
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.55))
+
+                Text("\(left) dk kaldı")
+                    .font(.system(size: 11, weight: .black))
+                    .foregroundStyle(warm)
+            }
+        }
+        .padding(13)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            warm.opacity(0.18),
+                            warm.opacity(0.07)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(warm.opacity(0.32), lineWidth: 1)
+                )
+                .shadow(color: warm.opacity(0.12), radius: 14, y: 7)
+        )
+    }
 
-                    if !task.assignedTo.isEmpty {
-                        premiumMetaPill(
-                            icon: "person.fill",
-                            text: task.assignedTo,
-                            tint: tint.opacity(0.95)
-                        )
-                    }
-                }
+    // MARK: Events List
 
-                if active {
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(Color(arenaHex: AppArenaPalette.green))
-                            .frame(width: 6, height: 6)
-
-                        Text("ACTIVE NOW")
-                            .font(.system(size: 10, weight: .black, design: .monospaced))
-                            .tracking(0.7)
-                            .foregroundStyle(Color(arenaHex: AppArenaPalette.green))
-                    }
-                } else if soon {
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(Color(arenaHex: AppArenaPalette.gold))
-                            .frame(width: 6, height: 6)
-
-                        Text("STARTING SOON")
-                            .font(.system(size: 10, weight: .black, design: .monospaced))
-                            .tracking(0.7)
-                            .foregroundStyle(Color(arenaHex: AppArenaPalette.gold))
-                    }
+    @ViewBuilder
+    private var eventsList: some View {
+        if eventsForCurrentDate.isEmpty {
+            emptyDayCard
+        } else {
+            VStack(spacing: 8) {
+                ForEach(Array(eventsForCurrentDate.enumerated()), id: \.element.id) { idx, event in
+                    eventRow(event, index: idx)
                 }
             }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var emptyDayCard: some View {
+        Button {
+            Haptics.impact(.light)
+            showingAdd = true
+        } label: {
+            VStack(spacing: 12) {
+                Image(systemName: "calendar.badge.plus")
+                    .font(.system(size: 26, weight: .black))
+                    .foregroundStyle(heroAccent.opacity(0.78))
+
+                VStack(spacing: 4) {
+                    Text(emptyTitle)
+                        .font(.system(size: 16, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text("Yeni ders veya etkinlik ekle")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.45))
+                }
+
+                HStack(spacing: 6) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 11, weight: .black))
+
+                    Text("EKLE")
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .tracking(0.8)
+                }
+                .foregroundStyle(.black)
+                .padding(.horizontal, 16)
+                .frame(height: 36)
+                .background(
+                    Capsule()
+                        .fill(heroAccent)
+                        .shadow(color: heroAccent.opacity(0.30), radius: 10, y: 5)
+                )
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 26)
             .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(cardFill)
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color.white.opacity(0.025))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .fill(
-                                RadialGradient(
-                                    colors: [
-                                        tint.opacity((active ? 0.16 : 0.08) * PerformanceSettings.radialOpacityMultiplier),
-                                        Color.clear
-                                    ],
-                                    center: .topTrailing,
-                                    startRadius: 6,
-                                    endRadius: 160
-                                )
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .strokeBorder(
+                                Color.white.opacity(0.10),
+                                style: StrokeStyle(lineWidth: 1, dash: [6, 5])
                             )
                     )
             )
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func eventRow(_ event: EventItem, index: Int) -> some View {
+        let now = currentMinuteOfDay()
+        let start = event.startMinute
+        let end = event.startMinute + event.durationMinute
+        let isToday = Calendar.current.isDateInToday(currentDate)
+        let isPast = (event.isCompleted) || (isToday && now >= end)
+        let isActive = isToday && now >= start && now < end
+        let isRecurring = (event.scheduledDate == nil)
+
+        let tint = colorFromHex(event.colorHex)
+
+        Button {
+            editingEvent = event
+        } label: {
+            HStack(alignment: .center, spacing: 12) {
+                // Time
+                VStack(alignment: .center, spacing: 2) {
+                    Text(hm(event.startMinute))
+                        .font(.system(size: 13, weight: .black, design: .monospaced))
+                        .foregroundStyle(isActive ? Color(arenaHex: AppArenaPalette.coral) : .white.opacity(isPast ? 0.55 : 0.92))
+
+                    Text("\(event.durationMinute)dk")
+                        .font(.system(size: 9, weight: .black, design: .monospaced))
+                        .foregroundStyle(.white.opacity(isPast ? 0.32 : 0.45))
+                }
+                .frame(minWidth: 50)
+
+                // Color stripe
+                RoundedRectangle(cornerRadius: 999, style: .continuous)
+                    .fill(isActive ? Color(arenaHex: AppArenaPalette.coral) : tint)
+                    .frame(width: 3, height: isActive ? 40 : 32)
+
+                // Content
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(event.title)
+                        .font(.system(size: 14, weight: .black))
+                        .foregroundStyle(.white.opacity(isPast ? 0.65 : 1))
+                        .strikethrough(isPast)
+                        .lineLimit(1)
+
+                    HStack(spacing: 6) {
+                        if let loc = event.location, !loc.isEmpty {
+                            Text(loc)
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.42))
+                                .lineLimit(1)
+                        }
+
+                        if isActive {
+                            Text("·")
+                                .foregroundStyle(.white.opacity(0.32))
+
+                            Text("\(max(0, end - now)) dk kaldı")
+                                .font(.system(size: 11, weight: .black))
+                                .foregroundStyle(Color(arenaHex: AppArenaPalette.coral))
+                        }
+                    }
+                }
+
+                Spacer(minLength: 4)
+
+                // Right side: status or recur badge
+                if isPast {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 16, weight: .black))
+                        .foregroundStyle(Color(arenaHex: AppArenaPalette.green).opacity(0.85))
+                } else if isActive {
+                    Circle()
+                        .fill(Color(arenaHex: AppArenaPalette.coral))
+                        .frame(width: 8, height: 8)
+                        .shadow(color: Color(arenaHex: AppArenaPalette.coral).opacity(0.55), radius: 6)
+                } else if isRecurring {
+                    HStack(spacing: 3) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 8, weight: .black))
+
+                        Text("TEKRAR")
+                            .font(.system(size: 8, weight: .black, design: .monospaced))
+                            .tracking(0.4)
+                    }
+                    .foregroundStyle(tint)
+                    .padding(.horizontal, 8)
+                    .frame(height: 22)
+                    .background(
+                        Capsule()
+                            .fill(tint.opacity(0.14))
+                            .overlay(
+                                Capsule()
+                                    .stroke(tint.opacity(0.22), lineWidth: 1)
+                            )
+                    )
+                }
+            }
+            .padding(12)
+            .background(eventRowBackground(isPast: isPast, isActive: isActive, tint: tint))
+            .opacity(isPast ? 0.62 : 1.0)
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            if !event.isCompleted {
+                Button {
+                    markCompleted(event)
+                } label: {
+                    Label("Tamamlandı olarak işaretle", systemImage: "checkmark.circle")
+                }
+            }
+
+            Button {
+                editingEvent = event
+            } label: {
+                Label("Düzenle", systemImage: "pencil")
+            }
+
+            Button(role: .destructive) {
+                delete(event)
+            } label: {
+                Label("Sil", systemImage: "trash")
+            }
+        }
+        .opacity(entranceShown ? 1 : 0)
+        .offset(y: entranceShown ? 0 : 18)
+        .animation(
+            .spring(response: 0.45, dampingFraction: 0.86).delay(Double(index) * 0.035),
+            value: entranceShown
+        )
+    }
+
+    private func eventRowBackground(isPast: Bool, isActive: Bool, tint: Color) -> some View {
+        let bg: Color = {
+            if isActive { return Color(arenaHex: AppArenaPalette.coral).opacity(0.10) }
+            if isPast { return Color(arenaHex: AppArenaPalette.green).opacity(0.05) }
+            return tint.opacity(0.06)
+        }()
+
+        let border: Color = {
+            if isActive { return Color(arenaHex: AppArenaPalette.coral).opacity(0.30) }
+            if isPast { return Color(arenaHex: AppArenaPalette.green).opacity(0.12) }
+            return tint.opacity(0.18)
+        }()
+
+        return RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .fill(bg)
             .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(border, lineWidth: active ? 1.2 : 1)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(border, lineWidth: 1)
             )
-            .shadow(
-                color: Color.black.opacity(0.20),
-                radius: PerformanceSettings.cardShadowRadius,
-                y: 6
-            )
-            .shadow(
-                color: glow,
-                radius: active ? PerformanceSettings.glowShadowRadius : (soon ? 6 : 0)
-            )
-            .scaleEffect(active ? 1.008 : 1.0)
+    }
+
+    // MARK: Swipe Indicator
+
+    private var swipeIndicator: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "chevron.left")
+                .font(.system(size: 11, weight: .black))
+                .foregroundStyle(.white.opacity(0.32))
+
+            HStack(spacing: 5) {
+                ForEach(0..<5, id: \.self) { i in
+                    if i == 2 {
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: [heroAccent, Color(arenaHex: AppArenaPalette.blue)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .frame(width: 16, height: 4)
+                    } else {
+                        Circle()
+                            .fill(Color.white.opacity(0.18))
+                            .frame(width: 4, height: 4)
+                    }
+                }
+            }
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .black))
+                .foregroundStyle(.white.opacity(0.32))
         }
-        .animation(
-            .spring(response: 0.24, dampingFraction: 0.88),
-            value: active
-        )
-        .animation(
-            .easeInOut(duration: 0.20),
-            value: soon
-        )
-    }
-}
-
-// MARK: - Shared Time Helpers
-extension WeekView {
-
-    func currentMinuteOfDay() -> Int {
-        let c = Calendar.current.dateComponents([.hour, .minute], from: Date())
-        return (c.hour ?? 0) * 60 + (c.minute ?? 0)
+        .frame(maxWidth: .infinity)
+        .opacity(0.65)
     }
 
-    func isoDate(_ raw: String?) -> Date? {
-        guard let raw else { return nil }
-        return WeekPerformanceCache.isoFormatter.date(from: raw)
-    }
+    // MARK: Actions
 
-    func timeText(for ev: EventItem) -> String {
-        let start = ev.startMinute
-        let end = ev.startMinute + ev.durationMinute
-        return "\(hm(start)) – \(hm(end))"
-    }
-
-    func hm(_ minute: Int) -> String {
-        let m = max(0, min(1439, minute))
-        let h = m / 60
-        let mm = m % 60
-        return String(format: "%02d:%02d", h, mm)
-    }
-
-    func durationText(_ minutes: Int) -> String {
-        let h = minutes / 60
-        let m = minutes % 60
-
-        if h == 0 { return "\(m) dk" }
-        if m == 0 { return "\(h) sa" }
-        return "\(h) sa \(m) dk"
-    }
-
-    func weekdayIndexToday() -> Int {
-        let w = Calendar.current.component(.weekday, from: Date())
-        return (w + 5) % 7
-    }
-
-    func animateSummaryCard() {
-        animateSummary = true
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
-            animateSummary = false
+    private func navigate(by offset: Int) {
+        Haptics.impact(.light)
+        pageDirection = offset
+        if let newDate = Calendar.current.date(byAdding: .day, value: offset, to: currentDate) {
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
+                currentDate = newDate
+            }
         }
     }
-}
 
-// MARK: - Logic
-extension WeekView {
+    private func markCompleted(_ event: EventItem) {
+        event.isCompleted = true
 
-    func delete(_ ev: EventItem) {
-        context.delete(ev)
+        do {
+            try context.save()
+            Haptics.impact(.medium)
+            WidgetAppSync.refreshFromSwiftData(context: context)
+
+            Task {
+                await NotificationManager.shared.rescheduleAll(events: userScopedEvents)
+            }
+
+            Task {
+                guard let userID = session.currentUser?.id else { return }
+                await friendStore.resyncSharedWeekIfNeeded(for: userID, events: userScopedEvents)
+            }
+        } catch {
+            print("markCompleted error:", error)
+        }
+    }
+
+    private func delete(_ event: EventItem) {
+        context.delete(event)
 
         do {
             try context.save()
@@ -644,330 +761,663 @@ extension WeekView {
 
             Task {
                 await NotificationManager.shared.rescheduleAll(
-                    events: userScopedEvents.filter { $0.id != ev.id }
+                    events: userScopedEvents.filter { $0.id != event.id }
                 )
             }
 
             Task {
-                guard let currentUserID = session.currentUser?.id else { return }
-
-                let descriptor = FetchDescriptor<EventItem>(
-                    sortBy: [SortDescriptor(\EventItem.startMinute, order: .forward)]
-                )
-
-                let all = (try? context.fetch(descriptor)) ?? []
-                let currentUserEvents = all.filter { $0.ownerUserID == currentUserID.uuidString }
-
-                await friendStore.resyncSharedWeekIfNeeded(
-                    for: currentUserID,
-                    events: currentUserEvents
-                )
+                guard let userID = session.currentUser?.id else { return }
+                await friendStore.resyncSharedWeekIfNeeded(for: userID, events: userScopedEvents)
             }
         } catch {
-            print("WeekView.delete save error:", error)
-        }
-    }
-
-    func hasConflict(_ ev: EventItem) -> Bool {
-        for other in eventsForDay {
-            if other.id == ev.id { continue }
-            if overlaps(ev, other) { return true }
-        }
-
-        return false
-    }
-
-    func overlaps(_ a: EventItem, _ b: EventItem) -> Bool {
-        let aStart = a.startMinute
-        let aEnd = a.startMinute + a.durationMinute
-        let bStart = b.startMinute
-        let bEnd = b.startMinute + b.durationMinute
-
-        return max(aStart, bStart) < min(aEnd, bEnd)
-    }
-
-    func autoScrollTarget(now: Int) -> EventItem? {
-        guard !eventsForDay.isEmpty else { return nil }
-
-        if selectedDay == weekdayIndexToday() {
-            if let live = eventsForDay.first(where: { ev in
-                let s = ev.startMinute
-                let e = ev.startMinute + ev.durationMinute
-                return now >= s && now < e
-            }) {
-                return live
-            }
-
-            if let next = eventsForDay.first(where: { $0.startMinute > now }) {
-                return next
-            }
-        }
-
-        return eventsForDay.first
-    }
-
-    func autoScrollIfNeeded(proxy: ScrollViewProxy) {
-        guard isWeekScreenVisible else { return }
-
-        let now = currentMinuteOfDay()
-        guard let target = autoScrollTarget(now: now) else { return }
-
-        if lastAutoScrollTargetID == target.id { return }
-        lastAutoScrollTargetID = target.id
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-            withAnimation(.easeInOut(duration: 0.26)) {
-                proxy.scrollTo(target.id, anchor: .center)
-            }
+            print("WeekView.delete error:", error)
         }
     }
 }
 
-// MARK: - Share
-extension WeekView {
+// MARK: - Computed Properties
 
-    func shareDay() {
-        presentShare(text: shareTextForSelectedDay())
+private extension WeekView {
+
+    var userScopedEvents: [EventItem] {
+        guard let userID = session.currentUser?.id else { return [] }
+        return allEvents.filter { $0.ownerUserID == userID.uuidString }
     }
 
-    func targetDateForSelectedDay() -> Date {
-        targetDateFor(day: selectedDay)
-    }
-
-    func mondayStartOfCurrentWeek() -> Date {
+    /// `currentDate` için olan etkinlikler (haftalık tekrar + tek seferlik)
+    var eventsForCurrentDate: [EventItem] {
         let calendar = Calendar.current
-        let today = Date()
+        let weekday = weekdayIndex(from: currentDate)
 
-        let weekday = calendar.component(.weekday, from: today)
-        let mondayOffset = (weekday + 5) % 7
-
-        let startOfToday = calendar.startOfDay(for: today)
-        return calendar.date(byAdding: .day, value: -mondayOffset, to: startOfToday) ?? startOfToday
-    }
-
-    func shareWeek() {
-        let parts: [String] = (0..<7).map { day in
-            shareTextForDay(day)
-        }
-
-        presentShare(text: parts.joined(separator: "\n\n"))
-    }
-
-    func presentShare(text: String) {
-        let vc = UIActivityViewController(activityItems: [text], applicationActivities: nil)
-
-        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let root = scene.windows.first?.rootViewController {
-            root.present(vc, animated: true)
-        }
-    }
-
-    func shareCrewDay() {
-        presentShare(text: shareTextForCrewDay())
-    }
-
-    func shareSelectedCrew() {
-        presentShare(text: shareTextForSelectedCrew())
-    }
-
-    func shareTextForCrewDay() -> String {
-        let tasks = allCrewTasksForSelectedDay
-
-        if tasks.isEmpty {
-            return localizedShareEmptyCrewPlan(dayName: localizedDayTitle(selectedDay))
-        }
-
-        let lines = tasks.map { task in
-            let timeText: String
-
-            if let start = task.scheduledStartMinute {
-                timeText = hm(start)
-            } else {
-                timeText = "--:--"
-            }
-
-            let assigneeText = task.assignedTo.isEmpty ? "" : " • \(task.assignedTo)"
-            let crewNameText = crewMap[task.crewID]?.name ?? String(localized: "week_crew_fallback")
-
-            return "• \(timeText)  \(task.title) • \(crewNameText)\(assigneeText)"
-        }
-
-        return """
-        👥 \(localizedDayTitle(selectedDay)) \(String(localized: "week_share_crew_plan_title"))
-
-        \(lines.joined(separator: "\n"))
-
-        \(localizedDailyTodoFooter())
-        """
-    }
-
-    func shareTextForSelectedCrew() -> String {
-        if let crew = selectedCrew {
-            if locale.language.languageCode?.identifier == "tr" {
-                return "DailyTodo'da '\(crew.name)' crew'üme katıl 🚀"
-            } else {
-                return "Join my crew '\(crew.name)' on DailyTodo 🚀"
-            }
-        }
-
-        if locale.language.languageCode?.identifier == "tr" {
-            return "DailyTodo'da crew'üme katıl 🚀"
-        } else {
-            return "Join my crew on DailyTodo 🚀"
-        }
-    }
-
-    func shareTextForSelectedDay() -> String {
-        shareTextForDay(selectedDay)
-    }
-
-    func priorityTitle(_ value: String) -> String {
-        let isTR = locale.language.languageCode?.identifier == "tr"
-
-        switch value {
-        case "low": return isTR ? "Düşük" : "Low"
-        case "medium": return isTR ? "Orta" : "Medium"
-        case "high": return isTR ? "Yüksek" : "High"
-        case "urgent": return isTR ? "Acil" : "Urgent"
-        default: return value.capitalized
-        }
-    }
-
-    func statusTitle(_ value: String) -> String {
-        let isTR = locale.language.languageCode?.identifier == "tr"
-
-        switch value {
-        case "todo": return isTR ? "Yapılacak" : "Todo"
-        case "inProgress": return isTR ? "Devam Ediyor" : "In Progress"
-        case "review": return isTR ? "İncelemede" : "Review"
-        case "done": return isTR ? "Tamamlandı" : "Done"
-        default: return value.capitalized
-        }
-    }
-
-    func shareTextForDay(_ day: Int) -> String {
-        let d = max(0, min(6, day))
-        let dayName = localizedDayTitle(d)
-
-        let calendar = Calendar.current
-        let targetDate = targetDateFor(day: d)
-
-        let items = userScopedEvents
+        return userScopedEvents
             .filter { ev in
                 if let scheduledDate = ev.scheduledDate {
-                    return calendar.isDate(scheduledDate, inSameDayAs: targetDate)
+                    return calendar.isDate(scheduledDate, inSameDayAs: currentDate)
                 } else {
-                    return ev.weekday == d
+                    return ev.weekday == weekday
                 }
             }
             .sorted { $0.startMinute < $1.startMinute }
-
-        if items.isEmpty {
-            return localizedShareEmptyDay(dayName: dayName)
-        }
-
-        let lines = items.map { ev in
-            let start = hm(ev.startMinute)
-            let end = hm(ev.startMinute + ev.durationMinute)
-            let loc = (ev.location ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            let locText = loc.isEmpty ? "" : " • \(loc)"
-
-            return "• \(start)–\(end)  \(ev.title)\(locText)"
-        }
-
-        return """
-        📅 \(dayName) \(String(localized: "week_share_my_schedule"))
-
-        \(lines.joined(separator: "\n"))
-
-        \(localizedDailyTodoFooter())
-        """
     }
 
-    func showCopiedToast() {
-        withAnimation(.easeOut(duration: 0.18)) {
-            showCopied = true
+    var activeEventNow: EventItem? {
+        guard Calendar.current.isDateInToday(currentDate) else { return nil }
+        let now = currentMinuteOfDay()
+        _ = liveTick // re-evaluate on tick
+        return eventsForCurrentDate.first { ev in
+            !ev.isCompleted && now >= ev.startMinute && now < (ev.startMinute + ev.durationMinute)
+        }
+    }
+
+    var completedCount: Int {
+        let now = currentMinuteOfDay()
+        let isToday = Calendar.current.isDateInToday(currentDate)
+
+        return eventsForCurrentDate.filter { ev in
+            if ev.isCompleted { return true }
+            if isToday && now >= (ev.startMinute + ev.durationMinute) { return true }
+            return false
+        }.count
+    }
+
+    var totalMinutes: Int {
+        eventsForCurrentDate.reduce(0) { $0 + $1.durationMinute }
+    }
+
+    var hourValue: String {
+        let h = totalMinutes / 60
+        return "\(h)"
+    }
+
+    var hourSuffix: String {
+        let m = totalMinutes % 60
+        if totalMinutes == 0 { return "—" }
+        if m == 0 { return "sa" }
+        return "sa \(m)"
+    }
+
+    var heroAccent: Color {
+        if activeEventNow != nil { return Color(arenaHex: AppArenaPalette.coral) }
+        if isYesterday { return Color.white.opacity(0.4) }
+        if isPastDay { return Color.white.opacity(0.4) }
+        if isTomorrow { return Color(arenaHex: AppArenaPalette.purple) }
+        if isToday { return Color(arenaHex: AppArenaPalette.cyan) }
+        return Color(arenaHex: AppArenaPalette.blue)
+    }
+
+    var heroTitle: String {
+        if eventsForCurrentDate.isEmpty {
+            if isToday { return "Bugün" }
+            if isTomorrow { return "Yarın" }
+            return shortDayName
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
-            withAnimation(.easeOut(duration: 0.18)) {
-                showCopied = false
+        if let active = activeEventNow {
+            return active.title
+        }
+
+        if isToday {
+            if let next = nextEvent {
+                return next.title
+            }
+            return "Bugün"
+        }
+
+        if eventsForCurrentDate.count == 1, let only = eventsForCurrentDate.first {
+            return only.title
+        }
+
+        return "\(eventsForCurrentDate.count) ders"
+    }
+
+    var heroItalic: String {
+        if eventsForCurrentDate.isEmpty {
+            if isToday { return "sakin" }
+            if isTomorrow { return "boş" }
+            if isPastDay { return "geçti" }
+            return "boş"
+        }
+
+        if activeEventNow != nil { return "aktif" }
+
+        if isToday {
+            if nextEvent != nil { return "sıradaki" }
+            return "günü"
+        }
+
+        if isTomorrow { return "yarın" }
+
+        return "günü"
+    }
+
+    var heroSubtitle: String {
+        if eventsForCurrentDate.isEmpty {
+            if isPastDay { return "Bu güne kayıt yok." }
+            return "Bu güne yeni bir ders veya etkinlik ekle."
+        }
+
+        if let active = activeEventNow {
+            let now = currentMinuteOfDay()
+            let left = max(0, (active.startMinute + active.durationMinute) - now)
+            return "\(active.title) aktif · \(left) dk kaldı"
+        }
+
+        if isToday, let next = nextEvent {
+            let now = currentMinuteOfDay()
+            let diff = next.startMinute - now
+            if diff > 0 {
+                return "Sıradaki: \(next.title) · \(diff) dk sonra"
+            }
+        }
+
+        return "\(eventsForCurrentDate.count) ders · \(durationText(totalMinutes))"
+    }
+
+    var heroEventCount: Int? {
+        guard !eventsForCurrentDate.isEmpty else { return nil }
+        return eventsForCurrentDate.count
+    }
+
+    var nextEvent: EventItem? {
+        guard isToday else { return nil }
+        let now = currentMinuteOfDay()
+        return eventsForCurrentDate.first { ev in
+            !ev.isCompleted && ev.startMinute > now
+        }
+    }
+
+    var eyebrowText: String {
+        if activeEventNow != nil { return "ŞU AN · CANLI" }
+        if isToday { return "BUGÜN" }
+        if isTomorrow { return "YARIN" }
+        if isYesterday { return "DÜN" }
+        if isPastDay { return "GEÇMİŞ" }
+        return "PROGRAM"
+    }
+
+    var longDateText: String {
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.dateFormat = "EEEE d MMM"
+        return formatter.string(from: currentDate).capitalized
+    }
+
+    var shortDayName: String {
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.dateFormat = "EEEE"
+        return formatter.string(from: currentDate).capitalized
+    }
+
+    var emptyTitle: String {
+        if isToday { return "Bugün sakin" }
+        if isTomorrow { return "Yarın boş" }
+        if isPastDay { return "Bu güne kayıt yok" }
+        return "Boş gün"
+    }
+
+    var isToday: Bool {
+        Calendar.current.isDateInToday(currentDate)
+    }
+
+    var isTomorrow: Bool {
+        Calendar.current.isDateInTomorrow(currentDate)
+    }
+
+    var isYesterday: Bool {
+        Calendar.current.isDateInYesterday(currentDate)
+    }
+
+    var isPastDay: Bool {
+        Calendar.current.startOfDay(for: currentDate) < Calendar.current.startOfDay(for: Date())
+    }
+}
+
+// MARK: - Helpers
+
+private extension WeekView {
+
+    func weekdayIndex(from date: Date) -> Int {
+        let w = Calendar.current.component(.weekday, from: date)
+        return (w + 5) % 7
+    }
+
+    func currentMinuteOfDay() -> Int {
+        let c = Calendar.current.dateComponents([.hour, .minute], from: Date())
+        return (c.hour ?? 0) * 60 + (c.minute ?? 0)
+    }
+
+    func hm(_ minute: Int) -> String {
+        let m = max(0, min(1439, minute))
+        return String(format: "%02d:%02d", m / 60, m % 60)
+    }
+
+    func timeRange(_ event: EventItem) -> String {
+        "\(hm(event.startMinute))—\(hm(event.startMinute + event.durationMinute))"
+    }
+
+    func durationText(_ minutes: Int) -> String {
+        let h = minutes / 60
+        let m = minutes % 60
+        if h == 0 { return "\(m) dk" }
+        if m == 0 { return "\(h) sa" }
+        return "\(h)sa \(m)dk"
+    }
+
+    func dateKey(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
+    }
+
+    func colorFromHex(_ hex: String) -> Color {
+        var clean = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        clean = clean.replacingOccurrences(of: "#", with: "")
+        guard clean.count == 6 else { return Color(arenaHex: AppArenaPalette.blue) }
+
+        var rgb: UInt64 = 0
+        Scanner(string: clean).scanHexInt64(&rgb)
+
+        return Color(
+            red: Double((rgb & 0xFF0000) >> 16) / 255,
+            green: Double((rgb & 0x00FF00) >> 8) / 255,
+            blue: Double(rgb & 0x0000FF) / 255
+        )
+    }
+}
+
+// MARK: - CalendarSheet
+
+private struct CalendarSheet: View {
+
+    @Binding var selectedDate: Date
+    let allEvents: [EventItem]
+    let onPick: (Date) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
+
+    @State private var displayMonth: Date = Date()
+
+    var body: some View {
+        ZStack {
+            ArenaBackground(
+                primaryGlow: Color(arenaHex: AppArenaPalette.cyan),
+                secondaryGlow: Color(arenaHex: AppArenaPalette.purple),
+                warmGlow: Color(arenaHex: AppArenaPalette.blue),
+                intensity: 0.84
+            )
+
+            VStack(spacing: 0) {
+                header
+                    .padding(.horizontal, 18)
+                    .padding(.top, 8)
+
+                ScrollView {
+                    VStack(spacing: 18) {
+                        weekdayHeader
+                            .padding(.horizontal, 18)
+                            .padding(.top, 14)
+
+                        monthGrid
+                            .padding(.horizontal, 14)
+
+                        legend
+                            .padding(.horizontal, 18)
+                            .padding(.top, 4)
+                    }
+                    .padding(.bottom, 40)
+                }
+                .scrollIndicators(.hidden)
+            }
+        }
+        .onAppear {
+            displayMonth = selectedDate
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: 10) {
+            // Close
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 13, weight: .black))
+                    .foregroundStyle(.white)
+                    .frame(width: 36, height: 36)
+                    .background(
+                        Circle()
+                            .fill(Color.white.opacity(0.08))
+                            .overlay(Circle().stroke(Color.white.opacity(0.10), lineWidth: 1))
+                    )
+            }
+            .buttonStyle(.plain)
+
+            Spacer(minLength: 8)
+
+            // Month nav
+            HStack(spacing: 4) {
+                Button {
+                    Haptics.impact(.light)
+                    if let d = Calendar.current.date(byAdding: .month, value: -1, to: displayMonth) {
+                        withAnimation(.spring(response: 0.36, dampingFraction: 0.86)) {
+                            displayMonth = d
+                        }
+                    }
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundStyle(.white.opacity(0.65))
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.plain)
+
+                VStack(spacing: 1) {
+                    Text("TAKVİM")
+                        .font(.system(size: 9, weight: .black, design: .monospaced))
+                        .tracking(1.6)
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [Color(arenaHex: AppArenaPalette.cyan), Color(arenaHex: AppArenaPalette.blue)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+
+                    HStack(spacing: 5) {
+                        Text(monthName)
+                            .font(.system(size: 17, weight: .black))
+                            .foregroundStyle(.white)
+
+                        Text(yearText)
+                            .font(.system(size: 16, weight: .regular, design: .serif))
+                            .italic()
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [Color(arenaHex: AppArenaPalette.cyan), Color(arenaHex: AppArenaPalette.blue)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                    }
+                }
+                .frame(minWidth: 130)
+
+                Button {
+                    Haptics.impact(.light)
+                    if let d = Calendar.current.date(byAdding: .month, value: 1, to: displayMonth) {
+                        withAnimation(.spring(response: 0.36, dampingFraction: 0.86)) {
+                            displayMonth = d
+                        }
+                    }
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundStyle(.white.opacity(0.65))
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.plain)
+            }
+
+            Spacer(minLength: 8)
+
+            // Today
+            Button {
+                Haptics.impact(.light)
+                withAnimation(.spring(response: 0.36, dampingFraction: 0.86)) {
+                    displayMonth = Date()
+                }
+                onPick(Date())
+            } label: {
+                Text("Bugün")
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                    .tracking(0.4)
+                    .foregroundStyle(Color(arenaHex: AppArenaPalette.cyan))
+                    .padding(.horizontal, 12)
+                    .frame(height: 30)
+                    .background(
+                        Capsule()
+                            .fill(Color(arenaHex: AppArenaPalette.cyan).opacity(0.14))
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color(arenaHex: AppArenaPalette.cyan).opacity(0.26), lineWidth: 1)
+                            )
+                    )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var weekdayHeader: some View {
+        HStack(spacing: 4) {
+            ForEach(weekdaySymbols, id: \.self) { sym in
+                Text(sym)
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .tracking(0.8)
+                    .foregroundStyle(.white.opacity(0.42))
+                    .frame(maxWidth: .infinity)
             }
         }
     }
 
-    func localizedDayTitle(_ day: Int) -> String {
-        let safeDay = max(0, min(6, day))
-        let isTR = locale.language.languageCode?.identifier == "tr"
+    private var monthGrid: some View {
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
+        let days = daysInMonthGrid()
 
-        if isTR {
-            switch safeDay {
-            case 0: return "Pzt"
-            case 1: return "Sal"
-            case 2: return "Çar"
-            case 3: return "Per"
-            case 4: return "Cum"
-            case 5: return "Cmt"
-            default: return "Paz"
-            }
-        } else {
-            switch safeDay {
-            case 0: return "Mon"
-            case 1: return "Tue"
-            case 2: return "Tue"
-            case 3: return "Thu"
-            case 4: return "Fri"
-            case 5: return "Sat"
-            default: return "Sun"
+        return LazyVGrid(columns: columns, spacing: 4) {
+            ForEach(Array(days.enumerated()), id: \.offset) { _, day in
+                if let day = day {
+                    dayCell(day)
+                } else {
+                    Color.clear.frame(height: 48)
+                }
             }
         }
     }
 
-    func localizedCurrentTimeLive(now: Int, title: String, minutesLeft: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
-            return "Şu an \(hm(now)) • \(title) devam ediyor • \(minutesLeft) dk kaldı"
-        } else {
-            return "Now \(hm(now)) • \(title) is ongoing • \(minutesLeft) min left"
+    private func dayCell(_ date: Date) -> some View {
+        let isToday = Calendar.current.isDateInToday(date)
+        let isSelected = Calendar.current.isDate(date, inSameDayAs: selectedDate)
+        let day = Calendar.current.component(.day, from: date)
+        let isPastDay = Calendar.current.startOfDay(for: date) < Calendar.current.startOfDay(for: Date())
+        let colors = eventColorsForDate(date)
+        let hasSpecialEvent = hasOneTimeEventOn(date)
+
+        return Button {
+            Haptics.impact(.light)
+            onPick(date)
+        } label: {
+            VStack(spacing: 4) {
+                Text("\(day)")
+                    .font(.system(size: 14, weight: .black))
+                    .foregroundStyle(
+                        isToday
+                            ? Color.white
+                            : (isPastDay ? Color.white.opacity(0.55) : Color.white)
+                    )
+                    .monospacedDigit()
+
+                HStack(spacing: 2) {
+                    ForEach(colors.prefix(3), id: \.self) { hex in
+                        Circle()
+                            .fill(colorFromHex(hex))
+                            .frame(width: 3.5, height: 3.5)
+                    }
+                }
+                .frame(height: 5)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .background(
+                ZStack {
+                    if isToday {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(arenaHex: AppArenaPalette.cyan),
+                                        Color(arenaHex: AppArenaPalette.blue)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .shadow(color: Color(arenaHex: AppArenaPalette.blue).opacity(0.28), radius: 8, y: 4)
+                    } else if isSelected {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Color.white.opacity(0.10))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                            )
+                    } else if !colors.isEmpty {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Color.white.opacity(0.025))
+                    }
+
+                    if hasSpecialEvent && !isToday {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(
+                                Color(arenaHex: AppArenaPalette.coral).opacity(0.45),
+                                lineWidth: 1
+                            )
+                    }
+                }
+            )
+            .opacity(isPastDay && !isToday ? 0.65 : 1.0)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var legend: some View {
+        HStack(spacing: 14) {
+            legendItem(color: Color(arenaHex: AppArenaPalette.cyan), text: "Bugün")
+            legendItem(color: Color(arenaHex: AppArenaPalette.coral), text: "Özel")
+
+            Spacer()
+
+            Text("tap → gün")
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .foregroundStyle(.white.opacity(0.32))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.white.opacity(0.030))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                )
+        )
+    }
+
+    private func legendItem(color: Color, text: String) -> some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(color)
+                .frame(width: 7, height: 7)
+
+            Text(text)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(.white.opacity(0.65))
         }
     }
 
-    func localizedCurrentTimeNext(now: Int, nextStart: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
-            return "Şu an \(hm(now)) • Sıradaki ders \(hm(nextStart))"
-        } else {
-            return "Now \(hm(now)) • Next class \(hm(nextStart))"
+    // MARK: Helpers
+
+    private var monthName: String {
+        let f = DateFormatter()
+        f.locale = locale
+        f.dateFormat = "LLLL"
+        return f.string(from: displayMonth).capitalized
+    }
+
+    private var yearText: String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy"
+        return f.string(from: displayMonth)
+    }
+
+    private var weekdaySymbols: [String] {
+        // Pazartesi başlangıç
+        ["P", "S", "Ç", "P", "C", "C", "P"]
+    }
+
+    /// Grid'i Pazartesi başlangıçlı şekilde döndürür.
+    private func daysInMonthGrid() -> [Date?] {
+        let calendar = Calendar.current
+        guard let range = calendar.range(of: .day, in: .month, for: displayMonth),
+              let firstOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: displayMonth))
+        else { return [] }
+
+        // First day of month — weekday index (0 = Monday)
+        let weekday = calendar.component(.weekday, from: firstOfMonth)
+        let firstIndex = (weekday + 5) % 7
+
+        var result: [Date?] = Array(repeating: nil, count: firstIndex)
+        for day in range {
+            if let date = calendar.date(byAdding: .day, value: day - 1, to: firstOfMonth) {
+                result.append(date)
+            }
+        }
+
+        // Pad to multiple of 7
+        while result.count % 7 != 0 {
+            result.append(nil)
+        }
+
+        return result
+    }
+
+    private func eventColorsForDate(_ date: Date) -> [String] {
+        let calendar = Calendar.current
+        let weekday = (calendar.component(.weekday, from: date) + 5) % 7
+
+        let events = allEvents.filter { ev in
+            if let scheduledDate = ev.scheduledDate {
+                return calendar.isDate(scheduledDate, inSameDayAs: date)
+            } else {
+                return ev.weekday == weekday
+            }
+        }
+
+        // Unique hex colors
+        var seen = Set<String>()
+        var result: [String] = []
+        for ev in events {
+            if !seen.contains(ev.colorHex) {
+                seen.insert(ev.colorHex)
+                result.append(ev.colorHex)
+            }
+        }
+
+        return result
+    }
+
+    private func hasOneTimeEventOn(_ date: Date) -> Bool {
+        let calendar = Calendar.current
+        return allEvents.contains { ev in
+            if let scheduledDate = ev.scheduledDate {
+                return calendar.isDate(scheduledDate, inSameDayAs: date)
+            }
+            return false
         }
     }
 
-    func localizedCurrentTimeFinished(now: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
-            return "Şu an \(hm(now)) • Bugünkü dersler bitti"
-        } else {
-            return "Now \(hm(now)) • Today's classes are over"
-        }
-    }
+    private func colorFromHex(_ hex: String) -> Color {
+        var clean = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        clean = clean.replacingOccurrences(of: "#", with: "")
+        guard clean.count == 6 else { return Color(arenaHex: AppArenaPalette.blue) }
 
-    func localizedShareEmptyCrewPlan(dayName: String) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
-            return "👥 \(dayName) crew planı — görev yok"
-        } else {
-            return "👥 \(dayName) crew plan — no tasks"
-        }
-    }
+        var rgb: UInt64 = 0
+        Scanner(string: clean).scanHexInt64(&rgb)
 
-    func localizedShareEmptyDay(dayName: String) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
-            return "📅 \(dayName) — Ders yok"
-        } else {
-            return "📅 \(dayName) — No classes"
-        }
-    }
-
-    func localizedDailyTodoFooter() -> String {
-        if locale.language.languageCode?.identifier == "tr" {
-            return "(DailyTodo ile oluşturuldu)"
-        } else {
-            return "(Created with DailyTodo)"
-        }
+        return Color(
+            red: Double((rgb & 0xFF0000) >> 16) / 255,
+            green: Double((rgb & 0x00FF00) >> 8) / 255,
+            blue: Double(rgb & 0x0000FF) / 255
+        )
     }
 }
