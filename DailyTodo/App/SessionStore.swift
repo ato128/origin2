@@ -42,6 +42,8 @@ private struct BackendVerificationStatusResponse: Decodable {
 final class SessionStore: ObservableObject {
     @Published var currentUser: AppUser? = nil
     @Published var isLoading: Bool = false
+    @Published var didResolveInitialSession: Bool = false
+    private var didStartInitialSessionResolve: Bool = false
 
     @Published var pendingVerificationEmail: String? = nil
     @Published var isEmailVerified: Bool = false
@@ -49,7 +51,8 @@ final class SessionStore: ObservableObject {
 
     private let storageKey = "dailytodo_mock_user"
     private let pendingEmailStorageKey = "updo_pending_verification_email"
-
+    private let emailVerifiedStorageKey = "updo_cached_email_verified"
+    
     init() {
         restoreSession()
         restorePendingVerificationEmail()
@@ -66,6 +69,12 @@ final class SessionStore: ObservableObject {
     var needsEmailVerification: Bool {
         pendingVerificationEmail != nil && !isEmailVerified
     }
+    var shouldShowEmailVerificationGate: Bool {
+        didResolveInitialSession &&
+        currentUser == nil &&
+        pendingVerificationEmail != nil &&
+        !isEmailVerified
+    }
 
     // MARK: - Local Restore
 
@@ -75,11 +84,14 @@ final class SessionStore: ObservableObject {
 
         currentUser = user
 
-        // Local cache tek başına verified sayılmasın.
-        // Gerçek durum Supabase session + custom backend status ile doğrulanacak.
-        isEmailVerified = false
-    }
+        let cachedVerified = UserDefaults.standard.bool(forKey: emailVerifiedStorageKey)
+        isEmailVerified = cachedVerified
 
+        if cachedVerified {
+            pendingVerificationEmail = nil
+            removePendingVerificationEmail()
+        }
+    }
     private func restorePendingVerificationEmail() {
         let email = UserDefaults.standard.string(forKey: pendingEmailStorageKey)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -94,6 +106,7 @@ final class SessionStore: ObservableObject {
 
     func signIn(email: String, password: String) async throws {
         isLoading = true
+        didResolveInitialSession = true
         verificationMessage = nil
         defer { isLoading = false }
 
@@ -112,6 +125,7 @@ final class SessionStore: ObservableObject {
             guard isVerified else {
                 currentUser = nil
                 isEmailVerified = false
+                saveCachedEmailVerified(true)
                 pendingVerificationEmail = cleanEmail
                 savePendingVerificationEmail(cleanEmail)
                 verificationMessage = "Emailini onaylaman gerekiyor."
@@ -152,6 +166,7 @@ final class SessionStore: ObservableObject {
         password: String
     ) async throws {
         isLoading = true
+        didResolveInitialSession = true
         verificationMessage = nil
         defer { isLoading = false }
 
@@ -176,6 +191,7 @@ final class SessionStore: ObservableObject {
             currentUser = nil
             isEmailVerified = false
             pendingVerificationEmail = cleanEmail
+            saveCachedEmailVerified(false)
             savePendingVerificationEmail(cleanEmail)
 
             try await requestBackendVerificationEmail(email: cleanEmail)
@@ -190,6 +206,8 @@ final class SessionStore: ObservableObject {
     }
 
     func signOut() {
+        didResolveInitialSession = true
+        didStartInitialSessionResolve = true
         Task {
             try? await SupabaseManager.shared.client.auth.signOut()
         }
@@ -198,6 +216,7 @@ final class SessionStore: ObservableObject {
         isEmailVerified = false
         pendingVerificationEmail = nil
         verificationMessage = nil
+        saveCachedEmailVerified(false)
 
         UserDefaults.standard.removeObject(forKey: storageKey)
         removePendingVerificationEmail()
@@ -219,6 +238,7 @@ final class SessionStore: ObservableObject {
             guard verified else {
                 currentUser = nil
                 isEmailVerified = false
+                saveCachedEmailVerified(true)
 
                 if pendingVerificationEmail == nil {
                     pendingVerificationEmail = user.email
@@ -286,8 +306,18 @@ final class SessionStore: ObservableObject {
             await refreshEmailVerificationStatus()
         }
     }
+    func resolveInitialSessionIfNeeded() async {
+        guard !didStartInitialSessionResolve else { return }
+
+        didStartInitialSessionResolve = true
+        await restoreSupabaseSessionIfNeeded()
+    }
 
     func restoreSupabaseSessionIfNeeded() async {
+        defer {
+            didResolveInitialSession = true
+        }
+
         do {
             let authSession = try await SupabaseManager.shared.client.auth.session
             let user = authSession.user
@@ -297,6 +327,7 @@ final class SessionStore: ObservableObject {
             guard verified else {
                 currentUser = nil
                 isEmailVerified = false
+                saveCachedEmailVerified(true)
 
                 if let email = user.email {
                     pendingVerificationEmail = email
@@ -322,6 +353,7 @@ final class SessionStore: ObservableObject {
             }
         }
     }
+    
 
     // MARK: - Backend Verification API
 
@@ -476,6 +508,10 @@ final class SessionStore: ObservableObject {
     private func saveUser(_ user: AppUser) {
         guard let data = try? JSONEncoder().encode(user) else { return }
         UserDefaults.standard.set(data, forKey: storageKey)
+    }
+    
+    private func saveCachedEmailVerified(_ value: Bool) {
+        UserDefaults.standard.set(value, forKey: emailVerifiedStorageKey)
     }
 
     private func savePendingVerificationEmail(_ email: String) {

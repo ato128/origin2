@@ -14,121 +14,210 @@ struct CatalogUniversity: Identifiable, Hashable, Decodable {
     let country_code: String
     let sort_name: String
     let is_active: Bool?
+
+    let city: String?
+    let university_type: String?
+    let source: String?
+    let source_url: String?
 }
 
 struct CatalogMajor: Identifiable, Hashable, Decodable {
     let id: UUID
     let university_id: UUID
     let name: String
+    let normalized_name: String?
     let faculty_name: String?
+    let degree_level: String?
+    let language: String?
+    let duration_years: Int?
+    let source_url: String?
     let is_active: Bool?
 }
 
 struct CatalogCurriculumCourse: Identifiable, Hashable, Decodable {
     let id: UUID
+    let university_id: UUID?
     let major_id: UUID
     let year_number: Int
     let term_number: Int?
     let course_code: String
     let course_name: String
+
+    let ects: String?
+    let credit: String?
+
     let is_required: Bool
+    let is_elective: Bool?
+    let category: String?
     let source_url: String?
+    let last_verified_at: String?
     let is_active: Bool?
 }
 
+private struct CatalogUniversitiesResponse: Decodable {
+    let ok: Bool
+    let universities: [CatalogUniversity]
+    let error: String?
+}
+
+private struct CatalogMajorsResponse: Decodable {
+    let ok: Bool
+    let majors: [CatalogMajor]
+    let error: String?
+}
+
+private struct CatalogCurriculumResponse: Decodable {
+    let ok: Bool
+    let courses: [CatalogCurriculumCourse]
+    let error: String?
+}
+
 enum StudentCatalogService {
+    private static var baseURL: String {
+        ChatBackendEnvironment.httpBaseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    }
+
     static func fetchUniversities(
         countryCode: String,
         query: String = ""
     ) async throws -> [CatalogUniversity] {
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        var components = URLComponents(string: "\(baseURL)/v1/catalog/universities")!
+        components.queryItems = [
+            URLQueryItem(name: "countryCode", value: countryCode),
+            URLQueryItem(name: "query", value: query),
+            URLQueryItem(name: "limit", value: "300")
+        ]
 
-        var request = SupabaseManager.shared.client
-            .from("universities")
-            .select()
-            .eq("country_code", value: countryCode)
-            .eq("is_active", value: true)
+        let response: CatalogUniversitiesResponse = try await sendRequest(
+            url: components.url!,
+            method: "GET"
+        )
 
-        if !trimmed.isEmpty {
-            request = request.ilike("name", value: "%\(trimmed)%")
+        guard response.ok else {
+            throw CatalogServiceError.backend(response.error ?? "University catalog failed")
         }
 
-        let response = try await request
-            .order("sort_name", ascending: true)
-            .execute()
-
-        return try JSONDecoder().decode([CatalogUniversity].self, from: response.data)
+        return response.universities
     }
 
     static func fetchMajors(
         universityID: UUID,
         query: String = ""
     ) async throws -> [CatalogMajor] {
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        var components = URLComponents(
+            string: "\(baseURL)/v1/catalog/universities/\(universityID.uuidString)/majors"
+        )!
 
-        var request = SupabaseManager.shared.client
-            .from("majors")
-            .select()
-            .eq("university_id", value: universityID)
-            .eq("is_active", value: true)
+        components.queryItems = [
+            URLQueryItem(name: "query", value: query),
+            URLQueryItem(name: "limit", value: "300")
+        ]
 
-        if !trimmed.isEmpty {
-            request = request.ilike("name", value: "%\(trimmed)%")
+        let response: CatalogMajorsResponse = try await sendRequest(
+            url: components.url!,
+            method: "GET"
+        )
+
+        guard response.ok else {
+            throw CatalogServiceError.backend(response.error ?? "Major catalog failed")
         }
 
-        let response = try await request
-            .order("name", ascending: true)
-            .execute()
-
-        return try JSONDecoder().decode([CatalogMajor].self, from: response.data)
+        return response.majors
     }
 
     static func fetchCurriculumCourses(
         majorID: UUID,
         gradeLevel: String
     ) async throws -> [CatalogCurriculumCourse] {
-        guard let yearNumber = normalizedYearNumber(from: gradeLevel) else {
-            return []
+        var components = URLComponents(
+            string: "\(baseURL)/v1/catalog/majors/\(majorID.uuidString)/curriculum"
+        )!
+
+        components.queryItems = [
+            URLQueryItem(name: "gradeLevel", value: gradeLevel)
+        ]
+
+        let response: CatalogCurriculumResponse = try await sendRequest(
+            url: components.url!,
+            method: "GET"
+        )
+
+        guard response.ok else {
+            throw CatalogServiceError.backend(response.error ?? "Curriculum catalog failed")
         }
 
-        let response = try await SupabaseManager.shared.client
-            .from("curriculum_courses")
-            .select()
-            .eq("major_id", value: majorID)
-            .eq("year_number", value: yearNumber)
-            .eq("is_active", value: true)
-            .order("term_number", ascending: true)
-            .order("course_code", ascending: true)
-            .execute()
-
-        return try JSONDecoder().decode([CatalogCurriculumCourse].self, from: response.data)
+        return response.courses
     }
-    
+
     static func fetchAllCurriculumCourses(
         majorID: UUID
     ) async throws -> [CatalogCurriculumCourse] {
-        let response = try await SupabaseManager.shared.client
-            .from("curriculum_courses")
-            .select()
-            .eq("major_id", value: majorID)
-            .eq("is_active", value: true)
-            .order("year_number", ascending: true)
-            .order("term_number", ascending: true)
-            .order("course_code", ascending: true)
-            .execute()
+        let url = URL(
+            string: "\(baseURL)/v1/catalog/majors/\(majorID.uuidString)/curriculum/all"
+        )!
 
-        return try JSONDecoder().decode([CatalogCurriculumCourse].self, from: response.data)
+        let response: CatalogCurriculumResponse = try await sendRequest(
+            url: url,
+            method: "GET"
+        )
+
+        guard response.ok else {
+            throw CatalogServiceError.backend(response.error ?? "All curriculum catalog failed")
+        }
+
+        return response.courses
     }
 
-    private static func normalizedYearNumber(from gradeLevel: String) -> Int? {
-        switch gradeLevel {
-        case "1": return 1
-        case "2": return 2
-        case "3": return 3
-        case "4": return 4
-        case "5": return 5
-        case "6": return 6
-        default: return nil
+    private static func sendRequest<T: Decodable>(
+        url: URL,
+        method: String
+    ) async throws -> T {
+        guard let accessToken = SupabaseManager.shared.client.auth.currentSession?.accessToken,
+              !accessToken.isEmpty else {
+            throw CatalogServiceError.missingAccessToken
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.timeoutInterval = 20
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let http = response as? HTTPURLResponse else {
+            throw CatalogServiceError.invalidResponse
+        }
+
+        if !(200...299).contains(http.statusCode) {
+            let body = String(data: data, encoding: .utf8) ?? "no-body"
+            throw CatalogServiceError.backend("Catalog request failed: \(http.statusCode) \(body)")
+        }
+
+        do {
+            return try JSONDecoder().decode(T.self, from: data)
+        } catch {
+            let body = String(data: data, encoding: .utf8) ?? "no-body"
+            print("❌ Catalog decode failed:", error)
+            print("❌ Catalog response body:", body)
+            throw error
+        }
+    }
+}
+
+enum CatalogServiceError: LocalizedError {
+    case missingAccessToken
+    case invalidResponse
+    case backend(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .missingAccessToken:
+            return "Oturum tokenı bulunamadı."
+        case .invalidResponse:
+            return "Katalog yanıtı geçersiz."
+        case .backend(let message):
+            return message
         }
     }
 }

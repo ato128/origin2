@@ -27,26 +27,38 @@ struct RootView: View {
         studentStore.didResolveRemoteProfile && !studentStore.isLoading
     }
 
-    private var shouldShowLaunchScreen: Bool {
-        session.isSignedIn && (!didFinishLaunchAnimation || !isStudentProfileReady)
+    private var shouldShowBlockingLaunch: Bool {
+        if !session.didResolveInitialSession {
+            return true
+        }
+
+        if session.shouldShowEmailVerificationGate {
+            return false
+        }
+
+        if !session.isSignedIn {
+            return false
+        }
+
+        return !didFinishLaunchAnimation || !isStudentProfileReady
     }
 
     var body: some View {
         ZStack {
-            if !session.isSignedIn && !session.needsEmailVerification {
-                AuthView()
-                    .transition(.opacity)
-
-            } else if session.needsEmailVerification {
-                EmailVerificationView()
-                    .environmentObject(session)
-                    .transition(.opacity)
-
-            } else if shouldShowLaunchScreen {
+            if shouldShowBlockingLaunch {
                 PremiumStudentLaunchView {
                     didFinishLaunchAnimation = true
                 }
                 .transition(.opacity)
+
+            } else if session.shouldShowEmailVerificationGate {
+                EmailVerificationView()
+                    .environmentObject(session)
+                    .transition(.opacity)
+
+            } else if !session.isSignedIn {
+                AuthView()
+                    .transition(.opacity)
 
             } else if !didFinishFullOnboarding {
                 AppOnboardingFlowView()
@@ -79,20 +91,26 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.34), value: session.isSignedIn)
-        .animation(.easeInOut(duration: 0.34), value: shouldShowLaunchScreen)
+        .animation(.easeInOut(duration: 0.34), value: shouldShowBlockingLaunch)
         .animation(.easeInOut(duration: 0.34), value: didFinishFullOnboarding)
+        .animation(.easeInOut(duration: 0.34), value: session.didResolveInitialSession)
+        .animation(.easeInOut(duration: 0.34), value: session.shouldShowEmailVerificationGate)
         .onChange(of: session.isSignedIn) { _, isSignedIn in
             if !isSignedIn {
                 didFinishLaunchAnimation = false
             }
         }
+        .task {
+            await session.resolveInitialSessionIfNeeded()
+        }
         .task(id: session.currentUser?.id) {
+            guard session.didResolveInitialSession else { return }
+
             guard session.isSignedIn else {
                 studentStore.clearForSignOut()
                 return
             }
 
-            didFinishLaunchAnimation = false
             await studentStore.loadFromRemote()
         }
         .onChange(of: scenePhase) { _, newPhase in
