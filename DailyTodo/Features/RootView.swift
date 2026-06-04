@@ -33,8 +33,13 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            if !session.isSignedIn {
+            if !session.isSignedIn && !session.needsEmailVerification {
                 AuthView()
+                    .transition(.opacity)
+
+            } else if session.needsEmailVerification {
+                EmailVerificationView()
+                    .environmentObject(session)
                     .transition(.opacity)
 
             } else if shouldShowLaunchScreen {
@@ -57,14 +62,13 @@ struct RootView: View {
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .openCrewFocusFromNotification)) { output in
                     let crewID = output.object as? String
+                    print("🎯 OPEN CREW FOCUS TAB FROM NOTIFICATION:", crewID ?? "nil")
 
                     DispatchQueue.main.async {
-                        print("🎯 OPEN CREW FOCUS FROM NOTIFICATION:", crewID ?? "nil")
-                        openFocusFromNotification = false
-
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                            openFocusFromNotification = true
-                        }
+                        NotificationCenter.default.post(
+                            name: .openFocusTabFromHome,
+                            object: nil
+                        )
                     }
                 }
                 .sheet(isPresented: $showImportSheet) {

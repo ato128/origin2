@@ -753,6 +753,11 @@ struct DailyTodoApp: App {
 
     private func handleIncomingURL(_ url: URL) {
         guard url.scheme == "dailytodo" else { return }
+        
+        if url.host == "auth" {
+            handleAuthCallbackURL(url)
+            return
+        }
 
         if url.host == "live" {
             handleLiveActivityURL(url)
@@ -800,6 +805,28 @@ struct DailyTodoApp: App {
                 object: crewID
             )
             return
+        }
+    }
+    
+    private func handleAuthCallbackURL(_ url: URL) {
+        print("🔐 AUTH CALLBACK URL:", url.absoluteString)
+
+        Task {
+            await session.handleAuthCallback(url: url)
+
+            await MainActor.run {
+                let currentUserID = session.currentUser?.id.uuidString
+
+                todoStore.setCurrentUserID(currentUserID)
+                studentStore.setCurrentUserID(currentUserID)
+                LiveActivityScheduler.shared.setCurrentUserID(currentUserID)
+                syncCurrentUserIDToDefaults(session.currentUser?.id)
+
+                if let userID = session.currentUser?.id {
+                    updateFriendPresence(isOnline: true)
+                    bootstrapFriendRealtime(for: userID)
+                }
+            }
         }
     }
     
