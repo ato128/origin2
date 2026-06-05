@@ -119,58 +119,158 @@ struct WeekView: View {
     // MARK: Top Bar
 
     private var topBar: some View {
-        HStack(spacing: 10) {
-            // Takvim icon → modal
-            Button {
-                Haptics.impact(.light)
-                showCalendarSheet = true
-            } label: {
-                circularIconButton(systemName: "calendar")
+        VStack(spacing: 10) {
+            // ÜST SATIR: Takvim icon · "Week" başlık · Add button
+            HStack(spacing: 10) {
+                Button {
+                    Haptics.impact(.light)
+                    showCalendarSheet = true
+                } label: {
+                    circularIconButton(systemName: "calendar")
+                }
+                .buttonStyle(.plain)
+
+                Spacer(minLength: 8)
+
+                // Sayfa kimliği — diğer tab'larla aynı dil
+                VStack(spacing: 1) {
+                    Text("WEEK")
+                        .font(.system(size: 9, weight: .black, design: .monospaced))
+                        .tracking(2.2)
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    Color(arenaHex: AppArenaPalette.cyan),
+                                    Color(arenaHex: AppArenaPalette.blue)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+
+                    Text(monthYearText)
+                        .font(.system(size: 13, weight: .black))
+                        .foregroundStyle(.white.opacity(0.78))
+                }
+
+                Spacer(minLength: 8)
+
+                Button {
+                    Haptics.impact(.medium)
+                    showingAdd = true
+                } label: {
+                    addIconButton
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
 
-            Spacer(minLength: 8)
+            // ALT SATIR: 7-day strip
+            weekDayStrip
+        }
+    }
 
-            // Tarih + state label
-            VStack(spacing: 2) {
-                Text(eyebrowText)
-                    .font(.system(size: 9, weight: .black, design: .monospaced))
-                    .tracking(1.8)
-                    .foregroundStyle(
+    private var addIconButton: some View {
+        Image(systemName: "plus")
+            .font(.system(size: 16, weight: .black))
+            .foregroundStyle(.black)
+            .frame(width: 40, height: 40)
+            .background(
+                Circle()
+                    .fill(
                         LinearGradient(
-                            colors: [heroAccent, Color(arenaHex: AppArenaPalette.blue)],
-                            startPoint: .leading,
-                            endPoint: .trailing
+                            colors: [
+                                Color(arenaHex: AppArenaPalette.cyan),
+                                Color(arenaHex: AppArenaPalette.blue)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                         )
                     )
-                    .lineLimit(1)
+                    .shadow(color: Color(arenaHex: AppArenaPalette.blue).opacity(0.32), radius: 10, y: 5)
+            )
+    }
 
-                Text(longDateText)
-                    .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.78)
-            }
+    // MARK: Week Day Strip (7 günlük navigasyon)
 
-            Spacer(minLength: 8)
+    private var weekDayStrip: some View {
+        let days = currentWeekDays()
 
-            // Navigasyon
-            HStack(spacing: 6) {
-                Button {
-                    navigate(by: -1)
-                } label: {
-                    smallNavButton(systemName: "chevron.left")
-                }
-                .buttonStyle(.plain)
-
-                Button {
-                    navigate(by: 1)
-                } label: {
-                    smallNavButton(systemName: "chevron.right")
-                }
-                .buttonStyle(.plain)
+        return HStack(spacing: 4) {
+            ForEach(Array(days.enumerated()), id: \.offset) { _, date in
+                weekStripDay(date)
             }
         }
+        .padding(6)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.035))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                )
+        )
+    }
+
+    @ViewBuilder
+    private func weekStripDay(_ date: Date) -> some View {
+        let isSelected = Calendar.current.isDate(date, inSameDayAs: currentDate)
+        let isToday = Calendar.current.isDateInToday(date)
+        let isPast = Calendar.current.startOfDay(for: date) < Calendar.current.startOfDay(for: Date())
+        let dayNum = Calendar.current.component(.day, from: date)
+        let hasEvents = !eventsForDate(date).isEmpty
+
+        Button {
+            Haptics.impact(.light)
+            pageDirection = date > currentDate ? 1 : -1
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                currentDate = date
+            }
+        } label: {
+            VStack(spacing: 4) {
+                Text(weekdayShortLetter(date))
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .foregroundStyle(isSelected ? .white.opacity(0.85) : .white.opacity(0.38))
+                    .lineLimit(1)
+
+                Text("\(dayNum)")
+                    .font(.system(size: 14, weight: .black))
+                    .foregroundStyle(isSelected ? .white : (isPast && !isToday ? .white.opacity(0.42) : .white.opacity(0.82)))
+                    .monospacedDigit()
+
+                // Event indicator
+                if hasEvents {
+                    Circle()
+                        .fill(isSelected ? .white : Color(arenaHex: AppArenaPalette.cyan))
+                        .frame(width: 3, height: 3)
+                } else {
+                    Color.clear.frame(width: 3, height: 3)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 7)
+            .background(
+                ZStack {
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(arenaHex: AppArenaPalette.cyan),
+                                        Color(arenaHex: AppArenaPalette.blue)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .shadow(color: Color(arenaHex: AppArenaPalette.blue).opacity(0.30), radius: 8, y: 4)
+                    } else if isToday {
+                        RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            .stroke(Color(arenaHex: AppArenaPalette.cyan).opacity(0.45), lineWidth: 1)
+                    }
+                }
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private func circularIconButton(systemName: String) -> some View {
@@ -247,222 +347,264 @@ struct WeekView: View {
     @ViewBuilder
     private var dayContent: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                heroSection
-                    .padding(.horizontal, 18)
-                    .padding(.top, 12)
-
-                statsRow
-                    .padding(.horizontal, 18)
-
-                if let active = activeEventNow {
-                    activeBanner(active)
-                        .padding(.horizontal, 18)
-                }
+            VStack(alignment: .leading, spacing: 14) {
+                heroCard
+                    .padding(.horizontal, 16)
+                    .padding(.top, 10)
 
                 eventsList
-                    .padding(.horizontal, 18)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 2)
 
-                swipeIndicator
-                    .padding(.top, 10)
-                    .padding(.bottom, 110)
+                Spacer(minLength: 110)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .scrollIndicators(.hidden)
     }
 
-    // MARK: Hero
+    // MARK: Hero Card (compact + mini timeline)
 
-    private var heroSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // Eyebrow
+    private var heroCard: some View {
+        let active = activeEventNow
+        let isCalmDay = eventsForCurrentDate.isEmpty
+        let cardAccent = active != nil ? Color(arenaHex: AppArenaPalette.coral) : heroAccent
+
+        return VStack(alignment: .leading, spacing: 0) {
+
+            // Üst satır: eyebrow (sol) + tarih (sağ)
             HStack(spacing: 8) {
-                Rectangle()
-                    .fill(heroAccent)
-                    .frame(width: 22, height: 1)
+                Circle()
+                    .fill(cardAccent)
+                    .frame(width: 5, height: 5)
+                    .shadow(color: cardAccent.opacity(0.55), radius: 4)
 
                 Text(eyebrowText)
-                    .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .tracking(2.35)
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .tracking(1.6)
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [heroAccent, Color(arenaHex: AppArenaPalette.blue)],
+                            colors: [cardAccent, Color(arenaHex: AppArenaPalette.blue)],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
                     )
+                    .lineLimit(1)
 
-                if let count = heroEventCount {
-                    Text("· \(count) DERS")
-                        .font(.system(size: 10, weight: .black, design: .monospaced))
-                        .tracking(1.4)
-                        .foregroundStyle(heroAccent.opacity(0.78))
-                }
+                Spacer(minLength: 6)
+
+                Text(compactDateText)
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .tracking(0.8)
+                    .foregroundStyle(.white.opacity(0.45))
+                    .lineLimit(1)
             }
 
-            // Title
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+            // Title: aktif ders adı + italic durum
+            HStack(alignment: .firstTextBaseline, spacing: 7) {
                 Text(heroTitle)
-                    .font(.system(size: 34, weight: .black))
+                    .font(.system(size: 24, weight: .black))
                     .foregroundStyle(.white)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.58)
+                    .minimumScaleFactor(0.62)
                     .layoutPriority(1)
 
                 Text(heroItalic)
-                    .font(.system(size: 30, weight: .regular, design: .serif))
+                    .font(.system(size: 21, weight: .regular, design: .serif))
                     .italic()
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [
-                                heroAccent,
-                                Color(arenaHex: AppArenaPalette.purple)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                            colors: [cardAccent, Color(arenaHex: AppArenaPalette.blue)],
+                            startPoint: .leading,
+                            endPoint: .trailing
                         )
                     )
                     .lineLimit(1)
-                    .minimumScaleFactor(0.58)
+                    .minimumScaleFactor(0.62)
             }
+            .padding(.top, 7)
 
-            // Subtitle
-            Text(heroSubtitle)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.50))
-                .lineLimit(2)
-                .padding(.top, 2)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    // MARK: Stats Row
-
-    private var statsRow: some View {
-        HStack(spacing: 8) {
-            statChip(
-                title: "TOPLAM",
-                value: "\(eventsForCurrentDate.count)",
-                suffix: "ders",
-                tint: heroAccent
-            )
-
-            statChip(
-                title: "TAMAM",
-                value: "\(completedCount)",
-                suffix: "/\(eventsForCurrentDate.count)",
-                tint: Color(arenaHex: AppArenaPalette.green)
-            )
-
-            statChip(
-                title: "SÜRE",
-                value: hourValue,
-                suffix: hourSuffix,
-                tint: Color(arenaHex: AppArenaPalette.purple)
-            )
-        }
-    }
-
-    private func statChip(title: String, value: String, suffix: String, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 5) {
-                Rectangle()
-                    .fill(tint)
-                    .frame(width: 14, height: 1)
-
-                Text(title)
-                    .font(.system(size: 9, weight: .black, design: .monospaced))
-                    .tracking(1.2)
-                    .foregroundStyle(tint)
-            }
-
-            HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text(value)
-                    .font(.system(size: 18, weight: .black))
-                    .foregroundStyle(.white)
-                    .monospacedDigit()
-
-                Text(suffix)
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.45))
+            // Mini timeline (sadece event varsa göster)
+            if !isCalmDay {
+                miniTimeline
+                    .padding(.top, 12)
+            } else {
+                // Boş gün için kompakt mesaj
+                Text(heroSubtitle)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.50))
+                    .padding(.top, 4)
+                    .lineLimit(2)
             }
         }
-        .padding(.horizontal, 11)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(tint.opacity(0.075))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(tint.opacity(0.16), lineWidth: 1)
-                )
-        )
-    }
-
-    // MARK: Active Banner
-
-    private func activeBanner(_ event: EventItem) -> some View {
-        let warm = Color(arenaHex: AppArenaPalette.coral)
-        let now = currentMinuteOfDay()
-        let left = max(0, (event.startMinute + event.durationMinute) - now)
-
-        return HStack(spacing: 12) {
-            Circle()
-                .fill(warm)
-                .frame(width: 8, height: 8)
-                .shadow(color: warm.opacity(0.55), radius: 6)
-                .overlay(
-                    Circle()
-                        .stroke(warm.opacity(0.35), lineWidth: 6)
-                        .scaleEffect(1.8)
-                        .opacity(0.4)
-                )
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("ŞU AN · CANLI")
-                    .font(.system(size: 9, weight: .black, design: .monospaced))
-                    .tracking(1.5)
-                    .foregroundStyle(warm)
-
-                Text(event.title)
-                    .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-            }
-
-            Spacer(minLength: 6)
-
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(timeRange(event))
-                    .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.55))
-
-                Text("\(left) dk kaldı")
-                    .font(.system(size: 11, weight: .black))
-                    .foregroundStyle(warm)
-            }
-        }
-        .padding(13)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(
                     LinearGradient(
                         colors: [
-                            warm.opacity(0.18),
-                            warm.opacity(0.07)
+                            cardAccent.opacity(0.085),
+                            Color(arenaHex: AppArenaPalette.blue).opacity(0.040),
+                            Color.white.opacity(0.022)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(warm.opacity(0.32), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    cardAccent.opacity(0.14 * PerformanceSettings.radialOpacityMultiplier),
+                                    Color.clear
+                                ],
+                                center: .topTrailing,
+                                startRadius: 5,
+                                endRadius: 150
+                            )
+                        )
                 )
-                .shadow(color: warm.opacity(0.12), radius: 14, y: 7)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(cardAccent.opacity(0.18), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.20), radius: PerformanceSettings.cardShadowRadius, y: 6)
+                .shadow(color: cardAccent.opacity(active != nil ? 0.14 : 0.06), radius: 18, y: 0)
         )
+    }
+
+    // Mini timeline: günün 06–24 saatleri arası, etkinlikler renkli bloklar
+    private var miniTimeline: some View {
+        let dayStartMinute = 6 * 60
+        let dayEndMinute = 24 * 60
+        let totalSpan = dayEndMinute - dayStartMinute
+        let now = currentMinuteOfDay()
+        let isToday = Calendar.current.isDateInToday(currentDate)
+        let nowFrac: Double = {
+            guard isToday else { return -1 }
+            let clamped = max(dayStartMinute, min(dayEndMinute, now))
+            return Double(clamped - dayStartMinute) / Double(totalSpan)
+        }()
+
+        return VStack(spacing: 6) {
+            // Saat etiketleri
+            HStack {
+                ForEach([6, 9, 12, 15, 18, 21, 24], id: \.self) { h in
+                    Text(String(format: "%02d", h))
+                        .font(.system(size: 8, weight: .black, design: .monospaced))
+                        .foregroundStyle(isCurrentHourMarker(h) ? Color(arenaHex: AppArenaPalette.coral) : Color.white.opacity(0.35))
+                        .frame(maxWidth: .infinity)
+                }
+            }
+
+            // Bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.06))
+
+                    // Event blokları
+                    ForEach(eventsForCurrentDate, id: \.id) { ev in
+                        timelineBlock(
+                            for: ev,
+                            dayStart: dayStartMinute,
+                            totalSpan: totalSpan,
+                            width: geo.size.width,
+                            now: now,
+                            isToday: isToday
+                        )
+                    }
+
+                    // ŞU AN dikey indicator
+                    if isToday && nowFrac >= 0 && nowFrac <= 1 {
+                        Capsule()
+                            .fill(Color.white)
+                            .frame(width: 2, height: 14)
+                            .shadow(color: Color.white.opacity(0.65), radius: 4)
+                            .offset(x: nowFrac * geo.size.width - 1, y: 0)
+                    }
+                }
+                .frame(height: 8)
+            }
+            .frame(height: 8)
+
+            // Alt meta satırı
+            HStack(spacing: 6) {
+                Text(timelineSummary)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.55))
+                    .lineLimit(1)
+
+                Spacer(minLength: 6)
+
+                if let active = active {
+                    let left = max(0, (active.startMinute + active.durationMinute) - now)
+                    Text("\(left) DK KALDI")
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .tracking(0.6)
+                        .foregroundStyle(Color(arenaHex: AppArenaPalette.coral))
+                }
+            }
+            .padding(.top, 2)
+        }
+    }
+
+    @ViewBuilder
+    private func timelineBlock(
+        for event: EventItem,
+        dayStart: Int,
+        totalSpan: Int,
+        width: CGFloat,
+        now: Int,
+        isToday: Bool
+    ) -> some View {
+        let clampedStart = max(dayStart, event.startMinute)
+        let clampedEnd = min(dayStart + totalSpan, event.startMinute + event.durationMinute)
+
+        if clampedEnd > clampedStart {
+            let startFrac = Double(clampedStart - dayStart) / Double(totalSpan)
+            let widthFrac = Double(clampedEnd - clampedStart) / Double(totalSpan)
+            let isPast = event.isCompleted || (isToday && now >= clampedEnd)
+            let isActive = isToday && now >= clampedStart && now < clampedEnd
+            let tint = colorFromHex(event.colorHex)
+            let blockColor: Color = isActive
+                ? Color(arenaHex: AppArenaPalette.coral)
+                : tint
+            let opacity: Double = isPast ? 0.55 : 1.0
+
+            Capsule()
+                .fill(blockColor)
+                .frame(
+                    width: max(3, widthFrac * width),
+                    height: 8
+                )
+                .opacity(opacity)
+                .shadow(
+                    color: isActive ? blockColor.opacity(0.55) : .clear,
+                    radius: isActive ? 5 : 0
+                )
+                .offset(x: startFrac * width, y: 0)
+        }
+    }
+
+    private var active: EventItem? { activeEventNow }
+
+    private var timelineSummary: String {
+        if eventsForCurrentDate.isEmpty {
+            return ""
+        }
+
+        let completed = completedCount
+        let total = eventsForCurrentDate.count
+        let dur = durationText(totalMinutes)
+        return "\(completed)/\(total) ders · \(dur) toplam"
+    }
+
+    private func isCurrentHourMarker(_ hour: Int) -> Bool {
+        guard Calendar.current.isDateInToday(currentDate) else { return false }
+        let nowH = Calendar.current.component(.hour, from: Date())
+        return abs(nowH - hour) <= 1
     }
 
     // MARK: Events List
@@ -473,11 +615,113 @@ struct WeekView: View {
             emptyDayCard
         } else {
             VStack(spacing: 8) {
-                ForEach(Array(eventsForCurrentDate.enumerated()), id: \.element.id) { idx, event in
-                    eventRow(event, index: idx)
+                ForEach(Array(eventsListItems.enumerated()), id: \.offset) { idx, item in
+                    switch item {
+                    case .event(let event, let eventIdx):
+                        eventRow(event, index: eventIdx)
+                    case .gap(let startMin, let durationMin):
+                        emptySlotRow(startMin: startMin, durationMin: durationMin)
+                    }
                 }
             }
         }
+    }
+
+    /// Event'ler arasındaki 60+ dk boşlukları "+ EKLE" pill olarak araya serpiştirir.
+    /// Sadece BUGÜN ve GELECEK günler için (geçmiş günlerde anlamsız).
+    private var eventsListItems: [EventsListItem] {
+        let events = eventsForCurrentDate
+        guard !events.isEmpty else { return [] }
+
+        // Sadece bugün ve gelecek günlerde gap önerisi
+        let showGaps = !isPastDay
+
+        var result: [EventsListItem] = []
+        for (idx, ev) in events.enumerated() {
+            result.append(.event(ev, idx))
+
+            if showGaps, idx < events.count - 1 {
+                let evEnd = ev.startMinute + ev.durationMinute
+                let nextStart = events[idx + 1].startMinute
+                let gap = nextStart - evEnd
+
+                // 60dk+ boşluk varsa öner — ve aktif değilse (geçmemişse)
+                let now = currentMinuteOfDay()
+                let isToday = Calendar.current.isDateInToday(currentDate)
+                let gapAlreadyPassed = isToday && nextStart <= now
+
+                if gap >= 60 && !gapAlreadyPassed {
+                    result.append(.gap(startMin: evEnd, durationMin: gap))
+                }
+            }
+        }
+
+        return result
+    }
+
+    /// Boş zaman önerisi satırı: "20:30 · Boş zaman · 90 dk · + EKLE"
+    private func emptySlotRow(startMin: Int, durationMin: Int) -> some View {
+        Button {
+            Haptics.impact(.light)
+            showingAdd = true
+        } label: {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .center, spacing: 2) {
+                    Text(hm(startMin))
+                        .font(.system(size: 13, weight: .black, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.42))
+
+                    Text("\(durationMin)dk")
+                        .font(.system(size: 9, weight: .black, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.28))
+                }
+                .frame(minWidth: 50)
+
+                RoundedRectangle(cornerRadius: 999, style: .continuous)
+                    .stroke(Color.white.opacity(0.15), style: StrokeStyle(lineWidth: 2, dash: [2, 3]))
+                    .frame(width: 3, height: 26)
+
+                Text("Boş zaman · \(durationText(durationMin))")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.50))
+                    .lineLimit(1)
+
+                Spacer(minLength: 4)
+
+                HStack(spacing: 4) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 9, weight: .black))
+
+                    Text("EKLE")
+                        .font(.system(size: 9, weight: .black, design: .monospaced))
+                        .tracking(0.6)
+                }
+                .foregroundStyle(Color(arenaHex: AppArenaPalette.cyan))
+                .padding(.horizontal, 9)
+                .frame(height: 22)
+                .background(
+                    Capsule()
+                        .fill(Color(arenaHex: AppArenaPalette.cyan).opacity(0.14))
+                        .overlay(
+                            Capsule()
+                                .stroke(Color(arenaHex: AppArenaPalette.cyan).opacity(0.24), lineWidth: 1)
+                        )
+                )
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.white.opacity(0.015))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(
+                                Color.white.opacity(0.08),
+                                style: StrokeStyle(lineWidth: 1, dash: [5, 4])
+                            )
+                    )
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private var emptyDayCard: some View {
@@ -683,42 +927,6 @@ struct WeekView: View {
             )
     }
 
-    // MARK: Swipe Indicator
-
-    private var swipeIndicator: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "chevron.left")
-                .font(.system(size: 11, weight: .black))
-                .foregroundStyle(.white.opacity(0.32))
-
-            HStack(spacing: 5) {
-                ForEach(0..<5, id: \.self) { i in
-                    if i == 2 {
-                        Capsule()
-                            .fill(
-                                LinearGradient(
-                                    colors: [heroAccent, Color(arenaHex: AppArenaPalette.blue)],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .frame(width: 16, height: 4)
-                    } else {
-                        Circle()
-                            .fill(Color.white.opacity(0.18))
-                            .frame(width: 4, height: 4)
-                    }
-                }
-            }
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 11, weight: .black))
-                .foregroundStyle(.white.opacity(0.32))
-        }
-        .frame(maxWidth: .infinity)
-        .opacity(0.65)
-    }
-
     // MARK: Actions
 
     private func navigate(by offset: Int) {
@@ -836,6 +1044,20 @@ private extension WeekView {
         return "sa \(m)"
     }
 
+    /// "1h30" gibi compact "1sa30dk" yerine
+    var durationCompactValue: String {
+        let h = totalMinutes / 60
+        let m = totalMinutes % 60
+        if totalMinutes == 0 { return "0" }
+        if h == 0 { return "\(m)dk" }
+        if m == 0 { return "\(h)sa" }
+        return "\(h)s\(m)"
+    }
+
+    var durationCompactLabel: String {
+        return "süre"
+    }
+
     var heroAccent: Color {
         if activeEventNow != nil { return Color(arenaHex: AppArenaPalette.coral) }
         if isYesterday { return Color.white.opacity(0.4) }
@@ -846,70 +1068,25 @@ private extension WeekView {
     }
 
     var heroTitle: String {
-        if eventsForCurrentDate.isEmpty {
-            if isToday { return "Bugün" }
-            if isTomorrow { return "Yarın" }
-            return shortDayName
-        }
-
-        if let active = activeEventNow {
-            return active.title
-        }
-
-        if isToday {
-            if let next = nextEvent {
-                return next.title
-            }
-            return "Bugün"
-        }
-
-        if eventsForCurrentDate.count == 1, let only = eventsForCurrentDate.first {
-            return only.title
-        }
-
-        return "\(eventsForCurrentDate.count) ders"
+        // Gün adı her zaman — sabit, net, kullanışlı
+        return weekdayLongName.capitalized
     }
 
     var heroItalic: String {
-        if eventsForCurrentDate.isEmpty {
-            if isToday { return "sakin" }
-            if isTomorrow { return "boş" }
-            if isPastDay { return "geçti" }
-            return "boş"
-        }
-
-        if activeEventNow != nil { return "aktif" }
-
-        if isToday {
-            if nextEvent != nil { return "sıradaki" }
-            return "günü"
-        }
-
-        if isTomorrow { return "yarın" }
-
-        return "günü"
+        // Tarih + ay — italik gradient için
+        return dayMonthText
     }
 
     var heroSubtitle: String {
         if eventsForCurrentDate.isEmpty {
-            if isPastDay { return "Bu güne kayıt yok." }
-            return "Bu güne yeni bir ders veya etkinlik ekle."
+            if isPastDay { return "Bu güne kayıt yok" }
+            if isToday { return "Bugün sakin · plan eklemek için + " }
+            if isTomorrow { return "Yarın boş · şimdiden planlayabilirsin" }
+            return "Bu güne yeni bir şey ekle"
         }
 
-        if let active = activeEventNow {
-            let now = currentMinuteOfDay()
-            let left = max(0, (active.startMinute + active.durationMinute) - now)
-            return "\(active.title) aktif · \(left) dk kaldı"
-        }
-
-        if isToday, let next = nextEvent {
-            let now = currentMinuteOfDay()
-            let diff = next.startMinute - now
-            if diff > 0 {
-                return "Sıradaki: \(next.title) · \(diff) dk sonra"
-            }
-        }
-
+        // ŞU AN aktif ders varsa: küçük chip ile zaten gösteriliyor, burada genel özet
+        // Aksi halde: kaç ders + toplam süre
         return "\(eventsForCurrentDate.count) ders · \(durationText(totalMinutes))"
     }
 
@@ -949,6 +1126,30 @@ private extension WeekView {
         return formatter.string(from: currentDate).capitalized
     }
 
+    /// "Perşembe" - hero title
+    var weekdayLongName: String {
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.dateFormat = "EEEE"
+        return formatter.string(from: currentDate)
+    }
+
+    /// "4 Haziran" - hero italic
+    var dayMonthText: String {
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.dateFormat = "d MMMM"
+        return formatter.string(from: currentDate)
+    }
+
+    /// "Haziran 2026" - top bar küçük
+    var monthYearText: String {
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter.string(from: currentDate).capitalized
+    }
+
     var emptyTitle: String {
         if isToday { return "Bugün sakin" }
         if isTomorrow { return "Yarın boş" }
@@ -980,6 +1181,40 @@ private extension WeekView {
     func weekdayIndex(from date: Date) -> Int {
         let w = Calendar.current.component(.weekday, from: date)
         return (w + 5) % 7
+    }
+
+    /// `currentDate`'in bulunduğu haftanın 7 günü (Pzt - Paz)
+    func currentWeekDays() -> [Date] {
+        let calendar = Calendar.current
+        let weekdayIdx = weekdayIndex(from: currentDate)
+        let startOfDay = calendar.startOfDay(for: currentDate)
+        guard let monday = calendar.date(byAdding: .day, value: -weekdayIdx, to: startOfDay) else { return [] }
+
+        return (0..<7).compactMap {
+            calendar.date(byAdding: .day, value: $0, to: monday)
+        }
+    }
+
+    /// "P", "S", "Ç" ... week strip için tek harf
+    func weekdayShortLetter(_ date: Date) -> String {
+        let idx = weekdayIndex(from: date)
+        let letters = ["P", "S", "Ç", "P", "C", "C", "P"]
+        let names = ["PZT", "SAL", "ÇAR", "PER", "CUM", "CMT", "PAZ"]
+        return names[idx]
+    }
+
+    /// Verilen tarih için etkinlikler (hem haftalık tekrar hem tek seferlik)
+    func eventsForDate(_ date: Date) -> [EventItem] {
+        let calendar = Calendar.current
+        let weekday = weekdayIndex(from: date)
+
+        return userScopedEvents.filter { ev in
+            if let scheduledDate = ev.scheduledDate {
+                return calendar.isDate(scheduledDate, inSameDayAs: date)
+            } else {
+                return ev.weekday == weekday
+            }
+        }
     }
 
     func currentMinuteOfDay() -> Int {
@@ -1023,6 +1258,59 @@ private extension WeekView {
             green: Double((rgb & 0x00FF00) >> 8) / 255,
             blue: Double(rgb & 0x0000FF) / 255
         )
+    }
+
+    /// Mevcut haftanın Pazartesi-Pazar tarihlerini döndürür (currentDate'in haftası).
+    func currentWeekDates() -> [Date] {
+        let calendar = Calendar.current
+        let weekday = calendar.component(.weekday, from: currentDate)
+        let mondayOffset = (weekday + 5) % 7
+        let startOfCurrent = calendar.startOfDay(for: currentDate)
+        guard let monday = calendar.date(byAdding: .day, value: -mondayOffset, to: startOfCurrent) else {
+            return []
+        }
+        return (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: monday) }
+    }
+
+    /// 3 harfli gün adı (Pzt, Sal, Çar, Per, Cum, Cmt, Paz).
+    func weekdayShort(_ date: Date) -> String {
+        let idx = weekdayIndex(from: date)
+        let titles = ["PZT", "SAL", "ÇAR", "PER", "CUM", "CMT", "PAZ"]
+        return titles[max(0, min(6, idx))]
+    }
+
+    /// "PER · 4 HAZ" kompakt tarih.
+    var compactDateText: String {
+        let calendar = Calendar.current
+        let day = calendar.component(.day, from: currentDate)
+        let month = calendar.component(.month, from: currentDate)
+        let monthsTR = ["OCA", "ŞUB", "MAR", "NİS", "MAY", "HAZ", "TEM", "AĞU", "EYL", "EKİ", "KAS", "ARA"]
+        let monthShort = monthsTR[max(0, min(11, month - 1))]
+        return "\(weekdayShort(currentDate)) · \(day) \(monthShort)"
+    }
+
+    /// Bir tarihte gözüken etkinliklerin renk listesi (haftalık + tek seferlik).
+    func eventColorsForDate(_ date: Date) -> [String] {
+        let calendar = Calendar.current
+        let weekday = weekdayIndex(from: date)
+
+        let events = userScopedEvents.filter { ev in
+            if let scheduledDate = ev.scheduledDate {
+                return calendar.isDate(scheduledDate, inSameDayAs: date)
+            } else {
+                return ev.weekday == weekday
+            }
+        }
+
+        var seen = Set<String>()
+        var result: [String] = []
+        for ev in events {
+            if !seen.contains(ev.colorHex) {
+                seen.insert(ev.colorHex)
+                result.append(ev.colorHex)
+            }
+        }
+        return result
     }
 }
 
@@ -1420,4 +1708,12 @@ private struct CalendarSheet: View {
             blue: Double(rgb & 0x0000FF) / 255
         )
     }
+}
+
+// MARK: - Events List Item
+
+/// Event listesindeki bir öğe — ya gerçek event ya da event'ler arası boş slot.
+private enum EventsListItem {
+    case event(EventItem, Int)              // event + sıra (animasyon delay'i için)
+    case gap(startMin: Int, durationMin: Int)
 }

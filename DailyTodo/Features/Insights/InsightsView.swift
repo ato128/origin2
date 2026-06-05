@@ -2,7 +2,8 @@
 //  InsightsView.swift
 //  DailyTodo
 //
-//  Created by Atakan Ortaç on 2.03.2026.
+//  Yeniden yazıldı — kişisel gelişim merkezi.
+//  Yapı: Header → Identity F1 → Journey → Achievement → Premium Lab
 //
 
 import SwiftUI
@@ -15,8 +16,6 @@ struct InsightsView: View {
 
     @EnvironmentObject var studentStore: StudentStore
 
-    @State private var showExamPlannerSheet = false
-
     @AppStorage("smartEngineEnabled") private var smartEngineEnabled: Bool = true
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
 
@@ -26,19 +25,22 @@ struct InsightsView: View {
     @State private var goTasks = false
     @State private var goWeek = false
     @State private var goFocus = false
+
     @State private var isStudyMode = false
     @State private var showAchievements = false
-    @State private var identityExpanded = false
 
-    @State private var showPremium = false
-    @State private var showStudyWindowDetail = false
-
+    // Premium
     @State private var premiumState: PremiumState = .free
+    @State private var showPremium = false
 
-    @State private var showCoachDetail = false
-
-    @State private var showWeeklySignalDetail = false
+    // Sheet'ler
+    @State private var showExamPlannerSheet = false
+    @State private var comingSoonTool: PremiumLabTool?
     @State private var showIdentityLevelSheet = false
+
+    // Identity level-up flow
+    @State private var showLevelUpCelebration = false
+    @State private var showLevelUpBanner = false
 
     @Query(sort: \DTTaskItem.createdAt, order: .reverse)
     private var tasks: [DTTaskItem]
@@ -58,8 +60,7 @@ struct InsightsView: View {
     @Query(sort: \IdentityLevelUpState.createdAt, order: .reverse)
     private var identityLevelUpStates: [IdentityLevelUpState]
 
-    @State private var showLevelUpCelebration = false
-    @State private var showLevelUpBanner = false
+    // MARK: - Identity helpers
 
     private var pendingLevelUp: IdentityLevelUpState? {
         identityLevelUpStates.first {
@@ -93,6 +94,8 @@ struct InsightsView: View {
             streakDays: vm.streakValueForUI
         )
     }
+
+    // MARK: - Filtered data
 
     private var filteredTasks: [DTTaskItem] {
         guard let currentUserIDString else { return [] }
@@ -136,6 +139,8 @@ struct InsightsView: View {
         )
     }
 
+    // MARK: - Scroll/header animation
+
     private var collapseProgress: CGFloat {
         let progress = (-scrollOffset - 20) / 70
         return min(max(progress, 0), 1)
@@ -172,6 +177,26 @@ struct InsightsView: View {
 
         return Color(arenaHex: AppArenaPalette.purple)
     }
+
+    private var resolvedUserName: String {
+        let full = session.currentUser?.fullName ?? ""
+        let trimmed = full.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if !trimmed.isEmpty { return trimmed }
+
+        if let username = session.currentUser?.username,
+           !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return username
+        }
+
+        return "Driver"
+    }
+
+    private var isTurkish: Bool {
+        locale.identifier.hasPrefix("tr")
+    }
+
+    // MARK: - Body
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -215,41 +240,16 @@ struct InsightsView: View {
                 }
             }
         }
-        .sheet(isPresented: $showStudyWindowDetail) {
-            InsightsStudyWindowDetailView(
-                data: vm.studyWindowDetailData,
-                onOpenWeek: {
-                    goWeek = true
-                },
-                onOpenFocus: {
-                    goFocus = true
-                }
-            )
-        }
-        .sheet(isPresented: $showCoachDetail) {
-            InsightsCoachDetailView(
-                data: vm.coachDetailData,
-                onAction: { action in
-                    handleInsightAction(action)
-                }
-            )
-        }
-        .sheet(isPresented: $showWeeklySignalDetail) {
-            InsightsWeeklySignalDetailView(
-                data: vm.weeklySignalDetailData,
-                onOpenWeek: {
-                    goWeek = true
-                },
-                onOpenFocus: {
-                    goFocus = true
-                }
-            )
-        }
         .sheet(isPresented: $showExamPlannerSheet) {
             ExamPlannerSheet(
                 courses: studentStore.courses,
                 ownerUserID: currentUserIDString
             )
+        }
+        .sheet(item: $comingSoonTool) { tool in
+            InsightsComingSoonSheet(tool: tool)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showIdentityLevelSheet) {
             InsightsIdentityLevelSheet(
@@ -299,6 +299,8 @@ struct InsightsView: View {
         }
     }
 
+    // MARK: - Hidden Nav Links
+
     private var hiddenNavigationLinks: some View {
         Group {
             NavigationLink("", isActive: $goTasks) {
@@ -321,6 +323,204 @@ struct InsightsView: View {
             }
         }
     }
+
+    // MARK: - Header Section
+
+    private var headerSection: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(insightsAccent)
+                        .frame(width: 20, height: 1)
+
+                    Text(isStudyMode ? "STUDY SIGNAL" : "PERFORMANCE CENTER")
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .tracking(2.4)
+                        .foregroundStyle(insightsAccent)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Text("Insights")
+                        .font(.system(size: 39, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text(isStudyMode ? "study" : "arena")
+                        .font(.system(size: 36, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [insightsAccent, insightsSecondaryAccent],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+
+                Text(isStudyMode
+                     ? "Ders, sınav ve odak ritmini tek yerden oku."
+                     : "Görev, focus ve kimlik gelişimini takip et.")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.48))
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 8)
+
+            Button {
+                withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                    isStudyMode.toggle()
+                }
+            } label: {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: isStudyMode ? "chart.bar.fill" : "graduationcap.fill")
+                        .font(.system(size: 17, weight: .black))
+                        .foregroundStyle(isStudyMode ? .black : insightsAccent)
+                        .frame(width: 46, height: 46)
+                        .background(
+                            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                .fill(
+                                    isStudyMode
+                                    ? AnyShapeStyle(
+                                        LinearGradient(
+                                            colors: [insightsAccent, insightsSecondaryAccent],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    : AnyShapeStyle(
+                                        LinearGradient(
+                                            colors: [
+                                                Color.white.opacity(0.090),
+                                                Color.white.opacity(0.050)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                        .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                                )
+                                .shadow(color: Color.black.opacity(0.22), radius: 12, y: 6)
+                        )
+
+                    if pendingLevelUp != nil || identitySnapshot.isReadyForLevelUp {
+                        Circle()
+                            .fill(Color(arenaHex: AppArenaPalette.gold))
+                            .frame(width: 11, height: 11)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.black.opacity(0.80), lineWidth: 2)
+                            )
+                            .offset(x: 3, y: -3)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.top, 10)
+        .padding(.bottom, 6)
+    }
+
+    // MARK: - Content Section (yeni 4 component)
+
+    @ViewBuilder
+    private var contentSection: some View {
+        VStack(spacing: 14) {
+            // 1. IDENTITY (F1 Driver Profile)
+            InsightsIdentityCardV3(
+                snapshot: identitySnapshot,
+                userName: resolvedUserName,
+                hasPendingLevelUp: pendingLevelUp != nil || identitySnapshot.isReadyForLevelUp,
+                onTap: handleIdentityTap
+            )
+
+            // 2. JOURNEY (4 haftalık telemetri)
+            InsightsJourneyCard(
+                focusSessions: filteredFocusSessions,
+                isTurkish: isTurkish
+            )
+
+            // 3. ACHIEVEMENT (tek kart, sol/sağ + locked strip)
+            InsightsAchievementCardV3(
+                badges: vm.allAchievementBadges,
+                onTap: { showAchievements = true }
+            )
+
+            // 4. PREMIUM LAB (3 araç + CTA)
+            InsightsPremiumLabCard(
+                isPremium: premiumState != .free,
+                onExamPlanner: { showExamPlannerSheet = true },
+                onComingSoon: { tool in
+                    comingSoonTool = tool
+                },
+                onUpgrade: {
+                    showPremium = true
+                }
+            )
+        }
+    }
+
+    // MARK: - Identity tap
+
+    private func handleIdentityTap() {
+        if pendingLevelUp != nil || identitySnapshot.isReadyForLevelUp {
+            preparePendingLevelUpIfNeeded()
+            showLevelUpCelebration = true
+        } else {
+            showIdentityLevelSheet = true
+        }
+    }
+
+    // MARK: - Collapsed Top Title
+
+    private var collapsedTopTitle: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 7) {
+                Circle()
+                    .fill(insightsAccent)
+                    .frame(width: 7, height: 7)
+                    .opacity(smallTitleOpacity)
+
+                Text("INSIGHTS")
+                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                    .tracking(1.6)
+                    .foregroundStyle(.white)
+                    .opacity(smallTitleOpacity)
+
+                if isStudyMode {
+                    Image(systemName: "graduationcap.fill")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundStyle(insightsAccent)
+                        .opacity(smallTitleOpacity)
+                }
+            }
+            .padding(.top, 12)
+
+            Spacer()
+        }
+        .animation(.spring(response: 0.28, dampingFraction: 0.86), value: collapseProgress)
+        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: isStudyMode)
+    }
+
+    // MARK: - Background
+
+    private var stableBackground: some View {
+        ArenaBackground(
+            primaryGlow: Color(arenaHex: AppArenaPalette.blue),
+            secondaryGlow: Color(arenaHex: AppArenaPalette.purple),
+            warmGlow: Color(arenaHex: AppArenaPalette.gold),
+            intensity: 0.92
+        )
+    }
+
+    // MARK: - Identity flow (level-up)
 
     private func handleFocusRecordSaved(_ record: FocusSessionRecord) {
         guard record.isCompleted else { return }
@@ -379,486 +579,6 @@ struct InsightsView: View {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             syncIdentityProgressState()
-        }
-    }
-
-    private var identityCompletedTasks: Int {
-        filteredTasks.filter(\.isDone).count
-    }
-
-    private var identityFocusSessions: Int {
-        filteredFocusSessions.count
-    }
-
-    private var stableBackground: some View {
-        ArenaBackground(
-            primaryGlow: Color(arenaHex: AppArenaPalette.blue),
-            secondaryGlow: Color(arenaHex: AppArenaPalette.purple),
-            warmGlow: Color(arenaHex: AppArenaPalette.gold),
-            intensity: 0.92
-        )
-    }
-
-    private var headerSection: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 7) {
-                HStack(spacing: 8) {
-                    Rectangle()
-                        .fill(insightsAccent)
-                        .frame(width: 20, height: 1)
-
-                    Text(isStudyMode ? "STUDY SIGNAL" : "PERFORMANCE CENTER")
-                        .font(.system(size: 11, weight: .black, design: .monospaced))
-                        .tracking(2.4)
-                        .foregroundStyle(insightsAccent)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.72)
-                }
-
-                HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    Text("Insights")
-                        .font(.system(size: 39, weight: .black))
-                        .foregroundStyle(.white)
-
-                    Text(isStudyMode ? "study" : "arena")
-                        .font(.system(size: 36, weight: .regular, design: .serif))
-                        .italic()
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [
-                                    insightsAccent,
-                                    insightsSecondaryAccent
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                }
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
-
-                Text(isStudyMode ? "Ders, sınav ve odak ritmini tek yerden oku." : "Görev, focus ve kimlik gelişimini takip et.")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
-                    .lineLimit(2)
-            }
-
-            Spacer(minLength: 8)
-
-            Button {
-                withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-                    isStudyMode.toggle()
-                }
-            } label: {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: isStudyMode ? "chart.bar.fill" : "graduationcap.fill")
-                        .font(.system(size: 17, weight: .black))
-                        .foregroundStyle(isStudyMode ? .black : insightsAccent)
-                        .frame(width: 46, height: 46)
-                        .background(
-                            RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                .fill(
-                                    isStudyMode
-                                    ? AnyShapeStyle(
-                                        LinearGradient(
-                                            colors: [
-                                                insightsAccent,
-                                                insightsSecondaryAccent
-                                            ],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                    : AnyShapeStyle(
-                                        LinearGradient(
-                                            colors: [
-                                                Color.white.opacity(0.090),
-                                                Color.white.opacity(0.050)
-                                            ],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                        .stroke(Color.white.opacity(0.11), lineWidth: 1)
-                                )
-                                .shadow(color: Color.black.opacity(0.22), radius: 12, y: 6)
-                        )
-
-                    if pendingLevelUp != nil || identitySnapshot.isReadyForLevelUp {
-                        Circle()
-                            .fill(Color(arenaHex: AppArenaPalette.gold))
-                            .frame(width: 11, height: 11)
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.black.opacity(0.80), lineWidth: 2)
-                            )
-                            .offset(x: 3, y: -3)
-                    }
-                }
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.top, 10)
-        .padding(.bottom, 6)
-    }
-
-    @ViewBuilder
-    private var contentSection: some View {
-        VStack(spacing: 14) {
-            InsightsHeroCardV2(
-                data: vm.studyHeroPremium,
-                isStudyMode: isStudyMode,
-                action: handleInsightAction
-            )
-
-            HStack(spacing: 12) {
-                InsightsIdentityCardV2(
-                    snapshot: identitySnapshot,
-                    isExpanded: identityExpanded,
-                    hasPendingLevelUp: pendingLevelUp != nil || identitySnapshot.isReadyForLevelUp,
-                    onTap: {
-                        if pendingLevelUp != nil || identitySnapshot.isReadyForLevelUp {
-                            preparePendingLevelUpIfNeeded()
-                            showLevelUpCelebration = true
-                        } else {
-                            showIdentityLevelSheet = true
-                        }
-                    }
-                )
-
-                InsightsAchievementMiniCard(
-                    badges: vm.achievementBadges,
-                    onTap: { showAchievements = true }
-                )
-            }
-
-            if premiumState != .free {
-                InsightsPlusWeeklySignalCardV2(
-                    data: vm.plusWeeklySignalCard,
-                    action: handleInsightAction,
-                    onTap: {
-                        showWeeklySignalDetail = true
-                    }
-                )
-
-                InsightsExamPlannerCTA {
-                    showExamPlannerSheet = true
-                }
-            }
-
-            InsightsPremiumCardV4(
-                state: premiumState,
-                action: {
-                    if premiumState == .free {
-                        showPremium = true
-                    } else {
-                        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-                            premiumState = .free
-                        }
-                    }
-                },
-                titleOverride: premiumState == .free ? nil : "Insights+ active",
-                subtitleOverride: premiumState == .free ? nil : "Weekly Signal ve Exam Planner aktif.",
-                buttonTitleOverride: premiumState == .free ? nil : "Return to Free",
-                eyebrowOverride: premiumState == .free ? nil : "Insights+"
-            )
-        }
-    }
-
-    private var freeContentSection: some View {
-        VStack(spacing: 14) {
-            InsightsHeroCardV2(
-                data: vm.studyHeroPremium,
-                isStudyMode: isStudyMode,
-                action: handleInsightAction
-            )
-
-            InsightsIdentityCardV2(
-                snapshot: identitySnapshot,
-                isExpanded: identityExpanded,
-                hasPendingLevelUp: pendingLevelUp != nil || identitySnapshot.progress >= 1,
-                onTap: {
-                    withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
-                        identityExpanded.toggle()
-                    }
-                }
-            )
-
-            InsightsAchievementsSectionV2(
-                badges: vm.achievementBadges,
-                onSeeAll: { showAchievements = true }
-            )
-
-            InsightsPremiumCardV4(state: .free) {
-                showPremium = true
-            }
-        }
-    }
-
-    private var premiumContentSection: some View {
-        VStack(spacing: 14) {
-            deepHeroCard
-            bestStudyWindowCard
-            weeklyReviewCard
-            identityEvolutionCard
-            examReadinessCard
-            patternAlertsSection
-
-            InsightsPremiumCardV4(
-                state: .premium,
-                action: {
-                    withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-                        premiumState = .free
-                    }
-                },
-                titleOverride: "Back to free Insights",
-                subtitleOverride: "This is a temporary premium preview. Tap below to return to the standard Insights screen.",
-                buttonTitleOverride: "Return to Free",
-                eyebrowOverride: "Insights+ Preview"
-            )
-        }
-    }
-
-    private var collapsedTopTitle: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 7) {
-                Circle()
-                    .fill(insightsAccent)
-                    .frame(width: 7, height: 7)
-                    .opacity(smallTitleOpacity)
-
-                Text("INSIGHTS")
-                    .font(.system(size: 12, weight: .black, design: .monospaced))
-                    .tracking(1.6)
-                    .foregroundStyle(.white)
-                    .opacity(smallTitleOpacity)
-
-                if isStudyMode {
-                    Image(systemName: "graduationcap.fill")
-                        .font(.system(size: 11, weight: .black))
-                        .foregroundStyle(insightsAccent)
-                        .opacity(smallTitleOpacity)
-                }
-            }
-            .padding(.top, 12)
-
-            Spacer()
-        }
-        .animation(.spring(response: 0.28, dampingFraction: 0.86), value: collapseProgress)
-        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: isStudyMode)
-    }
-
-    private func handleInsightAction(_ action: SmartSuggestionAction) {
-        switch action {
-        case .openTasks:
-            goTasks = true
-        case .openWeek:
-            goWeek = true
-        case .openFocus:
-            goFocus = true
-        case .none:
-            break
-        }
-    }
-
-    private var deepHeroCard: some View {
-        premiumSurface(tint: Color(arenaHex: AppArenaPalette.purple)) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("INSIGHTS+")
-                    .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .tracking(1.6)
-                    .foregroundStyle(Color(arenaHex: AppArenaPalette.purple))
-
-                Text("Deeper rhythm")
-                    .font(.system(size: 28, weight: .black))
-                    .foregroundStyle(.white)
-
-                Text("Premium coaching, pattern analysis, and stronger guidance.")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.58))
-
-                HStack(spacing: 8) {
-                    chip("AI Coach")
-                    chip("Study Window")
-                    chip("Streak Save")
-                }
-            }
-        }
-    }
-
-    private var bestStudyWindowCard: some View {
-        premiumSurface(tint: Color(arenaHex: AppArenaPalette.purple)) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("BEST STUDY WINDOW")
-                    .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .tracking(1.6)
-                    .foregroundStyle(Color(arenaHex: AppArenaPalette.purple))
-
-                Text(vm.deepBestStudyWindow.timeRange)
-                    .font(.system(size: 30, weight: .black))
-                    .foregroundStyle(.white)
-
-                Text(vm.deepBestStudyWindow.confidenceText)
-                    .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(.white.opacity(0.58))
-
-                Text(vm.deepBestStudyWindow.summary)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.56))
-            }
-        }
-    }
-
-    private var weeklyReviewCard: some View {
-        premiumSurface(tint: Color(arenaHex: AppArenaPalette.blue)) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Weekly Deep Review")
-                    .font(.system(size: 22, weight: .black))
-                    .foregroundStyle(.white)
-
-                Text("Strongest: \(vm.deepWeeklyReview.strongestDay)")
-                    .foregroundStyle(.white)
-
-                Text("Weakest: \(vm.deepWeeklyReview.weakestDay)")
-                    .foregroundStyle(.white.opacity(0.82))
-
-                Text(vm.deepWeeklyReview.deltaText)
-                    .foregroundStyle(.white.opacity(0.78))
-
-                Text(vm.deepWeeklyReview.recommendation)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.58))
-            }
-        }
-    }
-
-    private var identityEvolutionCard: some View {
-        premiumSurface(tint: Color(arenaHex: AppArenaPalette.gold)) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Identity Evolution")
-                    .font(.system(size: 22, weight: .black))
-                    .foregroundStyle(.white)
-
-                Text(vm.deepIdentityEvolution.currentIdentity)
-                    .font(.system(size: 24, weight: .black))
-                    .foregroundStyle(.white)
-
-                Text("Next: \(vm.deepIdentityEvolution.nextIdentity)")
-                    .foregroundStyle(.white.opacity(0.72))
-
-                ProgressView(value: vm.deepIdentityEvolution.progress)
-                    .tint(Color(arenaHex: AppArenaPalette.gold))
-
-                Text(vm.deepIdentityEvolution.progressText)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.54))
-            }
-        }
-    }
-
-    private var examReadinessCard: some View {
-        premiumSurface(tint: Color(arenaHex: AppArenaPalette.coral)) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Exam Readiness Pro")
-                    .font(.system(size: 22, weight: .black))
-                    .foregroundStyle(.white)
-
-                ForEach(vm.deepExamRows) { exam in
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text(exam.title)
-                                .foregroundStyle(.white)
-
-                            Spacer()
-
-                            Text(exam.readinessText)
-                                .foregroundStyle(.white.opacity(0.72))
-                        }
-
-                        ProgressView(value: exam.progress)
-                            .tint(Color(arenaHex: AppArenaPalette.coral))
-
-                        Text(exam.riskText)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.52))
-                    }
-                }
-            }
-        }
-    }
-
-    private var patternAlertsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Pattern Alerts")
-                .font(.system(size: 22, weight: .black))
-                .foregroundStyle(.white)
-
-            ForEach(vm.deepPatternAlerts) { alert in
-                premiumSurface(tint: alert.tint) {
-                    HStack(spacing: 12) {
-                        Image(systemName: alert.icon)
-                            .font(.system(size: 16, weight: .black))
-                            .foregroundStyle(.white)
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(alert.title)
-                                .font(.system(size: 15, weight: .black))
-                                .foregroundStyle(.white)
-
-                            Text(alert.message)
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.56))
-                        }
-
-                        Spacer()
-                    }
-                }
-            }
-        }
-    }
-
-    private func premiumSurface<Content: View>(
-        tint: Color,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            tint.opacity(0.085),
-                            Color(arenaHex: AppArenaPalette.purple).opacity(0.045),
-                            Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 30, style: .continuous)
-                        .fill(
-                            RadialGradient(
-                                colors: [
-                                    tint.opacity(0.15),
-                                    Color.clear
-                                ],
-                                center: .topTrailing,
-                                startRadius: 8,
-                                endRadius: 210
-                            )
-                        )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 30, style: .continuous)
-                        .stroke(tint.opacity(0.14), lineWidth: 1)
-                )
-                .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
-
-            content()
-                .padding(18)
         }
     }
 
@@ -982,122 +702,16 @@ struct InsightsView: View {
             showLevelUpCelebration = true
         }
     }
-
-    private func chip(_ text: String) -> some View {
-        Text(text.uppercased())
-            .font(.system(size: 10, weight: .black, design: .monospaced))
-            .tracking(0.8)
-            .foregroundStyle(.white.opacity(0.84))
-            .padding(.horizontal, 10)
-            .frame(height: 28)
-            .background(
-                Capsule()
-                    .fill(Color.white.opacity(0.075))
-                    .overlay(
-                        Capsule()
-                            .stroke(Color.white.opacity(0.10), lineWidth: 1)
-                    )
-            )
-    }
 }
 
-struct InsightsExamPlannerCTA: View {
-    let action: () -> Void
+// MARK: - PremiumLabTool Identifiable extension (sheet item)
 
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(arenaHex: AppArenaPalette.gold).opacity(0.18),
-                                    Color(arenaHex: AppArenaPalette.coral).opacity(0.10)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 56, height: 56)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(Color(arenaHex: AppArenaPalette.gold).opacity(0.18), lineWidth: 1)
-                        )
-
-                    Image(systemName: "calendar.badge.clock")
-                        .font(.system(size: 21, weight: .black))
-                        .foregroundStyle(Color(arenaHex: AppArenaPalette.gold))
-                }
-
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: 7) {
-                        Rectangle()
-                            .fill(Color(arenaHex: AppArenaPalette.gold))
-                            .frame(width: 16, height: 1)
-
-                        Text("EXAM PLAN")
-                            .font(.system(size: 10, weight: .black, design: .monospaced))
-                            .tracking(1.5)
-                            .foregroundStyle(Color(arenaHex: AppArenaPalette.gold))
-                    }
-
-                    Text("Sınav Programı")
-                        .font(.system(size: 19, weight: .black))
-                        .foregroundStyle(.white)
-
-                    Text("Yaklaşan sınavlara göre çalışma akışı oluştur.")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.50))
-                        .lineLimit(2)
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .black))
-                    .foregroundStyle(Color(arenaHex: AppArenaPalette.gold))
-                    .frame(width: 32, height: 32)
-                    .background(
-                        Circle()
-                            .fill(Color(arenaHex: AppArenaPalette.gold).opacity(0.11))
-                    )
-            }
-            .padding(18)
-            .background(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(arenaHex: AppArenaPalette.gold).opacity(0.095),
-                                Color(arenaHex: AppArenaPalette.coral).opacity(0.052),
-                                Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .fill(
-                                RadialGradient(
-                                    colors: [
-                                        Color(arenaHex: AppArenaPalette.gold).opacity(0.16),
-                                        Color.clear
-                                    ],
-                                    center: .topTrailing,
-                                    startRadius: 4,
-                                    endRadius: 150
-                                )
-                            )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .stroke(Color(arenaHex: AppArenaPalette.gold).opacity(0.16), lineWidth: 1)
-                    )
-                    .shadow(color: Color.black.opacity(0.22), radius: 16, y: 9)
-            )
+extension PremiumLabTool: Identifiable {
+    var id: String {
+        switch self {
+        case .examPlanner: return "examPlanner"
+        case .aiCoach: return "aiCoach"
+        case .smartInsights: return "smartInsights"
         }
-        .buttonStyle(.plain)
     }
 }
