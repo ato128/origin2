@@ -28,6 +28,9 @@ private enum StudentOnboardingArenaPalette {
     static let gold = "#FBBF24"
     static let green = "#A3E635"
 
+    static let surface = "#101118"
+    static let surface2 = "#171821"
+
     static var appGradient: LinearGradient {
         LinearGradient(
             colors: [
@@ -54,9 +57,10 @@ private enum StudentOnboardingArenaPalette {
     static var cardGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(studentOnboardingHex: appBlue).opacity(0.050),
-                Color(studentOnboardingHex: appPurple).opacity(0.065),
-                Color.white.opacity(0.045)
+                Color(studentOnboardingHex: surface).opacity(0.96),
+                Color(studentOnboardingHex: surface2).opacity(0.88),
+                Color(studentOnboardingHex: appBlue).opacity(0.035),
+                Color(studentOnboardingHex: appPurple).opacity(0.045)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -88,26 +92,26 @@ struct StudentOnboardingFlowView: View {
     @State private var draftCourseCode: String = ""
     @State private var draftCourseName: String = ""
     @State private var localCourses: [OnboardingCourseDraft] = []
-    
+
     @State private var allMajorCourses: [CatalogCurriculumCourse] = []
     @State private var filteredCourseSuggestions: [CatalogCurriculumCourse] = []
     @State private var isLoadingAllMajorCourses: Bool = false
-    
+
     @State private var remoteUniversities: [CatalogUniversity] = []
-        @State private var remoteMajors: [CatalogMajor] = []
-        @State private var remoteSuggestedCourses: [CatalogCurriculumCourse] = []
+    @State private var remoteMajors: [CatalogMajor] = []
+    @State private var remoteSuggestedCourses: [CatalogCurriculumCourse] = []
 
-        @State private var selectedUniversityID: UUID?
-        @State private var selectedMajorID: UUID?
+    @State private var selectedUniversityID: UUID?
+    @State private var selectedMajorID: UUID?
 
-        @State private var isLoadingMajors: Bool = false
-        @State private var isLoadingCurriculum: Bool = false
+    @State private var isLoadingMajors: Bool = false
+    @State private var isLoadingCurriculum: Bool = false
+    @State private var majorLoadRequestID = UUID()
+    @State private var isSelectingMajorFromList: Bool = false
 
     private let highSchoolGrades = ["9", "10", "11", "12"]
     private let universityGrades = ["prep", "1", "2", "3", "4", "5", "6"]
     private let highSchoolTracks = ["sayisal", "sozel", "esit_agirlik", "dil"]
-
-    
 
     enum FocusField {
         case courseCode
@@ -126,7 +130,7 @@ struct StudentOnboardingFlowView: View {
                 progressSection
 
                 ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 18) {
                         stepHero
                         stepContent
                     }
@@ -134,6 +138,7 @@ struct StudentOnboardingFlowView: View {
                     .padding(.top, 16)
                     .padding(.bottom, focusedField == nil ? 132 : 28)
                 }
+                .scrollDismissesKeyboard(.interactively)
 
                 if focusedField == nil {
                     bottomBar
@@ -161,8 +166,14 @@ struct StudentOnboardingFlowView: View {
             if newValue == "high_school" {
                 institutionName = ""
                 institutionCountry = "tr"
+                selectedUniversityID = nil
+                selectedMajorID = nil
                 majorName = ""
                 majorSearchText = ""
+                remoteMajors = []
+                remoteSuggestedCourses = []
+                allMajorCourses = []
+                filteredCourseSuggestions = []
                 localCourses = defaultCoursesForCurrentSelection()
             } else {
                 highSchoolTrack = "sayisal"
@@ -177,21 +188,29 @@ struct StudentOnboardingFlowView: View {
         .onChange(of: institutionName) { _, _ in
             remoteMajors = []
             remoteSuggestedCourses = []
+            allMajorCourses = []
+            filteredCourseSuggestions = []
             selectedMajorID = nil
             majorName = ""
             majorSearchText = ""
             localCourses.removeAll(where: { $0.isSuggested })
 
-            Task {
-                await loadMajorsForSelectedUniversity()
-            }
+            // Burada load çağırmıyoruz.
+            // Major yükleme tek kaynak olarak selectedUniversityID değişiminden yapılır.
         }
-        .onChange(of: selectedUniversityID) { _, _ in
+        .onChange(of: selectedUniversityID) { _, newValue in
             remoteSuggestedCourses = []
+            allMajorCourses = []
+            filteredCourseSuggestions = []
             selectedMajorID = nil
             majorName = ""
             majorSearchText = ""
             localCourses.removeAll(where: { $0.isSuggested })
+
+            guard newValue != nil else {
+                remoteMajors = []
+                return
+            }
 
             Task {
                 await loadMajorsForSelectedUniversity()
@@ -226,7 +245,7 @@ struct StudentOnboardingFlowView: View {
     private var canRestoreSuggestedCourses: Bool {
         hasRemoteSuggestionsAvailable && suggestedCoursesOnly.isEmpty
     }
-    
+
     private var totalSteps: Int { 7 }
 
     private var progressValue: Double {
@@ -291,7 +310,7 @@ struct StudentOnboardingFlowView: View {
     private var heroSubtitle: String {
         switch currentStep {
         case 0:
-            return "Set up your profile, courses, and goals so DailyTodo can work like a real student operating system."
+            return "Set up your profile, courses, and goals so Updo can work like a real student operating system."
         case 1:
             return "Pick the academic structure that fits you."
         case 2:
@@ -316,13 +335,13 @@ struct StudentOnboardingFlowView: View {
     }
 
     private var filteredMajors: [CatalogMajor] {
-            let trimmed = majorSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty else { return remoteMajors }
+        let trimmed = majorSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return remoteMajors }
 
-            return remoteMajors.filter {
-                $0.name.localizedCaseInsensitiveContains(trimmed)
-            }
+        return remoteMajors.filter {
+            $0.name.localizedCaseInsensitiveContains(trimmed)
         }
+    }
 
     private var canContinueCurrentStep: Bool {
         if isSubmitting { return false }
@@ -346,18 +365,18 @@ struct StudentOnboardingFlowView: View {
     }
 
     private var courseStepSubtitle: String {
-            if educationLevel == "high_school" {
-                return "Default courses are ready. Edit or add your own."
-            }
-
-            if isLoadingCurriculum {
-                return "Loading suggested courses..."
-            }
-
-            return remoteSuggestedCourses.isEmpty
-                ? "Add course code and course name manually."
-                : "Suggested courses were loaded for your university, major, and year."
+        if educationLevel == "high_school" {
+            return "Default courses are ready. Edit or add your own."
         }
+
+        if isLoadingCurriculum {
+            return "Loading suggested courses..."
+        }
+
+        return remoteSuggestedCourses.isEmpty
+            ? "Add course code and course name manually."
+            : "Suggested courses were loaded for your university, major, and year."
+    }
 
     private var topBar: some View {
         HStack {
@@ -444,9 +463,9 @@ struct StudentOnboardingFlowView: View {
                         .fill(StudentOnboardingArenaPalette.hotGradient)
                         .frame(width: geo.size.width * progressValue, height: 7)
                         .shadow(
-                            color: Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.28),
-                            radius: 10,
-                            y: 4
+                            color: Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.24),
+                            radius: 8,
+                            y: 3
                         )
                 }
             }
@@ -456,37 +475,57 @@ struct StudentOnboardingFlowView: View {
     }
 
     private var stepHero: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 11) {
             HStack(spacing: 8) {
-                Image(systemName: stepContextPill.0)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.8))
+                Rectangle()
+                    .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue))
+                    .frame(width: 18, height: 1)
 
-                Text(stepContextPill.1)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.8))
+                Text(stepContextPill.1.uppercased())
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .tracking(2.2)
+                    .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.70)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(
-                Capsule()
-                    .fill(.white.opacity(0.08))
-            )
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text(heroTitle)
-                    .font(.system(size: 33, weight: .heavy))
+            let split = splitHeroTitle(heroTitle)
+
+            HStack(alignment: .firstTextBaseline, spacing: 7) {
+                Text(split.first)
+                    .font(.system(size: 34, weight: .black))
                     .foregroundStyle(.white)
-                    .lineSpacing(1)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.70)
 
-                Text(heroSubtitle)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.68))
-                    .lineSpacing(2)
+                if !split.accent.isEmpty {
+                    Text(split.accent)
+                        .font(.system(size: 32, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan),
+                                    Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.70)
+                }
             }
+
+            Text(heroSubtitle)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.58))
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 1)
         }
     }
-    
+
     private func splitHeroTitle(_ value: String) -> (first: String, accent: String) {
         let parts = value.split(separator: " ").map(String.init)
 
@@ -568,47 +607,54 @@ struct StudentOnboardingFlowView: View {
                     showUniversityPicker = true
                 } label: {
                     HStack(spacing: 14) {
-                        VStack(alignment: .leading, spacing: 7) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.18),
+                                            Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.12)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 54, height: 54)
+
+                            Image(systemName: "building.columns.fill")
+                                .font(.system(size: 20, weight: .black))
+                                .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
+                        }
+
+                        VStack(alignment: .leading, spacing: 6) {
                             Text("Selected university")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.55))
+                                .font(.system(size: 12, weight: .black, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.52))
 
                             Text(institutionName.isEmpty ? "Tap to choose university" : institutionName)
-                                .font(.system(size: 19, weight: .bold))
+                                .font(.system(size: 18, weight: .black, design: .rounded))
                                 .foregroundStyle(institutionName.isEmpty ? .white.opacity(0.42) : .white)
                                 .multilineTextAlignment(.leading)
+                                .lineLimit(2)
 
                             if !institutionName.isEmpty {
                                 Label(
                                     institutionCountry == "tr" ? "Türkiye" : "KKTC",
                                     systemImage: "flag.fill"
                                 )
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(.blue)
+                                .font(.system(size: 11, weight: .black, design: .monospaced))
+                                .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
                             }
                         }
 
                         Spacer()
 
-                        VStack(spacing: 8) {
-                            Image(systemName: "building.columns.fill")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundStyle(.blue)
-
-                            Text("Choose")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(.white.opacity(0.58))
-                        }
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13, weight: .black))
+                            .foregroundStyle(.white.opacity(0.28))
                     }
-                    .padding(18)
-                    .background(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .fill(.white.opacity(0.08))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                    .stroke(.white.opacity(0.06), lineWidth: 1)
-                            )
-                    )
+                    .padding(14)
+                    .background(studentOnboardingSurface(radius: 24))
                 }
                 .buttonStyle(.plain)
 
@@ -682,7 +728,7 @@ struct StudentOnboardingFlowView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         Text("Suggested majors")
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.system(size: 14, weight: .black, design: .rounded))
                             .foregroundStyle(.white.opacity(0.72))
 
                         Spacer()
@@ -700,8 +746,8 @@ struct StudentOnboardingFlowView: View {
                                 .tint(.white)
 
                             Text("Loading majors...")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundStyle(.white.opacity(0.7))
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.66))
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, 8)
@@ -712,8 +758,8 @@ struct StudentOnboardingFlowView: View {
                                 .foregroundStyle(.white.opacity(0.45))
 
                             Text("No majors found for this university yet")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundStyle(.white.opacity(0.6))
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.60))
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, 8)
@@ -725,6 +771,8 @@ struct StudentOnboardingFlowView: View {
                                     title: major.name,
                                     isSelected: majorName == major.name
                                 ) {
+                                    isSelectingMajorFromList = true
+
                                     majorName = major.name
                                     majorSearchText = major.name
                                     selectedMajorID = major.id
@@ -732,13 +780,19 @@ struct StudentOnboardingFlowView: View {
 
                                     Task {
                                         await loadAllCoursesForSelectedMajor()
-                                     await  applySuggestedUniversityCoursesIfAvailable(forceReplace: true)
+                                        await applySuggestedUniversityCoursesIfAvailable(forceReplace: true)
+
+                                        await MainActor.run {
+                                            isSelectingMajorFromList = false
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
+                .padding(14)
+                .background(studentOnboardingSurface(radius: 24))
 
                 premiumTextField(
                     title: "Custom major",
@@ -747,6 +801,8 @@ struct StudentOnboardingFlowView: View {
                 )
                 .focused($focusedField, equals: .majorCustom)
                 .onChange(of: majorName) { _, newValue in
+                    guard !isSelectingMajorFromList else { return }
+
                     let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
 
                     if let matchedMajor = remoteMajors.first(where: {
@@ -756,7 +812,7 @@ struct StudentOnboardingFlowView: View {
 
                         Task {
                             await loadAllCoursesForSelectedMajor()
-                           await applySuggestedUniversityCoursesIfAvailable(forceReplace: true)
+                            await applySuggestedUniversityCoursesIfAvailable(forceReplace: true)
                         }
                     } else {
                         selectedMajorID = nil
@@ -780,12 +836,12 @@ struct StudentOnboardingFlowView: View {
             }
         }
     }
-    
+
     private var courseSuggestionsSection: some View {
         VStack(alignment: .leading, spacing: 11) {
             HStack {
                 Text("Suggestions")
-                    .font(.system(size: 18, weight: .black))
+                    .font(.system(size: 18, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
 
                 Spacer()
@@ -834,12 +890,12 @@ struct StudentOnboardingFlowView: View {
                                 }
 
                                 Text(course.course_name)
-                                    .font(.system(size: 15, weight: .black))
+                                    .font(.system(size: 15, weight: .black, design: .rounded))
                                     .foregroundStyle(.white)
                                     .multilineTextAlignment(.leading)
 
                                 Text("Year \(course.year_number) • Term \(course.term_number ?? 0)")
-                                    .font(.system(size: 11, weight: .semibold))
+                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
                                     .foregroundStyle(.white.opacity(0.44))
                             }
 
@@ -864,10 +920,10 @@ struct StudentOnboardingFlowView: View {
                 }
             }
         }
-        .padding(18)
-        .background(studentOnboardingSurface(radius: 26))
+        .padding(16)
+        .background(studentOnboardingSurface(radius: 24))
     }
-    
+
     private var selectedCoursesSection: some View {
         VStack(alignment: .leading, spacing: 13) {
             HStack {
@@ -877,7 +933,7 @@ struct StudentOnboardingFlowView: View {
                         .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
 
                     Text("Selected courses")
-                        .font(.system(size: 18, weight: .black))
+                        .font(.system(size: 18, weight: .black, design: .rounded))
                         .foregroundStyle(.white)
                 }
 
@@ -916,10 +972,10 @@ struct StudentOnboardingFlowView: View {
                 }
             }
         }
-        .padding(18)
-        .background(studentOnboardingSurface(radius: 26))
+        .padding(16)
+        .background(studentOnboardingSurface(radius: 24))
     }
-    
+
     private var courseBuilderCard: some View {
         VStack(alignment: .leading, spacing: 13) {
             HStack {
@@ -929,7 +985,7 @@ struct StudentOnboardingFlowView: View {
                         .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
 
                     Text("Course builder")
-                        .font(.system(size: 18, weight: .black))
+                        .font(.system(size: 18, weight: .black, design: .rounded))
                         .foregroundStyle(.white)
                 }
 
@@ -954,10 +1010,10 @@ struct StudentOnboardingFlowView: View {
                 .frame(width: 104, height: 52)
                 .background(
                     RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .fill(Color.white.opacity(0.070))
+                        .fill(Color.white.opacity(0.060))
                         .overlay(
                             RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                                .stroke(Color.white.opacity(0.070), lineWidth: 1)
                         )
                 )
                 .foregroundStyle(.white)
@@ -977,15 +1033,15 @@ struct StudentOnboardingFlowView: View {
                     prompt: Text("Course name").foregroundStyle(.white.opacity(0.30))
                 )
                 .textInputAutocapitalization(.words)
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(size: 15, weight: .bold, design: .rounded))
                 .padding(.horizontal, 14)
                 .frame(height: 52)
                 .background(
                     RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .fill(Color.white.opacity(0.070))
+                        .fill(Color.white.opacity(0.060))
                         .overlay(
                             RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                                .stroke(Color.white.opacity(0.070), lineWidth: 1)
                         )
                 )
                 .foregroundStyle(.white)
@@ -1001,7 +1057,7 @@ struct StudentOnboardingFlowView: View {
             } label: {
                 HStack(spacing: 9) {
                     Text("Add Course")
-                        .font(.system(size: 15, weight: .black))
+                        .font(.system(size: 15, weight: .black, design: .rounded))
 
                     Image(systemName: "plus")
                         .font(.system(size: 14, weight: .black))
@@ -1010,10 +1066,10 @@ struct StudentOnboardingFlowView: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
                 .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    Capsule()
                         .fill(StudentOnboardingArenaPalette.hotGradient)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            Capsule()
                                 .stroke(Color.white.opacity(0.14), lineWidth: 1)
                         )
                         .shadow(
@@ -1025,20 +1081,18 @@ struct StudentOnboardingFlowView: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(18)
-        .background(studentOnboardingSurface(radius: 26))
+        .padding(16)
+        .background(studentOnboardingSurface(radius: 24))
     }
-    
-    
-    
+
     func sectionMiniHeader(title: String, subtitle: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(.system(size: 14, weight: .bold))
+                .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.88))
 
             Text(subtitle)
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 12, weight: .medium, design: .rounded))
                 .foregroundStyle(.white.opacity(0.52))
         }
     }
@@ -1092,10 +1146,10 @@ struct StudentOnboardingFlowView: View {
                             .foregroundStyle(.white.opacity(0.88))
                             .frame(width: 108, height: 56)
                             .background(
-                                RoundedRectangle(cornerRadius: 19, style: .continuous)
+                                Capsule()
                                     .fill(Color.white.opacity(0.075))
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: 19, style: .continuous)
+                                        Capsule()
                                             .stroke(Color.white.opacity(0.10), lineWidth: 1)
                                     )
                             )
@@ -1123,7 +1177,7 @@ struct StudentOnboardingFlowView: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
                     .background(
-                        RoundedRectangle(cornerRadius: 19, style: .continuous)
+                        Capsule()
                             .fill(
                                 canContinueCurrentStep
                                 ? AnyShapeStyle(StudentOnboardingArenaPalette.hotGradient)
@@ -1131,7 +1185,7 @@ struct StudentOnboardingFlowView: View {
                             )
                     )
                     .overlay(
-                        RoundedRectangle(cornerRadius: 19, style: .continuous)
+                        Capsule()
                             .stroke(Color.white.opacity(canContinueCurrentStep ? 0.16 : 0.06), lineWidth: 1)
                     )
                     .shadow(
@@ -1178,21 +1232,13 @@ struct StudentOnboardingFlowView: View {
                     .foregroundStyle(.white.opacity(0.92))
 
                 Text("Courses, profile and goals are being prepared.")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.48))
                     .multilineTextAlignment(.center)
             }
             .padding(.horizontal, 26)
             .padding(.vertical, 22)
-            .background(
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .fill(StudentOnboardingArenaPalette.cardGradient)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 26, style: .continuous)
-                            .stroke(Color.white.opacity(0.10), lineWidth: 1)
-                    )
-                    .shadow(color: Color.black.opacity(0.35), radius: 24, y: 14)
-            )
+            .background(studentOnboardingSurface(radius: 26))
             .padding(.horizontal, 32)
         }
     }
@@ -1241,49 +1287,47 @@ struct StudentOnboardingFlowView: View {
             weeklyStudyGoalMinutes: Int(weeklyStudyGoalMinutes),
             courseDrafts: normalizedCourses
         )
+
         studentStore.forceRestoreCoursesFromOnboardingDrafts(normalizedCourses)
     }
-    
-    private func loadMajorsForSelectedUniversity() async {
-        guard educationLevel == "university" else { return }
 
-        let trimmedUniversity = institutionName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedUniversity.isEmpty else {
-            remoteMajors = []
-            remoteSuggestedCourses = []
-            allMajorCourses = []
-            filteredCourseSuggestions = []
-            selectedUniversityID = nil
-            selectedMajorID = nil
+    private func loadMajorsForSelectedUniversity() async {
+        guard educationLevel == "university" else {
+            isLoadingMajors = false
             return
         }
 
+        guard let selectedUniversityID else {
+            print("⚪️ loadMajors skipped: selectedUniversityID nil")
+            remoteMajors = []
+            isLoadingMajors = false
+            return
+        }
+
+        let requestID = UUID()
+        majorLoadRequestID = requestID
+
         isLoadingMajors = true
-        defer { isLoadingMajors = false }
+
+        defer {
+            if majorLoadRequestID == requestID {
+                isLoadingMajors = false
+            }
+        }
 
         do {
-            let universities = try await StudentCatalogService.fetchUniversities(
-                countryCode: institutionCountry,
-                query: trimmedUniversity
+            print("🟡 loadMajors start:", selectedUniversityID)
+
+            let majors = try await StudentCatalogService.fetchMajors(
+                universityID: selectedUniversityID
             )
 
-            guard let matchedUniversity = universities.first(where: {
-                $0.name.caseInsensitiveCompare(trimmedUniversity) == .orderedSame
-            }) else {
-                remoteMajors = []
-                remoteSuggestedCourses = []
-                allMajorCourses = []
-                filteredCourseSuggestions = []
-                selectedUniversityID = nil
-                selectedMajorID = nil
+            guard majorLoadRequestID == requestID else {
+                print("⚪️ loadMajors ignored: stale request")
                 return
             }
 
-            selectedUniversityID = matchedUniversity.id
-
-            let majors = try await StudentCatalogService.fetchMajors(
-                universityID: matchedUniversity.id
-            )
+            print("✅ loadMajors completed:", majors.count)
 
             remoteMajors = majors
             remoteSuggestedCourses = []
@@ -1292,6 +1336,7 @@ struct StudentOnboardingFlowView: View {
             localCourses.removeAll(where: { $0.isSuggested })
 
             let trimmedMajor = majorName.trimmingCharacters(in: .whitespacesAndNewlines)
+
             if !trimmedMajor.isEmpty,
                let matchedMajor = majors.first(where: {
                    $0.name.caseInsensitiveCompare(trimmedMajor) == .orderedSame
@@ -1302,19 +1347,23 @@ struct StudentOnboardingFlowView: View {
             } else {
                 selectedMajorID = nil
             }
+
         } catch {
-            print("❌ loadMajorsForSelectedUniversity error:", error)
+            guard majorLoadRequestID == requestID else { return }
+
+            print("❌ loadMajorsForSelectedUniversity error:", error.localizedDescription)
+
             remoteMajors = []
             remoteSuggestedCourses = []
             allMajorCourses = []
             filteredCourseSuggestions = []
-            selectedUniversityID = nil
             selectedMajorID = nil
         }
     }
 
     private func applySuggestedUniversityCoursesIfAvailable(forceReplace: Bool = false) async {
         guard educationLevel == "university" else { return }
+
         guard let selectedMajorID else {
             remoteSuggestedCourses = []
             if forceReplace {
@@ -1352,6 +1401,7 @@ struct StudentOnboardingFlowView: View {
             }
         }
     }
+
     private func isSuggestedCourse(_ course: OnboardingCourseDraft) -> Bool {
         course.isSuggested
     }
@@ -1471,7 +1521,7 @@ struct StudentOnboardingFlowView: View {
         default: return value
         }
     }
-    
+
     private func normalizedUniversityYear(from gradeLevel: String) -> Int? {
         switch gradeLevel {
         case "1": return 1
@@ -1483,9 +1533,7 @@ struct StudentOnboardingFlowView: View {
         default: return nil
         }
     }
-    
-   
-    
+
     private func loadAllCoursesForSelectedMajor() async {
         guard let selectedMajorID else {
             allMajorCourses = []
@@ -1595,13 +1643,13 @@ private extension StudentOnboardingFlowView {
                         .font(.system(size: 19, weight: .black))
                         .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
                 )
-            
+
             Text(title)
-                .font(.system(size: 17, weight: .black))
+                .font(.system(size: 17, weight: .black, design: .rounded))
                 .foregroundStyle(.white)
-            
+
             Spacer()
-            
+
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .black))
                 .foregroundStyle(.white.opacity(0.24))
@@ -1609,18 +1657,18 @@ private extension StudentOnboardingFlowView {
         .padding(13)
         .background(studentOnboardingSurface(radius: 24))
     }
-    
+
     func compactInfoGroup(title: String, items: [(String, String)]) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(title)
-                .font(.system(size: 18, weight: .black))
+                .font(.system(size: 18, weight: .black, design: .rounded))
                 .foregroundStyle(.white)
-            
+
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(items, id: \.1) { item in
                     Label {
                         Text(item.1)
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
                             .foregroundStyle(.white.opacity(0.76))
                     } icon: {
                         Image(systemName: item.0)
@@ -1630,10 +1678,10 @@ private extension StudentOnboardingFlowView {
                 }
             }
         }
-        .padding(18)
+        .padding(16)
         .background(studentOnboardingSurface(radius: 24))
     }
-    
+
     func compactCourseRow(
         course: OnboardingCourseDraft,
         isSuggested: Bool,
@@ -1652,7 +1700,7 @@ private extension StudentOnboardingFlowView {
                     )
                 )
                 .frame(width: 4, height: 44)
-            
+
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
                     if !course.code.isEmpty {
@@ -1661,7 +1709,7 @@ private extension StudentOnboardingFlowView {
                             .tracking(0.8)
                             .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
                     }
-                    
+
                     if isSuggested {
                         Text("SUGGESTED")
                             .font(.system(size: 9, weight: .black, design: .monospaced))
@@ -1675,15 +1723,15 @@ private extension StudentOnboardingFlowView {
                             )
                     }
                 }
-                
+
                 Text(course.name)
-                    .font(.system(size: 16, weight: .black))
+                    .font(.system(size: 16, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
                     .lineLimit(2)
             }
-            
+
             Spacer(minLength: 10)
-            
+
             Button(role: .destructive, action: onDelete) {
                 Image(systemName: "trash")
                     .font(.system(size: 13, weight: .black))
@@ -1700,14 +1748,14 @@ private extension StudentOnboardingFlowView {
         .padding(.vertical, 14)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.060))
+                .fill(Color.white.opacity(0.055))
                 .overlay(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                        .stroke(Color.white.opacity(0.070), lineWidth: 1)
                 )
         )
     }
-    
+
     func selectionCard(
         title: String,
         subtitle: String,
@@ -1727,29 +1775,29 @@ private extension StudentOnboardingFlowView {
                         Capsule()
                             .fill(isSelected ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.13) : Color.white.opacity(0.07))
                     )
-                
+
                 Spacer()
-                
+
                 Text(title)
-                    .font(.system(size: 23, weight: .black))
+                    .font(.system(size: 21, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
-                
+
                 Text(subtitle)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.56))
                     .lineLimit(2)
             }
-            .padding(18)
-            .frame(maxWidth: .infinity, minHeight: 158, alignment: .leading)
+            .padding(16)
+            .frame(maxWidth: .infinity, minHeight: 138, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 25, style: .continuous)
                     .fill(
                         isSelected
                         ? LinearGradient(
                             colors: [
-                                Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.16),
-                                Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.12),
-                                Color.white.opacity(0.050)
+                                Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.15),
+                                Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.11),
+                                Color.white.opacity(0.040)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -1760,21 +1808,21 @@ private extension StudentOnboardingFlowView {
                         RoundedRectangle(cornerRadius: 25, style: .continuous)
                             .stroke(
                                 isSelected
-                                ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.34)
+                                ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.30)
                                 : Color.white.opacity(0.075),
-                                lineWidth: 1.15
+                                lineWidth: 1
                             )
                     )
                     .shadow(
-                        color: isSelected ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.15) : Color.black.opacity(0.18),
-                        radius: 16,
-                        y: 8
+                        color: isSelected ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.13) : Color.black.opacity(0.16),
+                        radius: 14,
+                        y: 7
                     )
             )
         }
         .buttonStyle(.plain)
     }
-    
+
     func selectionRowCard(
         title: String,
         subtitle: String,
@@ -1785,22 +1833,22 @@ private extension StudentOnboardingFlowView {
             HStack(spacing: 13) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
-                        .font(.system(size: 19, weight: .black))
+                        .font(.system(size: 19, weight: .black, design: .rounded))
                         .foregroundStyle(.white)
-                    
+
                     Text(subtitle)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.52))
                 }
-                
+
                 Spacer()
-                
+
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 19, weight: .black))
                     .foregroundStyle(isSelected ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan) : .white.opacity(0.28))
             }
             .padding(.horizontal, 18)
-            .frame(height: 84)
+            .frame(height: 80)
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .fill(isSelected ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.13) : Color.white.opacity(0.060))
@@ -1812,7 +1860,7 @@ private extension StudentOnboardingFlowView {
         }
         .buttonStyle(.plain)
     }
-    
+
     func selectionNumberCard(
         title: String,
         isSelected: Bool,
@@ -1820,11 +1868,11 @@ private extension StudentOnboardingFlowView {
     ) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 20, weight: .black))
+                .font(.system(size: 19, weight: .black, design: .rounded))
                 .foregroundStyle(isSelected ? .black : .white)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
-                .frame(height: 108)
+                .frame(height: 92)
                 .background(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .fill(
@@ -1840,6 +1888,7 @@ private extension StudentOnboardingFlowView {
         }
         .buttonStyle(.plain)
     }
+
     func selectionChip(
         icon: String,
         title: String,
@@ -1847,17 +1896,17 @@ private extension StudentOnboardingFlowView {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            VStack(spacing: 10) {
+            VStack(spacing: 9) {
                 Image(systemName: icon)
                     .font(.system(size: 18, weight: .black))
                     .foregroundStyle(isSelected ? .black : Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
-                
+
                 Text(title)
-                    .font(.system(size: 16, weight: .black))
+                    .font(.system(size: 15, weight: .black, design: .rounded))
                     .foregroundStyle(isSelected ? .black : .white)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 94)
+            .frame(height: 84)
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .fill(
@@ -1873,59 +1922,131 @@ private extension StudentOnboardingFlowView {
         }
         .buttonStyle(.plain)
     }
-    
+
     func studentOnboardingSurface(radius: CGFloat) -> some View {
         RoundedRectangle(cornerRadius: radius, style: .continuous)
             .fill(StudentOnboardingArenaPalette.cardGradient)
             .overlay(
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.090),
+                                Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.055),
+                                Color.white.opacity(0.030)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
             )
-            .shadow(color: Color.black.opacity(0.20), radius: 14, y: 8)
+            .shadow(color: Color.black.opacity(0.18), radius: 12, y: 7)
     }
-    
+
     func premiumTextField(title: String, text: Binding<String>, placeholder: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.76))
-            
-            TextField("", text: text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.34)))
-                .textInputAutocapitalization(.words)
-                .padding(.horizontal, 14)
-                .frame(height: 50)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(.white.opacity(0.08))
-                )
-                .foregroundStyle(.white)
-        }
-    }
-    
-    func majorRow(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack {
-                Text(title)
-                    .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 13, weight: .black, design: .rounded))
+                .foregroundStyle(.white.opacity(0.68))
+
+            HStack(spacing: 11) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 14, weight: .black))
+                    .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
+                    .frame(width: 22)
+
+                TextField("", text: text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.30)))
+                    .textInputAutocapitalization(.words)
+                    .autocorrectionDisabled()
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
-                
-                Spacer()
-                
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.blue)
-                }
             }
             .padding(.horizontal, 14)
             .frame(height: 52)
             .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(isSelected ? .blue.opacity(0.18) : .white.opacity(0.07))
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white.opacity(0.060))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(Color.white.opacity(0.070), lineWidth: 1)
+                    )
+            )
+        }
+    }
+
+    func majorRow(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(
+                        isSelected
+                        ? StudentOnboardingArenaPalette.appGradient
+                        : LinearGradient(
+                            colors: [
+                                Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.10),
+                                Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.07)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 42, height: 42)
+                    .overlay(
+                        Image(systemName: isSelected ? "checkmark" : "graduationcap.fill")
+                            .font(.system(size: 15, weight: .black))
+                            .foregroundStyle(isSelected ? .black.opacity(0.78) : Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
+                    )
+
+                Text(title)
+                    .font(.system(size: 15, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .black))
+                    .foregroundStyle(.white.opacity(0.24))
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(
+                        isSelected
+                        ? LinearGradient(
+                            colors: [
+                                Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.13),
+                                Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.10),
+                                Color.white.opacity(0.040)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        : LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.055),
+                                Color.white.opacity(0.035)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(
+                                isSelected
+                                ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.26)
+                                : Color.white.opacity(0.065),
+                                lineWidth: 1
+                            )
+                    )
             )
         }
         .buttonStyle(.plain)
     }
-    
+
     func premiumGoalCard(
         title: String,
         value: String,
@@ -1938,16 +2059,16 @@ private extension StudentOnboardingFlowView {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
-                        .font(.system(size: 18, weight: .black))
+                        .font(.system(size: 18, weight: .black, design: .rounded))
                         .foregroundStyle(.white)
-                    
+
                     Text(helper)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.46))
                 }
-                
+
                 Spacer()
-                
+
                 Text(value)
                     .font(.system(size: 13, weight: .black, design: .monospaced))
                     .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
@@ -1958,14 +2079,15 @@ private extension StudentOnboardingFlowView {
                             .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.13))
                     )
             }
-            
+
             Slider(value: slider, in: range, step: step)
                 .tint(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
         }
-        .padding(18)
-        .background(studentOnboardingSurface(radius: 25))
+        .padding(16)
+        .background(studentOnboardingSurface(radius: 24))
     }
 }
+
 private struct StudentOnboardingArenaBackground: View {
     var body: some View {
         ZStack {
@@ -1983,26 +2105,26 @@ private struct StudentOnboardingArenaBackground: View {
             .ignoresSafeArea()
 
             Circle()
-                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.12))
-                .frame(width: 280, height: 280)
+                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.10))
+                .frame(width: 270, height: 270)
                 .blur(radius: 100)
                 .offset(x: 170, y: -250)
 
             Circle()
-                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.17))
-                .frame(width: 330, height: 330)
+                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.13))
+                .frame(width: 320, height: 320)
                 .blur(radius: 115)
                 .offset(x: -180, y: 500)
 
             Circle()
-                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.coral).opacity(0.075))
-                .frame(width: 280, height: 280)
+                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.coral).opacity(0.060))
+                .frame(width: 260, height: 260)
                 .blur(radius: 105)
                 .offset(x: 170, y: 300)
 
             Circle()
-                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold).opacity(0.050))
-                .frame(width: 240, height: 240)
+                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold).opacity(0.040))
+                .frame(width: 220, height: 220)
                 .blur(radius: 95)
                 .offset(x: -170, y: -180)
 

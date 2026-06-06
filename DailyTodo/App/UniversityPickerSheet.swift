@@ -19,6 +19,11 @@ struct UniversityPickerSheet: View {
     @State private var isLoading: Bool = false
     @State private var errorText: String?
 
+    @State private var loadTask: Task<Void, Never>?
+    @State private var latestLoadRequestID = UUID()
+    @State private var didPerformInitialLoad = false
+    @State private var isClosing = false
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -52,7 +57,7 @@ struct UniversityPickerSheet: View {
 
                                 if let errorText, universities.isEmpty {
                                     errorState(errorText)
-                                } else if groupedUniversities.isEmpty {
+                                } else if groupedUniversities.isEmpty && !isLoading {
                                     emptyState
                                 }
                             }
@@ -67,7 +72,7 @@ struct UniversityPickerSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
-                        dismiss()
+                        closeSheet()
                     } label: {
                         HStack(spacing: 7) {
                             Image(systemName: "xmark")
@@ -94,13 +99,22 @@ struct UniversityPickerSheet: View {
         }
         .preferredColorScheme(.dark)
         .task {
-            await loadUniversities()
+            guard !didPerformInitialLoad else { return }
+            didPerformInitialLoad = true
+            scheduleUniversityLoad(debounceNanoseconds: 0)
         }
         .onChange(of: selectedCountryCode) { _, _ in
-            Task { await loadUniversities() }
+            guard !isClosing else { return }
+            scheduleUniversityLoad(debounceNanoseconds: 120_000_000)
         }
         .onChange(of: searchText) { _, _ in
-            Task { await loadUniversities() }
+            guard !isClosing else { return }
+            scheduleUniversityLoad(debounceNanoseconds: 420_000_000)
+        }
+        .onDisappear {
+            isClosing = true
+            loadTask?.cancel()
+            loadTask = nil
         }
     }
 
@@ -204,10 +218,16 @@ struct UniversityPickerSheet: View {
         let isSelected = selectedCountryCode == code
 
         return Button {
+            guard selectedCountryCode != code else { return }
+
             withAnimation(.spring(response: 0.30, dampingFraction: 0.90)) {
                 selectedCountryCode = code
                 searchText = ""
+                universities = []
+                errorText = nil
             }
+
+            scheduleUniversityLoad(debounceNanoseconds: 0)
         } label: {
             HStack(spacing: 8) {
                 Text(title)
@@ -230,7 +250,10 @@ struct UniversityPickerSheet: View {
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 17, style: .continuous)
-                            .stroke(isSelected ? Color.white.opacity(0.12) : Color.white.opacity(0.085), lineWidth: 1)
+                            .stroke(
+                                isSelected ? Color.white.opacity(0.12) : Color.white.opacity(0.085),
+                                lineWidth: 1
+                            )
                     )
             )
         }
@@ -238,12 +261,17 @@ struct UniversityPickerSheet: View {
     }
 
     private func universityRow(_ university: CatalogUniversity) -> some View {
-        let isSelected = selectedUniversityName == university.name
+        let isSelected = selectedUniversityID == university.id || selectedUniversityName == university.name
 
         return Button {
+            isClosing = true
+            loadTask?.cancel()
+            loadTask = nil
+
             selectedUniversityID = university.id
             selectedUniversityName = university.name
             selectedCountryCode = university.country_code
+
             dismiss()
         } label: {
             HStack(spacing: 14) {
@@ -264,7 +292,11 @@ struct UniversityPickerSheet: View {
                     .overlay(
                         Image(systemName: "building.columns.fill")
                             .font(.system(size: 20, weight: .black))
-                            .foregroundStyle(isSelected ? .black.opacity(0.76) : Color(universityPickerHex: UniversityPickerPalette.appCyan))
+                            .foregroundStyle(
+                                isSelected
+                                ? .black.opacity(0.76)
+                                : Color(universityPickerHex: UniversityPickerPalette.appCyan)
+                            )
                     )
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -375,6 +407,22 @@ struct UniversityPickerSheet: View {
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.white.opacity(0.54))
                 .padding(.horizontal, 24)
+
+            Button {
+                scheduleUniversityLoad(debounceNanoseconds: 0)
+            } label: {
+                Text("Retry")
+                    .font(.system(size: 13, weight: .black, design: .rounded))
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 11)
+                    .background(
+                        Capsule()
+                            .fill(UniversityPickerPalette.appGradient)
+                    )
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 4)
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 44)
@@ -403,20 +451,61 @@ struct UniversityPickerSheet: View {
         .padding(.top, 44)
     }
 
-    private func loadUniversities() async {
+    private func closeSheet() {
+        isClosing = true
+        loadTask?.cancel()
+        loadTask = nil
+        dismiss()
+    }
+
+    private func scheduleUniversityLoad(debounceNanoseconds: UInt64) {
+        guard !isClosing else { return }
+
+        loadTask?.cancel()
+
+        let requestID = UUID()
+        latestLoadRequestID = requestID
+
+        loadTask = Task {
+            if debounceNanoseconds > 0 {
+                try? await Task.sleep(nanoseconds: debounceNanoseconds)
+            }
+
+            guard !Task.isCancelled else { return }
+
+            await loadUniversities(requestID: requestID)
+        }
+    }
+
+    @MainActor
+    private func loadUniversities(requestID: UUID) async {
+        guard latestLoadRequestID == requestID, !isClosing else { return }
+
         isLoading = true
         errorText = nil
-        defer { isLoading = false }
+
+        let country = selectedCountryCode.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         do {
-            universities = try await StudentCatalogService.fetchUniversities(
-                countryCode: selectedCountryCode,
-                query: searchText
+            let result = try await StudentCatalogService.fetchUniversities(
+                countryCode: country,
+                query: query
             )
+
+            guard latestLoadRequestID == requestID, !Task.isCancelled, !isClosing else { return }
+
+            universities = result
+            errorText = nil
         } catch {
+            guard latestLoadRequestID == requestID, !Task.isCancelled, !isClosing else { return }
+
             universities = []
             errorText = error.localizedDescription
         }
+
+        guard latestLoadRequestID == requestID, !isClosing else { return }
+        isLoading = false
     }
 }
 
