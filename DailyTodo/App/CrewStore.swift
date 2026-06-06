@@ -34,6 +34,11 @@ final class CrewStore: ObservableObject {
     
     @Published var chatMessagesByCrew: [UUID: [CrewChatMessageItem]] = [:]
     @Published var activeFocusSessionByCrew: [UUID: CrewFocusSessionDTO] = [:]
+    @Published var crewHomeSnapshotByCrew: [UUID: CrewHomeSnapshotCrewDTO] = [:]
+    @Published var totalFocusMinutesByCrew: [UUID: Int] = [:]
+    @Published var weeklyFocusMinutesByCrew: [UUID: Int] = [:]
+    @Published var activeParticipantCountByCrew: [UUID: Int] = [:]
+    @Published var isLoadingCrewHomeSnapshot: Bool = false
     @Published var focusParticipantsBySession: [UUID: [CrewFocusParticipantDTO]] = [:]
     @Published private(set) var currentUserID: UUID?
     
@@ -47,6 +52,8 @@ final class CrewStore: ObservableObject {
     
     private var globalFocusChannel: RealtimeChannelV2?
     private var isSubscribingGlobalFocus = false
+    private var didStartObservingFocusSocketEvents = false
+    private var focusHomeRefreshTask: Task<Void, Never>?
     
     private var taskChannel: RealtimeChannelV2?
     private var memberChannel: RealtimeChannelV2?
@@ -1205,83 +1212,171 @@ final class CrewStore: ObservableObject {
         if globalFocusChannel != nil || isSubscribingGlobalFocus {
             return
         }
-        
+
         isSubscribingGlobalFocus = true
-        
+
         let client = SupabaseManager.shared.client
-        let channel = client.realtimeV2.channel("global-focus")
-        
+        let channel = client.realtimeV2.channel("global-focus-home")
+
         _ = channel.onPostgresChange(
             InsertAction.self,
             schema: "public",
             table: "crew_focus_sessions"
-        ) { [weak self] _ in
+        ) { [weak self] action in
+            guard let self else { return }
+
             Task { @MainActor in
-                await self?.reloadAllActiveSessions()
+                do {
+                    let session = try self.decodeRealtimeRecord(
+                        action.record,
+                        as: CrewFocusSessionDTO.self
+                    )
+
+                    self.upsertActiveFocusSessionForHome(session)
+
+                    if self.focusParticipantsBySession[session.id] == nil {
+                        await self.loadFocusParticipants(sessionID: session.id)
+                    }
+                } catch {
+                    print("GLOBAL FOCUS SESSION INSERT DECODE ERROR:", error.localizedDescription)
+                    self.scheduleCrewHomeFocusRefresh()
+                }
             }
         }
-        
+
         _ = channel.onPostgresChange(
             UpdateAction.self,
             schema: "public",
             table: "crew_focus_sessions"
-        ) { [weak self] _ in
+        ) { [weak self] action in
+            guard let self else { return }
+
             Task { @MainActor in
-                await self?.reloadAllActiveSessions()
+                do {
+                    let session = try self.decodeRealtimeRecord(
+                        action.record,
+                        as: CrewFocusSessionDTO.self
+                    )
+
+                    self.upsertActiveFocusSessionForHome(session)
+
+                    if self.focusParticipantsBySession[session.id] == nil,
+                       self.activeFocusSessionByCrew[session.crew_id] != nil {
+                        await self.loadFocusParticipants(sessionID: session.id)
+                    }
+
+                    if session.ended_at != nil || session.is_active == false {
+                        await self.loadFocusRecords(for: session.crew_id)
+                    }
+                } catch {
+                    print("GLOBAL FOCUS SESSION UPDATE DECODE ERROR:", error.localizedDescription)
+                    self.scheduleCrewHomeFocusRefresh()
+                }
             }
         }
-        
+
         _ = channel.onPostgresChange(
             DeleteAction.self,
             schema: "public",
             table: "crew_focus_sessions"
-        ) { [weak self] _ in
+        ) { [weak self] action in
+            guard let self else { return }
+
             Task { @MainActor in
-                await self?.reloadAllActiveSessions()
+                do {
+                    let session = try self.decodeRealtimeRecord(
+                        action.oldRecord,
+                        as: CrewFocusSessionDTO.self
+                    )
+
+                    self.removeActiveFocusSessionForHome(session)
+                } catch {
+                    print("GLOBAL FOCUS SESSION DELETE DECODE ERROR:", error.localizedDescription)
+                    self.scheduleCrewHomeFocusRefresh()
+                }
             }
         }
-        
+
         _ = channel.onPostgresChange(
             InsertAction.self,
             schema: "public",
             table: "crew_focus_participants"
-        ) { [weak self] _ in
+        ) { [weak self] action in
+            guard let self else { return }
+
             Task { @MainActor in
-                await self?.reloadAllParticipants()
+                do {
+                    let participant = try self.decodeRealtimeRecord(
+                        action.record,
+                        as: CrewFocusParticipantDTO.self
+                    )
+
+                    self.upsertFocusParticipantForHome(participant)
+                } catch {
+                    print("GLOBAL FOCUS PARTICIPANT INSERT DECODE ERROR:", error.localizedDescription)
+                    self.scheduleCrewHomeFocusRefresh()
+                }
             }
         }
-        
+
         _ = channel.onPostgresChange(
             UpdateAction.self,
             schema: "public",
             table: "crew_focus_participants"
-        ) { [weak self] _ in
+        ) { [weak self] action in
+            guard let self else { return }
+
             Task { @MainActor in
-                await self?.reloadAllParticipants()
+                do {
+                    let participant = try self.decodeRealtimeRecord(
+                        action.record,
+                        as: CrewFocusParticipantDTO.self
+                    )
+
+                    self.upsertFocusParticipantForHome(participant)
+                } catch {
+                    print("GLOBAL FOCUS PARTICIPANT UPDATE DECODE ERROR:", error.localizedDescription)
+                    self.scheduleCrewHomeFocusRefresh()
+                }
             }
         }
-        
+
         _ = channel.onPostgresChange(
             DeleteAction.self,
             schema: "public",
             table: "crew_focus_participants"
-        ) { [weak self] _ in
+        ) { [weak self] action in
+            guard let self else { return }
+
             Task { @MainActor in
-                await self?.reloadAllParticipants()
+                do {
+                    let participant = try self.decodeRealtimeRecord(
+                        action.oldRecord,
+                        as: CrewFocusParticipantDTO.self
+                    )
+
+                    self.removeFocusParticipantForHome(
+                        sessionID: participant.session_id,
+                        userID: participant.user_id
+                    )
+                } catch {
+                    print("GLOBAL FOCUS PARTICIPANT DELETE DECODE ERROR:", error.localizedDescription)
+                    self.scheduleCrewHomeFocusRefresh()
+                }
             }
         }
-        
+
         globalFocusChannel = channel
-        
+
         Task { @MainActor in
             do {
                 try await channel.subscribeWithError()
-                print("✅ GLOBAL FOCUS REALTIME SUBSCRIBED")
+                print("✅ GLOBAL FOCUS HOME REALTIME SUBSCRIBED")
             } catch {
-                print("GLOBAL FOCUS REALTIME SUBSCRIBE ERROR:", error.localizedDescription)
+                print("GLOBAL FOCUS HOME REALTIME SUBSCRIBE ERROR:", error.localizedDescription)
                 globalFocusChannel = nil
             }
-            
+
             isSubscribingGlobalFocus = false
         }
     }
@@ -1297,7 +1392,177 @@ final class CrewStore: ObservableObject {
             await loadFocusParticipants(sessionID: session.id)
         }
     }
-    
+    // MARK: - Crew Home Realtime Optimization
+
+    private func isValidActiveFocusSession(_ session: CrewFocusSessionDTO) -> Bool {
+        guard session.is_active else { return false }
+        guard session.ended_at == nil else { return false }
+
+        if session.is_paused {
+            return (session.paused_remaining_seconds ?? 0) > 0
+        }
+
+        guard let startedAt = CrewDateParser.parse(session.started_at) else {
+            return false
+        }
+
+        let endDate = startedAt.addingTimeInterval(
+            TimeInterval(session.duration_minutes * 60)
+        )
+
+        return endDate > Date()
+    }
+
+    private func upsertActiveFocusSessionForHome(_ session: CrewFocusSessionDTO) {
+        if isValidActiveFocusSession(session) {
+            activeFocusSessionByCrew[session.crew_id] = session
+        } else {
+            activeFocusSessionByCrew.removeValue(forKey: session.crew_id)
+            focusParticipantsBySession.removeValue(forKey: session.id)
+        }
+    }
+
+    private func removeActiveFocusSessionForHome(_ session: CrewFocusSessionDTO) {
+        activeFocusSessionByCrew.removeValue(forKey: session.crew_id)
+        focusParticipantsBySession.removeValue(forKey: session.id)
+    }
+
+    private func upsertFocusParticipantForHome(_ participant: CrewFocusParticipantDTO) {
+        guard participant.is_active else {
+            removeFocusParticipantForHome(
+                sessionID: participant.session_id,
+                userID: participant.user_id
+            )
+            return
+        }
+
+        var participants = focusParticipantsBySession[participant.session_id] ?? []
+
+        if let userID = participant.user_id,
+           let index = participants.firstIndex(where: { $0.user_id == userID }) {
+            participants[index] = participant
+        } else if let index = participants.firstIndex(where: { $0.id == participant.id }) {
+            participants[index] = participant
+        } else {
+            participants.append(participant)
+        }
+
+        focusParticipantsBySession[participant.session_id] = participants
+    }
+
+    private func removeFocusParticipantForHome(
+        sessionID: UUID,
+        userID: UUID?
+    ) {
+        guard var participants = focusParticipantsBySession[sessionID] else { return }
+
+        if let userID {
+            participants.removeAll { $0.user_id == userID }
+        } else {
+            participants.removeAll { !$0.is_active }
+        }
+
+        focusParticipantsBySession[sessionID] = participants
+    }
+
+    private func decodeRealtimeRecord<T: Decodable>(
+        _ record: [String: Any],
+        as type: T.Type
+    ) throws -> T {
+        let data = try JSONSerialization.data(withJSONObject: record)
+        return try JSONDecoder().decode(T.self, from: data)
+    }
+
+    func scheduleCrewHomeFocusRefresh(
+        crewID: UUID? = nil,
+        delayNanoseconds: UInt64 = 350_000_000
+    ) {
+        focusHomeRefreshTask?.cancel()
+
+        focusHomeRefreshTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: delayNanoseconds)
+
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                guard let self else { return }
+
+                Task { @MainActor in
+                    if let crewID {
+                        await self.loadActiveFocusSession(for: crewID)
+
+                        if let session = self.activeFocusSessionByCrew[crewID] {
+                            await self.loadFocusParticipants(sessionID: session.id)
+                        }
+
+                        await self.loadFocusRecords(for: crewID)
+                    } else {
+                        await self.loadFocusStateForAllCrews()
+                    }
+                }
+            }
+        }
+    }
+    // MARK: - Crew Home Snapshot
+
+    func loadCrewHomeSnapshot() async {
+        guard !isLoadingCrewHomeSnapshot else { return }
+
+        isLoadingCrewHomeSnapshot = true
+        defer { isLoadingCrewHomeSnapshot = false }
+
+        guard let snapshot = await CrewBackendClient.shared.getCrewHomeSnapshot() else {
+            return
+        }
+
+        applyCrewHomeSnapshot(snapshot)
+    }
+
+    private func applyCrewHomeSnapshot(_ snapshot: CrewHomeSnapshotDTO) {
+        var nextSnapshotByCrew: [UUID: CrewHomeSnapshotCrewDTO] = [:]
+        var nextTotalFocus: [UUID: Int] = totalFocusMinutesByCrew
+        var nextWeeklyFocus: [UUID: Int] = weeklyFocusMinutesByCrew
+        var nextActiveParticipantCount: [UUID: Int] = activeParticipantCountByCrew
+
+        for item in snapshot.crews {
+            let crewID = item.crew_id
+
+            nextSnapshotByCrew[crewID] = item
+
+            memberCountByCrew[crewID] = max(item.member_count, 0)
+            taskCountByCrew[crewID] = max(item.task_count, 0)
+            completedTaskCountByCrew[crewID] = max(item.completed_task_count, 0)
+
+            nextTotalFocus[crewID] = max(item.total_focus_minutes, 0)
+            nextWeeklyFocus[crewID] = max(item.weekly_focus_minutes, 0)
+            nextActiveParticipantCount[crewID] = max(item.active_participant_count, 0)
+
+            if let activeSession = item.active_session {
+                activeFocusSessionByCrew[crewID] = activeSession
+            } else {
+                if let oldSession = activeFocusSessionByCrew[crewID] {
+                    focusParticipantsBySession.removeValue(forKey: oldSession.id)
+                }
+
+                activeFocusSessionByCrew.removeValue(forKey: crewID)
+            }
+
+            if let currentUserID,
+               let index = crewMembers.firstIndex(where: {
+                   $0.crew_id == crewID && $0.user_id == currentUserID
+               }) {
+                crewMembers[index].unread_count = item.unread_count
+                crewMembers[index].is_pinned = item.is_pinned
+                crewMembers[index].is_muted = item.is_muted
+                crewMembers[index].is_archived = item.is_archived
+            }
+        }
+
+        crewHomeSnapshotByCrew = nextSnapshotByCrew
+        totalFocusMinutesByCrew = nextTotalFocus
+        weeklyFocusMinutesByCrew = nextWeeklyFocus
+        activeParticipantCountByCrew = nextActiveParticipantCount
+    }
     // MARK: - Existing Loads / Actions
     
     func loadCrews(force: Bool = false) async {
@@ -1591,12 +1856,17 @@ final class CrewStore: ObservableObject {
         chatMessagesByCrew = [:]
         activeFocusSessionByCrew = [:]
         focusParticipantsBySession = [:]
+        crewHomeSnapshotByCrew = [:]
+        totalFocusMinutesByCrew = [:]
+        weeklyFocusMinutesByCrew = [:]
+        activeParticipantCountByCrew = [:]
+        isLoadingCrewHomeSnapshot = false
         chatMessagesByCrew = [:]
         chatLastLoadedAtByCrew = [:]
         hasLoadedChatInitiallyByCrew = [:]
         chatLoadingByCrew = [:]
         hasLoadedCrews = false
-        
+
         unsubscribe()
         unsubscribeCrewChat()
         unsubscribeCrewAuxRealtime()
@@ -1689,23 +1959,44 @@ final class CrewStore: ObservableObject {
     }
     
     func loadHomeCacheForAllCrews() async {
-        for crew in crews {
-            await loadMembers(for: crew.id)
-            await loadTasks(for: crew.id)
-            await loadFocusRecords(for: crew.id)
-            await loadActiveFocusSession(for: crew.id)
-            
-            if let session = activeFocusSessionByCrew[crew.id] {
-                await loadFocusParticipants(sessionID: session.id)
+        let targetCrews = crews
+
+        guard !targetCrews.isEmpty else { return }
+
+        await withTaskGroup(of: Void.self) { group in
+            for crew in targetCrews {
+                group.addTask { [weak self] in
+                    guard let self else { return }
+
+                    await self.loadMembers(for: crew.id)
+                    await self.loadTaskCount(for: crew.id)
+                    await self.loadFocusRecords(for: crew.id)
+                    await self.loadActiveFocusSession(for: crew.id)
+
+                    if let session = await MainActor.run(body: {
+                        self.activeFocusSessionByCrew[crew.id]
+                    }) {
+                        await self.loadFocusParticipants(sessionID: session.id)
+                    }
+                }
             }
         }
     }
     
     func loadStatsForAllCrews() async {
-        for crew in crews {
-            await loadMemberCount(for: crew.id)
-            await loadTaskCount(for: crew.id)
-            await loadCompletedTaskCount(for: crew.id)
+        let targetCrews = crews
+
+        guard !targetCrews.isEmpty else { return }
+
+        await withTaskGroup(of: Void.self) { group in
+            for crew in targetCrews {
+                group.addTask { [weak self] in
+                    guard let self else { return }
+
+                    await self.loadMemberCount(for: crew.id)
+                    await self.loadTaskCount(for: crew.id)
+                }
+            }
         }
     }
     
@@ -2295,6 +2586,7 @@ final class CrewStore: ObservableObject {
         // Final refresh
         await loadActiveFocusSession(for: crewID)
         await loadFocusRecords(for: crewID)
+        await loadCrewHomeSnapshot()
     }
     func updateCrewLastMessageMetadata(
         crewID: UUID,
@@ -2328,6 +2620,9 @@ final class CrewStore: ObservableObject {
     }
     
     func startObservingFocusSocketEvents() {
+        guard !didStartObservingFocusSocketEvents else { return }
+        didStartObservingFocusSocketEvents = true
+
         let nc = NotificationCenter.default
      
         // Session lifecycle events
@@ -2676,10 +2971,12 @@ final class CrewStore: ObservableObject {
     @MainActor
     private func handleFocusRecordCreatedEvent(notification: Notification) {
         guard let record = notification.userInfo?["record"] as? CrewFocusRecordDTO else { return }
-     
-        // Granular ekle: aynı id varsa atla
+
         if !crewFocusRecords.contains(where: { $0.id == record.id }) {
             crewFocusRecords.insert(record, at: 0)
+
+            totalFocusMinutesByCrew[record.crew_id, default: 0] += max(record.minutes, 0)
+            weeklyFocusMinutesByCrew[record.crew_id, default: 0] += max(record.minutes, 0)
         }
     }
     
@@ -2909,6 +3206,10 @@ final class CrewStore: ObservableObject {
 extension CrewStore {
     var crewHomeSummary: CrewHomeSummary {
         let visibleCrews = crews.filter { crew in
+            if let snapshot = crewHomeSnapshotByCrew[crew.id] {
+                return snapshot.is_archived == false
+            }
+
             guard let currentUserID else { return true }
 
             let myMemberState = crewMembers.first {
@@ -2918,7 +3219,10 @@ extension CrewStore {
             return myMemberState?.is_archived != true
         }
 
-        let liveCount = activeFocusSessionByCrew.values.count
+        let liveCount = visibleCrews.filter { crew in
+            activeFocusSessionByCrew[crew.id] != nil ||
+            crewHomeSnapshotByCrew[crew.id]?.active_session != nil
+        }.count
 
         return CrewHomeSummary(
             crewCount: visibleCrews.count,
@@ -2930,6 +3234,10 @@ extension CrewStore {
 
     var crewHomeCrewCards: [CrewSocialCrewCardData] {
         let visibleCrews = crews.filter { crew in
+            if let snapshot = crewHomeSnapshotByCrew[crew.id] {
+                return snapshot.is_archived == false
+            }
+
             guard let currentUserID else { return true }
 
             let myMemberState = crewMembers.first {
@@ -2940,33 +3248,53 @@ extension CrewStore {
         }
 
         return visibleCrews.enumerated().map { index, crew in
-            let memberCount = memberCountByCrew[crew.id] ?? crewMembers.filter { $0.crew_id == crew.id }.count
-            let taskCount = taskCountByCrew[crew.id] ?? crewTasks.filter { $0.crew_id == crew.id }.count
-            let completedTaskCount = completedTaskCountByCrew[crew.id] ?? crewTasks.filter {
-                $0.crew_id == crew.id && $0.is_done
-            }.count
+            let snapshot = crewHomeSnapshotByCrew[crew.id]
 
-            let focusMinutes = crewFocusRecords
-                .filter { $0.crew_id == crew.id }
-                .map(\.minutes)
-                .reduce(0, +)
+            let memberCount = snapshot?.member_count
+                ?? memberCountByCrew[crew.id]
+                ?? crewMembers.filter { $0.crew_id == crew.id }.count
 
-            let hasActiveSession = activeFocusSessionByCrew[crew.id] != nil
+            let taskCount = snapshot?.task_count
+                ?? taskCountByCrew[crew.id]
+                ?? crewTasks.filter { $0.crew_id == crew.id }.count
 
-            let weeklyFocusMinutes: Int = focusMinutes > 0
-            ? focusMinutes
-            : CrewHomeFormatters.pseudoFocusMinutes(
-                memberCount: memberCount,
-                completedTaskCount: completedTaskCount,
-                taskCount: taskCount,
-                isLive: hasActiveSession
-            )
+            let completedTaskCount = snapshot?.completed_task_count
+                ?? completedTaskCountByCrew[crew.id]
+                ?? crewTasks.filter {
+                    $0.crew_id == crew.id && $0.is_done
+                }.count
+
+            let realFocusMinutes = snapshot?.total_focus_minutes
+                ?? totalFocusMinutesByCrew[crew.id]
+                ?? crewFocusRecords
+                    .filter { $0.crew_id == crew.id }
+                    .map(\.minutes)
+                    .reduce(0, +)
+
+            let hasActiveSession = snapshot?.active_session != nil
+                || activeFocusSessionByCrew[crew.id] != nil
 
             let myMemberState = currentUserID.flatMap { userID in
                 crewMembers.first {
                     $0.crew_id == crew.id && $0.user_id == userID
                 }
             }
+
+            let unreadCount = snapshot?.unread_count
+                ?? myMemberState?.unread_count
+                ?? 0
+
+            let isPinned = snapshot?.is_pinned
+                ?? myMemberState?.is_pinned
+                ?? false
+
+            let isMuted = snapshot?.is_muted
+                ?? myMemberState?.is_muted
+                ?? false
+
+            let isArchived = snapshot?.is_archived
+                ?? myMemberState?.is_archived
+                ?? false
 
             return CrewSocialCrewCardData(
                 id: crew.id,
@@ -2977,20 +3305,15 @@ extension CrewStore {
                 taskCount: taskCount,
                 completedTaskCount: completedTaskCount,
                 isLive: hasActiveSession,
-                weeklyFocusMinutes: weeklyFocusMinutes,
+                weeklyFocusMinutes: max(realFocusMinutes, 0),
                 rankText: CrewHomeFormatters.pseudoRankText(index: index),
-                streakDays: CrewHomeFormatters.pseudoStreakDays(
-                    memberCount: memberCount,
-                    completedTaskCount: completedTaskCount,
-                    isLive: hasActiveSession
-                ),
+                streakDays: 0,
                 lastMessageText: crew.last_message_text,
-                unreadCount: myMemberState?.unread_count ?? 0,
-                isPinned: myMemberState?.is_pinned ?? false,
-                isMuted: myMemberState?.is_muted ?? false,
-                isArchived: myMemberState?.is_archived ?? false
+                unreadCount: unreadCount,
+                isPinned: isPinned,
+                isMuted: isMuted,
+                isArchived: isArchived
             )
-            
         }
     }
 }

@@ -137,6 +137,47 @@ struct CrewBackendOKResponse: Decodable {
     let ok: Bool
     let error: String?
 }
+
+struct CrewHomeSnapshotResponse: Decodable {
+    let ok: Bool
+    let userId: UUID?
+    let snapshot: CrewHomeSnapshotDTO?
+    let error: String?
+}
+
+struct CrewHomeSnapshotDTO: Decodable {
+    let crews: [CrewHomeSnapshotCrewDTO]
+}
+
+struct CrewHomeSnapshotCrewDTO: Decodable, Identifiable {
+    var id: UUID { crew_id }
+
+    let crew_id: UUID
+    let owner_id: UUID
+    let name: String
+    let icon: String?
+    let color_hex: String?
+    let last_message_text: String?
+    let last_message_at: String?
+    let last_sender_id: UUID?
+
+    let member_count: Int
+    let task_count: Int
+    let completed_task_count: Int
+    let total_focus_minutes: Int
+    let weekly_focus_minutes: Int
+
+    let active_session: CrewFocusSessionDTO?
+    let active_participant_count: Int
+
+    let unread_count: Int
+    let is_pinned: Bool
+    let is_muted: Bool
+    let is_archived: Bool
+
+    let created_at: String?
+    let updated_at: String?
+}
  
 // MARK: - Error
  
@@ -303,6 +344,42 @@ final class CrewBackendClient {
             if isCancelledError(error) { return [] }
             ChatBackendLogger.error("❌ CREW BACKEND listCrews ERROR:", error.localizedDescription)
             return []
+        }
+    }
+    
+    /// Crew Home için tek snapshot.
+    /// CrewStore'un home ekranında ayrı ayrı member/task/focus çağrısı yapmasını önler.
+    @discardableResult
+    func getCrewHomeSnapshot() async -> CrewHomeSnapshotDTO? {
+        do {
+            let request = try await makeRequest(
+                path: "/v1/crews/home-snapshot",
+                method: "GET",
+                timeout: 25
+            )
+
+            let decoded = try await perform(
+                request,
+                responseType: CrewHomeSnapshotResponse.self,
+                debugName: "crewHomeSnapshot"
+            )
+
+            guard decoded.ok else {
+                ChatBackendLogger.error(
+                    "❌ CREW BACKEND crewHomeSnapshot API ERROR:",
+                    decoded.error ?? "unknown"
+                )
+                return nil
+            }
+
+            return decoded.snapshot
+        } catch {
+            if isCancelledError(error) { return nil }
+            ChatBackendLogger.error(
+                "❌ CREW BACKEND crewHomeSnapshot ERROR:",
+                error.localizedDescription
+            )
+            return nil
         }
     }
  

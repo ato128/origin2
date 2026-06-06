@@ -147,8 +147,10 @@ struct CrewView: View {
                 
                 await initialLoadIfNeeded()
 
-                crewStore.subscribeToCrewsListRealtime(for: userID)
+                await crewStore.loadCrews()
+                await crewStore.loadCrewHomeSnapshot()
                 crewStore.subscribeToGlobalFocusRealtime()
+                crewStore.startObservingFocusSocketEvents()
 
                 friendStore.subscribeToFriendshipsRealtime(currentUserID: userID)
 
