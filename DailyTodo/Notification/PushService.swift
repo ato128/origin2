@@ -17,7 +17,7 @@ final class PushService {
     private let anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6InNyenZ6YWN6Z3lkd3RvcG5scnZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NjIzNjAsImV4cCI6MjA4OTQzODM2MH0.8eSacyni-OQZEU6wbMZwjSPhLdQthZFGvUwHlCiaaF4"
 
     private var currentEnvironment: String {
-        PushTokenStore.shared.currentEnvironment
+        "production"
     }
 
     private func performRequest(bodyObject: [String: Any]) {
@@ -71,6 +71,8 @@ final class PushService {
         path: String,
         bodyObject: [String: Any]
     ) {
+        var bodyObject = bodyObject
+        bodyObject["environment"] = "production"
         guard let url = URL(string: "\(ChatBackendEnvironment.httpBaseURL)/v1\(path)") else {
             print("FOCUS BACKEND PUSH URL ERROR")
             return

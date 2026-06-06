@@ -21,60 +21,15 @@ final class PushTokenStore {
     private var isSaving = false
     private var pendingSaveTask: Task<Void, Never>?
 
+    // MARK: - Production Only
+
     var currentEnvironment: String {
-            Self.detectAPNsEnvironment()
-        }
+        "production"
+    }
 
-        /// APNs environment'ı runtime'da tespit eder.
-        /// Provisioning profile'dan aps-environment değerini okur.
-        /// Bu sayede TestFlight, App Store, Development build'leri ayırt edilir.
-        static func detectAPNsEnvironment() -> String {
-            #if targetEnvironment(simulator)
-            // Simülatör daima sandbox
-            return "sandbox"
-            #else
-            // Gerçek cihaz: provisioning profile'dan oku
-            guard let path = Bundle.main.path(
-                forResource: "embedded",
-                ofType: "mobileprovision"
-            ) else {
-                // Profile bulunamadıysa: App Store build (genellikle production)
-                return "production"
-            }
-
-            do {
-                let data = try Data(contentsOf: URL(fileURLWithPath: path))
-
-                // Provisioning profile binary'inde plist gömülü
-                guard let plistRange = data.range(of: "<plist".data(using: .utf8)!),
-                      let endRange = data.range(of: "</plist>".data(using: .utf8)!) else {
-                    return "production"
-                }
-
-                let plistData = data.subdata(
-                    in: plistRange.lowerBound..<endRange.upperBound
-                )
-
-                guard let plist = try PropertyListSerialization.propertyList(
-                    from: plistData,
-                    options: [],
-                    format: nil
-                ) as? [String: Any],
-                      let entitlements = plist["Entitlements"] as? [String: Any],
-                      let apsEnvironment = entitlements["aps-environment"] as? String
-                else {
-                    return "production"
-                }
-
-                // aps-environment "development" veya "production" döner
-                // Bizim sandbox / production'a çevirelim
-                return apsEnvironment == "development" ? "sandbox" : "production"
-            } catch {
-                print("❌ APNS ENV DETECT ERROR:", error.localizedDescription)
-                return "production"
-            }
-            #endif
-        }
+    static func detectAPNsEnvironment() -> String {
+        "production"
+    }
 
     var currentToken: String? {
         UserDefaults.standard
@@ -93,7 +48,7 @@ final class PushTokenStore {
         UserDefaults.standard.set(cleanToken, forKey: tokenKey)
         UserDefaults.standard.synchronize()
 
-        print("✅ PUSH TOKEN STORED:", currentEnvironment)
+        print("✅ PUSH TOKEN STORED: production")
         print("✅ PUSH TOKEN START:", String(cleanToken.prefix(14)))
     }
 
@@ -122,10 +77,10 @@ final class PushTokenStore {
             return
         }
 
-        let environment = currentEnvironment
+        let environment = "production"
 
         if isAlreadySaved(token: cleanToken, environment: environment) {
-            print("⚪️ PUSH TOKEN SAVE SKIPPED: already saved for \(environment)")
+            print("⚪️ PUSH TOKEN SAVE SKIPPED: already saved for production")
             return
         }
 
@@ -137,7 +92,7 @@ final class PushTokenStore {
         }
 
         print("🟡 PUSH TOKEN SAVE START:", reason)
-        print("🟡 PUSH TOKEN ENV:", environment)
+        print("🟡 PUSH TOKEN ENV: production")
         print("🟡 PUSH TOKEN START:", String(cleanToken.prefix(14)))
 
         let success = await ChatBackendClient.shared.savePushTokenWithRetry(
@@ -151,7 +106,7 @@ final class PushTokenStore {
             UserDefaults.standard.set(environment, forKey: lastSavedEnvironmentKey)
             UserDefaults.standard.synchronize()
 
-            print("✅ PUSH TOKEN SAVE COMPLETE:", environment)
+            print("✅ PUSH TOKEN SAVE COMPLETE: production")
         } else {
             print("❌ PUSH TOKEN SAVE FAILED AFTER RETRY")
         }
@@ -172,4 +127,3 @@ final class PushTokenStore {
         return savedToken == token && savedEnvironment == environment
     }
 }
-
