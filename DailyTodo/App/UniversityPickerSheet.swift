@@ -268,9 +268,9 @@ struct UniversityPickerSheet: View {
             loadTask?.cancel()
             loadTask = nil
 
-            selectedUniversityID = university.id
             selectedUniversityName = university.name
             selectedCountryCode = university.country_code
+            selectedUniversityID = university.id
 
             dismiss()
         } label: {

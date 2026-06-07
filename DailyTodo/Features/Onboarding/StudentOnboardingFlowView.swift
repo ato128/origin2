@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct OnboardingCourseDraft: Identifiable, Hashable {
     let id = UUID()
@@ -74,6 +75,7 @@ struct StudentOnboardingFlowView: View {
 
     @State private var currentStep: Int = 0
     @State private var isSubmitting: Bool = false
+    @State private var submitError: String?
 
     @State private var educationLevel: String = "high_school"
     @State private var gradeLevel: String = "9"
@@ -87,7 +89,7 @@ struct StudentOnboardingFlowView: View {
     @State private var majorSearchText: String = ""
 
     @State private var dailyStudyGoalMinutes: Double = 120
-    @State private var weeklyStudyGoalMinutes: Double = 840
+  
 
     @State private var draftCourseCode: String = ""
     @State private var draftCourseName: String = ""
@@ -186,6 +188,11 @@ struct StudentOnboardingFlowView: View {
             }
         }
         .onChange(of: institutionName) { _, _ in
+            // UniversityPickerSheet seçiminde institutionName değişiyor.
+            // Eğer selectedUniversityID zaten varsa buradan temizleme yapma.
+            // Major yükleme/temizleme sadece selectedUniversityID üzerinden yönetilecek.
+            guard selectedUniversityID == nil else { return }
+
             remoteMajors = []
             remoteSuggestedCourses = []
             allMajorCourses = []
@@ -194,9 +201,6 @@ struct StudentOnboardingFlowView: View {
             majorName = ""
             majorSearchText = ""
             localCourses.removeAll(where: { $0.isSuggested })
-
-            // Burada load çağırmıyoruz.
-            // Major yükleme tek kaynak olarak selectedUniversityID değişiminden yapılır.
         }
         .onChange(of: selectedUniversityID) { _, newValue in
             remoteSuggestedCourses = []
@@ -1108,15 +1112,6 @@ struct StudentOnboardingFlowView: View {
                 helper: "Your focused study target per day."
             )
 
-            premiumGoalCard(
-                title: "Weekly Goal",
-                value: "\(Int(weeklyStudyGoalMinutes)) min",
-                slider: $weeklyStudyGoalMinutes,
-                range: 120...3000,
-                step: 30,
-                helper: "Your total academic target per week."
-            )
-
             compactInfoGroup(
                 title: "Summary",
                 items: [
@@ -1126,9 +1121,14 @@ struct StudentOnboardingFlowView: View {
                     ("square.grid.2x2", educationLevel == "high_school"
                         ? labelForTrack(highSchoolTrack)
                         : (majorName.isEmpty ? "Major not selected" : majorName)),
-                    ("list.bullet.rectangle", "\(localCourses.count) course(s) selected")
+                    ("list.bullet.rectangle", "\(localCourses.count) course(s) selected"),
+                    ("target", "\(Int(dailyStudyGoalMinutes)) min daily focus goal")
                 ]
             )
+
+            if let submitError {
+                studentSubmitErrorCard(submitError)
+            }
         }
     }
 
@@ -1244,6 +1244,8 @@ struct StudentOnboardingFlowView: View {
     }
 
     private func handleContinue() {
+        submitError = nil
+
         if currentStep < totalSteps - 1 {
             withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
                 currentStep += 1
@@ -1263,32 +1265,45 @@ struct StudentOnboardingFlowView: View {
         let normalizedCourses = localCourses
             .map {
                 OnboardingCourseDraft(
-                    code: $0.code.trimmingCharacters(in: .whitespacesAndNewlines),
+                    code: $0.code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(),
                     name: $0.name.trimmingCharacters(in: .whitespacesAndNewlines),
                     isSuggested: $0.isSuggested
                 )
             }
             .filter { !$0.name.isEmpty }
 
-        guard !normalizedCourses.isEmpty else { return }
+        guard !normalizedCourses.isEmpty else {
+            submitError = "Please add at least one course."
+            StudentOnboardingHaptics.warning()
+            return
+        }
 
         focusedField = nil
+        submitError = nil
         isSubmitting = true
         defer { isSubmitting = false }
 
-        await studentStore.completeOnboardingAndSync(
-            educationLevel: educationLevel,
-            gradeLevel: gradeLevel,
-            highSchoolTrack: educationLevel == "high_school" ? highSchoolTrack : nil,
-            institutionName: educationLevel == "university" ? institutionName : nil,
-            institutionCountry: educationLevel == "university" ? institutionCountry : nil,
-            majorName: educationLevel == "university" ? cleanedMajor : nil,
-            dailyStudyGoalMinutes: Int(dailyStudyGoalMinutes),
-            weeklyStudyGoalMinutes: Int(weeklyStudyGoalMinutes),
-            courseDrafts: normalizedCourses
-        )
+        do {
+            let computedWeeklyGoal = Int(dailyStudyGoalMinutes) * 7
+            try await studentStore.completeOnboardingAndSync(
+                educationLevel: educationLevel,
+                gradeLevel: gradeLevel,
+                highSchoolTrack: educationLevel == "high_school" ? highSchoolTrack : nil,
+                institutionName: educationLevel == "university" ? institutionName : nil,
+                institutionCountry: educationLevel == "university" ? institutionCountry : nil,
+                majorName: educationLevel == "university" ? cleanedMajor : nil,
+                dailyStudyGoalMinutes: Int(dailyStudyGoalMinutes),
+                weeklyStudyGoalMinutes: computedWeeklyGoal,
+                courseDrafts: normalizedCourses
+            )
 
-        studentStore.forceRestoreCoursesFromOnboardingDrafts(normalizedCourses)
+            studentStore.forceRestoreCoursesFromOnboardingDrafts(normalizedCourses)
+            StudentOnboardingHaptics.success()
+        } catch {
+            submitError = "Your profile and courses could not be saved. Please check your connection and try again."
+            StudentOnboardingHaptics.warning()
+            print("❌ STUDENT ONBOARDING COMPLETE ERROR:", error.localizedDescription)
+        }
     }
 
     private func loadMajorsForSelectedUniversity() async {
@@ -1624,6 +1639,36 @@ struct StudentOnboardingFlowView: View {
 }
 
 private extension StudentOnboardingFlowView {
+    func studentSubmitErrorCard(_ text: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 18, weight: .black))
+                .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Setup could not be saved")
+                    .font(.system(size: 15, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+
+                Text(text)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.58))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold).opacity(0.12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold).opacity(0.20), lineWidth: 1)
+                )
+        )
+    }
+    
     func compactFeatureCard(icon: String, title: String) -> some View {
         HStack(spacing: 13) {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -2141,7 +2186,27 @@ private struct StudentOnboardingArenaBackground: View {
         }
     }
 }
+// MARK: - Student Onboarding Haptics
 
+private enum StudentOnboardingHaptics {
+    static func softTap() {
+        let generator = UIImpactFeedbackGenerator(style: .soft)
+        generator.prepare()
+        generator.impactOccurred(intensity: 0.72)
+    }
+
+    static func success() {
+        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
+        generator.notificationOccurred(.success)
+    }
+
+    static func warning() {
+        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
+        generator.notificationOccurred(.warning)
+    }
+}
 private extension Color {
     init(studentOnboardingHex hex: String) {
         let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)

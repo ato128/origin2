@@ -10,7 +10,12 @@ import SwiftData
 import UIKit
 
 enum AppOnboardingStage: String, CaseIterable {
-    case features, student, friends, crew, schedule, done
+    case features
+    case student
+    case focus
+    case widgets
+    case community
+    case done
 }
 
 private enum OnboardingRequestState: Equatable {
@@ -120,6 +125,7 @@ struct AppOnboardingFlowView: View {
     @State private var selectedStartMinute = 0
     @State private var selectedDuration = 60
     @State private var scheduleState: OnboardingRequestState = .idle
+    @State private var finalState: OnboardingRequestState = .idle
 
     @FocusState private var focusedField: OnboardingFocusField?
 
@@ -150,14 +156,14 @@ struct AppOnboardingFlowView: View {
                         if completed { goNext() }
                     }
 
-            case .friends:
-                friendsScreen
+            case .focus:
+                focusExperienceScreen
 
-            case .crew:
-                crewScreen
+            case .widgets:
+                widgetsExperienceScreen
 
-            case .schedule:
-                scheduleScreen
+            case .community:
+                communityExperienceScreen
 
             case .done:
                 finishingScreen
@@ -188,35 +194,48 @@ struct AppOnboardingFlowView: View {
             return
         }
 
+        if AppOnboardingStage(rawValue: stageRawValue) == nil {
+            stageRawValue = studentStore.hasCompletedStudentProfile
+                ? AppOnboardingStage.focus.rawValue
+                : AppOnboardingStage.features.rawValue
+            return
+        }
+
         if stage == .student, studentStore.hasCompletedStudentProfile {
-            stageRawValue = AppOnboardingStage.friends.rawValue
+            stageRawValue = AppOnboardingStage.focus.rawValue
         }
     }
 
     private func goNext() {
         focusedField = nil
+
+        if stage == .community {
+            Task {
+                await completeFullOnboarding()
+            }
+            return
+        }
+
         OnboardingHaptics.softTap()
 
         let update = {
             switch stage {
             case .features:
                 stageRawValue = studentStore.hasCompletedStudentProfile
-                ? AppOnboardingStage.friends.rawValue
-                : AppOnboardingStage.student.rawValue
+                    ? AppOnboardingStage.focus.rawValue
+                    : AppOnboardingStage.student.rawValue
 
             case .student:
-                stageRawValue = AppOnboardingStage.friends.rawValue
+                stageRawValue = AppOnboardingStage.focus.rawValue
 
-            case .friends:
-                stageRawValue = AppOnboardingStage.crew.rawValue
+            case .focus:
+                stageRawValue = AppOnboardingStage.widgets.rawValue
 
-            case .crew:
-                stageRawValue = AppOnboardingStage.schedule.rawValue
+            case .widgets:
+                stageRawValue = AppOnboardingStage.community.rawValue
 
-            case .schedule:
-                OnboardingHaptics.success()
-                didFinishFullOnboarding = true
-                stageRawValue = AppOnboardingStage.done.rawValue
+            case .community:
+                break
 
             case .done:
                 break
@@ -229,6 +248,45 @@ struct AppOnboardingFlowView: View {
             withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
                 update()
             }
+        }
+    }
+    
+    private func completeFullOnboarding() async {
+        guard !finalState.isLoading else { return }
+
+        finalState = .loading
+        focusedField = nil
+
+        guard studentStore.hasCompletedStudentProfile else {
+            finalState = .failed("Student setup tamamlanmadan uygulamaya geçilemez.")
+            OnboardingHaptics.warning()
+
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
+                stageRawValue = AppOnboardingStage.student.rawValue
+            }
+
+            return
+        }
+
+        await studentStore.loadFromRemote()
+
+        guard studentStore.hasCompletedStudentProfile else {
+            finalState = .failed("Profilin doğrulanamadı. Tekrar dene.")
+            OnboardingHaptics.warning()
+            return
+        }
+
+        await crewStore.loadCrews(force: true)
+        await crewStore.loadCrewHomeSnapshot()
+
+        finalState = .success("Updo hazır.")
+        OnboardingHaptics.success()
+
+        try? await Task.sleep(nanoseconds: 450_000_000)
+
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
+            didFinishFullOnboarding = true
+            stageRawValue = AppOnboardingStage.done.rawValue
         }
     }
 }
@@ -256,6 +314,226 @@ private extension AppOnboardingFlowView {
                 FeatureOverviewGridItem(icon: "timer", title: "Focus", subtitle: "Odak oturumlarıyla ilerle", tint: Color(onboardingHex: OnboardingArenaPalette.coral))
                 FeatureOverviewGridItem(icon: "person.3.fill", title: "Crew", subtitle: "Arkadaşlarınla beraber çalış", tint: Color(onboardingHex: OnboardingArenaPalette.appPurple))
                 FeatureOverviewGridItem(icon: "chart.bar.xaxis", title: "Insights", subtitle: "Ritim, seri ve gelişimini gör", tint: Color(onboardingHex: OnboardingArenaPalette.gold))
+            }
+        }
+    }
+    
+    var focusExperienceScreen: some View {
+        OnboardingShell(
+            eyebrow: "FOCUS FLOW",
+            titleFirst: "Focus",
+            titleAccent: "anywhere",
+            subtitle: "Tek başına veya arkadaşlarınla focus başlat. Süreyi Kilit Ekranı ve Dynamic Island’dan takip et.",
+            progressText: "3 / 5",
+            canSkip: false,
+            primaryTitle: "Devam et",
+            primaryIcon: "arrow.right",
+            isKeyboardActive: focusedField != nil,
+            primaryAction: goNext,
+            skipAction: nil
+        ) {
+            VStack(alignment: .leading, spacing: 14) {
+                LiveActivityOnboardingPreview()
+
+                AnimatedOnboardingFeatureCard(
+                    icon: "timer",
+                    title: "Focus timer",
+                    subtitle: "Ders, sınav veya proje için net bir odak oturumu başlat.",
+                    tint: Color(onboardingHex: OnboardingArenaPalette.coral),
+                    delay: 0.05
+                )
+
+                AnimatedOnboardingFeatureCard(
+                    icon: "platter.filled.top.iphone",
+                    title: "Live Activity",
+                    subtitle: "Focus süreni Kilit Ekranı ve Dynamic Island üzerinden canlı takip et.",
+                    tint: Color(onboardingHex: OnboardingArenaPalette.appCyan),
+                    delay: 0.13
+                )
+
+                AnimatedOnboardingFeatureCard(
+                    icon: "person.2.fill",
+                    title: "Focus with friends",
+                    subtitle: "Arkadaşlarınla beraber focus yap, birbirinizi motive edin.",
+                    tint: Color(onboardingHex: OnboardingArenaPalette.green),
+                    delay: 0.21
+                )
+
+                VStack(alignment: .leading, spacing: 12) {
+                    OnboardingInfoCard(
+                        icon: "person.badge.plus",
+                        title: "İstersen bir arkadaşını şimdi ekle",
+                        subtitle: "Kullanıcı adıyla arkadaş isteği gönder. Bu adımı sonra da yapabilirsin.",
+                        tint: Color(onboardingHex: OnboardingArenaPalette.appBlue)
+                    )
+
+                    InlineAddInput(
+                        title: "Arkadaş kullanıcı adı",
+                        placeholder: "örn. hasan",
+                        text: $friendUsername,
+                        icon: "at",
+                        tint: Color(onboardingHex: OnboardingArenaPalette.appBlue),
+                        isLoading: friendState.isLoading
+                    ) {
+                        Task { await addFriendByUsername() }
+                    }
+                    .focused($focusedField, equals: .friendUsername)
+
+                    if let foundFriendProfile {
+                        OnboardingProfilePreviewCard(
+                            title: foundFriendProfile.full_name ?? foundFriendProfile.username ?? "Kullanıcı",
+                            subtitle: "@\(foundFriendProfile.username ?? "user")",
+                            icon: "person.fill.checkmark",
+                            tint: Color(onboardingHex: OnboardingArenaPalette.green),
+                            trailingText: "Gönderildi"
+                        )
+                    }
+
+                    if let message = friendState.message {
+                        StatusCard(text: message, isSuccess: friendState.isSuccess)
+                    }
+                }
+                .padding(.top, 2)
+            }
+        }
+    }
+
+    var widgetsExperienceScreen: some View {
+        OnboardingShell(
+            eyebrow: "WEEK + WIDGETS",
+            titleFirst: "Your week",
+            titleAccent: "visible",
+            subtitle: "Derslerini, görevlerini ve focus ilerlemeni ana ekrandan hızlıca takip et.",
+            progressText: "4 / 5",
+            canSkip: false,
+            primaryTitle: "Devam et",
+            primaryIcon: "arrow.right",
+            isKeyboardActive: focusedField != nil,
+            primaryAction: goNext,
+            skipAction: nil
+        ) {
+            VStack(alignment: .leading, spacing: 14) {
+                WidgetOnboardingPreview()
+
+                AnimatedOnboardingFeatureCard(
+                    icon: "square.grid.2x2.fill",
+                    title: "Home Screen widgets",
+                    subtitle: "Bugünkü görevlerini ve focus durumunu widget üzerinden gör.",
+                    tint: Color(onboardingHex: OnboardingArenaPalette.appBlue),
+                    delay: 0.05
+                )
+
+                AnimatedOnboardingFeatureCard(
+                    icon: "calendar",
+                    title: "Week planning",
+                    subtitle: "Ders ve çalışma akışını Week ekranında düzenle.",
+                    tint: Color(onboardingHex: OnboardingArenaPalette.appPurple),
+                    delay: 0.13
+                )
+
+                AnimatedOnboardingFeatureCard(
+                    icon: "chart.bar.xaxis",
+                    title: "Insights-ready",
+                    subtitle: "Derslerin ve focusların ilerledikçe ritmini analiz eder.",
+                    tint: Color(onboardingHex: OnboardingArenaPalette.gold),
+                    delay: 0.21
+                )
+
+                OnboardingInfoCard(
+                    icon: "hand.tap.fill",
+                    title: "Widget ekleme uygulama dışında yapılır",
+                    subtitle: "Ana ekrana basılı tutup Updo widget’ını seçebilirsin.",
+                    tint: Color(onboardingHex: OnboardingArenaPalette.appCyan)
+                )
+            }
+        }
+    }
+
+    var communityExperienceScreen: some View {
+        OnboardingShell(
+            eyebrow: "COMMUNITY",
+            titleFirst: "Study with",
+            titleAccent: "people",
+            subtitle: "Crew kur, arkadaşlarınla beraber focus yap, görev paylaş ve akademik çevreni canlı tut.",
+            progressText: "5 / 5",
+            canSkip: false,
+            primaryTitle: finalState.isLoading ? "Hazırlanıyor..." : "Updo’ya geç",
+            primaryIcon: finalState.isLoading ? "clock" : "checkmark.circle.fill",
+            isKeyboardActive: focusedField != nil,
+            primaryAction: goNext,
+            skipAction: nil
+        ) {
+            VStack(alignment: .leading, spacing: 14) {
+                CrewCommunityOnboardingPreview()
+
+                AnimatedOnboardingFeatureCard(
+                    icon: "person.3.fill",
+                    title: "Crew focus",
+                    subtitle: "Crew üyeleriyle aynı anda focus başlat ve birlikte ilerle.",
+                    tint: Color(onboardingHex: OnboardingArenaPalette.appPurple),
+                    delay: 0.05
+                )
+
+                AnimatedOnboardingFeatureCard(
+                    icon: "checklist",
+                    title: "Shared tasks",
+                    subtitle: "Ortak görevleri ve proje işlerini crew içinde takip et.",
+                    tint: Color(onboardingHex: OnboardingArenaPalette.green),
+                    delay: 0.13
+                )
+
+                AnimatedOnboardingFeatureCard(
+                    icon: "bubble.left.and.bubble.right.fill",
+                    title: "Chat + progress",
+                    subtitle: "Mesajlaş, ilerlemeyi paylaş ve çalışma grubunu aktif tut.",
+                    tint: Color(onboardingHex: OnboardingArenaPalette.appCyan),
+                    delay: 0.21
+                )
+
+                VStack(alignment: .leading, spacing: 12) {
+                    OnboardingInfoCard(
+                        icon: "plus.circle.fill",
+                        title: "İstersen ilk crew’ünü şimdi oluştur",
+                        subtitle: "Crew oluşturmazsan da uygulama içinde istediğin zaman başlatabilirsin.",
+                        tint: Color.updoHex(selectedCrewColorHex)
+                    )
+
+                    PremiumInputField(
+                        title: "Crew adı",
+                        placeholder: "örn. CMPE Study Crew",
+                        text: $crewName,
+                        icon: selectedCrewIcon,
+                        tint: Color.updoHex(selectedCrewColorHex)
+                    )
+                    .focused($focusedField, equals: .crewName)
+
+                    CrewStylePicker(
+                        selectedIcon: $selectedCrewIcon,
+                        selectedColorHex: $selectedCrewColorHex
+                    )
+
+                    Button {
+                        Task { await createCrewFromOnboarding() }
+                    } label: {
+                        PremiumPrimaryMiniButton(
+                            title: crewState.isLoading ? "Oluşturuluyor..." : (createdCrew == nil ? "Crew oluştur" : "Crew hazır"),
+                            subtitle: createdCrew == nil ? "İlk çalışma grubunu başlat" : "MainTab’de Crew sayfanda görünecek",
+                            icon: createdCrew == nil ? "plus" : "checkmark",
+                            tint: Color.updoHex(selectedCrewColorHex),
+                            isLoading: crewState.isLoading
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(crewState.isLoading || createdCrew != nil)
+
+                    if let message = crewState.message {
+                        StatusCard(text: message, isSuccess: crewState.isSuccess)
+                    }
+
+                    if let message = finalState.message {
+                        StatusCard(text: message, isSuccess: finalState.isSuccess)
+                    }
+                }
             }
         }
     }
@@ -404,7 +682,7 @@ private extension AppOnboardingFlowView {
             subtitle: "Seçtiğin dersleri haftaya yerleştir. Kaydedince Week ekranında görünür.",
             progressText: "5 / 5",
             canSkip: true,
-            primaryTitle: "Uygulamaya geç",
+            primaryTitle: finalState.isLoading ? "Hazırlanıyor..." : "Uygulamaya geç",
             primaryIcon: "checkmark.circle.fill",
             isKeyboardActive: focusedField != nil,
             primaryAction: goNext,
@@ -437,6 +715,10 @@ private extension AppOnboardingFlowView {
 
                 if let message = scheduleState.message {
                     StatusCard(text: message, isSuccess: scheduleState.isSuccess)
+                }
+                
+                if let message = finalState.message {
+                    StatusCard(text: message, isSuccess: finalState.isSuccess)
                 }
 
                 OnboardingInfoCard(
@@ -950,6 +1232,343 @@ private struct OnboardingShell<Content: View>: View {
 }
 
 // MARK: - Components
+private struct AnimatedOnboardingFeatureCard: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let tint: Color
+    let delay: Double
+
+    @State private var appeared = false
+    @State private var pulse = false
+
+    var body: some View {
+        HStack(spacing: 13) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 17, style: .continuous)
+                    .fill(tint.opacity(pulse ? 0.22 : 0.14))
+                    .frame(width: 50, height: 50)
+
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .black))
+                    .foregroundStyle(tint)
+                    .scaleEffect(pulse ? 1.05 : 0.98)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 18, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+
+                Text(subtitle)
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.54))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .black))
+                .foregroundStyle(.white.opacity(0.22))
+        }
+        .padding(13)
+        .background(CardSurface(radius: 24))
+        .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : 14)
+        .onAppear {
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.86).delay(delay)) {
+                appeared = true
+            }
+
+            withAnimation(.easeInOut(duration: 1.35).repeatForever(autoreverses: true).delay(delay)) {
+                pulse = true
+            }
+        }
+    }
+}
+
+private struct LiveActivityOnboardingPreview: View {
+    @State private var active = false
+    @State private var progress: CGFloat = 0.32
+
+    var body: some View {
+        VStack(spacing: 14) {
+            HStack {
+                Text("LIVE ACTIVITY")
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(1.6)
+                    .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.appCyan))
+
+                Spacer()
+
+                Text("Focus active")
+                    .font(.system(size: 11, weight: .black, design: .rounded))
+                    .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.green))
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 6)
+                    .background(Color(onboardingHex: OnboardingArenaPalette.green).opacity(0.12), in: Capsule())
+            }
+
+            ZStack {
+                RoundedRectangle(cornerRadius: 32, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.090),
+                                Color.white.opacity(0.045),
+                                Color(onboardingHex: OnboardingArenaPalette.appPurple).opacity(0.10)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(height: 96)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 32, style: .continuous)
+                            .stroke(.white.opacity(0.10), lineWidth: 1)
+                    )
+
+                HStack(spacing: 14) {
+                    ZStack {
+                        Circle()
+                            .stroke(.white.opacity(0.10), lineWidth: 7)
+                            .frame(width: 58, height: 58)
+
+                        Circle()
+                            .trim(from: 0, to: progress)
+                            .stroke(
+                                OnboardingArenaPalette.hotGradient,
+                                style: StrokeStyle(lineWidth: 7, lineCap: .round)
+                            )
+                            .frame(width: 58, height: 58)
+                            .rotationEffect(.degrees(-90))
+
+                        Image(systemName: "timer")
+                            .font(.system(size: 18, weight: .black))
+                            .foregroundStyle(.white)
+                    }
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("Study Focus")
+                            .font(.system(size: 18, weight: .black, design: .rounded))
+                            .foregroundStyle(.white)
+
+                        Text("24:18 remaining")
+                            .font(.system(size: 13, weight: .bold, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.58))
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 18, weight: .black))
+                        .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.gold))
+                        .scaleEffect(active ? 1.12 : 0.92)
+                }
+                .padding(.horizontal, 18)
+            }
+        }
+        .padding(16)
+        .background(CardSurface(radius: 28))
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
+                active = true
+                progress = 0.74
+            }
+        }
+    }
+}
+
+private struct WidgetOnboardingPreview: View {
+    @State private var lifted = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("WIDGETS")
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(1.6)
+                    .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.appCyan))
+
+                Spacer()
+
+                Image(systemName: "plus.app.fill")
+                    .font(.system(size: 17, weight: .black))
+                    .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.appBlue))
+            }
+
+            HStack(spacing: 10) {
+                widgetCard(
+                    title: "Today",
+                    value: "4 tasks",
+                    icon: "checkmark.circle.fill",
+                    tint: Color(onboardingHex: OnboardingArenaPalette.green),
+                    delay: 0.0
+                )
+
+                widgetCard(
+                    title: "Focus",
+                    value: "72 min",
+                    icon: "timer",
+                    tint: Color(onboardingHex: OnboardingArenaPalette.coral),
+                    delay: 0.08
+                )
+
+                widgetCard(
+                    title: "Week",
+                    value: "Ready",
+                    icon: "calendar",
+                    tint: Color(onboardingHex: OnboardingArenaPalette.appPurple),
+                    delay: 0.16
+                )
+            }
+        }
+        .padding(16)
+        .background(CardSurface(radius: 28))
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.45).repeatForever(autoreverses: true)) {
+                lifted = true
+            }
+        }
+    }
+
+    private func widgetCard(
+        title: String,
+        value: String,
+        icon: String,
+        tint: Color,
+        delay: Double
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .black))
+                .foregroundStyle(tint)
+
+            Spacer(minLength: 2)
+
+            Text(title)
+                .font(.system(size: 11, weight: .black, design: .rounded))
+                .foregroundStyle(.white.opacity(0.54))
+
+            Text(value)
+                .font(.system(size: 14, weight: .black, design: .rounded))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity)
+        .frame(height: 112)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            tint.opacity(0.16),
+                            Color.white.opacity(0.055)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(.white.opacity(0.09), lineWidth: 1)
+                )
+        )
+        .offset(y: lifted ? -4 : 4)
+        .animation(.easeInOut(duration: 1.45).repeatForever(autoreverses: true).delay(delay), value: lifted)
+    }
+}
+
+private struct CrewCommunityOnboardingPreview: View {
+    @State private var orbit = false
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(onboardingHex: OnboardingArenaPalette.appPurple).opacity(0.16),
+                            Color(onboardingHex: OnboardingArenaPalette.appBlue).opacity(0.10),
+                            Color.white.opacity(0.040)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .stroke(.white.opacity(0.10), lineWidth: 1)
+                )
+
+            VStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .stroke(.white.opacity(0.08), lineWidth: 1)
+                        .frame(width: 142, height: 142)
+
+                    Circle()
+                        .trim(from: 0, to: 0.28)
+                        .stroke(
+                            OnboardingArenaPalette.hotGradient,
+                            style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                        )
+                        .frame(width: 142, height: 142)
+                        .rotationEffect(.degrees(orbit ? 360 : 0))
+
+                    crewAvatar(offset: CGSize(width: 0, height: -58), icon: "person.fill", tint: Color(onboardingHex: OnboardingArenaPalette.appCyan))
+                    crewAvatar(offset: CGSize(width: 54, height: 32), icon: "person.fill", tint: Color(onboardingHex: OnboardingArenaPalette.green))
+                    crewAvatar(offset: CGSize(width: -54, height: 32), icon: "person.fill", tint: Color(onboardingHex: OnboardingArenaPalette.gold))
+
+                    ZStack {
+                        Circle()
+                            .fill(Color.black.opacity(0.32))
+                            .frame(width: 70, height: 70)
+                            .overlay(Circle().stroke(.white.opacity(0.12), lineWidth: 1))
+
+                        Image(systemName: "person.3.fill")
+                            .font(.system(size: 26, weight: .black))
+                            .foregroundStyle(.white)
+                    }
+                }
+
+                VStack(spacing: 5) {
+                    Text("Crew study room")
+                        .font(.system(size: 19, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+
+                    Text("Focus, tasks and progress in one shared space.")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.52))
+                        .multilineTextAlignment(.center)
+                }
+            }
+            .padding(.vertical, 22)
+        }
+        .frame(height: 236)
+        .onAppear {
+            withAnimation(.linear(duration: 2.8).repeatForever(autoreverses: false)) {
+                orbit = true
+            }
+        }
+    }
+
+    private func crewAvatar(offset: CGSize, icon: String, tint: Color) -> some View {
+        Circle()
+            .fill(tint.opacity(0.18))
+            .frame(width: 42, height: 42)
+            .overlay(
+                Image(systemName: icon)
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(tint)
+            )
+            .overlay(Circle().stroke(tint.opacity(0.32), lineWidth: 1))
+            .offset(offset)
+    }
+}
 
 private struct FeatureOverviewGridItem: View {
     let icon: String

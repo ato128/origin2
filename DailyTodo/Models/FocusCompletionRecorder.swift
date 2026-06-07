@@ -37,7 +37,10 @@ final class FocusCompletionRecorder {
         completedSeconds: Int,
         isCompleted: Bool
     ) {
-        guard let container else { return }
+        guard let container else {
+            print("FOCUS RECORD SAVE SKIPPED: ModelContainer is nil")
+            return
+        }
 
         let context = ModelContext(container)
 

@@ -68,6 +68,17 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 
         Task { @MainActor in
             PushTokenStore.shared.saveCurrentTokenWithRetry(reason: "applicationDidBecomeActive")
+
+            FocusSessionManager.shared.reconcileExpiredSessionIfNeeded(
+                reason: "applicationDidBecomeActive"
+            )
+
+            NotificationCenter.default.post(
+                name: .focusNotificationOpened,
+                object: [
+                    "source": "applicationDidBecomeActive"
+                ]
+            )
         }
     }
 
@@ -100,14 +111,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     ) {
         let userInfo = notification.request.content.userInfo
 
-        // ✅ DAVET geldiğinde DOĞRUDAN sheet aç, banner gösterme
         if let type = userInfo["type"] as? String, type == "crew_focus_invite" {
-            // Banner gösterme — sheet otomatik açılacak
             NotificationCenter.default.post(
                 name: .presentCrewFocusInviteSheet,
                 object: userInfo
             )
-            completionHandler([])  // Sound/banner gösterme
+            completionHandler([])
             return
         }
 
@@ -163,7 +172,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             return activeCrewID == incomingCrewID
 
         case "crew_focus_invite":
-            // Davet için banner SUPPRESS et, sheet otomatik açılacak
             return true
 
         case "focus_room":
@@ -213,15 +221,26 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 
         case "focus_room":
             if let crewID = userInfo["crew_id"] as? String {
-                NotificationCenter.default.post(
-                    name: .presentActiveCrewFocusFromNotification,
-                    object: crewID
-                )
+                Task { @MainActor in
+                    FocusSessionManager.shared.reconcileExpiredSessionIfNeeded(
+                        reason: "notification_tap_focus_room"
+                    )
 
-                NotificationCenter.default.post(
-                    name: .openCrewFocusFromNotification,
-                    object: crewID
-                )
+                    NotificationCenter.default.post(
+                        name: .presentActiveCrewFocusFromNotification,
+                        object: crewID
+                    )
+
+                    NotificationCenter.default.post(
+                        name: .openCrewFocusFromNotification,
+                        object: crewID
+                    )
+
+                    NotificationCenter.default.post(
+                        name: .focusNotificationOpened,
+                        object: userInfo
+                    )
+                }
             }
 
         case "crew_focus_invite":
@@ -231,25 +250,72 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             )
             return
 
+        case "focus_ended_local":
+            Task { @MainActor in
+                FocusSessionManager.shared.reconcileExpiredSessionIfNeeded(
+                    reason: "notification_tap_focus_ended_local"
+                )
+
+                NotificationCenter.default.post(
+                    name: .presentFocusCompletionFromPush,
+                    object: userInfo
+                )
+
+                NotificationCenter.default.post(
+                    name: .focusNotificationOpened,
+                    object: userInfo
+                )
+            }
+
         case "crew_focus_ended":
-            NotificationCenter.default.post(
-                name: .presentFocusCompletionFromPush,
-                object: userInfo
-            )
+            Task { @MainActor in
+                FocusSessionManager.shared.reconcileExpiredSessionIfNeeded(
+                    reason: "notification_tap_crew_focus_ended"
+                )
+
+                NotificationCenter.default.post(
+                    name: .presentFocusCompletionFromPush,
+                    object: userInfo
+                )
+
+                NotificationCenter.default.post(
+                    name: .focusNotificationOpened,
+                    object: userInfo
+                )
+
+                if let crewID = userInfo["crew_id"] as? String {
+                    NotificationCenter.default.post(
+                        name: .openCrewFocusFromNotification,
+                        object: crewID
+                    )
+                }
+            }
 
         case "crew_focus_left":
             print("📢 CREW FOCUS LEFT:", userInfo["leaver_name"] ?? "")
-            
+
+            Task { @MainActor in
+                NotificationCenter.default.post(
+                    name: .focusNotificationOpened,
+                    object: userInfo
+                )
+            }
+
         case "crew_focus_joined":
             print("📢 CREW FOCUS JOINED:", userInfo["joined_name"] ?? "")
-            
+
             NotificationCenter.default.post(
                 name: .crewFocusJoinedFromNotification,
                 object: userInfo
             )
 
-            
-            
+            Task { @MainActor in
+                NotificationCenter.default.post(
+                    name: .focusNotificationOpened,
+                    object: userInfo
+                )
+            }
+
         default:
             break
         }
@@ -277,4 +343,6 @@ extension Notification.Name {
 
     static let presentFocusCompletionFromPush = Notification.Name("presentFocusCompletionFromPush")
     static let crewFocusJoinedFromNotification = Notification.Name("crewFocusJoinedFromNotification")
+
+    static let focusNotificationOpened = Notification.Name("focusNotificationOpened")
 }

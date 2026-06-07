@@ -2014,6 +2014,42 @@ final class CrewStore: ObservableObject {
         }
     }
     
+    func reconcileFocusCompletionFromNotification(
+        payload: [AnyHashable: Any]
+    ) async {
+        let rawCrewID =
+            payload["crew_id"] as? String ??
+            payload["crewID"] as? String
+
+        guard let rawCrewID,
+              let crewID = UUID(uuidString: rawCrewID) else {
+            await loadCrewHomeSnapshot()
+            await loadFocusStateForAllCrews()
+            return
+        }
+
+        let rawSessionID =
+            payload["session_id"] as? String ??
+            payload["sessionID"] as? String
+
+        let sessionID = rawSessionID.flatMap { UUID(uuidString: $0) }
+
+        if let sessionID {
+            focusParticipantsBySession.removeValue(forKey: sessionID)
+        }
+
+        activeFocusSessionByCrew.removeValue(forKey: crewID)
+
+        await loadActiveFocusSession(for: crewID)
+
+        if let activeSession = activeFocusSessionByCrew[crewID] {
+            await loadFocusParticipants(sessionID: activeSession.id)
+        }
+
+        await loadFocusRecords(for: crewID)
+        await loadCrewHomeSnapshot()
+    }
+    
     func loadCurrentUserMembershipsForHome() async {
         guard let currentUserID else { return }
         
@@ -2834,6 +2870,7 @@ final class CrewStore: ObservableObject {
         // Focus records yenile
         Task { @MainActor in
             await self.loadFocusRecords(for: session.crew_id)
+            await self.loadCrewHomeSnapshot()
         }
     }
      

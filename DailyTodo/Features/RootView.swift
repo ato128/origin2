@@ -40,7 +40,15 @@ struct RootView: View {
             return false
         }
 
-        return !didFinishLaunchAnimation || !isStudentProfileReady
+        if !didFinishLaunchAnimation {
+            return true
+        }
+
+        if !didFinishFullOnboarding {
+            return false
+        }
+
+        return !isStudentProfileReady
     }
 
     var body: some View {
@@ -83,6 +91,39 @@ struct RootView: View {
                         )
                     }
                 }
+                .onReceive(NotificationCenter.default.publisher(for: .presentFocusCompletionFromPush)) { output in
+                    Task { @MainActor in
+                        FocusSessionManager.shared.reconcileExpiredSessionIfNeeded(
+                            reason: "presentFocusCompletionFromPush"
+                        )
+
+                        if let payload = output.object as? [AnyHashable: Any] {
+                            await crewStore.reconcileFocusCompletionFromNotification(payload: payload)
+                        } else {
+                            await crewStore.loadCrewHomeSnapshot()
+                            await crewStore.loadFocusStateForAllCrews()
+                        }
+
+                        NotificationCenter.default.post(
+                            name: .openFocusTabFromHome,
+                            object: nil
+                        )
+                    }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .focusNotificationOpened)) { output in
+                    Task { @MainActor in
+                        FocusSessionManager.shared.reconcileExpiredSessionIfNeeded(
+                            reason: "focusNotificationOpened"
+                        )
+
+                        if let payload = output.object as? [AnyHashable: Any] {
+                            await crewStore.reconcileFocusCompletionFromNotification(payload: payload)
+                        } else {
+                            await crewStore.loadCrewHomeSnapshot()
+                            await crewStore.loadFocusStateForAllCrews()
+                        }
+                    }
+                }
                 .sheet(isPresented: $showImportSheet) {
                     if let export = importExport {
                         ImportScheduleView(export: export)
@@ -96,9 +137,7 @@ struct RootView: View {
         .animation(.easeInOut(duration: 0.34), value: session.didResolveInitialSession)
         .animation(.easeInOut(duration: 0.34), value: session.shouldShowEmailVerificationGate)
         .onChange(of: session.isSignedIn) { _, isSignedIn in
-            if !isSignedIn {
-                didFinishLaunchAnimation = false
-            }
+            didFinishLaunchAnimation = false
         }
         .task {
             await session.resolveInitialSessionIfNeeded()
@@ -111,13 +150,32 @@ struct RootView: View {
                 return
             }
 
-            await studentStore.loadFromRemote()
+            guard didFinishFullOnboarding else {
+                return
+            }
+
+            if !studentStore.didResolveRemoteProfile || studentStore.profile == nil {
+                await studentStore.loadFromRemote()
+            }
         }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
 
             Task { @MainActor in
                 AppBadgeManager.shared.clearBadge()
+
+                FocusSessionManager.shared.reconcileExpiredSessionIfNeeded(
+                    reason: "RootView.scenePhase.active"
+                )
+
+                guard session.isSignedIn,
+                      didFinishFullOnboarding,
+                      !session.shouldShowEmailVerificationGate else {
+                    return
+                }
+
+                await crewStore.loadCrewHomeSnapshot()
+                await crewStore.loadFocusStateForAllCrews()
             }
         }
     }
@@ -169,7 +227,7 @@ private struct PremiumStudentLaunchView: View {
     @State private var arrowRise = false
     @State private var finishTask: Task<Void, Never>?
 
-    private let minimumDurationNanoseconds: UInt64 = 1_450_000_000
+    private let minimumDurationNanoseconds: UInt64 = 900_000_000
 
     var body: some View {
         ZStack {

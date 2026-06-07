@@ -212,56 +212,70 @@ final class StudentStore: ObservableObject {
         dailyStudyGoalMinutes: Int,
         weeklyStudyGoalMinutes: Int,
         courseDrafts: [OnboardingCourseDraft]
-    ) async {
-        guard let currentUserID else { return }
-        guard let userUUID = UUID(uuidString: currentUserID) else { return }
+    ) async throws {
+        guard let currentUserID else {
+            throw NSError(
+                domain: "StudentStore",
+                code: 401,
+                userInfo: [NSLocalizedDescriptionKey: "Missing current user."]
+            )
+        }
+
+        guard let userUUID = UUID(uuidString: currentUserID) else {
+            throw NSError(
+                domain: "StudentStore",
+                code: 400,
+                userInfo: [NSLocalizedDescriptionKey: "Invalid current user id."]
+            )
+        }
+
+        let normalizedCourses = courseDrafts
+            .map {
+                OnboardingCourseDraft(
+                    code: $0.code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(),
+                    name: $0.name.trimmingCharacters(in: .whitespacesAndNewlines),
+                    isSuggested: $0.isSuggested
+                )
+            }
+            .filter { !$0.name.isEmpty }
+
+        guard !normalizedCourses.isEmpty else {
+            throw NSError(
+                domain: "StudentStore",
+                code: 422,
+                userInfo: [NSLocalizedDescriptionKey: "At least one course is required."]
+            )
+        }
 
         isLoading = true
         defer { isLoading = false }
 
-        saveStudentProfile(
-            educationLevel: educationLevel,
-            gradeLevel: gradeLevel,
-            highSchoolTrack: highSchoolTrack,
-            institutionName: institutionName,
-            institutionCountry: institutionCountry,
-            majorName: majorName,
-            dailyStudyGoalMinutes: dailyStudyGoalMinutes,
-            weeklyStudyGoalMinutes: weeklyStudyGoalMinutes
+        let profilePayload = StudentProfileUpsertPayload(
+            user_id: userUUID,
+            education_level: educationLevel,
+            grade_level: gradeLevel,
+            high_school_track: highSchoolTrack,
+            institution_name: institutionName,
+            institution_country: institutionCountry,
+            major_name: majorName,
+            daily_study_goal_minutes: dailyStudyGoalMinutes,
+            weekly_study_goal_minutes: weeklyStudyGoalMinutes,
+            onboarding_completed: true
         )
 
-        clearLocalCoursesForCurrentUser()
-
-        for draft in courseDrafts {
-            addCourse(
-                name: draft.name,
-                code: draft.code,
-                sourceType: draft.isSuggested ? "catalog" : "manual",
-                yearNumber: normalizedYearNumber(from: gradeLevel),
-                termNumber: nil
-            )
-        }
-
         do {
-            let profilePayload = StudentProfileUpsertPayload(
-                user_id: userUUID,
-                education_level: educationLevel,
-                grade_level: gradeLevel,
-                high_school_track: highSchoolTrack,
-                institution_name: institutionName,
-                institution_country: institutionCountry,
-                major_name: majorName,
-                daily_study_goal_minutes: dailyStudyGoalMinutes,
-                weekly_study_goal_minutes: weeklyStudyGoalMinutes,
-                onboarding_completed: true
-            )
-
             try await SupabaseManager.shared.client
                 .from("student_profiles")
                 .upsert(profilePayload, onConflict: "user_id")
                 .execute()
         } catch {
             print("❌ StudentStore.upsert profile error:", error)
+
+            throw NSError(
+                domain: "StudentStore",
+                code: 500,
+                userInfo: [NSLocalizedDescriptionKey: "Student profile could not be saved."]
+            )
         }
 
         do {
@@ -272,9 +286,15 @@ final class StudentStore: ObservableObject {
                 .execute()
         } catch {
             print("❌ StudentStore.delete remote courses error:", error)
+
+            throw NSError(
+                domain: "StudentStore",
+                code: 501,
+                userInfo: [NSLocalizedDescriptionKey: "Old courses could not be cleared."]
+            )
         }
 
-        for draft in courseDrafts {
+        for draft in normalizedCourses {
             do {
                 let payload = StudentCourseInsertPayload(
                     user_id: userUUID,
@@ -295,7 +315,36 @@ final class StudentStore: ObservableObject {
                     .execute()
             } catch {
                 print("❌ StudentStore.insert remote course error:", error)
+
+                throw NSError(
+                    domain: "StudentStore",
+                    code: 502,
+                    userInfo: [NSLocalizedDescriptionKey: "Courses could not be saved."]
+                )
             }
+        }
+
+        saveStudentProfile(
+            educationLevel: educationLevel,
+            gradeLevel: gradeLevel,
+            highSchoolTrack: highSchoolTrack,
+            institutionName: institutionName,
+            institutionCountry: institutionCountry,
+            majorName: majorName,
+            dailyStudyGoalMinutes: dailyStudyGoalMinutes,
+            weeklyStudyGoalMinutes: weeklyStudyGoalMinutes
+        )
+
+        clearLocalCoursesForCurrentUser()
+
+        for draft in normalizedCourses {
+            addCourse(
+                name: draft.name,
+                code: draft.code,
+                sourceType: draft.isSuggested ? "catalog" : "manual",
+                yearNumber: normalizedYearNumber(from: gradeLevel),
+                termNumber: nil
+            )
         }
 
         await loadFromRemote()
