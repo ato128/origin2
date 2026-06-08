@@ -71,7 +71,6 @@ final class SessionStore: ObservableObject {
     }
     var shouldShowEmailVerificationGate: Bool {
         didResolveInitialSession &&
-        currentUser == nil &&
         pendingVerificationEmail != nil &&
         !isEmailVerified
     }
@@ -82,9 +81,18 @@ final class SessionStore: ObservableObject {
         guard let data = UserDefaults.standard.data(forKey: storageKey) else { return }
         guard let user = try? JSONDecoder().decode(AppUser.self, from: data) else { return }
 
-        currentUser = user
-
         let cachedVerified = UserDefaults.standard.bool(forKey: emailVerifiedStorageKey)
+        let pendingEmail = UserDefaults.standard.string(forKey: pendingEmailStorageKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let pendingEmail, !pendingEmail.isEmpty, !cachedVerified {
+            currentUser = nil
+            pendingVerificationEmail = pendingEmail
+            isEmailVerified = false
+            return
+        }
+
+        currentUser = user
         isEmailVerified = cachedVerified
 
         if cachedVerified {
@@ -125,7 +133,7 @@ final class SessionStore: ObservableObject {
             guard isVerified else {
                 currentUser = nil
                 isEmailVerified = false
-                saveCachedEmailVerified(true)
+                saveCachedEmailVerified(false)
                 pendingVerificationEmail = cleanEmail
                 savePendingVerificationEmail(cleanEmail)
                 verificationMessage = "Emailini onaylaman gerekiyor."
@@ -238,7 +246,7 @@ final class SessionStore: ObservableObject {
             guard verified else {
                 currentUser = nil
                 isEmailVerified = false
-                saveCachedEmailVerified(true)
+                saveCachedEmailVerified(false)
 
                 if pendingVerificationEmail == nil {
                     pendingVerificationEmail = user.email
@@ -307,7 +315,16 @@ final class SessionStore: ObservableObject {
         }
     }
     func resolveInitialSessionIfNeeded() async {
-        guard !didStartInitialSessionResolve else { return }
+        if didResolveInitialSession {
+            return
+        }
+
+        if didStartInitialSessionResolve {
+            while !didResolveInitialSession {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+            }
+            return
+        }
 
         didStartInitialSessionResolve = true
         await restoreSupabaseSessionIfNeeded()
@@ -327,7 +344,7 @@ final class SessionStore: ObservableObject {
             guard verified else {
                 currentUser = nil
                 isEmailVerified = false
-                saveCachedEmailVerified(true)
+                saveCachedEmailVerified(false)
 
                 if let email = user.email {
                     pendingVerificationEmail = email

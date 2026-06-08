@@ -5,6 +5,11 @@
 //  Created by Atakan Ortaç on 21.03.2026.
 //
 
+//
+//  PushTokenStore.swift
+//  DailyTodo
+//
+
 import Foundation
 import UIKit
 
@@ -21,14 +26,18 @@ final class PushTokenStore {
     private var isSaving = false
     private var pendingSaveTask: Task<Void, Never>?
 
-    // MARK: - Production Only
+    // MARK: - Environment
 
     var currentEnvironment: String {
-        "production"
+        Self.detectAPNsEnvironment()
     }
 
     static func detectAPNsEnvironment() -> String {
-        "production"
+        #if DEBUG
+        return "sandbox"
+        #else
+        return "production"
+        #endif
     }
 
     var currentToken: String? {
@@ -36,6 +45,8 @@ final class PushTokenStore {
             .string(forKey: tokenKey)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
+
+    // MARK: - Store
 
     func storeToken(_ token: String) {
         let cleanToken = token.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -48,9 +59,11 @@ final class PushTokenStore {
         UserDefaults.standard.set(cleanToken, forKey: tokenKey)
         UserDefaults.standard.synchronize()
 
-        print("✅ PUSH TOKEN STORED: production")
+        print("✅ PUSH TOKEN STORED:", currentEnvironment)
         print("✅ PUSH TOKEN START:", String(cleanToken.prefix(14)))
     }
+
+    // MARK: - Save
 
     func saveCurrentTokenWithRetry(reason: String) {
         pendingSaveTask?.cancel()
@@ -59,7 +72,6 @@ final class PushTokenStore {
             guard let self else { return }
 
             try? await Task.sleep(nanoseconds: 700_000_000)
-
             guard !Task.isCancelled else { return }
 
             await self.saveCurrentTokenNow(reason: reason)
@@ -77,10 +89,10 @@ final class PushTokenStore {
             return
         }
 
-        let environment = "production"
+        let environment = currentEnvironment
 
         if isAlreadySaved(token: cleanToken, environment: environment) {
-            print("⚪️ PUSH TOKEN SAVE SKIPPED: already saved for production")
+            print("⚪️ PUSH TOKEN SAVE SKIPPED: already saved for \(environment)")
             return
         }
 
@@ -92,7 +104,7 @@ final class PushTokenStore {
         }
 
         print("🟡 PUSH TOKEN SAVE START:", reason)
-        print("🟡 PUSH TOKEN ENV: production")
+        print("🟡 PUSH TOKEN ENV:", environment)
         print("🟡 PUSH TOKEN START:", String(cleanToken.prefix(14)))
 
         let success = await ChatBackendClient.shared.savePushTokenWithRetry(
@@ -106,9 +118,9 @@ final class PushTokenStore {
             UserDefaults.standard.set(environment, forKey: lastSavedEnvironmentKey)
             UserDefaults.standard.synchronize()
 
-            print("✅ PUSH TOKEN SAVE COMPLETE: production")
+            print("✅ PUSH TOKEN SAVE COMPLETE:", environment)
         } else {
-            print("❌ PUSH TOKEN SAVE FAILED AFTER RETRY")
+            print("❌ PUSH TOKEN SAVE FAILED AFTER RETRY:", environment)
         }
     }
 
@@ -117,7 +129,17 @@ final class PushTokenStore {
         UserDefaults.standard.removeObject(forKey: lastSavedEnvironmentKey)
         UserDefaults.standard.synchronize()
 
+        print("🔥 PUSH TOKEN FORCE RESAVE:", reason)
         saveCurrentTokenWithRetry(reason: reason)
+    }
+
+    func clearSavedTokenCache() {
+        UserDefaults.standard.removeObject(forKey: lastSavedTokenKey)
+        UserDefaults.standard.removeObject(forKey: lastSavedEnvironmentKey)
+        UserDefaults.standard.removeObject(forKey: lastSaveAttemptAtKey)
+        UserDefaults.standard.synchronize()
+
+        print("🧹 PUSH TOKEN SAVE CACHE CLEARED")
     }
 
     private func isAlreadySaved(token: String, environment: String) -> Bool {

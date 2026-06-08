@@ -10,35 +10,12 @@ import SwiftData
 import UIKit
 
 enum AppOnboardingStage: String, CaseIterable {
-    case features
+    case welcome
     case student
     case focus
-    case widgets
+    case crew
     case community
-    case done
-}
-
-private enum OnboardingRequestState: Equatable {
-    case idle, loading, success(String), failed(String)
-
-    var message: String? {
-        switch self {
-        case .idle, .loading: nil
-        case .success(let text), .failed(let text): text
-        }
-    }
-
-    var isLoading: Bool { self == .loading }
-
-    var isSuccess: Bool {
-        if case .success = self { return true }
-        return false
-    }
-}
-
-private enum ScheduleSetupMode {
-    case addNow
-    case manualLater
+    case ready
 }
 
 private enum OnboardingArenaPalette {
@@ -55,21 +32,19 @@ private enum OnboardingArenaPalette {
     static let gold = "#FBBF24"
     static let green = "#A3E635"
 
-    static let surface = "#101118"
-    static let surface2 = "#171821"
-
-    static var appGradient: LinearGradient {
+    static var brandGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(onboardingHex: appBlueSoft),
-                Color(onboardingHex: appPurple)
+                Color(onboardingHex: appCyan),
+                Color(onboardingHex: appPurple),
+                Color(onboardingHex: coral)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
     }
 
-    static var hotGradient: LinearGradient {
+    static var actionGradient: LinearGradient {
         LinearGradient(
             colors: [
                 Color(onboardingHex: appBlue),
@@ -81,12 +56,46 @@ private enum OnboardingArenaPalette {
         )
     }
 
-    static var softCardGradient: LinearGradient {
+    static var focusGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(onboardingHex: appBlue).opacity(0.050),
-                Color(onboardingHex: appPurple).opacity(0.065),
-                Color.white.opacity(0.045)
+                Color(onboardingHex: appCyan),
+                Color(onboardingHex: appPurple)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    static var crewGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(onboardingHex: coral),
+                Color(onboardingHex: gold)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    static var communityGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(onboardingHex: gold),
+                Color(onboardingHex: coral),
+                Color(onboardingHex: appPurple)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    static var cardGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color.white.opacity(0.055),
+                Color(onboardingHex: appBlue).opacity(0.040),
+                Color(onboardingHex: appPurple).opacity(0.050)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -99,147 +108,115 @@ struct AppOnboardingFlowView: View {
     @EnvironmentObject var studentStore: StudentStore
     @EnvironmentObject var friendStore: FriendStore
     @EnvironmentObject var crewStore: CrewStore
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @AppStorage("appOnboardingStageV2") private var stageRawValue = AppOnboardingStage.features.rawValue
+    @AppStorage("appOnboardingStageV2") private var stageRawValue = AppOnboardingStage.welcome.rawValue
     @AppStorage("didFinishFullOnboardingV2") private var didFinishFullOnboarding = false
 
-    @State private var friendUsername = ""
-    @State private var friendState: OnboardingRequestState = .idle
-    @State private var foundFriendProfile: FriendProfileDTO?
-
-    @State private var crewName = ""
-    @State private var crewMemberUsername = ""
-    @State private var crewState: OnboardingRequestState = .idle
-    @State private var crewMemberState: OnboardingRequestState = .idle
-    @State private var createdCrew: CrewDTO?
-    @State private var addedCrewMemberProfile: FriendProfileDTO?
-    @State private var selectedCrewIcon = "person.3.fill"
-    @State private var selectedCrewColorHex = "#4F8CFF"
-
-    @State private var selectedScheduleMode: ScheduleSetupMode = .manualLater
-    @State private var selectedCourseID: UUID?
-    @State private var selectedWeekday = 0
-    @State private var selectedStartHour = 9
-    @State private var selectedStartMinute = 0
-    @State private var selectedDuration = 60
-    @State private var scheduleState: OnboardingRequestState = .idle
-    @State private var finalState: OnboardingRequestState = .idle
-
-    @FocusState private var focusedField: OnboardingFocusField?
-
-    private enum OnboardingFocusField {
-        case friendUsername, crewName, crewMemberUsername
-    }
-
-    private let weekdays = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
-    private let durations = [45, 60, 75, 90, 120]
+    @State private var isFinishing = false
+    @State private var finishError: String?
 
     private var stage: AppOnboardingStage {
-        AppOnboardingStage(rawValue: stageRawValue) ?? .features
-    }
-
-    private var selectedCourse: Course? {
-        studentStore.courses.first { $0.id == selectedCourseID } ?? studentStore.courses.first
+        AppOnboardingStage(rawValue: stageRawValue) ?? .welcome
     }
 
     var body: some View {
-        Group {
+        ZStack {
             switch stage {
-            case .features:
-                featureOverviewScreen
+            case .welcome:
+                welcomeScreen
+                    .transition(screenTransition)
 
             case .student:
                 StudentOnboardingFlowView()
+                    .environmentObject(studentStore)
+                    .transition(screenTransition)
                     .onChange(of: studentStore.hasCompletedStudentProfile) { _, completed in
-                        if completed { goNext() }
+                        guard completed else { return }
+                        goToFocusPreview()
                     }
 
             case .focus:
-                focusExperienceScreen
+                focusScreen
+                    .transition(screenTransition)
 
-            case .widgets:
-                widgetsExperienceScreen
+            case .crew:
+                crewScreen
+                    .transition(screenTransition)
 
             case .community:
-                communityExperienceScreen
+                communityScreen
+                    .transition(screenTransition)
 
-            case .done:
-                finishingScreen
+            case .ready:
+                readyScreen
+                    .transition(screenTransition)
             }
         }
         .preferredColorScheme(.dark)
         .onAppear {
             normalizeStage()
             crewStore.setCurrentUser(session.currentUser?.id)
-
-            if selectedCourseID == nil {
-                selectedCourseID = studentStore.courses.first?.id
-            }
         }
         .onChange(of: studentStore.hasCompletedStudentProfile) { _, _ in
             normalizeStage()
         }
-        .onChange(of: studentStore.courses.count) { _, _ in
-            if selectedCourseID == nil {
-                selectedCourseID = studentStore.courses.first?.id
-            }
-        }
+    }
+
+    private var screenTransition: AnyTransition {
+        reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.985))
     }
 
     private func normalizeStage() {
-        if didFinishFullOnboarding {
-            stageRawValue = AppOnboardingStage.done.rawValue
+        if didFinishFullOnboarding, studentStore.hasCompletedStudentProfile {
+            stageRawValue = AppOnboardingStage.ready.rawValue
             return
         }
 
         if AppOnboardingStage(rawValue: stageRawValue) == nil {
             stageRawValue = studentStore.hasCompletedStudentProfile
                 ? AppOnboardingStage.focus.rawValue
-                : AppOnboardingStage.features.rawValue
+                : AppOnboardingStage.welcome.rawValue
             return
         }
 
         if stage == .student, studentStore.hasCompletedStudentProfile {
             stageRawValue = AppOnboardingStage.focus.rawValue
         }
+
+        if (stage == .focus || stage == .crew || stage == .community || stage == .ready),
+           !studentStore.hasCompletedStudentProfile {
+            stageRawValue = AppOnboardingStage.student.rawValue
+        }
     }
 
-    private func goNext() {
-        focusedField = nil
+    private func goToStudentSetup() {
+        setStage(.student, haptic: true)
+    }
 
-        if stage == .community {
-            Task {
-                await completeFullOnboarding()
-            }
-            return
+    private func goToFocusPreview() {
+        setStage(.focus, haptic: true, success: true)
+    }
+
+    private func goToCrewPreview() {
+        setStage(.crew, haptic: true)
+    }
+
+    private func goToCommunityPreview() {
+        setStage(.community, haptic: true)
+    }
+
+    private func goToReady() {
+        setStage(.ready, haptic: true)
+    }
+
+    private func setStage(_ newStage: AppOnboardingStage, haptic: Bool, success: Bool = false) {
+        if haptic {
+            success ? OnboardingHaptics.success() : OnboardingHaptics.softTap()
         }
 
-        OnboardingHaptics.softTap()
-
         let update = {
-            switch stage {
-            case .features:
-                stageRawValue = studentStore.hasCompletedStudentProfile
-                    ? AppOnboardingStage.focus.rawValue
-                    : AppOnboardingStage.student.rawValue
-
-            case .student:
-                stageRawValue = AppOnboardingStage.focus.rawValue
-
-            case .focus:
-                stageRawValue = AppOnboardingStage.widgets.rawValue
-
-            case .widgets:
-                stageRawValue = AppOnboardingStage.community.rawValue
-
-            case .community:
-                break
-
-            case .done:
-                break
-            }
+            stageRawValue = newStage.rawValue
         }
 
         if reduceMotion {
@@ -250,43 +227,42 @@ struct AppOnboardingFlowView: View {
             }
         }
     }
-    
-    private func completeFullOnboarding() async {
-        guard !finalState.isLoading else { return }
 
-        finalState = .loading
-        focusedField = nil
+    private func enterApp() {
+        guard !isFinishing else { return }
 
-        guard studentStore.hasCompletedStudentProfile else {
-            finalState = .failed("Student setup tamamlanmadan uygulamaya geçilemez.")
-            OnboardingHaptics.warning()
+        Task { @MainActor in
+            isFinishing = true
+            finishError = nil
 
-            withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
-                stageRawValue = AppOnboardingStage.student.rawValue
+            await studentStore.loadFromRemote()
+
+            guard studentStore.hasCompletedStudentProfile else {
+                isFinishing = false
+                finishError = "Student setup could not be verified. Please complete setup again."
+                OnboardingHaptics.warning()
+
+                withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
+                    stageRawValue = AppOnboardingStage.student.rawValue
+                }
+                return
             }
 
-            return
-        }
+            crewStore.setCurrentUser(session.currentUser?.id)
+            await crewStore.loadCrews(force: true)
+            await crewStore.loadCrewHomeSnapshot()
+            await crewStore.loadFocusStateForAllCrews()
 
-        await studentStore.loadFromRemote()
+            OnboardingHaptics.success()
 
-        guard studentStore.hasCompletedStudentProfile else {
-            finalState = .failed("Profilin doğrulanamadı. Tekrar dene.")
-            OnboardingHaptics.warning()
-            return
-        }
+            try? await Task.sleep(nanoseconds: 260_000_000)
 
-        await crewStore.loadCrews(force: true)
-        await crewStore.loadCrewHomeSnapshot()
+            withAnimation(.easeInOut(duration: 0.24)) {
+                didFinishFullOnboarding = true
+                stageRawValue = AppOnboardingStage.ready.rawValue
+            }
 
-        finalState = .success("Updo hazır.")
-        OnboardingHaptics.success()
-
-        try? await Task.sleep(nanoseconds: 450_000_000)
-
-        withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
-            didFinishFullOnboarding = true
-            stageRawValue = AppOnboardingStage.done.rawValue
+            isFinishing = false
         }
     }
 }
@@ -294,777 +270,143 @@ struct AppOnboardingFlowView: View {
 // MARK: - Screens
 
 private extension AppOnboardingFlowView {
-    var featureOverviewScreen: some View {
+    var welcomeScreen: some View {
         OnboardingShell(
-            eyebrow: "STUDENT OS",
-            titleFirst: "Updo’ya",
-            titleAccent: "hoş geldin",
-            subtitle: "Görevler, ders programı, focus, arkadaşlar ve gelişim takibi tek öğrenci sisteminde birleşir.",
-            progressText: "1 / 5",
-            canSkip: false,
-            primaryTitle: "Hadi başlayalım",
+            progressText: "1 / 6",
+            title: "Updo",
+            accent: "Study OS",
+            subtitle: "Plan. Focus. Grow. Together.",
+            keywords: "TASKS  •  FOCUS  •  CREW  •  ARENA",
+            primaryTitle: "Start",
             primaryIcon: "arrow.right",
-            isKeyboardActive: focusedField != nil,
-            primaryAction: goNext,
-            skipAction: nil
+            isPrimaryLoading: false,
+            primaryAction: goToStudentSetup
         ) {
-            VStack(spacing: 10) {
-                FeatureOverviewGridItem(icon: "checkmark.circle.fill", title: "Tasks", subtitle: "Günlük görevlerini toparla", tint: Color(onboardingHex: OnboardingArenaPalette.green))
-                FeatureOverviewGridItem(icon: "calendar", title: "Week", subtitle: "Ders ve çalışma akışını planla", tint: Color(onboardingHex: OnboardingArenaPalette.appBlue))
-                FeatureOverviewGridItem(icon: "timer", title: "Focus", subtitle: "Odak oturumlarıyla ilerle", tint: Color(onboardingHex: OnboardingArenaPalette.coral))
-                FeatureOverviewGridItem(icon: "person.3.fill", title: "Crew", subtitle: "Arkadaşlarınla beraber çalış", tint: Color(onboardingHex: OnboardingArenaPalette.appPurple))
-                FeatureOverviewGridItem(icon: "chart.bar.xaxis", title: "Insights", subtitle: "Ritim, seri ve gelişimini gör", tint: Color(onboardingHex: OnboardingArenaPalette.gold))
-            }
+            BrandOpeningHero()
         }
     }
-    
-    var focusExperienceScreen: some View {
+
+    var focusScreen: some View {
         OnboardingShell(
-            eyebrow: "FOCUS FLOW",
-            titleFirst: "Focus",
-            titleAccent: "anywhere",
-            subtitle: "Tek başına veya arkadaşlarınla focus başlat. Süreyi Kilit Ekranı ve Dynamic Island’dan takip et.",
-            progressText: "3 / 5",
-            canSkip: false,
-            primaryTitle: "Devam et",
+            progressText: "3 / 6",
+            title: "Focus",
+            accent: "Go deep",
+            subtitle: "Timer. Goal. Live Activity.",
+            keywords: "DEEP WORK  •  TIMER  •  LIVE",
+            primaryTitle: "Continue",
             primaryIcon: "arrow.right",
-            isKeyboardActive: focusedField != nil,
-            primaryAction: goNext,
-            skipAction: nil
+            isPrimaryLoading: false,
+            primaryAction: goToCrewPreview
         ) {
-            VStack(alignment: .leading, spacing: 14) {
-                LiveActivityOnboardingPreview()
-
-                AnimatedOnboardingFeatureCard(
-                    icon: "timer",
-                    title: "Focus timer",
-                    subtitle: "Ders, sınav veya proje için net bir odak oturumu başlat.",
-                    tint: Color(onboardingHex: OnboardingArenaPalette.coral),
-                    delay: 0.05
-                )
-
-                AnimatedOnboardingFeatureCard(
-                    icon: "platter.filled.top.iphone",
-                    title: "Live Activity",
-                    subtitle: "Focus süreni Kilit Ekranı ve Dynamic Island üzerinden canlı takip et.",
-                    tint: Color(onboardingHex: OnboardingArenaPalette.appCyan),
-                    delay: 0.13
-                )
-
-                AnimatedOnboardingFeatureCard(
-                    icon: "person.2.fill",
-                    title: "Focus with friends",
-                    subtitle: "Arkadaşlarınla beraber focus yap, birbirinizi motive edin.",
-                    tint: Color(onboardingHex: OnboardingArenaPalette.green),
-                    delay: 0.21
-                )
-
-                VStack(alignment: .leading, spacing: 12) {
-                    OnboardingInfoCard(
-                        icon: "person.badge.plus",
-                        title: "İstersen bir arkadaşını şimdi ekle",
-                        subtitle: "Kullanıcı adıyla arkadaş isteği gönder. Bu adımı sonra da yapabilirsin.",
-                        tint: Color(onboardingHex: OnboardingArenaPalette.appBlue)
-                    )
-
-                    InlineAddInput(
-                        title: "Arkadaş kullanıcı adı",
-                        placeholder: "örn. hasan",
-                        text: $friendUsername,
-                        icon: "at",
-                        tint: Color(onboardingHex: OnboardingArenaPalette.appBlue),
-                        isLoading: friendState.isLoading
-                    ) {
-                        Task { await addFriendByUsername() }
-                    }
-                    .focused($focusedField, equals: .friendUsername)
-
-                    if let foundFriendProfile {
-                        OnboardingProfilePreviewCard(
-                            title: foundFriendProfile.full_name ?? foundFriendProfile.username ?? "Kullanıcı",
-                            subtitle: "@\(foundFriendProfile.username ?? "user")",
-                            icon: "person.fill.checkmark",
-                            tint: Color(onboardingHex: OnboardingArenaPalette.green),
-                            trailingText: "Gönderildi"
-                        )
-                    }
-
-                    if let message = friendState.message {
-                        StatusCard(text: message, isSuccess: friendState.isSuccess)
-                    }
-                }
-                .padding(.top, 2)
-            }
-        }
-    }
-
-    var widgetsExperienceScreen: some View {
-        OnboardingShell(
-            eyebrow: "WEEK + WIDGETS",
-            titleFirst: "Your week",
-            titleAccent: "visible",
-            subtitle: "Derslerini, görevlerini ve focus ilerlemeni ana ekrandan hızlıca takip et.",
-            progressText: "4 / 5",
-            canSkip: false,
-            primaryTitle: "Devam et",
-            primaryIcon: "arrow.right",
-            isKeyboardActive: focusedField != nil,
-            primaryAction: goNext,
-            skipAction: nil
-        ) {
-            VStack(alignment: .leading, spacing: 14) {
-                WidgetOnboardingPreview()
-
-                AnimatedOnboardingFeatureCard(
-                    icon: "square.grid.2x2.fill",
-                    title: "Home Screen widgets",
-                    subtitle: "Bugünkü görevlerini ve focus durumunu widget üzerinden gör.",
-                    tint: Color(onboardingHex: OnboardingArenaPalette.appBlue),
-                    delay: 0.05
-                )
-
-                AnimatedOnboardingFeatureCard(
-                    icon: "calendar",
-                    title: "Week planning",
-                    subtitle: "Ders ve çalışma akışını Week ekranında düzenle.",
-                    tint: Color(onboardingHex: OnboardingArenaPalette.appPurple),
-                    delay: 0.13
-                )
-
-                AnimatedOnboardingFeatureCard(
-                    icon: "chart.bar.xaxis",
-                    title: "Insights-ready",
-                    subtitle: "Derslerin ve focusların ilerledikçe ritmini analiz eder.",
-                    tint: Color(onboardingHex: OnboardingArenaPalette.gold),
-                    delay: 0.21
-                )
-
-                OnboardingInfoCard(
-                    icon: "hand.tap.fill",
-                    title: "Widget ekleme uygulama dışında yapılır",
-                    subtitle: "Ana ekrana basılı tutup Updo widget’ını seçebilirsin.",
-                    tint: Color(onboardingHex: OnboardingArenaPalette.appCyan)
-                )
-            }
-        }
-    }
-
-    var communityExperienceScreen: some View {
-        OnboardingShell(
-            eyebrow: "COMMUNITY",
-            titleFirst: "Study with",
-            titleAccent: "people",
-            subtitle: "Crew kur, arkadaşlarınla beraber focus yap, görev paylaş ve akademik çevreni canlı tut.",
-            progressText: "5 / 5",
-            canSkip: false,
-            primaryTitle: finalState.isLoading ? "Hazırlanıyor..." : "Updo’ya geç",
-            primaryIcon: finalState.isLoading ? "clock" : "checkmark.circle.fill",
-            isKeyboardActive: focusedField != nil,
-            primaryAction: goNext,
-            skipAction: nil
-        ) {
-            VStack(alignment: .leading, spacing: 14) {
-                CrewCommunityOnboardingPreview()
-
-                AnimatedOnboardingFeatureCard(
-                    icon: "person.3.fill",
-                    title: "Crew focus",
-                    subtitle: "Crew üyeleriyle aynı anda focus başlat ve birlikte ilerle.",
-                    tint: Color(onboardingHex: OnboardingArenaPalette.appPurple),
-                    delay: 0.05
-                )
-
-                AnimatedOnboardingFeatureCard(
-                    icon: "checklist",
-                    title: "Shared tasks",
-                    subtitle: "Ortak görevleri ve proje işlerini crew içinde takip et.",
-                    tint: Color(onboardingHex: OnboardingArenaPalette.green),
-                    delay: 0.13
-                )
-
-                AnimatedOnboardingFeatureCard(
-                    icon: "bubble.left.and.bubble.right.fill",
-                    title: "Chat + progress",
-                    subtitle: "Mesajlaş, ilerlemeyi paylaş ve çalışma grubunu aktif tut.",
-                    tint: Color(onboardingHex: OnboardingArenaPalette.appCyan),
-                    delay: 0.21
-                )
-
-                VStack(alignment: .leading, spacing: 12) {
-                    OnboardingInfoCard(
-                        icon: "plus.circle.fill",
-                        title: "İstersen ilk crew’ünü şimdi oluştur",
-                        subtitle: "Crew oluşturmazsan da uygulama içinde istediğin zaman başlatabilirsin.",
-                        tint: Color.updoHex(selectedCrewColorHex)
-                    )
-
-                    PremiumInputField(
-                        title: "Crew adı",
-                        placeholder: "örn. CMPE Study Crew",
-                        text: $crewName,
-                        icon: selectedCrewIcon,
-                        tint: Color.updoHex(selectedCrewColorHex)
-                    )
-                    .focused($focusedField, equals: .crewName)
-
-                    CrewStylePicker(
-                        selectedIcon: $selectedCrewIcon,
-                        selectedColorHex: $selectedCrewColorHex
-                    )
-
-                    Button {
-                        Task { await createCrewFromOnboarding() }
-                    } label: {
-                        PremiumPrimaryMiniButton(
-                            title: crewState.isLoading ? "Oluşturuluyor..." : (createdCrew == nil ? "Crew oluştur" : "Crew hazır"),
-                            subtitle: createdCrew == nil ? "İlk çalışma grubunu başlat" : "MainTab’de Crew sayfanda görünecek",
-                            icon: createdCrew == nil ? "plus" : "checkmark",
-                            tint: Color.updoHex(selectedCrewColorHex),
-                            isLoading: crewState.isLoading
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(crewState.isLoading || createdCrew != nil)
-
-                    if let message = crewState.message {
-                        StatusCard(text: message, isSuccess: crewState.isSuccess)
-                    }
-
-                    if let message = finalState.message {
-                        StatusCard(text: message, isSuccess: finalState.isSuccess)
-                    }
-                }
-            }
-        }
-    }
-
-    var friendsScreen: some View {
-        OnboardingShell(
-            eyebrow: "SOCIAL SETUP",
-            titleFirst: "Arkadaşlarını",
-            titleAccent: "ekle",
-            subtitle: "Kullanıcı adıyla arkadaş isteği gönder. İstersen bu adımı sonra tamamlayabilirsin.",
-            progressText: "3 / 5",
-            canSkip: true,
-            primaryTitle: friendState.isSuccess ? "Devam et" : "Sonra yapacağım",
-            primaryIcon: friendState.isSuccess ? "arrow.right" : "forward.fill",
-            isKeyboardActive: focusedField != nil,
-            primaryAction: goNext,
-            skipAction: goNext
-        ) {
-            VStack(alignment: .leading, spacing: 14) {
-                InlineAddInput(
-                    title: "Kullanıcı adı",
-                    placeholder: "örn. hasan",
-                    text: $friendUsername,
-                    icon: "at",
-                    tint: Color(onboardingHex: OnboardingArenaPalette.appBlue),
-                    isLoading: friendState.isLoading
-                ) {
-                    Task { await addFriendByUsername() }
-                }
-                .focused($focusedField, equals: .friendUsername)
-
-                if let foundFriendProfile {
-                    OnboardingProfilePreviewCard(
-                        title: foundFriendProfile.full_name ?? foundFriendProfile.username ?? "Kullanıcı",
-                        subtitle: "@\(foundFriendProfile.username ?? "user")",
-                        icon: "person.fill.checkmark",
-                        tint: Color(onboardingHex: OnboardingArenaPalette.green),
-                        trailingText: "Gönderildi"
-                    )
-                } else {
-                    OnboardingInfoCard(
-                        icon: "sparkles",
-                        title: "Daha sonra da ekleyebilirsin",
-                        subtitle: "Arkadaş, chat ve beraber focus özellikleri uygulama içinde açık kalır.",
-                        tint: Color(onboardingHex: OnboardingArenaPalette.appBlue)
-                    )
-                }
-
-                if let message = friendState.message {
-                    StatusCard(text: message, isSuccess: friendState.isSuccess)
-                }
-            }
+            FocusExperienceHero()
         }
     }
 
     var crewScreen: some View {
         OnboardingShell(
-            eyebrow: "CREW SETUP",
-            titleFirst: "Crew",
-            titleAccent: "oluştur",
-            subtitle: "Ders grubu, proje ekibi veya arkadaş çalışma grubu için küçük bir crew başlat.",
-            progressText: "4 / 5",
-            canSkip: true,
-            primaryTitle: createdCrew == nil ? "Sonra oluşturacağım" : "Devam et",
-            primaryIcon: createdCrew == nil ? "forward.fill" : "arrow.right",
-            isKeyboardActive: focusedField != nil,
-            primaryAction: goNext,
-            skipAction: goNext
+            progressText: "4 / 6",
+            title: "Crew",
+            accent: "Study together",
+            subtitle: "Friends. Rooms. Shared progress.",
+            keywords: "FRIENDS  •  ROOMS  •  SHARED TASKS",
+            primaryTitle: "Continue",
+            primaryIcon: "arrow.right",
+            isPrimaryLoading: false,
+            primaryAction: goToCommunityPreview
         ) {
-            VStack(alignment: .leading, spacing: 14) {
-                PremiumInputField(
-                    title: "Crew adı",
-                    placeholder: "örn. CMPE Study Crew",
-                    text: $crewName,
-                    icon: selectedCrewIcon,
-                    tint: Color.updoHex(selectedCrewColorHex)
-                )
-                .focused($focusedField, equals: .crewName)
-
-                CrewStylePicker(
-                    selectedIcon: $selectedCrewIcon,
-                    selectedColorHex: $selectedCrewColorHex
-                )
-
-                Button {
-                    Task { await createCrewFromOnboarding() }
-                } label: {
-                    PremiumPrimaryMiniButton(
-                        title: crewState.isLoading ? "Oluşturuluyor..." : "Crew oluştur",
-                        subtitle: "Crew uygulama içinde de görünecek",
-                        icon: "plus",
-                        tint: Color.updoHex(selectedCrewColorHex),
-                        isLoading: crewState.isLoading
-                    )
-                }
-                .buttonStyle(.plain)
-                .disabled(crewState.isLoading)
-
-                if let message = crewState.message {
-                    StatusCard(text: message, isSuccess: crewState.isSuccess)
-                }
-
-                if createdCrew != nil {
-                    InlineAddInput(
-                        title: "Crew’e arkadaş ekle",
-                        placeholder: "Arkadaşının kullanıcı adı",
-                        text: $crewMemberUsername,
-                        icon: "at",
-                        tint: Color(onboardingHex: OnboardingArenaPalette.green),
-                        isLoading: crewMemberState.isLoading
-                    ) {
-                        Task { await addMemberToCreatedCrew() }
-                    }
-                    .focused($focusedField, equals: .crewMemberUsername)
-
-                    if let addedCrewMemberProfile {
-                        OnboardingProfilePreviewCard(
-                            title: addedCrewMemberProfile.full_name ?? addedCrewMemberProfile.username ?? "Kullanıcı",
-                            subtitle: "@\(addedCrewMemberProfile.username ?? "user")",
-                            icon: "person.2.fill",
-                            tint: Color(onboardingHex: OnboardingArenaPalette.green),
-                            trailingText: "Eklendi"
-                        )
-                    }
-
-                    if let message = crewMemberState.message {
-                        StatusCard(text: message, isSuccess: crewMemberState.isSuccess)
-                    }
-                } else {
-                    OnboardingInfoCard(
-                        icon: "person.badge.plus",
-                        title: "Arkadaş ekleme hazır",
-                        subtitle: "Crew oluşturduktan sonra istersen hemen arkadaşını ekleyebilirsin.",
-                        tint: Color(onboardingHex: OnboardingArenaPalette.appPurple)
-                    )
-                }
-            }
+            CrewExperienceHero()
         }
     }
 
-    var scheduleScreen: some View {
+    var communityScreen: some View {
         OnboardingShell(
-            eyebrow: "WEEK SETUP",
-            titleFirst: "Ders programını",
-            titleAccent: "hazırla",
-            subtitle: "Seçtiğin dersleri haftaya yerleştir. Kaydedince Week ekranında görünür.",
-            progressText: "5 / 5",
-            canSkip: true,
-            primaryTitle: finalState.isLoading ? "Hazırlanıyor..." : "Uygulamaya geç",
-            primaryIcon: "checkmark.circle.fill",
-            isKeyboardActive: focusedField != nil,
-            primaryAction: goNext,
-            skipAction: goNext
+            progressText: "5 / 6",
+            title: "Community",
+            accent: "Stay in motion",
+            subtitle: "Arena. Rankings. Momentum.",
+            keywords: "ARENA  •  DISCOVER  •  COMPETE",
+            primaryTitle: "Continue",
+            primaryIcon: "arrow.right",
+            isPrimaryLoading: false,
+            primaryAction: goToReady
         ) {
-            VStack(spacing: 12) {
-                HStack(spacing: 10) {
-                    ScheduleModeCompactCard(
-                        title: "Şimdi ekle",
-                        icon: "calendar.badge.plus",
-                        isSelected: selectedScheduleMode == .addNow,
-                        tint: Color(onboardingHex: OnboardingArenaPalette.appBlue)
-                    ) {
-                        selectedScheduleMode = .addNow
-                    }
-
-                    ScheduleModeCompactCard(
-                        title: "Sonra",
-                        icon: "clock.arrow.circlepath",
-                        isSelected: selectedScheduleMode == .manualLater,
-                        tint: Color(onboardingHex: OnboardingArenaPalette.appPurple)
-                    ) {
-                        selectedScheduleMode = .manualLater
-                    }
-                }
-
-                if selectedScheduleMode == .addNow {
-                    scheduleBuilder
-                }
-
-                if let message = scheduleState.message {
-                    StatusCard(text: message, isSuccess: scheduleState.isSuccess)
-                }
-                
-                if let message = finalState.message {
-                    StatusCard(text: message, isSuccess: finalState.isSuccess)
-                }
-
-                OnboardingInfoCard(
-                    icon: "graduationcap.fill",
-                    title: "\(studentStore.courses.count) ders hazır",
-                    subtitle: "Student setup’ta seçtiğin dersler Week programına eklenebilir.",
-                    tint: Color(onboardingHex: OnboardingArenaPalette.green)
-                )
-            }
+            CommunityExperienceHero()
         }
     }
 
-    var scheduleBuilder: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if studentStore.courses.isEmpty {
-                StatusCard(
-                    text: "Henüz ders bulunamadı. Uygulamaya geçtikten sonra ders ekleyebilirsin.",
-                    isSuccess: false
-                )
-            } else {
-                Text("Ders")
-                    .font(.system(size: 13, weight: .black, design: .monospaced))
-                    .tracking(1.2)
-                    .foregroundStyle(.white.opacity(0.58))
-
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(studentStore.courses) { course in
-                            Button {
-                                selectedCourseID = course.id
-                            } label: {
-                                Text(course.code.isEmpty ? course.name : "\(course.code) • \(course.name)")
-                                    .font(.system(size: 12, weight: .black, design: .rounded))
-                                    .foregroundStyle(selectedCourseID == course.id ? .black : .white)
-                                    .lineLimit(1)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 9)
-                                    .background(
-                                        Capsule()
-                                            .fill(selectedCourseID == course.id ? Color(onboardingHex: OnboardingArenaPalette.appBlue) : .white.opacity(0.08))
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 7), count: 7), spacing: 7) {
-                    ForEach(0..<7, id: \.self) { index in
-                        Button {
-                            selectedWeekday = index
-                        } label: {
-                            Text(weekdays[index])
-                                .font(.system(size: 11, weight: .black, design: .rounded))
-                                .foregroundStyle(selectedWeekday == index ? .black : .white)
-                                .frame(height: 36)
-                                .frame(maxWidth: .infinity)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .fill(selectedWeekday == index ? Color(onboardingHex: OnboardingArenaPalette.appBlue) : .white.opacity(0.08))
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                HStack(spacing: 8) {
-                    StepperPill(title: "Saat", value: String(format: "%02d", selectedStartHour)) {
-                        selectedStartHour = max(6, selectedStartHour - 1)
-                    } plus: {
-                        selectedStartHour = min(23, selectedStartHour + 1)
-                    }
-
-                    StepperPill(title: "Dakika", value: String(format: "%02d", selectedStartMinute)) {
-                        selectedStartMinute = previousMinute(selectedStartMinute)
-                    } plus: {
-                        selectedStartMinute = nextMinute(selectedStartMinute)
-                    }
-                }
-
-                HStack(spacing: 7) {
-                    ForEach(durations, id: \.self) { duration in
-                        Button {
-                            selectedDuration = duration
-                        } label: {
-                            Text("\(duration)")
-                                .font(.system(size: 12, weight: .black, design: .rounded))
-                                .foregroundStyle(selectedDuration == duration ? .black : .white)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 36)
-                                .background(
-                                    Capsule()
-                                        .fill(selectedDuration == duration ? Color(onboardingHex: OnboardingArenaPalette.appBlue) : .white.opacity(0.08))
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                Button {
-                    saveSelectedCourseSchedule()
-                } label: {
-                    OnboardingActionRow(
-                        title: "Programa ekle",
-                        subtitle: selectedCourse?.name ?? "Ders seç",
-                        icon: "calendar.badge.plus",
-                        tint: Color(onboardingHex: OnboardingArenaPalette.appBlue),
-                        isLoading: false
-                    )
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(14)
-        .background(CardSurface(radius: 26))
-    }
-
-    var finishingScreen: some View {
-        ZStack {
-            OnboardingArenaBackground()
-                .ignoresSafeArea()
-
-            ProgressView()
-                .tint(.white)
-        }
-    }
-
-    func previousMinute(_ minute: Int) -> Int {
-        switch minute {
-        case 45: return 30
-        case 30: return 15
-        case 15: return 0
-        default: return 45
-        }
-    }
-
-    func nextMinute(_ minute: Int) -> Int {
-        switch minute {
-        case 0: return 15
-        case 15: return 30
-        case 30: return 45
-        default: return 0
-        }
-    }
-}
-
-// MARK: - Actions
-
-private extension AppOnboardingFlowView {
-    func addFriendByUsername() async {
-        guard let currentUserID = session.currentUser?.id else {
-            friendState = .failed("Oturum bulunamadı.")
-            OnboardingHaptics.warning()
-            return
-        }
-
-        let clean = friendUsername.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-
-        guard !clean.isEmpty else {
-            friendState = .failed("Kullanıcı adı boş olamaz.")
-            OnboardingHaptics.warning()
-            return
-        }
-
-        if clean == session.currentUser?.username.lowercased() {
-            friendState = .failed("Kendini arkadaş olarak ekleyemezsin.")
-            OnboardingHaptics.warning()
-            return
-        }
-
-        friendState = .loading
-
-        do {
-            let profile = try await friendStore.findUserByUsername(clean)
-
-            try await friendStore.sendFriendRequest(
-                to: profile.id,
-                currentUserID: currentUserID
+    var readyScreen: some View {
+        OnboardingShell(
+            progressText: "6 / 6",
+            title: "You're in",
+            accent: "System ready",
+            subtitle: "Your study space is built.",
+            keywords: "HOME  •  WEEK  •  FOCUS  •  CREW",
+            primaryTitle: isFinishing ? "Preparing..." : "Enter Updo",
+            primaryIcon: isFinishing ? "clock" : "arrow.right.circle.fill",
+            isPrimaryLoading: isFinishing,
+            primaryAction: enterApp
+        ) {
+            ReadyExperienceHero(
+                educationText: educationSummary,
+                coursesCount: max(studentStore.courses.count, 1),
+                dailyGoal: studentStore.profile?.dailyStudyGoalMinutes ?? 120,
+                finishError: finishError
             )
-
-            await friendStore.loadAllFriendships(currentUserID: currentUserID)
-
-            OnboardingHaptics.success()
-            foundFriendProfile = profile
-            friendState = .success("@\(clean) için arkadaş isteği gönderildi.")
-            friendUsername = ""
-            focusedField = nil
-        } catch {
-            OnboardingHaptics.warning()
-            friendState = .failed("Kullanıcı bulunamadı.")
         }
     }
 
-    func createCrewFromOnboarding() async {
-        guard let ownerID = session.currentUser?.id else {
-            crewState = .failed("Oturum bulunamadı.")
-            OnboardingHaptics.warning()
-            return
+    private var educationSummary: String {
+        guard let profile = studentStore.profile else {
+            return "Student profile"
         }
 
-        let clean = crewName.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard clean.count >= 2 else {
-            crewState = .failed("Crew adı en az 2 karakter olmalı.")
-            OnboardingHaptics.warning()
-            return
+        if profile.educationLevel == "high_school" {
+            let grade = profile.gradeLevel
+            let track = profile.highSchoolTrack ?? "Track"
+            return "High School • \(grade) • \(track)"
         }
 
-        crewState = .loading
-
-        do {
-            crewStore.setCurrentUser(ownerID)
-
-            let crew = try await crewStore.createCrew(
-                name: clean,
-                icon: selectedCrewIcon,
-                colorHex: selectedCrewColorHex,
-                ownerID: ownerID
-            )
-
-            OnboardingHaptics.success()
-            createdCrew = crew
-            crewState = .success("\(clean) oluşturuldu.")
-            crewName = ""
-            focusedField = nil
-        } catch {
-            OnboardingHaptics.warning()
-            crewState = .failed("Crew oluşturulamadı. Tekrar dene.")
-        }
-    }
-
-    func addMemberToCreatedCrew() async {
-        guard let createdCrew else {
-            crewMemberState = .failed("Önce crew oluştur.")
-            OnboardingHaptics.warning()
-            return
-        }
-
-        let clean = crewMemberUsername.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-
-        guard !clean.isEmpty else {
-            crewMemberState = .failed("Kullanıcı adı boş olamaz.")
-            OnboardingHaptics.warning()
-            return
-        }
-
-        crewMemberState = .loading
-
-        do {
-            let profile = try await friendStore.findUserByUsername(clean)
-            try await crewStore.addMember(by: clean, to: createdCrew.id)
-
-            OnboardingHaptics.success()
-            addedCrewMemberProfile = profile
-            crewMemberState = .success("@\(clean) crew’e eklendi.")
-            crewMemberUsername = ""
-            focusedField = nil
-        } catch {
-            OnboardingHaptics.warning()
-            crewMemberState = .failed("Kullanıcı bulunamadı veya zaten crew içinde.")
-        }
-    }
-
-    func saveSelectedCourseSchedule() {
-        guard let currentUserID = session.currentUser?.id.uuidString else {
-            scheduleState = .failed("Oturum bulunamadı.")
-            OnboardingHaptics.warning()
-            return
-        }
-
-        guard let course = selectedCourse else {
-            scheduleState = .failed("Önce bir ders seç.")
-            OnboardingHaptics.warning()
-            return
-        }
-
-        let startMinute = selectedStartHour * 60 + selectedStartMinute
-        let title = course.code.isEmpty ? course.name : "\(course.code) • \(course.name)"
-
-        let event = EventItem(
-            ownerUserID: currentUserID,
-            title: title,
-            weekday: selectedWeekday,
-            startMinute: startMinute,
-            durationMinute: selectedDuration,
-            location: nil,
-            notes: "Onboarding sırasında eklendi",
-            colorHex: course.colorHex
-        )
-
-        modelContext.insert(event)
-
-        do {
-            try modelContext.save()
-            scheduleState = .success("\(title), \(weekdays[selectedWeekday]) \(String(format: "%02d:%02d", selectedStartHour, selectedStartMinute)) saatine eklendi.")
-            OnboardingHaptics.success()
-        } catch {
-            scheduleState = .failed("Ders programa eklenemedi.")
-            OnboardingHaptics.warning()
-        }
+        let year = profile.gradeLevel == "prep" ? "Prep" : "\(profile.gradeLevel). Year"
+        let major = profile.majorName ?? "Major"
+        return "\(year) • \(major)"
     }
 }
 
 // MARK: - Shell
 
 private struct OnboardingShell<Content: View>: View {
-    let eyebrow: String
-    let titleFirst: String
-    let titleAccent: String
-    let subtitle: String
     let progressText: String
-    let canSkip: Bool
+    let title: String
+    let accent: String
+    let subtitle: String
+    let keywords: String
     let primaryTitle: String
     let primaryIcon: String
-    let isKeyboardActive: Bool
+    let isPrimaryLoading: Bool
     let primaryAction: () -> Void
-    let skipAction: (() -> Void)?
     let content: Content
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     init(
-        eyebrow: String,
-        titleFirst: String,
-        titleAccent: String,
-        subtitle: String,
         progressText: String,
-        canSkip: Bool,
+        title: String,
+        accent: String,
+        subtitle: String,
+        keywords: String,
         primaryTitle: String,
         primaryIcon: String,
-        isKeyboardActive: Bool,
+        isPrimaryLoading: Bool,
         primaryAction: @escaping () -> Void,
-        skipAction: (() -> Void)?,
         @ViewBuilder content: () -> Content
     ) {
-        self.eyebrow = eyebrow
-        self.titleFirst = titleFirst
-        self.titleAccent = titleAccent
-        self.subtitle = subtitle
         self.progressText = progressText
-        self.canSkip = canSkip
+        self.title = title
+        self.accent = accent
+        self.subtitle = subtitle
+        self.keywords = keywords
         self.primaryTitle = primaryTitle
         self.primaryIcon = primaryIcon
-        self.isKeyboardActive = isKeyboardActive
+        self.isPrimaryLoading = isPrimaryLoading
         self.primaryAction = primaryAction
-        self.skipAction = skipAction
         self.content = content()
     }
 
@@ -1073,975 +415,796 @@ private struct OnboardingShell<Content: View>: View {
             OnboardingArenaBackground()
                 .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                floatingTopBar
+            GeometryReader { proxy in
+                VStack(spacing: 0) {
+                    topBar
 
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: spacing(for: proxy.size.height)) {
                         hero
                         content
+                            .frame(maxWidth: .infinity)
+                            .frame(height: visualHeight(for: proxy.size.height))
                     }
                     .padding(.horizontal, 24)
-                    .padding(.top, 18)
-                    .padding(.bottom, isKeyboardActive ? 26 : 112)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    .transition(
-                        reduceMotion
-                        ? .identity
-                        : .opacity.combined(with: .scale(scale: 0.985))
-                    )
+                    .padding(.top, 8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
-                .scrollDismissesKeyboard(.interactively)
-            }
-
-            if !isKeyboardActive {
-                VStack {
-                    Spacer()
-                    floatingBottomBar
+                .safeAreaInset(edge: .bottom) {
+                    bottomButton
                 }
-                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .contentShape(Rectangle())
     }
 
-    private var floatingTopBar: some View {
+    private func spacing(for height: CGFloat) -> CGFloat {
+        height < 720 ? 15 : 19
+    }
+
+    private func visualHeight(for height: CGFloat) -> CGFloat {
+        if height < 700 { return 350 }
+        if height < 760 { return 380 }
+        return 410
+    }
+
+    private var topBar: some View {
         HStack {
-            HStack(spacing: 8) {
-                Rectangle()
-                    .fill(Color(onboardingHex: OnboardingArenaPalette.appBlue))
-                    .frame(width: 18, height: 1)
+            HStack(spacing: 7) {
+                Capsule()
+                    .fill(OnboardingArenaPalette.brandGradient)
+                    .frame(width: 20, height: 2)
 
                 Text(progressText)
-                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                    .font(.system(size: 11, weight: .heavy, design: .monospaced))
                     .tracking(1.4)
                     .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.appCyan))
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
             .background(
                 Capsule()
-                    .fill(Color.white.opacity(0.075))
-                    .overlay(Capsule().stroke(Color.white.opacity(0.10), lineWidth: 1))
+                    .fill(Color.white.opacity(0.055))
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.white.opacity(0.090), lineWidth: 1)
+                    )
             )
 
             Spacer()
-
-            if canSkip {
-                Button {
-                    skipAction?()
-                } label: {
-                    Text("Skip")
-                        .font(.system(size: 13, weight: .black, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.78))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(
-                            Capsule()
-                                .fill(Color.white.opacity(0.075))
-                                .overlay(Capsule().stroke(Color.white.opacity(0.10), lineWidth: 1))
-                        )
-                }
-                .buttonStyle(.plain)
-            }
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 54)
+        .padding(.horizontal, 22)
+        .padding(.top, 10)
+        .padding(.bottom, 4)
     }
 
     private var hero: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Text("— \(eyebrow) —")
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                    .tracking(2.3)
-                    .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.appCyan))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.65)
-            }
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 48, weight: .heavy))
+                .foregroundStyle(.white)
+                .tracking(-1.25)
+                .lineLimit(1)
+                .minimumScaleFactor(0.68)
 
-            HStack(alignment: .firstTextBaseline, spacing: 7) {
-                Text(titleFirst)
-                    .font(.system(size: 36, weight: .black))
-                    .foregroundStyle(.white)
-
-                Text(titleAccent)
-                    .font(.system(size: 34, weight: .regular, design: .serif))
-                    .italic()
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [
-                                Color(onboardingHex: OnboardingArenaPalette.appCyan),
-                                Color(onboardingHex: OnboardingArenaPalette.appPurple)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
-            .lineLimit(2)
-            .minimumScaleFactor(0.68)
+            Text(accent)
+                .font(.system(size: 29, weight: .semibold))
+                .foregroundStyle(OnboardingArenaPalette.brandGradient)
+                .tracking(-0.45)
+                .lineLimit(1)
+                .minimumScaleFactor(0.70)
 
             Text(subtitle)
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.58))
-                .lineSpacing(2)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 1)
+                .lineLimit(2)
+                .minimumScaleFactor(0.84)
+                .padding(.top, 2)
+
+            Text(keywords)
+                .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                .tracking(1.8)
+                .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.appCyan).opacity(0.78))
+                .lineLimit(1)
+                .minimumScaleFactor(0.62)
+                .padding(.top, 5)
         }
     }
 
-    private var floatingBottomBar: some View {
+    private var bottomButton: some View {
         Button(action: primaryAction) {
             HStack(spacing: 10) {
+                if isPrimaryLoading {
+                    ProgressView()
+                        .tint(.white)
+                        .scaleEffect(0.84)
+                }
+
                 Text(primaryTitle)
-                    .font(.system(size: 18, weight: .black, design: .rounded))
+                    .font(.system(size: 16, weight: .heavy))
 
                 Image(systemName: primaryIcon)
-                    .font(.system(size: 18, weight: .black))
+                    .font(.system(size: 16, weight: .heavy))
             }
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
-            .frame(height: 58)
+            .frame(height: 56)
             .background(
                 Capsule()
-                    .fill(OnboardingArenaPalette.hotGradient)
+                    .fill(OnboardingArenaPalette.actionGradient)
             )
-            .overlay(Capsule().stroke(.white.opacity(0.16), lineWidth: 1))
-            .shadow(color: Color(onboardingHex: OnboardingArenaPalette.appPurple).opacity(0.26), radius: 18, y: 9)
+            .overlay(
+                Capsule()
+                    .stroke(Color.white.opacity(0.16), lineWidth: 1)
+            )
+            .shadow(
+                color: Color(onboardingHex: OnboardingArenaPalette.appPurple).opacity(0.28),
+                radius: 18,
+                y: 9
+            )
         }
         .buttonStyle(OnboardingPressButtonStyle())
+        .disabled(isPrimaryLoading)
         .padding(.horizontal, 24)
-        .padding(.bottom, 22)
+        .padding(.top, 12)
+        .padding(.bottom, 18)
         .background(
             LinearGradient(
                 colors: [
                     Color.black.opacity(0.0),
-                    Color.black.opacity(0.80),
+                    Color.black.opacity(0.78),
                     Color.black.opacity(0.96)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
             )
             .ignoresSafeArea()
-            .frame(height: 132)
-            .allowsHitTesting(false),
-            alignment: .bottom
         )
     }
 }
 
-// MARK: - Components
-private struct AnimatedOnboardingFeatureCard: View {
-    let icon: String
-    let title: String
-    let subtitle: String
-    let tint: Color
-    let delay: Double
+// MARK: - Welcome
 
-    @State private var appeared = false
+private struct BrandOpeningHero: View {
+    @State private var pulse = false
+    @State private var rotate = false
+
+    var body: some View {
+        ZStack {
+            RadialGradient(
+                colors: [
+                    Color(onboardingHex: OnboardingArenaPalette.appCyan).opacity(0.18),
+                    Color(onboardingHex: OnboardingArenaPalette.appPurple).opacity(0.15),
+                    Color(onboardingHex: OnboardingArenaPalette.coral).opacity(0.08),
+                    Color.clear
+                ],
+                center: .center,
+                startRadius: 18,
+                endRadius: 220
+            )
+            .blur(radius: 4)
+            .scaleEffect(pulse ? 1.06 : 0.96)
+
+            Circle()
+                .stroke(Color.white.opacity(0.060), lineWidth: 1)
+                .frame(width: 265, height: 265)
+
+            Circle()
+                .stroke(Color.white.opacity(0.045), lineWidth: 1)
+                .frame(width: 185, height: 185)
+
+            Circle()
+                .trim(from: 0.08, to: 0.76)
+                .stroke(
+                    OnboardingArenaPalette.brandGradient,
+                    style: StrokeStyle(lineWidth: 3.2, lineCap: .round)
+                )
+                .frame(width: 250, height: 250)
+                .rotationEffect(.degrees(rotate ? 360 : 0))
+                .opacity(0.85)
+
+            ZStack {
+                Circle()
+                    .fill(OnboardingArenaPalette.brandGradient)
+                    .frame(width: 104, height: 104)
+                    .shadow(
+                        color: Color(onboardingHex: OnboardingArenaPalette.appPurple).opacity(0.36),
+                        radius: 24,
+                        y: 10
+                    )
+
+                Image(systemName: "location.north.fill")
+                    .font(.system(size: 40, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .offset(y: -2)
+            }
+            .scaleEffect(pulse ? 1.02 : 1.0)
+
+            EnergyNode(text: "PLAN", color: Color(onboardingHex: OnboardingArenaPalette.appCyan))
+                .offset(x: -118, y: -78)
+
+            EnergyNode(text: "FOCUS", color: Color(onboardingHex: OnboardingArenaPalette.appPurple))
+                .offset(x: 118, y: -42)
+
+            EnergyNode(text: "CREW", color: Color(onboardingHex: OnboardingArenaPalette.coral))
+                .offset(x: -92, y: 102)
+
+            EnergyNode(text: "GROW", color: Color(onboardingHex: OnboardingArenaPalette.green))
+                .offset(x: 112, y: 90)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) {
+                pulse = true
+            }
+
+            withAnimation(.linear(duration: 18).repeatForever(autoreverses: false)) {
+                rotate = true
+            }
+        }
+    }
+}
+
+private struct EnergyNode: View {
+    let text: String
+    let color: Color
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 10, weight: .heavy, design: .monospaced))
+            .tracking(1.4)
+            .foregroundStyle(color)
+            .padding(.horizontal, 10)
+            .frame(height: 30)
+            .background(
+                Capsule()
+                    .fill(color.opacity(0.12))
+                    .overlay(
+                        Capsule()
+                            .stroke(color.opacity(0.34), lineWidth: 1)
+                    )
+            )
+    }
+}
+
+// MARK: - Focus
+
+private struct FocusExperienceHero: View {
+    @State private var progress: CGFloat = 0.70
     @State private var pulse = false
 
     var body: some View {
-        HStack(spacing: 13) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 17, style: .continuous)
-                    .fill(tint.opacity(pulse ? 0.22 : 0.14))
-                    .frame(width: 50, height: 50)
+        VStack(spacing: 14) {
+            ProductStageCard {
+                VStack(spacing: 15) {
+                    HStack {
+                        Text("SESSION")
+                            .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                            .tracking(1.8)
+                            .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.appCyan))
 
-                Image(systemName: icon)
-                    .font(.system(size: 20, weight: .black))
-                    .foregroundStyle(tint)
-                    .scaleEffect(pulse ? 1.05 : 0.98)
+                        Spacer()
+
+                        Text("LIVE")
+                            .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                            .foregroundStyle(.black.opacity(0.78))
+                            .padding(.horizontal, 10)
+                            .frame(height: 27)
+                            .background(
+                                Capsule()
+                                    .fill(Color(onboardingHex: OnboardingArenaPalette.green))
+                            )
+                    }
+
+                    ZStack {
+                        Circle()
+                            .fill(
+                                RadialGradient(
+                                    colors: [
+                                        Color(onboardingHex: OnboardingArenaPalette.appCyan).opacity(0.16),
+                                        Color(onboardingHex: OnboardingArenaPalette.appPurple).opacity(0.10),
+                                        Color.clear
+                                    ],
+                                    center: .center,
+                                    startRadius: 20,
+                                    endRadius: 120
+                                )
+                            )
+                            .frame(width: 205, height: 205)
+                            .blur(radius: 7)
+
+                        Circle()
+                            .stroke(Color.white.opacity(0.070), lineWidth: 11)
+                            .frame(width: 160, height: 160)
+
+                        Circle()
+                            .trim(from: 0, to: progress)
+                            .stroke(
+                                OnboardingArenaPalette.focusGradient,
+                                style: StrokeStyle(lineWidth: 11, lineCap: .round)
+                            )
+                            .frame(width: 160, height: 160)
+                            .rotationEffect(.degrees(-90))
+
+                        VStack(spacing: 2) {
+                            Text("18:42")
+                                .font(.system(size: 40, weight: .heavy, design: .monospaced))
+                                .foregroundStyle(.white)
+
+                            Text("Deep Work")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.appCyan))
+                        }
+                    }
+                    .frame(height: 168)
+
+                    HStack(spacing: 10) {
+                        MicroProductCard(title: "GOAL", value: "Study", icon: "target", tint: Color(onboardingHex: OnboardingArenaPalette.appCyan))
+                        MicroProductCard(title: "LIVE", value: "Island", icon: "iphone", tint: Color(onboardingHex: OnboardingArenaPalette.appPurple))
+                    }
+                }
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.system(size: 18, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-
-                Text(subtitle)
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.54))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .black))
-                .foregroundStyle(.white.opacity(0.22))
+            LiveActivityPreview()
         }
-        .padding(13)
-        .background(CardSurface(radius: 24))
-        .opacity(appeared ? 1 : 0)
-        .offset(y: appeared ? 0 : 14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.86).delay(delay)) {
-                appeared = true
-            }
-
-            withAnimation(.easeInOut(duration: 1.35).repeatForever(autoreverses: true).delay(delay)) {
+            withAnimation(.easeInOut(duration: 1.35).repeatForever(autoreverses: true)) {
+                progress = 0.84
                 pulse = true
             }
         }
     }
 }
 
-private struct LiveActivityOnboardingPreview: View {
-    @State private var active = false
-    @State private var progress: CGFloat = 0.32
+private struct LiveActivityPreview: View {
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .stroke(Color.white.opacity(0.11), lineWidth: 5)
+                    .frame(width: 38, height: 38)
+
+                Circle()
+                    .trim(from: 0, to: 0.68)
+                    .stroke(
+                        OnboardingArenaPalette.focusGradient,
+                        style: StrokeStyle(lineWidth: 5, lineCap: .round)
+                    )
+                    .frame(width: 38, height: 38)
+                    .rotationEffect(.degrees(-90))
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Study Focus")
+                    .font(.system(size: 15, weight: .heavy))
+                    .foregroundStyle(.white)
+
+                Text("Live on Lock Screen")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.48))
+            }
+
+            Spacer()
+
+            Image(systemName: "bolt.fill")
+                .font(.system(size: 19, weight: .heavy))
+                .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.gold))
+        }
+        .padding(.horizontal, 15)
+        .frame(height: 70)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color.white.opacity(0.060))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(Color.white.opacity(0.080), lineWidth: 1)
+                )
+        )
+    }
+}
+
+// MARK: - Crew
+
+private struct CrewExperienceHero: View {
+    @State private var pulse = false
 
     var body: some View {
         VStack(spacing: 14) {
-            HStack {
-                Text("LIVE ACTIVITY")
-                    .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .tracking(1.6)
-                    .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.appCyan))
+            ProductStageCard {
+                VStack(spacing: 15) {
+                    HStack {
+                        Text("CREW ROOM")
+                            .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                            .tracking(1.8)
+                            .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.coral))
 
-                Spacer()
+                        Spacer()
 
-                Text("Focus active")
-                    .font(.system(size: 11, weight: .black, design: .rounded))
-                    .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.green))
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 6)
-                    .background(Color(onboardingHex: OnboardingArenaPalette.green).opacity(0.12), in: Capsule())
-            }
+                        Text("3 LIVE")
+                            .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                            .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.gold))
+                            .padding(.horizontal, 10)
+                            .frame(height: 27)
+                            .background(
+                                Capsule()
+                                    .fill(Color(onboardingHex: OnboardingArenaPalette.gold).opacity(0.13))
+                            )
+                    }
 
-            ZStack {
-                RoundedRectangle(cornerRadius: 32, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.090),
-                                Color.white.opacity(0.045),
-                                Color(onboardingHex: OnboardingArenaPalette.appPurple).opacity(0.10)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(height: 96)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 32, style: .continuous)
-                            .stroke(.white.opacity(0.10), lineWidth: 1)
-                    )
-
-                HStack(spacing: 14) {
                     ZStack {
                         Circle()
-                            .stroke(.white.opacity(0.10), lineWidth: 7)
-                            .frame(width: 58, height: 58)
+                            .stroke(Color.white.opacity(0.060), style: StrokeStyle(lineWidth: 1, dash: [4, 7]))
+                            .frame(width: 178, height: 178)
 
                         Circle()
-                            .trim(from: 0, to: progress)
-                            .stroke(
-                                OnboardingArenaPalette.hotGradient,
-                                style: StrokeStyle(lineWidth: 7, lineCap: .round)
+                            .fill(
+                                RadialGradient(
+                                    colors: [
+                                        Color(onboardingHex: OnboardingArenaPalette.coral).opacity(0.18),
+                                        Color(onboardingHex: OnboardingArenaPalette.appPurple).opacity(0.12),
+                                        Color.clear
+                                    ],
+                                    center: .center,
+                                    startRadius: 18,
+                                    endRadius: 130
+                                )
                             )
-                            .frame(width: 58, height: 58)
-                            .rotationEffect(.degrees(-90))
+                            .frame(width: 215, height: 215)
+                            .blur(radius: 7)
 
-                        Image(systemName: "timer")
-                            .font(.system(size: 18, weight: .black))
-                            .foregroundStyle(.white)
+                        CrewAvatarBubble(letter: "A", color: Color(onboardingHex: OnboardingArenaPalette.appCyan))
+                            .offset(x: 0, y: -77)
+
+                        CrewAvatarBubble(letter: "E", color: Color(onboardingHex: OnboardingArenaPalette.coral))
+                            .offset(x: -75, y: 42)
+
+                        CrewAvatarBubble(letter: "M", color: Color(onboardingHex: OnboardingArenaPalette.green))
+                            .offset(x: 75, y: 42)
+
+                        ZStack {
+                            Circle()
+                                .fill(OnboardingArenaPalette.crewGradient)
+                                .frame(width: 86, height: 86)
+                                .shadow(
+                                    color: Color(onboardingHex: OnboardingArenaPalette.coral).opacity(0.26),
+                                    radius: 22,
+                                    y: 9
+                                )
+
+                            Image(systemName: "person.3.fill")
+                                .font(.system(size: 32, weight: .heavy))
+                                .foregroundStyle(.black.opacity(0.74))
+                        }
+                        .scaleEffect(pulse ? 1.025 : 1.0)
                     }
+                    .frame(height: 178)
 
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("Study Focus")
-                            .font(.system(size: 18, weight: .black, design: .rounded))
-                            .foregroundStyle(.white)
-
-                        Text("24:18 remaining")
-                            .font(.system(size: 13, weight: .bold, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.58))
+                    HStack(spacing: 10) {
+                        MicroProductCard(title: "FOCUS", value: "Room", icon: "timer", tint: Color(onboardingHex: OnboardingArenaPalette.coral))
+                        MicroProductCard(title: "TASKS", value: "Shared", icon: "checklist", tint: Color(onboardingHex: OnboardingArenaPalette.gold))
                     }
-
-                    Spacer()
-
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: 18, weight: .black))
-                        .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.gold))
-                        .scaleEffect(active ? 1.12 : 0.92)
                 }
-                .padding(.horizontal, 18)
             }
+
+            CrewMessageStrip()
         }
-        .padding(16)
-        .background(CardSurface(radius: 28))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
             withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
-                active = true
-                progress = 0.74
+                pulse = true
             }
         }
     }
 }
 
-private struct WidgetOnboardingPreview: View {
-    @State private var lifted = false
+private struct CrewAvatarBubble: View {
+    let letter: String
+    let color: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("WIDGETS")
-                    .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .tracking(1.6)
-                    .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.appCyan))
-
-                Spacer()
-
-                Image(systemName: "plus.app.fill")
-                    .font(.system(size: 17, weight: .black))
-                    .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.appBlue))
-            }
-
-            HStack(spacing: 10) {
-                widgetCard(
-                    title: "Today",
-                    value: "4 tasks",
-                    icon: "checkmark.circle.fill",
-                    tint: Color(onboardingHex: OnboardingArenaPalette.green),
-                    delay: 0.0
-                )
-
-                widgetCard(
-                    title: "Focus",
-                    value: "72 min",
-                    icon: "timer",
-                    tint: Color(onboardingHex: OnboardingArenaPalette.coral),
-                    delay: 0.08
-                )
-
-                widgetCard(
-                    title: "Week",
-                    value: "Ready",
-                    icon: "calendar",
-                    tint: Color(onboardingHex: OnboardingArenaPalette.appPurple),
-                    delay: 0.16
-                )
-            }
-        }
-        .padding(16)
-        .background(CardSurface(radius: 28))
-        .onAppear {
-            withAnimation(.easeInOut(duration: 1.45).repeatForever(autoreverses: true)) {
-                lifted = true
-            }
-        }
-    }
-
-    private func widgetCard(
-        title: String,
-        value: String,
-        icon: String,
-        tint: Color,
-        delay: Double
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 18, weight: .black))
-                .foregroundStyle(tint)
-
-            Spacer(minLength: 2)
-
-            Text(title)
-                .font(.system(size: 11, weight: .black, design: .rounded))
-                .foregroundStyle(.white.opacity(0.54))
-
-            Text(value)
-                .font(.system(size: 14, weight: .black, design: .rounded))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity)
-        .frame(height: 112)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            tint.opacity(0.16),
-                            Color.white.opacity(0.055)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(.white.opacity(0.09), lineWidth: 1)
-                )
-        )
-        .offset(y: lifted ? -4 : 4)
-        .animation(.easeInOut(duration: 1.45).repeatForever(autoreverses: true).delay(delay), value: lifted)
-    }
-}
-
-private struct CrewCommunityOnboardingPreview: View {
-    @State private var orbit = false
-
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(onboardingHex: OnboardingArenaPalette.appPurple).opacity(0.16),
-                            Color(onboardingHex: OnboardingArenaPalette.appBlue).opacity(0.10),
-                            Color.white.opacity(0.040)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 30, style: .continuous)
-                        .stroke(.white.opacity(0.10), lineWidth: 1)
-                )
-
-            VStack(spacing: 16) {
-                ZStack {
-                    Circle()
-                        .stroke(.white.opacity(0.08), lineWidth: 1)
-                        .frame(width: 142, height: 142)
-
-                    Circle()
-                        .trim(from: 0, to: 0.28)
-                        .stroke(
-                            OnboardingArenaPalette.hotGradient,
-                            style: StrokeStyle(lineWidth: 3, lineCap: .round)
-                        )
-                        .frame(width: 142, height: 142)
-                        .rotationEffect(.degrees(orbit ? 360 : 0))
-
-                    crewAvatar(offset: CGSize(width: 0, height: -58), icon: "person.fill", tint: Color(onboardingHex: OnboardingArenaPalette.appCyan))
-                    crewAvatar(offset: CGSize(width: 54, height: 32), icon: "person.fill", tint: Color(onboardingHex: OnboardingArenaPalette.green))
-                    crewAvatar(offset: CGSize(width: -54, height: 32), icon: "person.fill", tint: Color(onboardingHex: OnboardingArenaPalette.gold))
-
-                    ZStack {
-                        Circle()
-                            .fill(Color.black.opacity(0.32))
-                            .frame(width: 70, height: 70)
-                            .overlay(Circle().stroke(.white.opacity(0.12), lineWidth: 1))
-
-                        Image(systemName: "person.3.fill")
-                            .font(.system(size: 26, weight: .black))
-                            .foregroundStyle(.white)
-                    }
-                }
-
-                VStack(spacing: 5) {
-                    Text("Crew study room")
-                        .font(.system(size: 19, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
-
-                    Text("Focus, tasks and progress in one shared space.")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.52))
-                        .multilineTextAlignment(.center)
-                }
-            }
-            .padding(.vertical, 22)
-        }
-        .frame(height: 236)
-        .onAppear {
-            withAnimation(.linear(duration: 2.8).repeatForever(autoreverses: false)) {
-                orbit = true
-            }
-        }
-    }
-
-    private func crewAvatar(offset: CGSize, icon: String, tint: Color) -> some View {
         Circle()
-            .fill(tint.opacity(0.18))
-            .frame(width: 42, height: 42)
+            .fill(color.opacity(0.18))
+            .frame(width: 44, height: 44)
             .overlay(
-                Image(systemName: icon)
-                    .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(tint)
+                Circle()
+                    .stroke(color.opacity(0.85), lineWidth: 1.3)
             )
-            .overlay(Circle().stroke(tint.opacity(0.32), lineWidth: 1))
-            .offset(offset)
+            .overlay(
+                Text(letter)
+                    .font(.system(size: 15, weight: .heavy))
+                    .foregroundStyle(color)
+            )
     }
 }
 
-private struct FeatureOverviewGridItem: View {
-    let icon: String
-    let title: String
-    let subtitle: String
-    let tint: Color
-
+private struct CrewMessageStrip: View {
     var body: some View {
-        HStack(spacing: 13) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 17, style: .continuous)
-                    .fill(tint.opacity(0.16))
-                    .frame(width: 48, height: 48)
+        HStack(spacing: 12) {
+            Circle()
+                .fill(Color(onboardingHex: OnboardingArenaPalette.green))
+                .frame(width: 42, height: 42)
+                .overlay(
+                    Text("B")
+                        .font(.system(size: 15, weight: .heavy))
+                        .foregroundStyle(.black.opacity(0.78))
+                )
 
-                Image(systemName: icon)
-                    .font(.system(size: 20, weight: .black))
-                    .foregroundStyle(tint)
-            }
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.system(size: 18, weight: .black, design: .rounded))
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Burak")
+                    .font(.system(size: 14, weight: .heavy))
                     .foregroundStyle(.white)
 
-                Text(subtitle)
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.52))
+                Text("Algorithm final için kütüphanedeyim 📚")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.50))
+                    .lineLimit(1)
             }
 
             Spacer()
 
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .black))
-                .foregroundStyle(.white.opacity(0.22))
+            Text("now")
+                .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                .foregroundStyle(.white.opacity(0.36))
         }
-        .padding(12)
-        .background(CardSurface(radius: 24))
+        .padding(.horizontal, 15)
+        .frame(height: 68)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color.white.opacity(0.055))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(Color.white.opacity(0.080), lineWidth: 1)
+                )
+        )
     }
 }
 
-private struct PremiumInputField: View {
-    let title: String
-    let placeholder: String
-    @Binding var text: String
-    let icon: String
-    var tint: Color = Color(onboardingHex: OnboardingArenaPalette.appBlue)
+// MARK: - Community
 
+private struct CommunityExperienceHero: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.68))
+        VStack(spacing: 14) {
+            ProductStageCard {
+                VStack(spacing: 15) {
+                    HStack {
+                        Text("ARENA")
+                            .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                            .tracking(1.8)
+                            .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.gold))
 
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(tint)
-                    .frame(width: 24)
+                        Spacer()
 
-                TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.30)))
-                    .textInputAutocapitalization(.words)
-                    .autocorrectionDisabled()
-                    .foregroundStyle(.white)
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .submitLabel(.done)
-            }
-            .padding(.horizontal, 15)
-            .frame(height: 56)
-            .background(CardSurface(radius: 21))
-        }
-    }
-}
-
-private struct InlineAddInput: View {
-    let title: String
-    let placeholder: String
-    @Binding var text: String
-    let icon: String
-    let tint: Color
-    let isLoading: Bool
-    let action: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            Text(title)
-                .font(.system(size: 14, weight: .black, design: .rounded))
-                .foregroundStyle(.white.opacity(0.72))
-
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 17, weight: .black))
-                    .foregroundStyle(tint)
-                    .frame(width: 24)
-
-                TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.30)))
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .submitLabel(.done)
-
-                Button(action: action) {
-                    ZStack {
-                        Circle()
-                            .fill(tint)
-                            .frame(width: 42, height: 42)
-
-                        if isLoading {
-                            ProgressView()
-                                .tint(.white)
-                                .scaleEffect(0.78)
-                        } else {
-                            Image(systemName: "plus")
-                                .font(.system(size: 16, weight: .black))
-                                .foregroundStyle(.black.opacity(0.72))
-                        }
-                    }
-                }
-                .buttonStyle(.plain)
-                .disabled(isLoading)
-            }
-            .padding(.horizontal, 15)
-            .frame(height: 64)
-            .background(CardSurface(radius: 23))
-        }
-    }
-}
-
-private struct CrewStylePicker: View {
-    @Binding var selectedIcon: String
-    @Binding var selectedColorHex: String
-
-    private let icons = [
-        "person.3.fill", "person.2.fill", "bolt.fill", "book.fill",
-        "graduationcap.fill", "briefcase.fill", "laptopcomputer", "target",
-        "checklist", "calendar", "flame.fill", "star.fill"
-    ]
-
-    private let colors = [
-        "#4F8CFF", "#7C3AED", "#EC4899", "#22C55E",
-        "#F97316", "#06B6D4", "#A855F7", "#EF4444"
-    ]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Crew görünümü")
-                .font(.system(size: 14, weight: .black, design: .rounded))
-                .foregroundStyle(.white.opacity(0.72))
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 9) {
-                    ForEach(icons, id: \.self) { icon in
-                        Button {
-                            selectedIcon = icon
-                        } label: {
-                            Image(systemName: icon)
-                                .font(.system(size: 18, weight: .black))
-                                .foregroundStyle(selectedIcon == icon ? .white : .white.opacity(0.52))
-                                .frame(width: 50, height: 50)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                        .fill(
-                                            selectedIcon == icon
-                                            ? Color.updoHex(selectedColorHex).opacity(0.34)
-                                            : Color.white.opacity(0.075)
-                                        )
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                        .stroke(
-                                            selectedIcon == icon
-                                            ? Color.updoHex(selectedColorHex)
-                                            : Color.white.opacity(0.07),
-                                            lineWidth: 1.2
-                                        )
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-
-            HStack(spacing: 10) {
-                ForEach(colors, id: \.self) { hex in
-                    Button {
-                        selectedColorHex = hex
-                    } label: {
-                        Circle()
-                            .fill(Color.updoHex(hex))
-                            .frame(width: 30, height: 30)
-                            .overlay(
-                                Circle()
-                                    .stroke(
-                                        Color.white.opacity(selectedColorHex == hex ? 0.9 : 0.12),
-                                        lineWidth: selectedColorHex == hex ? 3 : 1
-                                    )
+                        Text("RANK #3")
+                            .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                            .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.gold))
+                            .padding(.horizontal, 10)
+                            .frame(height: 27)
+                            .background(
+                                Capsule()
+                                    .fill(Color(onboardingHex: OnboardingArenaPalette.gold).opacity(0.13))
                             )
                     }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-        .padding(14)
-        .background(CardSurface(radius: 26))
-    }
-}
 
-private struct PremiumPrimaryMiniButton: View {
-    let title: String
-    let subtitle: String
-    let icon: String
-    let tint: Color
-    let isLoading: Bool
+                    VStack(spacing: 10) {
+                        LeaderboardRow(rank: "1", name: "Mert", value: "7h 20m", color: Color(onboardingHex: OnboardingArenaPalette.gold), isCurrent: false)
+                        LeaderboardRow(rank: "2", name: "Ece", value: "6h 45m", color: Color(onboardingHex: OnboardingArenaPalette.green), isCurrent: false)
+                        LeaderboardRow(rank: "3", name: "You", value: "5h 10m", color: Color(onboardingHex: OnboardingArenaPalette.coral), isCurrent: true)
+                    }
+                    .padding(.vertical, 4)
 
-    var body: some View {
-        HStack(spacing: 13) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 17, style: .continuous)
-                    .fill(tint.opacity(0.18))
-                    .frame(width: 54, height: 54)
-
-                if isLoading {
-                    ProgressView()
-                        .tint(.white)
-                } else {
-                    Image(systemName: icon)
-                        .font(.system(size: 20, weight: .black))
-                        .foregroundStyle(tint)
+                    HStack(spacing: 10) {
+                        MicroProductCard(title: "SCOPE", value: "Campus", icon: "building.columns.fill", tint: Color(onboardingHex: OnboardingArenaPalette.gold))
+                        MicroProductCard(title: "MOTION", value: "Weekly", icon: "flame.fill", tint: Color(onboardingHex: OnboardingArenaPalette.coral))
+                    }
                 }
             }
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.system(size: 18, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-
-                Text(subtitle)
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.52))
+            HStack(spacing: 10) {
+                CommunityMiniStat(title: "Arena", value: "Live")
+                CommunityMiniStat(title: "Discover", value: "Crews")
+                CommunityMiniStat(title: "Compete", value: "Weekly")
             }
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 13, weight: .black))
-                .foregroundStyle(.white.opacity(0.32))
         }
-        .padding(14)
-        .background(CardSurface(radius: 25))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
-private struct OnboardingInfoCard: View {
-    let icon: String
-    let title: String
-    let subtitle: String
-    let tint: Color
+private struct LeaderboardRow: View {
+    let rank: String
+    let name: String
+    let value: String
+    let color: Color
+    let isCurrent: Bool
 
     var body: some View {
-        HStack(spacing: 13) {
-            Image(systemName: icon)
-                .font(.system(size: 19, weight: .black))
-                .foregroundStyle(tint)
-                .frame(width: 44, height: 44)
-                .background(tint.opacity(0.15), in: Circle())
+        HStack(spacing: 12) {
+            Text("#\(rank)")
+                .font(.system(size: 20, weight: .heavy))
+                .foregroundStyle(color)
+                .frame(width: 44, alignment: .leading)
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.system(size: 17, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
+            Circle()
+                .fill(color.opacity(isCurrent ? 0.95 : 0.24))
+                .frame(width: 38, height: 38)
+                .overlay(
+                    Text(String(name.prefix(1)))
+                        .font(.system(size: 14, weight: .heavy))
+                        .foregroundStyle(isCurrent ? .black.opacity(0.78) : color)
+                )
 
-                Text(subtitle)
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.54))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Spacer()
-        }
-        .padding(14)
-        .background(CardSurface(radius: 24))
-    }
-}
-
-private struct OnboardingProfilePreviewCard: View {
-    let title: String
-    let subtitle: String
-    let icon: String
-    let tint: Color
-    let trailingText: String
-
-    var body: some View {
-        HStack(spacing: 13) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 19, style: .continuous)
-                    .fill(tint.opacity(0.18))
-                    .frame(width: 58, height: 58)
-
-                Image(systemName: icon)
-                    .font(.system(size: 22, weight: .black))
-                    .foregroundStyle(tint)
-            }
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.system(size: 18, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-
-                Text(subtitle)
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.52))
-            }
+            Text(name)
+                .font(.system(size: 15, weight: .heavy))
+                .foregroundStyle(.white)
 
             Spacer()
 
-            Text(trailingText)
-                .font(.system(size: 10, weight: .black, design: .rounded))
-                .foregroundStyle(tint)
-                .padding(.horizontal, 9)
-                .padding(.vertical, 6)
-                .background(tint.opacity(0.13), in: Capsule())
+            Text(value)
+                .font(.system(size: 13, weight: .heavy, design: .monospaced))
+                .foregroundStyle(isCurrent ? Color(onboardingHex: OnboardingArenaPalette.coral) : .white.opacity(0.72))
         }
-        .padding(14)
-        .background(CardSurface(radius: 26))
-        .overlay(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .stroke(tint.opacity(0.16), lineWidth: 1)
+        .padding(.horizontal, 13)
+        .frame(height: 54)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(isCurrent ? color.opacity(0.12) : Color.white.opacity(0.045))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(isCurrent ? color.opacity(0.24) : Color.white.opacity(0.060), lineWidth: 1)
+                )
         )
     }
 }
 
-private struct ScheduleModeCompactCard: View {
-    let title: String
-    let icon: String
-    let isSelected: Bool
-    let tint: Color
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 9) {
-                Image(systemName: icon)
-                    .font(.system(size: 18, weight: .black))
-                    .foregroundStyle(tint)
-
-                Text(title)
-                    .font(.system(size: 15, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-
-                Spacer()
-
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 18, weight: .black))
-                    .foregroundStyle(isSelected ? tint : .white.opacity(0.26))
-            }
-            .padding(13)
-            .background(CardSurface(radius: 22))
-            .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(isSelected ? tint.opacity(0.55) : .white.opacity(0.07), lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-private struct StepperPill: View {
+private struct CommunityMiniStat: View {
     let title: String
     let value: String
-    let minus: () -> Void
-    let plus: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            Button(action: minus) {
-                Image(systemName: "minus")
-                    .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(.white)
-                    .frame(width: 28, height: 28)
-                    .background(.white.opacity(0.08), in: Circle())
-            }
+        VStack(spacing: 3) {
+            Text(value)
+                .font(.system(size: 14, weight: .heavy))
+                .foregroundStyle(.white)
 
-            VStack(spacing: 1) {
-                Text(title)
-                    .font(.system(size: 10, weight: .black, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.45))
-
-                Text(value)
-                    .font(.system(size: 20, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-            }
-            .frame(maxWidth: .infinity)
-
-            Button(action: plus) {
-                Image(systemName: "plus")
-                    .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(.white)
-                    .frame(width: 28, height: 28)
-                    .background(.white.opacity(0.08), in: Circle())
-            }
+            Text(title.uppercased())
+                .font(.system(size: 8, weight: .heavy, design: .monospaced))
+                .tracking(1.0)
+                .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.gold).opacity(0.78))
         }
-        .padding(.horizontal, 10)
         .frame(maxWidth: .infinity)
-        .frame(height: 58)
-        .background(CardSurface(radius: 20))
+        .frame(height: 62)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color(onboardingHex: OnboardingArenaPalette.gold).opacity(0.070))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color(onboardingHex: OnboardingArenaPalette.gold).opacity(0.14), lineWidth: 1)
+                )
+        )
     }
 }
 
-private struct OnboardingActionRow: View {
-    let title: String
-    let subtitle: String
-    let icon: String
-    let tint: Color
-    let isLoading: Bool
+// MARK: - Ready
+
+private struct ReadyExperienceHero: View {
+    let educationText: String
+    let coursesCount: Int
+    let dailyGoal: Int
+    let finishError: String?
+
+    @State private var pulse = false
 
     var body: some View {
-        HStack(spacing: 13) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(tint.opacity(0.16))
-                    .frame(width: 52, height: 52)
+        VStack(spacing: 14) {
+            ProductStageCard {
+                VStack(spacing: 17) {
+                    ZStack {
+                        RadialGradient(
+                            colors: [
+                                Color(onboardingHex: OnboardingArenaPalette.green).opacity(0.25),
+                                Color(onboardingHex: OnboardingArenaPalette.appCyan).opacity(0.10),
+                                Color.clear
+                            ],
+                            center: .center,
+                            startRadius: 10,
+                            endRadius: 110
+                        )
+                        .frame(width: 200, height: 150)
+                        .blur(radius: 8)
 
-                if isLoading {
-                    ProgressView()
-                        .tint(.white)
-                        .scaleEffect(0.82)
-                } else {
-                    Image(systemName: icon)
-                        .font(.system(size: 20, weight: .black))
-                        .foregroundStyle(tint)
+                        Circle()
+                            .fill(Color(onboardingHex: OnboardingArenaPalette.green))
+                            .frame(width: 78, height: 78)
+                            .shadow(
+                                color: Color(onboardingHex: OnboardingArenaPalette.green).opacity(0.28),
+                                radius: 20,
+                                y: 8
+                            )
+                            .scaleEffect(pulse ? 1.035 : 1.0)
+
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 31, weight: .heavy))
+                            .foregroundStyle(.black.opacity(0.76))
+                    }
+                    .frame(height: 126)
+
+                    VStack(spacing: 9) {
+                        ReadyRow(icon: "graduationcap.fill", title: "Profile", value: educationText)
+                        ReadyRow(icon: "book.closed.fill", title: "Courses", value: "\(coursesCount) selected")
+                        ReadyRow(icon: "target", title: "Daily goal", value: "\(dailyGoal) min")
+                    }
                 }
             }
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.system(size: 18, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-
-                Text(subtitle)
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.54))
+            HStack(spacing: 10) {
+                CommunityMiniStat(title: "Home", value: "Ready")
+                CommunityMiniStat(title: "Focus", value: "Ready")
+                CommunityMiniStat(title: "Crew", value: "Ready")
             }
+
+            if let finishError {
+                StatusCard(text: finishError)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.45).repeatForever(autoreverses: true)) {
+                pulse = true
+            }
+        }
+    }
+}
+
+private struct ReadyRow: View {
+    let icon: String
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .heavy))
+                .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.appCyan))
+                .frame(width: 34, height: 34)
+                .background(
+                    Circle()
+                        .fill(Color(onboardingHex: OnboardingArenaPalette.appBlue).opacity(0.13))
+                )
+
+            Text(title)
+                .font(.system(size: 13, weight: .heavy))
+                .foregroundStyle(.white.opacity(0.58))
 
             Spacer()
 
-            Image(systemName: "chevron.right")
-                .font(.system(size: 13, weight: .black))
-                .foregroundStyle(.white.opacity(0.32))
+            Text(value)
+                .font(.system(size: 13, weight: .heavy))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.68)
         }
-        .padding(13)
-        .background(CardSurface(radius: 24))
+        .padding(.horizontal, 12)
+        .frame(height: 50)
+        .background(
+            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                .fill(Color.white.opacity(0.045))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                        .stroke(Color.white.opacity(0.060), lineWidth: 1)
+                )
+        )
     }
 }
 
 private struct StatusCard: View {
     let text: String
-    let isSuccess: Bool
-
-    var tint: Color {
-        isSuccess
-        ? Color(onboardingHex: OnboardingArenaPalette.green)
-        : Color(onboardingHex: OnboardingArenaPalette.gold)
-    }
 
     var body: some View {
         HStack(spacing: 11) {
-            Image(systemName: isSuccess ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                .font(.system(size: 17, weight: .black))
-                .foregroundStyle(tint)
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 17, weight: .heavy))
+                .foregroundStyle(Color(onboardingHex: OnboardingArenaPalette.gold))
 
             Text(text)
-                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(.white.opacity(0.82))
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -2050,28 +1213,97 @@ private struct StatusCard: View {
         .padding(13)
         .background(
             RoundedRectangle(cornerRadius: 19, style: .continuous)
-                .fill(tint.opacity(0.13))
+                .fill(Color(onboardingHex: OnboardingArenaPalette.gold).opacity(0.13))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 19, style: .continuous)
-                .stroke(tint.opacity(0.22), lineWidth: 1)
+                .stroke(Color(onboardingHex: OnboardingArenaPalette.gold).opacity(0.22), lineWidth: 1)
         )
     }
 }
 
-private struct CardSurface: View {
-    var radius: CGFloat = 26
+// MARK: - Shared Product UI
+
+private struct ProductStageCard<Content: View>: View {
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
 
     var body: some View {
-        RoundedRectangle(cornerRadius: radius, style: .continuous)
-            .fill(OnboardingArenaPalette.softCardGradient)
-            .overlay(
-                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .stroke(.white.opacity(0.075), lineWidth: 1)
+        content
+            .padding(16)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.065),
+                                Color(onboardingHex: OnboardingArenaPalette.appBlue).opacity(0.040),
+                                Color(onboardingHex: OnboardingArenaPalette.appPurple).opacity(0.050),
+                                Color.black.opacity(0.10)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 30, style: .continuous)
+                            .stroke(Color.white.opacity(0.080), lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.20), radius: 18, y: 10)
             )
-            .shadow(color: Color.black.opacity(0.20), radius: 14, y: 8)
     }
 }
+
+private struct MicroProductCard: View {
+    let title: String
+    let value: String
+    let icon: String
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .heavy))
+                .foregroundStyle(tint)
+                .frame(width: 34, height: 34)
+                .background(
+                    Circle()
+                        .fill(tint.opacity(0.13))
+                )
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 8, weight: .heavy, design: .monospaced))
+                    .tracking(1.1)
+                    .foregroundStyle(.white.opacity(0.36))
+
+                Text(value)
+                    .font(.system(size: 14, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity)
+        .frame(height: 58)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.045))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(tint.opacity(0.13), lineWidth: 1)
+                )
+        )
+    }
+}
+
+// MARK: - Background / System
 
 private struct OnboardingArenaBackground: View {
     var body: some View {
@@ -2090,34 +1322,34 @@ private struct OnboardingArenaBackground: View {
             .ignoresSafeArea()
 
             Circle()
-                .fill(Color(onboardingHex: OnboardingArenaPalette.appBlue).opacity(0.12))
-                .frame(width: 280, height: 280)
+                .fill(Color(onboardingHex: OnboardingArenaPalette.appBlue).opacity(0.10))
+                .frame(width: 260, height: 260)
                 .blur(radius: 100)
-                .offset(x: 170, y: -250)
+                .offset(x: 172, y: -250)
 
             Circle()
-                .fill(Color(onboardingHex: OnboardingArenaPalette.appPurple).opacity(0.16))
+                .fill(Color(onboardingHex: OnboardingArenaPalette.appPurple).opacity(0.14))
                 .frame(width: 330, height: 330)
-                .blur(radius: 115)
-                .offset(x: -180, y: 500)
+                .blur(radius: 120)
+                .offset(x: -190, y: 490)
 
             Circle()
-                .fill(Color(onboardingHex: OnboardingArenaPalette.coral).opacity(0.08))
-                .frame(width: 280, height: 280)
-                .blur(radius: 105)
-                .offset(x: 170, y: 300)
+                .fill(Color(onboardingHex: OnboardingArenaPalette.coral).opacity(0.060))
+                .frame(width: 270, height: 270)
+                .blur(radius: 108)
+                .offset(x: 160, y: 300)
 
             Circle()
-                .fill(Color(onboardingHex: OnboardingArenaPalette.gold).opacity(0.050))
-                .frame(width: 240, height: 240)
-                .blur(radius: 95)
-                .offset(x: -170, y: -180)
+                .fill(Color(onboardingHex: OnboardingArenaPalette.gold).opacity(0.045))
+                .frame(width: 230, height: 230)
+                .blur(radius: 98)
+                .offset(x: -150, y: -170)
 
             LinearGradient(
                 colors: [
                     Color.black.opacity(0.18),
                     Color.black.opacity(0.0),
-                    Color.black.opacity(0.44)
+                    Color.black.opacity(0.46)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -2135,8 +1367,6 @@ private struct OnboardingPressButtonStyle: ButtonStyle {
             .animation(.spring(response: 0.22, dampingFraction: 0.82), value: configuration.isPressed)
     }
 }
-
-// MARK: - Haptics
 
 private enum OnboardingHaptics {
     static func softTap() {
@@ -2158,13 +1388,7 @@ private enum OnboardingHaptics {
     }
 }
 
-// MARK: - Color Helper
-
 private extension Color {
-    static func updoHex(_ hex: String) -> Color {
-        Color(onboardingHex: hex)
-    }
-
     init(onboardingHex hex: String) {
         var cleaned = hex.trimmingCharacters(in: .whitespacesAndNewlines)
         cleaned = cleaned.replacingOccurrences(of: "#", with: "")

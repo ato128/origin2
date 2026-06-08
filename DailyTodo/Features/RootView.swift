@@ -12,10 +12,17 @@ struct RootView: View {
     @Binding var openFocusFromNotification: Bool
 
     @AppStorage("didFinishFullOnboardingV2") private var didFinishFullOnboarding = false
+    @AppStorage("appOnboardingStageV2") private var appOnboardingStageRawValue = AppOnboardingStage.welcome.rawValue
+    @AppStorage("lastCompletedFullOnboardingUserIDV2") private var lastCompletedFullOnboardingUserID = ""
 
     @State private var importExport: ScheduleExport? = nil
     @State private var showImportSheet: Bool = false
-    @State private var didFinishLaunchAnimation = false
+
+    @State private var didStartLaunchSequence = false
+    @State private var didCompleteMinimumLaunch = false
+    @State private var minimumLaunchTask: Task<Void, Never>?
+
+    @State private var lastObservedUserID: String?
 
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var crewStore: CrewStore
@@ -23,41 +30,45 @@ struct RootView: View {
     @EnvironmentObject var studentStore: StudentStore
     @Environment(\.scenePhase) private var scenePhase
 
-    private var isStudentProfileReady: Bool {
-        studentStore.didResolveRemoteProfile && !studentStore.isLoading
+    private let minimumLaunchDurationNanoseconds: UInt64 = 680_000_000
+
+    private var currentUserID: String? {
+        guard let user = session.currentUser else { return nil }
+        return user.id.uuidString
+    }
+
+    private var shouldWaitForStudentProfileResolve: Bool {
+        session.isSignedIn &&
+        !session.shouldShowEmailVerificationGate &&
+        !studentStore.didResolveRemoteProfile
     }
 
     private var shouldShowBlockingLaunch: Bool {
-        if !session.didResolveInitialSession {
-            return true
-        }
+        !didCompleteMinimumLaunch ||
+        !session.didResolveInitialSession ||
+        shouldWaitForStudentProfileResolve
+    }
 
-        if session.shouldShowEmailVerificationGate {
-            return false
-        }
+    private var hasFinishedLocalOnboardingForCurrentUser: Bool {
+        guard let currentUserID else { return false }
+        return didFinishFullOnboarding &&
+        lastCompletedFullOnboardingUserID == currentUserID
+    }
 
-        if !session.isSignedIn {
-            return false
-        }
-
-        if !didFinishLaunchAnimation {
-            return true
-        }
-
-        if !didFinishFullOnboarding {
-            return false
-        }
-
-        return !isStudentProfileReady
+    private var shouldShowOnboarding: Bool {
+        session.isSignedIn &&
+        !session.shouldShowEmailVerificationGate &&
+        (
+            !studentStore.hasCompletedStudentProfile ||
+            !hasFinishedLocalOnboardingForCurrentUser
+        )
     }
 
     var body: some View {
         ZStack {
             if shouldShowBlockingLaunch {
-                PremiumStudentLaunchView {
-                    didFinishLaunchAnimation = true
-                }
-                .transition(.opacity)
+                PremiumStudentLaunchView()
+                    .transition(.opacity)
 
             } else if session.shouldShowEmailVerificationGate {
                 EmailVerificationView()
@@ -68,7 +79,7 @@ struct RootView: View {
                 AuthView()
                     .transition(.opacity)
 
-            } else if !didFinishFullOnboarding {
+            } else if shouldShowOnboarding {
                 AppOnboardingFlowView()
                     .transition(.opacity)
 
@@ -76,7 +87,7 @@ struct RootView: View {
                 MainTabView(
                     openFocusFromNotification: $openFocusFromNotification
                 )
-                .transition(.opacity.combined(with: .scale(scale: 1.012)))
+                .transition(.opacity)
                 .onOpenURL { url in
                     handleIncomingFileURL(url)
                 }
@@ -131,31 +142,29 @@ struct RootView: View {
                 }
             }
         }
-        .animation(.easeInOut(duration: 0.34), value: session.isSignedIn)
-        .animation(.easeInOut(duration: 0.34), value: shouldShowBlockingLaunch)
-        .animation(.easeInOut(duration: 0.34), value: didFinishFullOnboarding)
-        .animation(.easeInOut(duration: 0.34), value: session.didResolveInitialSession)
-        .animation(.easeInOut(duration: 0.34), value: session.shouldShowEmailVerificationGate)
-        .onChange(of: session.isSignedIn) { _, isSignedIn in
-            didFinishLaunchAnimation = false
-        }
+        .animation(.easeInOut(duration: 0.26), value: shouldShowBlockingLaunch)
+        .animation(.easeInOut(duration: 0.24), value: shouldShowOnboarding)
+        .animation(.easeInOut(duration: 0.24), value: session.shouldShowEmailVerificationGate)
         .task {
+            startLaunchSequenceIfNeeded()
             await session.resolveInitialSessionIfNeeded()
         }
-        .task(id: session.currentUser?.id) {
-            guard session.didResolveInitialSession else { return }
+        .task(id: currentUserID) {
+            await handleCurrentUserChange()
+        }
+        .onChange(of: studentStore.hasCompletedStudentProfile) { _, completed in
+            guard completed else { return }
 
-            guard session.isSignedIn else {
-                studentStore.clearForSignOut()
-                return
+            Task { @MainActor in
+                await hydrateMainAppData(reason: "RootView.studentProfileCompleted")
             }
+        }
+        .onChange(of: didFinishFullOnboarding) { _, completed in
+            guard completed else { return }
 
-            guard didFinishFullOnboarding else {
-                return
-            }
-
-            if !studentStore.didResolveRemoteProfile || studentStore.profile == nil {
-                await studentStore.loadFromRemote()
+            Task { @MainActor in
+                markCurrentUserOnboardingCompletedIfNeeded()
+                await hydrateMainAppData(reason: "RootView.didFinishFullOnboarding")
             }
         }
         .onChange(of: scenePhase) { _, newPhase in
@@ -169,15 +178,134 @@ struct RootView: View {
                 )
 
                 guard session.isSignedIn,
-                      didFinishFullOnboarding,
                       !session.shouldShowEmailVerificationGate else {
                     return
                 }
 
-                await crewStore.loadCrewHomeSnapshot()
-                await crewStore.loadFocusStateForAllCrews()
+                if !studentStore.didResolveRemoteProfile || studentStore.profile == nil {
+                    await studentStore.loadFromRemote()
+                }
+
+                guard studentStore.hasCompletedStudentProfile else {
+                    resetLocalOnboardingForIncompleteCurrentUserIfNeeded()
+                    return
+                }
+
+                guard hasFinishedLocalOnboardingForCurrentUser else {
+                    return
+                }
+
+                await hydrateMainAppData(reason: "RootView.scenePhase.active")
             }
         }
+        .onDisappear {
+            minimumLaunchTask?.cancel()
+            minimumLaunchTask = nil
+        }
+    }
+
+    private func startLaunchSequenceIfNeeded() {
+        guard !didStartLaunchSequence else { return }
+
+        didStartLaunchSequence = true
+        didCompleteMinimumLaunch = false
+
+        minimumLaunchTask?.cancel()
+        minimumLaunchTask = Task { @MainActor in
+            print("🟡 ROOT COLD LAUNCH INTRO START")
+
+            try? await Task.sleep(nanoseconds: minimumLaunchDurationNanoseconds)
+            guard !Task.isCancelled else { return }
+
+            didCompleteMinimumLaunch = true
+
+            print("✅ ROOT COLD LAUNCH INTRO COMPLETE")
+        }
+    }
+
+    private func handleCurrentUserChange() async {
+        guard session.didResolveInitialSession else { return }
+
+        let newUserID = currentUserID
+
+        if lastObservedUserID != newUserID {
+            print("🟡 ROOT USER CHANGED:", lastObservedUserID ?? "nil", "→", newUserID ?? "nil")
+            lastObservedUserID = newUserID
+        }
+
+        guard session.isSignedIn else {
+            studentStore.clearForSignOut()
+            resetLocalOnboardingForSignedOutState()
+            return
+        }
+
+        guard !session.shouldShowEmailVerificationGate else {
+            return
+        }
+
+        await studentStore.loadFromRemote()
+
+        if studentStore.hasCompletedStudentProfile {
+            markCurrentUserOnboardingCompletedIfNeeded()
+            await hydrateMainAppData(reason: "RootView.currentUserChanged.returningProfileCompleted")
+        } else {
+            resetLocalOnboardingForIncompleteCurrentUserIfNeeded()
+        }
+    }
+
+    private func hydrateMainAppData(reason: String) async {
+        guard session.isSignedIn,
+              !session.shouldShowEmailVerificationGate,
+              studentStore.hasCompletedStudentProfile,
+              hasFinishedLocalOnboardingForCurrentUser else {
+            return
+        }
+
+        print("🟡 ROOT HYDRATE START:", reason)
+
+        if !studentStore.didResolveRemoteProfile || studentStore.profile == nil {
+            await studentStore.loadFromRemote()
+        }
+
+        await crewStore.loadCrewHomeSnapshot()
+        await crewStore.loadFocusStateForAllCrews()
+
+        print("✅ ROOT HYDRATE COMPLETE:", reason)
+    }
+
+    private func markCurrentUserOnboardingCompletedIfNeeded() {
+        guard let currentUserID else { return }
+        guard studentStore.hasCompletedStudentProfile else { return }
+
+        if lastCompletedFullOnboardingUserID != currentUserID {
+            lastCompletedFullOnboardingUserID = currentUserID
+        }
+
+        if !didFinishFullOnboarding {
+            didFinishFullOnboarding = true
+        }
+
+        if appOnboardingStageRawValue != AppOnboardingStage.ready.rawValue {
+            appOnboardingStageRawValue = AppOnboardingStage.ready.rawValue
+        }
+    }
+
+    private func resetLocalOnboardingForIncompleteCurrentUserIfNeeded() {
+        guard let currentUserID else { return }
+
+        let isDifferentFromCompletedUser = lastCompletedFullOnboardingUserID != currentUserID
+
+        if isDifferentFromCompletedUser {
+            didFinishFullOnboarding = false
+            appOnboardingStageRawValue = AppOnboardingStage.welcome.rawValue
+        } else if !studentStore.hasCompletedStudentProfile {
+            didFinishFullOnboarding = false
+            appOnboardingStageRawValue = AppOnboardingStage.welcome.rawValue
+        }
+    }
+
+    private func resetLocalOnboardingForSignedOutState() {
+        appOnboardingStageRawValue = AppOnboardingStage.welcome.rawValue
     }
 
     private func handleIncomingFileURL(_ url: URL) {
@@ -217,79 +345,92 @@ struct RootView: View {
 // MARK: - Premium Launch Loading
 
 private struct PremiumStudentLaunchView: View {
-    let onFinished: () -> Void
-
-    @State private var appeared = false
-    @State private var titleAppeared = false
-    @State private var orbit = false
-    @State private var glowPulse = false
-    @State private var iconBreath = false
-    @State private var arrowRise = false
-    @State private var finishTask: Task<Void, Never>?
-
-    private let minimumDurationNanoseconds: UInt64 = 900_000_000
+    @State private var appear = false
+    @State private var logoReveal = false
+    @State private var arrowReveal = false
+    @State private var wordReveal = false
+    @State private var breathe = false
+    @State private var shimmer = false
 
     var body: some View {
         ZStack {
-            launchBackground
+            background
 
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
 
-                VStack(spacing: 28) {
-                    premiumLogo
+                VStack(spacing: 30) {
+                    logoScene
 
                     Text("Updo")
-                        .font(.system(size: 58, weight: .regular, design: .serif))
+                        .font(.system(size: 62, weight: .regular, design: .serif))
                         .italic()
-                        .foregroundStyle(updoGoldGradient)
-                        .shadow(color: Color(rootHex: "#FBBF24").opacity(0.20), radius: 18, y: 8)
-                        .offset(y: titleAppeared ? 0 : 34)
-                        .opacity(titleAppeared ? 1 : 0)
+                        .tracking(-1.45)
+                        .foregroundStyle(wordmarkGradient)
+                        .shadow(
+                            color: Color(rootHex: "#1D4ED8").opacity(0.18),
+                            radius: 18,
+                            y: 8
+                        )
+                        .overlay(alignment: .leading) {
+                            wordmarkShimmer
+                        }
+                        .mask {
+                            Text("Updo")
+                                .font(.system(size: 62, weight: .regular, design: .serif))
+                                .italic()
+                                .tracking(-1.45)
+                        }
+                        .opacity(wordReveal ? 1 : 0)
+                        .offset(y: wordReveal ? 0 : 16)
+                        .blur(radius: wordReveal ? 0 : 6)
                         .animation(
-                            .spring(response: 0.82, dampingFraction: 0.84).delay(0.22),
-                            value: titleAppeared
+                            .spring(response: 0.62, dampingFraction: 0.90).delay(0.18),
+                            value: wordReveal
                         )
                 }
-                .offset(y: -8)
+                .offset(y: -14)
 
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 28)
         }
         .onAppear {
-            appeared = true
-            titleAppeared = true
-            orbit = true
-            glowPulse = true
-            iconBreath = true
-            arrowRise = true
-
-            finishTask?.cancel()
-            finishTask = Task { @MainActor in
-                try? await Task.sleep(nanoseconds: minimumDurationNanoseconds)
-                guard !Task.isCancelled else { return }
-
-                withAnimation(.easeInOut(duration: 0.28)) {
-                    onFinished()
-                }
+            withAnimation(.easeOut(duration: 0.18)) {
+                appear = true
             }
-        }
-        .onDisappear {
-            finishTask?.cancel()
-            finishTask = nil
+
+            withAnimation(.spring(response: 0.72, dampingFraction: 0.82).delay(0.04)) {
+                logoReveal = true
+            }
+
+            withAnimation(.spring(response: 0.56, dampingFraction: 0.80).delay(0.20)) {
+                arrowReveal = true
+            }
+
+            withAnimation(.spring(response: 0.62, dampingFraction: 0.90).delay(0.23)) {
+                wordReveal = true
+            }
+
+            withAnimation(.easeInOut(duration: 1.85).repeatForever(autoreverses: true).delay(0.42)) {
+                breathe = true
+            }
+
+            withAnimation(.easeInOut(duration: 1.35).repeatForever(autoreverses: false).delay(0.30)) {
+                shimmer = true
+            }
         }
     }
 
-    private var launchBackground: some View {
+    private var background: some View {
         ZStack {
             Color.black.ignoresSafeArea()
 
             LinearGradient(
                 colors: [
-                    Color(rootHex: "#03050A"),
-                    Color(rootHex: "#060817"),
-                    Color(rootHex: "#05040A")
+                    Color(rootHex: "#01020A"),
+                    Color(rootHex: "#050713"),
+                    Color(rootHex: "#02030A")
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -297,83 +438,92 @@ private struct PremiumStudentLaunchView: View {
             .ignoresSafeArea()
 
             Circle()
-                .fill(Color(rootHex: "#0B5CFF").opacity(0.105))
-                .frame(width: 330, height: 330)
-                .blur(radius: 125)
-                .offset(x: 175, y: -260)
+                .fill(Color(rootHex: "#0B3B8F").opacity(0.11))
+                .frame(width: 340, height: 340)
+                .blur(radius: 110)
+                .offset(x: 185, y: -295)
 
             Circle()
-                .fill(Color(rootHex: "#5B21B6").opacity(0.13))
-                .frame(width: 390, height: 390)
-                .blur(radius: 138)
-                .offset(x: -210, y: 425)
-
-            Circle()
-                .fill(Color(rootHex: "#B7791F").opacity(0.055))
-                .frame(width: 280, height: 280)
-                .blur(radius: 126)
-                .offset(x: 140, y: 360)
+                .fill(Color(rootHex: "#28135F").opacity(0.13))
+                .frame(width: 410, height: 410)
+                .blur(radius: 128)
+                .offset(x: -235, y: 420)
 
             LinearGradient(
                 colors: [
                     Color.black.opacity(0.22),
                     Color.clear,
-                    Color.black.opacity(0.52)
+                    Color.black.opacity(0.62)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
             )
             .ignoresSafeArea()
         }
+        .opacity(appear ? 1 : 0)
     }
 
-    private var premiumLogo: some View {
+    private var logoScene: some View {
         ZStack {
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            Color(rootHex: "#0EA5E9").opacity(glowPulse ? 0.20 : 0.11),
-                            Color(rootHex: "#1D4ED8").opacity(glowPulse ? 0.13 : 0.07),
-                            Color(rootHex: "#312E81").opacity(glowPulse ? 0.12 : 0.06),
-                            Color.clear
-                        ],
-                        center: .center,
-                        startRadius: 10,
-                        endRadius: 105
-                    )
-                )
-                .frame(width: 230, height: 230)
-                .blur(radius: 2)
-                .animation(.easeInOut(duration: 1.70).repeatForever(autoreverses: true), value: glowPulse)
+            RadialGradient(
+                colors: [
+                    Color(rootHex: "#1D4ED8").opacity(logoReveal ? 0.24 : 0.00),
+                    Color(rootHex: "#312E81").opacity(logoReveal ? 0.15 : 0.00),
+                    Color.clear
+                ],
+                center: .center,
+                startRadius: 8,
+                endRadius: 124
+            )
+            .frame(width: 265, height: 265)
+            .blur(radius: 5)
 
             ZStack {
                 Image(systemName: "scope")
-                    .font(.system(size: 154, weight: .ultraLight))
+                    .font(.system(size: 156, weight: .ultraLight))
                     .foregroundStyle(scopeGradient)
-                    .shadow(color: Color(rootHex: "#2563EB").opacity(0.22), radius: 24, y: 10)
-
-                ScopeGoldOrbit(orbit: orbit)
-                    .frame(width: 156, height: 156)
+                    .shadow(
+                        color: Color(rootHex: "#1D4ED8").opacity(0.24),
+                        radius: 22,
+                        y: 9
+                    )
 
                 Image(systemName: "location.north.fill")
                     .font(.system(size: 56, weight: .black))
                     .foregroundStyle(arrowGradient)
-                    .offset(y: arrowRise ? -1 : 10)
-                    .opacity(arrowRise ? 1 : 0)
-                    .shadow(color: Color(rootHex: "#22D3EE").opacity(0.25), radius: 18, y: 7)
-                    .animation(
-                        .spring(response: 0.78, dampingFraction: 0.78).delay(0.12),
-                        value: arrowRise
+                    .offset(y: arrowReveal ? -2 : 18)
+                    .opacity(arrowReveal ? 1 : 0)
+                    .scaleEffect(arrowReveal ? 1 : 0.64)
+                    .shadow(
+                        color: Color(rootHex: "#38BDF8").opacity(0.24),
+                        radius: 16,
+                        y: 7
                     )
             }
-            .scaleEffect(iconBreath ? 1.018 : 0.988)
-            .animation(.easeInOut(duration: 1.55).repeatForever(autoreverses: true), value: iconBreath)
+            .rotationEffect(.degrees(logoReveal ? 360 : -55))
+            .scaleEffect(logoReveal ? (breathe ? 1.012 : 0.996) : 0.70)
+            .opacity(logoReveal ? 1 : 0)
+            .blur(radius: logoReveal ? 0 : 10)
+            .animation(.spring(response: 0.72, dampingFraction: 0.82), value: logoReveal)
+            .animation(.easeInOut(duration: 1.85).repeatForever(autoreverses: true), value: breathe)
         }
-        .frame(width: 240, height: 240)
-        .scaleEffect(appeared ? 1 : 0.86)
-        .opacity(appeared ? 1 : 0)
-        .animation(.spring(response: 0.80, dampingFraction: 0.84), value: appeared)
+        .frame(width: 270, height: 270)
+    }
+
+    private var wordmarkShimmer: some View {
+        LinearGradient(
+            colors: [
+                Color.clear,
+                Color.white.opacity(0.32),
+                Color.clear
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .frame(width: 42)
+        .rotationEffect(.degrees(18))
+        .offset(x: shimmer ? 178 : -96)
+        .opacity(wordReveal ? 1 : 0)
     }
 
     private var scopeGradient: LinearGradient {
@@ -382,8 +532,8 @@ private struct PremiumStudentLaunchView: View {
                 Color(rootHex: "#F8FBFF"),
                 Color(rootHex: "#BFDFFF"),
                 Color(rootHex: "#60A5FA"),
-                Color(rootHex: "#4F46E5"),
-                Color(rootHex: "#312E81")
+                Color(rootHex: "#2563EB"),
+                Color(rootHex: "#111827")
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -393,17 +543,17 @@ private struct PremiumStudentLaunchView: View {
     private var arrowGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(rootHex: "#F8FBFF"),
-                Color(rootHex: "#9EE7FF"),
+                Color(rootHex: "#FFFFFF"),
+                Color(rootHex: "#BAE6FD"),
                 Color(rootHex: "#2563EB"),
-                Color(rootHex: "#312E81")
+                Color(rootHex: "#1E1B4B")
             ],
             startPoint: .top,
             endPoint: .bottom
         )
     }
 
-    private var updoGoldGradient: LinearGradient {
+    private var wordmarkGradient: LinearGradient {
         LinearGradient(
             colors: [
                 Color(rootHex: "#FFF7CC"),
@@ -413,68 +563,6 @@ private struct PremiumStudentLaunchView: View {
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
-        )
-    }
-}
-
-// MARK: - Gold Orbit
-
-private struct ScopeGoldOrbit: View {
-    let orbit: Bool
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .trim(from: 0.00, to: 0.105)
-                .stroke(
-                    goldGradient,
-                    style: StrokeStyle(lineWidth: 3.2, lineCap: .round)
-                )
-                .rotationEffect(.degrees(orbit ? 360 : 0))
-                .animation(.linear(duration: 1.42).repeatForever(autoreverses: false), value: orbit)
-
-            Circle()
-                .trim(from: 0.18, to: 0.225)
-                .stroke(
-                    softGoldGradient,
-                    style: StrokeStyle(lineWidth: 2.1, lineCap: .round)
-                )
-                .rotationEffect(.degrees(orbit ? 360 : 0))
-                .animation(.linear(duration: 1.42).repeatForever(autoreverses: false), value: orbit)
-
-            Circle()
-                .fill(Color(rootHex: "#FFF7CC"))
-                .frame(width: 7.4, height: 7.4)
-                .offset(y: -78)
-                .rotationEffect(.degrees(orbit ? 360 : 0))
-                .shadow(color: Color(rootHex: "#FBBF24").opacity(0.85), radius: 10)
-                .animation(.linear(duration: 1.42).repeatForever(autoreverses: false), value: orbit)
-        }
-        .shadow(color: Color(rootHex: "#FBBF24").opacity(0.30), radius: 12)
-    }
-
-    private var goldGradient: AngularGradient {
-        AngularGradient(
-            colors: [
-                Color(rootHex: "#FBBF24").opacity(0.02),
-                Color(rootHex: "#FFF7CC"),
-                Color(rootHex: "#FBBF24"),
-                Color(rootHex: "#B45309").opacity(0.70),
-                Color(rootHex: "#FBBF24").opacity(0.02)
-            ],
-            center: .center
-        )
-    }
-
-    private var softGoldGradient: AngularGradient {
-        AngularGradient(
-            colors: [
-                Color(rootHex: "#FBBF24").opacity(0.02),
-                Color(rootHex: "#FDE68A").opacity(0.72),
-                Color(rootHex: "#FBBF24").opacity(0.20),
-                Color(rootHex: "#FBBF24").opacity(0.02)
-            ],
-            center: .center
         )
     }
 }

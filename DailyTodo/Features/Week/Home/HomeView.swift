@@ -80,18 +80,19 @@ struct HomeView: View {
             )
 
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 22) {
+                VStack(alignment: .leading, spacing: focusSession.isSessionActive ? 18 : 22) {
                     topBar
                     heroSection
                     focusCard
                     timelineSection
                     statsRow
 
-                    Color.clear.frame(height: 92)
+                    Color.clear.frame(height: focusSession.isSessionActive ? 168 : 96)
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 6)
+                .padding(.top, focusSession.isSessionActive ? 4 : 6)
             }
+            .animation(.spring(response: 0.44, dampingFraction: 0.88), value: focusSession.isSessionActive)
         }
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showProfileHub) {
@@ -374,15 +375,15 @@ private extension HomeView {
         let isCritical = remaining > 0 && remaining <= 60
         let isPaused = focusSession.isPaused
 
-        return VStack(alignment: .leading, spacing: 16) {
+        return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center) {
                 HStack(spacing: 8) {
                     Circle()
                         .fill(isCritical ? accentGold : accentGreen)
                         .frame(width: 7, height: 7)
-                        .scaleEffect(pulse ? 1.45 : 1.0)
-                        .opacity(pulse ? 0.45 : 1.0)
-                        .shadow(color: (isCritical ? accentGold : accentGreen).opacity(0.70), radius: 7)
+                        .scaleEffect(pulse ? 1.35 : 1.0)
+                        .opacity(pulse ? 0.48 : 1.0)
+                        .shadow(color: (isCritical ? accentGold : accentGreen).opacity(0.55), radius: 6)
 
                     Text(isCritical ? "BİTMEK ÜZERE" : (isPaused ? "DURAKLATILDI" : "AKTİF FOCUS"))
                         .font(.system(size: 10, weight: .black, design: .monospaced))
@@ -398,7 +399,7 @@ private extension HomeView {
                     .foregroundStyle(.white.opacity(0.48))
             }
 
-            HStack(alignment: .center, spacing: 14) {
+            HStack(alignment: .center, spacing: 12) {
                 PremiumCountdownView(
                     text: timeStr,
                     isCritical: isCritical,
@@ -407,17 +408,18 @@ private extension HomeView {
                     gold: accentGold,
                     pulse: pulse
                 )
+                .layoutPriority(1)
 
                 Spacer(minLength: 8)
 
-                HStack(spacing: 10) {
+                HStack(spacing: 9) {
                     Button {
                         focusSession.togglePause()
                     } label: {
                         Image(systemName: isPaused ? "play.fill" : "pause.fill")
                             .font(.system(size: 15, weight: .black))
                             .foregroundStyle(.white)
-                            .frame(width: 48, height: 48)
+                            .frame(width: 46, height: 46)
                             .background(
                                 Circle()
                                     .fill(Color.white.opacity(0.10))
@@ -435,59 +437,54 @@ private extension HomeView {
                         Image(systemName: "stop.fill")
                             .font(.system(size: 14, weight: .black))
                             .foregroundStyle(.black)
-                            .frame(width: 48, height: 48)
+                            .frame(width: 46, height: 46)
                             .background(
                                 Circle()
                                     .fill(.white)
-                                    .shadow(color: Color.black.opacity(0.26), radius: 10, y: 5)
+                                    .shadow(color: Color.black.opacity(0.22), radius: 9, y: 5)
                             )
                     }
                     .buttonStyle(.plain)
                 }
             }
 
-            ZStack(alignment: .leading) {
-                GeometryReader { proxy in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 999, style: .continuous)
-                            .fill(Color.white.opacity(0.08))
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 999, style: .continuous)
+                        .fill(Color.white.opacity(0.08))
 
-                        // Fill
+                    RoundedRectangle(cornerRadius: 999, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: isCritical
+                                    ? [accentGold, accentWarm]
+                                    : [accentPrimary, accentSecondary, accentCyan],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: proxy.size.width * progress)
+                        .opacity(isPaused ? 0.55 : 1.0)
+
+                    if !isPaused {
                         RoundedRectangle(cornerRadius: 999, style: .continuous)
                             .fill(
                                 LinearGradient(
-                                    colors: isCritical
-                                        ? [accentGold, accentWarm]
-                                        : [accentPrimary, accentSecondary, accentCyan],
+                                    stops: [
+                                        .init(color: .white.opacity(0), location: 0.0),
+                                        .init(color: .white.opacity(0.45), location: 0.5),
+                                        .init(color: .white.opacity(0), location: 1.0)
+                                    ],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
                             )
-                            .frame(width: proxy.size.width * progress)
-                            .opacity(isPaused ? 0.55 : 1.0)
-
-                        // Shimmer overlay
-                        if !isPaused {
-                            RoundedRectangle(cornerRadius: 999, style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        stops: [
-                                            .init(color: .white.opacity(0), location: 0.0),
-                                            .init(color: .white.opacity(0.55), location: 0.5),
-                                            .init(color: .white.opacity(0), location: 1.0)
-                                        ],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                                .frame(width: 60)
-                                .offset(x: proxy.size.width * shimmerPhase)
-                                .frame(width: proxy.size.width * progress, alignment: .leading)
-                                .clipShape(RoundedRectangle(cornerRadius: 999, style: .continuous))
-                        }
+                            .frame(width: 48)
+                            .offset(x: proxy.size.width * shimmerPhase)
+                            .frame(width: proxy.size.width * progress, alignment: .leading)
+                            .clipShape(RoundedRectangle(cornerRadius: 999, style: .continuous))
                     }
                 }
-                .frame(height: 5)
             }
             .frame(height: 5)
 
@@ -504,10 +501,9 @@ private extension HomeView {
                     .foregroundStyle(.white.opacity(0.46))
             }
         }
-        .padding(16)
+        .padding(15)
         .background(homeSurface(cornerRadius: 28, tint: isCritical ? accentGold : accentCyan, secondaryTint: accentPrimary))
-        .scaleEffect(breathe ? 1.004 : 1.0)
-        .shadow(color: Color.black.opacity(0.22), radius: 18, y: 10)
+        .shadow(color: Color.black.opacity(0.20), radius: 17, y: 9)
         .opacity(pageAppeared ? 1 : 0)
         .offset(y: pageAppeared ? 0 : 12)
         .animation(.spring(response: 0.6, dampingFraction: 0.86).delay(0.08), value: pageAppeared)
@@ -627,7 +623,7 @@ private extension HomeView {
 
 private extension HomeView {
     var timelineSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: focusSession.isSessionActive ? 12 : 14) {
             HStack(spacing: 10) {
                 sectionTitle("BUGÜNÜN AKIŞI")
 
@@ -695,10 +691,10 @@ private extension HomeView {
         Button {
             showTimelineDetail = true
         } label: {
-            VStack(alignment: .leading, spacing: 13) {
+            VStack(alignment: .leading, spacing: focusSession.isSessionActive ? 11 : 13) {
                 HStack(spacing: 6) {
                     Text("\(todayEvents.count)")
-                        .font(.system(size: 21, weight: .black))
+                        .font(.system(size: focusSession.isSessionActive ? 19 : 21, weight: .black))
                         .foregroundStyle(.white)
 
                     Text("etkinlik")
@@ -732,9 +728,9 @@ private extension HomeView {
                     accentActive: accentCyan,
                     accentGold: accentGold
                 )
-                .frame(height: 116)
+                .frame(height: focusSession.isSessionActive ? 102 : 116)
             }
-            .padding(15)
+            .padding(focusSession.isSessionActive ? 13 : 15)
             .background(homeSurface(cornerRadius: 28, tint: accentCyan, secondaryTint: accentPrimary))
             .shadow(color: Color.black.opacity(0.20), radius: 16, y: 9)
         }
@@ -825,35 +821,148 @@ private extension HomeView {
     var statsRow: some View {
         HStack(spacing: 10) {
             HomeMetricCard(
+                kind: .focus,
                 eyebrow: "FOCUS",
                 value: "\(weeklyFocusMinutes)",
                 unit: "dk",
-                subtitle: weeklyFocusMinutes > 0 ? "bu hafta" : "başlatmaya hazır",
-                tint: accentCyan,
-                icon: "timer"
+                subtitle: focusMetricSubtitle,
+                progress: min(Double(weeklyFocusMinutes) / 120.0, 1.0),
+                primaryTint: accentCyan,
+                secondaryTint: accentSecondary,
+                icon: "timer",
+                isActive: weeklyFocusMinutes > 0,
+                isCompleted: weeklyFocusMinutes >= 120
             )
 
             HomeMetricCard(
+                kind: .task,
                 eyebrow: "GÖREV",
                 value: "\(activeTaskCount)",
-                unit: "aktif",
-                subtitle: completedTodayCount > 0 ? "\(completedTodayCount) yapıldı" : "ilk görevi ekle",
-                tint: accentPrimary,
-                icon: "checklist"
+                unit: activeTaskCount == 0 ? "aktif" : "aktif",
+                subtitle: taskMetricSubtitle,
+                progress: taskMetricProgress,
+                primaryTint: taskMetricTint,
+                secondaryTint: accentPrimary,
+                icon: taskMetricIcon,
+                isActive: activeTaskCount > 0,
+                isCompleted: taskMetricCompleted
             )
 
             HomeMetricCard(
+                kind: .streak,
                 eyebrow: "SERİ",
                 value: "\(streakDays)",
                 unit: "gün",
-                subtitle: streakDays > 0 ? "devam ediyor" : "bugün başlasın",
-                tint: accentGold,
-                icon: "flame.fill"
+                subtitle: streakMetricSubtitle,
+                progress: min(Double(streakDays) / 7.0, 1.0),
+                primaryTint: streakMetricTint,
+                secondaryTint: accentWarm,
+                icon: "flame.fill",
+                isActive: streakDays > 0,
+                isCompleted: streakDays >= 7
             )
         }
         .opacity(pageAppeared ? 1 : 0)
         .offset(y: pageAppeared ? 0 : 12)
         .animation(.spring(response: 0.6, dampingFraction: 0.86).delay(0.18), value: pageAppeared)
+    }
+    var focusMetricSubtitle: String {
+        if weeklyFocusMinutes >= 120 {
+            return "güçlü hafta"
+        }
+
+        if weeklyFocusMinutes >= 60 {
+            return "iyi odak"
+        }
+
+        if weeklyFocusMinutes >= 15 {
+            return "ritim başladı"
+        }
+
+        return "başlatmaya hazır"
+    }
+
+    var taskMetricCompleted: Bool {
+        let totalTodayRelevant = activeTaskCount + completedTodayCount
+        return totalTodayRelevant > 0 && activeTaskCount == 0 && completedTodayCount > 0
+    }
+
+    var taskMetricProgress: Double {
+        let total = activeTaskCount + completedTodayCount
+        guard total > 0 else { return 0 }
+        return min(Double(completedTodayCount) / Double(total), 1.0)
+    }
+
+    var taskMetricTint: Color {
+        if taskMetricCompleted {
+            return accentGreen
+        }
+
+        if completedTodayCount > 0 {
+            return accentGreen
+        }
+
+        if activeTaskCount > 0 {
+            return accentPrimary
+        }
+
+        return accentPrimary.opacity(0.78)
+    }
+
+    var taskMetricIcon: String {
+        if taskMetricCompleted {
+            return "checkmark.circle.fill"
+        }
+
+        if activeTaskCount > 0 {
+            return "slider.horizontal.3"
+        }
+
+        return "checklist"
+    }
+
+    var taskMetricSubtitle: String {
+        if taskMetricCompleted {
+            return "görevler tamam"
+        }
+
+        if completedTodayCount > 0 {
+            return "\(completedTodayCount) tamamlandı"
+        }
+
+        if activeTaskCount > 0 {
+            return "akış hazır"
+        }
+
+        return "ilk görevi ekle"
+    }
+
+    var streakMetricTint: Color {
+        if streakDays >= 7 {
+            return accentGold
+        }
+
+        if streakDays > 0 {
+            return accentWarm
+        }
+
+        return accentGold.opacity(0.72)
+    }
+
+    var streakMetricSubtitle: String {
+        if streakDays >= 7 {
+            return "ateş gibi"
+        }
+
+        if streakDays >= 3 {
+            return "ritim oluşuyor"
+        }
+
+        if streakDays > 0 {
+            return "seri başladı"
+        }
+
+        return "bugün başlasın"
     }
 }
 
@@ -988,18 +1097,18 @@ private extension HomeView {
             let mins = upcoming.startMinute - currentMinuteOfDay
             let suggested: Int
 
-            if mins >= 30 {
-                suggested = 20
-            } else if mins >= 15 {
+            if mins >= 35 {
+                suggested = 25
+            } else if mins >= 20 {
                 suggested = 15
             } else {
                 suggested = 10
             }
 
             return SuggestedFocusState(
-                eyebrow: "ÖNERİLEN",
+                eyebrow: "DERS ÖNCESİ",
                 title: "\(suggested) dk hazırlık focus'u",
-                subtitle: "\(upcoming.title) dersine ısın",
+                subtitle: "\(upcoming.title) için zihnini hazırla",
                 minutes: suggested
             )
         }
@@ -1007,18 +1116,36 @@ private extension HomeView {
         if streakDays > 0 && !hasFocusToday {
             return SuggestedFocusState(
                 eyebrow: "SERİ KORUMA",
-                title: "Hızlı 15 dk focus",
-                subtitle: "\(streakDays) günlük serini koru",
+                title: "Bugün 15 dk yeter",
+                subtitle: "\(streakDays) günlük ritmini kaybetme",
                 minutes: 15
             )
         }
 
         if overdueTaskCount > 0 {
             return SuggestedFocusState(
-                eyebrow: "ÖNERİLEN",
+                eyebrow: "ÖNCELİK",
                 title: "25 dk derin çalışma",
-                subtitle: "\(overdueTaskCount) bekleyen görev için",
+                subtitle: "\(overdueTaskCount) bekleyen görevi erit",
                 minutes: 25
+            )
+        }
+
+        if activeTaskCount > 0 {
+            return SuggestedFocusState(
+                eyebrow: "SIRADAKİ",
+                title: "20 dk görev focus'u",
+                subtitle: "Aktif görevlerden birini ilerlet",
+                minutes: 20
+            )
+        }
+
+        if weeklyFocusMinutes >= 90 {
+            return SuggestedFocusState(
+                eyebrow: "RİTİM",
+                title: "10 dk hafif focus",
+                subtitle: "Bugünü küçük bir kapanışla tamamla",
+                minutes: 10
             )
         }
 
@@ -1029,7 +1156,6 @@ private extension HomeView {
             minutes: 15
         )
     }
-
     func locationAndTimeMeta(event: EventItem, extra: String?) -> [MetaItem] {
         var items: [MetaItem] = []
 
@@ -1309,7 +1435,7 @@ private struct PremiumCountdownView: View {
             ForEach(Array(parts.enumerated()), id: \.offset) { idx, part in
                 if idx > 0 {
                     Text(":")
-                        .font(.system(size: 50, weight: .regular, design: .serif))
+                        .font(.system(size: 46, weight: .regular, design: .serif))
                         .italic()
                         .foregroundStyle(separatorColor)
                         .opacity(separatorOpacity)
@@ -1318,10 +1444,10 @@ private struct PremiumCountdownView: View {
                 }
 
                 Text(part)
-                    .font(.system(size: 62, weight: .bold, design: .serif))
+                    .font(.system(size: 58, weight: .bold, design: .serif))
                     .italic()
                     .foregroundStyle(digitColor)
-                    .kerning(-1.5)
+                    .kerning(-1.4)
                     .contentTransition(.numericText(countsDown: true))
                     .animation(.spring(response: 0.40, dampingFraction: 0.86), value: part)
             }
@@ -1338,7 +1464,6 @@ private struct PremiumCountdownView: View {
         isCritical ? warm.opacity(0.65) : .white
     }
 
-    // Yanıp sönen ayraç: 1 saniyede bir tick
     private var separatorOpacity: Double {
         if isPaused { return 0.18 }
         return pulse ? 0.70 : 0.22
@@ -1709,34 +1834,43 @@ private struct HomeFocusMiniPill: View {
 
 // MARK: - Metric Card
 
+private enum HomeMetricKind {
+    case focus
+    case task
+    case streak
+}
+
 private struct HomeMetricCard: View {
+    let kind: HomeMetricKind
     let eyebrow: String
     let value: String
     let unit: String
     let subtitle: String
-    let tint: Color
+    let progress: Double
+    let primaryTint: Color
+    let secondaryTint: Color
     let icon: String
+    let isActive: Bool
+    let isCompleted: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 11) {
+        VStack(alignment: .leading, spacing: 9) {
             HStack(alignment: .center) {
                 Text(eyebrow)
                     .font(.system(size: 9, weight: .black, design: .monospaced))
                     .tracking(1.45)
-                    .foregroundStyle(tint.opacity(0.92))
+                    .foregroundStyle(primaryTint.opacity(isActive ? 0.95 : 0.62))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
 
                 Spacer(minLength: 4)
 
-                Image(systemName: icon)
-                    .font(.system(size: 11, weight: .black))
-                    .foregroundStyle(tint.opacity(0.72))
+                iconView
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(value)
-                    .font(.system(size: 30, weight: .black))
+                    .font(.system(size: 31, weight: .black))
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.62)
@@ -1745,51 +1879,144 @@ private struct HomeMetricCard: View {
 
                 Text(unit)
                     .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(.white.opacity(0.42))
+                    .foregroundStyle(.white.opacity(0.44))
                     .lineLimit(1)
                     .minimumScaleFactor(0.62)
             }
 
             Text(subtitle)
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.42))
+                .foregroundStyle(.white.opacity(isActive ? 0.52 : 0.38))
                 .lineLimit(2)
                 .minimumScaleFactor(0.74)
         }
         .padding(14)
-        .frame(maxWidth: .infinity, minHeight: 112, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.052),
-                            tint.opacity(0.035),
-                            Color.black.opacity(0.020)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    tint.opacity(0.115),
-                                    Color.white.opacity(0.045)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                )
+        .frame(maxWidth: .infinity, minHeight: 110, alignment: .leading)
+        .background(cardBackground)
+        .overlay(staticCardHighlight)
+        .shadow(
+            color: primaryTint.opacity(isActive ? 0.10 : 0.035),
+            radius: isActive ? 12 : 7,
+            y: 7
         )
-        .shadow(color: Color.black.opacity(0.16), radius: 12, y: 7)
+    }
+
+    private var iconView: some View {
+        ZStack {
+            if kind == .streak && isActive {
+                Circle()
+                    .fill(primaryTint.opacity(0.13))
+                    .frame(width: 30, height: 30)
+            }
+
+            if kind == .task && isCompleted {
+                Circle()
+                    .fill(primaryTint.opacity(0.12))
+                    .frame(width: 30, height: 30)
+            }
+
+            if kind == .focus && isActive {
+                Circle()
+                    .fill(primaryTint.opacity(0.10))
+                    .frame(width: 30, height: 30)
+            }
+
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .black))
+                .foregroundStyle(iconColor)
+        }
+    }
+
+    private var iconColor: Color {
+        switch kind {
+        case .focus:
+            return primaryTint.opacity(isActive ? 0.95 : 0.58)
+
+        case .task:
+            return isCompleted
+            ? primaryTint.opacity(0.98)
+            : primaryTint.opacity(isActive ? 0.92 : 0.58)
+
+        case .streak:
+            return isActive
+            ? primaryTint.opacity(0.98)
+            : primaryTint.opacity(0.46)
+        }
+    }
+
+    private var cardBackground: some View {
+        RoundedRectangle(cornerRadius: 23, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: backgroundColors,
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 23, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                primaryTint.opacity(isActive ? 0.20 : 0.085),
+                                secondaryTint.opacity(isCompleted ? 0.22 : 0.075),
+                                Color.white.opacity(0.045)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            )
+    }
+
+    private var backgroundColors: [Color] {
+        switch kind {
+        case .focus:
+            let level = max(0.0, min(progress, 1.0))
+
+            return [
+                Color.white.opacity(0.052),
+                primaryTint.opacity(0.035 + level * 0.065),
+                secondaryTint.opacity(0.030 + level * 0.050),
+                Color.black.opacity(0.020)
+            ]
+
+        case .task:
+            if isCompleted {
+                return [
+                    Color.white.opacity(0.052),
+                    primaryTint.opacity(0.105),
+                    Color.green.opacity(0.045),
+                    Color.black.opacity(0.020)
+                ]
+            }
+
+            return [
+                Color.white.opacity(0.052),
+                primaryTint.opacity(isActive ? 0.072 : 0.030),
+                secondaryTint.opacity(isActive ? 0.055 : 0.025),
+                Color.black.opacity(0.020)
+            ]
+
+        case .streak:
+            return [
+                Color.white.opacity(0.052),
+                primaryTint.opacity(isActive ? 0.090 : 0.030),
+                Color.orange.opacity(isActive ? 0.050 : 0.018),
+                Color.black.opacity(0.020)
+            ]
+        }
+    }
+
+    @ViewBuilder
+    private var staticCardHighlight: some View {
+        if isCompleted || (kind == .streak && isActive) {
+            RoundedRectangle(cornerRadius: 23, style: .continuous)
+                .stroke(primaryTint.opacity(0.13), lineWidth: 1)
+        }
     }
 }
-
 // MARK: - Timeline Detail Sheet
 
 private struct TimelineDetailSheet: View {
@@ -2205,3 +2432,4 @@ private struct TimelineDetailSheet: View {
         return String(format: "%02d:%02d", h, m)
     }
 }
+

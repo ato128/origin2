@@ -15,7 +15,7 @@ struct OnboardingCourseDraft: Identifiable, Hashable {
     var isSuggested: Bool = false
 }
 
-private enum StudentOnboardingArenaPalette {
+private enum StudentOnboardingPalette {
     static let backgroundTop = "#05060D"
     static let backgroundMid = "#070713"
     static let backgroundBottom = "#07040C"
@@ -24,7 +24,6 @@ private enum StudentOnboardingArenaPalette {
     static let appBlueSoft = "#1E6BFF"
     static let appCyan = "#2DD4FF"
     static let appPurple = "#7C3AED"
-    static let appViolet = "#8B5CF6"
     static let coral = "#FF5A44"
     static let gold = "#FBBF24"
     static let green = "#A3E635"
@@ -43,7 +42,7 @@ private enum StudentOnboardingArenaPalette {
         )
     }
 
-    static var hotGradient: LinearGradient {
+    static var actionGradient: LinearGradient {
         LinearGradient(
             colors: [
                 Color(studentOnboardingHex: appBlue),
@@ -71,14 +70,15 @@ private enum StudentOnboardingArenaPalette {
 
 struct StudentOnboardingFlowView: View {
     @EnvironmentObject var studentStore: StudentStore
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var focusedField: FocusField?
 
     @State private var currentStep: Int = 0
     @State private var isSubmitting: Bool = false
     @State private var submitError: String?
 
-    @State private var educationLevel: String = "high_school"
-    @State private var gradeLevel: String = "9"
+    @State private var educationLevel: String = "university"
+    @State private var gradeLevel: String = "1"
     @State private var highSchoolTrack: String = "sayisal"
 
     @State private var institutionName: String = ""
@@ -89,7 +89,6 @@ struct StudentOnboardingFlowView: View {
     @State private var majorSearchText: String = ""
 
     @State private var dailyStudyGoalMinutes: Double = 120
-  
 
     @State private var draftCourseCode: String = ""
     @State private var draftCourseName: String = ""
@@ -97,9 +96,7 @@ struct StudentOnboardingFlowView: View {
 
     @State private var allMajorCourses: [CatalogCurriculumCourse] = []
     @State private var filteredCourseSuggestions: [CatalogCurriculumCourse] = []
-    @State private var isLoadingAllMajorCourses: Bool = false
 
-    @State private var remoteUniversities: [CatalogUniversity] = []
     @State private var remoteMajors: [CatalogMajor] = []
     @State private var remoteSuggestedCourses: [CatalogCurriculumCourse] = []
 
@@ -108,6 +105,7 @@ struct StudentOnboardingFlowView: View {
 
     @State private var isLoadingMajors: Bool = false
     @State private var isLoadingCurriculum: Bool = false
+    @State private var isLoadingAllMajorCourses: Bool = false
     @State private var majorLoadRequestID = UUID()
     @State private var isSelectingMajorFromList: Bool = false
 
@@ -116,34 +114,110 @@ struct StudentOnboardingFlowView: View {
     private let highSchoolTracks = ["sayisal", "sozel", "esit_agirlik", "dil"]
 
     enum FocusField {
+        case majorSearch
+        case customMajor
         case courseCode
         case courseName
-        case majorSearch
-        case majorCustom
+    }
+
+    private var totalSteps: Int { 5 }
+
+    private var progressText: String {
+        "\(currentStep + 1) / \(totalSteps)"
+    }
+
+    private var progressValue: Double {
+        Double(currentStep + 1) / Double(totalSteps)
+    }
+
+    private var title: String {
+        switch currentStep {
+        case 0: return "Level"
+        case 1: return educationLevel == "high_school" ? "School" : "University"
+        case 2: return educationLevel == "high_school" ? "Track" : "Major"
+        case 3: return "Courses"
+        default: return "Goal"
+        }
+    }
+
+    private var subtitle: String {
+        switch currentStep {
+        case 0:
+            return "Choose how Updo should shape your setup."
+        case 1:
+            return educationLevel == "high_school"
+            ? "Pick your grade."
+            : "Choose your university and year."
+        case 2:
+            return educationLevel == "high_school"
+            ? "Pick your study track."
+            : "Find your department."
+        case 3:
+            return "Select at least one course."
+        default:
+            return "Set your daily focus target."
+        }
+    }
+
+    private var gradeOptions: [String] {
+        educationLevel == "high_school" ? highSchoolGrades : universityGrades
+    }
+
+    private var filteredMajors: [CatalogMajor] {
+        let trimmed = majorSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return remoteMajors }
+        return remoteMajors.filter { $0.name.localizedCaseInsensitiveContains(trimmed) }
+    }
+
+    private var canContinueCurrentStep: Bool {
+        guard !isSubmitting else { return false }
+
+        switch currentStep {
+        case 0:
+            return true
+        case 1:
+            if educationLevel == "high_school" {
+                return !gradeLevel.isEmpty
+            }
+            return !institutionName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !gradeLevel.isEmpty
+        case 2:
+            if educationLevel == "high_school" {
+                return !highSchoolTrack.isEmpty
+            }
+            return !majorName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case 3:
+            return !localCourses.isEmpty
+        default:
+            return true
+        }
     }
 
     var body: some View {
         ZStack {
-            StudentOnboardingArenaBackground()
+            StudentOnboardingBackground()
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 topBar
-                progressSection
 
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 18) {
-                        stepHero
-                        stepContent
+                GeometryReader { proxy in
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 16) {
+                            hero
+                            content
+                        }
+                        .padding(.horizontal, 22)
+                        .padding(.top, 8)
+                        .padding(.bottom, focusedField == nil ? 104 : 28)
+                        .frame(minHeight: proxy.size.height, alignment: .top)
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 16)
-                    .padding(.bottom, focusedField == nil ? 132 : 28)
+                    .scrollDismissesKeyboard(.interactively)
                 }
-                .scrollDismissesKeyboard(.interactively)
-
+            }
+            .safeAreaInset(edge: .bottom) {
                 if focusedField == nil {
                     bottomBar
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
             .disabled(isSubmitting)
@@ -158,9 +232,7 @@ struct StudentOnboardingFlowView: View {
             focusedField = nil
         }
         .onAppear {
-            if localCourses.isEmpty {
-                localCourses = defaultCoursesForCurrentSelection()
-            }
+            hydrateInitialDrafts()
         }
         .onChange(of: educationLevel) { _, newValue in
             adaptGradeIfNeeded()
@@ -186,21 +258,6 @@ struct StudentOnboardingFlowView: View {
             if educationLevel == "high_school" {
                 localCourses = defaultCoursesForCurrentSelection()
             }
-        }
-        .onChange(of: institutionName) { _, _ in
-            // UniversityPickerSheet seçiminde institutionName değişiyor.
-            // Eğer selectedUniversityID zaten varsa buradan temizleme yapma.
-            // Major yükleme/temizleme sadece selectedUniversityID üzerinden yönetilecek.
-            guard selectedUniversityID == nil else { return }
-
-            remoteMajors = []
-            remoteSuggestedCourses = []
-            allMajorCourses = []
-            filteredCourseSuggestions = []
-            selectedMajorID = nil
-            majorName = ""
-            majorSearchText = ""
-            localCourses.removeAll(where: { $0.isSuggested })
         }
         .onChange(of: selectedUniversityID) { _, newValue in
             remoteSuggestedCourses = []
@@ -234,420 +291,175 @@ struct StudentOnboardingFlowView: View {
         }
     }
 
-    private var suggestedCoursesOnly: [OnboardingCourseDraft] {
-        localCourses.filter { $0.isSuggested }
-    }
-
-    private var manualCoursesOnly: [OnboardingCourseDraft] {
-        localCourses.filter { !$0.isSuggested }
-    }
-
-    private var hasRemoteSuggestionsAvailable: Bool {
-        !remoteSuggestedCourses.isEmpty
-    }
-
-    private var canRestoreSuggestedCourses: Bool {
-        hasRemoteSuggestionsAvailable && suggestedCoursesOnly.isEmpty
-    }
-
-    private var totalSteps: Int { 7 }
-
-    private var progressValue: Double {
-        Double(currentStep + 1) / Double(totalSteps)
-    }
-
-    private var stepTitle: String {
-        switch currentStep {
-        case 0: return "Welcome"
-        case 1: return "Education"
-        case 2: return educationLevel == "high_school" ? "School" : "University"
-        case 3: return "Grade"
-        case 4: return educationLevel == "high_school" ? "Track" : "Major"
-        case 5: return "Courses"
-        default: return "Goals"
-        }
-    }
-
-    private var progressLabel: String {
-        switch currentStep {
-        case 0: return "Start"
-        case 1: return "Profile"
-        case 2: return educationLevel == "high_school" ? "School" : "Institution"
-        case 3: return "Level"
-        case 4: return "Details"
-        case 5: return "Courses"
-        default: return "Finish"
-        }
-    }
-
-    private var stepContextPill: (String, String) {
-        switch currentStep {
-        case 0: return ("sparkles", "Student setup")
-        case 1: return ("person.text.rectangle", "Education profile")
-        case 2: return (educationLevel == "high_school" ? "building.2" : "building.columns", educationLevel == "high_school" ? "School flow" : "University setup")
-        case 3: return ("graduationcap", "Academic level")
-        case 4: return (educationLevel == "high_school" ? "square.grid.2x2" : "magnifyingglass", educationLevel == "high_school" ? "Track setup" : "Department setup")
-        case 5: return ("list.bullet.rectangle", "Course builder")
-        default: return ("target", "Goal setup")
-        }
-    }
-
-    private var heroTitle: String {
-        switch currentStep {
-        case 0:
-            return "Build your student system"
-        case 1:
-            return "Choose your education"
-        case 2:
-            return educationLevel == "high_school" ? "School setup" : "Choose your university"
-        case 3:
-            return "Select your year"
-        case 4:
-            return educationLevel == "high_school" ? "Choose your track" : "Choose your major"
-        case 5:
-            return "Set your courses"
-        default:
-            return "Set your goals"
-        }
-    }
-
-    private var heroSubtitle: String {
-        switch currentStep {
-        case 0:
-            return "Set up your profile, courses, and goals so Updo can work like a real student operating system."
-        case 1:
-            return "Pick the academic structure that fits you."
-        case 2:
-            return educationLevel == "high_school"
-                ? "No university selection is needed for high school mode."
-                : "Choose your university from a searchable list."
-        case 3:
-            return "This shapes your academic planning flow."
-        case 4:
-            return educationLevel == "high_school"
-                ? "We’ll use this to prepare your default course set."
-                : "Search from common departments or enter your own."
-        case 5:
-            return courseStepSubtitle
-        default:
-            return "These targets will power planning, focus, and recommendations."
-        }
-    }
-
-    private var gradeOptions: [String] {
-        educationLevel == "high_school" ? highSchoolGrades : universityGrades
-    }
-
-    private var filteredMajors: [CatalogMajor] {
-        let trimmed = majorSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return remoteMajors }
-
-        return remoteMajors.filter {
-            $0.name.localizedCaseInsensitiveContains(trimmed)
-        }
-    }
-
-    private var canContinueCurrentStep: Bool {
-        if isSubmitting { return false }
-
-        switch currentStep {
-        case 0, 1:
-            return true
-        case 2:
-            return educationLevel == "high_school" || !institutionName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        case 3:
-            return !gradeLevel.isEmpty
-        case 4:
-            return educationLevel == "high_school"
-                ? !highSchoolTrack.isEmpty
-                : !majorName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        case 5:
-            return !localCourses.isEmpty
-        default:
-            return true
-        }
-    }
-
-    private var courseStepSubtitle: String {
-        if educationLevel == "high_school" {
-            return "Default courses are ready. Edit or add your own."
-        }
-
-        if isLoadingCurriculum {
-            return "Loading suggested courses..."
-        }
-
-        return remoteSuggestedCourses.isEmpty
-            ? "Add course code and course name manually."
-            : "Suggested courses were loaded for your university, major, and year."
-    }
-
     private var topBar: some View {
         HStack {
-            if currentStep > 0 {
-                Button {
-                    withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
-                        currentStep -= 1
-                    }
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 17, weight: .black))
-                        .foregroundStyle(.white)
-                        .frame(width: 44, height: 44)
-                        .background(
-                            Circle()
-                                .fill(Color.white.opacity(0.075))
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
-                                )
-                        )
-                }
-                .buttonStyle(.plain)
-            } else {
-                Color.clear
-                    .frame(width: 44, height: 44)
+            Button {
+                goBack()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundStyle(currentStep > 0 ? .white.opacity(0.86) : .clear)
+                    .frame(width: 38, height: 38)
+                    .background(
+                        Circle()
+                            .fill(currentStep > 0 ? Color.white.opacity(0.060) : Color.clear)
+                            .overlay(
+                                Circle()
+                                    .stroke(currentStep > 0 ? Color.white.opacity(0.090) : Color.clear, lineWidth: 1)
+                            )
+                    )
             }
+            .buttonStyle(.plain)
+            .disabled(currentStep == 0)
 
             Spacer()
 
             HStack(spacing: 8) {
-                Rectangle()
-                    .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue))
-                    .frame(width: 18, height: 1)
+                Capsule()
+                    .fill(StudentOnboardingPalette.actionGradient)
+                    .frame(width: 18, height: 2)
 
-                Text("STEP \(currentStep + 1) / \(totalSteps)")
+                Text(progressText)
                     .font(.system(size: 11, weight: .black, design: .monospaced))
-                    .tracking(1.5)
-                    .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
+                    .tracking(1.4)
+                    .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingPalette.appCyan))
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
             .background(
                 Capsule()
-                    .fill(Color.white.opacity(0.075))
+                    .fill(Color.white.opacity(0.055))
                     .overlay(
                         Capsule()
-                            .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                            .stroke(Color.white.opacity(0.090), lineWidth: 1)
                     )
             )
 
             Spacer()
 
             Color.clear
-                .frame(width: 44, height: 44)
+                .frame(width: 38, height: 38)
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 10)
-        .padding(.bottom, 12)
+        .padding(.horizontal, 22)
+        .padding(.top, 6)
+        .padding(.bottom, 4)
     }
 
-    private var progressSection: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack {
-                Text(progressLabel.uppercased())
-                    .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .tracking(1.8)
-                    .foregroundStyle(.white.opacity(0.42))
+    private var hero: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ProgressView(value: progressValue)
+                .tint(Color(studentOnboardingHex: StudentOnboardingPalette.appCyan))
+                .background(Color.white.opacity(0.08), in: Capsule())
+                .clipShape(Capsule())
+                .frame(height: 4)
 
-                Spacer()
-
-                Text(stepTitle)
-                    .font(.system(size: 12, weight: .black, design: .rounded))
-                    .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
-            }
-
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.white.opacity(0.07))
-                        .frame(height: 7)
-
-                    Capsule()
-                        .fill(StudentOnboardingArenaPalette.hotGradient)
-                        .frame(width: geo.size.width * progressValue, height: 7)
-                        .shadow(
-                            color: Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.24),
-                            radius: 8,
-                            y: 3
-                        )
-                }
-            }
-            .frame(height: 7)
-        }
-        .padding(.horizontal, 24)
-    }
-
-    private var stepHero: some View {
-        VStack(alignment: .leading, spacing: 11) {
-            HStack(spacing: 8) {
-                Rectangle()
-                    .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue))
-                    .frame(width: 18, height: 1)
-
-                Text(stepContextPill.1.uppercased())
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                    .tracking(2.2)
-                    .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.70)
-            }
-
-            let split = splitHeroTitle(heroTitle)
-
-            HStack(alignment: .firstTextBaseline, spacing: 7) {
-                Text(split.first)
-                    .font(.system(size: 34, weight: .black))
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title)
+                    .font(.system(size: 39, weight: .black))
+                    .tracking(-1.0)
                     .foregroundStyle(.white)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.70)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
 
-                if !split.accent.isEmpty {
-                    Text(split.accent)
-                        .font(.system(size: 32, weight: .regular, design: .serif))
-                        .italic()
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [
-                                    Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan),
-                                    Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.70)
-                }
+                Text(subtitle)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.56))
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-
-            Text(heroSubtitle)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.58))
-                .lineSpacing(2)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 1)
+            .id("hero-\(currentStep)-\(educationLevel)")
+            .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .trailing)))
         }
-    }
-
-    private func splitHeroTitle(_ value: String) -> (first: String, accent: String) {
-        let parts = value.split(separator: " ").map(String.init)
-
-        guard parts.count > 1 else {
-            return (value, "")
-        }
-
-        let first = parts.dropLast().joined(separator: " ")
-        let accent = parts.last ?? ""
-
-        return (first, accent)
+        .animation(.spring(response: 0.36, dampingFraction: 0.88), value: currentStep)
     }
 
     @ViewBuilder
-    private var stepContent: some View {
+    private var content: some View {
         switch currentStep {
         case 0:
-            welcomeContent
+            levelStep
         case 1:
-            educationContent
+            schoolStep
         case 2:
-            institutionContent
+            detailStep
         case 3:
-            gradeContent
-        case 4:
-            detailContent
-        case 5:
-            coursesContent
+            coursesStep
         default:
-            goalsContent
+            goalStep
         }
     }
 
-    private var welcomeContent: some View {
+    private var levelStep: some View {
         VStack(spacing: 12) {
-            compactFeatureCard(icon: "calendar", title: "Weekly planning")
-            compactFeatureCard(icon: "graduationcap", title: "Course structure")
-            compactFeatureCard(icon: "timer", title: "Focus flow")
-            compactFeatureCard(icon: "sparkles", title: "Smart suggestions")
-        }
-    }
+            twoColumnSelection(
+                left: SelectionOption(
+                    title: "University",
+                    subtitle: "Degree or prep year",
+                    icon: "building.columns.fill",
+                    isSelected: educationLevel == "university"
+                ),
+                right: SelectionOption(
+                    title: "High School",
+                    subtitle: "Grades 9–12",
+                    icon: "building.2.fill",
+                    isSelected: educationLevel == "high_school"
+                ),
+                leftAction: {
+                    StudentSetupHaptics.softTap()
+                    educationLevel = "university"
+                },
+                rightAction: {
+                    StudentSetupHaptics.softTap()
+                    educationLevel = "high_school"
+                }
+            )
 
-    private var educationContent: some View {
-        HStack(spacing: 12) {
-            selectionCard(
-                title: "High School",
-                subtitle: "Grades 9–12",
-                badge: "School",
-                isSelected: educationLevel == "high_school"
-            ) {
-                educationLevel = "high_school"
-            }
-
-            selectionCard(
-                title: "University",
-                subtitle: "Prep or degree",
-                badge: "Campus",
-                isSelected: educationLevel == "university"
-            ) {
-                educationLevel = "university"
-            }
+            MinimalInfoCard(
+                icon: "sparkles",
+                title: "Personal setup",
+                subtitle: "Courses and goals shape Home, Focus and Insights."
+            )
         }
     }
 
     @ViewBuilder
-    private var institutionContent: some View {
+    private var schoolStep: some View {
         if educationLevel == "high_school" {
-            compactInfoGroup(
-                title: "Next",
-                items: [
-                    ("graduationcap", "Choose your grade"),
-                    ("square.grid.2x2", "Choose your track"),
-                    ("list.bullet.rectangle", "Set your course list")
-                ]
-            )
+            VStack(spacing: 12) {
+                gradePicker
+            }
         } else {
-            VStack(spacing: 14) {
+            VStack(spacing: 12) {
                 Button {
+                    StudentSetupHaptics.softTap()
                     showUniversityPicker = true
                 } label: {
-                    HStack(spacing: 14) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.18),
-                                            Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.12)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .frame(width: 54, height: 54)
+                    HStack(spacing: 13) {
+                        Image(systemName: "building.columns.fill")
+                            .font(.system(size: 19, weight: .black))
+                            .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingPalette.appCyan))
+                            .frame(width: 50, height: 50)
+                            .background(
+                                RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                    .fill(Color(studentOnboardingHex: StudentOnboardingPalette.appBlue).opacity(0.13))
+                            )
 
-                            Image(systemName: "building.columns.fill")
-                                .font(.system(size: 20, weight: .black))
-                                .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
-                        }
-
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Selected university")
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("University")
                                 .font(.system(size: 12, weight: .black, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.52))
+                                .foregroundStyle(.white.opacity(0.50))
 
-                            Text(institutionName.isEmpty ? "Tap to choose university" : institutionName)
-                                .font(.system(size: 18, weight: .black, design: .rounded))
+                            Text(institutionName.isEmpty ? "Choose university" : institutionName)
+                                .font(.system(size: 17, weight: .black, design: .rounded))
                                 .foregroundStyle(institutionName.isEmpty ? .white.opacity(0.42) : .white)
-                                .multilineTextAlignment(.leading)
                                 .lineLimit(2)
+                                .multilineTextAlignment(.leading)
 
                             if !institutionName.isEmpty {
-                                Label(
-                                    institutionCountry == "tr" ? "Türkiye" : "KKTC",
-                                    systemImage: "flag.fill"
-                                )
-                                .font(.system(size: 11, weight: .black, design: .monospaced))
-                                .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
+                                Text(institutionCountry.uppercased())
+                                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                                    .tracking(1.1)
+                                    .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingPalette.appCyan))
                             }
                         }
 
@@ -655,268 +467,115 @@ struct StudentOnboardingFlowView: View {
 
                         Image(systemName: "chevron.right")
                             .font(.system(size: 13, weight: .black))
-                            .foregroundStyle(.white.opacity(0.28))
+                            .foregroundStyle(.white.opacity(0.30))
                     }
-                    .padding(14)
-                    .background(studentOnboardingSurface(radius: 24))
+                    .padding(13)
+                    .background(cardSurface(radius: 23))
                 }
                 .buttonStyle(.plain)
 
-                if !institutionName.isEmpty {
-                    compactInfoGroup(
-                        title: "Setup status",
-                        items: [
-                            ("checkmark.circle.fill", "University selected"),
-                            ("graduationcap", "Next: choose your year"),
-                            ("list.bullet.rectangle", "Then set major and courses")
-                        ]
-                    )
-                }
+                gradePicker
             }
         }
     }
 
-    private var gradeContent: some View {
-        VStack(spacing: 12) {
-            if educationLevel == "university", gradeOptions.contains("prep") {
-                selectionRowCard(
-                    title: "Hazırlık",
-                    subtitle: "Prep year",
+    private var gradePicker: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(educationLevel == "high_school" ? "Grade" : "Year")
+                .font(.system(size: 17, weight: .black, design: .rounded))
+                .foregroundStyle(.white)
+
+            if educationLevel == "university" {
+                SelectionRow(
+                    title: "Prep",
+                    subtitle: "Language preparation",
                     isSelected: gradeLevel == "prep"
                 ) {
+                    StudentSetupHaptics.softTap()
                     gradeLevel = "prep"
                 }
             }
 
             let numericGrades = gradeOptions.filter { $0 != "prep" }
-            let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 2)
+            let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 2)
 
-            LazyVGrid(columns: columns, spacing: 12) {
+            LazyVGrid(columns: columns, spacing: 10) {
                 ForEach(numericGrades, id: \.self) { grade in
-                    selectionNumberCard(
-                        title: educationLevel == "high_school" ? grade : "\(grade). Year",
-                        isSelected: gradeLevel == grade
-                    ) {
+                    Button {
+                        StudentSetupHaptics.softTap()
                         gradeLevel = grade
+                    } label: {
+                        Text(educationLevel == "high_school" ? "\(grade). Grade" : "\(grade). Year")
+                            .font(.system(size: 16, weight: .black, design: .rounded))
+                            .foregroundStyle(gradeLevel == grade ? .black.opacity(0.78) : .white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 58)
+                            .background(
+                                RoundedRectangle(cornerRadius: 19, style: .continuous)
+                                    .fill(
+                                        gradeLevel == grade
+                                        ? AnyShapeStyle(StudentOnboardingPalette.appGradient)
+                                        : AnyShapeStyle(Color.white.opacity(0.060))
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 19, style: .continuous)
+                                            .stroke(Color.white.opacity(gradeLevel == grade ? 0.13 : 0.075), lineWidth: 1)
+                                    )
+                            )
                     }
+                    .buttonStyle(.plain)
                 }
             }
         }
+        .padding(14)
+        .background(cardSurface(radius: 22))
     }
 
     @ViewBuilder
-    private var detailContent: some View {
+    private var detailStep: some View {
         if educationLevel == "high_school" {
-            let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 2)
-
-            LazyVGrid(columns: columns, spacing: 12) {
-                ForEach(highSchoolTracks, id: \.self) { track in
-                    selectionChip(
-                        icon: iconForTrack(track),
-                        title: labelForTrack(track),
-                        isSelected: highSchoolTrack == track
-                    ) {
-                        highSchoolTrack = track
-                    }
-                }
-            }
+            trackStep
         } else {
-            VStack(spacing: 14) {
-                premiumTextField(
-                    title: "Search majors",
-                    text: $majorSearchText,
-                    placeholder: "Search major"
-                )
-                .focused($focusedField, equals: .majorSearch)
-
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("Suggested majors")
-                            .font(.system(size: 14, weight: .black, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.72))
-
-                        Spacer()
-
-                        if isLoadingMajors {
-                            ProgressView()
-                                .tint(.white)
-                                .scaleEffect(0.85)
-                        }
-                    }
-
-                    if isLoadingMajors && remoteMajors.isEmpty {
-                        HStack(spacing: 10) {
-                            ProgressView()
-                                .tint(.white)
-
-                            Text("Loading majors...")
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.66))
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 8)
-
-                    } else if !institutionName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && filteredMajors.isEmpty {
-                        HStack(spacing: 10) {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundStyle(.white.opacity(0.45))
-
-                            Text("No majors found for this university yet")
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.60))
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 8)
-
-                    } else {
-                        VStack(spacing: 10) {
-                            ForEach(filteredMajors.prefix(8)) { major in
-                                majorRow(
-                                    title: major.name,
-                                    isSelected: majorName == major.name
-                                ) {
-                                    isSelectingMajorFromList = true
-
-                                    majorName = major.name
-                                    majorSearchText = major.name
-                                    selectedMajorID = major.id
-                                    focusedField = nil
-
-                                    Task {
-                                        await loadAllCoursesForSelectedMajor()
-                                        await applySuggestedUniversityCoursesIfAvailable(forceReplace: true)
-
-                                        await MainActor.run {
-                                            isSelectingMajorFromList = false
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                .padding(14)
-                .background(studentOnboardingSurface(radius: 24))
-
-                premiumTextField(
-                    title: "Custom major",
-                    text: $majorName,
-                    placeholder: "Type your department"
-                )
-                .focused($focusedField, equals: .majorCustom)
-                .onChange(of: majorName) { _, newValue in
-                    guard !isSelectingMajorFromList else { return }
-
-                    let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
-
-                    if let matchedMajor = remoteMajors.first(where: {
-                        $0.name.caseInsensitiveCompare(trimmed) == .orderedSame
-                    }) {
-                        selectedMajorID = matchedMajor.id
-
-                        Task {
-                            await loadAllCoursesForSelectedMajor()
-                            await applySuggestedUniversityCoursesIfAvailable(forceReplace: true)
-                        }
-                    } else {
-                        selectedMajorID = nil
-                        remoteSuggestedCourses = []
-                        allMajorCourses = []
-                        filteredCourseSuggestions = []
-                        localCourses.removeAll(where: { $0.isSuggested })
-                    }
-                }
-            }
+            majorStep
         }
     }
 
-    private var coursesContent: some View {
-        VStack(spacing: 14) {
-            selectedCoursesSection
-            courseBuilderCard
+    private var trackStep: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Track")
+                .font(.system(size: 17, weight: .black, design: .rounded))
+                .foregroundStyle(.white)
 
-            if !filteredCourseSuggestions.isEmpty {
-                courseSuggestionsSection
-            }
-        }
-    }
+            let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 2)
 
-    private var courseSuggestionsSection: some View {
-        VStack(alignment: .leading, spacing: 11) {
-            HStack {
-                Text("Suggestions")
-                    .font(.system(size: 18, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-
-                Spacer()
-
-                Text("\(filteredCourseSuggestions.count)")
-                    .font(.system(size: 11, weight: .black, design: .monospaced))
-                    .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold))
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold).opacity(0.12))
-                    )
-            }
-
-            VStack(spacing: 10) {
-                ForEach(filteredCourseSuggestions) { course in
+            LazyVGrid(columns: columns, spacing: 10) {
+                ForEach(highSchoolTracks, id: \.self) { track in
                     Button {
-                        applyCourseSuggestion(course)
-                        focusedField = nil
+                        StudentSetupHaptics.softTap()
+                        highSchoolTrack = track
                     } label: {
-                        HStack(spacing: 12) {
-                            RoundedRectangle(cornerRadius: 3, style: .continuous)
-                                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold))
-                                .frame(width: 4, height: 46)
+                        VStack(spacing: 8) {
+                            Image(systemName: iconForTrack(track))
+                                .font(.system(size: 18, weight: .black))
+                                .foregroundStyle(highSchoolTrack == track ? .black.opacity(0.75) : Color(studentOnboardingHex: StudentOnboardingPalette.appCyan))
 
-                            VStack(alignment: .leading, spacing: 5) {
-                                HStack(spacing: 8) {
-                                    if !course.course_code.isEmpty {
-                                        Text(course.course_code)
-                                            .font(.system(size: 11, weight: .black, design: .monospaced))
-                                            .tracking(0.8)
-                                            .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold))
-                                    }
-
-                                    Text("ADD")
-                                        .font(.system(size: 9, weight: .black, design: .monospaced))
-                                        .tracking(0.9)
-                                        .foregroundStyle(.black.opacity(0.78))
-                                        .padding(.horizontal, 7)
-                                        .padding(.vertical, 4)
-                                        .background(
-                                            Capsule()
-                                                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold))
-                                        )
-                                }
-
-                                Text(course.course_name)
-                                    .font(.system(size: 15, weight: .black, design: .rounded))
-                                    .foregroundStyle(.white)
-                                    .multilineTextAlignment(.leading)
-
-                                Text("Year \(course.year_number) • Term \(course.term_number ?? 0)")
-                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(.white.opacity(0.44))
-                            }
-
-                            Spacer()
-
-                            Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 20, weight: .black))
-                                .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold))
+                            Text(labelForTrack(track))
+                                .font(.system(size: 14, weight: .black, design: .rounded))
+                                .foregroundStyle(highSchoolTrack == track ? .black.opacity(0.78) : .white)
+                                .multilineTextAlignment(.center)
                         }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 14)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 84)
                         .background(
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .fill(Color.white.opacity(0.060))
+                            RoundedRectangle(cornerRadius: 21, style: .continuous)
+                                .fill(
+                                    highSchoolTrack == track
+                                    ? AnyShapeStyle(StudentOnboardingPalette.appGradient)
+                                    : AnyShapeStyle(Color.white.opacity(0.060))
+                                )
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                        .stroke(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold).opacity(0.14), lineWidth: 1)
+                                    RoundedRectangle(cornerRadius: 21, style: .continuous)
+                                        .stroke(Color.white.opacity(highSchoolTrack == track ? 0.13 : 0.075), lineWidth: 1)
                                 )
                         )
                     }
@@ -924,285 +583,437 @@ struct StudentOnboardingFlowView: View {
                 }
             }
         }
-        .padding(16)
-        .background(studentOnboardingSurface(radius: 24))
+        .padding(14)
+        .background(cardSurface(radius: 22))
     }
 
-    private var selectedCoursesSection: some View {
-        VStack(alignment: .leading, spacing: 13) {
-            HStack {
-                HStack(spacing: 9) {
-                    Image(systemName: "list.bullet.rectangle")
-                        .font(.system(size: 15, weight: .black))
-                        .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
+    private var majorStep: some View {
+        VStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 9) {
+                Text("Search")
+                    .font(.system(size: 12, weight: .black, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.62))
 
-                    Text("Selected courses")
-                        .font(.system(size: 18, weight: .black, design: .rounded))
+                searchField(
+                    text: $majorSearchText,
+                    placeholder: "Search major"
+                )
+                .focused($focusedField, equals: .majorSearch)
+            }
+            .padding(14)
+            .background(cardSurface(radius: 22))
+
+            VStack(alignment: .leading, spacing: 11) {
+                HStack {
+                    Text("Majors")
+                        .font(.system(size: 17, weight: .black, design: .rounded))
                         .foregroundStyle(.white)
+
+                    Spacer()
+
+                    if isLoadingMajors {
+                        ProgressView()
+                            .tint(.white)
+                            .scaleEffect(0.82)
+                    }
                 }
 
-                Spacer()
-
-                Text("\(localCourses.count)")
-                    .font(.system(size: 11, weight: .black, design: .monospaced))
-                    .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.13))
+                if institutionName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    EmptyStateRow(
+                        icon: "building.columns",
+                        text: "Choose a university first."
                     )
-            }
+                } else if isLoadingMajors && remoteMajors.isEmpty {
+                    LoadingRow(text: "Loading majors...")
+                } else if filteredMajors.isEmpty {
+                    EmptyStateRow(
+                        icon: "magnifyingglass",
+                        text: "No majors found. You can type your own."
+                    )
+                } else {
+                    VStack(spacing: 8) {
+                        ForEach(filteredMajors.prefix(6)) { major in
+                            Button {
+                                selectMajor(major)
+                            } label: {
+                                HStack(spacing: 11) {
+                                    Image(systemName: majorName == major.name ? "checkmark.circle.fill" : "graduationcap.fill")
+                                        .font(.system(size: 18, weight: .black))
+                                        .foregroundStyle(Color(studentOnboardingHex: majorName == major.name ? StudentOnboardingPalette.green : StudentOnboardingPalette.appCyan))
+                                        .frame(width: 32, height: 32)
+                                        .background(
+                                            Circle()
+                                                .fill(Color.white.opacity(0.055))
+                                        )
 
-            if localCourses.isEmpty {
-                compactInfoGroup(
-                    title: "No courses yet",
-                    items: [
-                        ("plus.circle", "Add at least one course"),
-                        ("number", "Use code + name when possible"),
-                        ("book", "Example: CMPE201 • Data Structures")
-                    ]
-                )
-            } else {
-                VStack(spacing: 10) {
-                    ForEach(localCourses) { course in
-                        compactCourseRow(
-                            course: course,
-                            isSuggested: isSuggestedCourse(course)
-                        ) {
-                            removeCourse(course)
+                                    Text(major.name)
+                                        .font(.system(size: 14, weight: .black, design: .rounded))
+                                        .foregroundStyle(.white)
+                                        .lineLimit(2)
+                                        .multilineTextAlignment(.leading)
+
+                                    Spacer()
+                                }
+                                .padding(11)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                        .fill(Color.white.opacity(0.050))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                                .stroke(
+                                                    majorName == major.name
+                                                    ? Color(studentOnboardingHex: StudentOnboardingPalette.appCyan).opacity(0.22)
+                                                    : Color.white.opacity(0.060),
+                                                    lineWidth: 1
+                                                )
+                                        )
+                                )
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
             }
-        }
-        .padding(16)
-        .background(studentOnboardingSurface(radius: 24))
-    }
+            .padding(14)
+            .background(cardSurface(radius: 22))
 
-    private var courseBuilderCard: some View {
-        VStack(alignment: .leading, spacing: 13) {
-            HStack {
-                HStack(spacing: 9) {
-                    Image(systemName: "square.and.pencil")
-                        .font(.system(size: 15, weight: .black))
-                        .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
+            VStack(alignment: .leading, spacing: 9) {
+                Text("Custom")
+                    .font(.system(size: 12, weight: .black, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.62))
 
-                    Text("Course builder")
-                        .font(.system(size: 18, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
-                }
-
-                Spacer()
-
-                if isLoadingCurriculum || isLoadingAllMajorCourses {
-                    ProgressView()
-                        .tint(.white)
-                        .scaleEffect(0.85)
+                textField(
+                    text: $majorName,
+                    placeholder: "Type your department",
+                    icon: "pencil"
+                )
+                .focused($focusedField, equals: .customMajor)
+                .onChange(of: majorName) { _, newValue in
+                    guard !isSelectingMajorFromList else { return }
+                    handleCustomMajorChange(newValue)
                 }
             }
+            .padding(14)
+            .background(cardSurface(radius: 22))
+        }
+    }
 
-            HStack(spacing: 10) {
-                TextField(
-                    "",
-                    text: $draftCourseCode,
-                    prompt: Text("Code").foregroundStyle(.white.opacity(0.30))
-                )
-                .textInputAutocapitalization(.characters)
-                .font(.system(size: 15, weight: .black, design: .monospaced))
-                .padding(.horizontal, 14)
-                .frame(width: 104, height: 52)
-                .background(
-                    RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .fill(Color.white.opacity(0.060))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                .stroke(Color.white.opacity(0.070), lineWidth: 1)
+    private var coursesStep: some View {
+        VStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Selected")
+                        .font(.system(size: 17, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+
+                    Spacer()
+
+                    Text("\(localCourses.count)")
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingPalette.appCyan))
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(Color(studentOnboardingHex: StudentOnboardingPalette.appBlue).opacity(0.13))
                         )
-                )
-                .foregroundStyle(.white)
-                .focused($focusedField, equals: .courseCode)
-                .onChange(of: draftCourseCode) { _, newValue in
-                    let upper = newValue.uppercased()
-                    if upper != newValue {
-                        draftCourseCode = upper
-                        return
+                }
+
+                if localCourses.isEmpty {
+                    EmptyStateRow(
+                        icon: "book.closed",
+                        text: "Add at least one course."
+                    )
+                } else {
+                    VStack(spacing: 8) {
+                        ForEach(localCourses) { course in
+                            CourseRow(course: course) {
+                                removeCourse(course)
+                            }
+                        }
                     }
-                    updateCourseSuggestions()
+                }
+            }
+            .padding(14)
+            .background(cardSurface(radius: 22))
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Add course")
+                        .font(.system(size: 17, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+
+                    Spacer()
+
+                    if isLoadingCurriculum || isLoadingAllMajorCourses {
+                        ProgressView()
+                            .tint(.white)
+                            .scaleEffect(0.82)
+                    }
                 }
 
-                TextField(
-                    "",
-                    text: $draftCourseName,
-                    prompt: Text("Course name").foregroundStyle(.white.opacity(0.30))
-                )
-                .textInputAutocapitalization(.words)
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-                .padding(.horizontal, 14)
-                .frame(height: 52)
-                .background(
-                    RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .fill(Color.white.opacity(0.060))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                .stroke(Color.white.opacity(0.070), lineWidth: 1)
-                        )
-                )
-                .foregroundStyle(.white)
-                .focused($focusedField, equals: .courseName)
-                .onChange(of: draftCourseName) { _, _ in
-                    updateCourseSuggestions()
+                HStack(spacing: 10) {
+                    TextField(
+                        "",
+                        text: $draftCourseCode,
+                        prompt: Text("Code").foregroundStyle(.white.opacity(0.30))
+                    )
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .font(.system(size: 14, weight: .black, design: .monospaced))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12)
+                    .frame(width: 96, height: 50)
+                    .background(fieldBackground)
+                    .focused($focusedField, equals: .courseCode)
+                    .onChange(of: draftCourseCode) { _, newValue in
+                        let upper = newValue.uppercased()
+                        if upper != newValue {
+                            draftCourseCode = upper
+                            return
+                        }
+                        updateCourseSuggestions()
+                    }
+
+                    TextField(
+                        "",
+                        text: $draftCourseName,
+                        prompt: Text("Course name").foregroundStyle(.white.opacity(0.30))
+                    )
+                    .textInputAutocapitalization(.words)
+                    .autocorrectionDisabled()
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12)
+                    .frame(height: 50)
+                    .background(fieldBackground)
+                    .focused($focusedField, equals: .courseName)
+                    .onChange(of: draftCourseName) { _, _ in
+                        updateCourseSuggestions()
+                    }
                 }
+
+                Button {
+                    addDraftCourse()
+                    focusedField = nil
+                } label: {
+                    HStack(spacing: 8) {
+                        Text("Add")
+                            .font(.system(size: 15, weight: .black, design: .rounded))
+
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .black))
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(
+                        Capsule()
+                            .fill(StudentOnboardingPalette.actionGradient)
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.white.opacity(0.14), lineWidth: 1)
+                            )
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(14)
+            .background(cardSurface(radius: 22))
+
+            if !filteredCourseSuggestions.isEmpty {
+                suggestionsView
+            }
+
+            if let submitError {
+                ErrorCard(text: submitError)
+            }
+        }
+    }
+
+    private var suggestionsView: some View {
+        VStack(alignment: .leading, spacing: 11) {
+            Text("Suggestions")
+                .font(.system(size: 17, weight: .black, design: .rounded))
+                .foregroundStyle(.white)
+
+            VStack(spacing: 8) {
+                ForEach(filteredCourseSuggestions.prefix(5)) { course in
+                    Button {
+                        applyCourseSuggestion(course)
+                        focusedField = nil
+                    } label: {
+                        HStack(spacing: 11) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 19, weight: .black))
+                                .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingPalette.gold))
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(course.course_code.isEmpty ? course.course_name : "\(course.course_code) • \(course.course_name)")
+                                    .font(.system(size: 13, weight: .black, design: .rounded))
+                                    .foregroundStyle(.white)
+                                    .lineLimit(2)
+                                    .multilineTextAlignment(.leading)
+
+                                Text("Year \(course.year_number) • Term \(course.term_number ?? 0)")
+                                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                                    .foregroundStyle(.white.opacity(0.42))
+                            }
+
+                            Spacer()
+                        }
+                        .padding(11)
+                        .background(
+                            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                .fill(Color.white.opacity(0.050))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                        .stroke(Color(studentOnboardingHex: StudentOnboardingPalette.gold).opacity(0.14), lineWidth: 1)
+                                )
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(14)
+        .background(cardSurface(radius: 22))
+    }
+
+    private var goalStep: some View {
+        VStack(spacing: 12) {
+            VStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .stroke(Color.white.opacity(0.075), lineWidth: 8)
+                        .frame(width: 138, height: 138)
+
+                    Circle()
+                        .trim(from: 0, to: min(dailyStudyGoalMinutes / 240, 1.0))
+                        .stroke(
+                            StudentOnboardingPalette.actionGradient,
+                            style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                        )
+                        .frame(width: 138, height: 138)
+                        .rotationEffect(.degrees(-90))
+                        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: dailyStudyGoalMinutes)
+
+                    VStack(spacing: 1) {
+                        Text("\(Int(dailyStudyGoalMinutes))")
+                            .font(.system(size: 36, weight: .black, design: .monospaced))
+                            .foregroundStyle(.white)
+                            .contentTransition(.numericText())
+
+                        Text("minutes")
+                            .font(.system(size: 13, weight: .regular, design: .serif))
+                            .italic()
+                            .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingPalette.appCyan))
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 154)
+
+                Slider(value: $dailyStudyGoalMinutes, in: 30...480, step: 15)
+                    .tint(Color(studentOnboardingHex: StudentOnboardingPalette.appCyan))
+            }
+            .padding(16)
+            .background(cardSurface(radius: 26))
+
+            VStack(spacing: 8) {
+                SummaryRow(
+                    icon: "graduationcap.fill",
+                    title: "Profile",
+                    value: profileSummary
+                )
+
+                SummaryRow(
+                    icon: "book.closed.fill",
+                    title: "Courses",
+                    value: "\(localCourses.count) selected"
+                )
+
+                SummaryRow(
+                    icon: "target",
+                    title: "Daily goal",
+                    value: "\(Int(dailyStudyGoalMinutes)) min"
+                )
+            }
+            .padding(14)
+            .background(cardSurface(radius: 22))
+
+            if let submitError {
+                ErrorCard(text: submitError)
+            }
+        }
+    }
+
+    private var bottomBar: some View {
+        HStack(spacing: 12) {
+            if currentStep > 0 {
+                Button {
+                    goBack()
+                } label: {
+                    Text("Back")
+                        .font(.system(size: 15, weight: .black, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.88))
+                        .frame(width: 92, height: 52)
+                        .background(
+                            Capsule()
+                                .fill(Color.white.opacity(0.060))
+                                .overlay(
+                                    Capsule()
+                                        .stroke(Color.white.opacity(0.095), lineWidth: 1)
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
             }
 
             Button {
-                addDraftCourse()
-                focusedField = nil
+                handleContinue()
             } label: {
                 HStack(spacing: 9) {
-                    Text("Add Course")
-                        .font(.system(size: 15, weight: .black, design: .rounded))
+                    if isSubmitting {
+                        ProgressView()
+                            .tint(.white)
+                            .scaleEffect(0.86)
+                    }
 
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .black))
+                    Text(currentStep == totalSteps - 1 ? "Finish" : "Continue")
+                        .font(.system(size: 16, weight: .black, design: .rounded))
+
+                    Image(systemName: currentStep == totalSteps - 1 ? "checkmark" : "arrow.right")
+                        .font(.system(size: 15, weight: .black))
                 }
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
                 .background(
                     Capsule()
-                        .fill(StudentOnboardingArenaPalette.hotGradient)
-                        .overlay(
-                            Capsule()
-                                .stroke(Color.white.opacity(0.14), lineWidth: 1)
+                        .fill(
+                            canContinueCurrentStep
+                            ? AnyShapeStyle(StudentOnboardingPalette.actionGradient)
+                            : AnyShapeStyle(Color.white.opacity(0.10))
                         )
-                        .shadow(
-                            color: Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.20),
-                            radius: 14,
-                            y: 7
-                        )
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(Color.white.opacity(canContinueCurrentStep ? 0.15 : 0.060), lineWidth: 1)
+                )
+                .shadow(
+                    color: canContinueCurrentStep
+                    ? Color(studentOnboardingHex: StudentOnboardingPalette.appPurple).opacity(0.26)
+                    : .clear,
+                    radius: 16,
+                    y: 8
                 )
             }
             .buttonStyle(.plain)
+            .disabled(!canContinueCurrentStep)
         }
-        .padding(16)
-        .background(studentOnboardingSurface(radius: 24))
-    }
-
-    func sectionMiniHeader(title: String, subtitle: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.88))
-
-            Text(subtitle)
-                .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.52))
-        }
-    }
-
-    private var goalsContent: some View {
-        VStack(spacing: 14) {
-            premiumGoalCard(
-                title: "Daily Goal",
-                value: "\(Int(dailyStudyGoalMinutes)) min",
-                slider: $dailyStudyGoalMinutes,
-                range: 30...480,
-                step: 15,
-                helper: "Your focused study target per day."
-            )
-
-            compactInfoGroup(
-                title: "Summary",
-                items: [
-                    ("graduationcap", educationLevel == "high_school"
-                        ? "High School • \(labelForGrade(gradeLevel))"
-                        : "University • \(labelForGrade(gradeLevel))"),
-                    ("square.grid.2x2", educationLevel == "high_school"
-                        ? labelForTrack(highSchoolTrack)
-                        : (majorName.isEmpty ? "Major not selected" : majorName)),
-                    ("list.bullet.rectangle", "\(localCourses.count) course(s) selected"),
-                    ("target", "\(Int(dailyStudyGoalMinutes)) min daily focus goal")
-                ]
-            )
-
-            if let submitError {
-                studentSubmitErrorCard(submitError)
-            }
-        }
-    }
-
-    private var bottomBar: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 14) {
-                if currentStep > 0 {
-                    Button {
-                        withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
-                            currentStep -= 1
-                        }
-                    } label: {
-                        Text("Back")
-                            .font(.system(size: 15, weight: .black, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.88))
-                            .frame(width: 108, height: 56)
-                            .background(
-                                Capsule()
-                                    .fill(Color.white.opacity(0.075))
-                                    .overlay(
-                                        Capsule()
-                                            .stroke(Color.white.opacity(0.10), lineWidth: 1)
-                                    )
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                Button {
-                    handleContinue()
-                } label: {
-                    HStack(spacing: 9) {
-                        if isSubmitting {
-                            ProgressView()
-                                .tint(.white)
-                                .scaleEffect(0.9)
-                        }
-
-                        Text(currentStep == totalSteps - 1 ? "Finish" : "Continue")
-                            .font(.system(size: 17, weight: .black, design: .rounded))
-
-                        Image(systemName: currentStep == totalSteps - 1 ? "checkmark.circle.fill" : "arrow.right")
-                            .font(.system(size: 16, weight: .black))
-                    }
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(
-                        Capsule()
-                            .fill(
-                                canContinueCurrentStep
-                                ? AnyShapeStyle(StudentOnboardingArenaPalette.hotGradient)
-                                : AnyShapeStyle(Color.white.opacity(0.10))
-                            )
-                    )
-                    .overlay(
-                        Capsule()
-                            .stroke(Color.white.opacity(canContinueCurrentStep ? 0.16 : 0.06), lineWidth: 1)
-                    )
-                    .shadow(
-                        color: canContinueCurrentStep
-                        ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.24)
-                        : .clear,
-                        radius: 16,
-                        y: 8
-                    )
-                }
-                .buttonStyle(.plain)
-                .disabled(!canContinueCurrentStep)
-            }
-            .padding(.horizontal, 24)
-            .padding(.top, 16)
-            .padding(.bottom, 22)
-        }
+        .padding(.horizontal, 22)
+        .padding(.top, 10)
+        .padding(.bottom, 16)
         .background(
             LinearGradient(
                 colors: [
@@ -1219,34 +1030,89 @@ struct StudentOnboardingFlowView: View {
 
     private var savingOverlay: some View {
         ZStack {
-            Color.black.opacity(0.42)
+            Color.black.opacity(0.50)
                 .ignoresSafeArea()
 
             VStack(spacing: 14) {
                 ProgressView()
                     .tint(.white)
-                    .scaleEffect(1.08)
+                    .scaleEffect(1.05)
 
-                Text("Saving your setup...")
-                    .font(.system(size: 15, weight: .black, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.92))
+                Text("Saving setup")
+                    .font(.system(size: 16, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
 
-                Text("Courses, profile and goals are being prepared.")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.48))
-                    .multilineTextAlignment(.center)
+                Text("Preparing your student space.")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.52))
             }
-            .padding(.horizontal, 26)
-            .padding(.vertical, 22)
-            .background(studentOnboardingSurface(radius: 26))
-            .padding(.horizontal, 32)
+            .padding(.horizontal, 28)
+            .padding(.vertical, 24)
+            .background(cardSurface(radius: 26))
+            .padding(.horizontal, 34)
         }
     }
 
-    private func handleContinue() {
+    private var profileSummary: String {
+        if educationLevel == "high_school" {
+            return "\(gradeLevel). Grade • \(labelForTrack(highSchoolTrack))"
+        }
+
+        let year = gradeLevel == "prep" ? "Prep" : "\(gradeLevel). Year"
+        let major = majorName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return major.isEmpty ? year : "\(year) • \(major)"
+    }
+
+    private var fieldBackground: some View {
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .fill(Color.white.opacity(0.060))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.white.opacity(0.070), lineWidth: 1)
+            )
+    }
+
+    private func cardSurface(radius: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: radius, style: .continuous)
+            .fill(StudentOnboardingPalette.cardGradient)
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.18), radius: 12, y: 7)
+    }
+}
+
+// MARK: - Logic
+
+private extension StudentOnboardingFlowView {
+    func hydrateInitialDrafts() {
+        if localCourses.isEmpty {
+            localCourses = defaultCoursesForCurrentSelection()
+        }
+    }
+
+    func goBack() {
+        guard currentStep > 0 else { return }
+
+        StudentSetupHaptics.softTap()
+
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
+            currentStep -= 1
+        }
+    }
+
+    func handleContinue() {
         submitError = nil
+        focusedField = nil
+
+        guard canContinueCurrentStep else {
+            StudentSetupHaptics.warning()
+            return
+        }
 
         if currentStep < totalSteps - 1 {
+            StudentSetupHaptics.softTap()
             withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
                 currentStep += 1
             }
@@ -1257,7 +1123,7 @@ struct StudentOnboardingFlowView: View {
         }
     }
 
-    private func completeOnboarding() async {
+    func completeOnboarding() async {
         guard !isSubmitting else { return }
 
         let cleanedMajor = majorName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1273,8 +1139,8 @@ struct StudentOnboardingFlowView: View {
             .filter { !$0.name.isEmpty }
 
         guard !normalizedCourses.isEmpty else {
-            submitError = "Please add at least one course."
-            StudentOnboardingHaptics.warning()
+            submitError = "Add at least one course."
+            StudentSetupHaptics.warning()
             return
         }
 
@@ -1285,6 +1151,7 @@ struct StudentOnboardingFlowView: View {
 
         do {
             let computedWeeklyGoal = Int(dailyStudyGoalMinutes) * 7
+
             try await studentStore.completeOnboardingAndSync(
                 educationLevel: educationLevel,
                 gradeLevel: gradeLevel,
@@ -1298,22 +1165,61 @@ struct StudentOnboardingFlowView: View {
             )
 
             studentStore.forceRestoreCoursesFromOnboardingDrafts(normalizedCourses)
-            StudentOnboardingHaptics.success()
+            StudentSetupHaptics.success()
         } catch {
-            submitError = "Your profile and courses could not be saved. Please check your connection and try again."
-            StudentOnboardingHaptics.warning()
+            submitError = "Setup could not be saved. Check your connection and try again."
+            StudentSetupHaptics.warning()
             print("❌ STUDENT ONBOARDING COMPLETE ERROR:", error.localizedDescription)
         }
     }
 
-    private func loadMajorsForSelectedUniversity() async {
+    func selectMajor(_ major: CatalogMajor) {
+        StudentSetupHaptics.softTap()
+        isSelectingMajorFromList = true
+
+        majorName = major.name
+        majorSearchText = major.name
+        selectedMajorID = major.id
+        focusedField = nil
+
+        Task {
+            await loadAllCoursesForSelectedMajor()
+            await applySuggestedUniversityCoursesIfAvailable(forceReplace: true)
+
+            await MainActor.run {
+                isSelectingMajorFromList = false
+            }
+        }
+    }
+
+    func handleCustomMajorChange(_ value: String) {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let matchedMajor = remoteMajors.first(where: {
+            $0.name.caseInsensitiveCompare(trimmed) == .orderedSame
+        }) {
+            selectedMajorID = matchedMajor.id
+
+            Task {
+                await loadAllCoursesForSelectedMajor()
+                await applySuggestedUniversityCoursesIfAvailable(forceReplace: true)
+            }
+        } else {
+            selectedMajorID = nil
+            remoteSuggestedCourses = []
+            allMajorCourses = []
+            filteredCourseSuggestions = []
+            localCourses.removeAll(where: { $0.isSuggested })
+        }
+    }
+
+    func loadMajorsForSelectedUniversity() async {
         guard educationLevel == "university" else {
             isLoadingMajors = false
             return
         }
 
         guard let selectedUniversityID else {
-            print("⚪️ loadMajors skipped: selectedUniversityID nil")
             remoteMajors = []
             isLoadingMajors = false
             return
@@ -1321,7 +1227,6 @@ struct StudentOnboardingFlowView: View {
 
         let requestID = UUID()
         majorLoadRequestID = requestID
-
         isLoadingMajors = true
 
         defer {
@@ -1362,7 +1267,6 @@ struct StudentOnboardingFlowView: View {
             } else {
                 selectedMajorID = nil
             }
-
         } catch {
             guard majorLoadRequestID == requestID else { return }
 
@@ -1376,7 +1280,7 @@ struct StudentOnboardingFlowView: View {
         }
     }
 
-    private func applySuggestedUniversityCoursesIfAvailable(forceReplace: Bool = false) async {
+    func applySuggestedUniversityCoursesIfAvailable(forceReplace: Bool = false) async {
         guard educationLevel == "university" else { return }
 
         guard let selectedMajorID else {
@@ -1408,31 +1312,105 @@ struct StudentOnboardingFlowView: View {
 
             let manualCourses = localCourses.filter { !$0.isSuggested }
             localCourses = markedSuggestions + manualCourses
+            updateCourseSuggestions()
         } catch {
             print("❌ applySuggestedUniversityCoursesIfAvailable error:", error)
             remoteSuggestedCourses = []
+
             if forceReplace {
                 localCourses = localCourses.filter { !$0.isSuggested }
             }
+
+            updateCourseSuggestions()
         }
     }
 
-    private func isSuggestedCourse(_ course: OnboardingCourseDraft) -> Bool {
-        course.isSuggested
-    }
+    func loadAllCoursesForSelectedMajor() async {
+        guard let selectedMajorID else {
+            allMajorCourses = []
+            filteredCourseSuggestions = []
+            return
+        }
 
-    private func adaptGradeIfNeeded() {
-        let options = gradeOptions
-        if !options.contains(gradeLevel) {
-            gradeLevel = options.first ?? "9"
+        isLoadingAllMajorCourses = true
+        defer { isLoadingAllMajorCourses = false }
+
+        do {
+            let courses = try await StudentCatalogService.fetchAllCurriculumCourses(
+                majorID: selectedMajorID
+            )
+
+            allMajorCourses = courses
+            updateCourseSuggestions()
+        } catch {
+            print("❌ loadAllCoursesForSelectedMajor error:", error)
+            allMajorCourses = []
+            filteredCourseSuggestions = []
         }
     }
 
-    private func addDraftCourse() {
-        let trimmedCode = draftCourseCode.trimmingCharacters(in: .whitespacesAndNewlines)
+    func updateCourseSuggestions() {
+        let codeQuery = draftCourseCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        let nameQuery = draftCourseName.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let hasCode = !codeQuery.isEmpty
+        let hasName = !nameQuery.isEmpty
+
+        let filtered: [CatalogCurriculumCourse]
+
+        if !hasCode && !hasName {
+            filtered = allMajorCourses.filter { course in
+                !localCourses.contains {
+                    $0.code.caseInsensitiveCompare(course.course_code) == .orderedSame &&
+                    $0.name.caseInsensitiveCompare(course.course_name) == .orderedSame
+                }
+            }
+        } else {
+            filtered = allMajorCourses.filter { course in
+                let matchesCode = !hasCode || course.course_code.localizedCaseInsensitiveContains(codeQuery)
+                let matchesName = !hasName || course.course_name.localizedCaseInsensitiveContains(nameQuery)
+
+                let notAlreadySelected = !localCourses.contains {
+                    $0.code.caseInsensitiveCompare(course.course_code) == .orderedSame &&
+                    $0.name.caseInsensitiveCompare(course.course_name) == .orderedSame
+                }
+
+                return matchesCode && matchesName && notAlreadySelected
+            }
+        }
+
+        filteredCourseSuggestions = Array(filtered.prefix(8))
+    }
+
+    func applyCourseSuggestion(_ course: CatalogCurriculumCourse) {
+        let alreadyExists = localCourses.contains {
+            $0.code.caseInsensitiveCompare(course.course_code) == .orderedSame &&
+            $0.name.caseInsensitiveCompare(course.course_name) == .orderedSame
+        }
+
+        guard !alreadyExists else { return }
+
+        localCourses.append(
+            OnboardingCourseDraft(
+                code: course.course_code,
+                name: course.course_name,
+                isSuggested: true
+            )
+        )
+
+        draftCourseCode = ""
+        draftCourseName = ""
+        updateCourseSuggestions()
+    }
+
+    func addDraftCourse() {
+        let trimmedCode = draftCourseCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         let trimmedName = draftCourseName.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard !trimmedName.isEmpty else { return }
+        guard !trimmedName.isEmpty else {
+            StudentSetupHaptics.warning()
+            return
+        }
 
         let alreadyExists = localCourses.contains {
             $0.name.caseInsensitiveCompare(trimmedName) == .orderedSame &&
@@ -1442,6 +1420,7 @@ struct StudentOnboardingFlowView: View {
         guard !alreadyExists else {
             draftCourseCode = ""
             draftCourseName = ""
+            updateCourseSuggestions()
             return
         }
 
@@ -1455,9 +1434,11 @@ struct StudentOnboardingFlowView: View {
 
         draftCourseCode = ""
         draftCourseName = ""
+        updateCourseSuggestions()
+        StudentSetupHaptics.softTap()
     }
 
-    private func removeCourse(_ course: OnboardingCourseDraft) {
+    func removeCourse(_ course: OnboardingCourseDraft) {
         localCourses.removeAll { $0.id == course.id }
 
         if course.isSuggested {
@@ -1468,9 +1449,17 @@ struct StudentOnboardingFlowView: View {
         }
 
         updateCourseSuggestions()
+        StudentSetupHaptics.softTap()
     }
 
-    private func defaultCoursesForCurrentSelection() -> [OnboardingCourseDraft] {
+    func adaptGradeIfNeeded() {
+        let options = gradeOptions
+        if !options.contains(gradeLevel) {
+            gradeLevel = options.first ?? "1"
+        }
+    }
+
+    func defaultCoursesForCurrentSelection() -> [OnboardingCourseDraft] {
         if educationLevel == "university" {
             return []
         }
@@ -1514,7 +1503,7 @@ struct StudentOnboardingFlowView: View {
         }
     }
 
-    private func labelForTrack(_ value: String) -> String {
+    func labelForTrack(_ value: String) -> String {
         switch value {
         case "sayisal": return "Sayısal"
         case "sozel": return "Sözel"
@@ -1524,110 +1513,7 @@ struct StudentOnboardingFlowView: View {
         }
     }
 
-    private func labelForGrade(_ value: String) -> String {
-        switch value {
-        case "prep": return "Hazırlık"
-        case "1": return "1. Year"
-        case "2": return "2. Year"
-        case "3": return "3. Year"
-        case "4": return "4. Year"
-        case "5": return "5. Year"
-        case "6": return "6. Year"
-        default: return value
-        }
-    }
-
-    private func normalizedUniversityYear(from gradeLevel: String) -> Int? {
-        switch gradeLevel {
-        case "1": return 1
-        case "2": return 2
-        case "3": return 3
-        case "4": return 4
-        case "5": return 5
-        case "6": return 6
-        default: return nil
-        }
-    }
-
-    private func loadAllCoursesForSelectedMajor() async {
-        guard let selectedMajorID else {
-            allMajorCourses = []
-            filteredCourseSuggestions = []
-            return
-        }
-
-        isLoadingAllMajorCourses = true
-        defer { isLoadingAllMajorCourses = false }
-
-        do {
-            let courses = try await StudentCatalogService.fetchAllCurriculumCourses(
-                majorID: selectedMajorID
-            )
-            allMajorCourses = courses
-            updateCourseSuggestions()
-        } catch {
-            print("❌ loadAllCoursesForSelectedMajor error:", error)
-            allMajorCourses = []
-            filteredCourseSuggestions = []
-        }
-    }
-
-    private func updateCourseSuggestions() {
-        let codeQuery = draftCourseCode.trimmingCharacters(in: .whitespacesAndNewlines)
-        let nameQuery = draftCourseName.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        let hasCode = !codeQuery.isEmpty
-        let hasName = !nameQuery.isEmpty
-
-        let source = allMajorCourses
-
-        let filtered: [CatalogCurriculumCourse]
-        if !hasCode && !hasName {
-            filtered = source.filter { course in
-                !localCourses.contains {
-                    $0.code.caseInsensitiveCompare(course.course_code) == .orderedSame &&
-                    $0.name.caseInsensitiveCompare(course.course_name) == .orderedSame
-                }
-            }
-        } else {
-            filtered = source.filter { course in
-                let matchesCode = !hasCode || course.course_code.localizedCaseInsensitiveContains(codeQuery)
-                let matchesName = !hasName || course.course_name.localizedCaseInsensitiveContains(nameQuery)
-
-                let notAlreadySelected = !localCourses.contains {
-                    $0.code.caseInsensitiveCompare(course.course_code) == .orderedSame &&
-                    $0.name.caseInsensitiveCompare(course.course_name) == .orderedSame
-                }
-
-                return matchesCode && matchesName && notAlreadySelected
-            }
-        }
-
-        filteredCourseSuggestions = Array(filtered.prefix(8))
-    }
-
-    private func applyCourseSuggestion(_ course: CatalogCurriculumCourse) {
-        let alreadyExists = localCourses.contains {
-            $0.code.caseInsensitiveCompare(course.course_code) == .orderedSame &&
-            $0.name.caseInsensitiveCompare(course.course_name) == .orderedSame
-        }
-
-        guard !alreadyExists else { return }
-
-        localCourses.append(
-            OnboardingCourseDraft(
-                code: course.course_code,
-                name: course.course_name,
-                isSuggested: true
-            )
-        )
-
-        draftCourseCode = ""
-        draftCourseName = ""
-        updateCourseSuggestions()
-    }
-
-    private func iconForTrack(_ value: String) -> String {
+    func iconForTrack(_ value: String) -> String {
         switch value {
         case "sayisal": return "function"
         case "sozel": return "text.book.closed"
@@ -1638,511 +1524,403 @@ struct StudentOnboardingFlowView: View {
     }
 }
 
+// MARK: - Small Components
+
+private struct SelectionOption {
+    let title: String
+    let subtitle: String
+    let icon: String
+    let isSelected: Bool
+}
+
 private extension StudentOnboardingFlowView {
-    func studentSubmitErrorCard(_ text: String) -> some View {
+    func twoColumnSelection(
+        left: SelectionOption,
+        right: SelectionOption,
+        leftAction: @escaping () -> Void,
+        rightAction: @escaping () -> Void
+    ) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 18, weight: .black))
-                .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold))
+            selectionCard(option: left, action: leftAction)
+            selectionCard(option: right, action: rightAction)
+        }
+    }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Setup could not be saved")
-                    .font(.system(size: 15, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
+    func selectionCard(option: SelectionOption, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 10) {
+                Image(systemName: option.icon)
+                    .font(.system(size: 20, weight: .black))
+                    .foregroundStyle(option.isSelected ? .black.opacity(0.76) : Color(studentOnboardingHex: StudentOnboardingPalette.appCyan))
+                    .frame(width: 42, height: 42)
+                    .background(
+                        RoundedRectangle(cornerRadius: 15, style: .continuous)
+                            .fill(option.isSelected ? Color.white.opacity(0.20) : Color.white.opacity(0.055))
+                    )
 
-                Text(text)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.58))
+                Spacer(minLength: 6)
+
+                Text(option.title)
+                    .font(.system(size: 17, weight: .black, design: .rounded))
+                    .foregroundStyle(option.isSelected ? .black.opacity(0.82) : .white)
+
+                Text(option.subtitle)
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(option.isSelected ? .black.opacity(0.52) : .white.opacity(0.52))
+                    .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
-
-            Spacer()
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold).opacity(0.12))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold).opacity(0.20), lineWidth: 1)
-                )
-        )
-    }
-    
-    func compactFeatureCard(icon: String, title: String) -> some View {
-        HStack(spacing: 13) {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.18),
-                            Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.13)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 48, height: 48)
-                .overlay(
-                    Image(systemName: icon)
-                        .font(.system(size: 19, weight: .black))
-                        .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
-                )
-
-            Text(title)
-                .font(.system(size: 17, weight: .black, design: .rounded))
-                .foregroundStyle(.white)
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .black))
-                .foregroundStyle(.white.opacity(0.24))
-        }
-        .padding(13)
-        .background(studentOnboardingSurface(radius: 24))
-    }
-
-    func compactInfoGroup(title: String, items: [(String, String)]) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text(title)
-                .font(.system(size: 18, weight: .black, design: .rounded))
-                .foregroundStyle(.white)
-
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(items, id: \.1) { item in
-                    Label {
-                        Text(item.1)
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.76))
-                    } icon: {
-                        Image(systemName: item.0)
-                            .font(.system(size: 14, weight: .black))
-                            .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
-                    }
-                }
-            }
-        }
-        .padding(16)
-        .background(studentOnboardingSurface(radius: 24))
-    }
-
-    func compactCourseRow(
-        course: OnboardingCourseDraft,
-        isSuggested: Bool,
-        onDelete: @escaping () -> Void
-    ) -> some View {
-        HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 3, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan),
-                            Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .frame(width: 4, height: 44)
-
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 8) {
-                    if !course.code.isEmpty {
-                        Text(course.code)
-                            .font(.system(size: 11, weight: .black, design: .monospaced))
-                            .tracking(0.8)
-                            .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
-                    }
-
-                    if isSuggested {
-                        Text("SUGGESTED")
-                            .font(.system(size: 9, weight: .black, design: .monospaced))
-                            .tracking(0.9)
-                            .foregroundStyle(.white.opacity(0.62))
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill(Color.white.opacity(0.075))
-                            )
-                    }
-                }
-
-                Text(course.name)
-                    .font(.system(size: 16, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
-            }
-
-            Spacer(minLength: 10)
-
-            Button(role: .destructive, action: onDelete) {
-                Image(systemName: "trash")
-                    .font(.system(size: 13, weight: .black))
-                    .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.coral))
-                    .frame(width: 34, height: 34)
-                    .background(
-                        Circle()
-                            .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.coral).opacity(0.10))
-                    )
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 14)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.055))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.070), lineWidth: 1)
-                )
-        )
-    }
-
-    func selectionCard(
-        title: String,
-        subtitle: String,
-        badge: String,
-        isSelected: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(badge.uppercased())
-                    .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .tracking(1.3)
-                    .foregroundStyle(isSelected ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan) : .white.opacity(0.46))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(isSelected ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.13) : Color.white.opacity(0.07))
-                    )
-
-                Spacer()
-
-                Text(title)
-                    .font(.system(size: 21, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-
-                Text(subtitle)
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.56))
-                    .lineLimit(2)
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, minHeight: 138, alignment: .leading)
+            .padding(15)
+            .frame(maxWidth: .infinity, minHeight: 132, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 25, style: .continuous)
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .fill(
-                        isSelected
-                        ? LinearGradient(
-                            colors: [
-                                Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.15),
-                                Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.11),
-                                Color.white.opacity(0.040)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                        : StudentOnboardingArenaPalette.cardGradient
+                        option.isSelected
+                        ? AnyShapeStyle(StudentOnboardingPalette.appGradient)
+                        : AnyShapeStyle(StudentOnboardingPalette.cardGradient)
                     )
                     .overlay(
-                        RoundedRectangle(cornerRadius: 25, style: .continuous)
-                            .stroke(
-                                isSelected
-                                ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.30)
-                                : Color.white.opacity(0.075),
-                                lineWidth: 1
-                            )
-                    )
-                    .shadow(
-                        color: isSelected ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.13) : Color.black.opacity(0.16),
-                        radius: 14,
-                        y: 7
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(Color.white.opacity(option.isSelected ? 0.14 : 0.075), lineWidth: 1)
                     )
             )
         }
         .buttonStyle(.plain)
     }
 
-    func selectionRowCard(
-        title: String,
-        subtitle: String,
-        isSelected: Bool,
-        action: @escaping () -> Void
+    func searchField(text: Binding<String>, placeholder: String) -> some View {
+        HStack(spacing: 11) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 15, weight: .black))
+                .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingPalette.appCyan))
+
+            TextField("", text: text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.30)))
+                .textInputAutocapitalization(.words)
+                .autocorrectionDisabled()
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+        }
+        .padding(.horizontal, 13)
+        .frame(height: 52)
+        .background(fieldBackground)
+    }
+
+    func textField(
+        text: Binding<String>,
+        placeholder: String,
+        icon: String
     ) -> some View {
+        HStack(spacing: 11) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .black))
+                .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingPalette.appCyan))
+
+            TextField("", text: text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.30)))
+                .textInputAutocapitalization(.words)
+                .autocorrectionDisabled()
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+        }
+        .padding(.horizontal, 13)
+        .frame(height: 52)
+        .background(fieldBackground)
+    }
+}
+
+private struct SelectionRow: View {
+    let title: String
+    let subtitle: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
         Button(action: action) {
             HStack(spacing: 13) {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(title)
-                        .font(.system(size: 19, weight: .black, design: .rounded))
+                        .font(.system(size: 17, weight: .black, design: .rounded))
                         .foregroundStyle(.white)
 
                     Text(subtitle)
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.52))
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.50))
                 }
 
                 Spacer()
 
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 19, weight: .black))
-                    .foregroundStyle(isSelected ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan) : .white.opacity(0.28))
-            }
-            .padding(.horizontal, 18)
-            .frame(height: 80)
-            .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(isSelected ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.13) : Color.white.opacity(0.060))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(isSelected ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.32) : Color.white.opacity(0.075), lineWidth: 1)
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    func selectionNumberCard(
-        title: String,
-        isSelected: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 19, weight: .black, design: .rounded))
-                .foregroundStyle(isSelected ? .black : .white)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
-                .frame(height: 92)
-                .background(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(
-                            isSelected
-                            ? AnyShapeStyle(StudentOnboardingArenaPalette.appGradient)
-                            : AnyShapeStyle(Color.white.opacity(0.065))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .stroke(isSelected ? Color.white.opacity(0.12) : Color.white.opacity(0.075), lineWidth: 1)
-                        )
-                )
-        }
-        .buttonStyle(.plain)
-    }
-
-    func selectionChip(
-        icon: String,
-        title: String,
-        isSelected: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            VStack(spacing: 9) {
-                Image(systemName: icon)
-                    .font(.system(size: 18, weight: .black))
-                    .foregroundStyle(isSelected ? .black : Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
-
-                Text(title)
-                    .font(.system(size: 15, weight: .black, design: .rounded))
-                    .foregroundStyle(isSelected ? .black : .white)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 84)
-            .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(
-                        isSelected
-                        ? AnyShapeStyle(StudentOnboardingArenaPalette.appGradient)
-                        : AnyShapeStyle(Color.white.opacity(0.065))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(isSelected ? Color.white.opacity(0.12) : Color.white.opacity(0.075), lineWidth: 1)
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    func studentOnboardingSurface(radius: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: radius, style: .continuous)
-            .fill(StudentOnboardingArenaPalette.cardGradient)
-            .overlay(
-                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.090),
-                                Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.055),
-                                Color.white.opacity(0.030)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
-            )
-            .shadow(color: Color.black.opacity(0.18), radius: 12, y: 7)
-    }
-
-    func premiumTextField(title: String, text: Binding<String>, placeholder: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.system(size: 13, weight: .black, design: .rounded))
-                .foregroundStyle(.white.opacity(0.68))
-
-            HStack(spacing: 11) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 14, weight: .black))
-                    .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
-                    .frame(width: 22)
-
-                TextField("", text: text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.30)))
-                    .textInputAutocapitalization(.words)
-                    .autocorrectionDisabled()
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(isSelected ? Color(studentOnboardingHex: StudentOnboardingPalette.green) : .white.opacity(0.26))
             }
             .padding(.horizontal, 14)
-            .frame(height: 52)
+            .frame(height: 60)
             .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.white.opacity(0.060))
+                RoundedRectangle(cornerRadius: 19, style: .continuous)
+                    .fill(Color.white.opacity(0.055))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(Color.white.opacity(0.070), lineWidth: 1)
-                    )
-            )
-        }
-    }
-
-    func majorRow(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(
-                        isSelected
-                        ? StudentOnboardingArenaPalette.appGradient
-                        : LinearGradient(
-                            colors: [
-                                Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.10),
-                                Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.07)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 42, height: 42)
-                    .overlay(
-                        Image(systemName: isSelected ? "checkmark" : "graduationcap.fill")
-                            .font(.system(size: 15, weight: .black))
-                            .foregroundStyle(isSelected ? .black.opacity(0.78) : Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
-                    )
-
-                Text(title)
-                    .font(.system(size: 15, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(.white.opacity(0.24))
-            }
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(
-                        isSelected
-                        ? LinearGradient(
-                            colors: [
-                                Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.13),
-                                Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.10),
-                                Color.white.opacity(0.040)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                        : LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.055),
-                                Color.white.opacity(0.035)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(
-                                isSelected
-                                ? Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.26)
-                                : Color.white.opacity(0.065),
-                                lineWidth: 1
-                            )
+                        RoundedRectangle(cornerRadius: 19, style: .continuous)
+                            .stroke(isSelected ? Color(studentOnboardingHex: StudentOnboardingPalette.green).opacity(0.20) : Color.white.opacity(0.065), lineWidth: 1)
                     )
             )
         }
         .buttonStyle(.plain)
-    }
-
-    func premiumGoalCard(
-        title: String,
-        value: String,
-        slider: Binding<Double>,
-        range: ClosedRange<Double>,
-        step: Double,
-        helper: String
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.system(size: 18, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
-
-                    Text(helper)
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.46))
-                }
-
-                Spacer()
-
-                Text(value)
-                    .font(.system(size: 13, weight: .black, design: .monospaced))
-                    .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .background(
-                        Capsule()
-                            .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.13))
-                    )
-            }
-
-            Slider(value: slider, in: range, step: step)
-                .tint(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appCyan))
-        }
-        .padding(16)
-        .background(studentOnboardingSurface(radius: 24))
     }
 }
 
-private struct StudentOnboardingArenaBackground: View {
+private struct MinimalInfoCard: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 17, weight: .black))
+                .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingPalette.appCyan))
+                .frame(width: 38, height: 38)
+                .background(
+                    Circle()
+                        .fill(Color(studentOnboardingHex: StudentOnboardingPalette.appBlue).opacity(0.12))
+                )
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 16, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+
+                Text(subtitle)
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.52))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 13)
+        .padding(.vertical, 11)
+        .background(CardSurface(radius: 20))
+    }
+}
+
+private struct CourseRow: View {
+    let course: OnboardingCourseDraft
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack(spacing: 11) {
+            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(studentOnboardingHex: StudentOnboardingPalette.appCyan),
+                            Color(studentOnboardingHex: StudentOnboardingPalette.appPurple)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: 4, height: 38)
+
+            VStack(alignment: .leading, spacing: 4) {
+                if !course.code.isEmpty {
+                    Text(course.code)
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .tracking(0.8)
+                        .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingPalette.appCyan))
+                }
+
+                Text(course.name)
+                    .font(.system(size: 14, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 10)
+
+            if course.isSuggested {
+                Text("AUTO")
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .tracking(0.8)
+                    .foregroundStyle(.white.opacity(0.52))
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 5)
+                    .background(
+                        Capsule()
+                            .fill(Color.white.opacity(0.075))
+                    )
+            }
+
+            Button(role: .destructive, action: onDelete) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 12, weight: .black))
+                    .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingPalette.coral))
+                    .frame(width: 30, height: 30)
+                    .background(
+                        Circle()
+                            .fill(Color(studentOnboardingHex: StudentOnboardingPalette.coral).opacity(0.10))
+                    )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(11)
+        .background(
+            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                .fill(Color.white.opacity(0.050))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                        .stroke(Color.white.opacity(0.060), lineWidth: 1)
+                )
+        )
+    }
+}
+
+private struct SummaryRow: View {
+    let icon: String
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack(spacing: 11) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .black))
+                .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingPalette.appCyan))
+                .frame(width: 32, height: 32)
+                .background(
+                    Circle()
+                        .fill(Color(studentOnboardingHex: StudentOnboardingPalette.appBlue).opacity(0.12))
+                )
+
+            Text(title)
+                .font(.system(size: 13, weight: .black, design: .rounded))
+                .foregroundStyle(.white.opacity(0.60))
+
+            Spacer()
+
+            Text(value)
+                .font(.system(size: 13, weight: .black, design: .rounded))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.70)
+        }
+        .padding(.horizontal, 11)
+        .frame(height: 50)
+        .background(
+            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                .fill(Color.white.opacity(0.045))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                        .stroke(Color.white.opacity(0.060), lineWidth: 1)
+                )
+        )
+    }
+}
+
+private struct EmptyStateRow: View {
+    let icon: String
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 11) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .black))
+                .foregroundStyle(.white.opacity(0.44))
+
+            Text(text)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.58))
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer()
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                .fill(Color.white.opacity(0.040))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                        .stroke(Color.white.opacity(0.055), lineWidth: 1)
+                )
+        )
+    }
+}
+
+private struct LoadingRow: View {
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 11) {
+            ProgressView()
+                .tint(.white)
+                .scaleEffect(0.85)
+
+            Text(text)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.62))
+
+            Spacer()
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                .fill(Color.white.opacity(0.040))
+        )
+    }
+}
+
+private struct ErrorCard: View {
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 11) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 17, weight: .black))
+                .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingPalette.gold))
+
+            Text(text)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.82))
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer()
+        }
+        .padding(13)
+        .background(
+            RoundedRectangle(cornerRadius: 19, style: .continuous)
+                .fill(Color(studentOnboardingHex: StudentOnboardingPalette.gold).opacity(0.13))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 19, style: .continuous)
+                .stroke(Color(studentOnboardingHex: StudentOnboardingPalette.gold).opacity(0.22), lineWidth: 1)
+        )
+    }
+}
+
+private struct CardSurface: View {
+    var radius: CGFloat = 26
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: radius, style: .continuous)
+            .fill(StudentOnboardingPalette.cardGradient)
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.18), radius: 12, y: 7)
+    }
+}
+
+// MARK: - Background
+
+private struct StudentOnboardingBackground: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
 
             LinearGradient(
                 colors: [
-                    Color(studentOnboardingHex: StudentOnboardingArenaPalette.backgroundTop),
-                    Color(studentOnboardingHex: StudentOnboardingArenaPalette.backgroundMid),
-                    Color(studentOnboardingHex: StudentOnboardingArenaPalette.backgroundBottom)
+                    Color(studentOnboardingHex: StudentOnboardingPalette.backgroundTop),
+                    Color(studentOnboardingHex: StudentOnboardingPalette.backgroundMid),
+                    Color(studentOnboardingHex: StudentOnboardingPalette.backgroundBottom)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -2150,34 +1928,28 @@ private struct StudentOnboardingArenaBackground: View {
             .ignoresSafeArea()
 
             Circle()
-                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appBlue).opacity(0.10))
-                .frame(width: 270, height: 270)
-                .blur(radius: 100)
-                .offset(x: 170, y: -250)
-
-            Circle()
-                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.appPurple).opacity(0.13))
-                .frame(width: 320, height: 320)
-                .blur(radius: 115)
-                .offset(x: -180, y: 500)
-
-            Circle()
-                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.coral).opacity(0.060))
+                .fill(Color(studentOnboardingHex: StudentOnboardingPalette.appBlue).opacity(0.10))
                 .frame(width: 260, height: 260)
-                .blur(radius: 105)
-                .offset(x: 170, y: 300)
+                .blur(radius: 100)
+                .offset(x: 172, y: -250)
 
             Circle()
-                .fill(Color(studentOnboardingHex: StudentOnboardingArenaPalette.gold).opacity(0.040))
-                .frame(width: 220, height: 220)
-                .blur(radius: 95)
-                .offset(x: -170, y: -180)
+                .fill(Color(studentOnboardingHex: StudentOnboardingPalette.appPurple).opacity(0.12))
+                .frame(width: 310, height: 310)
+                .blur(radius: 118)
+                .offset(x: -190, y: 490)
+
+            Circle()
+                .fill(Color(studentOnboardingHex: StudentOnboardingPalette.coral).opacity(0.050))
+                .frame(width: 250, height: 250)
+                .blur(radius: 106)
+                .offset(x: 160, y: 300)
 
             LinearGradient(
                 colors: [
                     Color.black.opacity(0.18),
                     Color.black.opacity(0.0),
-                    Color.black.opacity(0.44)
+                    Color.black.opacity(0.46)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -2186,9 +1958,10 @@ private struct StudentOnboardingArenaBackground: View {
         }
     }
 }
-// MARK: - Student Onboarding Haptics
 
-private enum StudentOnboardingHaptics {
+// MARK: - Haptics
+
+private enum StudentSetupHaptics {
     static func softTap() {
         let generator = UIImpactFeedbackGenerator(style: .soft)
         generator.prepare()
@@ -2207,6 +1980,9 @@ private enum StudentOnboardingHaptics {
         generator.notificationOccurred(.warning)
     }
 }
+
+// MARK: - Color
+
 private extension Color {
     init(studentOnboardingHex hex: String) {
         let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
