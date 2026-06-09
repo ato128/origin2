@@ -26,6 +26,14 @@ final class FocusSessionManager: ObservableObject {
     @Published var currentCrewID: UUID?
     @Published var currentCrewBackendSessionID: UUID?
     @Published var currentCrewHostUserID: UUID?
+    
+    private struct StoredFocusSessionSnapshot: Codable {
+        let session: FocusSessionState
+        let crewID: UUID?
+        let crewBackendSessionID: UUID?
+        let crewHostUserID: UUID?
+        let savedAt: Date
+    }
 
     private let storageKey = "active_focus_session_state_v1"
     private let lastFocusMinutesKey = "last_focus_minutes_v1"
@@ -37,6 +45,7 @@ final class FocusSessionManager: ObservableObject {
 
     private var timer: Timer?
     private var nowTimer: Timer?
+    private var isCompletingSession: Bool = false
 
     private init() {
         restoreSessionIfNeeded()
@@ -53,6 +62,8 @@ final class FocusSessionManager: ObservableObject {
     func configure(sessionStore: SessionStore, crewStore: CrewStore) {
         self.sessionStore = sessionStore
         self.crewStore = crewStore
+
+        retryExpiredFinalizeAfterDependenciesReady(reason: "configure")
     }
 
     // MARK: - Public Launch API
@@ -495,10 +506,7 @@ final class FocusSessionManager: ObservableObject {
     // MARK: - Persistence / Timers
 
     func restoreSessionIfNeeded() {
-        guard
-            let data = UserDefaults.standard.data(forKey: storageKey),
-            let session = try? JSONDecoder().decode(FocusSessionState.self, from: data)
-        else {
+        guard let data = UserDefaults.standard.data(forKey: storageKey) else {
             currentSession = nil
             isSessionActive = false
             isExpanded = false
@@ -506,28 +514,63 @@ final class FocusSessionManager: ObservableObject {
             return
         }
 
-        if session.isPaused {
-            currentSession = session
+        let restoredSession: FocusSessionState
+        let restoredCrewID: UUID?
+        let restoredCrewBackendSessionID: UUID?
+        let restoredCrewHostUserID: UUID?
+
+        if let snapshot = try? JSONDecoder().decode(StoredFocusSessionSnapshot.self, from: data) {
+            restoredSession = snapshot.session
+            restoredCrewID = snapshot.crewID
+            restoredCrewBackendSessionID = snapshot.crewBackendSessionID
+            restoredCrewHostUserID = snapshot.crewHostUserID
+        } else if let legacySession = try? JSONDecoder().decode(FocusSessionState.self, from: data) {
+            restoredSession = legacySession
+            restoredCrewID = nil
+            restoredCrewBackendSessionID = nil
+            restoredCrewHostUserID = nil
+        } else {
+            currentSession = nil
+            isSessionActive = false
+            isExpanded = false
+            isMinimized = false
+            UserDefaults.standard.removeObject(forKey: storageKey)
+            return
+        }
+
+        currentSession = restoredSession
+        currentCrewID = restoredCrewID
+        currentCrewBackendSessionID = restoredCrewBackendSessionID
+        currentCrewHostUserID = restoredCrewHostUserID
+
+        if restoredSession.isPaused {
             isSessionActive = true
+            isExpanded = false
+            isMinimized = true
             syncAudioForCurrentState()
 
             Task {
                 await syncLiveActivityIfNeeded()
             }
+
             return
         }
 
-        if session.endDate <= Date() {
-            currentSession = session
+        if restoredSession.endDate <= Date() {
             isSessionActive = true
+            isExpanded = false
+            isMinimized = true
             now = Date()
+            stopLifecycleTimer()
+            audioManager.stop()
 
-            finishSession(session)
+            reconcileExpiredSessionIfNeeded(reason: "restore_expired")
             return
         }
 
-        currentSession = session
         isSessionActive = true
+        isExpanded = false
+        isMinimized = true
         startLifecycleTimer()
         syncAudioForCurrentState()
 
@@ -539,12 +582,40 @@ final class FocusSessionManager: ObservableObject {
     func reconcileExpiredSessionIfNeeded(reason: String) {
         guard let session = currentSession else { return }
         guard !session.isPaused else { return }
+        guard session.endDate <= Date() else { return }
 
         now = Date()
 
-        if session.endDate <= Date() {
-            print("✅ RECONCILE EXPIRED FOCUS:", reason)
-            finishSession(session)
+        guard canFinalizeSession(session) else {
+            print("⏳ EXPIRED FOCUS WAITING FOR DEPENDENCIES:", reason)
+            print("⏳ mode:", session.mode.rawValue)
+            print("⏳ currentUserID:", currentUserID?.uuidString ?? "nil")
+            print("⏳ crewStore:", crewStore == nil ? "nil" : "ready")
+            print("⏳ currentCrewID:", currentCrewID?.uuidString ?? "nil")
+            print("⏳ backendSessionID:", currentCrewBackendSessionID?.uuidString ?? "nil")
+
+            retryExpiredFinalizeAfterDependenciesReady(reason: reason)
+            return
+        }
+
+        print("✅ RECONCILE EXPIRED FOCUS:", reason)
+        finishSession(session)
+    }
+    
+    private func canFinalizeSession(_ session: FocusSessionState) -> Bool {
+        guard currentUserID != nil else {
+            return false
+        }
+
+        switch session.mode {
+        case .personal, .friend:
+            return true
+
+        case .crew:
+            guard crewStore != nil else { return false }
+            guard currentCrewID != nil else { return false }
+
+            return true
         }
     }
 
@@ -554,7 +625,15 @@ final class FocusSessionManager: ObservableObject {
             return
         }
 
-        if let encoded = try? JSONEncoder().encode(currentSession) {
+        let snapshot = StoredFocusSessionSnapshot(
+            session: currentSession,
+            crewID: currentCrewID,
+            crewBackendSessionID: currentCrewBackendSessionID,
+            crewHostUserID: currentCrewHostUserID,
+            savedAt: Date()
+        )
+
+        if let encoded = try? JSONEncoder().encode(snapshot) {
             UserDefaults.standard.set(encoded, forKey: storageKey)
         }
     }
@@ -607,9 +686,18 @@ final class FocusSessionManager: ObservableObject {
         _ session: FocusSessionState,
         shouldPersistCrewBackend: Bool = true
     ) {
+        guard !isCompletingSession else {
+            print("⚪️ COMPLETE SKIPPED: already completing")
+            return
+        }
+
+        isCompletingSession = true
+
         stopLifecycleTimer()
         audioManager.stop()
         cancelFocusEndBackupNotification(for: session)
+
+    
 
         let ended = Date()
         let totalSeconds = session.durationMinutes * 60
@@ -749,6 +837,7 @@ final class FocusSessionManager: ObservableObject {
             name: Notification.Name("focus_completed"),
             object: nil
         )
+        isCompletingSession = false
     }
     private func clearSessionLocally() {
         stopLifecycleTimer()
@@ -762,6 +851,7 @@ final class FocusSessionManager: ObservableObject {
         currentCrewID = nil
         currentCrewBackendSessionID = nil
         currentCrewHostUserID = nil
+        isCompletingSession = false
 
         UserDefaults.standard.removeObject(forKey: storageKey)
 
@@ -1165,6 +1255,31 @@ final class FocusSessionManager: ObservableObject {
                 : nil,
             pausedProgress: session.isPaused ? progress : nil
         )
+    }
+    
+    private func retryExpiredFinalizeAfterDependenciesReady(reason: String) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+
+            let delays: [UInt64] = [
+                0,
+                700_000_000,
+                1_500_000_000,
+                3_000_000_000
+            ]
+
+            for delay in delays {
+                if delay > 0 {
+                    try? await Task.sleep(nanoseconds: delay)
+                }
+
+                guard let session = self.currentSession else { return }
+                guard !session.isPaused else { return }
+                guard session.endDate <= Date() else { return }
+
+                self.reconcileExpiredSessionIfNeeded(reason: "\(reason)_retry")
+            }
+        }
     }
 
     private var liveSubtitleText: String {

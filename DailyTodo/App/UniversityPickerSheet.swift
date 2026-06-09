@@ -222,6 +222,8 @@ struct UniversityPickerSheet: View {
 
             withAnimation(.spring(response: 0.30, dampingFraction: 0.90)) {
                 selectedCountryCode = code
+                selectedUniversityID = nil
+                selectedUniversityName = ""
                 searchText = ""
                 universities = []
                 errorText = nil

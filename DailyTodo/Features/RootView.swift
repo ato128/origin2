@@ -248,6 +248,10 @@ struct RootView: View {
         if studentStore.hasCompletedStudentProfile {
             markCurrentUserOnboardingCompletedIfNeeded()
             await hydrateMainAppData(reason: "RootView.currentUserChanged.returningProfileCompleted")
+
+            FocusSessionManager.shared.reconcileExpiredSessionIfNeeded(
+                reason: "RootView.currentUserChanged.afterHydrate"
+            )
         } else {
             resetLocalOnboardingForIncompleteCurrentUserIfNeeded()
         }
@@ -269,6 +273,10 @@ struct RootView: View {
 
         await crewStore.loadCrewHomeSnapshot()
         await crewStore.loadFocusStateForAllCrews()
+
+        FocusSessionManager.shared.reconcileExpiredSessionIfNeeded(
+            reason: "\(reason).afterHydrate"
+        )
 
         print("✅ ROOT HYDRATE COMPLETE:", reason)
     }

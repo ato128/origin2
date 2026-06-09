@@ -72,13 +72,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             FocusSessionManager.shared.reconcileExpiredSessionIfNeeded(
                 reason: "applicationDidBecomeActive"
             )
-
-            NotificationCenter.default.post(
-                name: .focusNotificationOpened,
-                object: [
-                    "source": "applicationDidBecomeActive"
-                ]
-            )
         }
     }
 

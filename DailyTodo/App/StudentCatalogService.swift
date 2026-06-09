@@ -52,6 +52,69 @@ struct CatalogCurriculumCourse: Identifiable, Hashable, Decodable {
     let source_url: String?
     let last_verified_at: String?
     let is_active: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case university_id
+        case major_id
+        case year_number
+        case term_number
+        case course_code
+        case course_name
+        case ects
+        case credit
+        case is_required
+        case is_elective
+        case category
+        case source_url
+        case last_verified_at
+        case is_active
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        id = try container.decode(UUID.self, forKey: .id)
+        university_id = try container.decodeIfPresent(UUID.self, forKey: .university_id)
+        major_id = try container.decode(UUID.self, forKey: .major_id)
+        year_number = try container.decode(Int.self, forKey: .year_number)
+        term_number = try container.decodeIfPresent(Int.self, forKey: .term_number)
+        course_code = try container.decode(String.self, forKey: .course_code)
+        course_name = try container.decode(String.self, forKey: .course_name)
+
+        ects = Self.decodeFlexibleString(container, key: .ects)
+        credit = Self.decodeFlexibleString(container, key: .credit)
+
+        is_required = try container.decode(Bool.self, forKey: .is_required)
+        is_elective = try container.decodeIfPresent(Bool.self, forKey: .is_elective)
+        category = try container.decodeIfPresent(String.self, forKey: .category)
+        source_url = try container.decodeIfPresent(String.self, forKey: .source_url)
+        last_verified_at = try container.decodeIfPresent(String.self, forKey: .last_verified_at)
+        is_active = try container.decodeIfPresent(Bool.self, forKey: .is_active)
+    }
+
+    private static func decodeFlexibleString(
+        _ container: KeyedDecodingContainer<CodingKeys>,
+        key: CodingKeys
+    ) -> String? {
+        if let value = try? container.decodeIfPresent(String.self, forKey: key) {
+            return value
+        }
+
+        if let value = try? container.decodeIfPresent(Int.self, forKey: key) {
+            return String(value)
+        }
+
+        if let value = try? container.decodeIfPresent(Double.self, forKey: key) {
+            if value.rounded() == value {
+                return String(Int(value))
+            }
+
+            return String(value)
+        }
+
+        return nil
+    }
 }
 
 private struct CatalogUniversitiesResponse: Decodable {
@@ -82,20 +145,26 @@ enum StudentCatalogService {
         query: String = ""
     ) async throws -> [CatalogUniversity] {
         var components = URLComponents(string: "\(baseURL)/v1/catalog/universities")!
+
         components.queryItems = [
             URLQueryItem(name: "countryCode", value: countryCode),
+            URLQueryItem(name: "country_code", value: countryCode),
             URLQueryItem(name: "query", value: query),
             URLQueryItem(name: "limit", value: "300")
         ]
 
         let response: CatalogUniversitiesResponse = try await sendRequest(
             url: components.url!,
-            method: "GET"
+            method: "GET",
+            debugName: "fetchUniversities"
         )
 
         guard response.ok else {
             throw CatalogServiceError.backend(response.error ?? "University catalog failed")
         }
+
+        print("📚 Catalog universities count:", response.universities.count)
+        print("📚 Catalog universities country:", countryCode)
 
         return response.universities
     }
@@ -104,8 +173,10 @@ enum StudentCatalogService {
         universityID: UUID,
         query: String = ""
     ) async throws -> [CatalogMajor] {
+        let universityIDString = universityID.uuidString.lowercased()
+
         var components = URLComponents(
-            string: "\(baseURL)/v1/catalog/universities/\(universityID.uuidString)/majors"
+            string: "\(baseURL)/v1/catalog/universities/\(universityIDString)/majors"
         )!
 
         components.queryItems = [
@@ -113,14 +184,20 @@ enum StudentCatalogService {
             URLQueryItem(name: "limit", value: "300")
         ]
 
+        print("📚 Catalog fetchMajors universityID:", universityIDString)
+
         let response: CatalogMajorsResponse = try await sendRequest(
             url: components.url!,
-            method: "GET"
+            method: "GET",
+            debugName: "fetchMajors"
         )
 
         guard response.ok else {
             throw CatalogServiceError.backend(response.error ?? "Major catalog failed")
         }
+
+        print("📚 Catalog majors count:", response.majors.count)
+        print("📚 Catalog majors names:", response.majors.prefix(8).map(\.name).joined(separator: ", "))
 
         return response.majors
     }
@@ -129,22 +206,30 @@ enum StudentCatalogService {
         majorID: UUID,
         gradeLevel: String
     ) async throws -> [CatalogCurriculumCourse] {
+        let majorIDString = majorID.uuidString.lowercased()
+
         var components = URLComponents(
-            string: "\(baseURL)/v1/catalog/majors/\(majorID.uuidString)/curriculum"
+            string: "\(baseURL)/v1/catalog/majors/\(majorIDString)/curriculum"
         )!
 
         components.queryItems = [
             URLQueryItem(name: "gradeLevel", value: gradeLevel)
         ]
 
+        print("📚 Catalog fetchCurriculum majorID:", majorIDString)
+        print("📚 Catalog fetchCurriculum gradeLevel:", gradeLevel)
+
         let response: CatalogCurriculumResponse = try await sendRequest(
             url: components.url!,
-            method: "GET"
+            method: "GET",
+            debugName: "fetchCurriculumCourses"
         )
 
         guard response.ok else {
             throw CatalogServiceError.backend(response.error ?? "Curriculum catalog failed")
         }
+
+        print("📚 Catalog curriculum count:", response.courses.count)
 
         return response.courses
     }
@@ -152,28 +237,37 @@ enum StudentCatalogService {
     static func fetchAllCurriculumCourses(
         majorID: UUID
     ) async throws -> [CatalogCurriculumCourse] {
+        let majorIDString = majorID.uuidString.lowercased()
+
         let url = URL(
-            string: "\(baseURL)/v1/catalog/majors/\(majorID.uuidString)/curriculum/all"
+            string: "\(baseURL)/v1/catalog/majors/\(majorIDString)/curriculum/all"
         )!
+
+        print("📚 Catalog fetchAllCurriculum majorID:", majorIDString)
 
         let response: CatalogCurriculumResponse = try await sendRequest(
             url: url,
-            method: "GET"
+            method: "GET",
+            debugName: "fetchAllCurriculumCourses"
         )
 
         guard response.ok else {
             throw CatalogServiceError.backend(response.error ?? "All curriculum catalog failed")
         }
 
+        print("📚 Catalog all curriculum count:", response.courses.count)
+
         return response.courses
     }
 
     private static func sendRequest<T: Decodable>(
         url: URL,
-        method: String
+        method: String,
+        debugName: String
     ) async throws -> T {
         guard let accessToken = SupabaseManager.shared.client.auth.currentSession?.accessToken,
               !accessToken.isEmpty else {
+            print("❌ Catalog missing access token:", debugName)
             throw CatalogServiceError.missingAccessToken
         }
 
@@ -183,22 +277,31 @@ enum StudentCatalogService {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
 
+        print("📡 Catalog request:", debugName)
+        print("📡 Catalog URL:", url.absoluteString)
+
         let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let http = response as? HTTPURLResponse else {
+            print("❌ Catalog invalid response:", debugName)
             throw CatalogServiceError.invalidResponse
         }
 
+        let body = String(data: data, encoding: .utf8) ?? "no-body"
+
+        print("📡 Catalog status:", debugName, http.statusCode)
+
         if !(200...299).contains(http.statusCode) {
-            let body = String(data: data, encoding: .utf8) ?? "no-body"
+            print("❌ Catalog HTTP failed:", debugName)
+            print("❌ Catalog body:", body)
             throw CatalogServiceError.backend("Catalog request failed: \(http.statusCode) \(body)")
         }
 
         do {
             return try JSONDecoder().decode(T.self, from: data)
         } catch {
-            let body = String(data: data, encoding: .utf8) ?? "no-body"
-            print("❌ Catalog decode failed:", error)
+            print("❌ Catalog decode failed:", debugName)
+            print("❌ Catalog decode error:", error)
             print("❌ Catalog response body:", body)
             throw error
         }

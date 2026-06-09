@@ -18,24 +18,35 @@ struct CourseSetupSheet: View {
     @State private var manualCode = ""
     @State private var manualName = ""
 
-    @State private var loading = false
+    @State private var isLoading = false
+    @State private var catalogError: String?
 
-    private var accent: Color {
-        Color(arenaHex: AppArenaPalette.cyan)
+    @FocusState private var focusedField: Field?
+
+    private enum Field {
+        case code
+        case name
     }
 
-    private var secondaryAccent: Color {
-        Color(arenaHex: AppArenaPalette.purple)
+    private var accent: Color { Color(courseSetupHex: CourseSetupPalette.cyan) }
+    private var secondaryAccent: Color { Color(courseSetupHex: CourseSetupPalette.purple) }
+    private var gold: Color { Color(courseSetupHex: CourseSetupPalette.gold) }
+    private var green: Color { Color(courseSetupHex: CourseSetupPalette.green) }
+    private var coral: Color { Color(courseSetupHex: CourseSetupPalette.coral) }
+    private var blue: Color { Color(courseSetupHex: CourseSetupPalette.blue) }
+
+    private var canSaveCatalogSelection: Bool {
+        !selectedIDs.isEmpty
+    }
+
+    private var canAddManualCourse: Bool {
+        !manualName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var body: some View {
         ZStack {
-            ArenaBackground(
-                primaryGlow: accent,
-                secondaryGlow: secondaryAccent,
-                warmGlow: Color(arenaHex: AppArenaPalette.gold),
-                intensity: 0.94
-            )
+            CourseSetupBackground()
+                .ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
@@ -45,149 +56,193 @@ struct CourseSetupSheet: View {
                     manualSection
                     currentCoursesSection
 
-                    Spacer(minLength: 42)
+                    Color.clear.frame(height: 34)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
+                .padding(.horizontal, 18)
+                .padding(.top, 12)
                 .padding(.bottom, 30)
             }
+            .scrollDismissesKeyboard(.interactively)
         }
         .toolbar(.hidden, for: .navigationBar)
         .preferredColorScheme(.dark)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            focusedField = nil
+        }
         .task {
             await loadCatalog()
         }
     }
+}
 
-    private var header: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 7) {
-                HStack(spacing: 8) {
-                    Rectangle()
-                        .fill(accent)
-                        .frame(width: 20, height: 1)
+// MARK: - Header
 
-                    Text("COURSE SETUP")
-                        .font(.system(size: 11, weight: .black, design: .monospaced))
-                        .tracking(2.3)
-                        .foregroundStyle(accent)
-                        .lineLimit(1)
-                }
-
-                HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    Text("Derslerini")
-                        .font(.system(size: 35, weight: .black))
-                        .foregroundStyle(.white)
-
-                    Text("seç")
-                        .font(.system(size: 34, weight: .regular, design: .serif))
-                        .italic()
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [
-                                    accent,
-                                    secondaryAccent
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                }
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
-
-                Text("Katalogdan seç veya kendi dersini manuel ekle.")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
-                    .lineLimit(2)
-            }
-
-            Spacer()
-
-            Button {
-                saveSelected()
-                dismiss()
-            } label: {
-                Text("KAYDET")
-                    .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .tracking(0.8)
-                    .foregroundStyle(.black)
-                    .padding(.horizontal, 13)
-                    .frame(height: 36)
-                    .background(
+private extension CourseSetupSheet {
+    var header: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 9) {
+                    HStack(spacing: 8) {
                         Capsule()
                             .fill(
                                 LinearGradient(
-                                    colors: [
-                                        accent,
-                                        secondaryAccent
-                                    ],
+                                    colors: [accent, secondaryAccent],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .frame(width: 22, height: 2)
+
+                        Text("COURSE SETUP")
+                            .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                            .tracking(2.1)
+                            .foregroundStyle(accent)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Courses")
+                            .font(.system(size: 42, weight: .heavy))
+                            .tracking(-1.0)
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
+
+                        Text("Build your semester.")
+                            .font(.system(size: 19, weight: .semibold))
+                            .tracking(-0.2)
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [accent, secondaryAccent, coral],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
                             )
-                    )
-            }
-            .buttonStyle(.plain)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.76)
+                    }
+                }
 
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .black))
-                    .foregroundStyle(.white)
-                    .frame(width: 38, height: 38)
-                    .background(
-                        Circle()
-                            .fill(Color.white.opacity(0.075))
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
-                            )
-                    )
+                Spacer()
+
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .black))
+                        .foregroundStyle(.white.opacity(0.88))
+                        .frame(width: 42, height: 42)
+                        .background(
+                            Circle()
+                                .fill(Color.white.opacity(0.070))
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.white.opacity(0.105), lineWidth: 1)
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+
+            Text("Choose catalog courses or add your own. Updo uses these for Home, Focus, Week and Insights.")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.50))
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .padding(.top, 4)
     }
+}
 
-    private var profileSection: some View {
+// MARK: - Profile
+
+private extension CourseSetupSheet {
+    var profileSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
-                title: "Profil",
                 eyebrow: "STUDENT PROFILE",
-                icon: "person.crop.circle.fill",
+                title: "Setup source",
+                icon: "graduationcap.fill",
                 tint: accent
             )
 
             HStack(spacing: 10) {
-                infoPill(
-                    title: "Okul",
-                    value: studentStore.profile?.institutionName ?? "-",
+                infoCard(
+                    title: "University",
+                    value: studentStore.profile?.institutionName ?? "Not selected",
+                    icon: "building.columns.fill",
                     tint: accent
                 )
 
-                infoPill(
-                    title: "Bölüm",
-                    value: studentStore.profile?.majorName ?? "-",
+                infoCard(
+                    title: "Major",
+                    value: studentStore.profile?.majorName ?? "Not selected",
+                    icon: "book.closed.fill",
                     tint: secondaryAccent
                 )
             }
+
+            HStack(spacing: 10) {
+                infoCard(
+                    title: "Year",
+                    value: formattedGradeLevel,
+                    icon: "calendar",
+                    tint: gold
+                )
+
+                infoCard(
+                    title: "Country",
+                    value: formattedCountry,
+                    icon: "globe.europe.africa.fill",
+                    tint: blue
+                )
+            }
         }
-        .padding(18)
-        .background(cardBackground(tint: accent, radius: 28, strength: 0.62))
+        .padding(16)
+        .background(cardSurface(tint: accent, radius: 28))
     }
 
-    private var catalogSection: some View {
+    private var formattedGradeLevel: String {
+        guard let profile = studentStore.profile else { return "—" }
+
+        if profile.gradeLevel == "prep" {
+            return "Prep"
+        }
+
+        return "\(profile.gradeLevel). Year"
+    }
+
+    private var formattedCountry: String {
+        let raw = studentStore.profile?.institutionCountry ?? ""
+        let normalized = normalizedCountryCode(raw)
+
+        switch normalized {
+        case "tr":
+            return "Türkiye"
+        case "kktc":
+            return "KKTC"
+        default:
+            return raw.isEmpty ? "—" : raw.uppercased()
+        }
+    }
+}
+
+// MARK: - Catalog
+
+private extension CourseSetupSheet {
+    var catalogSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
-                title: "Önerilen Dersler",
                 eyebrow: "CATALOG",
+                title: "Recommended",
                 icon: "books.vertical.fill",
-                tint: Color(arenaHex: AppArenaPalette.gold)
+                tint: gold
             )
 
-            if loading {
-                loadingCard
+            if isLoading {
+                loadingCatalogCard
+            } else if let catalogError {
+                catalogErrorCard(catalogError)
             } else if catalogCourses.isEmpty {
                 emptyCatalogCard
             } else {
@@ -196,64 +251,287 @@ struct CourseSetupSheet: View {
                         catalogCourseRow(item)
                     }
                 }
+
+                if canSaveCatalogSelection {
+                    Button {
+                        saveSelected()
+                    } label: {
+                        primaryActionButton(
+                            title: "ADD SELECTED COURSES",
+                            icon: "checkmark.circle.fill",
+                            tint: green,
+                            foreground: .black
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 2)
+                }
             }
         }
-        .padding(18)
-        .background(cardBackground(tint: Color(arenaHex: AppArenaPalette.gold), radius: 28, strength: 0.58))
+        .padding(16)
+        .background(cardSurface(tint: gold, radius: 28))
     }
 
-    private var manualSection: some View {
+    var loadingCatalogCard: some View {
+        HStack(spacing: 12) {
+            ProgressView()
+                .tint(gold)
+                .scaleEffect(0.94)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Loading catalog")
+                    .font(.system(size: 15, weight: .heavy))
+                    .foregroundStyle(.white)
+
+                Text("Finding courses for your major.")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.46))
+            }
+
+            Spacer()
+        }
+        .padding(14)
+        .background(rowSurface(tint: gold))
+    }
+
+    var emptyCatalogCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(gold.opacity(0.12))
+                    .frame(width: 44, height: 44)
+                    .overlay(
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 17, weight: .black))
+                            .foregroundStyle(gold)
+                    )
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("No catalog courses yet")
+                        .font(.system(size: 16, weight: .heavy))
+                        .foregroundStyle(.white)
+
+                    Text("You can add courses manually for now.")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.48))
+                }
+
+                Spacer()
+            }
+
+            Button {
+                Task {
+                    await loadCatalog()
+                }
+            } label: {
+                secondaryActionButton(
+                    title: "RETRY CATALOG",
+                    icon: "arrow.clockwise",
+                    tint: gold
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(14)
+        .background(rowSurface(tint: gold))
+    }
+
+    func catalogErrorCard(_ text: String) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(coral.opacity(0.13))
+                    .frame(width: 44, height: 44)
+                    .overlay(
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 17, weight: .black))
+                            .foregroundStyle(coral)
+                    )
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Catalog unavailable")
+                        .font(.system(size: 16, weight: .heavy))
+                        .foregroundStyle(.white)
+
+                    Text(text)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.50))
+                        .lineLimit(3)
+                }
+
+                Spacer()
+            }
+
+            Button {
+                Task {
+                    await loadCatalog()
+                }
+            } label: {
+                secondaryActionButton(
+                    title: "TRY AGAIN",
+                    icon: "arrow.clockwise",
+                    tint: coral
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(14)
+        .background(rowSurface(tint: coral))
+    }
+
+    func catalogCourseRow(_ item: CatalogCurriculumCourse) -> some View {
+        let isSelected = selectedIDs.contains(item.id)
+        let tint = isSelected ? green : gold
+
+        return Button {
+            toggle(item.id)
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(tint.opacity(isSelected ? 0.20 : 0.12))
+                        .frame(width: 38, height: 38)
+
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "plus.circle")
+                        .font(.system(size: 18, weight: .black))
+                        .foregroundStyle(tint)
+                }
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(item.course_name)
+                        .font(.system(size: 15, weight: .heavy))
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+
+                    HStack(spacing: 7) {
+                        if !item.course_code.isEmpty {
+                            miniLabel(item.course_code, tint: gold)
+                        }
+
+                        miniLabel("Y\(item.year_number) T\(item.term_number ?? 0)", tint: .white.opacity(0.46))
+
+                        if item.is_elective == true {
+                            miniLabel("ELECTIVE", tint: secondaryAccent)
+                        }
+                    }
+                }
+
+                Spacer(minLength: 8)
+            }
+            .padding(13)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                tint.opacity(isSelected ? 0.120 : 0.070),
+                                Color.white.opacity(0.040),
+                                Color.black.opacity(0.025)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(tint.opacity(isSelected ? 0.24 : 0.12), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Manual
+
+private extension CourseSetupSheet {
+    var manualSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
-                title: "Manuel Ekle",
                 eyebrow: "CUSTOM COURSE",
+                title: "Add manually",
                 icon: "plus.circle.fill",
-                tint: Color(arenaHex: AppArenaPalette.green)
+                tint: green
             )
 
-            arenaTextField("Kod", text: $manualCode, capitalization: .characters)
-            arenaTextField("Ders Adı", text: $manualName)
+            HStack(spacing: 10) {
+                courseTextField(
+                    placeholder: "Code",
+                    text: $manualCode,
+                    icon: "number",
+                    tint: green,
+                    capitalization: .characters
+                )
+                .frame(width: 112)
+                .focused($focusedField, equals: .code)
+
+                courseTextField(
+                    placeholder: "Course name",
+                    text: $manualName,
+                    icon: "pencil",
+                    tint: green,
+                    capitalization: .words
+                )
+                .focused($focusedField, equals: .name)
+            }
 
             Button {
                 addManualCourse()
             } label: {
                 primaryActionButton(
-                    title: "DERSİ EKLE",
+                    title: "ADD COURSE",
                     icon: "plus.circle.fill",
-                    tint: Color(arenaHex: AppArenaPalette.green)
+                    tint: green,
+                    foreground: .black
                 )
             }
             .buttonStyle(.plain)
-            .disabled(manualName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            .opacity(manualName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.45 : 1)
+            .disabled(!canAddManualCourse)
+            .opacity(canAddManualCourse ? 1 : 0.44)
         }
-        .padding(18)
-        .background(cardBackground(tint: Color(arenaHex: AppArenaPalette.green), radius: 28, strength: 0.54))
+        .padding(16)
+        .background(cardSurface(tint: green, radius: 28))
     }
+}
 
-    private var currentCoursesSection: some View {
+// MARK: - Current Courses
+
+private extension CourseSetupSheet {
+    var currentCoursesSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
-                title: "Mevcut Dersler",
                 eyebrow: "ACTIVE",
+                title: "Current courses",
                 icon: "checkmark.seal.fill",
-                tint: Color(arenaHex: AppArenaPalette.blue)
+                tint: blue
             )
 
             if studentStore.courses.isEmpty {
-                HStack(spacing: 10) {
-                    Image(systemName: "tray")
-                        .font(.system(size: 15, weight: .black))
-                        .foregroundStyle(.white.opacity(0.42))
+                HStack(spacing: 12) {
+                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                        .fill(blue.opacity(0.12))
+                        .frame(width: 42, height: 42)
+                        .overlay(
+                            Image(systemName: "tray")
+                                .font(.system(size: 16, weight: .black))
+                                .foregroundStyle(blue)
+                        )
 
-                    Text("Henüz ders eklenmedi.")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.50))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("No active courses")
+                            .font(.system(size: 15, weight: .heavy))
+                            .foregroundStyle(.white)
+
+                        Text("Add catalog or manual courses.")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.48))
+                    }
 
                     Spacer()
                 }
                 .padding(14)
-                .background(rowBackground(tint: Color(arenaHex: AppArenaPalette.blue)))
+                .background(rowSurface(tint: blue))
             } else {
                 VStack(spacing: 10) {
                     ForEach(studentStore.courses) { course in
@@ -262,105 +540,28 @@ struct CourseSetupSheet: View {
                 }
             }
         }
-        .padding(18)
-        .background(cardBackground(tint: Color(arenaHex: AppArenaPalette.blue), radius: 28, strength: 0.50))
+        .padding(16)
+        .background(cardSurface(tint: blue, radius: 28))
     }
 
-    private var loadingCard: some View {
-        HStack(spacing: 12) {
-            ProgressView()
-                .tint(Color(arenaHex: AppArenaPalette.gold))
-
-            Text("Katalog yükleniyor...")
-                .font(.system(size: 13, weight: .black))
-                .foregroundStyle(.white.opacity(0.68))
-
-            Spacer()
-        }
-        .padding(15)
-        .background(rowBackground(tint: Color(arenaHex: AppArenaPalette.gold)))
-    }
-
-    private var emptyCatalogCard: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 15, weight: .black))
-                .foregroundStyle(Color(arenaHex: AppArenaPalette.gold))
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Katalog dersi bulunamadı")
-                    .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.white)
-
-                Text("Dersi manuel ekleyebilirsin.")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.50))
-            }
-
-            Spacer()
-        }
-        .padding(15)
-        .background(rowBackground(tint: Color(arenaHex: AppArenaPalette.gold)))
-    }
-
-    private func catalogCourseRow(_ item: CatalogCurriculumCourse) -> some View {
-        let isSelected = selectedIDs.contains(item.id)
-        let tint = isSelected ? Color(arenaHex: AppArenaPalette.green) : Color(arenaHex: AppArenaPalette.gold)
-
-        return Button {
-            toggle(item.id)
-        } label: {
-            HStack(spacing: 12) {
-                Circle()
-                    .fill(tint)
-                    .frame(width: 10, height: 10)
-                    .shadow(color: tint.opacity(0.28), radius: 6)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(item.course_name)
-                        .font(.system(size: 16, weight: .black))
-                        .foregroundStyle(.white)
-                        .lineLimit(2)
-
-                    HStack(spacing: 8) {
-                        if !item.course_code.isEmpty {
-                            miniPill(item.course_code, tint: Color(arenaHex: AppArenaPalette.gold))
-                        }
-
-                        miniPill("Y\(item.year_number) T\(item.term_number)", tint: .white.opacity(0.44))
-                    }
-                }
-
-                Spacer()
-
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "plus.circle")
-                    .font(.system(size: 20, weight: .black))
-                    .foregroundStyle(tint)
-            }
-            .padding(15)
-            .background(rowBackground(tint: tint))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func currentCourseRow(_ course: Course) -> some View {
-        let tint = colorFromHex(course.colorHex)
+    func currentCourseRow(_ course: Course) -> some View {
+        let tint = colorFromHex(course.colorHex, fallback: blue)
 
         return HStack(spacing: 12) {
             Circle()
                 .fill(tint)
                 .frame(width: 10, height: 10)
-                .shadow(color: tint.opacity(0.28), radius: 6)
+                .shadow(color: tint.opacity(0.24), radius: 6)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(course.name)
-                    .font(.system(size: 16, weight: .black))
+                    .font(.system(size: 15, weight: .heavy))
                     .foregroundStyle(.white)
                     .lineLimit(2)
 
                 if !course.code.isEmpty {
                     Text(course.code.uppercased())
-                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .font(.system(size: 10, weight: .heavy, design: .monospaced))
                         .tracking(0.7)
                         .foregroundStyle(.white.opacity(0.42))
                 }
@@ -370,33 +571,38 @@ struct CourseSetupSheet: View {
 
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 18, weight: .black))
-                .foregroundStyle(Color(arenaHex: AppArenaPalette.green))
+                .foregroundStyle(green)
         }
-        .padding(15)
-        .background(rowBackground(tint: tint))
+        .padding(13)
+        .background(rowSurface(tint: tint))
     }
+}
 
-    private func sectionHeader(
-        title: String,
+// MARK: - Reusable UI
+
+private extension CourseSetupSheet {
+    func sectionHeader(
         eyebrow: String,
+        title: String,
         icon: String,
         tint: Color
     ) -> some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 8) {
-                    Rectangle()
+                    Capsule()
                         .fill(tint)
-                        .frame(width: 18, height: 1)
+                        .frame(width: 18, height: 2)
 
                     Text(eyebrow)
-                        .font(.system(size: 10, weight: .black, design: .monospaced))
-                        .tracking(1.6)
+                        .font(.system(size: 9, weight: .heavy, design: .monospaced))
+                        .tracking(1.5)
                         .foregroundStyle(tint)
                 }
 
                 Text(title)
-                    .font(.system(size: 23, weight: .black))
+                    .font(.system(size: 22, weight: .heavy))
+                    .tracking(-0.25)
                     .foregroundStyle(.white)
             }
 
@@ -413,59 +619,95 @@ struct CourseSetupSheet: View {
         }
     }
 
-    private func infoPill(title: String, value: String, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(title.uppercased())
-                .font(.system(size: 9, weight: .black, design: .monospaced))
-                .tracking(0.8)
-                .foregroundStyle(.white.opacity(0.40))
+    func infoCard(
+        title: String,
+        value: String,
+        icon: String,
+        tint: Color
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .black))
+                    .foregroundStyle(tint)
 
-            Text(value)
-                .font(.system(size: 14, weight: .black))
-                .foregroundStyle(.white)
-                .lineLimit(2)
-                .minimumScaleFactor(0.72)
+                Spacer()
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title.uppercased())
+                    .font(.system(size: 8, weight: .heavy, design: .monospaced))
+                    .tracking(0.8)
+                    .foregroundStyle(.white.opacity(0.36))
+
+                Text(value)
+                    .font(.system(size: 13, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.70)
+            }
         }
         .padding(12)
-        .frame(maxWidth: .infinity, minHeight: 68, alignment: .leading)
-        .background(rowBackground(tint: tint))
+        .frame(maxWidth: .infinity, minHeight: 78, alignment: .leading)
+        .background(rowSurface(tint: tint))
     }
 
-    private func arenaTextField(
-        _ placeholder: String,
+    func courseTextField(
+        placeholder: String,
         text: Binding<String>,
-        capitalization: TextInputAutocapitalization = .sentences
+        icon: String,
+        tint: Color,
+        capitalization: TextInputAutocapitalization
     ) -> some View {
-        TextField(placeholder, text: text)
+        HStack(spacing: 9) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .black))
+                .foregroundStyle(tint)
+
+            TextField(
+                "",
+                text: text,
+                prompt: Text(placeholder).foregroundStyle(.white.opacity(0.30))
+            )
             .textInputAutocapitalization(capitalization)
             .autocorrectionDisabled()
-            .font(.system(size: 15, weight: .semibold))
+            .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(.white)
-            .tint(accent)
-            .padding(14)
-            .background(inputBackground)
+            .tint(tint)
+        }
+        .padding(.horizontal, 13)
+        .frame(height: 52)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.060))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(tint.opacity(0.13), lineWidth: 1)
+                )
+        )
     }
 
-    private var inputBackground: some View {
-        RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .fill(Color.white.opacity(0.060))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color.white.opacity(0.075), lineWidth: 1)
-            )
-    }
-
-    private func primaryActionButton(title: String, icon: String, tint: Color) -> some View {
+    func primaryActionButton(
+        title: String,
+        icon: String,
+        tint: Color,
+        foreground: Color
+    ) -> some View {
         HStack(spacing: 10) {
             Image(systemName: icon)
+                .font(.system(size: 13, weight: .black))
+
             Text(title)
+                .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                .tracking(0.8)
+
             Spacer()
+
             Image(systemName: "arrow.right")
+                .font(.system(size: 12, weight: .black))
         }
-        .font(.system(size: 11, weight: .black, design: .monospaced))
-        .tracking(0.8)
-        .foregroundStyle(.black)
-        .padding(.horizontal, 16)
+        .foregroundStyle(foreground)
+        .padding(.horizontal, 15)
         .frame(maxWidth: .infinity)
         .frame(height: 50)
         .background(
@@ -475,16 +717,45 @@ struct CourseSetupSheet: View {
         )
     }
 
-    private func miniPill(_ text: String, tint: Color) -> some View {
+    func secondaryActionButton(
+        title: String,
+        icon: String,
+        tint: Color
+    ) -> some View {
+        HStack(spacing: 9) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .black))
+
+            Text(title)
+                .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                .tracking(0.7)
+
+            Spacer()
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, 13)
+        .frame(maxWidth: .infinity)
+        .frame(height: 42)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(tint.opacity(0.100))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(tint.opacity(0.18), lineWidth: 1)
+                )
+        )
+    }
+
+    func miniLabel(_ text: String, tint: Color) -> some View {
         Text(text.uppercased())
-            .font(.system(size: 9, weight: .black, design: .monospaced))
+            .font(.system(size: 9, weight: .heavy, design: .monospaced))
             .tracking(0.6)
             .foregroundStyle(tint)
             .padding(.horizontal, 8)
-            .frame(height: 24)
+            .frame(height: 23)
             .background(
                 Capsule()
-                    .fill(tint.opacity(0.12))
+                    .fill(tint.opacity(0.115))
                     .overlay(
                         Capsule()
                             .stroke(tint.opacity(0.16), lineWidth: 1)
@@ -492,32 +763,34 @@ struct CourseSetupSheet: View {
             )
     }
 
-    private func rowBackground(tint: Color) -> some View {
-        RoundedRectangle(cornerRadius: 18, style: .continuous)
+    func rowSurface(tint: Color) -> some View {
+        RoundedRectangle(cornerRadius: 20, style: .continuous)
             .fill(
                 LinearGradient(
                     colors: [
-                        tint.opacity(0.075),
-                        Color.white.opacity(0.035)
+                        tint.opacity(0.080),
+                        Color.white.opacity(0.040),
+                        Color.black.opacity(0.020)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(tint.opacity(0.12), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(tint.opacity(0.13), lineWidth: 1)
             )
     }
 
-    private func cardBackground(tint: Color, radius: CGFloat, strength: Double) -> some View {
+    func cardSurface(tint: Color, radius: CGFloat) -> some View {
         RoundedRectangle(cornerRadius: radius, style: .continuous)
             .fill(
                 LinearGradient(
                     colors: [
-                        tint.opacity(0.070 + strength * 0.035),
-                        Color(arenaHex: AppArenaPalette.purple).opacity(0.038),
-                        Color(arenaHex: AppArenaPalette.surface).opacity(0.94)
+                        Color.white.opacity(0.060),
+                        tint.opacity(0.060),
+                        secondaryAccent.opacity(0.035),
+                        Color.black.opacity(0.040)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -528,12 +801,12 @@ struct CourseSetupSheet: View {
                     .fill(
                         RadialGradient(
                             colors: [
-                                tint.opacity(0.10 + strength * 0.08),
+                                tint.opacity(0.13),
                                 Color.clear
                             ],
                             center: .topTrailing,
                             startRadius: 6,
-                            endRadius: 180
+                            endRadius: 190
                         )
                     )
             )
@@ -541,10 +814,14 @@ struct CourseSetupSheet: View {
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
                     .stroke(tint.opacity(0.14), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.20), radius: 13, y: 7)
+            .shadow(color: Color.black.opacity(0.18), radius: 14, y: 8)
     }
+}
 
-    private func addManualCourse() {
+// MARK: - Logic
+
+private extension CourseSetupSheet {
+    func addManualCourse() {
         let name = manualName.trimmingCharacters(in: .whitespacesAndNewlines)
         let code = manualCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
 
@@ -558,6 +835,8 @@ struct CourseSetupSheet: View {
 
         manualCode = ""
         manualName = ""
+        focusedField = nil
+
         studentStore.reload()
         Haptics.notify(.success)
     }
@@ -571,7 +850,11 @@ struct CourseSetupSheet: View {
     }
 
     func saveSelected() {
-        for item in catalogCourses where selectedIDs.contains(item.id) {
+        let selectedCourses = catalogCourses.filter { selectedIDs.contains($0.id) }
+
+        guard !selectedCourses.isEmpty else { return }
+
+        for item in selectedCourses {
             studentStore.addCourse(
                 name: item.course_name,
                 code: item.course_code,
@@ -580,51 +863,187 @@ struct CourseSetupSheet: View {
                 termNumber: item.term_number
             )
         }
+
+        selectedIDs.removeAll()
+        studentStore.reload()
+        Haptics.notify(.success)
     }
 
+    @MainActor
     func loadCatalog() async {
-        guard let major = studentStore.profile?.majorName else { return }
-        _ = major
+        guard let profile = studentStore.profile else {
+            catalogCourses = []
+            catalogError = "Student profile is missing."
+            return
+        }
 
-        loading = true
-        defer { loading = false }
+        let institutionName = (profile.institutionName ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard let profile = studentStore.profile else { return }
+        let majorName = (profile.majorName ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !institutionName.isEmpty, !majorName.isEmpty else {
+            catalogCourses = []
+            catalogError = "University or major is missing."
+            return
+        }
+
+        isLoading = true
+        catalogError = nil
+        selectedIDs.removeAll()
+
+        defer {
+            isLoading = false
+        }
 
         do {
+            let country = normalizedCountryCode(profile.institutionCountry)
+
+            print("📚 CourseSetup loadCatalog country:", country)
+            print("📚 CourseSetup institution:", institutionName)
+            print("📚 CourseSetup major:", majorName)
+
             let universities = try await StudentCatalogService.fetchUniversities(
-                countryCode: profile.institutionCountry ?? "CY"
+                countryCode: country
             )
 
-            guard let uni = universities.first(where: {
-                $0.name == profile.institutionName
-            }) else { return }
+            guard let university = bestUniversityMatch(
+                universities: universities,
+                profileInstitutionName: institutionName
+            ) else {
+                catalogCourses = []
+                catalogError = "University catalog match not found."
+                print("❌ CourseSetup university match not found:", institutionName)
+                print("❌ Available universities:", universities.map(\.name).joined(separator: ", "))
+                return
+            }
 
             let majors = try await StudentCatalogService.fetchMajors(
-                universityID: uni.id
+                universityID: university.id
             )
 
-            guard let major = majors.first(where: {
-                $0.name == profile.majorName
-            }) else { return }
+            guard let major = bestMajorMatch(
+                majors: majors,
+                profileMajorName: majorName
+            ) else {
+                catalogCourses = []
+                catalogError = "Major catalog match not found."
+                print("❌ CourseSetup major match not found:", majorName)
+                print("❌ Available majors:", majors.map(\.name).joined(separator: ", "))
+                return
+            }
 
-            catalogCourses =
-                try await StudentCatalogService.fetchCurriculumCourses(
-                    majorID: major.id,
-                    gradeLevel: profile.gradeLevel
-                )
+            let courses = try await StudentCatalogService.fetchCurriculumCourses(
+                majorID: major.id,
+                gradeLevel: profile.gradeLevel
+            )
 
+            catalogCourses = courses
+            catalogError = nil
+
+            print("✅ CourseSetup catalog courses:", courses.count)
         } catch {
-            print(error)
+            catalogCourses = []
+            catalogError = error.localizedDescription
+            print("❌ CourseSetup loadCatalog error:", error.localizedDescription)
         }
     }
 
-    private func colorFromHex(_ hex: String) -> Color {
+    func bestUniversityMatch(
+        universities: [CatalogUniversity],
+        profileInstitutionName: String
+    ) -> CatalogUniversity? {
+        let target = normalizedSearchKey(profileInstitutionName)
+
+        if let exact = universities.first(where: {
+            normalizedSearchKey($0.name) == target
+        }) {
+            return exact
+        }
+
+        if let sortExact = universities.first(where: {
+            normalizedSearchKey($0.sort_name) == target
+        }) {
+            return sortExact
+        }
+
+        return universities.first(where: {
+            normalizedSearchKey($0.name).contains(target) ||
+            target.contains(normalizedSearchKey($0.name)) ||
+            normalizedSearchKey($0.sort_name).contains(target) ||
+            target.contains(normalizedSearchKey($0.sort_name))
+        })
+    }
+
+    func bestMajorMatch(
+        majors: [CatalogMajor],
+        profileMajorName: String
+    ) -> CatalogMajor? {
+        let target = normalizedSearchKey(profileMajorName)
+
+        if let exact = majors.first(where: {
+            normalizedSearchKey($0.name) == target
+        }) {
+            return exact
+        }
+
+        if let normalizedExact = majors.first(where: {
+            normalizedSearchKey($0.normalized_name ?? "") == target
+        }) {
+            return normalizedExact
+        }
+
+        return majors.first(where: {
+            normalizedSearchKey($0.name).contains(target) ||
+            target.contains(normalizedSearchKey($0.name)) ||
+            normalizedSearchKey($0.normalized_name ?? "").contains(target)
+        })
+    }
+
+    func normalizedCountryCode(_ raw: String?) -> String {
+        let value = (raw ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        switch value {
+        case "tr", "turkey", "türkiye", "turkiye", "Türkiye".lowercased():
+            return "tr"
+
+        case "kktc", "kk tc", "trnc", "cy", "cyprus", "north cyprus", "northern cyprus":
+            return "kktc"
+
+        default:
+            if value.isEmpty {
+                return "kktc"
+            }
+
+            return value
+        }
+    }
+
+    func normalizedSearchKey(_ text: String) -> String {
+        text
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "tr_TR"))
+            .lowercased()
+            .replacingOccurrences(of: "ı", with: "i")
+            .replacingOccurrences(of: "ğ", with: "g")
+            .replacingOccurrences(of: "ü", with: "u")
+            .replacingOccurrences(of: "ş", with: "s")
+            .replacingOccurrences(of: "ö", with: "o")
+            .replacingOccurrences(of: "ç", with: "c")
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    func colorFromHex(_ hex: String, fallback: Color) -> Color {
         var clean = hex.trimmingCharacters(in: .whitespacesAndNewlines)
         clean = clean.replacingOccurrences(of: "#", with: "")
 
         guard clean.count == 6 else {
-            return accent
+            return fallback
         }
 
         var rgb: UInt64 = 0
@@ -634,6 +1053,128 @@ struct CourseSetupSheet: View {
             red: Double((rgb & 0xFF0000) >> 16) / 255,
             green: Double((rgb & 0x00FF00) >> 8) / 255,
             blue: Double(rgb & 0x0000FF) / 255
+        )
+    }
+}
+
+// MARK: - Palette
+
+private enum CourseSetupPalette {
+    static let backgroundTop = "#05060D"
+    static let backgroundMid = "#070713"
+    static let backgroundBottom = "#07040C"
+
+    static let blue = "#1593FF"
+    static let cyan = "#2DD4FF"
+    static let purple = "#7C3AED"
+    static let coral = "#FF5A44"
+    static let gold = "#FBBF24"
+    static let green = "#A3E635"
+}
+
+// MARK: - Background
+
+private struct CourseSetupBackground: View {
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            LinearGradient(
+                colors: [
+                    Color(courseSetupHex: CourseSetupPalette.backgroundTop),
+                    Color(courseSetupHex: CourseSetupPalette.backgroundMid),
+                    Color(courseSetupHex: CourseSetupPalette.backgroundBottom)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            Circle()
+                .fill(Color(courseSetupHex: CourseSetupPalette.blue).opacity(0.11))
+                .frame(width: 270, height: 270)
+                .blur(radius: 100)
+                .offset(x: 170, y: -220)
+
+            Circle()
+                .fill(Color(courseSetupHex: CourseSetupPalette.purple).opacity(0.14))
+                .frame(width: 330, height: 330)
+                .blur(radius: 118)
+                .offset(x: -190, y: 500)
+
+            Circle()
+                .fill(Color(courseSetupHex: CourseSetupPalette.coral).opacity(0.060))
+                .frame(width: 280, height: 280)
+                .blur(radius: 110)
+                .offset(x: 165, y: 285)
+
+            Circle()
+                .fill(Color(courseSetupHex: CourseSetupPalette.gold).opacity(0.045))
+                .frame(width: 210, height: 210)
+                .blur(radius: 95)
+                .offset(x: -145, y: -155)
+
+            LinearGradient(
+                colors: [
+                    Color.black.opacity(0.18),
+                    Color.black.opacity(0.0),
+                    Color.black.opacity(0.44)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        }
+    }
+}
+
+// MARK: - Color Hex
+
+private extension Color {
+    init(courseSetupHex hex: String) {
+        var cleaned = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        cleaned = cleaned.replacingOccurrences(of: "#", with: "")
+
+        var int: UInt64 = 0
+        Scanner(string: cleaned).scanHexInt64(&int)
+
+        let a: UInt64
+        let r: UInt64
+        let g: UInt64
+        let b: UInt64
+
+        switch cleaned.count {
+        case 3:
+            a = 255
+            r = (int >> 8) * 17
+            g = ((int >> 4) & 0xF) * 17
+            b = (int & 0xF) * 17
+
+        case 6:
+            a = 255
+            r = int >> 16
+            g = (int >> 8) & 0xFF
+            b = int & 0xFF
+
+        case 8:
+            a = int >> 24
+            r = (int >> 16) & 0xFF
+            g = (int >> 8) & 0xFF
+            b = int & 0xFF
+
+        default:
+            a = 255
+            r = 45
+            g = 212
+            b = 255
+        }
+
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
         )
     }
 }

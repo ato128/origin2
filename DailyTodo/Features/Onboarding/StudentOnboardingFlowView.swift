@@ -106,9 +106,16 @@ struct StudentOnboardingFlowView: View {
     @State private var isLoadingMajors: Bool = false
     @State private var isLoadingCurriculum: Bool = false
     @State private var isLoadingAllMajorCourses: Bool = false
+
     @State private var majorLoadRequestID = UUID()
+    @State private var curriculumLoadRequestID = UUID()
+    @State private var allCoursesLoadRequestID = UUID()
+
     @State private var isSelectingMajorFromList: Bool = false
 
+    @State private var majorLoadError: String?
+    @State private var curriculumLoadError: String?
+    
     private let highSchoolGrades = ["9", "10", "11", "12"]
     private let universityGrades = ["prep", "1", "2", "3", "4", "5", "6"]
     private let highSchoolTracks = ["sayisal", "sozel", "esit_agirlik", "dil"]
@@ -164,9 +171,13 @@ struct StudentOnboardingFlowView: View {
     }
 
     private var filteredMajors: [CatalogMajor] {
-        let trimmed = majorSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return remoteMajors }
-        return remoteMajors.filter { $0.name.localizedCaseInsensitiveContains(trimmed) }
+        let query = normalizedSearchKey(majorSearchText)
+        guard !query.isEmpty else { return remoteMajors }
+
+        return remoteMajors.filter { major in
+            normalizedSearchKey(major.name).contains(query) ||
+            normalizedSearchKey(major.normalized_name ?? "").contains(query)
+        }
     }
 
     private var canContinueCurrentStep: Bool {
@@ -260,13 +271,7 @@ struct StudentOnboardingFlowView: View {
             }
         }
         .onChange(of: selectedUniversityID) { _, newValue in
-            remoteSuggestedCourses = []
-            allMajorCourses = []
-            filteredCourseSuggestions = []
-            selectedMajorID = nil
-            majorName = ""
-            majorSearchText = ""
-            localCourses.removeAll(where: { $0.isSuggested })
+            resetUniversityCatalogState(clearManualCourses: true)
 
             guard newValue != nil else {
                 remoteMajors = []
@@ -625,10 +630,49 @@ struct StudentOnboardingFlowView: View {
                     )
                 } else if isLoadingMajors && remoteMajors.isEmpty {
                     LoadingRow(text: "Loading majors...")
+                } else if let majorLoadError {
+                    VStack(spacing: 10) {
+                        EmptyStateRow(
+                            icon: "exclamationmark.triangle.fill",
+                            text: majorLoadError
+                        )
+
+                        Button {
+                            Task {
+                                await loadMajorsForSelectedUniversity()
+                            }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: 12, weight: .black))
+
+                                Text("Retry")
+                                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                                    .tracking(0.8)
+                            }
+                            .foregroundStyle(Color(studentOnboardingHex: StudentOnboardingPalette.appCyan))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 42)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(Color(studentOnboardingHex: StudentOnboardingPalette.appCyan).opacity(0.10))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                            .stroke(Color(studentOnboardingHex: StudentOnboardingPalette.appCyan).opacity(0.18), lineWidth: 1)
+                                    )
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } else if remoteMajors.isEmpty {
+                    EmptyStateRow(
+                        icon: "graduationcap",
+                        text: "No catalog majors yet. You can type your major manually."
+                    )
                 } else if filteredMajors.isEmpty {
                     EmptyStateRow(
                         icon: "magnifyingglass",
-                        text: "No majors found. You can type your own."
+                        text: "No result for this search."
                     )
                 } else {
                     VStack(spacing: 8) {
@@ -823,6 +867,10 @@ struct StudentOnboardingFlowView: View {
 
             if !filteredCourseSuggestions.isEmpty {
                 suggestionsView
+            }
+
+            if let curriculumLoadError {
+                ErrorCard(text: curriculumLoadError)
             }
 
             if let submitError {
@@ -1086,6 +1134,60 @@ struct StudentOnboardingFlowView: View {
 // MARK: - Logic
 
 private extension StudentOnboardingFlowView {
+    func resetUniversityCatalogState(clearManualCourses: Bool) {
+        majorLoadRequestID = UUID()
+        curriculumLoadRequestID = UUID()
+        allCoursesLoadRequestID = UUID()
+
+        remoteMajors = []
+        remoteSuggestedCourses = []
+        allMajorCourses = []
+        filteredCourseSuggestions = []
+
+        selectedMajorID = nil
+        majorName = ""
+        majorSearchText = ""
+
+        draftCourseCode = ""
+        draftCourseName = ""
+
+        majorLoadError = nil
+        curriculumLoadError = nil
+
+        isLoadingMajors = false
+        isLoadingCurriculum = false
+        isLoadingAllMajorCourses = false
+
+        if clearManualCourses {
+            localCourses = []
+        } else {
+            localCourses.removeAll(where: { $0.isSuggested })
+        }
+    }
+
+    func resetMajorCatalogState(keepManualCourses: Bool) {
+        curriculumLoadRequestID = UUID()
+        allCoursesLoadRequestID = UUID()
+
+        remoteSuggestedCourses = []
+        allMajorCourses = []
+        filteredCourseSuggestions = []
+
+        draftCourseCode = ""
+        draftCourseName = ""
+
+        curriculumLoadError = nil
+
+        isLoadingCurriculum = false
+        isLoadingAllMajorCourses = false
+
+        if keepManualCourses {
+            localCourses = localCourses.filter { !$0.isSuggested }
+        } else {
+            localCourses = []
+        }
+    }
+    
     func hydrateInitialDrafts() {
         if localCourses.isEmpty {
             localCourses = defaultCoursesForCurrentSelection()
@@ -1177,6 +1279,12 @@ private extension StudentOnboardingFlowView {
         StudentSetupHaptics.softTap()
         isSelectingMajorFromList = true
 
+        let isDifferentMajor = selectedMajorID != major.id
+
+        if isDifferentMajor {
+            resetMajorCatalogState(keepManualCourses: true)
+        }
+
         majorName = major.name
         majorSearchText = major.name
         selectedMajorID = major.id
@@ -1196,8 +1304,15 @@ private extension StudentOnboardingFlowView {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if let matchedMajor = remoteMajors.first(where: {
-            $0.name.caseInsensitiveCompare(trimmed) == .orderedSame
+            normalizedSearchKey($0.name) == normalizedSearchKey(trimmed) ||
+            normalizedSearchKey($0.normalized_name ?? "") == normalizedSearchKey(trimmed)
         }) {
+            let isDifferentMajor = selectedMajorID != matchedMajor.id
+
+            if isDifferentMajor {
+                resetMajorCatalogState(keepManualCourses: true)
+            }
+
             selectedMajorID = matchedMajor.id
 
             Task {
@@ -1206,13 +1321,11 @@ private extension StudentOnboardingFlowView {
             }
         } else {
             selectedMajorID = nil
-            remoteSuggestedCourses = []
-            allMajorCourses = []
-            filteredCourseSuggestions = []
-            localCourses.removeAll(where: { $0.isSuggested })
+            resetMajorCatalogState(keepManualCourses: true)
         }
     }
 
+    @MainActor
     func loadMajorsForSelectedUniversity() async {
         guard educationLevel == "university" else {
             isLoadingMajors = false
@@ -1221,6 +1334,7 @@ private extension StudentOnboardingFlowView {
 
         guard let selectedUniversityID else {
             remoteMajors = []
+            majorLoadError = nil
             isLoadingMajors = false
             return
         }
@@ -1228,6 +1342,7 @@ private extension StudentOnboardingFlowView {
         let requestID = UUID()
         majorLoadRequestID = requestID
         isLoadingMajors = true
+        majorLoadError = nil
 
         defer {
             if majorLoadRequestID == requestID {
@@ -1236,7 +1351,10 @@ private extension StudentOnboardingFlowView {
         }
 
         do {
-            print("🟡 loadMajors start:", selectedUniversityID)
+            print("🟡 loadMajors start")
+            print("🟡 universityID:", selectedUniversityID.uuidString)
+            print("🟡 institutionName:", institutionName)
+            print("🟡 institutionCountry:", institutionCountry)
 
             let majors = try await StudentCatalogService.fetchMajors(
                 universityID: selectedUniversityID
@@ -1248,18 +1366,21 @@ private extension StudentOnboardingFlowView {
             }
 
             print("✅ loadMajors completed:", majors.count)
+            print("✅ loadMajors names:", majors.prefix(10).map(\.name).joined(separator: ", "))
 
             remoteMajors = majors
+            majorLoadError = nil
             remoteSuggestedCourses = []
             allMajorCourses = []
             filteredCourseSuggestions = []
-            localCourses.removeAll(where: { $0.isSuggested })
-
+            localCourses = localCourses.filter { !$0.isSuggested }
+            
             let trimmedMajor = majorName.trimmingCharacters(in: .whitespacesAndNewlines)
 
             if !trimmedMajor.isEmpty,
                let matchedMajor = majors.first(where: {
-                   $0.name.caseInsensitiveCompare(trimmedMajor) == .orderedSame
+                   normalizedSearchKey($0.name) == normalizedSearchKey(trimmedMajor) ||
+                   normalizedSearchKey($0.normalized_name ?? "") == normalizedSearchKey(trimmedMajor)
                }) {
                 selectedMajorID = matchedMajor.id
                 await loadAllCoursesForSelectedMajor()
@@ -1270,35 +1391,60 @@ private extension StudentOnboardingFlowView {
         } catch {
             guard majorLoadRequestID == requestID else { return }
 
-            print("❌ loadMajorsForSelectedUniversity error:", error.localizedDescription)
+            let message = error.localizedDescription
+
+            print("❌ loadMajorsForSelectedUniversity error:", message)
 
             remoteMajors = []
             remoteSuggestedCourses = []
             allMajorCourses = []
             filteredCourseSuggestions = []
             selectedMajorID = nil
+            majorLoadError = "Could not load majors. \(message)"
         }
     }
 
+    @MainActor
     func applySuggestedUniversityCoursesIfAvailable(forceReplace: Bool = false) async {
         guard educationLevel == "university" else { return }
 
         guard let selectedMajorID else {
             remoteSuggestedCourses = []
+
             if forceReplace {
                 localCourses = localCourses.filter { !$0.isSuggested }
             }
+
             return
         }
 
+        let requestID = UUID()
+        curriculumLoadRequestID = requestID
+
         isLoadingCurriculum = true
-        defer { isLoadingCurriculum = false }
+        curriculumLoadError = nil
+
+        defer {
+            if curriculumLoadRequestID == requestID {
+                isLoadingCurriculum = false
+            }
+        }
 
         do {
             let suggestions = try await StudentCatalogService.fetchCurriculumCourses(
                 majorID: selectedMajorID,
                 gradeLevel: gradeLevel
             )
+
+            guard curriculumLoadRequestID == requestID else {
+                print("⚪️ curriculum ignored: stale request")
+                return
+            }
+
+            guard self.selectedMajorID == selectedMajorID else {
+                print("⚪️ curriculum ignored: major changed")
+                return
+            }
 
             remoteSuggestedCourses = suggestions
 
@@ -1312,10 +1458,15 @@ private extension StudentOnboardingFlowView {
 
             let manualCourses = localCourses.filter { !$0.isSuggested }
             localCourses = markedSuggestions + manualCourses
+
             updateCourseSuggestions()
         } catch {
-            print("❌ applySuggestedUniversityCoursesIfAvailable error:", error)
+            guard curriculumLoadRequestID == requestID else { return }
+
+            print("❌ applySuggestedUniversityCoursesIfAvailable error:", error.localizedDescription)
+
             remoteSuggestedCourses = []
+            curriculumLoadError = "Could not load suggested courses. \(error.localizedDescription)"
 
             if forceReplace {
                 localCourses = localCourses.filter { !$0.isSuggested }
@@ -1325,6 +1476,7 @@ private extension StudentOnboardingFlowView {
         }
     }
 
+    @MainActor
     func loadAllCoursesForSelectedMajor() async {
         guard let selectedMajorID else {
             allMajorCourses = []
@@ -1332,20 +1484,42 @@ private extension StudentOnboardingFlowView {
             return
         }
 
+        let requestID = UUID()
+        allCoursesLoadRequestID = requestID
+
         isLoadingAllMajorCourses = true
-        defer { isLoadingAllMajorCourses = false }
+
+        defer {
+            if allCoursesLoadRequestID == requestID {
+                isLoadingAllMajorCourses = false
+            }
+        }
 
         do {
             let courses = try await StudentCatalogService.fetchAllCurriculumCourses(
                 majorID: selectedMajorID
             )
 
+            guard allCoursesLoadRequestID == requestID else {
+                print("⚪️ all courses ignored: stale request")
+                return
+            }
+
+            guard self.selectedMajorID == selectedMajorID else {
+                print("⚪️ all courses ignored: major changed")
+                return
+            }
+
             allMajorCourses = courses
             updateCourseSuggestions()
         } catch {
-            print("❌ loadAllCoursesForSelectedMajor error:", error)
+            guard allCoursesLoadRequestID == requestID else { return }
+
+            print("❌ loadAllCoursesForSelectedMajor error:", error.localizedDescription)
+
             allMajorCourses = []
             filteredCourseSuggestions = []
+            updateCourseSuggestions()
         }
     }
 
@@ -1521,6 +1695,21 @@ private extension StudentOnboardingFlowView {
         case "dil": return "globe"
         default: return "square.grid.2x2"
         }
+    }
+    func normalizedSearchKey(_ text: String) -> String {
+        text
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "tr_TR"))
+            .lowercased()
+            .replacingOccurrences(of: "ı", with: "i")
+            .replacingOccurrences(of: "ğ", with: "g")
+            .replacingOccurrences(of: "ü", with: "u")
+            .replacingOccurrences(of: "ş", with: "s")
+            .replacingOccurrences(of: "ö", with: "o")
+            .replacingOccurrences(of: "ç", with: "c")
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 
