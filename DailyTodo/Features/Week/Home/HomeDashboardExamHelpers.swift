@@ -46,11 +46,11 @@ extension HomeDashboardView {
         let days = daysUntilExam(exam)
 
         if days <= 0 {
-            return "Bugün"
+            return tr("common_today")
         } else if days == 1 {
-            return "Yarın"
+            return tr("common_tomorrow")
         } else {
-            return "\(days) gün kaldı"
+            return tr("rel_days_left", days)
         }
     }
 
@@ -95,7 +95,7 @@ extension HomeDashboardView {
         case 0..<50:
             return "Hafif tekrar"
         case 50..<70:
-            return "Standart çalışma"
+            return tr("hde_standard_study")
         case 70..<90:
             return "Derin odak"
         default:

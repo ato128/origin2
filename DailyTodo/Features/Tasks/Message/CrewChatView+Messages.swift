@@ -106,9 +106,20 @@ extension CrewChatView {
                 .foregroundStyle(message.isFromMe ? .white.opacity(0.55) : .white.opacity(0.36))
 
         } else if message.isFailed {
-            Image(systemName: "exclamationmark.circle.fill")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(.red)
+            // Insta DM mantığı: başarısız mesaj tek dokunuşla tekrar gönderilir
+            Button {
+                resendFailedCrewMessage(message)
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 9, weight: .bold))
+
+                    Text("Tekrar dene")
+                        .font(.system(size: 10, weight: .semibold))
+                }
+                .foregroundStyle(.red.opacity(0.9))
+            }
+            .buttonStyle(.plain)
 
         } else if message.isFromMe {
             let seen = messageSeenByAnyone(message)
@@ -134,11 +145,11 @@ extension CrewChatView {
             text.contains("joined the shared focus session") ||
             text.contains("paused the shared focus session") ||
             text.contains("resumed the shared focus session") ||
-            text.contains("paylaşılan odak oturumu") ||
-            text.contains("odak oturumunu başlattı") ||
+            text.contains(tr("ccm_shared_session")) ||
+            text.contains(tr("ccm_started_session")) ||
             text.contains("odak oturumunu bitirdi") ||
-            text.contains("odak oturumuna katıldı") ||
-            text.contains("odak oturumunu duraklattı") ||
+            text.contains(tr("ccm_joined_session")) ||
+            text.contains(tr("ccm_paused_session")) ||
             text.contains("odak oturumunu devam ettirdi")
 
         let showSenderName = shouldShowSenderName(at: index)
@@ -227,8 +238,8 @@ extension CrewChatView {
                     }
                     .padding(message.messageType == "image" ? 8 : 14)
                     .background(messageBubbleBackground(isFromMe: isFromMe))
-                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .clipShape(crewBubbleShape(isFromMe: isFromMe))
+                    .contentShape(crewBubbleShape(isFromMe: isFromMe))
                     .padding(.top, topSpacing)
                     .onLongPressGesture(minimumDuration: 0.28) {
                         Haptics.impact(.light)
@@ -296,19 +307,24 @@ extension CrewChatView {
                                     ProgressView()
                                         .tint(.white)
 
-                                    Text("Fotoğraf yükleniyor")
+                                    Text(tr("fc_photo_loading"))
                                         .font(.system(size: 12, weight: .semibold))
                                         .foregroundStyle(.white)
                                 }
                             } else if message.isFailed {
-                                VStack(spacing: 8) {
-                                    Image(systemName: "exclamationmark.triangle.fill")
-                                        .font(.system(size: 24, weight: .bold))
+                                Button {
+                                    resendFailedCrewMessage(message)
+                                } label: {
+                                    VStack(spacing: 8) {
+                                        Image(systemName: "arrow.clockwise.circle.fill")
+                                            .font(.system(size: 26, weight: .bold))
 
-                                    Text("Fotoğraf gönderilemedi")
-                                        .font(.system(size: 12, weight: .semibold))
+                                        Text(tr("fc_send_failed_retry"))
+                                            .font(.system(size: 12, weight: .semibold))
+                                    }
+                                    .foregroundStyle(.red.opacity(0.95))
                                 }
-                                .foregroundStyle(.red.opacity(0.95))
+                                .buttonStyle(.plain)
                             } else {
                                 imageFailurePlaceholder
                             }
@@ -317,7 +333,7 @@ extension CrewChatView {
             }
 
             if !message.displayText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-               message.displayText != "📷 Fotoğraf" {
+               message.displayText != tr("fc_photo_emoji") {
                 Text(message.displayText)
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(message.isFromMe ? .white : .white.opacity(0.96))
@@ -336,7 +352,7 @@ extension CrewChatView {
                     Image(systemName: "photo")
                         .font(.system(size: 26, weight: .medium))
 
-                    Text("Görsel yüklenemedi")
+                    Text(tr("fc_image_load_failed"))
                         .font(.system(size: 12, weight: .medium))
                 }
                 .foregroundStyle(.white.opacity(0.75))
@@ -379,41 +395,32 @@ extension CrewChatView {
         )
     }
 
+    // Birebir Updo AI baloncuk şekli: konuşan tarafta köşeli kuyruk.
+    func crewBubbleShape(isFromMe: Bool) -> UnevenRoundedRectangle {
+        UnevenRoundedRectangle(
+            topLeadingRadius: 18,
+            bottomLeadingRadius: isFromMe ? 18 : 5,
+            bottomTrailingRadius: isFromMe ? 5 : 18,
+            topTrailingRadius: 18,
+            style: .continuous
+        )
+    }
+
+    // Birebir Updo AI baloncuğu: gönderilen cyan→mor gradient, alınan surfaceHigh + border.
     func messageBubbleBackground(isFromMe: Bool) -> some View {
-        Group {
+        let shape = crewBubbleShape(isFromMe: isFromMe)
+        return Group {
             if isFromMe {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(crewChatMessageHex: "#1593FF"),
-                                Color(crewChatMessageHex: "#7C3AED")
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
+                shape.fill(
+                    LinearGradient(
+                        colors: [UpdoTheme.cyan, UpdoTheme.purple],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                    )
-                    .shadow(color: Color(crewChatMessageHex: "#1593FF").opacity(0.16), radius: 8, y: 4)
+                )
             } else {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.062),
-                                Color.white.opacity(0.040)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(Color.white.opacity(0.085), lineWidth: 1)
-                    )
+                shape.fill(UpdoTheme.surfaceHigh)
+                    .overlay(shape.strokeBorder(UpdoTheme.border, lineWidth: 1))
             }
         }
     }

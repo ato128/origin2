@@ -65,7 +65,7 @@ final class LiveActivityScheduler {
 
     func registerBGTask() {
         guard !didRegisterBGTask else {
-            print("⚪️ BG TASK ALREADY REGISTERED, skipping")
+            Log.debug("⚪️ BG TASK ALREADY REGISTERED, skipping")
             return
         }
         didRegisterBGTask = true
@@ -119,7 +119,7 @@ final class LiveActivityScheduler {
             guard let groupURL = FileManager.default.containerURL(
                 forSecurityApplicationGroupIdentifier: appGroupID
             ) else {
-                print("❌ App Group container bulunamadı")
+                Log.debug("❌ App Group container bulunamadı")
                 task.setTaskCompleted(success: false)
                 return
             }
@@ -132,7 +132,7 @@ final class LiveActivityScheduler {
                     withIntermediateDirectories: true
                 )
             } catch {
-                print("❌ App Support create error:", error.localizedDescription)
+                Log.debug("❌ App Support create error:", error.localizedDescription)
             }
 
             let storeURL = supportURL.appendingPathComponent("default.store")
@@ -161,7 +161,7 @@ final class LiveActivityScheduler {
 
                 task.setTaskCompleted(success: true)
             } catch {
-                print("❌ BG ModelContainer error:", error.localizedDescription)
+                Log.debug("❌ BG ModelContainer error:", error.localizedDescription)
                 task.setTaskCompleted(success: false)
             }
         }
@@ -171,7 +171,7 @@ final class LiveActivityScheduler {
         BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: taskID)
 
         guard let next = nextUpcomingEvent(context: context) else {
-            print("ℹ️ BG schedule: uygun gelecek event yok")
+            Log.debug("ℹ️ BG schedule: uygun gelecek event yok")
             return
         }
 
@@ -186,9 +186,9 @@ final class LiveActivityScheduler {
 
         do {
             try BGTaskScheduler.shared.submit(request)
-            print("🟢 BG task scheduled for:", fireDate)
+            Log.debug("🟢 BG task scheduled for:", fireDate)
         } catch {
-            print("🔴 BG task schedule error:", error.localizedDescription)
+            Log.debug("🔴 BG task schedule error:", error.localizedDescription)
         }
     }
 

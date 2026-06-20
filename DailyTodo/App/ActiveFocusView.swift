@@ -40,11 +40,11 @@ struct ActiveFocusView: View {
     private var titleText: String {
         switch mode {
         case .personal:
-            return "Kişisel Focus"
+            return tr("af_personal_focus")
         case .crew:
             return "Crew Focus"
         case .friend:
-            return "Arkadaş Focus"
+            return tr("af_friend_focus")
         }
     }
 
@@ -80,10 +80,10 @@ struct ActiveFocusView: View {
 
     private var subtitleText: String {
         if focusSession.isPaused {
-            return "Focus akışı beklemede"
+            return tr("af_flow_waiting")
         }
 
-        return "Odak akışı devam ediyor"
+        return tr("af_flow_going")
     }
 
     private var bottomHeadline: String {
@@ -102,9 +102,9 @@ struct ActiveFocusView: View {
         case .personal:
             return focusSession.selectedGoal.subtitle
         case .crew:
-            return "Host, hazır katılımcılar ve ortak süre aynı akışta"
+            return tr("af_host_sub")
         case .friend:
-            return "Eşleşme aktif, ritmi birlikte sürdürün"
+            return tr("af_match_sub")
         }
     }
 
@@ -333,8 +333,9 @@ private extension ActiveFocusView {
 
             VStack(spacing: 10) {
                 Text(focusSession.timeString)
-                    .font(.system(size: 48, weight: .black))
+                    .font(.system(size: 48, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
+                    .monospacedDigit()
                     .contentTransition(.numericText())
                     .animation(.easeInOut(duration: 0.16), value: focusSession.timeString)
 
@@ -456,7 +457,7 @@ private extension ActiveFocusView {
 
                 compactPill(
                     icon: "checkmark.circle.fill",
-                    title: "Hazır",
+                    title: tr("hf_ready"),
                     value: "\(readyCount)/\(max(participants.count, 1))"
                 )
             }
@@ -714,17 +715,17 @@ private extension ActiveFocusView {
     }
 
     func participantStatusText(_ participant: FocusParticipant) -> String {
-        if participant.isHost { return "Oturumu yönetiyor" }
-        if participant.isActive { return "Şu an odakta" }
-        if participant.isReady { return "Başlamaya hazır" }
-        return "Henüz bağlanmadı"
+        if participant.isHost { return tr("af_managing") }
+        if participant.isActive { return tr("af_focusing_now") }
+        if participant.isReady { return tr("af_ready_start") }
+        return tr("af_not_connected")
     }
 
     func participantRoleText(_ participant: FocusParticipant) -> String {
         if participant.isHost { return "HOST" }
-        if participant.isActive { return "AKTİF" }
+        if participant.isActive { return tr("af_active_caps") }
         if participant.isReady { return "HAZIR" }
-        return "BEKLİYOR"
+        return tr("ch_pending_caps")
     }
 
     var sharedPanelTitle: String {
@@ -732,7 +733,7 @@ private extension ActiveFocusView {
         case .crew:
             return "Crew ile ortak odak"
         case .friend:
-            return "Birlikte odaklanıyorsunuz"
+            return tr("af_focusing_together")
         case .personal:
             return ""
         }
@@ -742,9 +743,9 @@ private extension ActiveFocusView {
         switch mode {
         case .crew:
             let host = hostParticipant?.name ?? "Atakan"
-            return "\(host) host olarak oturumu yürütüyor"
+            return tr("af_host_running", host)
         case .friend:
-            return "Eşleşmiş focus aktif"
+            return tr("af_matched_active")
         case .personal:
             return ""
         }

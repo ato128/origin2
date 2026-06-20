@@ -115,7 +115,7 @@ final class SmartNotificationHistory {
         do {
             return try JSONDecoder().decode([SmartNotificationHistoryRecord].self, from: data)
         } catch {
-            print("SMART NOTIFICATION HISTORY DECODE ERROR:", error.localizedDescription)
+            Log.debug("SMART NOTIFICATION HISTORY DECODE ERROR:", error.localizedDescription)
             return []
         }
     }
@@ -125,7 +125,7 @@ final class SmartNotificationHistory {
             let data = try JSONEncoder().encode(records)
             UserDefaults.standard.set(data, forKey: storageKey)
         } catch {
-            print("SMART NOTIFICATION HISTORY SAVE ERROR:", error.localizedDescription)
+            Log.debug("SMART NOTIFICATION HISTORY SAVE ERROR:", error.localizedDescription)
         }
     }
 }

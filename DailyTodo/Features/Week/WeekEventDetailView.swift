@@ -333,7 +333,7 @@ private extension WeekEventDetailView {
 
                         dismiss()
                     } catch {
-                        print("WeekEventDetailView delete error:", error)
+                        Log.debug("WeekEventDetailView delete error:", error)
                     }
                 }
             } label: {

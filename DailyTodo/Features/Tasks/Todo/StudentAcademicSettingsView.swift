@@ -853,7 +853,7 @@ private extension StudentAcademicSettingsView {
             majors = []
             suggestedCourses = []
 
-            print("❌ resolveUniversityAndMajor error:", error.localizedDescription)
+            Log.debug("❌ resolveUniversityAndMajor error:", error.localizedDescription)
         }
     }
 
@@ -912,7 +912,7 @@ private extension StudentAcademicSettingsView {
             suggestedCourses = []
             majorLoadError = error.localizedDescription
 
-            print("❌ loadMajors error:", error.localizedDescription)
+            Log.debug("❌ loadMajors error:", error.localizedDescription)
         }
     }
 
@@ -978,7 +978,7 @@ private extension StudentAcademicSettingsView {
             guard suggestionRequestID == requestID else { return }
 
             guard self.selectedMajorID == selectedMajorID else {
-                print("⚪️ settings suggestions ignored: major changed")
+                Log.debug("⚪️ settings suggestions ignored: major changed")
                 return
             }
 
@@ -990,7 +990,7 @@ private extension StudentAcademicSettingsView {
             suggestedCourses = []
             suggestionsError = error.localizedDescription
 
-            print("❌ loadSuggestions error:", error.localizedDescription)
+            Log.debug("❌ loadSuggestions error:", error.localizedDescription)
         }
     }
 
@@ -1155,7 +1155,7 @@ private extension StudentAcademicSettingsView {
     func displayCountry(_ raw: String) -> String {
         switch normalizedCountryCode(raw) {
         case "tr":
-            return "Türkiye"
+            return tr("up_turkey")
         case "kktc":
             return "KKTC"
         default:
@@ -1169,13 +1169,13 @@ private extension StudentAcademicSettingsView {
 
     func yearTitle(_ value: String) -> String {
         switch value {
-        case "prep": return "Prep"
-        case "1": return "1. Year"
-        case "2": return "2. Year"
-        case "3": return "3. Year"
-        case "4": return "4. Year"
-        case "5": return "5. Year"
-        case "6": return "6. Year"
+        case "prep": return tr("grade_prep")
+        case "1": return tr("grade_uni_1")
+        case "2": return tr("grade_uni_2")
+        case "3": return tr("grade_uni_3")
+        case "4": return tr("grade_uni_4")
+        case "5": return tr("grade_uni_5")
+        case "6": return tr("grade_uni_6")
         default: return value
         }
     }

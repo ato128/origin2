@@ -151,7 +151,7 @@ struct FriendDetailView: View {
 
         if weeklyFocusCount >= 4 {
             return locale.language.languageCode?.identifier == "tr"
-            ? "Bu hafta düzenli bir ritim yakalamış görünüyor."
+            ? tr("fd_steady_rhythm")
             : "Looks consistent this week."
         }
 
@@ -166,7 +166,7 @@ struct FriendDetailView: View {
         }
 
         return locale.language.languageCode?.identifier == "tr"
-        ? "Henüz focus verisi görünmüyor."
+        ? tr("fd_no_focus_data")
         : "No focus data yet."
     }
 
@@ -511,7 +511,7 @@ private extension FriendDetailView {
             HStack {
                 sectionTitle(
                     eyebrow: "TODAY PLAN",
-                    title: "Bugünkü",
+                    title: tr("fd_todays"),
                     italic: "program"
                 )
 
@@ -550,7 +550,7 @@ private extension FriendDetailView {
         VStack(alignment: .leading, spacing: 14) {
             sectionTitle(
                 eyebrow: "STUDY PROFILE",
-                title: "Çalışma",
+                title: tr("tt_study"),
                 italic: "profili"
             )
 
@@ -578,7 +578,7 @@ private extension FriendDetailView {
                 miniInsightPill(
                     icon: "calendar",
                     text: locale.language.languageCode?.identifier == "tr"
-                    ? "\(sharedScheduleCount) bugünkü plan"
+                    ? tr("fd_today_plans", sharedScheduleCount)
                     : "\(sharedScheduleCount) today items",
                     tint: FriendDetailArenaPalette.coral
                 )
@@ -620,8 +620,8 @@ private extension FriendDetailView {
         VStack(alignment: .leading, spacing: 14) {
             sectionTitle(
                 eyebrow: "SOCIAL ACTIONS",
-                title: "Hızlı",
-                italic: "işlemler"
+                title: tr("bctd_quick_w"),
+                italic: tr("bctd_actions_w")
             )
 
             HStack(spacing: 10) {
@@ -946,7 +946,7 @@ private extension FriendDetailView {
             )
             dismiss()
         } catch {
-            print("REMOVE FRIEND ALERT ACTION ERROR:", error.localizedDescription)
+            Log.debug("REMOVE FRIEND ALERT ACTION ERROR:", error.localizedDescription)
         }
 
         isRemovingFriend = false
@@ -957,7 +957,7 @@ private extension FriendDetailView {
     }
 
     func localizedToday(_ count: Int) -> String {
-        locale.language.languageCode?.identifier == "tr" ? "Bugün" : "Today"
+        locale.language.languageCode?.identifier == "tr" ? tr("common_today") : "Today"
     }
 
     func localizedMessages(_ count: Int) -> String {
@@ -966,13 +966,13 @@ private extension FriendDetailView {
 
     func localizedInFocusNow(_ minutes: Int) -> String {
         locale.language.languageCode?.identifier == "tr"
-        ? "Şu an odakta • \(minutes) dk"
+        ? "\(tr("fd_focusing_now")) • \(tr("rel_min_short_n", minutes))"
         : "In focus now • \(minutes) min"
     }
 
     func localizedScheduleCount(_ count: Int) -> String {
         locale.language.languageCode?.identifier == "tr"
-        ? "\(count) öğe"
+        ? tr("fd_item_count", count)
         : "\(count) items"
     }
 

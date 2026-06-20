@@ -25,6 +25,29 @@ final class IdentityProgressState {
     var currentLevel: Int
     var updatedAt: Date
 
+    // MARK: - Unified streak progression (Phase 1)
+
+    /// Live streak — consecutive days with BOTH a completed task and a focus.
+    var currentStreak: Int = 0
+    var longestStreak: Int = 0
+    /// Last day that satisfied the streak rule.
+    var lastStreakDay: Date? = nil
+    /// Last day `ProgressionManager.evaluate` ran (break detection bookkeeping).
+    var lastEvaluatedDay: Date? = nil
+
+    /// Pro streak-restore budget (resets monthly via `restoreCycleKey`).
+    var streakRestoresUsed: Int = 0
+    /// "yyyy-MM" of the current restore cycle.
+    var restoreCycleKey: String = ""
+
+    /// Pro privacy switch — broadcast my stats to friends/crew.
+    var statsSharingEnabled: Bool = true
+
+    /// A streak break happened and can still be restored this session.
+    var pendingStreakBreak: Bool = false
+    /// The streak length that was lost (for restore).
+    var brokenStreakValue: Int = 0
+
     init(
         id: UUID = UUID(),
         ownerUserID: String? = nil,

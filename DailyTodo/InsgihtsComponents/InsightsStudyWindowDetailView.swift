@@ -356,7 +356,7 @@ struct InsightsStudyWindowDetailView: View {
                         dismiss()
                         onOpenFocus()
                     } label: {
-                        Text("FOCUS BAŞLAT")
+                        Text(tr("iws_start_focus_caps"))
                             .font(.system(size: 10, weight: .black, design: .monospaced))
                             .tracking(0.8)
                             .foregroundStyle(.black)
@@ -373,7 +373,7 @@ struct InsightsStudyWindowDetailView: View {
                         dismiss()
                         onOpenWeek()
                     } label: {
-                        Text("HAFTAYI AÇ")
+                        Text(tr("iws_open_week_caps"))
                             .font(.system(size: 10, weight: .black, design: .monospaced))
                             .tracking(0.8)
                             .foregroundStyle(.white.opacity(0.84))

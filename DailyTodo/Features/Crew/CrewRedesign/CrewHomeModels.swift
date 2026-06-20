@@ -49,9 +49,9 @@ enum CrewSocialTab: String, CaseIterable, Identifiable {
         case .crews:
             return "Crewler"
         case .friends:
-            return "Arkadaşlar"
+            return tr("hd_friends")
         case .requests:
-            return "İstekler"
+            return tr("ch_requests")
         }
     }
 
@@ -203,11 +203,11 @@ enum CrewJoinState: String, CaseIterable {
         case .join:
             return "KATIL"
         case .pending:
-            return "BEKLİYOR"
+            return tr("ch_pending_caps")
         case .full:
             return "DOLU"
         case .member:
-            return "ÜYE"
+            return tr("ch_member_caps")
         }
     }
 }
@@ -369,7 +369,7 @@ struct CrewSocialCrewCardData: Identifiable, Equatable {
     }
 
     var memberText: String {
-        "\(memberCount) ÜYE"
+        tr("ch_member_count_caps", memberCount)
     }
 
     var progressText: String {
@@ -395,17 +395,23 @@ struct CrewSocialFriendCardData: Identifiable, Equatable {
     let isFocusing: Bool
     let focusMinutes: Int?
 
+    /// Pro social-stats layer (nil when not shared / not yet loaded).
+    var streak: Int? = nil
+    var level: Int? = nil
+
+    var hasSharedStats: Bool { streak != nil || level != nil }
+
     var stateText: String {
         if isFocusing {
             return "ODAKTA"
         }
 
-        return isOnline ? "ÇEVRİMİÇİ" : "ÇEVRİMDIŞI"
+        return isOnline ? tr("ch_online_caps") : tr("ch_offline_caps")
     }
 
     var focusText: String {
         guard let focusMinutes else { return subtitle }
-        return "Odaklanıyor · \(focusMinutes) dk"
+        return "\(tr("ch_focusing")) · \(tr("rel_min_short_n", focusMinutes))"
     }
 }
 
@@ -428,11 +434,11 @@ enum CrewSocialRequestKind: String, Equatable {
         case .incoming:
             return "GELEN"
         case .sent:
-            return "GİDEN"
+            return tr("ch_sent_label_caps")
         case .crewInvite:
             return "CREW"
         case .pendingCrew:
-            return "BEKLİYOR"
+            return tr("ch_pending_caps")
         }
     }
 
@@ -547,7 +553,7 @@ enum CrewCommunityMockFactory {
                 secondaryText: "\(studentContext.courseCount) aktif ders",
                 metrics: [
                     CrewMetricData(value: "340", title: "CREW", accentHex: "#FBBF24"),
-                    CrewMetricData(value: "12.4K", title: "ÜYE", accentHex: "#FBBF24"),
+                    CrewMetricData(value: "12.4K", title: tr("ch_member_caps"), accentHex: "#FBBF24"),
                     CrewMetricData(value: "847", title: "LIVE", accentHex: "#A3E635"),
                     CrewMetricData(value: "+18", title: "BUGÜN", accentHex: "#A3E635")
                 ]
@@ -565,7 +571,7 @@ enum CrewCommunityMockFactory {
                 secondaryText: studentContext.institutionCountry ?? "Campus",
                 metrics: [
                     CrewMetricData(value: "1.2K", title: "CREW", accentHex: "#FBBF24"),
-                    CrewMetricData(value: "41K", title: "ÜYE", accentHex: "#FBBF24"),
+                    CrewMetricData(value: "41K", title: tr("ch_member_caps"), accentHex: "#FBBF24"),
                     CrewMetricData(value: "2.8K", title: "LIVE", accentHex: "#A3E635"),
                     CrewMetricData(value: "+124", title: "BUGÜN", accentHex: "#A3E635")
                 ]
@@ -583,7 +589,7 @@ enum CrewCommunityMockFactory {
                 secondaryText: "ülke geneli",
                 metrics: [
                     CrewMetricData(value: "29K", title: "CREW", accentHex: "#FBBF24"),
-                    CrewMetricData(value: "1.7M", title: "ÜYE", accentHex: "#FBBF24"),
+                    CrewMetricData(value: "1.7M", title: tr("ch_member_caps"), accentHex: "#FBBF24"),
                     CrewMetricData(value: "84K", title: "LIVE", accentHex: "#A3E635"),
                     CrewMetricData(value: "+18K", title: "BUGÜN", accentHex: "#A3E635")
                 ]

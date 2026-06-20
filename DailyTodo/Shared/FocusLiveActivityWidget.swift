@@ -276,18 +276,31 @@ private func focusModeLabel(for state: FocusAttributes.ContentState) -> String {
     }
 }
 
+/// Widget-side localization. The widget extension can't use the app's `tr()`
+/// (it lives only in the app target), so it reads the user's chosen language
+/// from the shared App Group and picks the matching string.
+func widgetLocalized(_ trText: String, _ enText: String) -> String {
+    let lang = UserDefaults(suiteName: "group.com.atakan.updo")?.string(forKey: "appLanguage") ?? "system"
+    switch lang {
+    case "turkish": return trText
+    case "english": return enText
+    default:
+        return (Locale.preferredLanguages.first ?? "en").hasPrefix("tr") ? trText : enText
+    }
+}
+
 private func focusStatusText(for state: FocusAttributes.ContentState) -> String {
-    if isFocusFinished(state) { return "Tamamlandı" }
-    if state.isPaused { return "Duraklatıldı" }
-    if state.isResting { return "Dinlenme aktif" }
+    if isFocusFinished(state) { return widgetLocalized("Tamamlandı", "Completed") }
+    if state.isPaused { return widgetLocalized("Duraklatıldı", "Paused") }
+    if state.isResting { return widgetLocalized("Dinlenme aktif", "Resting") }
 
     switch state.modeRaw {
     case "workout":
-        return "Workout sürüyor"
+        return widgetLocalized("Workout sürüyor", "Workout in progress")
     case "crew":
-        return "Ortak focus sürüyor"
+        return widgetLocalized("Ortak focus sürüyor", "Shared focus in progress")
     default:
-        return "Focus sürüyor"
+        return widgetLocalized("Focus sürüyor", "Focus in progress")
     }
 }
 
@@ -315,7 +328,7 @@ private func focusProgress(for state: FocusAttributes.ContentState) -> CGFloat {
 @ViewBuilder
 private func focusTimerText(for state: FocusAttributes.ContentState) -> some View {
     if isFocusFinished(state) {
-        Text("Focus tamamlandı")
+        Text(widgetLocalized("Focus tamamlandı", "Focus completed"))
     } else if state.isPaused {
         let seconds = max(0, state.pausedRemainingSeconds ?? 0)
         Text(String(format: "%02d:%02d", seconds / 60, seconds % 60))

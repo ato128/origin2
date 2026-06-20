@@ -98,12 +98,12 @@ struct SignInView: View {
         errorText = ""
 
         guard !email.trimmingCharacters(in: .whitespaces).isEmpty else {
-            errorText = "Email boş olamaz."
+            errorText = tr("si_email_empty")
             return
         }
 
         guard password.count >= 4 else {
-            errorText = "Şifre en az 4 karakter olsun."
+            errorText = tr("si_pw_short")
             return
         }
 
@@ -111,7 +111,7 @@ struct SignInView: View {
             try await session.signIn(email: email, password: password)
             dismiss()
         } catch {
-            errorText = "Giriş yapılamadı."
+            errorText = tr("si_signin_failed")
         }
     }
 }

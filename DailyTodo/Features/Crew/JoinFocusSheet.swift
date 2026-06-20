@@ -107,7 +107,7 @@ struct JoinFocusSheet: View {
             .padding(20)
             .navigationTitle("join_focus_shared_focus")
             .navigationBarTitleDisplayMode(.inline)
-            .background(Color(.systemGroupedBackground))
+            .background(UpdoTheme.background)
             .sheet(isPresented: $showFocusSession) {
                 FocusSessionView(
                     taskID: nil,
@@ -125,7 +125,7 @@ struct JoinFocusSheet: View {
 
     func localizedSharedFocusSubtitle() -> String {
         if locale.language.languageCode?.identifier == "tr" {
-            return "\(friend.name) şu anda paylaşılan bir odak oturumunda."
+            return tr("jf_in_session", friend.name)
         } else {
             return "\(friend.name) is currently in a shared focus session."
         }
@@ -141,7 +141,7 @@ struct JoinFocusSheet: View {
 
     func localizedMinutesLeft(_ minutes: Int) -> String {
         if locale.language.languageCode?.identifier == "tr" {
-            return "\(minutes) dk kaldı"
+            return tr("rel_min_left", minutes)
         } else {
             return "\(minutes) min left"
         }
@@ -149,7 +149,7 @@ struct JoinFocusSheet: View {
 
     func localizedJoinedMessage() -> String {
         if locale.language.languageCode?.identifier == "tr" {
-            return "\(friend.name) ile paylaşılan odak oturumuna katıldım."
+            return tr("jf_joined", friend.name)
         } else {
             return "I joined \(friend.name)’s shared focus session."
         }

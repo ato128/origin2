@@ -9,50 +9,14 @@ import SwiftUI
 
 extension CrewChatView {
 
+    // Birebir Updo AI chat arka planı.
     var ambientBackground: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-
-            LinearGradient(
-                colors: [
-                    Color(crewChatHex: "#05060D"),
-                    Color(crewChatHex: "#070713"),
-                    Color(crewChatHex: "#07040C")
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-
-            Circle()
-                .fill(hexColor(crew.colorHex).opacity(0.16))
-                .frame(width: 300, height: 300)
-                .blur(radius: 105)
-                .offset(x: -175, y: 520)
-
-            Circle()
-                .fill(Color(crewChatHex: "#1593FF").opacity(0.10))
-                .frame(width: 260, height: 260)
-                .blur(radius: 96)
-                .offset(x: 165, y: -245)
-
-            Circle()
-                .fill(Color(crewChatHex: "#7C3AED").opacity(0.14))
-                .frame(width: 300, height: 300)
-                .blur(radius: 110)
-                .offset(x: 180, y: 260)
-
-            LinearGradient(
-                colors: [
-                    Color.black.opacity(0.18),
-                    Color.clear,
-                    Color.black.opacity(0.44)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-        }
+        ArenaBackground(
+            primaryGlow: Color(arenaHex: "#7C3AED"),
+            secondaryGlow: Color(arenaHex: "#2DD4FF"),
+            warmGlow: Color(arenaHex: "#FF5A44")
+        )
+        .ignoresSafeArea()
     }
 
     var floatingTopControls: some View {
@@ -141,40 +105,22 @@ extension CrewChatView {
     }
     
     var crewChatHeaderScrim: some View {
+        // Hafif fade: header elemanları kendi material'ini taşıyor,
+        // mesajlar arkalarından akıyor — ağır siyah blok yok (iMessage hissi).
         VStack(spacing: 0) {
             LinearGradient(
                 stops: [
-                    .init(color: Color.black.opacity(0.94), location: 0.00),
-                    .init(color: Color.black.opacity(0.86), location: 0.24),
-                    .init(color: Color.black.opacity(0.62), location: 0.50),
-                    .init(color: Color.black.opacity(0.30), location: 0.74),
-                    .init(color: Color.black.opacity(0.10), location: 0.90),
+                    .init(color: Color.black.opacity(0.42), location: 0.00),
+                    .init(color: Color.black.opacity(0.18), location: 0.55),
                     .init(color: Color.clear, location: 1.00)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
             )
-            .frame(height: 168)
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(Color.black.opacity(0.10))
-                    .frame(height: 34)
-                    .blur(radius: 18)
-                    .offset(y: 12)
-            }
+            .frame(height: 110)
 
             Spacer(minLength: 0)
         }
-        .background(
-            VStack(spacing: 0) {
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-                    .opacity(0.16)
-                    .frame(height: 96)
-
-                Spacer(minLength: 0)
-            }
-        )
     }
 
     func typingBanner(text: String) -> some View {
@@ -256,48 +202,18 @@ extension CrewChatView {
         .padding(.top, 80)
     }
 
+    // Birebir Updo AI floating cam-daire.
     var crewChatCircleBackground: some View {
         Circle()
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color.white.opacity(0.105),
-                        Color.black.opacity(0.34),
-                        Color.white.opacity(0.055)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .background(
-                Circle()
-                    .fill(.ultraThinMaterial)
-                    .opacity(0.28)
-            )
-            .overlay(
-                Circle()
-                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
-            )
-            .shadow(color: Color.black.opacity(0.28), radius: 14, y: 7)
+            .fill(.ultraThinMaterial)
+            .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
     }
+
+    // Birebir Updo AI floating cam-pill.
     var crewChatCapsuleBackground: some View {
         Capsule()
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color(crewChatHex: "#1593FF").opacity(0.075),
-                        Color(crewChatHex: "#7C3AED").opacity(0.060),
-                        Color.white.opacity(0.055)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay(
-                Capsule()
-                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
-            )
-            .shadow(color: Color.black.opacity(0.20), radius: 12, y: 6)
+            .fill(.ultraThinMaterial)
+            .overlay(Capsule().strokeBorder(UpdoTheme.border, lineWidth: 1))
     }
 }
 

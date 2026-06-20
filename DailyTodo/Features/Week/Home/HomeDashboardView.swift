@@ -48,6 +48,7 @@ struct HomeDashboardView: View {
     @State var showFriendsShortcut = false
     @State var showRecentFriendChat = false
     @State var showTasksShortcut = false
+    @State var showStudyCoach = false
     @State var crewFocusGlowPulse: Bool = false
     @State var crewFocusNow = Date()
 
@@ -74,10 +75,11 @@ struct HomeDashboardView: View {
         case defaultFlow
     }
 
-    let dashboardTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    // Only drives `selectedDay` (changes at midnight) — 60 s is more than enough.
+    let dashboardTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     var dayTitles: [String] {
-        ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
+        (0..<7).map { localizedWeekdayShort($0) }
     }
 
     var dailyFlowSnapshot: DailyFlowSnapshot {
@@ -369,11 +371,11 @@ struct HomeDashboardView: View {
         switch action.style {
         case .planTomorrow: return "Planla"
         case .keepMomentum: return "Ekle"
-        case .lightenLoad: return "Aç"
-        case .overdueRecovery: return "Başla"
+        case .lightenLoad: return tr("hf_open")
+        case .overdueRecovery: return tr("hd_start")
         case .quickWin: return "Yap"
         case .startFocus: return "Odaklan"
-        case .beforeClass: return "Geç"
+        case .beforeClass: return tr("hdb_skip")
         }
     }
 
@@ -410,6 +412,8 @@ struct HomeDashboardView: View {
                     .offset(y: showMomentumCard ? 0 : 18)
                     .opacity(showMomentumCard ? 1 : 0)
                     .scaleEffect(showMomentumCard ? 1 : 0.985)
+
+                studyCoachEntryCard
             }
             .padding(.horizontal, 16)
             .padding(.top, 4)
@@ -421,7 +425,7 @@ struct HomeDashboardView: View {
         .safeAreaInset(edge: .bottom) {
             Color.clear.frame(height: 90)
         }
-        .sheet(isPresented: $showRecentFriendChat) {
+        .fullScreenCover(isPresented: $showRecentFriendChat) {
             if let recentFriend = recentChatFriend {
                 NavigationStack {
                     FriendChatView(friend: recentFriend)
@@ -438,6 +442,14 @@ struct HomeDashboardView: View {
                 TasksView()
                     .environmentObject(store)
             }
+        }
+        .sheet(isPresented: $showStudyCoach) {
+            CoachSheet(
+                courses: studentStore.courses,
+                ownerUserID: session.currentUser?.id.uuidString,
+                languageCode: locale.identifier,
+                weeklyGoalMinutes: studentStore.profile?.weeklyStudyGoalMinutes ?? 300
+            )
         }
         .onAppear {
             selectedDay = weekdayIndexToday()
@@ -466,6 +478,57 @@ struct HomeDashboardView: View {
             selectedDay = weekdayIndexToday()
         }
     }
+    @ViewBuilder
+    var studyCoachEntryCard: some View {
+        let coachAccent = Color(arenaHex: AppArenaPalette.cyan)
+
+        Button {
+            showStudyCoach = true
+        } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(coachAccent.opacity(0.13))
+                        .frame(width: 48, height: 48)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(coachAccent.opacity(0.18), lineWidth: 1)
+                        )
+
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 18, weight: .black))
+                        .foregroundStyle(coachAccent)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(tr("hdb_ai_coach"))
+                        .font(.system(size: 17, weight: .black))
+                        .foregroundStyle(palette.primaryText)
+
+                    Text(tr("hdb_create_routine"))
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(palette.secondaryText)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .black))
+                    .foregroundStyle(coachAccent.opacity(0.7))
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(palette.cardFill)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .stroke(palette.cardStroke, lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
     @ViewBuilder
     var suggestedActionSection: some View {
         if let suggestedAction = dailyFlowSnapshot.suggestedAction,

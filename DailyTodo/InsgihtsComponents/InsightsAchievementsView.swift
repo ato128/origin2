@@ -13,6 +13,7 @@ struct InsightsAchievementsView: View {
 
     @State private var selectedBadge: InsightsBadgeData?
     @State private var selectedPath: AchievementPath?
+    @State private var ringFilled = false
 
     private let accent = Color(arenaHex: AppArenaPalette.gold)
 
@@ -47,7 +48,7 @@ struct InsightsAchievementsView: View {
                     summaryCard
 
                     if !activePaths.isEmpty {
-                        sectionTitle("Aktif yollar", "Devam eden gelişim serileri")
+                        sectionTitle("Aktif yollar", tr("ia_ongoing"))
 
                         VStack(spacing: 12) {
                             ForEach(activePaths) { path in
@@ -65,7 +66,7 @@ struct InsightsAchievementsView: View {
                     }
 
                     if !completedPaths.isEmpty {
-                        sectionTitle("Tamamlanan yollar", "Bitirdiğin gelişim serileri")
+                        sectionTitle("Tamamlanan yollar", tr("ia_completed"))
 
                         VStack(spacing: 12) {
                             ForEach(completedPaths) { path in
@@ -83,7 +84,7 @@ struct InsightsAchievementsView: View {
                     }
 
                     if !unlocked.isEmpty {
-                        sectionTitle("Kazanılanlar", "Açtığın rozetler")
+                        sectionTitle(tr("ia_earned"), tr("ia_unlocked_badges"))
 
                         LazyVGrid(
                             columns: [
@@ -160,7 +161,7 @@ struct InsightsAchievementsView: View {
                         )
                 }
 
-                Text("Kategori bazlı gelişim yolları ve rozet ilerlemeleri.")
+                Text(tr("ia_subtitle"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.48))
                     .lineLimit(2)
@@ -212,7 +213,7 @@ struct InsightsAchievementsView: View {
                         .foregroundStyle(accent)
                 }
 
-                Text("\(unlocked.count) kazanıldı")
+                Text(tr("ia_unlocked_n", unlocked.count))
                     .font(.system(size: 27, weight: .black))
                     .foregroundStyle(.white)
 
@@ -230,7 +231,7 @@ struct InsightsAchievementsView: View {
                     .frame(width: 82, height: 82)
 
                 Circle()
-                    .trim(from: 0, to: totalProgress)
+                    .trim(from: 0, to: ringFilled ? totalProgress : 0)
                     .stroke(
                         LinearGradient(
                             colors: [
@@ -245,6 +246,12 @@ struct InsightsAchievementsView: View {
                     )
                     .rotationEffect(.degrees(-90))
                     .frame(width: 82, height: 82)
+                    .onAppear {
+                        guard !ringFilled else { return }
+                        withAnimation(.spring(response: 0.9, dampingFraction: 0.75).delay(0.2)) {
+                            ringFilled = true
+                        }
+                    }
 
                 VStack(spacing: 1) {
                     Text("\(paths.count)")
@@ -337,17 +344,17 @@ private enum AchievementPathBuilder {
 
         let streak = badges.filter { badge in
             let text = searchText(badge)
-            return text.contains("seri") || text.contains("streak") || text.contains("gün")
+            return text.contains("seri") || text.contains("streak") || text.contains(tr("hv_day_word"))
         }
 
         let task = badges.filter { badge in
             let text = searchText(badge)
-            return text.contains("task") || text.contains("görev") || text.contains("weekly warrior")
+            return text.contains("task") || text.contains(tr("task_lc")) || text.contains("weekly warrior")
         }
 
         let exam = badges.filter { badge in
             let text = searchText(badge)
-            return text.contains("exam") || text.contains("sınav")
+            return text.contains("exam") || text.contains(tr("exam_lc"))
         }
 
         let usedIDs = Set((focus + streak + task + exam).map(\.id))
@@ -357,7 +364,7 @@ private enum AchievementPathBuilder {
             AchievementPath(
                 id: "focus",
                 title: "Focus Path",
-                subtitle: "Odak oturumlarını geliştir",
+                subtitle: tr("ia_improve_focus"),
                 icon: "timer",
                 tint: Color(arenaHex: AppArenaPalette.cyan),
                 badges: sorted(focus)
@@ -365,7 +372,7 @@ private enum AchievementPathBuilder {
             AchievementPath(
                 id: "streak",
                 title: "Streak Path",
-                subtitle: "Düzenli çalışma serini büyüt",
+                subtitle: tr("ia_grow_streak"),
                 icon: "flame.fill",
                 tint: Color(arenaHex: AppArenaPalette.gold),
                 badges: sorted(streak)
@@ -373,7 +380,7 @@ private enum AchievementPathBuilder {
             AchievementPath(
                 id: "task",
                 title: "Task Path",
-                subtitle: "Görev tamamlama ritmini artır",
+                subtitle: tr("ia_boost_completion"),
                 icon: "checkmark.seal.fill",
                 tint: Color(arenaHex: AppArenaPalette.green),
                 badges: sorted(task)
@@ -381,7 +388,7 @@ private enum AchievementPathBuilder {
             AchievementPath(
                 id: "exam",
                 title: "Exam Path",
-                subtitle: "Sınav hazırlığını güçlendir",
+                subtitle: tr("iv_strengthen_prep"),
                 icon: "graduationcap.fill",
                 tint: Color(arenaHex: AppArenaPalette.purple),
                 badges: sorted(exam)
@@ -389,7 +396,7 @@ private enum AchievementPathBuilder {
             AchievementPath(
                 id: "other",
                 title: "Special Path",
-                subtitle: "Diğer özel kazanımlar",
+                subtitle: tr("ia_other"),
                 icon: "sparkles",
                 tint: Color(arenaHex: AppArenaPalette.coral),
                 badges: sorted(other)
@@ -431,7 +438,7 @@ private struct AchievementPathCard: View {
                         icon
 
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(current.isUnlocked ? "SON KAZANILAN" : "SIRADAKİ HEDEF")
+                            Text(current.isUnlocked ? "SON KAZANILAN" : tr("ia_next_goal_caps"))
                                 .font(.system(size: 10, weight: .black, design: .monospaced))
                                 .foregroundStyle(path.tint)
                                 .tracking(1.2)
@@ -461,7 +468,7 @@ private struct AchievementPathCard: View {
                 progressBar(progress: path.progress)
 
                 HStack {
-                    Text("YOL HARİTASINI AÇ")
+                    Text(tr("ia_open_roadmap_caps"))
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .tracking(0.8)
                         .foregroundStyle(path.tint)
@@ -614,6 +621,9 @@ private struct EarnedBadgeCard: View {
     let badge: InsightsBadgeData
     let action: () -> Void
 
+    /// One-shot gleam sweep on appear (not looping)
+    @State private var gleamX: CGFloat = -1.6
+
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 12) {
@@ -659,6 +669,31 @@ private struct EarnedBadgeCard: View {
             .padding(14)
             .frame(height: 154)
             .background(AchievementSurface(tint: badge.accent, strength: 0.55, radius: 24))
+            .overlay {
+                GeometryReader { geo in
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.0),
+                            Color.white.opacity(0.14),
+                            Color.white.opacity(0.0)
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(width: geo.size.width * 0.5)
+                    .rotationEffect(.degrees(18))
+                    .offset(x: geo.size.width * gleamX)
+                    .blendMode(.plusLighter)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .allowsHitTesting(false)
+            }
+            .onAppear {
+                guard gleamX < 0 else { return }
+                withAnimation(.easeInOut(duration: 0.9).delay(0.35)) {
+                    gleamX = 1.6
+                }
+            }
         }
         .buttonStyle(.plain)
     }
@@ -776,7 +811,7 @@ private struct AchievementDetailSheet: View {
                             .foregroundStyle(.white)
                             .lineLimit(2)
 
-                        Text(badge.isUnlocked ? "Kazanıldı" : "Henüz tamamlanmadı")
+                        Text(badge.isUnlocked ? tr("ia_earned_label") : tr("ia_not_done"))
                             .font(.system(size: 13, weight: .black))
                             .foregroundStyle(badge.isUnlocked ? Color(arenaHex: AppArenaPalette.green) : .white.opacity(0.58))
                     }
@@ -789,7 +824,7 @@ private struct AchievementDetailSheet: View {
 
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text("İLERLEME")
+                        Text(tr("ia_progress_caps"))
                             .font(.system(size: 10, weight: .black, design: .monospaced))
                             .tracking(1.2)
                             .foregroundStyle(.white.opacity(0.42))
@@ -916,11 +951,11 @@ private struct AchievementPathDetailSheet: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(path.unlockedCount)/\(path.badges.count) tamamlandı")
+                    Text(tr("rel_done_of", path.unlockedCount, path.badges.count))
                         .font(.system(size: 22, weight: .black))
                         .foregroundStyle(.white)
 
-                    Text("Sıradaki hedefe ilerle ve yeni rozetleri aç.")
+                    Text(tr("ia_progress_next"))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.50))
                 }
@@ -1079,8 +1114,8 @@ private struct AchievementPathDetailSheet: View {
         isLocked: Bool
     ) -> String {
         if badge.isUnlocked { return "TAMAMLANDI" }
-        if isCurrent { return "SIRADAKİ HEDEF" }
-        if isLocked { return "KİLİTLİ" }
+        if isCurrent { return tr("ia_next_goal_caps") }
+        if isLocked { return tr("ia_locked_caps") }
         return "HEDEF"
     }
 

@@ -190,9 +190,14 @@ struct CrewHomeView: View {
                         }
                     )
 
-                    CrewModeSwitch(selectedMode: $mode)
+                    // Community is hidden pre-launch (FeatureFlags.communityEnabled).
+                    // The mode switch only appears when Community is enabled; otherwise
+                    // the screen stays locked to the social (crews & friends) experience.
+                    if FeatureFlags.communityEnabled {
+                        CrewModeSwitch(selectedMode: $mode)
+                    }
 
-                    if mode == .social {
+                    if mode == .social || !FeatureFlags.communityEnabled {
                         CrewSocialContent(
                             selectedTab: $socialTab,
                             summary: summary,
@@ -641,42 +646,129 @@ private struct CrewSocialContent: View {
     let onJoinCrew: () -> Void
     let onAddFriend: () -> Void
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            CrewSocialHero(summary: summary)
+    @Environment(\.modelContext) private var modelContext
+    @ObservedObject private var subscription = SubscriptionManager.shared
+    @ObservedObject private var progression = ProgressionManager.shared
+    @State private var showStatsPaywall = false
 
-            CrewSocialTabBar(
-                selectedTab: $selectedTab,
-                crewCount: summary.crewCount,
-                friendCount: summary.friendCount,
-                requestCount: summary.requestCount
+    var body: some View {
+        // No top card / no sub-tabs: crews and friends live together on one screen.
+        VStack(alignment: .leading, spacing: 18) {
+            if subscription.isPro {
+                statsSharingToggle
+            } else {
+                socialProBanner
+            }
+
+            CrewSocialCrewSection(
+                crews: crews,
+                onOpenCrew: onOpenCrew,
+                onCreateCrew: onCreateCrew,
+                onJoinCrew: onJoinCrew
             )
 
-            switch selectedTab {
-            case .crews:
-                CrewSocialCrewSection(
-                    crews: crews,
-                    onOpenCrew: onOpenCrew,
-                    onCreateCrew: onCreateCrew,
-                    onJoinCrew: onJoinCrew
-                )
-
-            case .friends:
-                CrewSocialFriendsSection(
-                    friends: friends,
-                    onOpenFriend: onOpenFriend,
-                    onAddFriend: onAddFriend
-                )
-
-            case .requests:
-                CrewSocialCrewSection(
-                    crews: crews,
-                    onOpenCrew: onOpenCrew,
-                    onCreateCrew: onCreateCrew,
-                    onJoinCrew: onJoinCrew
-                )
-            }
+            CrewSocialFriendsSection(
+                friends: friends,
+                onOpenFriend: onOpenFriend,
+                onAddFriend: onAddFriend
+            )
         }
+        .sheet(isPresented: $showStatsPaywall) {
+            PaywallView(context: "social_stats")
+        }
+    }
+
+    /// Non-Pro: attractive hook to unlock the social stats layer.
+    private var socialProBanner: some View {
+        Button {
+            showStatsPaywall = true
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundStyle(.black)
+                    .frame(width: 40, height: 40)
+                    .background(
+                        Circle().fill(
+                            LinearGradient(
+                                colors: [Color(crewHex: CrewArenaPalette.gold), Color(crewHex: CrewArenaPalette.appCyan)],
+                                startPoint: .topLeading, endPoint: .bottomTrailing
+                            )
+                        )
+                    )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Arkadaşlarını yakından gör")
+                        .font(.system(size: 14, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text("Kim odakta, serisi & seviyesi kaç — Updo Pro ile aç")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 4)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .black))
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color(crewHex: CrewArenaPalette.gold).opacity(0.08))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(Color(crewHex: CrewArenaPalette.gold).opacity(0.3), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Pro: privacy switch to broadcast (or hide) my own stats.
+    private var statsSharingToggle: some View {
+        HStack(spacing: 12) {
+            Image(systemName: progression.statsSharingEnabled ? "eye.fill" : "eye.slash.fill")
+                .font(.system(size: 14, weight: .black))
+                .foregroundStyle(progression.statsSharingEnabled
+                                 ? Color(crewHex: CrewArenaPalette.liveGreen)
+                                 : .white.opacity(0.5))
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text("İstatistiğimi paylaş")
+                    .font(.system(size: 13, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text(progression.statsSharingEnabled
+                     ? "Arkadaşların seri, seviye ve odak durumunu görür"
+                     : "İstatistiğin kimseye gözükmüyor")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.5))
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 4)
+
+            Toggle("", isOn: Binding(
+                get: { progression.statsSharingEnabled },
+                set: { progression.setStatsSharing($0, context: modelContext) }
+            ))
+            .labelsHidden()
+            .tint(Color(crewHex: CrewArenaPalette.liveGreen))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.035))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                )
+        )
     }
 }
 
@@ -712,7 +804,7 @@ private struct CrewSocialHero: View {
                         .fill(Color(crewHex: CrewArenaPalette.appCyan))
                         .frame(width: 7, height: 7)
 
-                    Text("ÇALIŞMA ÇEVREN")
+                    Text(tr("ch_study_circle_caps"))
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .tracking(1.8)
                         .foregroundStyle(Color(crewHex: CrewArenaPalette.appCyan))
@@ -745,7 +837,7 @@ private struct CrewSocialHero: View {
                         .font(.system(size: 28, weight: .black))
                         .foregroundStyle(.white)
 
-                    Text("arkadaş")
+                    Text(tr("ch_friend_word"))
                         .font(.system(size: 24, weight: .regular, design: .serif))
                         .italic()
                         .foregroundStyle(.white.opacity(0.84))
@@ -758,7 +850,7 @@ private struct CrewSocialHero: View {
                         .fill(Color(crewHex: CrewArenaPalette.liveGreen))
                         .frame(width: 7, height: 7)
 
-                    Text("\(summary.liveCount) kişi odakta")
+                    Text(tr("ch_people_focusing", summary.liveCount))
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .foregroundStyle(Color(crewHex: CrewArenaPalette.liveGreen))
                         .lineLimit(1)
@@ -973,10 +1065,10 @@ private struct CrewSocialCrewSection: View {
             if crews.isEmpty {
                 CrewEmptyStateCard(
                     icon: "person.3.fill",
-                    title: "Henüz crew yok",
-                    subtitle: "Kendi çalışma takımını kur veya davet koduyla bir crew’e katıl.",
-                    primaryTitle: "Crew oluştur",
-                    secondaryTitle: "Koda katıl",
+                    title: tr("ch_no_crew"),
+                    subtitle: tr("ch_no_crew_sub"),
+                    primaryTitle: tr("ch_create_crew"),
+                    secondaryTitle: tr("ch_join_code"),
                     onPrimary: onCreateCrew,
                     onSecondary: onJoinCrew
                 )
@@ -996,6 +1088,8 @@ private struct CrewSocialCrewSection: View {
 
 private struct CrewSocialCrewCard: View {
     let crew: CrewSocialCrewCardData
+
+    @State private var barFilled = false
 
     private var progressValue: CGFloat {
         max(crew.progress, crew.isLive ? 0.72 : 0.18)
@@ -1090,7 +1184,7 @@ private struct CrewSocialCrewCard: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
-                    Text("BUGÜN")
+                    Text(tr("wv_today_caps"))
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .tracking(1.4)
                         .foregroundStyle(.white.opacity(0.34))
@@ -1098,9 +1192,14 @@ private struct CrewSocialCrewCard: View {
                     Text("·")
                         .foregroundStyle(.white.opacity(0.22))
 
-                    Text("🔥 \(crew.streakDays) gün")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundStyle(Color(crewHex: CrewArenaPalette.gold))
+                    HStack(spacing: 3) {
+                        Image(systemName: "flame.fill")
+                            .font(.system(size: 9, weight: .bold))
+
+                        Text(tr("ch_streak_days_n", crew.streakDays))
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    }
+                    .foregroundStyle(Color(crewHex: CrewArenaPalette.gold))
 
                     Text("·")
                         .foregroundStyle(.white.opacity(0.22))
@@ -1130,12 +1229,18 @@ private struct CrewSocialCrewCard: View {
                                 )
                             )
                             .frame(
-                                width: max(28, geo.size.width * progressValue),
+                                width: barFilled ? max(28, geo.size.width * progressValue) : 28,
                                 height: 5
                             )
                     }
                 }
                 .frame(height: 5)
+                .onAppear {
+                    guard !barFilled else { return }
+                    withAnimation(.spring(response: 0.7, dampingFraction: 0.74).delay(0.15)) {
+                        barFilled = true
+                    }
+                }
             }
 
             HStack(spacing: 10) {
@@ -1143,8 +1248,8 @@ private struct CrewSocialCrewCard: View {
 
                 Text(
                     crew.lastMessageText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
-                    ? (crew.lastMessageText ?? "Crew sohbeti hazır")
-                    : "Crew sohbeti hazır"
+                    ? (crew.lastMessageText ?? tr("ch_crew_chat_ready"))
+                    : tr("ch_crew_chat_ready")
                 )
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.42))
@@ -1234,18 +1339,18 @@ private struct CrewSocialFriendsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             CrewSectionTitle(
-                eyebrow: "ÖNERİLEN ARKADAŞLAR",
+                eyebrow: tr("ch_suggested_friends_caps"),
                 titleFirst: "Senin",
-                titleItalic: "için",
-                trailing: friends.isEmpty ? nil : "TÜMÜ"
+                titleItalic: tr("ch_for_word"),
+                trailing: friends.isEmpty ? nil : tr("ch_all_caps")
             )
 
             if friends.isEmpty {
                 CrewEmptyStateCard(
                     icon: "person.2.fill",
-                    title: "Henüz arkadaş yok",
-                    subtitle: "Arkadaş ekleyerek program paylaşabilir, sohbet edebilir ve birlikte odaklanabilirsin.",
-                    primaryTitle: "Arkadaş ekle",
+                    title: tr("ch_no_friends"),
+                    subtitle: tr("ch_no_friends_sub"),
+                    primaryTitle: tr("ch_add_friend"),
                     secondaryTitle: nil,
                     onPrimary: onAddFriend,
                     onSecondary: nil
@@ -1264,8 +1369,36 @@ private struct CrewSocialFriendsSection: View {
     }
 }
 
+/// Online/focusing presence indicator — slow opacity pulse (GPU composited),
+/// only animates while the friend is actually live.
+private struct CrewPresenceDot: View {
+    let isLive: Bool
+    @State private var glow = false
+
+    var body: some View {
+        Circle()
+            .fill(isLive ? Color(crewHex: CrewArenaPalette.liveGreen) : Color.gray.opacity(0.55))
+            .frame(width: 12, height: 12)
+            .overlay(Circle().stroke(Color(crewHex: CrewArenaPalette.surface), lineWidth: 2))
+            .opacity(isLive ? (glow ? 1.0 : 0.6) : 1.0)
+            .onAppear {
+                guard isLive else { return }
+                withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) {
+                    glow = true
+                }
+            }
+            .onDisappear { glow = false }
+    }
+}
+
 private struct CrewFriendRow: View {
     let friend: CrewSocialFriendCardData
+
+    @ObservedObject private var subscription = SubscriptionManager.shared
+
+    /// Social stats (currently-focusing, focus minutes, streak, level) are a
+    /// Pro-only layer. Non-Pro viewers only see plain online presence.
+    private var showStats: Bool { subscription.isPro }
 
     var body: some View {
         HStack(spacing: 13) {
@@ -1289,10 +1422,7 @@ private struct CrewFriendRow: View {
                             .foregroundStyle(.white.opacity(0.90))
                     )
 
-                Circle()
-                    .fill(friend.isOnline || friend.isFocusing ? Color(crewHex: CrewArenaPalette.liveGreen) : Color.gray.opacity(0.55))
-                    .frame(width: 12, height: 12)
-                    .overlay(Circle().stroke(Color(crewHex: CrewArenaPalette.surface), lineWidth: 2))
+                CrewPresenceDot(isLive: showStats ? (friend.isOnline || friend.isFocusing) : friend.isOnline)
             }
 
             VStack(alignment: .leading, spacing: 5) {
@@ -1315,15 +1445,52 @@ private struct CrewFriendRow: View {
                     .foregroundStyle(.white.opacity(0.36))
                     .lineLimit(1)
 
-                Text(friend.isFocusing ? friend.focusText : "↗ sosyal çevrende")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .foregroundStyle(friend.isFocusing ? Color(crewHex: CrewArenaPalette.liveGreen) : Color(crewHex: CrewArenaPalette.appBlue))
-                    .lineLimit(1)
+                if showStats {
+                    HStack(spacing: 8) {
+                        HStack(spacing: 3) {
+                            if !friend.isFocusing {
+                                Image(systemName: "arrow.up.right")
+                                    .font(.system(size: 8, weight: .bold))
+                            }
+
+                            Text(friend.isFocusing ? friend.focusText : tr("ch_in_social_circle"))
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(friend.isFocusing ? Color(crewHex: CrewArenaPalette.liveGreen) : Color(crewHex: CrewArenaPalette.appBlue))
+
+                        if let streak = friend.streak, streak > 0 {
+                            HStack(spacing: 2) {
+                                Image(systemName: "flame.fill")
+                                    .font(.system(size: 9, weight: .black))
+                                Text("\(streak)")
+                                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                            }
+                            .foregroundStyle(Color(crewHex: CrewArenaPalette.gold))
+                        }
+
+                        if let level = friend.level {
+                            Text("LV\(level)")
+                                .font(.system(size: 10, weight: .black, design: .monospaced))
+                                .foregroundStyle(.white.opacity(0.55))
+                        }
+                    }
+                } else {
+                    HStack(spacing: 4) {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 8, weight: .black))
+                        Text("İSTATİSTİK · PRO")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(0.6)
+                            .lineLimit(1)
+                    }
+                    .foregroundStyle(Color(crewHex: CrewArenaPalette.gold).opacity(0.85))
+                }
             }
 
             Spacer()
 
-            Text(friend.isFocusing ? "JOIN" : "MESAJ")
+            Text(showStats && friend.isFocusing ? "JOIN" : "MESAJ")
                 .font(.system(size: 11, weight: .black, design: .monospaced))
                 .foregroundStyle(.black)
                 .padding(.horizontal, 13)
@@ -1350,11 +1517,11 @@ private struct CrewRequestsSheet: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("İstekler")
+                        Text(tr("ch_requests"))
                             .font(.system(size: 31, weight: .black))
                             .foregroundStyle(.white)
 
-                        Text("Gelen ve gönderilen crew/arkadaş isteklerin burada.")
+                        Text(tr("ch_requests_sub"))
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(.white.opacity(0.48))
                     }
@@ -1388,7 +1555,7 @@ private struct CrewSocialRequestsSection: View {
                 CrewEmptyStateCard(
                     icon: "bell.badge.fill",
                     title: "Bekleyen istek yok",
-                    subtitle: "Yeni arkadaşlık veya crew istekleri burada görünecek.",
+                    subtitle: tr("ch_no_requests"),
                     primaryTitle: nil,
                     secondaryTitle: nil,
                     onPrimary: nil,
@@ -1398,7 +1565,7 @@ private struct CrewSocialRequestsSection: View {
 
             if !incomingRequests.isEmpty {
                 CrewSectionTitle(
-                    eyebrow: "GELEN İSTEKLER",
+                    eyebrow: tr("ch_incoming_caps"),
                     titleFirst: "Cevap",
                     titleItalic: "bekliyor",
                     trailing: "\(incomingRequests.count)"
@@ -1408,7 +1575,7 @@ private struct CrewSocialRequestsSection: View {
                     CrewRequestRow(
                         request: request,
                         primaryTitle: "KABUL",
-                        secondaryTitle: "SİL",
+                        secondaryTitle: tr("ch_delete_caps"),
                         onPrimary: {
                             onAcceptRequest(request.id)
                         },
@@ -1421,7 +1588,7 @@ private struct CrewSocialRequestsSection: View {
 
             if !sentRequests.isEmpty {
                 CrewSectionTitle(
-                    eyebrow: "GÖNDERİLEN İSTEKLER",
+                    eyebrow: tr("ch_sent_caps"),
                     titleFirst: "Bekleyen",
                     titleItalic: "istekler",
                     trailing: "\(sentRequests.count)"
@@ -1431,7 +1598,7 @@ private struct CrewSocialRequestsSection: View {
                     CrewRequestRow(
                         request: request,
                         primaryTitle: nil,
-                        secondaryTitle: "İPTAL",
+                        secondaryTitle: tr("ch_cancel_caps"),
                         onPrimary: nil,
                         onSecondary: {
                             onRemoveRequest(request.id)
@@ -1770,8 +1937,9 @@ private struct CrewWeeklyBattleCard: View {
                     .fill(Color(crewHex: CrewArenaPalette.crewCoral))
                     .frame(width: 50, height: 50)
                     .overlay(
-                        Text("⚔️")
-                            .font(.system(size: 23))
+                        Image(systemName: "bolt.shield.fill")
+                            .font(.system(size: 21, weight: .bold))
+                            .foregroundStyle(.white)
                     )
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -2069,14 +2237,14 @@ private struct CrewCommunityLeaderboardRow: View {
 
     private var focusLabel: String {
         if crew.focusMinutes <= 0 {
-            return "Henüz focus yok"
+            return tr("ch_no_focus_yet")
         }
 
         return "\(crew.focusTimeText) focus"
     }
 
     private var memberLabel: String {
-        "\(crew.memberCount) üye"
+        tr("ch_member_count", crew.memberCount)
     }
 
     private var rankColor: Color {
@@ -2144,9 +2312,13 @@ private struct CrewCommunityLeaderboardRow: View {
                         .lineLimit(1)
 
                     if !crew.badges.isEmpty {
-                        Text(crew.badges.joined())
-                            .font(.system(size: 12))
-                            .lineLimit(1)
+                        HStack(spacing: 2) {
+                            ForEach(Array(crew.badges.prefix(3).enumerated()), id: \.offset) { _, badge in
+                                Image(systemName: crewBadgeSymbol(badge))
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(crewBadgeTint(badge))
+                            }
+                        }
                     }
                 }
 
@@ -2355,7 +2527,7 @@ private struct CrewArenaEmptyLeaderboardCard: View {
                     Image(systemName: "timer")
                         .font(.system(size: 13, weight: .black))
 
-                    Text("Focus başlat")
+                    Text(tr("tv_start_focus"))
                         .font(.system(size: 13, weight: .black))
                 }
                 .foregroundStyle(.black)
@@ -2529,5 +2701,35 @@ private extension Color {
             blue: Double(b) / 255,
             opacity: Double(a) / 255
         )
+    }
+}
+
+// MARK: - Badge Mapping (emoji keys from backend → SF Symbols)
+
+/// Backend rozet anahtarları emoji string olarak gelir; UI'da SF Symbol kullanılır.
+private func crewBadgeSymbol(_ badge: String) -> String {
+    switch badge {
+    case "👑": return "crown.fill"
+    case "🏆": return "trophy.fill"
+    case "💎": return "diamond.fill"
+    case "⚡️", "⚡": return "bolt.fill"
+    case "🔥": return "flame.fill"
+    case "🥇": return "medal.fill"
+    case "🥈": return "medal.fill"
+    case "🥉": return "medal.fill"
+    case "🚀": return "paperplane.fill"
+    default:   return "star.fill"
+    }
+}
+
+private func crewBadgeTint(_ badge: String) -> Color {
+    switch badge {
+    case "👑", "🏆", "🥇": return Color(crewHex: CrewArenaPalette.gold)
+    case "💎":             return Color(crewHex: CrewArenaPalette.appCyan)
+    case "⚡️", "⚡":       return Color(crewHex: CrewArenaPalette.appCyan)
+    case "🔥":             return Color(crewHex: CrewArenaPalette.crewCoral)
+    case "🥈":             return Color.white.opacity(0.7)
+    case "🥉":             return Color(crewHex: CrewArenaPalette.crewCoral).opacity(0.8)
+    default:               return Color(crewHex: CrewArenaPalette.gold)
     }
 }

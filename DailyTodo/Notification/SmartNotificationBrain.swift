@@ -158,26 +158,26 @@ struct SmartNotificationBrain {
 
             switch days {
             case 14:
-                title = "\(courseText) için plan zamanı"
-                body = "Sınava 14 gün kaldı. Küçük bir çalışma planı oluşturmak iyi olur."
+                title = tr("snb_plan_time", courseText)
+                body = tr("snb_14days")
 
             case 7:
-                title = "\(courseText) sınavına 7 gün kaldı"
+                title = tr("snb_7days", courseText)
                 body = linkedPendingTasks.isEmpty
-                    ? "Bugün kısa bir tekrar planı hazırlayabilirsin."
-                    : "Planında bekleyen \(linkedPendingTasks.count) çalışma görevi var."
+                    ? tr("snb_review_plan")
+                    : tr("snb_pending", linkedPendingTasks.count)
 
             case 3:
-                title = "\(courseText) için son 3 gün"
-                body = "Bugün 35 dakikalık net bir tekrar iyi gider."
+                title = tr("snb_last3", courseText)
+                body = tr("snb_35min")
 
             case 1:
-                title = "\(courseText) yarın"
-                body = "Son tekrar için kısa bir focus oturumu başlatabilirsin."
+                title = tr("snb_tomorrow", courseText)
+                body = tr("snb_last_review")
 
             default:
-                title = "\(courseText) bugün"
-                body = "Sakin kal. Kısa bir tekrar ve düzenli tempo yeterli."
+                title = tr("snb_today", courseText)
+                body = tr("snb_stay_calm")
             }
 
             result.append(
@@ -232,8 +232,8 @@ struct SmartNotificationBrain {
             SmartNotificationCandidate(
                 id: "smart.streak.protect.\(dayKey(now))",
                 category: .streakProtection,
-                title: "Serin bugün bitebilir",
-                body: "25 dakikalık kısa bir focus ile ritmini koruyabilirsin.",
+                title: tr("snb_streak_end"),
+                body: tr("snb_keep_rhythm"),
                 triggerDate: trigger,
                 deepLink: "dailytodo://focus",
                 priority: 92
@@ -270,12 +270,12 @@ struct SmartNotificationBrain {
         }
 
         let title = count == 1
-            ? "Bugün için 1 görev kaldı"
-            : "Bugün için \(count) görev kaldı"
+            ? tr("snb_one_left")
+            : tr("snb_tasks_left", count)
 
         let body = overdue.isEmpty
-            ? "İstersen kısa bir focus ile günün akışını toparlayabilirsin."
-            : "\(overdue.count) geciken görev var. Küçük bir başlangıç yeterli."
+            ? tr("snb_recover_flow")
+            : tr("snb_overdue", overdue.count)
 
         return [
             SmartNotificationCandidate(
@@ -313,8 +313,8 @@ struct SmartNotificationBrain {
             SmartNotificationCandidate(
                 id: "smart.daily.focus.\(dayKey(now))",
                 category: .dailyFocus,
-                title: "Bugünü küçük bir focus ile toparla",
-                body: "25 dakikalık tek oturum bile ritmini geri getirir.",
+                title: tr("snb_recover_today"),
+                body: tr("snb_one_session"),
                 triggerDate: trigger,
                 deepLink: "dailytodo://focus",
                 priority: 58

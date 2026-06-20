@@ -133,7 +133,7 @@ enum InsightsEngine {
     }
 
     static func dayName(_ i: Int) -> String {
-        ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"][max(0, min(6, i))]
+        localizedWeekdayShort(max(0, min(6, i)))
     }
 
     static func durationText(_ minutes: Int) -> String {

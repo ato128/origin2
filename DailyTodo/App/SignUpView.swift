@@ -114,12 +114,12 @@ struct SignUpView: View {
         errorText = ""
 
         guard fullName.trimmingCharacters(in: .whitespaces).count >= 2 else {
-            errorText = "İsim çok kısa."
+            errorText = tr("su_name_short")
             return
         }
 
         guard email.contains("@") else {
-            errorText = "Geçerli email gir."
+            errorText = tr("su_valid_email")
             return
         }
 
@@ -129,7 +129,7 @@ struct SignUpView: View {
         }
 
         guard password.count >= 4 else {
-            errorText = "Şifre en az 4 karakter olsun."
+            errorText = tr("si_pw_short")
             return
         }
 
@@ -142,7 +142,7 @@ struct SignUpView: View {
             )
             dismiss()
         } catch {
-            errorText = "Kayıt oluşturulamadı."
+            errorText = tr("su_signup_failed")
         }
     }
 }

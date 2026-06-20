@@ -162,7 +162,7 @@ private extension FocusFullPageStageV7 {
     var modeTitleMain: String {
         switch mode {
         case .personal:
-            return "Kişisel"
+            return tr("ffp_personal")
         case .crew:
             return "Crew"
         case .friend:

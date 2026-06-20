@@ -93,7 +93,7 @@ struct RootView: View {
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .openCrewFocusFromNotification)) { output in
                     let crewID = output.object as? String
-                    print("🎯 OPEN CREW FOCUS TAB FROM NOTIFICATION:", crewID ?? "nil")
+                    Log.debug("🎯 OPEN CREW FOCUS TAB FROM NOTIFICATION:", crewID ?? "nil")
 
                     DispatchQueue.main.async {
                         NotificationCenter.default.post(
@@ -212,14 +212,14 @@ struct RootView: View {
 
         minimumLaunchTask?.cancel()
         minimumLaunchTask = Task { @MainActor in
-            print("🟡 ROOT COLD LAUNCH INTRO START")
+            Log.debug("🟡 ROOT COLD LAUNCH INTRO START")
 
             try? await Task.sleep(nanoseconds: minimumLaunchDurationNanoseconds)
             guard !Task.isCancelled else { return }
 
             didCompleteMinimumLaunch = true
 
-            print("✅ ROOT COLD LAUNCH INTRO COMPLETE")
+            Log.debug("✅ ROOT COLD LAUNCH INTRO COMPLETE")
         }
     }
 
@@ -229,7 +229,7 @@ struct RootView: View {
         let newUserID = currentUserID
 
         if lastObservedUserID != newUserID {
-            print("🟡 ROOT USER CHANGED:", lastObservedUserID ?? "nil", "→", newUserID ?? "nil")
+            Log.debug("🟡 ROOT USER CHANGED:", lastObservedUserID ?? "nil", "→", newUserID ?? "nil")
             lastObservedUserID = newUserID
         }
 
@@ -265,7 +265,7 @@ struct RootView: View {
             return
         }
 
-        print("🟡 ROOT HYDRATE START:", reason)
+        Log.debug("🟡 ROOT HYDRATE START:", reason)
 
         if !studentStore.didResolveRemoteProfile || studentStore.profile == nil {
             await studentStore.loadFromRemote()
@@ -278,7 +278,7 @@ struct RootView: View {
             reason: "\(reason).afterHydrate"
         )
 
-        print("✅ ROOT HYDRATE COMPLETE:", reason)
+        Log.debug("✅ ROOT HYDRATE COMPLETE:", reason)
     }
 
     private func markCurrentUserOnboardingCompletedIfNeeded() {
@@ -332,7 +332,7 @@ struct RootView: View {
             importExport = export
             showImportSheet = true
         } catch {
-            print("Import error:", error)
+            Log.debug("Import error:", error)
         }
     }
 
@@ -354,11 +354,11 @@ struct RootView: View {
 
 private struct PremiumStudentLaunchView: View {
     @State private var appear = false
-    @State private var logoReveal = false
-    @State private var arrowReveal = false
     @State private var wordReveal = false
-    @State private var breathe = false
     @State private var shimmer = false
+
+    /// Logo + wordmark color follow the currently selected app icon.
+    private var theme: (fg: AnyShapeStyle, glow: Color, word: AnyShapeStyle) { UpdoIconTheme.current() }
 
     var body: some View {
         ZStack {
@@ -374,9 +374,9 @@ private struct PremiumStudentLaunchView: View {
                         .font(.system(size: 62, weight: .regular, design: .serif))
                         .italic()
                         .tracking(-1.45)
-                        .foregroundStyle(wordmarkGradient)
+                        .foregroundStyle(theme.word)
                         .shadow(
-                            color: Color(rootHex: "#1D4ED8").opacity(0.18),
+                            color: theme.glow.opacity(0.32),
                             radius: 18,
                             y: 8
                         )
@@ -408,23 +408,12 @@ private struct PremiumStudentLaunchView: View {
                 appear = true
             }
 
-            withAnimation(.spring(response: 0.72, dampingFraction: 0.82).delay(0.04)) {
-                logoReveal = true
-            }
-
-            withAnimation(.spring(response: 0.56, dampingFraction: 0.80).delay(0.20)) {
-                arrowReveal = true
-            }
-
-            withAnimation(.spring(response: 0.62, dampingFraction: 0.90).delay(0.23)) {
+            // Wordmark reveals after the logo mark has started drawing in.
+            withAnimation(.spring(response: 0.62, dampingFraction: 0.90).delay(0.62)) {
                 wordReveal = true
             }
 
-            withAnimation(.easeInOut(duration: 1.85).repeatForever(autoreverses: true).delay(0.42)) {
-                breathe = true
-            }
-
-            withAnimation(.easeInOut(duration: 1.35).repeatForever(autoreverses: false).delay(0.30)) {
+            withAnimation(.easeInOut(duration: 1.35).repeatForever(autoreverses: false).delay(0.7)) {
                 shimmer = true
             }
         }
@@ -472,50 +461,10 @@ private struct PremiumStudentLaunchView: View {
     }
 
     private var logoScene: some View {
-        ZStack {
-            RadialGradient(
-                colors: [
-                    Color(rootHex: "#1D4ED8").opacity(logoReveal ? 0.24 : 0.00),
-                    Color(rootHex: "#312E81").opacity(logoReveal ? 0.15 : 0.00),
-                    Color.clear
-                ],
-                center: .center,
-                startRadius: 8,
-                endRadius: 124
-            )
-            .frame(width: 265, height: 265)
-            .blur(radius: 5)
-
-            ZStack {
-                Image(systemName: "scope")
-                    .font(.system(size: 156, weight: .ultraLight))
-                    .foregroundStyle(scopeGradient)
-                    .shadow(
-                        color: Color(rootHex: "#1D4ED8").opacity(0.24),
-                        radius: 22,
-                        y: 9
-                    )
-
-                Image(systemName: "location.north.fill")
-                    .font(.system(size: 56, weight: .black))
-                    .foregroundStyle(arrowGradient)
-                    .offset(y: arrowReveal ? -2 : 18)
-                    .opacity(arrowReveal ? 1 : 0)
-                    .scaleEffect(arrowReveal ? 1 : 0.64)
-                    .shadow(
-                        color: Color(rootHex: "#38BDF8").opacity(0.24),
-                        radius: 16,
-                        y: 7
-                    )
-            }
-            .rotationEffect(.degrees(logoReveal ? 360 : -55))
-            .scaleEffect(logoReveal ? (breathe ? 1.012 : 0.996) : 0.70)
-            .opacity(logoReveal ? 1 : 0)
-            .blur(radius: logoReveal ? 0 : 10)
-            .animation(.spring(response: 0.72, dampingFraction: 0.82), value: logoReveal)
-            .animation(.easeInOut(duration: 1.85).repeatForever(autoreverses: true), value: breathe)
-        }
-        .frame(width: 270, height: 270)
+        // Mirrors the currently selected app icon — change the icon, the launch
+        // animation follows.
+        UpdoLogoMark(fg: theme.fg, glow: theme.glow, size: 176)
+            .frame(width: 270, height: 270)
     }
 
     private var wordmarkShimmer: some View {
@@ -534,45 +483,6 @@ private struct PremiumStudentLaunchView: View {
         .opacity(wordReveal ? 1 : 0)
     }
 
-    private var scopeGradient: LinearGradient {
-        LinearGradient(
-            colors: [
-                Color(rootHex: "#F8FBFF"),
-                Color(rootHex: "#BFDFFF"),
-                Color(rootHex: "#60A5FA"),
-                Color(rootHex: "#2563EB"),
-                Color(rootHex: "#111827")
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
-    private var arrowGradient: LinearGradient {
-        LinearGradient(
-            colors: [
-                Color(rootHex: "#FFFFFF"),
-                Color(rootHex: "#BAE6FD"),
-                Color(rootHex: "#2563EB"),
-                Color(rootHex: "#1E1B4B")
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-    }
-
-    private var wordmarkGradient: LinearGradient {
-        LinearGradient(
-            colors: [
-                Color(rootHex: "#FFF7CC"),
-                Color(rootHex: "#FDE68A"),
-                Color(rootHex: "#FBBF24"),
-                Color(rootHex: "#B45309")
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
 }
 
 // MARK: - Local Hex Color
@@ -622,5 +532,128 @@ private extension Color {
             blue: Double(b) / 255,
             opacity: Double(a) / 255
         )
+    }
+}
+
+// MARK: - Shared Updo logo mark (single source for icon + launch animation)
+
+import UIKit
+
+/// The brand mark: a crosshair ring + 4 ticks + a north arrow — identical to the
+/// app icon art. Self-animates on appear (ring draws in, ticks pop, arrow rises).
+struct UpdoLogoMark: View {
+    var fg: AnyShapeStyle
+    var glow: Color
+    var size: CGFloat = 168
+    var animated: Bool = true
+
+    @State private var ringIn = false
+    @State private var ticksIn = false
+    @State private var arrowIn = false
+    @State private var breathe = false
+
+    var body: some View {
+        let lw = size * 0.052
+        let r = size * 0.285
+        let tick = size * 0.20
+
+        ZStack {
+            Circle()
+                .fill(RadialGradient(colors: [glow.opacity(0.30), .clear], center: .center, startRadius: 2, endRadius: size * 0.6))
+                .frame(width: size * 1.5, height: size * 1.5)
+                .blur(radius: 8)
+                .opacity(animated ? (ringIn ? 1 : 0) : 1)
+
+            // ring — draws in
+            Circle()
+                .trim(from: 0, to: animated ? (ringIn ? 1 : 0) : 1)
+                .stroke(fg, style: StrokeStyle(lineWidth: lw, lineCap: .round))
+                .frame(width: r * 2, height: r * 2)
+                .rotationEffect(.degrees(-90))
+
+            // ticks — pop in
+            ForEach(0..<4, id: \.self) { i in
+                Capsule()
+                    .fill(fg)
+                    .frame(width: lw, height: tick)
+                    .offset(y: -r)
+                    .rotationEffect(.degrees(Double(i) * 90))
+                    .scaleEffect(animated ? (ticksIn ? 1 : 0.15) : 1, anchor: .center)
+                    .opacity(animated ? (ticksIn ? 1 : 0) : 1)
+            }
+
+            // arrow — rises
+            UpdoCrosshairArrow()
+                .fill(fg)
+                .frame(width: size * 0.215, height: size * 0.235)
+                .offset(y: animated ? (arrowIn ? -size * 0.005 : size * 0.055) : -size * 0.005)
+                .opacity(animated ? (arrowIn ? 1 : 0) : 1)
+                .scaleEffect(animated ? (arrowIn ? 1 : 0.6) : 1)
+        }
+        .frame(width: size, height: size)
+        .scaleEffect(breathe ? 1.015 : 0.992)
+        .shadow(color: glow.opacity(0.35), radius: size * 0.05, y: size * 0.02)
+        .onAppear {
+            guard animated else { return }
+            withAnimation(.easeInOut(duration: 0.78)) { ringIn = true }
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.68).delay(0.46)) { ticksIn = true }
+            withAnimation(.spring(response: 0.55, dampingFraction: 0.74).delay(0.58)) { arrowIn = true }
+            withAnimation(.easeInOut(duration: 1.9).repeatForever(autoreverses: true).delay(0.9)) { breathe = true }
+        }
+    }
+}
+
+struct UpdoCrosshairArrow: Shape {
+    func path(in rect: CGRect) -> Path {
+        let w = rect.width, h = rect.height
+        let pts = [
+            CGPoint(x: rect.minX + 0.50 * w, y: rect.minY + 0.02 * h),
+            CGPoint(x: rect.minX + 0.97 * w, y: rect.minY + 0.97 * h),
+            CGPoint(x: rect.minX + 0.50 * w, y: rect.minY + 0.66 * h),
+            CGPoint(x: rect.minX + 0.03 * w, y: rect.minY + 0.97 * h)
+        ]
+        let radius = min(w, h) * 0.10
+        var path = Path()
+        let n = pts.count
+        for i in 0..<n {
+            let cur = pts[i], pr = pts[(i - 1 + n) % n], nx = pts[(i + 1) % n]
+            let tP = unit(cur, pr), tN = unit(cur, nx)
+            let rP = min(radius, dist(cur, pr) / 2), rN = min(radius, dist(cur, nx) / 2)
+            let st = CGPoint(x: cur.x + tP.x * rP, y: cur.y + tP.y * rP)
+            let en = CGPoint(x: cur.x + tN.x * rN, y: cur.y + tN.y * rN)
+            if i == 0 { path.move(to: st) } else { path.addLine(to: st) }
+            path.addQuadCurve(to: en, control: cur)
+        }
+        path.closeSubpath()
+        return path
+    }
+    private func unit(_ a: CGPoint, _ b: CGPoint) -> CGPoint {
+        let dx = b.x - a.x, dy = b.y - a.y, l = max((dx * dx + dy * dy).squareRoot(), 0.0001)
+        return CGPoint(x: dx / l, y: dy / l)
+    }
+    private func dist(_ a: CGPoint, _ b: CGPoint) -> CGFloat { ((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)).squareRoot() }
+}
+
+/// Maps the currently selected app icon to a matching logo color/glow so the
+/// launch animation always mirrors the chosen icon.
+enum UpdoIconTheme {
+    /// fg  = mark gradient (matches the app icon)
+    /// glow = halo / shadow color
+    /// word = a brighter 2-stop gradient for the "Updo" wordmark (legible on dark)
+    static func current() -> (fg: AnyShapeStyle, glow: Color, word: AnyShapeStyle) {
+        func grad(_ hexes: [String]) -> AnyShapeStyle {
+            AnyShapeStyle(LinearGradient(colors: hexes.map { Color(rootHex: $0) }, startPoint: .topLeading, endPoint: .bottomTrailing))
+        }
+        switch UIApplication.shared.alternateIconName {
+        case "AppIcon-Gold":    return (grad(["#FCD34D", "#FBBF24", "#D97706"]), Color(rootHex: "#F59E0B"), grad(["#FFE9A8", "#FBBF24"]))
+        case "AppIcon-Chrome":  return (grad(["#EEF3F7", "#9AA7B0", "#5B6770"]), Color(rootHex: "#AEB9C2"), grad(["#FFFFFF", "#9AA7B0"]))
+        case "AppIcon-Aurora":  return (grad(["#22D3EE", "#7C3AED", "#EC4899"]), Color(rootHex: "#7C3AED"), grad(["#67E8F9", "#C084FC"]))
+        case "AppIcon-Sunset":  return (grad(["#FBBF24", "#FB7185", "#F472B6"]), Color(rootHex: "#FB7185"), grad(["#FDE68A", "#FB7185"]))
+        case "AppIcon-Emerald": return (grad(["#6EE7B7", "#10B981", "#047857"]), Color(rootHex: "#10B981"), grad(["#A7F3D0", "#34D399"]))
+        case "AppIcon-Noir":    return (AnyShapeStyle(Color(rootHex: "#F2F4F7")), Color(rootHex: "#FFFFFF"), grad(["#FFFFFF", "#D1D5DB"]))
+        case "AppIcon-Carbon":  return (grad(["#A8B0BA", "#4B5563", "#1F2937"]), Color(rootHex: "#6B7280"), grad(["#E5E7EB", "#9CA3AF"]))
+        case "AppIcon-Ice":     return (grad(["#EAF7FF", "#7DD3FC", "#38BDF8"]), Color(rootHex: "#7DD3FC"), grad(["#F0FBFF", "#7DD3FC"]))
+        default:                return (grad(["#7FCBDD", "#5AB6CC", "#2E7C92"]), Color(rootHex: "#3C8FA6"), grad(["#BDEAF4", "#5AB6CC"])) // Steel
+        }
     }
 }

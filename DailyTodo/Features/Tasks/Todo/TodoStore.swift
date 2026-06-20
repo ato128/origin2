@@ -43,7 +43,7 @@ final class TodoStore: ObservableObject {
                 items = fetched
             }
         } catch {
-            print("❌ TodoStore.reload fetch failed:", error)
+            Log.debug("❌ TodoStore.reload fetch failed:", error)
             items = []
         }
     }
@@ -52,7 +52,7 @@ final class TodoStore: ObservableObject {
         do {
             try context.save()
         } catch {
-            print("❌ TodoStore.save failed:", error)
+            Log.debug("❌ TodoStore.save failed:", error)
         }
 
         reload()
@@ -83,7 +83,7 @@ final class TodoStore: ObservableObject {
         guard !trimmed.isEmpty else { return }
 
         guard let currentUserID else {
-            print("❌ TodoStore.add blocked: currentUserID nil")
+            Log.debug("❌ TodoStore.add blocked: currentUserID nil")
             return
         }
 
@@ -140,7 +140,7 @@ final class TodoStore: ObservableObject {
             try context.save()
             reload()
         } catch {
-            print("❌ addExamStudyTask error:", error.localizedDescription)
+            Log.debug("❌ addExamStudyTask error:", error.localizedDescription)
         }
     }
 

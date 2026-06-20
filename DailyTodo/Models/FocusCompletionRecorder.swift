@@ -78,7 +78,7 @@ final class FocusCompletionRecorder {
 
         guard !records.isEmpty else { return }
 
-        print("🟡 FOCUS RECORD RETRY:", reason, "count:", records.count)
+        Log.debug("🟡 FOCUS RECORD RETRY:", reason, "count:", records.count)
 
         for record in records {
             persistPendingRecordIfPossible(record, reason: reason)
@@ -90,13 +90,13 @@ final class FocusCompletionRecorder {
         reason: String
     ) {
         guard let container else {
-            print("⏳ FOCUS RECORD WAITING FOR CONTAINER:", reason)
+            Log.debug("⏳ FOCUS RECORD WAITING FOR CONTAINER:", reason)
             return
         }
 
         if hasAlreadySaved(pending) {
             removePending(pending)
-            print("⚪️ FOCUS RECORD DUPLICATE SKIPPED:", pending.title)
+            Log.debug("⚪️ FOCUS RECORD DUPLICATE SKIPPED:", pending.title)
             return
         }
 
@@ -120,14 +120,14 @@ final class FocusCompletionRecorder {
             markSaved(pending)
             removePending(pending)
 
-            print("✅ FOCUS RECORD SAVED:", pending.title, pending.completedSeconds)
+            Log.debug("✅ FOCUS RECORD SAVED:", pending.title, pending.completedSeconds)
 
             NotificationCenter.default.post(
                 name: .focusSessionRecordSaved,
                 object: record
             )
         } catch {
-            print("❌ FOCUS RECORD SAVE ERROR:", error.localizedDescription)
+            Log.debug("❌ FOCUS RECORD SAVE ERROR:", error.localizedDescription)
             savePendingIfNeeded(pending)
         }
     }
@@ -144,7 +144,7 @@ final class FocusCompletionRecorder {
         records.append(record)
         storePendingRecords(records)
 
-        print("🟡 FOCUS RECORD PENDING STORED:", record.title)
+        Log.debug("🟡 FOCUS RECORD PENDING STORED:", record.title)
     }
 
     private func removePending(_ record: PendingFocusRecord) {

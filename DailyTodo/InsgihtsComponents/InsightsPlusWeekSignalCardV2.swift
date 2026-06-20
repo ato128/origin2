@@ -12,7 +12,7 @@ struct InsightsPlusWeeklySignalCardV2: View {
     let action: (SmartSuggestionAction) -> Void
     let onTap: () -> Void
 
-    private let labels = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
+    private var labels: [String] { (0..<7).map { localizedWeekdayShort($0) } }
 
     private var secondaryAccent: Color {
         Color(red: 0.03, green: 0.18, blue: 0.36)

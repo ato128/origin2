@@ -85,10 +85,10 @@ struct AddEventView: View {
         .onChange(of: courseCode) { _, newValue in
             autoFillFromCode(newValue)
         }
-        .alert("Çakışma var", isPresented: $showConflictAlert) {
-            Button("Vazgeç", role: .cancel) { }
+        .alert(tr("ae_conflict"), isPresented: $showConflictAlert) {
+            Button(tr("common_cancel"), role: .cancel) { }
 
-            Button("Yine de ekle") {
+            Button(tr("ae_add_anyway")) {
                 saveIgnoringConflicts()
             }
         } message: {
@@ -133,7 +133,7 @@ struct AddEventView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
 
-                Text("Ders seç, gün ve saat belirle, haftana ekle.")
+                Text(tr("ae_header_sub"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.48))
                     .lineLimit(2)
@@ -199,7 +199,7 @@ struct AddEventView: View {
                         .foregroundStyle(accent)
                 }
 
-                Text(title.isEmpty ? "Ders seç" : title)
+                Text(title.isEmpty ? tr("ae_pick_class") : title)
                     .font(.system(size: 20, weight: .black))
                     .foregroundStyle(.white)
                     .lineLimit(2)
@@ -264,7 +264,7 @@ struct AddEventView: View {
             } label: {
                 disclosureHeader(
                     title: "Ekstra ders",
-                    subtitle: "Listede olmayan dersi ekle",
+                    subtitle: tr("ae_add_missing_class"),
                     icon: "plus.circle",
                     tint: Color(arenaHex: AppArenaPalette.green),
                     isOpen: showManualCourse
@@ -275,13 +275,13 @@ struct AddEventView: View {
             if showManualCourse {
                 VStack(spacing: 12) {
                     arenaTextField("Kod", text: $manualCourseCode, capitalization: .characters)
-                    arenaTextField("Ders adı", text: $manualCourseName)
+                    arenaTextField(tr("ae_class_name"), text: $manualCourseName)
 
                     Button {
                         addManualCourse()
                     } label: {
                         primaryActionButton(
-                            title: "DERSİ LİSTEYE EKLE",
+                            title: tr("ae_add_class_caps"),
                             icon: "plus.circle.fill",
                             tint: Color(arenaHex: AppArenaPalette.green)
                         )
@@ -309,8 +309,8 @@ struct AddEventView: View {
                 }
             } label: {
                 disclosureHeader(
-                    title: "Özel etkinlik",
-                    subtitle: "Ders dışı blok ekle",
+                    title: tr("ae_custom_event"),
+                    subtitle: tr("ae_custom_event_sub"),
                     icon: "calendar.badge.plus",
                     tint: Color(arenaHex: AppArenaPalette.gold),
                     isOpen: showCustomEvent
@@ -321,7 +321,7 @@ struct AddEventView: View {
             if showCustomEvent {
                 VStack(spacing: 12) {
                     arenaTextField("Kod", text: $courseCode, capitalization: .characters)
-                    arenaTextField("Başlık", text: $title)
+                    arenaTextField(tr("at_title"), text: $title)
                     arenaTextField("Konum (opsiyonel)", text: $location)
 
                     pickerBlock
@@ -338,7 +338,7 @@ struct AddEventView: View {
                         trySaveWithConflictCheck()
                     } label: {
                         primaryActionButton(
-                            title: "KAYDET",
+                            title: tr("common_save_caps"),
                             icon: "checkmark.circle.fill",
                             tint: accent
                         )
@@ -356,7 +356,7 @@ struct AddEventView: View {
 
     private var pickerBlock: some View {
         VStack(spacing: 12) {
-            Picker("Gün", selection: $weekday) {
+            Picker(tr("ae_day"), selection: $weekday) {
                 ForEach(0..<7, id: \.self) { i in
                     Text(localizedDayTitle(i)).tag(i)
                 }
@@ -416,7 +416,7 @@ struct AddEventView: View {
                     .font(.system(size: 17, weight: .black))
                     .foregroundStyle(.white)
 
-                Text("Profil > Öğrenci Bilgileri bölümünden ders ekleyebilirsin.")
+                Text(tr("ae_add_class_hint"))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.50))
                     .lineLimit(2)
@@ -500,7 +500,7 @@ struct AddEventView: View {
                     } label: {
                         HStack(spacing: 8) {
                             Image(systemName: isAdded ? "checkmark.circle.fill" : "plus.circle.fill")
-                            Text(isAdded ? "EKLENDİ" : "HAFTAYA EKLE")
+                            Text(isAdded ? tr("ae_added_caps") : tr("ae_add_to_week_caps"))
                             Spacer()
                             Image(systemName: "arrow.right")
                         }
@@ -543,7 +543,7 @@ struct AddEventView: View {
         ]
 
         return VStack(alignment: .leading, spacing: 10) {
-            Text("RENK")
+            Text(tr("common_color_caps"))
                 .font(.system(size: 10, weight: .black, design: .monospaced))
                 .tracking(0.8)
                 .foregroundStyle(.white.opacity(0.42))
@@ -903,7 +903,7 @@ struct AddEventView: View {
                 )
             }
         } catch {
-            print("Save error:", error)
+            Log.debug("Save error:", error)
         }
     }
 

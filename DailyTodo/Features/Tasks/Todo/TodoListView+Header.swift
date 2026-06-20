@@ -145,7 +145,7 @@ extension TodoListView {
 
     private var todoHeaderSubtitle: String {
         if overdueTaskCount > 0 {
-            return "\(overdueTaskCount) GÖREV BEKLİYOR"
+            return tr("tlh_tasks_waiting", overdueTaskCount)
         }
 
         if unreadCount > 0 {
@@ -155,13 +155,13 @@ extension TodoListView {
         if let next = nextClassInfo {
             switch next.status {
             case .live:
-                return "DERS ŞU AN AKTİF"
+                return tr("tlh_class_active")
             case .next:
-                return "SIRADAKİ DERS HAZIR"
+                return tr("tlh_next_class")
             }
         }
 
-        return "BUGÜN SAKİN GÖRÜNÜYOR"
+        return tr("tlh_today_calm")
     }
 
     func headerCircleButton(
@@ -212,7 +212,7 @@ extension TodoListView {
     }
     private var todoHeroTitle: String {
         if overdueTaskCount > 0 {
-            return "İyi akşamlar"
+            return tr("hh_good_evening")
         }
 
         if unreadCount > 0 {
@@ -222,20 +222,20 @@ extension TodoListView {
         if let next = nextClassInfo {
             switch next.status {
             case .live:
-                return "Akıştasın"
+                return tr("hh_in_flow")
             case .next:
-                return "İyi gidiyorsun"
+                return tr("hh_doing_well")
             }
         }
 
         let hour = Calendar.current.component(.hour, from: Date())
         switch hour {
         case 5..<12:
-            return "Günaydın"
+            return tr("hh_good_morning")
         case 12..<18:
-            return "İyi gidiyor"
+            return tr("hh_going_well")
         default:
-            return "İyi akşamlar"
+            return tr("hh_good_evening")
         }
     }
 

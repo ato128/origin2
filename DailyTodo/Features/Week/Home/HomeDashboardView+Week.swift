@@ -174,9 +174,9 @@ extension HomeDashboardView {
         case .crewFollowUp:
             return "Hafta ve Crew"
         case .insightsFollowUp:
-            return "Haftanın Akışı"
+            return tr("hdw_week_flow")
         case .completionWrapUp:
-            return "Yarın ve Hafta"
+            return tr("hdw_tomorrow_week")
         case .defaultFlow:
             return "Bu Hafta"
         }
@@ -187,22 +187,22 @@ extension HomeDashboardView {
         let emptyDays = (0..<7).filter { tasksCount(on: $0) == 0 }.count
 
         if shouldUseWrapUpMomentumTone {
-            return "Yarın için uygun günü hızlıca seç."
+            return tr("hdw_pick_tomorrow")
         }
 
         if hasVisibleUpcomingExamMomentum {
-            return "Sınav yaklaşırken haftanı dengede tut."
+            return tr("hdw_balance_exam")
         }
 
         if busyDays >= 3 {
-            return "\(busyDays) gün yoğun görünüyor."
+            return tr("hdw_busy_days", busyDays)
         }
 
         if emptyDays >= 3 {
-            return "Haftada boş alanların var."
+            return tr("hdw_free_spaces")
         }
 
-        return "Haftanın akışını tek bakışta gör."
+        return tr("hdw_see_flow")
     }
 
     var weekCTAButtonTitle: String {
@@ -210,7 +210,7 @@ extension HomeDashboardView {
         case .completionWrapUp:
             return "Planla"
         default:
-            return "Aç"
+            return tr("hf_open")
         }
     }
 

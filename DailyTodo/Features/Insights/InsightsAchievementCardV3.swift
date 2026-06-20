@@ -3,10 +3,10 @@
 //  DailyTodo
 //
 //  Tek kart achievement özeti.
-//  - Üst: eyebrow + "X / Y" + "tümü ↗" hint
+//  - Üst: eyebrow + "X / Y" + tr("iac_all_arrow") hint
 //  - Sol: SON KAZANILAN (gold halo, ikon büyük)
 //  - Sağ: SIRADAKİ (mor border, mini progress bar)
-//  - Alt strip: "+N KİLİTLİ" + soluk ikonlar
+//  - Alt strip: tr("iac_n_locked_caps") + soluk ikonlar
 //
 //  Tap → InsightsAchievementsView sheet açılır.
 //
@@ -92,7 +92,7 @@ struct InsightsAchievementCardV3: View {
             Spacer()
 
             HStack(spacing: 4) {
-                Text("tümü")
+                Text(tr("iac_all"))
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.50))
 
@@ -154,7 +154,7 @@ struct InsightsAchievementCardV3: View {
                     .minimumScaleFactor(0.75)
                     .multilineTextAlignment(.center)
 
-                Text("kazanıldı")
+                Text(tr("unlocked_lc"))
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.white.opacity(0.45))
                     .lineLimit(1)
@@ -181,8 +181,8 @@ struct InsightsAchievementCardV3: View {
         } else {
             // Henüz hiç kazanılmamış — ilk hedefi göster
             emptyTile(
-                title: "İLK HEDEFİN",
-                subtitle: "Henüz açılmadı",
+                title: tr("iac_first_goal_caps"),
+                subtitle: tr("iac_not_unlocked"),
                 icon: "lock.fill",
                 tint: .white.opacity(0.35)
             )
@@ -198,7 +198,7 @@ struct InsightsAchievementCardV3: View {
             let tint = target.accent
 
             VStack(alignment: .center, spacing: 5) {
-                Text("SIRADAKİ")
+                Text(tr("iac_next_caps"))
                     .font(.system(size: 8, weight: .black, design: .monospaced))
                     .tracking(0.9)
                     .foregroundStyle(tint)
@@ -272,7 +272,7 @@ struct InsightsAchievementCardV3: View {
             )
         } else {
             emptyTile(
-                title: "TAMAMI BİTTİ",
+                title: tr("iac_all_done_caps"),
                 subtitle: "Tebrikler",
                 icon: "checkmark.seal.fill",
                 tint: Color(arenaHex: AppArenaPalette.green)
@@ -318,7 +318,7 @@ struct InsightsAchievementCardV3: View {
 
     private var lockedStrip: some View {
         HStack(spacing: 8) {
-            Text("+\(locked.count) KİLİTLİ")
+            Text(tr("iac_locked_n", locked.count))
                 .font(.system(size: 9, weight: .black, design: .monospaced))
                 .tracking(0.7)
                 .foregroundStyle(.white.opacity(0.45))

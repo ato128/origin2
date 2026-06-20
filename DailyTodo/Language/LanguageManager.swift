@@ -16,11 +16,18 @@ final class LanguageManager: ObservableObject {
 
     init() {
         selectedLanguage = AppLanguage(rawValue: storedLanguageRawValue) ?? .system
+        // Mirror to the shared App Group so the Live Activity widget can localize too.
+        mirrorToAppGroup(selectedLanguage)
     }
 
     func setLanguage(_ language: AppLanguage) {
         selectedLanguage = language
         storedLanguageRawValue = language.rawValue
+        mirrorToAppGroup(language)
+    }
+
+    private func mirrorToAppGroup(_ language: AppLanguage) {
+        UserDefaults(suiteName: "group.com.atakan.updo")?.set(language.rawValue, forKey: "appLanguage")
     }
 
     var activeLocale: Locale {

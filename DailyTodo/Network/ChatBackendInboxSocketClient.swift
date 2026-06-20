@@ -549,7 +549,7 @@ extension ChatBackendInboxSocketClient: URLSessionWebSocketDelegate {
         didOpenWithProtocol protocol: String?
     ) {
         #if DEBUG
-        print("🟢 INBOX WS DID OPEN")
+        Log.debug("🟢 INBOX WS DID OPEN")
         #endif
     }
 
@@ -560,7 +560,7 @@ extension ChatBackendInboxSocketClient: URLSessionWebSocketDelegate {
         reason: Data?
     ) {
         #if DEBUG
-        print("🔴 INBOX WS DID CLOSE:", closeCode.rawValue)
+        Log.debug("🔴 INBOX WS DID CLOSE:", closeCode.rawValue)
         #endif
 
         Task { @MainActor in

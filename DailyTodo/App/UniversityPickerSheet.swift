@@ -170,7 +170,7 @@ struct UniversityPickerSheet: View {
     private var topFilterBar: some View {
         VStack(spacing: 14) {
             HStack(spacing: 10) {
-                countryButton(code: "tr", title: "Türkiye")
+                countryButton(code: "tr", title: tr("up_turkey"))
                 countryButton(code: "kktc", title: "KKTC")
             }
 
@@ -308,7 +308,7 @@ struct UniversityPickerSheet: View {
                         .lineLimit(2)
 
                     HStack(spacing: 7) {
-                        Text(university.country_code == "tr" ? "Türkiye" : "KKTC")
+                        Text(university.country_code == "tr" ? tr("up_turkey") : "KKTC")
                             .font(.system(size: 11, weight: .black, design: .monospaced))
                             .tracking(1.0)
                             .foregroundStyle(

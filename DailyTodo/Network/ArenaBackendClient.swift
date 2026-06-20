@@ -93,8 +93,8 @@ final class ArenaBackendClient {
 
         #if DEBUG
         let responseText = String(data: data, encoding: .utf8) ?? ""
-        print("✅ ARENA BACKEND \(debugName) STATUS:", http.statusCode)
-        print("✅ ARENA BACKEND \(debugName) RESPONSE:", responseText)
+        Log.debug("✅ ARENA BACKEND \(debugName) STATUS:", http.statusCode)
+        Log.debug("✅ ARENA BACKEND \(debugName) RESPONSE:", responseText)
         #endif
 
         do {
@@ -144,13 +144,13 @@ final class ArenaBackendClient {
             )
 
             guard decoded.ok else {
-                print("❌ ARENA summary API ERROR:", decoded.error ?? "unknown")
+                Log.debug("❌ ARENA summary API ERROR:", decoded.error ?? "unknown")
                 return nil
             }
 
             return decoded.summary
         } catch {
-            print("❌ ARENA summary ERROR:", error.localizedDescription)
+            Log.debug("❌ ARENA summary ERROR:", error.localizedDescription)
             return nil
         }
     }
@@ -176,13 +176,13 @@ final class ArenaBackendClient {
             )
 
             guard decoded.ok else {
-                print("❌ ARENA leaderboard API ERROR:", decoded.error ?? "unknown")
+                Log.debug("❌ ARENA leaderboard API ERROR:", decoded.error ?? "unknown")
                 return []
             }
 
             return decoded.entries ?? []
         } catch {
-            print("❌ ARENA leaderboard ERROR:", error.localizedDescription)
+            Log.debug("❌ ARENA leaderboard ERROR:", error.localizedDescription)
             return []
         }
     }
@@ -208,13 +208,13 @@ final class ArenaBackendClient {
             )
 
             guard decoded.ok else {
-                print("❌ ARENA topCrews API ERROR:", decoded.error ?? "unknown")
+                Log.debug("❌ ARENA topCrews API ERROR:", decoded.error ?? "unknown")
                 return []
             }
 
             return decoded.crews ?? []
         } catch {
-            print("❌ ARENA topCrews ERROR:", error.localizedDescription)
+            Log.debug("❌ ARENA topCrews ERROR:", error.localizedDescription)
             return []
         }
     }
@@ -233,13 +233,13 @@ final class ArenaBackendClient {
             )
 
             guard decoded.ok else {
-                print("❌ ARENA weeklyChallenge API ERROR:", decoded.error ?? "unknown")
+                Log.debug("❌ ARENA weeklyChallenge API ERROR:", decoded.error ?? "unknown")
                 return nil
             }
 
             return decoded.challenge
         } catch {
-            print("❌ ARENA weeklyChallenge ERROR:", error.localizedDescription)
+            Log.debug("❌ ARENA weeklyChallenge ERROR:", error.localizedDescription)
             return nil
         }
     }

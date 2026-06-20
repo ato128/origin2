@@ -234,13 +234,13 @@ private extension BackendCreateCrewTaskSheet {
                             .font(.system(size: 30, weight: .black))
                             .foregroundStyle(.white)
 
-                        Text("görev")
+                        Text(tr("task_lc"))
                             .font(.system(size: 25, weight: .regular, design: .serif))
                             .italic()
                             .foregroundStyle(BackendCreateTaskArenaPalette.cyan)
                     }
 
-                    Text("Crew için ortak görev oluştur, kişiye ata ve haftaya planla.")
+                    Text(tr("bct_subtitle"))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.50))
                         .lineLimit(2)
@@ -277,15 +277,15 @@ private extension BackendCreateCrewTaskSheet {
 private extension BackendCreateCrewTaskSheet {
     var taskInfoCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionTitle(eyebrow: "TASK INFO", title: "Görev", italic: "bilgisi")
+            sectionTitle(eyebrow: "TASK INFO", title: tr("at_kind_task"), italic: "bilgisi")
 
             VStack(spacing: 10) {
                 fieldBox(
-                    title: "Başlık",
+                    title: tr("at_title"),
                     icon: "text.cursor",
                     tint: BackendCreateTaskArenaPalette.blue
                 ) {
-                    TextField("Görev başlığı", text: $title)
+                    TextField(tr("ct_task_title_ph"), text: $title)
                         .font(.system(size: 17, weight: .black))
                         .foregroundStyle(.white)
                         .submitLabel(.done)
@@ -296,7 +296,7 @@ private extension BackendCreateCrewTaskSheet {
                     icon: "text.alignleft",
                     tint: BackendCreateTaskArenaPalette.purple
                 ) {
-                    TextField("Kısa açıklama ekle", text: $details, axis: .vertical)
+                    TextField(tr("bct_add_desc"), text: $details, axis: .vertical)
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(.white)
                         .lineLimit(3...6)
@@ -309,10 +309,10 @@ private extension BackendCreateCrewTaskSheet {
 
     var assignmentCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionTitle(eyebrow: "ASSIGNMENT", title: "Atama", italic: "seçimi")
+            sectionTitle(eyebrow: "ASSIGNMENT", title: "Atama", italic: tr("ph_w_selection"))
 
             Picker(selection: $selectedAssigneeID) {
-                Text("Atanmamış").tag(UUID?.none)
+                Text(tr("bct_unassigned")).tag(UUID?.none)
 
                 ForEach(members) { member in
                     Text(displayName(for: member))
@@ -321,10 +321,10 @@ private extension BackendCreateCrewTaskSheet {
             } label: {
                 pickerLabel(
                     icon: "person.fill",
-                    title: "Sorumlu kişi",
+                    title: tr("bct_assignee"),
                     value: selectedAssigneeID.flatMap { id in
                         members.first(where: { $0.user_id == id }).map(displayName(for:))
-                    } ?? "Atanmamış",
+                    } ?? tr("bct_unassigned"),
                     tint: BackendCreateTaskArenaPalette.cyan
                 )
             }
@@ -337,11 +337,11 @@ private extension BackendCreateCrewTaskSheet {
 
     var priorityStatusCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionTitle(eyebrow: "TASK STATE", title: "Öncelik", italic: "durum")
+            sectionTitle(eyebrow: "TASK STATE", title: tr("priority_label"), italic: "durum")
 
             VStack(spacing: 14) {
                 optionGrid(
-                    title: "Öncelik",
+                    title: tr("priority_label"),
                     options: priorityOptions,
                     selection: $priority,
                     colorProvider: priorityColor,
@@ -385,7 +385,7 @@ private extension BackendCreateCrewTaskSheet {
                     .tint(BackendCreateTaskArenaPalette.green)
 
                     Stepper(
-                        "Süre: \(durationMinute) dk",
+                        "\(tr("duration_label")): \(durationMinute) \(tr("common_min_short"))",
                         value: $durationMinute,
                         in: 15...240,
                         step: 15
@@ -396,7 +396,7 @@ private extension BackendCreateCrewTaskSheet {
                 .padding(14)
                 .background(detailSurface(cornerRadius: 22, tint: BackendCreateTaskArenaPalette.green))
             } else {
-                Text("Bu görev sadece crew içinde kalır. İstersen Week ekranına da ekleyebilirsin.")
+                Text(tr("bct_crew_only"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.46))
                     .padding(14)
@@ -423,7 +423,7 @@ private extension BackendCreateCrewTaskSheet {
                         .font(.system(size: 18, weight: .black))
                 }
 
-                Text("Görevi Kaydet")
+                Text(tr("bct_save_task"))
                     .font(.system(size: 16, weight: .black))
             }
             .foregroundStyle(.black)
@@ -725,9 +725,9 @@ private extension BackendCreateCrewTaskSheet {
         let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
 
         switch raw {
-        case "low": return isTurkish ? "Düşük" : "Low"
+        case "low": return isTurkish ? tr("prio_low") : "Low"
         case "medium": return isTurkish ? "Orta" : "Medium"
-        case "high": return isTurkish ? "Yüksek" : "High"
+        case "high": return isTurkish ? tr("prio_high") : "High"
         case "urgent": return isTurkish ? "Acil" : "Urgent"
         default: return raw.capitalized
         }
@@ -737,10 +737,10 @@ private extension BackendCreateCrewTaskSheet {
         let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
 
         switch raw {
-        case "todo": return isTurkish ? "Yapılacak" : "Todo"
+        case "todo": return isTurkish ? tr("status_todo") : "Todo"
         case "inProgress": return isTurkish ? "Devam Ediyor" : "In Progress"
-        case "review": return isTurkish ? "İncelemede" : "Review"
-        case "done": return isTurkish ? "Tamamlandı" : "Done"
+        case "review": return isTurkish ? tr("status_review") : "Review"
+        case "done": return isTurkish ? tr("common_completed") : "Done"
         default: return raw.capitalized
         }
     }

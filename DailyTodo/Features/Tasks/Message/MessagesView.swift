@@ -84,11 +84,11 @@ struct MessagesView: View {
             let preview: String
 
             if isTyping {
-                preview = "Yazıyor..."
+                preview = tr("mv_typing")
             } else if let backendLastText, !backendLastText.isEmpty {
                 preview = cleanedPreview(backendLastText)
             } else {
-                preview = friend.subtitle.isEmpty ? "Henüz mesaj yok" : friend.subtitle
+                preview = friend.subtitle.isEmpty ? tr("mv_no_messages") : friend.subtitle
             }
 
             let lastDate = backendDate(backendConversation?.lastMessageAt)
@@ -404,7 +404,7 @@ private extension MessagesView {
 
             messageMetricPill(
                 value: "\(unreadTotalCount)",
-                title: "OKUNMAMIŞ",
+                title: tr("mv_unread_caps"),
                 tint: unreadTotalCount > 0
                 ? Color(arenaHex: AppArenaPalette.gold)
                 : Color(arenaHex: AppArenaPalette.cyan)
@@ -416,7 +416,7 @@ private extension MessagesView {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle(
                 eyebrow: "LIVE NOW",
-                title: "Şu an",
+                title: tr("mv_now"),
                 italic: "online",
                 tint: Color(arenaHex: AppArenaPalette.green)
             )
@@ -442,17 +442,17 @@ private extension MessagesView {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle(
                 eyebrow: "ALL CHATS",
-                title: "Tüm",
+                title: tr("mv_all"),
                 italic: "sohbetler",
                 tint: Color(arenaHex: AppArenaPalette.cyan)
             )
 
             if filteredConversationItems.isEmpty {
                 emptyState(
-                    title: searchText.isEmpty ? "Henüz sohbet yok" : "Sonuç bulunamadı",
+                    title: searchText.isEmpty ? tr("mv_no_chats") : tr("mv_no_results"),
                     subtitle: searchText.isEmpty
-                    ? "Friend ve crew sohbetlerin burada görünecek."
-                    : "Aramayı değiştirip tekrar dene.",
+                    ? tr("mv_empty_sub")
+                    : tr("mv_search_retry"),
                     systemImage: "bubble.left.and.bubble.right"
                 )
             } else {
@@ -688,7 +688,7 @@ private extension MessagesView {
                 togglePinFriendChat(friend)
             } label: {
                 Label(
-                    isPinned ? "Sabitlemeyi kaldır" : "Sohbeti sabitle",
+                    isPinned ? tr("mv_unpin") : "Sohbeti sabitle",
                     systemImage: isPinned ? "pin.slash" : "pin"
                 )
             }
@@ -697,7 +697,7 @@ private extension MessagesView {
                 toggleMuteFriendChat(friend)
             } label: {
                 Label(
-                    isMuted ? "Sessizden çıkar" : "Sessize al",
+                    isMuted ? tr("mv_unmute") : tr("mv_mute"),
                     systemImage: isMuted ? "bell" : "bell.slash"
                 )
             }
@@ -705,7 +705,7 @@ private extension MessagesView {
             Button(role: .destructive) {
                 archiveFriendChat(friend)
             } label: {
-                Label("Arşivle", systemImage: "archivebox")
+                Label(tr("mv_archive"), systemImage: "archivebox")
             }
 
         case .friendSummary(let summary):
@@ -713,7 +713,7 @@ private extension MessagesView {
                 togglePinFriendChat(summary)
             } label: {
                 Label(
-                    summary.isPinned ? "Sabitlemeyi kaldır" : "Sohbeti sabitle",
+                    summary.isPinned ? tr("mv_unpin") : "Sohbeti sabitle",
                     systemImage: summary.isPinned ? "pin.slash" : "pin"
                 )
             }
@@ -722,7 +722,7 @@ private extension MessagesView {
                 toggleMuteFriendChat(summary)
             } label: {
                 Label(
-                    summary.isMuted ? "Sessizden çıkar" : "Sessize al",
+                    summary.isMuted ? tr("mv_unmute") : tr("mv_mute"),
                     systemImage: summary.isMuted ? "bell" : "bell.slash"
                 )
             }
@@ -730,7 +730,7 @@ private extension MessagesView {
             Button(role: .destructive) {
                 archiveFriendChat(summary)
             } label: {
-                Label("Arşivle", systemImage: "archivebox")
+                Label(tr("mv_archive"), systemImage: "archivebox")
             }
 
         case .crew(let crew):
@@ -742,7 +742,7 @@ private extension MessagesView {
                 togglePinCrewChat(crew)
             } label: {
                 Label(
-                    pinned ? "Sabitlemeyi kaldır" : "Sohbeti sabitle",
+                    pinned ? tr("mv_unpin") : "Sohbeti sabitle",
                     systemImage: pinned ? "pin.slash" : "pin"
                 )
             }
@@ -751,7 +751,7 @@ private extension MessagesView {
                 toggleMuteCrewChat(crew)
             } label: {
                 Label(
-                    muted ? "Sessizden çıkar" : "Sessize al",
+                    muted ? tr("mv_unmute") : tr("mv_mute"),
                     systemImage: muted ? "bell" : "bell.slash"
                 )
             }
@@ -759,7 +759,7 @@ private extension MessagesView {
             Button(role: .destructive) {
                 archiveCrewChat(crew)
             } label: {
-                Label("Arşivle", systemImage: "archivebox")
+                Label(tr("mv_archive"), systemImage: "archivebox")
             }
         }
     }
@@ -982,15 +982,15 @@ private extension MessagesView {
             let conversations = cached.map { $0.toDTO() }
 
             guard !conversations.isEmpty else {
-                print("⚪️ MESSAGES HUB CONVERSATION CACHE EMPTY")
+                Log.debug("⚪️ MESSAGES HUB CONVERSATION CACHE EMPTY")
                 return
             }
 
             backendConversations = sortedBackendConversations(conversations)
 
-            print("🟢 MESSAGES HUB CONVERSATION CACHE LOADED:", conversations.count)
+            Log.debug("🟢 MESSAGES HUB CONVERSATION CACHE LOADED:", conversations.count)
         } catch {
-            print("❌ MESSAGES HUB CONVERSATION CACHE LOAD ERROR:", error.localizedDescription)
+            Log.debug("❌ MESSAGES HUB CONVERSATION CACHE LOAD ERROR:", error.localizedDescription)
         }
     }
 
@@ -1015,7 +1015,7 @@ private extension MessagesView {
 
             try modelContext.save()
         } catch {
-            print("❌ MESSAGES HUB CONVERSATION CACHE UPSERT ERROR:", error.localizedDescription)
+            Log.debug("❌ MESSAGES HUB CONVERSATION CACHE UPSERT ERROR:", error.localizedDescription)
         }
     }
 
@@ -1088,7 +1088,7 @@ private extension MessagesView {
     }
     func refreshBackendConversations(reason: String = "manual") async {
         guard !isRefreshingBackendConversations else {
-            print("⚪️ MESSAGES HUB BACKEND REFRESH SKIPPED: already refreshing")
+            Log.debug("⚪️ MESSAGES HUB BACKEND REFRESH SKIPPED: already refreshing")
             return
         }
 
@@ -1113,7 +1113,7 @@ private extension MessagesView {
             }
         }
 
-        print("🟢 MESSAGES HUB BACKEND REFRESHED:", reason, conversations.count)
+        Log.debug("🟢 MESSAGES HUB BACKEND REFRESHED:", reason, conversations.count)
     }
     
     func scheduleBackendConversationRefresh(
@@ -1205,9 +1205,9 @@ private extension MessagesView {
 
         upsertCachedBackendConversation(conversation)
 
-        print("🟢 MESSAGES HUB LIVE UPSERT:", conversation.id.uuidString)
-        print("🟢 MESSAGES HUB LIVE LAST:", conversation.lastMessageText ?? "nil")
-        print("🟢 MESSAGES HUB LIVE UNREAD:", conversation.unreadCount)
+        Log.debug("🟢 MESSAGES HUB LIVE UPSERT:", conversation.id.uuidString)
+        Log.debug("🟢 MESSAGES HUB LIVE LAST:", conversation.lastMessageText ?? "nil")
+        Log.debug("🟢 MESSAGES HUB LIVE UNREAD:", conversation.unreadCount)
     }
 
     private func cleanedPreview(_ text: String) -> String {
@@ -1335,7 +1335,7 @@ private extension MessagesView {
 
     private func togglePinFriendChat(_ summary: FriendChatThreadSummary) {
         guard let conversationID = backendConversationID(for: summary.friendshipID) else {
-            print("❌ MEMBER STATE PIN SKIPPED: backend conversation not found")
+            Log.debug("❌ MEMBER STATE PIN SKIPPED: backend conversation not found")
             return
         }
 
@@ -1355,7 +1355,7 @@ private extension MessagesView {
 
     private func toggleMuteFriendChat(_ summary: FriendChatThreadSummary) {
         guard let conversationID = backendConversationID(for: summary.friendshipID) else {
-            print("❌ MEMBER STATE MUTE SKIPPED: backend conversation not found")
+            Log.debug("❌ MEMBER STATE MUTE SKIPPED: backend conversation not found")
             return
         }
 
@@ -1375,7 +1375,7 @@ private extension MessagesView {
 
     private func archiveFriendChat(_ summary: FriendChatThreadSummary) {
         guard let conversationID = backendConversationID(for: summary.friendshipID) else {
-            print("❌ MEMBER STATE ARCHIVE SKIPPED: backend conversation not found")
+            Log.debug("❌ MEMBER STATE ARCHIVE SKIPPED: backend conversation not found")
             return
         }
 
@@ -1397,7 +1397,7 @@ private extension MessagesView {
         guard let friendshipID = friend.backendFriendshipID else { return }
 
         guard let conversationID = backendConversationID(for: friendshipID) else {
-            print("❌ MEMBER STATE PIN SKIPPED: backend conversation not found")
+            Log.debug("❌ MEMBER STATE PIN SKIPPED: backend conversation not found")
             return
         }
 
@@ -1423,7 +1423,7 @@ private extension MessagesView {
         guard let friendshipID = friend.backendFriendshipID else { return }
 
         guard let conversationID = backendConversationID(for: friendshipID) else {
-            print("❌ MEMBER STATE MUTE SKIPPED: backend conversation not found")
+            Log.debug("❌ MEMBER STATE MUTE SKIPPED: backend conversation not found")
             return
         }
 
@@ -1449,7 +1449,7 @@ private extension MessagesView {
         guard let friendshipID = friend.backendFriendshipID else { return }
 
         guard let conversationID = backendConversationID(for: friendshipID) else {
-            print("❌ MEMBER STATE ARCHIVE SKIPPED: backend conversation not found")
+            Log.debug("❌ MEMBER STATE ARCHIVE SKIPPED: backend conversation not found")
             return
         }
 
@@ -1486,7 +1486,7 @@ private extension MessagesView {
             }
 
             guard let conversationID else {
-                print("❌ CREW MEMBER STATE PIN SKIPPED: backend conversation not found")
+                Log.debug("❌ CREW MEMBER STATE PIN SKIPPED: backend conversation not found")
                 return
             }
 
@@ -1522,7 +1522,7 @@ private extension MessagesView {
             }
 
             guard let conversationID else {
-                print("❌ CREW MEMBER STATE MUTE SKIPPED: backend conversation not found")
+                Log.debug("❌ CREW MEMBER STATE MUTE SKIPPED: backend conversation not found")
                 return
             }
 
@@ -1556,7 +1556,7 @@ private extension MessagesView {
             }
 
             guard let conversationID else {
-                print("❌ CREW MEMBER STATE ARCHIVE SKIPPED: backend conversation not found")
+                Log.debug("❌ CREW MEMBER STATE ARCHIVE SKIPPED: backend conversation not found")
                 return
             }
 

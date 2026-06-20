@@ -14,6 +14,7 @@ struct FocusCelebrationView: View {
     @State private var pulse = false
     @State private var iconBounce = false
     @State private var showStats = false
+    @State private var burstProgress: CGFloat = 0
 
     private var modeAccent: Color {
         switch summary.mode {
@@ -60,25 +61,25 @@ struct FocusCelebrationView: View {
             return ("\(delta) dk", Color(arenaHex: AppArenaPalette.coral), "arrow.down")
         }
 
-        return ("Aynı", .white.opacity(0.6), "equal")
+        return (tr("fcv_same"), .white.opacity(0.6), "equal")
     }
 
     private var encouragementText: String {
         guard let previous = summary.previousMinutes, previous > 0 else {
-            return "İlk focus oturumun tamamlandı!"
+            return tr("fcv_first_done")
         }
 
         let delta = summary.durationMinutes - previous
 
         if delta > 0 {
-            return "Geçen seferden \(delta) dakika daha iyi 🚀"
+            return tr("fcv_better", delta)
         }
 
         if delta < 0 {
             return "Bir sonraki seferde daha uzun odaklanabilirsin 💪"
         }
 
-        return "Geçen seferki süreyi tutturdun 👏"
+        return tr("fcv_matched_time")
     }
 
     var body: some View {
@@ -109,6 +110,8 @@ struct FocusCelebrationView: View {
             }
         }
         .onAppear {
+            HapticManager.shared.success()
+
             withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
                 pulse = true
             }
@@ -118,7 +121,11 @@ struct FocusCelebrationView: View {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.84).delay(0.35)) {
                 showStats = true
             }
+            withAnimation(.easeOut(duration: 1.1).delay(0.15)) {
+                burstProgress = 1
+            }
         }
+        .onDisappear { pulse = false }
     }
 
     private var headerSection: some View {
@@ -136,13 +143,20 @@ struct FocusCelebrationView: View {
                     .minimumScaleFactor(0.7)
             }
 
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text("Tebrikler")
                     .font(.system(size: 42, weight: .black))
                     .foregroundStyle(.white)
 
-                Text("🎉")
-                    .font(.system(size: 36))
+                Image(systemName: "party.popper.fill")
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [modeAccent, modeSecondaryAccent],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
                     .scaleEffect(iconBounce ? 1.0 : 0.6)
                     .rotationEffect(.degrees(iconBounce ? 0 : -20))
             }
@@ -154,6 +168,16 @@ struct FocusCelebrationView: View {
 
     private var medalSection: some View {
         ZStack {
+            // One-shot radial burst: 10 rays expand outward and fade, runs once.
+            ForEach(0..<10, id: \.self) { i in
+                Capsule()
+                    .fill((i % 2 == 0 ? modeAccent : modeSecondaryAccent).opacity(0.9))
+                    .frame(width: 4, height: 18)
+                    .offset(y: -(46 + burstProgress * 78))
+                    .rotationEffect(.degrees(Double(i) / 10 * 360))
+                    .opacity(burstProgress < 0.05 ? 0 : (1 - Double(burstProgress)))
+            }
+
             Circle()
                 .fill(modeAccent.opacity(pulse ? 0.22 : 0.10))
                 .frame(width: 200, height: 200)
@@ -200,7 +224,7 @@ struct FocusCelebrationView: View {
                 )
                 .contentTransition(.numericText())
 
-            Text("dakika focus tamamladın")
+            Text(tr("fcv_min_completed"))
                 .font(.system(size: 16, weight: .heavy, design: .rounded))
                 .foregroundStyle(.white.opacity(0.65))
         }
@@ -211,7 +235,7 @@ struct FocusCelebrationView: View {
     private var comparisonSection: some View {
         HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("GEÇEN SEFER")
+                Text(tr("fcv_last_time_caps"))
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(1.4)
                     .foregroundStyle(.white.opacity(0.42))
@@ -280,23 +304,23 @@ struct FocusCelebrationView: View {
     private var statsGrid: some View {
         HStack(spacing: 10) {
             statCard(
-                title: "BUGÜN",
+                title: tr("wv_today_caps"),
                 value: "\(summary.totalTodayMinutes)",
                 subtitle: "dk toplam",
                 icon: "calendar"
             )
 
             statCard(
-                title: "SERİ",
+                title: tr("hv_streak_caps"),
                 value: "\(summary.streakDays)",
-                subtitle: "gün üst üste",
+                subtitle: tr("hd_days_streak"),
                 icon: "flame.fill"
             )
 
             statCard(
-                title: summary.mode == .personal ? "MOD" : "KİŞİ",
+                title: summary.mode == .personal ? "MOD" : tr("fcv_person_caps"),
                 value: summary.mode == .personal ? summary.goal.title : "\(summary.participantCount)",
-                subtitle: summary.mode == .personal ? summary.goal.subtitle : "katılımcı",
+                subtitle: summary.mode == .personal ? summary.goal.subtitle : tr("fcv_participant_lc"),
                 icon: modeIcon
             )
         }

@@ -54,19 +54,19 @@ struct SuggestedNextActionCard: View {
     private var eyebrow: String {
         switch action.style {
         case .overdueRecovery:
-            return "Öncelikli adım"
+            return tr("sn_priority_step")
         case .quickWin:
-            return "Hızlı başlangıç"
+            return tr("sn_quick_start")
         case .startFocus:
-            return "Odak önerisi"
+            return tr("sn_focus_suggestion")
         case .beforeClass:
-            return "Şimdi için uygun"
+            return tr("sn_good_now")
         case .lightenLoad:
-            return "Yükü sadeleştir"
+            return tr("sn_simplify")
         case .planTomorrow:
-            return "Akşam kapanışı"
+            return tr("hd_evening_close")
         case .keepMomentum:
-            return "Ritmi başlat"
+            return tr("sn_start_rhythm")
         }
     }
 
@@ -75,11 +75,11 @@ struct SuggestedNextActionCard: View {
         case .planTomorrow:
             return "Hafta"
         case .keepMomentum:
-            return "Görevler"
+            return tr("ph_tasks_word")
         case .lightenLoad:
-            return "Tüm Liste"
+            return tr("sn_full_list")
         case .overdueRecovery, .quickWin, .startFocus, .beforeClass:
-            return "Görevler"
+            return tr("ph_tasks_word")
         }
     }
 
@@ -99,19 +99,19 @@ struct SuggestedNextActionCard: View {
     private var helperLine: String {
         switch action.style {
         case .overdueRecovery:
-            return "Önce bu düğümü çözmek kalan işleri de hafifletir."
+            return tr("sn_b1")
         case .quickWin:
-            return "Küçük bir tamamlanma hissi tüm akışı açabilir."
+            return tr("sn_b2")
         case .startFocus:
-            return "Kısa bir odak oturumu başlamak için yeterli."
+            return tr("sn_b3")
         case .beforeClass:
-            return "Etkinlik başlamadan önce küçük bir ilerleme alabilirsin."
+            return tr("sn_b4")
         case .lightenLoad:
-            return "Önce sadeleştir, sonra odaklanmak kolaylaşır."
+            return tr("sn_b5")
         case .planTomorrow:
-            return "Yarına net girmek sabah sürtünmesini azaltır."
+            return tr("sn_b6")
         case .keepMomentum:
-            return "Tek bir küçük adım bile ritmi başlatır."
+            return tr("sn_b7")
         }
     }
 

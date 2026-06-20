@@ -28,14 +28,14 @@ extension CrewChatView {
             HStack(alignment: .center, spacing: 10) {
                 Menu {
                     Button {
-                        attachmentAlertText = "Dosya gönderme bir sonraki adımda eklenecek."
+                        attachmentAlertText = tr("cc_file_soon")
                         showAttachmentAlert = true
                     } label: {
                         Label("Dosya", systemImage: "doc")
                     }
 
                     Button {
-                        attachmentAlertText = "Kamera ile çekme bir sonraki adımda eklenecek."
+                        attachmentAlertText = tr("cc_camera_soon")
                         showAttachmentAlert = true
                     } label: {
                         Label("Kamera", systemImage: "camera")
@@ -44,7 +44,7 @@ extension CrewChatView {
                     Button {
                         showPhotoPicker = true
                     } label: {
-                        Label("Fotoğraf", systemImage: "photo")
+                        Label(tr("fc_photo"), systemImage: "photo")
                     }
                 } label: {
                     Image(systemName: "plus")
@@ -167,25 +167,12 @@ extension CrewChatView {
         } label: {
             ZStack {
                 Circle()
-                    .fill(
-                        canSend
-                        ? AnyShapeStyle(
-                            LinearGradient(
-                                colors: [
-                                    Color(crewChatComposerHex: "#1593FF"),
-                                    Color(crewChatComposerHex: "#7C3AED")
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        : AnyShapeStyle(Color.clear)
-                    )
+                    .fill(canSend ? AnyShapeStyle(UpdoTheme.cyan) : AnyShapeStyle(Color.clear))
                     .frame(width: 31, height: 31)
 
                 Image(systemName: canSend ? "arrow.up" : "mic.fill")
                     .font(.system(size: canSend ? 13 : 17, weight: .black))
-                    .foregroundStyle(canSend ? .white : .white.opacity(0.72))
+                    .foregroundStyle(canSend ? .black : .white.opacity(0.72))
             }
         }
         .buttonStyle(.plain)
@@ -193,46 +180,18 @@ extension CrewChatView {
         .animation(.easeOut(duration: 0.16), value: canSend)
     }
 
+    // Birebir Updo AI composer kapsülü.
     var composerCapsuleBackground: some View {
         Capsule()
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color(crewChatComposerHex: "#1593FF").opacity(0.075),
-                        Color(crewChatComposerHex: "#7C3AED").opacity(0.060),
-                        Color.white.opacity(0.055)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay(
-                Capsule()
-                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
-            )
-            .shadow(color: Color.black.opacity(0.20), radius: 12, y: 6)
+            .fill(.ultraThinMaterial)
+            .overlay(Capsule().strokeBorder(UpdoTheme.border, lineWidth: 1))
     }
-    
-    
 
+    // Birebir Updo AI cam-daire aksiyon butonu.
     var crewChatCircleComposerBackground: some View {
         Circle()
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color.white.opacity(0.105),
-                        Color.black.opacity(0.34),
-                        Color.white.opacity(0.055)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay(
-                Circle()
-                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
-            )
-            .shadow(color: Color.black.opacity(0.24), radius: 12, y: 6)
+            .fill(.ultraThinMaterial)
+            .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
     }
 
     func photoAttachmentPreview(image: UIImage) -> some View {
@@ -258,11 +217,11 @@ extension CrewChatView {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Fotoğraf hazır")
+                Text(tr("fc_photo_ready"))
                     .font(.system(size: 14, weight: .black))
                     .foregroundStyle(.white)
 
-                Text("Göndermeden önce istersen mesaj ekleyebilirsin.")
+                Text(tr("fc_add_caption"))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.48))
                     .lineLimit(2)
@@ -383,7 +342,7 @@ extension CrewChatView {
             isComposerFocused = false
 
             guard let jpegData = photoToSend.jpegData(compressionQuality: 0.82) else {
-                attachmentAlertText = "Fotoğraf hazırlanamadı."
+                attachmentAlertText = tr("fc_photo_prep_failed")
                 showAttachmentAlert = true
                 return
             }
@@ -466,7 +425,7 @@ extension CrewChatView {
                     ChatFeedbackManager.shared.playSent()
                 }
 
-                print("✅ CREW CHAT BACKEND SEND OK:", backendMessage.id.uuidString)
+                Log.debug("✅ CREW CHAT BACKEND SEND OK:", backendMessage.id.uuidString)
             } else {
                 await MainActor.run {
                     markBackendMessageFailed(clientID: clientID)
@@ -474,7 +433,7 @@ extension CrewChatView {
                     isSendingBackendMessage = false
                 }
 
-                print("❌ CREW CHAT BACKEND SEND FAILED")
+                Log.debug("❌ CREW CHAT BACKEND SEND FAILED")
             }
         }
     }
@@ -482,16 +441,23 @@ extension CrewChatView {
     func sendBackendPhotoMessage(
         imageData: Data,
         caption: String?,
-        senderID: UUID
+        senderID: UUID,
+        existingClientID: String? = nil
     ) async {
-        let clientID = UUID().uuidString
+        let clientID = existingClientID ?? UUID().uuidString
+
+        // Retry için içeriği sakla — başarıda silinir
+        await MainActor.run {
+            crewMediaRetryPayloads[clientID] = (data: imageData, caption: caption)
+        }
+
         let fileName = "photo.jpg"
         let storagePath = "crew/\(crew.id.uuidString)/images/\(UUID().uuidString).jpg"
 
         let cleanCaption = caption?.trimmingCharacters(in: .whitespacesAndNewlines)
         let fallbackText = cleanCaption?.isEmpty == false
             ? cleanCaption!
-            : "📷 Fotoğraf"
+            : tr("fc_photo_emoji")
 
         let conversationID: UUID?
 
@@ -509,7 +475,7 @@ extension CrewChatView {
 
         guard let conversationID else {
             await MainActor.run {
-                attachmentAlertText = "Crew sohbeti hazırlanamadı."
+                attachmentAlertText = tr("cc_chat_failed")
                 showAttachmentAlert = true
             }
             return
@@ -566,7 +532,7 @@ extension CrewChatView {
                 throw NSError(
                     domain: "CrewChatView",
                     code: 1001,
-                    userInfo: [NSLocalizedDescriptionKey: "Media URL oluşturulamadı"]
+                    userInfo: [NSLocalizedDescriptionKey: tr("fc_media_url_failed")]
                 )
             }
 
@@ -586,11 +552,12 @@ extension CrewChatView {
                 await MainActor.run {
                     appendOrReplaceBackendMessage(mapped)
                     upsertCachedMessage(mapped, conversationID: conversationID)
+                    crewMediaRetryPayloads.removeValue(forKey: clientID)
                     isSendingBackendMessage = false
                     ChatFeedbackManager.shared.playSent()
                 }
 
-                print("✅ CREW CHAT BACKEND PHOTO SEND OK:", backendMessage.id.uuidString)
+                Log.debug("✅ CREW CHAT BACKEND PHOTO SEND OK:", backendMessage.id.uuidString)
             } else {
                 await MainActor.run {
                     markBackendMessageFailed(clientID: clientID)
@@ -598,17 +565,108 @@ extension CrewChatView {
                     isSendingBackendMessage = false
                 }
 
-                print("❌ CREW CHAT BACKEND PHOTO SEND FAILED")
+                Log.debug("❌ CREW CHAT BACKEND PHOTO SEND FAILED")
             }
         } catch {
-            print("❌ CREW BACKEND PHOTO SEND ERROR:", error.localizedDescription)
+            Log.debug("❌ CREW BACKEND PHOTO SEND ERROR:", error.localizedDescription)
 
             await MainActor.run {
                 markBackendMessageFailed(clientID: clientID)
                 updateCachedMessageFailed(clientID: clientID)
                 isSendingBackendMessage = false
-                attachmentAlertText = "Fotoğraf gönderilemedi: \(error.localizedDescription)"
+                attachmentAlertText = tr("cc_photo_send_failed")
                 showAttachmentAlert = true
+            }
+        }
+    }
+
+    /// Başarısız bir crew mesajını aynı clientID ile yeniden gönderir (Insta DM modeli).
+    /// Backend `on conflict (conversation_id, client_id)` upsert'i çift mesajı engeller.
+    func resendFailedCrewMessage(_ message: CrewChatMessageItem) {
+        guard message.isFailed, message.isFromMe else { return }
+        guard let senderID = session.currentUser?.id else { return }
+        guard let clientID = message.clientID, !clientID.isEmpty else { return }
+
+        // Foto: bellekteki payload ile tekrar yükle
+        if message.messageType == "image" {
+            guard let payload = crewMediaRetryPayloads[clientID] else {
+                attachmentAlertText = tr("cc_photo_resend_failed")
+                showAttachmentAlert = true
+                return
+            }
+
+            Task {
+                await sendBackendPhotoMessage(
+                    imageData: payload.data,
+                    caption: payload.caption,
+                    senderID: senderID,
+                    existingClientID: clientID
+                )
+            }
+            return
+        }
+
+        // Metin: aynı clientID ile yeniden gönder (text zaten encode edilmiş halde saklı)
+        let storedText = message.text
+        guard !storedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+
+        let pendingMessage = makePendingBackendTextMessage(
+            text: storedText,
+            clientID: clientID,
+            senderID: senderID
+        )
+
+        appendOrReplaceBackendMessage(pendingMessage)
+
+        if let backendConversationID {
+            upsertCachedMessage(pendingMessage, conversationID: backendConversationID)
+        }
+
+        Task(priority: .userInitiated) {
+            let conversationID: UUID?
+
+            if let existingID = backendConversationID {
+                conversationID = existingID
+            } else {
+                conversationID = await ChatBackendClient.shared.syncCrew(
+                    crewID: crew.id,
+                    crewName: crew.name,
+                    memberUserIDs: crewStore.crewMembers
+                        .filter { $0.crew_id == crew.id }
+                        .map(\.user_id)
+                )?.id
+            }
+
+            guard let conversationID else {
+                await MainActor.run {
+                    markBackendMessageFailed(clientID: clientID)
+                }
+                return
+            }
+
+            await MainActor.run {
+                backendConversationID = conversationID
+            }
+
+            let backendMessage = await ChatBackendClient.shared.sendMessage(
+                conversationID: conversationID,
+                text: storedText,
+                clientID: clientID
+            )
+
+            if let backendMessage,
+               let mappedMessage = mapBackendMessage(backendMessage) {
+                await MainActor.run {
+                    appendOrReplaceBackendMessage(mappedMessage)
+                    upsertCachedMessage(mappedMessage, conversationID: conversationID)
+                    ChatFeedbackManager.shared.playSent()
+                }
+            } else {
+                await MainActor.run {
+                    markBackendMessageFailed(clientID: clientID)
+                    updateCachedMessageFailed(clientID: clientID)
+                    HapticManager.shared.error()
+                }
             }
         }
     }
@@ -620,7 +678,7 @@ extension CrewChatView {
                 .getPublicURL(path: path)
                 .absoluteString
         } catch {
-            print("❌ CREW PUBLIC MEDIA URL ERROR:", error.localizedDescription)
+            Log.debug("❌ CREW PUBLIC MEDIA URL ERROR:", error.localizedDescription)
             return ""
         }
     }
@@ -668,7 +726,7 @@ extension CrewChatView {
             seenMessageIDs.formUnion(cachedSeenIDs)
 
             guard !items.isEmpty else {
-                print("⚪️ CREW CHAT CACHE EMPTY:", crew.id.uuidString)
+                Log.debug("⚪️ CREW CHAT CACHE EMPTY:", crew.id.uuidString)
                 return
             }
 
@@ -679,9 +737,9 @@ extension CrewChatView {
                 hasCompletedBackendInitialSync = true
             }
 
-            print("🟢 CREW CHAT CACHE LOADED:", items.count)
+            Log.debug("🟢 CREW CHAT CACHE LOADED:", items.count)
         } catch {
-            print("❌ CREW CHAT CACHE LOAD ERROR:", error.localizedDescription)
+            Log.debug("❌ CREW CHAT CACHE LOAD ERROR:", error.localizedDescription)
         }
     }
 
@@ -760,8 +818,8 @@ extension CrewChatView {
 
             try modelContext.save()
         } catch {
-            print("❌ CREW CHAT CACHE UPSERT ERROR:", error.localizedDescription)
-            print("❌ CREW CHAT CACHE FALLBACK KEY:", serverKey ?? clientKey ?? localKey)
+            Log.debug("❌ CREW CHAT CACHE UPSERT ERROR:", error.localizedDescription)
+            Log.debug("❌ CREW CHAT CACHE FALLBACK KEY:", serverKey ?? clientKey ?? localKey)
         }
     }
 
@@ -801,7 +859,7 @@ extension CrewChatView {
 
             try modelContext.save()
         } catch {
-            print("❌ CREW CHAT CACHE FAILED UPDATE ERROR:", error.localizedDescription)
+            Log.debug("❌ CREW CHAT CACHE FAILED UPDATE ERROR:", error.localizedDescription)
         }
     }
 
@@ -837,7 +895,7 @@ extension CrewChatView {
 
             try modelContext.save()
         } catch {
-            print("❌ CREW CHAT CACHE SEEN UPDATE ERROR:", error.localizedDescription)
+            Log.debug("❌ CREW CHAT CACHE SEEN UPDATE ERROR:", error.localizedDescription)
         }
     }
 

@@ -18,9 +18,9 @@ final class AppBadgeManager {
         if #available(iOS 16.0, *) {
             UNUserNotificationCenter.current().setBadgeCount(0) { error in
                 if let error {
-                    print("❌ CLEAR BADGE ERROR:", error.localizedDescription)
+                    Log.debug("❌ CLEAR BADGE ERROR:", error.localizedDescription)
                 } else {
-                    print("✅ APP BADGE CLEARED")
+                    Log.debug("✅ APP BADGE CLEARED")
                 }
             }
         } else {
@@ -34,9 +34,9 @@ final class AppBadgeManager {
         if #available(iOS 16.0, *) {
             UNUserNotificationCenter.current().setBadgeCount(safeCount) { error in
                 if let error {
-                    print("❌ SET BADGE ERROR:", error.localizedDescription)
+                    Log.debug("❌ SET BADGE ERROR:", error.localizedDescription)
                 } else {
-                    print("✅ APP BADGE SET:", safeCount)
+                    Log.debug("✅ APP BADGE SET:", safeCount)
                 }
             }
         } else {

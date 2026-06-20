@@ -132,47 +132,47 @@ extension HomeDashboardView {
 
     var quickActionsCardTitle: String {
         if shouldUseNoTaskQuickActions {
-            return "Başlamak İçin"
+            return tr("ha_to_start")
         }
 
         if hasUpcomingExamQuickActionPriority {
-            return "Sınav İçin"
+            return tr("ha_for_exam")
         }
 
         switch homeLayoutMode {
         case .focusActive:
-            return "Hızlı Geçiş"
+            return tr("ha_quick_switch")
         case .crewFollowUp:
-            return "Sıradaki Adımlar"
+            return tr("ha_next_steps")
         case .insightsFollowUp:
             return "Devam Et"
         case .completionWrapUp:
-            return "Kapanış Hamleleri"
+            return tr("ha_closing_moves")
         case .defaultFlow:
-            return "Hızlı İşlemler"
+            return tr("ha_quick_actions")
         }
     }
 
     var quickActionsCardSubtitle: String {
         if shouldUseNoTaskQuickActions {
-            return "Boş ekranı küçük bir adımla doldur"
+            return tr("ha_fill_empty")
         }
 
         if hasUpcomingExamQuickActionPriority {
-            return "Yaklaşan sınav için en mantıklı kısa yollar"
+            return tr("ha_exam_shortcuts")
         }
 
         switch homeLayoutMode {
         case .focusActive:
-            return "Odak akışını bozmadan ilerle"
+            return tr("ha_keep_focus")
         case .crewFollowUp:
-            return "Takım ve kişisel akış arasında geçiş yap"
+            return tr("ha_switch_flows")
         case .insightsFollowUp:
-            return "Bugünkü ritme göre devam et"
+            return tr("ha_by_rhythm")
         case .completionWrapUp:
-            return "Günü kapatırken mantıklı hamleler"
+            return tr("ha_closing_logical")
         case .defaultFlow:
-            return "Öğrenci akışın için kısa yollar"
+            return tr("ha_student_shortcuts")
         }
     }
 
@@ -180,24 +180,24 @@ extension HomeDashboardView {
         if shouldUseNoTaskQuickActions {
             return [
                 HomeQuickAction(
-                    title: "Görev",
-                    subtitle: "İlk adımı ekle",
+                    title: tr("at_kind_task"),
+                    subtitle: tr("ha_add_first_step"),
                     systemImage: "plus",
                     tint: .green,
                     isHighlighted: true,
                     action: onAddTask
                 ),
                 HomeQuickAction(
-                    title: "Yarın",
-                    subtitle: "Önceden planla",
+                    title: tr("common_tomorrow"),
+                    subtitle: tr("ha_plan_ahead"),
                     systemImage: "calendar.badge.plus",
                     tint: .purple,
                     isHighlighted: true,
                     action: onOpenWeek
                 ),
                 HomeQuickAction(
-                    title: "Sınav",
-                    subtitle: "Yeni sınav ekle",
+                    title: tr("at_kind_exam"),
+                    subtitle: tr("ha_add_new_exam"),
                     systemImage: "graduationcap.fill",
                     tint: .orange,
                     isHighlighted: false,
@@ -216,7 +216,7 @@ extension HomeDashboardView {
             return [
                 HomeQuickAction(
                     title: quickActionFocusMinutesText,
-                    subtitle: "\(courseTitle) çalış",
+                    subtitle: tr("ha_study_course", courseTitle),
                     systemImage: "play.fill",
                     tint: .orange,
                     isHighlighted: true,
@@ -226,15 +226,15 @@ extension HomeDashboardView {
                 ),
                 HomeQuickAction(
                     title: "Planla",
-                    subtitle: "Week’e yerleştir",
+                    subtitle: tr("ha_place_in_week"),
                     systemImage: "calendar.badge.plus",
                     tint: .purple,
                     isHighlighted: true,
                     action: onOpenWeek
                 ),
                 HomeQuickAction(
-                    title: "Görevler",
-                    subtitle: "Hazırlıkları gör",
+                    title: tr("ph_tasks_word"),
+                    subtitle: tr("ha_see_prep"),
                     systemImage: "list.bullet",
                     tint: .blue,
                     isHighlighted: false,
@@ -249,8 +249,8 @@ extension HomeDashboardView {
         case .focusActive:
             return [
                 HomeQuickAction(
-                    title: "Görevler",
-                    subtitle: "Kalanları gör",
+                    title: tr("ph_tasks_word"),
+                    subtitle: tr("ha_see_remaining"),
                     systemImage: "list.bullet",
                     tint: .blue,
                     isHighlighted: true,
@@ -258,15 +258,15 @@ extension HomeDashboardView {
                 ),
                 HomeQuickAction(
                     title: "Hafta",
-                    subtitle: "Programı aç",
+                    subtitle: tr("ha_open_schedule"),
                     systemImage: "calendar",
                     tint: .purple,
                     isHighlighted: false,
                     action: onOpenWeek
                 ),
                 HomeQuickAction(
-                    title: "İçgörü",
-                    subtitle: "Ritmi gör",
+                    title: tr("hd_insights"),
+                    subtitle: tr("ha_see_rhythm"),
                     systemImage: "chart.bar.fill",
                     tint: .orange,
                     isHighlighted: false,
@@ -278,7 +278,7 @@ extension HomeDashboardView {
             return [
                 HomeQuickAction(
                     title: "Crew",
-                    subtitle: "Takıma dön",
+                    subtitle: tr("ha_back_to_crew"),
                     systemImage: "person.3.fill",
                     tint: .pink,
                     isHighlighted: true,
@@ -286,15 +286,15 @@ extension HomeDashboardView {
                 ),
                 HomeQuickAction(
                     title: "Hafta",
-                    subtitle: "Planı aç",
+                    subtitle: tr("ha_open_plan"),
                     systemImage: "calendar.badge.plus",
                     tint: .purple,
                     isHighlighted: false,
                     action: onOpenWeek
                 ),
                 HomeQuickAction(
-                    title: "Görev",
-                    subtitle: "Kişisel ekle",
+                    title: tr("at_kind_task"),
+                    subtitle: tr("ha_add_personal"),
                     systemImage: "checklist",
                     tint: .green,
                     isHighlighted: false,
@@ -305,7 +305,7 @@ extension HomeDashboardView {
         case .insightsFollowUp:
             return [
                 HomeQuickAction(
-                    title: "İçgörü",
+                    title: tr("hd_insights"),
                     subtitle: "Detaya bak",
                     systemImage: "chart.bar.fill",
                     tint: .orange,
@@ -314,14 +314,14 @@ extension HomeDashboardView {
                 ),
                 HomeQuickAction(
                     title: "Hafta",
-                    subtitle: "Akışı aç",
+                    subtitle: tr("ha_open_flow"),
                     systemImage: "calendar",
                     tint: .purple,
                     isHighlighted: false,
                     action: onOpenWeek
                 ),
                 HomeQuickAction(
-                    title: "Görev",
+                    title: tr("at_kind_task"),
                     subtitle: "Yeni ekle",
                     systemImage: "checklist",
                     tint: .green,
@@ -333,24 +333,24 @@ extension HomeDashboardView {
         case .completionWrapUp:
             return [
                 HomeQuickAction(
-                    title: "Yarın",
-                    subtitle: "Planı kur",
+                    title: tr("common_tomorrow"),
+                    subtitle: tr("ha_build_plan"),
                     systemImage: "calendar.badge.plus",
                     tint: .purple,
                     isHighlighted: true,
                     action: onOpenWeek
                 ),
                 HomeQuickAction(
-                    title: "İçgörü",
-                    subtitle: "Günü gör",
+                    title: tr("hd_insights"),
+                    subtitle: tr("ha_see_day"),
                     systemImage: "chart.bar.fill",
                     tint: .orange,
                     isHighlighted: false,
                     action: onOpenInsights
                 ),
                 HomeQuickAction(
-                    title: "Görev",
-                    subtitle: "Küçük ekle",
+                    title: tr("at_kind_task"),
+                    subtitle: tr("ha_add_small"),
                     systemImage: "plus",
                     tint: .green,
                     isHighlighted: false,
@@ -365,7 +365,7 @@ extension HomeDashboardView {
                 return [
                     HomeQuickAction(
                         title: "Planla",
-                        subtitle: "Günü düzenle",
+                        subtitle: tr("ha_arrange_day"),
                         systemImage: "calendar",
                         tint: .purple,
                         isHighlighted: true,
@@ -373,14 +373,14 @@ extension HomeDashboardView {
                     ),
                     HomeQuickAction(
                         title: "Odak",
-                        subtitle: "25 dk başlat",
+                        subtitle: tr("ha_start_25"),
                         systemImage: "play.fill",
                         tint: .blue,
                         isHighlighted: true,
                         action: startInlineFocus
                     ),
                     HomeQuickAction(
-                        title: "Görev",
+                        title: tr("at_kind_task"),
                         subtitle: "Yeni ekle",
                         systemImage: "plus",
                         tint: .green,
@@ -394,15 +394,15 @@ extension HomeDashboardView {
                 return [
                     HomeQuickAction(
                         title: "Odak",
-                        subtitle: "Şimdi başla",
+                        subtitle: tr("ha_start_now"),
                         systemImage: "scope",
                         tint: .blue,
                         isHighlighted: true,
                         action: startInlineFocus
                     ),
                     HomeQuickAction(
-                        title: "Görev",
-                        subtitle: "Hızlı ekle",
+                        title: tr("at_kind_task"),
+                        subtitle: tr("ha_quick_add"),
                         systemImage: "plus",
                         tint: .green,
                         isHighlighted: false,
@@ -410,7 +410,7 @@ extension HomeDashboardView {
                     ),
                     HomeQuickAction(
                         title: "Hafta",
-                        subtitle: "Programı aç",
+                        subtitle: tr("ha_open_schedule"),
                         systemImage: "calendar.badge.plus",
                         tint: .purple,
                         isHighlighted: false,
@@ -421,7 +421,7 @@ extension HomeDashboardView {
 
             return [
                 HomeQuickAction(
-                    title: "Yarın",
+                    title: tr("common_tomorrow"),
                     subtitle: "Planla",
                     systemImage: "calendar",
                     tint: .purple,
@@ -429,7 +429,7 @@ extension HomeDashboardView {
                     action: onOpenWeek
                 ),
                 HomeQuickAction(
-                    title: "Görev",
+                    title: tr("at_kind_task"),
                     subtitle: "Eklemeyi unutma",
                     systemImage: "plus",
                     tint: .green,
@@ -437,8 +437,8 @@ extension HomeDashboardView {
                     action: onAddTask
                 ),
                 HomeQuickAction(
-                    title: "İçgörü",
-                    subtitle: "Günü gör",
+                    title: tr("hd_insights"),
+                    subtitle: tr("ha_see_day"),
                     systemImage: "chart.bar.fill",
                     tint: .orange,
                     isHighlighted: false,

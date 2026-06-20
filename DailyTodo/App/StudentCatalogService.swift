@@ -153,8 +153,12 @@ enum StudentCatalogService {
             URLQueryItem(name: "limit", value: "300")
         ]
 
+        guard let url = components.url else {
+            throw CatalogServiceError.invalidResponse
+        }
+
         let response: CatalogUniversitiesResponse = try await sendRequest(
-            url: components.url!,
+            url: url,
             method: "GET",
             debugName: "fetchUniversities"
         )
@@ -163,8 +167,8 @@ enum StudentCatalogService {
             throw CatalogServiceError.backend(response.error ?? "University catalog failed")
         }
 
-        print("📚 Catalog universities count:", response.universities.count)
-        print("📚 Catalog universities country:", countryCode)
+        Log.debug("📚 Catalog universities count:", response.universities.count)
+        Log.debug("📚 Catalog universities country:", countryCode)
 
         return response.universities
     }
@@ -184,10 +188,14 @@ enum StudentCatalogService {
             URLQueryItem(name: "limit", value: "300")
         ]
 
-        print("📚 Catalog fetchMajors universityID:", universityIDString)
+        Log.debug("📚 Catalog fetchMajors universityID:", universityIDString)
+
+        guard let url = components.url else {
+            throw CatalogServiceError.invalidResponse
+        }
 
         let response: CatalogMajorsResponse = try await sendRequest(
-            url: components.url!,
+            url: url,
             method: "GET",
             debugName: "fetchMajors"
         )
@@ -196,8 +204,8 @@ enum StudentCatalogService {
             throw CatalogServiceError.backend(response.error ?? "Major catalog failed")
         }
 
-        print("📚 Catalog majors count:", response.majors.count)
-        print("📚 Catalog majors names:", response.majors.prefix(8).map(\.name).joined(separator: ", "))
+        Log.debug("📚 Catalog majors count:", response.majors.count)
+        Log.debug("📚 Catalog majors names:", response.majors.prefix(8).map(\.name).joined(separator: ", "))
 
         return response.majors
     }
@@ -216,11 +224,15 @@ enum StudentCatalogService {
             URLQueryItem(name: "gradeLevel", value: gradeLevel)
         ]
 
-        print("📚 Catalog fetchCurriculum majorID:", majorIDString)
-        print("📚 Catalog fetchCurriculum gradeLevel:", gradeLevel)
+        Log.debug("📚 Catalog fetchCurriculum majorID:", majorIDString)
+        Log.debug("📚 Catalog fetchCurriculum gradeLevel:", gradeLevel)
+
+        guard let url = components.url else {
+            throw CatalogServiceError.invalidResponse
+        }
 
         let response: CatalogCurriculumResponse = try await sendRequest(
-            url: components.url!,
+            url: url,
             method: "GET",
             debugName: "fetchCurriculumCourses"
         )
@@ -229,7 +241,7 @@ enum StudentCatalogService {
             throw CatalogServiceError.backend(response.error ?? "Curriculum catalog failed")
         }
 
-        print("📚 Catalog curriculum count:", response.courses.count)
+        Log.debug("📚 Catalog curriculum count:", response.courses.count)
 
         return response.courses
     }
@@ -243,7 +255,7 @@ enum StudentCatalogService {
             string: "\(baseURL)/v1/catalog/majors/\(majorIDString)/curriculum/all"
         )!
 
-        print("📚 Catalog fetchAllCurriculum majorID:", majorIDString)
+        Log.debug("📚 Catalog fetchAllCurriculum majorID:", majorIDString)
 
         let response: CatalogCurriculumResponse = try await sendRequest(
             url: url,
@@ -255,7 +267,7 @@ enum StudentCatalogService {
             throw CatalogServiceError.backend(response.error ?? "All curriculum catalog failed")
         }
 
-        print("📚 Catalog all curriculum count:", response.courses.count)
+        Log.debug("📚 Catalog all curriculum count:", response.courses.count)
 
         return response.courses
     }
@@ -267,7 +279,7 @@ enum StudentCatalogService {
     ) async throws -> T {
         guard let accessToken = SupabaseManager.shared.client.auth.currentSession?.accessToken,
               !accessToken.isEmpty else {
-            print("❌ Catalog missing access token:", debugName)
+            Log.debug("❌ Catalog missing access token:", debugName)
             throw CatalogServiceError.missingAccessToken
         }
 
@@ -277,32 +289,32 @@ enum StudentCatalogService {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
 
-        print("📡 Catalog request:", debugName)
-        print("📡 Catalog URL:", url.absoluteString)
+        Log.debug("📡 Catalog request:", debugName)
+        Log.debug("📡 Catalog URL:", url.absoluteString)
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let http = response as? HTTPURLResponse else {
-            print("❌ Catalog invalid response:", debugName)
+            Log.debug("❌ Catalog invalid response:", debugName)
             throw CatalogServiceError.invalidResponse
         }
 
         let body = String(data: data, encoding: .utf8) ?? "no-body"
 
-        print("📡 Catalog status:", debugName, http.statusCode)
+        Log.debug("📡 Catalog status:", debugName, http.statusCode)
 
         if !(200...299).contains(http.statusCode) {
-            print("❌ Catalog HTTP failed:", debugName)
-            print("❌ Catalog body:", body)
+            Log.debug("❌ Catalog HTTP failed:", debugName)
+            Log.debug("❌ Catalog body:", body)
             throw CatalogServiceError.backend("Catalog request failed: \(http.statusCode) \(body)")
         }
 
         do {
             return try JSONDecoder().decode(T.self, from: data)
         } catch {
-            print("❌ Catalog decode failed:", debugName)
-            print("❌ Catalog decode error:", error)
-            print("❌ Catalog response body:", body)
+            Log.debug("❌ Catalog decode failed:", debugName)
+            Log.debug("❌ Catalog decode error:", error)
+            Log.debug("❌ Catalog response body:", body)
             throw error
         }
     }
@@ -316,9 +328,9 @@ enum CatalogServiceError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missingAccessToken:
-            return "Oturum tokenı bulunamadı."
+            return tr("scat_no_token")
         case .invalidResponse:
-            return "Katalog yanıtı geçersiz."
+            return tr("scat_invalid_response")
         case .backend(let message):
             return message
         }

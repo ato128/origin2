@@ -77,9 +77,9 @@ struct CrewFocusRoomBackendView: View {
 
     var waitingStatusText: String {
         if hasEnoughParticipants {
-            return "Herkes hazır. Host başlatabilir."
+            return tr("cfr_all_ready")
         }
-        return "Katılımcı bekleniyor"
+        return tr("cfr_waiting_participant")
     }
 
     var body: some View {
@@ -246,12 +246,12 @@ private extension CrewFocusRoomBackendView {
                         taskID: nil
                     )
 
-                    print("✅ CREW ROOM AUTO END PERSISTED:", sessionSnapshot.id.uuidString)
+                    Log.debug("✅ CREW ROOM AUTO END PERSISTED:", sessionSnapshot.id.uuidString)
                 } catch {
-                    print("❌ CREW ROOM AUTO END ERROR:", error.localizedDescription)
+                    Log.debug("❌ CREW ROOM AUTO END ERROR:", error.localizedDescription)
                 }
             } else {
-                print("⚪️ CREW ROOM AUTO END SKIPPED: current user is not host")
+                Log.debug("⚪️ CREW ROOM AUTO END SKIPPED: current user is not host")
             }
 
             await crewStore.loadActiveFocusSession(for: sessionSnapshot.crew_id)
@@ -302,7 +302,7 @@ private extension CrewFocusRoomBackendView {
                     }
                 }
             } catch {
-                print("BEGIN WAITING CREW SESSION ERROR:", error.localizedDescription)
+                Log.debug("BEGIN WAITING CREW SESSION ERROR:", error.localizedDescription)
             }
         }
     }
@@ -373,7 +373,7 @@ private extension CrewFocusRoomBackendView {
 
             Spacer()
 
-            Text("Odak Odası")
+            Text(tr("cfr_focus_room"))
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
@@ -482,7 +482,7 @@ private extension CrewFocusRoomBackendView {
                                 .font(.system(size: 14, weight: .bold))
                         }
 
-                        Text(isStartingWaitingSession ? "Başlatılıyor..." : "Focusu Başlat")
+                        Text(isStartingWaitingSession ? tr("cfr_starting") : tr("cfr_start_focus"))
                             .font(.system(size: 15, weight: .bold, design: .rounded))
                     }
                     .foregroundStyle(.white)
@@ -547,7 +547,7 @@ private extension CrewFocusRoomBackendView {
                     .foregroundStyle(hasEnoughParticipants ? .green : .orange)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(hasEnoughParticipants ? "Katılımcılar hazır" : "Katılımcı bekleniyor")
+                    Text(hasEnoughParticipants ? tr("cfr_participants_ready") : tr("cfr_waiting_participant"))
                         .font(.system(size: 16, weight: .heavy, design: .rounded))
                         .foregroundStyle(palette.primaryText)
 
@@ -561,8 +561,8 @@ private extension CrewFocusRoomBackendView {
 
             HStack(spacing: 10) {
                 waitingMiniPill(title: "Gerekli", value: "\(requiredParticipantCount)")
-                waitingMiniPill(title: "Katılan", value: "\(participants.count)")
-                waitingMiniPill(title: "Durum", value: hasEnoughParticipants ? "Hazır" : "Bekliyor")
+                waitingMiniPill(title: tr("cfr_joined"), value: "\(participants.count)")
+                waitingMiniPill(title: "Durum", value: hasEnoughParticipants ? tr("hf_ready") : "Bekliyor")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -592,12 +592,12 @@ private extension CrewFocusRoomBackendView {
 
     var participantsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Katılımcılar")
+            Text(tr("cfr_participants"))
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
             if participants.isEmpty {
-                Text("Henüz aktif katılımcı yok")
+                Text(tr("cfr_no_active"))
                     .font(.subheadline)
                     .foregroundStyle(palette.secondaryText)
             } else {
@@ -649,15 +649,15 @@ private extension CrewFocusRoomBackendView {
 
     func statusTitle(finished: Bool) -> String {
         if finished {
-            return "Oturum tamamlandı"
+            return tr("cfr_session_done")
         }
 
         if localSession.is_waiting == true {
-            return "Katılımcı bekleniyor"
+            return tr("cfr_waiting_participant")
         }
 
         if localSession.is_paused {
-            return "Duraklatıldı"
+            return tr("hv_paused")
         }
 
         return "Odakta kal"

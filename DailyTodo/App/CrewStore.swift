@@ -106,7 +106,7 @@ final class CrewStore: ObservableObject {
         guard success else {
             // Rollback
             crewMembers = oldMembers
-            print("REMOVE MEMBER ERROR: backend failed")
+            Log.debug("REMOVE MEMBER ERROR: backend failed")
             throw NSError(
                 domain: "CrewStore",
                 code: 500,
@@ -186,7 +186,7 @@ final class CrewStore: ObservableObject {
         let success = await CrewBackendClient.shared.deleteCrew(crewID: crewID)
         
         if success {
-            print("✅ CREW DELETED:", crewID.uuidString)
+            Log.debug("✅ CREW DELETED:", crewID.uuidString)
             return
         }
         
@@ -363,7 +363,7 @@ final class CrewStore: ObservableObject {
                 with: item
             )
         } catch {
-            print("FETCH INSERTED MESSAGE ERROR:", error.localizedDescription)
+            Log.debug("FETCH INSERTED MESSAGE ERROR:", error.localizedDescription)
         }
     }
     
@@ -405,7 +405,7 @@ final class CrewStore: ObservableObject {
                 chatLastLoadedAtByCrew[crewID] = Date()
             }
         } catch {
-            print("LOAD NEWER CREW MESSAGES ERROR:", error.localizedDescription)
+            Log.debug("LOAD NEWER CREW MESSAGES ERROR:", error.localizedDescription)
         }
     }
     
@@ -496,7 +496,7 @@ final class CrewStore: ObservableObject {
                 try await typingChannel.subscribeWithError()
                 try await readsChannel.subscribeWithError()
             } catch {
-                print("SUBSCRIBE CREW AUX CHANNEL ERROR:", error.localizedDescription)
+                Log.debug("SUBSCRIBE CREW AUX CHANNEL ERROR:", error.localizedDescription)
                 crewTypingChannel = nil
                 crewReadsChannel = nil
                 subscribedAuxCrewID = nil
@@ -543,7 +543,7 @@ final class CrewStore: ObservableObject {
             chatLastLoadedAtByCrew[crewID] = Date()
             hasLoadedChatInitiallyByCrew[crewID] = true
         } catch {
-            print("LOAD INITIAL CHAT MESSAGES ERROR:", error.localizedDescription)
+            Log.debug("LOAD INITIAL CHAT MESSAGES ERROR:", error.localizedDescription)
             
             if chatMessagesByCrew[crewID] == nil {
                 setChatMessages([], for: crewID, preserveExistingIfIncomingEmpty: false)
@@ -645,7 +645,7 @@ final class CrewStore: ObservableObject {
             )
             
         } catch {
-            print("SEND CREW MESSAGE OPTIMISTIC ERROR:", error.localizedDescription)
+            Log.debug("SEND CREW MESSAGE OPTIMISTIC ERROR:", error.localizedDescription)
             markPendingMessageFailed(crewID: crewID, localID: localID)
         }
     }
@@ -665,7 +665,7 @@ final class CrewStore: ObservableObject {
                 ]
             ).execute()
         } catch {
-            print("INCREMENT CREW UNREAD ERROR:", error.localizedDescription)
+            Log.debug("INCREMENT CREW UNREAD ERROR:", error.localizedDescription)
         }
     }
     
@@ -691,7 +691,7 @@ final class CrewStore: ObservableObject {
                 .upsert(payload, onConflict: "crew_id,user_id")
                 .execute()
         } catch {
-            print("MARK CREW MESSAGES AS READ ERROR:", error.localizedDescription)
+            Log.debug("MARK CREW MESSAGES AS READ ERROR:", error.localizedDescription)
         }
     }
     
@@ -729,7 +729,7 @@ final class CrewStore: ObservableObject {
                 .upsert(payload, onConflict: "crew_id,user_id")
                 .execute()
         } catch {
-            print("SEND TYPING EVENT ERROR:", error.localizedDescription)
+            Log.debug("SEND TYPING EVENT ERROR:", error.localizedDescription)
         }
     }
     
@@ -746,7 +746,7 @@ final class CrewStore: ObservableObject {
             crewTypingStatuses.removeAll { $0.crew_id == crewID }
             crewTypingStatuses.append(contentsOf: decoded)
         } catch {
-            print("LOAD CREW TYPING STATUS ERROR:", error.localizedDescription)
+            Log.debug("LOAD CREW TYPING STATUS ERROR:", error.localizedDescription)
         }
     }
     
@@ -762,7 +762,7 @@ final class CrewStore: ObservableObject {
             crewMessageReads.removeAll { $0.crew_id == crewID }
             crewMessageReads.append(contentsOf: decoded)
         } catch {
-            print("LOAD CREW MESSAGE READS ERROR:", error.localizedDescription)
+            Log.debug("LOAD CREW MESSAGE READS ERROR:", error.localizedDescription)
         }
     }
     
@@ -889,7 +889,7 @@ final class CrewStore: ObservableObject {
                         let dto = try JSONDecoder().decode(CrewMessageDTO.self, from: jsonData)
                         self.handleIncomingMessage(dto, currentUserID: currentUserID)
                     } catch {
-                        print("CREW MESSAGE INSERT REALTIME DECODE ERROR:", error.localizedDescription)
+                        Log.debug("CREW MESSAGE INSERT REALTIME DECODE ERROR:", error.localizedDescription)
                     }
                 }
             }
@@ -907,7 +907,7 @@ final class CrewStore: ObservableObject {
                         let dto = try JSONDecoder().decode(CrewMessageDTO.self, from: jsonData)
                         self.handleIncomingMessage(dto, currentUserID: currentUserID)
                     } catch {
-                        print("CREW MESSAGE UPDATE REALTIME DECODE ERROR:", error.localizedDescription)
+                        Log.debug("CREW MESSAGE UPDATE REALTIME DECODE ERROR:", error.localizedDescription)
                     }
                 }
             }
@@ -918,7 +918,7 @@ final class CrewStore: ObservableObject {
             do {
                 try await channel.subscribeWithError()
             } catch {
-                print("SUBSCRIBE CREW MESSAGE CHANNEL ERROR:", error.localizedDescription)
+                Log.debug("SUBSCRIBE CREW MESSAGE CHANNEL ERROR:", error.localizedDescription)
                 crewMessagesChannel = nil
                 subscribedCrewMessageID = nil
             }
@@ -1000,7 +1000,7 @@ final class CrewStore: ObservableObject {
                         self.upsertLocalTask(dto)
                         await self.refreshCrewStats(for: crewID)
                     } catch {
-                        print("CREW TASK INSERT REALTIME DECODE ERROR:", error.localizedDescription)
+                        Log.debug("CREW TASK INSERT REALTIME DECODE ERROR:", error.localizedDescription)
                         await self.loadTasks(for: crewID)
                     }
                 }
@@ -1022,7 +1022,7 @@ final class CrewStore: ObservableObject {
                         self.upsertLocalTask(dto)
                         await self.refreshCrewStats(for: crewID)
                     } catch {
-                        print("CREW TASK UPDATE REALTIME DECODE ERROR:", error.localizedDescription)
+                        Log.debug("CREW TASK UPDATE REALTIME DECODE ERROR:", error.localizedDescription)
                         await self.loadTasks(for: crewID)
                     }
                 }
@@ -1042,7 +1042,7 @@ final class CrewStore: ObservableObject {
                         self.removeLocalTask(taskID: taskID)
                         await self.refreshCrewStats(for: crewID)
                     } else {
-                        print("CREW TASK DELETE REALTIME: task id not found in oldRecord")
+                        Log.debug("CREW TASK DELETE REALTIME: task id not found in oldRecord")
                         await self.loadTasks(for: crewID)
                     }
                 }
@@ -1171,9 +1171,9 @@ final class CrewStore: ObservableObject {
                 try await newActivityChannel.subscribeWithError()
                 try await newFocusChannel.subscribeWithError()
                 
-                print("✅ CREW REALTIME SUBSCRIBED:", crewID.uuidString)
+                Log.debug("✅ CREW REALTIME SUBSCRIBED:", crewID.uuidString)
             } catch {
-                print("CREW REALTIME SUBSCRIBE ERROR:", error.localizedDescription)
+                Log.debug("CREW REALTIME SUBSCRIBE ERROR:", error.localizedDescription)
                 
                 await newTaskChannel.unsubscribe()
                 await newMemberChannel.unsubscribe()
@@ -1238,7 +1238,7 @@ final class CrewStore: ObservableObject {
                         await self.loadFocusParticipants(sessionID: session.id)
                     }
                 } catch {
-                    print("GLOBAL FOCUS SESSION INSERT DECODE ERROR:", error.localizedDescription)
+                    Log.debug("GLOBAL FOCUS SESSION INSERT DECODE ERROR:", error.localizedDescription)
                     self.scheduleCrewHomeFocusRefresh()
                 }
             }
@@ -1269,7 +1269,7 @@ final class CrewStore: ObservableObject {
                         await self.loadFocusRecords(for: session.crew_id)
                     }
                 } catch {
-                    print("GLOBAL FOCUS SESSION UPDATE DECODE ERROR:", error.localizedDescription)
+                    Log.debug("GLOBAL FOCUS SESSION UPDATE DECODE ERROR:", error.localizedDescription)
                     self.scheduleCrewHomeFocusRefresh()
                 }
             }
@@ -1291,7 +1291,7 @@ final class CrewStore: ObservableObject {
 
                     self.removeActiveFocusSessionForHome(session)
                 } catch {
-                    print("GLOBAL FOCUS SESSION DELETE DECODE ERROR:", error.localizedDescription)
+                    Log.debug("GLOBAL FOCUS SESSION DELETE DECODE ERROR:", error.localizedDescription)
                     self.scheduleCrewHomeFocusRefresh()
                 }
             }
@@ -1313,7 +1313,7 @@ final class CrewStore: ObservableObject {
 
                     self.upsertFocusParticipantForHome(participant)
                 } catch {
-                    print("GLOBAL FOCUS PARTICIPANT INSERT DECODE ERROR:", error.localizedDescription)
+                    Log.debug("GLOBAL FOCUS PARTICIPANT INSERT DECODE ERROR:", error.localizedDescription)
                     self.scheduleCrewHomeFocusRefresh()
                 }
             }
@@ -1335,7 +1335,7 @@ final class CrewStore: ObservableObject {
 
                     self.upsertFocusParticipantForHome(participant)
                 } catch {
-                    print("GLOBAL FOCUS PARTICIPANT UPDATE DECODE ERROR:", error.localizedDescription)
+                    Log.debug("GLOBAL FOCUS PARTICIPANT UPDATE DECODE ERROR:", error.localizedDescription)
                     self.scheduleCrewHomeFocusRefresh()
                 }
             }
@@ -1360,7 +1360,7 @@ final class CrewStore: ObservableObject {
                         userID: participant.user_id
                     )
                 } catch {
-                    print("GLOBAL FOCUS PARTICIPANT DELETE DECODE ERROR:", error.localizedDescription)
+                    Log.debug("GLOBAL FOCUS PARTICIPANT DELETE DECODE ERROR:", error.localizedDescription)
                     self.scheduleCrewHomeFocusRefresh()
                 }
             }
@@ -1371,9 +1371,9 @@ final class CrewStore: ObservableObject {
         Task { @MainActor in
             do {
                 try await channel.subscribeWithError()
-                print("✅ GLOBAL FOCUS HOME REALTIME SUBSCRIBED")
+                Log.debug("✅ GLOBAL FOCUS HOME REALTIME SUBSCRIBED")
             } catch {
-                print("GLOBAL FOCUS HOME REALTIME SUBSCRIBE ERROR:", error.localizedDescription)
+                Log.debug("GLOBAL FOCUS HOME REALTIME SUBSCRIBE ERROR:", error.localizedDescription)
                 globalFocusChannel = nil
             }
 
@@ -1627,7 +1627,7 @@ final class CrewStore: ObservableObject {
                         await self.loadStatsForAllCrews()
                     }
                 } catch {
-                    print("CREWS LIST INSERT REALTIME ERROR:", error.localizedDescription)
+                    Log.debug("CREWS LIST INSERT REALTIME ERROR:", error.localizedDescription)
                 }
             }
         }
@@ -1647,7 +1647,7 @@ final class CrewStore: ObservableObject {
                         self.upsertLocalCrew(dto)
                     }
                 } catch {
-                    print("CREWS LIST UPDATE REALTIME ERROR:", error.localizedDescription)
+                    Log.debug("CREWS LIST UPDATE REALTIME ERROR:", error.localizedDescription)
                 }
             }
         }
@@ -1664,7 +1664,7 @@ final class CrewStore: ObservableObject {
                     let dto = try JSONDecoder().decode(CrewDTO.self, from: jsonData)
                     self.removeLocalCrew(id: dto.id)
                 } catch {
-                    print("CREWS LIST DELETE REALTIME ERROR:", error.localizedDescription)
+                    Log.debug("CREWS LIST DELETE REALTIME ERROR:", error.localizedDescription)
                 }
             }
         }
@@ -1707,7 +1707,7 @@ final class CrewStore: ObservableObject {
                     let dto = try JSONDecoder().decode(CrewTaskDTO.self, from: jsonData)
                     await self.refreshStatsIfNeeded(for: dto.crew_id)
                 } catch {
-                    print("CREWS STATS TASK INSERT ERROR:", error.localizedDescription)
+                    Log.debug("CREWS STATS TASK INSERT ERROR:", error.localizedDescription)
                 }
             }
         }
@@ -1724,7 +1724,7 @@ final class CrewStore: ObservableObject {
                     let dto = try JSONDecoder().decode(CrewTaskDTO.self, from: jsonData)
                     await self.refreshStatsIfNeeded(for: dto.crew_id)
                 } catch {
-                    print("CREWS STATS TASK UPDATE ERROR:", error.localizedDescription)
+                    Log.debug("CREWS STATS TASK UPDATE ERROR:", error.localizedDescription)
                 }
             }
         }
@@ -1741,7 +1741,7 @@ final class CrewStore: ObservableObject {
                     let dto = try JSONDecoder().decode(CrewTaskDTO.self, from: jsonData)
                     await self.refreshStatsIfNeeded(for: dto.crew_id)
                 } catch {
-                    print("CREWS STATS TASK DELETE ERROR:", error.localizedDescription)
+                    Log.debug("CREWS STATS TASK DELETE ERROR:", error.localizedDescription)
                 }
             }
         }
@@ -1758,7 +1758,7 @@ final class CrewStore: ObservableObject {
                     let dto = try JSONDecoder().decode(CrewMemberDTO.self, from: jsonData)
                     await self.refreshStatsIfNeeded(for: dto.crew_id)
                 } catch {
-                    print("CREWS STATS MEMBER INSERT ERROR:", error.localizedDescription)
+                    Log.debug("CREWS STATS MEMBER INSERT ERROR:", error.localizedDescription)
                 }
             }
         }
@@ -1775,7 +1775,7 @@ final class CrewStore: ObservableObject {
                     let dto = try JSONDecoder().decode(CrewMemberDTO.self, from: jsonData)
                     await self.refreshStatsIfNeeded(for: dto.crew_id)
                 } catch {
-                    print("CREWS STATS MEMBER UPDATE ERROR:", error.localizedDescription)
+                    Log.debug("CREWS STATS MEMBER UPDATE ERROR:", error.localizedDescription)
                 }
             }
         }
@@ -1792,7 +1792,7 @@ final class CrewStore: ObservableObject {
                     let dto = try JSONDecoder().decode(CrewMemberDTO.self, from: jsonData)
                     await self.refreshStatsIfNeeded(for: dto.crew_id)
                 } catch {
-                    print("CREWS STATS MEMBER DELETE ERROR:", error.localizedDescription)
+                    Log.debug("CREWS STATS MEMBER DELETE ERROR:", error.localizedDescription)
                 }
             }
         }
@@ -1902,7 +1902,7 @@ final class CrewStore: ObservableObject {
             let decoded = try JSONDecoder().decode([ProfileDTO].self, from: response.data)
             memberProfiles = decoded
         } catch {
-            print("LOAD MEMBER PROFILES ERROR:", error.localizedDescription)
+            Log.debug("LOAD MEMBER PROFILES ERROR:", error.localizedDescription)
         }
     }
     
@@ -1939,7 +1939,7 @@ final class CrewStore: ObservableObject {
             
             memberCountByCrew[crewID] = response.count ?? 0
         } catch {
-            print("LOAD MEMBER COUNT ERROR:", error.localizedDescription)
+            Log.debug("LOAD MEMBER COUNT ERROR:", error.localizedDescription)
             memberCountByCrew[crewID] = 0
         }
     }
@@ -2076,7 +2076,7 @@ final class CrewStore: ObservableObject {
             
             crewMembers = otherCrewMembers + decoded
         } catch {
-            print("LOAD CURRENT USER MEMBERSHIPS FOR HOME ERROR:", error.localizedDescription)
+            Log.debug("LOAD CURRENT USER MEMBERSHIPS FOR HOME ERROR:", error.localizedDescription)
         }
     }
     
@@ -2152,7 +2152,7 @@ final class CrewStore: ObservableObject {
             withAnimation(.spring(response: 0.30, dampingFraction: 0.90)) {
                 crewTasks[index] = oldTask
             }
-            print("TOGGLE ERROR:", error.localizedDescription)
+            Log.debug("TOGGLE ERROR:", error.localizedDescription)
         }
     }
     func createTask(
@@ -2270,7 +2270,7 @@ final class CrewStore: ObservableObject {
             throw NSError(
                 domain: "CrewStore",
                 code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Username boş olamaz."]
+                userInfo: [NSLocalizedDescriptionKey: tr("cs_username_empty")]
             )
         }
         
@@ -2291,11 +2291,11 @@ final class CrewStore: ObservableObject {
             switch error {
             case .apiError(let raw):
                 if raw.contains("no user with this username") {
-                    message = "Bu username ile kullanıcı bulunamadı."
+                    message = tr("cs_user_not_found")
                 } else if raw.contains("already a member") {
-                    message = "Bu kullanıcı zaten crew içinde."
+                    message = tr("cs_already_member")
                 } else if raw.contains("Unauthorized") {
-                    message = "Bu işlem için yetkin yok."
+                    message = tr("cs_no_permission")
                 } else {
                     message = raw
                 }
@@ -2309,7 +2309,7 @@ final class CrewStore: ObservableObject {
                 userInfo: [NSLocalizedDescriptionKey: message]
             )
         } catch {
-            print("ADD MEMBER ERROR:", error.localizedDescription)
+            Log.debug("ADD MEMBER ERROR:", error.localizedDescription)
             throw error
         }
     }
@@ -2455,7 +2455,7 @@ final class CrewStore: ObservableObject {
                 throw NSError(
                     domain: "CrewStore",
                     code: 410,
-                    userInfo: [NSLocalizedDescriptionKey: "Bu focus oturumu sona ermiş."]
+                    userInfo: [NSLocalizedDescriptionKey: tr("cs_session_ended")]
                 )
             }
 
@@ -2602,7 +2602,7 @@ final class CrewStore: ObservableObject {
                     actionText: "completed the focus task"
                 )
             } catch {
-                print("END SESSION / COMPLETE TASK ERROR:", error.localizedDescription)
+                Log.debug("END SESSION / COMPLETE TASK ERROR:", error.localizedDescription)
             }
         }
      
@@ -2651,7 +2651,7 @@ final class CrewStore: ObservableObject {
             await loadCrews(force: true)
             
         } catch {
-            print("UPDATE LAST MESSAGE ERROR:", error.localizedDescription)
+            Log.debug("UPDATE LAST MESSAGE ERROR:", error.localizedDescription)
         }
     }
     
@@ -3037,7 +3037,7 @@ final class CrewStore: ObservableObject {
                     .eq("id", value: member.id.uuidString)
                     .execute()
             } catch {
-                print("UNREAD INCREMENT ERROR:", error.localizedDescription)
+                Log.debug("UNREAD INCREMENT ERROR:", error.localizedDescription)
             }
         }
     }
@@ -3066,7 +3066,7 @@ final class CrewStore: ObservableObject {
                 .execute()
             
         } catch {
-            print("RESET UNREAD ERROR:", error.localizedDescription)
+            Log.debug("RESET UNREAD ERROR:", error.localizedDescription)
         }
     }
     
@@ -3355,3 +3355,4 @@ extension CrewStore {
     }
 }
 
+ 

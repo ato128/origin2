@@ -37,11 +37,13 @@ struct AddFriendSheetView: View {
     @Environment(\.locale) private var locale
     @EnvironmentObject var friendStore: FriendStore
     @EnvironmentObject var session: SessionStore
+    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
 
     @State private var username: String = ""
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var successMessage: String?
+    @State private var showPaywall = false
 
     private var cleanUsername: String {
         username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -86,6 +88,9 @@ struct AddFriendSheetView: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+        .sheet(isPresented: $showPaywall) {
+            PaywallView(context: "friend_limit")
+        }
     }
 }
 
@@ -167,7 +172,7 @@ private extension AddFriendSheetView {
                     .tracking(2.2)
                     .foregroundStyle(AddFriendArenaPalette.cyan)
 
-                Text(locale.language.languageCode?.identifier == "tr" ? "Arkadaş Ekle" : "Add Friend")
+                Text(locale.language.languageCode?.identifier == "tr" ? tr("af_add_friend") : "Add Friend")
                     .font(.system(size: 21, weight: .black))
                     .foregroundStyle(.white)
             }
@@ -228,14 +233,14 @@ private extension AddFriendSheetView {
                             .font(.system(size: 30, weight: .black))
                             .foregroundStyle(.white)
 
-                        Text(locale.language.languageCode?.identifier == "tr" ? "arkadaş" : "friend")
+                        Text(locale.language.languageCode?.identifier == "tr" ? tr("ch_friend_word") : "friend")
                             .font(.system(size: 25, weight: .regular, design: .serif))
                             .italic()
                             .foregroundStyle(AddFriendArenaPalette.cyan)
                     }
 
                     Text(locale.language.languageCode?.identifier == "tr"
-                         ? "Kullanıcı adıyla arkadaşlık isteği gönder ve sosyal çalışma alanını büyüt."
+                         ? tr("af_subtitle")
                          : "Send a friend request by username and grow your study circle.")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.50))
@@ -279,8 +284,8 @@ private extension AddFriendSheetView {
         VStack(alignment: .leading, spacing: 14) {
             sectionTitle(
                 eyebrow: "USER LOOKUP",
-                title: locale.language.languageCode?.identifier == "tr" ? "Kullanıcı" : "Username",
-                italic: locale.language.languageCode?.identifier == "tr" ? "adı" : "search"
+                title: locale.language.languageCode?.identifier == "tr" ? tr("uname_w1") : "Username",
+                italic: locale.language.languageCode?.identifier == "tr" ? tr("uname_w2") : "search"
             )
 
             fieldBox(
@@ -312,7 +317,7 @@ private extension AddFriendSheetView {
                     }
 
                 Text(locale.language.languageCode?.identifier == "tr"
-                     ? "Başında @ olmadan yazabilirsin."
+                     ? tr("uname_hint")
                      : "You can type it without @.")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.38))
@@ -326,8 +331,8 @@ private extension AddFriendSheetView {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle(
                 eyebrow: "HOW IT WORKS",
-                title: locale.language.languageCode?.identifier == "tr" ? "Nasıl" : "How it",
-                italic: locale.language.languageCode?.identifier == "tr" ? "çalışır?" : "works"
+                title: locale.language.languageCode?.identifier == "tr" ? tr("how_w1") : "How it",
+                italic: locale.language.languageCode?.identifier == "tr" ? tr("how_w2") : "works"
             )
 
             HStack(alignment: .top, spacing: 13) {
@@ -342,13 +347,13 @@ private extension AddFriendSheetView {
 
                 VStack(alignment: .leading, spacing: 5) {
                     Text(locale.language.languageCode?.identifier == "tr"
-                         ? "İstek gönderilir."
+                         ? tr("af_step1")
                          : "A request is sent.")
                         .font(.system(size: 15, weight: .black))
                         .foregroundStyle(.white)
 
                     Text(locale.language.languageCode?.identifier == "tr"
-                         ? "Karşı taraf kabul ettiğinde arkadaş listende görünür, sohbet ve sosyal çalışma özellikleri açılır."
+                         ? tr("af_step2")
                          : "Once accepted, they appear in your friends list and social study features unlock.")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.48))
@@ -557,6 +562,13 @@ private extension AddFriendSheetView {
             return
         }
 
+        let acceptedCount = friendStore.friendships.filter { $0.status == "accepted" }.count
+        if acceptedCount >= 5, !subscriptionManager.isPro {
+            Analytics.shared.track("feature_gate_triggered", properties: ["gate": "friend_limit"])
+            showPaywall = true
+            return
+        }
+
         errorMessage = nil
         successMessage = nil
         isLoading = true
@@ -605,7 +617,7 @@ private extension AddFriendSheetView {
             friendStore.markFriendsCacheRefreshed()
 
             if locale.language.languageCode?.identifier == "tr" {
-                successMessage = "@\(cleanUsername) kullanıcısına arkadaşlık isteği gönderildi"
+                successMessage = tr("af_request_sent", cleanUsername)
             } else {
                 successMessage = "Friend request sent to @\(cleanUsername)"
             }

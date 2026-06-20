@@ -40,9 +40,46 @@ struct EditEventView: View {
     @State private var conflictSummary: String = ""
     @State private var showDeleteConfirm: Bool = false
 
+    @Namespace private var daySelectionNamespace
+
     var body: some View {
-        formContent
+        NavigationStack {
+            ZStack {
+                // Updo identity background: deep navy + soft accent glows
+                UpdoTheme.background
+                    .ignoresSafeArea()
+
+                Circle()
+                    .fill(UpdoTheme.cyan.opacity(0.07))
+                    .frame(width: 280, height: 280)
+                    .blur(radius: 90)
+                    .offset(x: 150, y: -260)
+                    .ignoresSafeArea()
+
+                Circle()
+                    .fill(UpdoTheme.purple.opacity(0.09))
+                    .frame(width: 320, height: 320)
+                    .blur(radius: 100)
+                    .offset(x: -170, y: 380)
+                    .ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 18) {
+                        headerSection
+                        mainSection
+                        dayTimeSection
+                        colorSection
+                        notesSection
+                        duplicateSection
+                        deleteSection
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 32)
+                }
+            }
             .navigationTitle("event_edit_title")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbarContent }
             .onAppear { loadFromEvent() }
             .confirmationDialog(
@@ -69,7 +106,7 @@ struct EditEventView: View {
 
                         dismiss()
                     } catch {
-                        print("Delete error:", error)
+                        Log.debug("Delete error:", error)
                     }
                 }
 
@@ -81,17 +118,9 @@ struct EditEventView: View {
             } message: {
                 Text(conflictSummary)
             }
-    }
-
-    private var formContent: some View {
-        Form {
-            sectionMain
-            sectionDayTime
-            sectionColor
-            sectionNotes
-            sectionDuplicate
-            sectionDelete
         }
+        .preferredColorScheme(.dark)
+        .tint(UpdoTheme.cyan)
     }
 
     private var toolbarContent: some ToolbarContent {
@@ -102,85 +131,313 @@ struct EditEventView: View {
 
             ToolbarItem(placement: .topBarTrailing) {
                 Button("event_save") { trySaveWithConflictCheck() }
+                    .fontWeight(.semibold)
                     .disabled(!canSave)
             }
         }
     }
 
-    private var sectionMain: some View {
-        Section("event_section_class_or_event") {
-            TextField(String(localized: "event_title_placeholder"), text: $title)
-            TextField(String(localized: "event_location_optional"), text: $location)
-        }
-    }
+    // MARK: - Sections
 
-    private var sectionDayTime: some View {
-        Section("event_section_day_time") {
-            Picker("event_day", selection: $weekday) {
-                ForEach(0..<7, id: \.self) { i in
-                    Text(localizedDayTitle(i)).tag(i)
+    private var headerSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("event_edit_title")
+                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .foregroundStyle(.primary)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    summaryPill(
+                        icon: "calendar",
+                        text: localizedDayTitle(weekday),
+                        tint: colorFromHex(selectedColorHex)
+                    )
+
+                    summaryPill(
+                        icon: "clock",
+                        text: "\(hm(minutesFrom(startTime)))–\(hm(minutesFrom(endTime)))",
+                        tint: .secondary
+                    )
+
+                    summaryPill(
+                        icon: "timer",
+                        text: durationText,
+                        tint: .orange
+                    )
                 }
             }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 
-            DatePicker("event_start", selection: $startTime, displayedComponents: [.hourAndMinute])
-            DatePicker("event_end", selection: $endTime, displayedComponents: [.hourAndMinute])
+    private var mainSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionLabel(String(localized: "event_section_class_or_event"))
 
-            Text("\(String(localized: "event_duration")): \(durationText)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            VStack(spacing: 12) {
+                styledField(String(localized: "event_title_placeholder"), text: $title)
+                styledField(String(localized: "event_location_optional"), text: $location)
+            }
+            .padding(16)
+            .background(sectionCardBackground)
         }
     }
 
-    private var sectionColor: some View {
-        Section("event_section_color") {
-            Picker("event_color", selection: $selectedColorHex) {
-                ForEach(colorPalette, id: \.hex) { c in
-                    HStack {
-                        Circle()
-                            .fill(colorFromHex(c.hex))
-                            .frame(width: 12, height: 12)
+    private var dayTimeSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionLabel(String(localized: "event_section_day_time"))
 
-                        Text(LocalizedStringKey(c.nameKey))
+            VStack(spacing: 14) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(0..<7, id: \.self) { i in
+                            dayChip(i)
+                        }
                     }
-                    .tag(c.hex)
+                    .padding(.horizontal, 2)
+                }
+
+                Divider().overlay(Color.white.opacity(0.06))
+
+                DatePicker(
+                    "event_start",
+                    selection: $startTime,
+                    displayedComponents: [.hourAndMinute]
+                )
+                .font(.system(size: 15, weight: .semibold))
+
+                DatePicker(
+                    "event_end",
+                    selection: $endTime,
+                    displayedComponents: [.hourAndMinute]
+                )
+                .font(.system(size: 15, weight: .semibold))
+
+                HStack {
+                    Text("event_duration")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    Text(durationText)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.primary)
+                }
+            }
+            .padding(16)
+            .background(sectionCardBackground)
+        }
+    }
+
+    private var colorSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionLabel(String(localized: "event_section_color"))
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(colorPalette, id: \.hex) { c in
+                        let isSelected = selectedColorHex == c.hex
+
+                        Button {
+                            HapticManager.shared.selection()
+                            selectedColorHex = c.hex
+                        } label: {
+                            ZStack {
+                                Circle()
+                                    .fill(colorFromHex(c.hex))
+                                    .frame(width: 30, height: 30)
+
+                                if isSelected {
+                                    Circle()
+                                        .stroke(Color.white.opacity(0.95), lineWidth: 2.2)
+                                        .frame(width: 38, height: 38)
+
+                                    Circle()
+                                        .stroke(colorFromHex(c.hex).opacity(0.22), lineWidth: 6)
+                                        .frame(width: 44, height: 44)
+                                }
+                            }
+                            .frame(width: 46, height: 46)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 4)
+            }
+        }
+    }
+
+    private var notesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionLabel(String(localized: "event_section_note"))
+
+            TextField(
+                String(localized: "event_note_optional"),
+                text: $notes,
+                axis: .vertical
+            )
+            .lineLimit(3...6)
+            .textInputAutocapitalization(.sentences)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white.opacity(0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(Color.white.opacity(0.04), lineWidth: 1)
+                    )
+            )
+        }
+    }
+
+    private var duplicateSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionLabel(String(localized: "event_duplicate_section"))
+
+            VStack(spacing: 10) {
+                Button {
+                    duplicateSameDay()
+                } label: {
+                    actionRow(icon: "doc.on.doc", titleKey: "event_duplicate_same_day", tint: UpdoTheme.cyan)
+                }
+                .buttonStyle(.plain)
+
+                Menu {
+                    ForEach(0..<7, id: \.self) { d in
+                        Button(localizedDayTitle(d)) { duplicateToDay(d) }
+                    }
+                } label: {
+                    actionRow(icon: "calendar.badge.plus", titleKey: "event_duplicate_to_another_day", tint: UpdoTheme.cyan)
                 }
             }
         }
     }
 
-    private var sectionNotes: some View {
-        Section("event_section_note") {
-            TextField(String(localized: "event_note_optional"), text: $notes, axis: .vertical)
-                .lineLimit(3...6)
+    private var deleteSection: some View {
+        Button(role: .destructive) {
+            HapticManager.shared.selection()
+            showDeleteConfirm = true
+        } label: {
+            actionRow(icon: "trash", titleKey: "event_delete", tint: Color(updoHex: "#EF4444"))
         }
+        .buttonStyle(.plain)
+        .padding(.top, 4)
     }
 
-    private var sectionDuplicate: some View {
-        Section("event_duplicate_section") {
-            Button {
-                duplicateSameDay()
-            } label: {
-                Label("event_duplicate_same_day", systemImage: "doc.on.doc")
-            }
+    // MARK: - Building Blocks
 
-            Menu {
-                ForEach(0..<7, id: \.self) { d in
-                    Button(localizedDayTitle(d)) { duplicateToDay(d) }
+    private func dayChip(_ i: Int) -> some View {
+        let isSelected = weekday == i
+
+        return Button {
+            HapticManager.shared.selection()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
+                weekday = i
+            }
+        } label: {
+            Text(localizedDayTitle(i))
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(isSelected ? .black : .white.opacity(0.6))
+                .frame(width: 52, height: 40)
+                .background {
+                    if isSelected {
+                        Capsule()
+                            .fill(UpdoTheme.cyan)
+                            .matchedGeometryEffect(id: "day-selection-pill", in: daySelectionNamespace)
+                    } else {
+                        Capsule()
+                            .fill(Color.white.opacity(0.05))
+                    }
                 }
-            } label: {
-                Label("event_duplicate_to_another_day", systemImage: "calendar.badge.plus")
-            }
+                .contentShape(Capsule())
         }
+        .buttonStyle(.plain)
     }
 
-    private var sectionDelete: some View {
-        Section {
-            Button(role: .destructive) {
-                showDeleteConfirm = true
-            } label: {
-                Label("event_delete", systemImage: "trash")
+    private func styledField(_ placeholder: String, text: Binding<String>) -> some View {
+        TextField(placeholder, text: text)
+            .font(.system(size: 16, weight: .semibold))
+            .textInputAutocapitalization(.sentences)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white.opacity(0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(Color.white.opacity(0.04), lineWidth: 1)
+                    )
+            )
+    }
+
+    private func actionRow(icon: String, titleKey: LocalizedStringKey, tint: Color) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(tint.opacity(0.15))
+                    .frame(width: 38, height: 38)
+
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(tint)
             }
+
+            Text(titleKey)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(.primary)
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(.secondary.opacity(0.5))
         }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(sectionCardBackground)
+    }
+
+    private func summaryPill(icon: String, text: String, tint: Color) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .bold))
+
+            Text(text)
+                .lineLimit(1)
+        }
+        .font(.system(size: 12, weight: .semibold))
+        .foregroundStyle(tint)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(
+            Capsule()
+                .fill(tint.opacity(0.14))
+                .overlay(
+                    Capsule()
+                        .stroke(tint.opacity(0.16), lineWidth: 1)
+                )
+        )
+    }
+
+    private func sectionLabel(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 12, weight: .bold))
+            .tracking(1.2)
+            .foregroundStyle(.secondary.opacity(0.82))
+            .padding(.leading, 2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var sectionCardBackground: some View {
+        RoundedRectangle(cornerRadius: 22, style: .continuous)
+            .fill(Color.white.opacity(0.045))
+            .overlay(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .stroke(Color.white.opacity(0.05), lineWidth: 1)
+            )
     }
 
     private func loadFromEvent() {
@@ -359,7 +616,7 @@ struct EditEventView: View {
                 await resyncSharedWeek()
             }
         } catch {
-            print("Edit save error:", error)
+            Log.debug("Edit save error:", error)
         }
     }
 
@@ -394,7 +651,7 @@ struct EditEventView: View {
 
             dismiss()
         } catch {
-            print("Duplicate same day error:", error)
+            Log.debug("Duplicate same day error:", error)
         }
     }
 
@@ -431,7 +688,7 @@ struct EditEventView: View {
 
             dismiss()
         } catch {
-            print("Duplicate to day error:", error)
+            Log.debug("Duplicate to day error:", error)
         }
     }
 

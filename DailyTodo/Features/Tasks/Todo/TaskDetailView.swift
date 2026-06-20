@@ -63,11 +63,11 @@ struct TaskDetailView: View {
             .scrollIndicators(.hidden)
 
             if showFinishWorkoutToast {
-                toastView(text: "Workout tamamlandı")
+                toastView(text: tr("td_workout_done"))
             }
 
             if showWeekAddedToast {
-                toastView(text: "Week ekranına eklendi")
+                toastView(text: tr("td_added_to_week"))
             }
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -100,7 +100,7 @@ private extension TaskDetailView {
 
             Spacer()
 
-            Text("Görev Detayı")
+            Text(tr("td_task_detail"))
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
 
@@ -123,15 +123,15 @@ private extension TaskDetailView {
                             .foregroundStyle(accent)
 
                         if task.isDone {
-                            capsuleTag("Tamamlandı", tint: .green)
+                            capsuleTag(tr("common_completed"), tint: .green)
                         } else if isOverdue {
-                            capsuleTag("Gecikmiş", tint: .red)
+                            capsuleTag(tr("common_overdue"), tint: .red)
                         } else if !dueBadgeText.isEmpty {
                             capsuleTag(dueBadgeText, tint: accent)
                         }
                     }
 
-                    Text(task.title.isEmpty ? "Başlıksız görev" : task.title)
+                    Text(task.title.isEmpty ? tr("td_untitled") : task.title)
                         .font(.system(size: 30, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
                         .lineLimit(2)
@@ -216,14 +216,14 @@ private extension TaskDetailView {
 
             VStack(spacing: 12) {
                 labeledTextField(
-                    title: "Başlık",
-                    placeholder: "Görev başlığı",
+                    title: tr("at_title"),
+                    placeholder: tr("ct_task_title_ph"),
                     text: $task.title
                 )
 
                 labeledTextField(
-                    title: "Ders Adı",
-                    placeholder: "Örn. Calculus, Physics",
+                    title: tr("at_course"),
+                    placeholder: tr("td_course_ph"),
                     text: Binding(
                         get: { task.courseName },
                         set: {
@@ -234,15 +234,15 @@ private extension TaskDetailView {
                 )
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Görev Türü")
+                    Text(tr("at_task_type"))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(palette.secondaryText)
 
-                    Picker("Görev Türü", selection: $task.taskType) {
-                        Text("Görev").tag("standard")
-                        Text("Ödev").tag("homework")
-                        Text("Sınav").tag("exam")
-                        Text("Çalışma").tag("study")
+                    Picker(tr("at_task_type"), selection: $task.taskType) {
+                        Text(tr("at_kind_task")).tag("standard")
+                        Text(tr("tt_homework")).tag("homework")
+                        Text(tr("at_kind_exam")).tag("exam")
+                        Text(tr("tt_study")).tag("study")
                         Text("Proje").tag("project")
                         Text("Workout").tag("workout")
                     }
@@ -253,7 +253,7 @@ private extension TaskDetailView {
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Renk")
+                    Text(tr("at_color"))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(palette.secondaryText)
 
@@ -688,7 +688,7 @@ private extension TaskDetailView {
                 Button {
                     showWorkoutTemplateSheet = true
                 } label: {
-                    Text("Şablonlar")
+                    Text(tr("td_templates"))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.blue)
                         .padding(.horizontal, 10)
@@ -731,7 +731,7 @@ private extension TaskDetailView {
 
             if !recommendedExercises.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Önerilenler")
+                    Text(tr("td_suggested"))
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(palette.primaryText)
 
@@ -741,7 +741,7 @@ private extension TaskDetailView {
 
             if !otherExercises.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Diğer Egzersizler")
+                    Text(tr("td_other_exercises"))
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(palette.primaryText)
 
@@ -750,12 +750,12 @@ private extension TaskDetailView {
             }
 
             VStack(alignment: .leading, spacing: 12) {
-                Text("Seçili Egzersizler")
+                Text(tr("td_selected_exercises"))
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(palette.primaryText)
 
                 if taskExercises.isEmpty {
-                    Text("Henüz egzersiz eklenmedi")
+                    Text(tr("td_no_exercises"))
                         .font(.caption)
                         .foregroundStyle(palette.secondaryText)
                         .padding(.vertical, 6)
@@ -767,7 +767,7 @@ private extension TaskDetailView {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Süre")
+                Text(tr("duration_label"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(palette.primaryText)
 
@@ -802,7 +802,7 @@ private extension TaskDetailView {
 
     var scheduleCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionLabel("Planlama")
+            sectionLabel(tr("at_planning"))
 
             if let due = task.dueDate {
                 infoChip(
@@ -813,7 +813,7 @@ private extension TaskDetailView {
             }
 
             DatePicker(
-                "Week zamanı",
+                tr("td_week_time"),
                 selection: Binding(
                     get: { task.scheduledWeekDate ?? Date() },
                     set: {
@@ -836,7 +836,7 @@ private extension TaskDetailView {
                 in: 15...240,
                 step: 15
             ) {
-                Text("Süre: \(task.scheduledWeekDurationMinutes ?? 60) dk")
+                Text("\(tr("duration_label")): \(task.scheduledWeekDurationMinutes ?? 60) \(tr("common_min_short"))")
                     .foregroundStyle(palette.primaryText)
             }
 
@@ -928,9 +928,9 @@ private extension TaskDetailView {
 
     var primaryActionTitle: String {
         if task.taskType == "workout" {
-            return task.isDone ? "Workout’u Geri Aç" : "Workout’u Bitir"
+            return task.isDone ? tr("td_reopen_workout") : "Workout’u Bitir"
         } else {
-            return task.isDone ? "Tekrar Aç" : "Tamamlandı Olarak İşaretle"
+            return task.isDone ? tr("common_reopen") : tr("ct_mark_done")
         }
     }
 
@@ -949,12 +949,12 @@ private extension TaskDetailView {
 
     var taskTypeTitle: String {
         switch task.taskType.lowercased() {
-        case "homework": return "Ödev"
-        case "exam": return "Sınav"
-        case "study": return "Çalışma"
+        case "homework": return tr("tt_homework")
+        case "exam": return tr("at_kind_exam")
+        case "study": return tr("tt_study")
         case "project": return "Proje"
         case "workout": return "Workout"
-        default: return "Görev"
+        default: return tr("at_kind_task")
         }
     }
 
@@ -983,17 +983,17 @@ private extension TaskDetailView {
         let days = minutes / 1440
 
         if task.taskType.lowercased() == "exam" {
-            if days >= 1 { return "\(days) gün kaldı" }
-            if hours >= 1 { return "\(hours) sa kaldı" }
-            return "\(minutes) dk kaldı"
+            if days >= 1 { return tr("rel_days_left", days) }
+            if hours >= 1 { return tr("rel_hours_left", hours) }
+            return tr("rel_min_left", minutes)
         }
 
         if task.taskType.lowercased() == "homework" {
             if Calendar.current.isDateInToday(due) {
-                return "Bugün teslim"
+                return tr("due_today")
             }
             if Calendar.current.isDateInTomorrow(due) {
-                return "Yarın teslim"
+                return tr("due_tomorrow")
             }
         }
 
@@ -1003,7 +1003,7 @@ private extension TaskDetailView {
         }
 
         if Calendar.current.isDateInTomorrow(due) {
-            return "Yarın"
+            return tr("common_tomorrow")
         }
 
         return due.formatted(date: .abbreviated, time: .shortened)
@@ -1211,7 +1211,7 @@ private struct WorkoutTemplateSheet: View {
                     .buttonStyle(.plain)
                 }
             }
-            .navigationTitle("Workout Şablonları")
+            .navigationTitle(tr("td_workout_templates"))
             .navigationBarTitleDisplayMode(.inline)
         }
     }

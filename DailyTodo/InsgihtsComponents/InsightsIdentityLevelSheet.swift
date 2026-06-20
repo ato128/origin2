@@ -98,7 +98,7 @@ struct InsightsIdentityLevelSheet: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
 
-                Text("Bir sonraki statü için gerekenler.")
+                Text(tr("ils_requirements"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.48))
             }
@@ -156,7 +156,7 @@ struct InsightsIdentityLevelSheet: View {
                         .lineLimit(2)
                         .minimumScaleFactor(0.74)
 
-                    Text(snapshot.isMaxLevel ? "Maksimum seviyedesin" : "Lv.\(nextLevel.level) için ilerliyorsun")
+                    Text(snapshot.isMaxLevel ? "Maksimum seviyedesin" : tr("ils_progressing_lv", nextLevel.level))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.50))
                 }
@@ -169,7 +169,7 @@ struct InsightsIdentityLevelSheet: View {
             progressBeam(progress: snapshot.progress, tint: accent)
 
             HStack(spacing: 8) {
-                Text("\(snapshot.percentText) tamamlandı")
+                Text("\(snapshot.percentText) \(tr("done_word"))")
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(0.7)
                     .foregroundStyle(accent)
@@ -209,7 +209,7 @@ struct InsightsIdentityLevelSheet: View {
                             .foregroundStyle(accent)
                     }
 
-                    Text("Seviye şartları")
+                    Text(tr("ils_level_reqs"))
                         .font(.system(size: 22, weight: .black))
                         .foregroundStyle(.white)
                 }
@@ -243,7 +243,7 @@ struct InsightsIdentityLevelSheet: View {
 
             requirementRow(
                 icon: "checkmark.circle.fill",
-                title: "Görev tamamla",
+                title: tr("ils_complete_task"),
                 currentValue: snapshot.completedTasks,
                 targetValue: nextLevel.requiredCompletedTasks,
                 ratio: snapshot.taskRatio,
@@ -252,7 +252,7 @@ struct InsightsIdentityLevelSheet: View {
 
             requirementRow(
                 icon: "flame.fill",
-                title: "Seri günü",
+                title: tr("ils_streak_day"),
                 currentValue: snapshot.streakDays,
                 targetValue: nextLevel.requiredStreakDays,
                 ratio: snapshot.streakRatio,
@@ -307,7 +307,7 @@ struct InsightsIdentityLevelSheet: View {
                 Image(systemName: "arrow.up.forward.circle.fill")
                     .font(.system(size: 17, weight: .black))
 
-                Text("YENİ SEVİYEYE GEÇ")
+                Text(tr("ils_level_up_caps"))
                     .font(.system(size: 12, weight: .black, design: .monospaced))
                     .tracking(0.9)
 
@@ -347,7 +347,7 @@ struct InsightsIdentityLevelSheet: View {
             return "Bu seviyeden sonra yeni ligler eklenebilir."
         }
 
-        return "\(nextLevel.requiredFocusSessions) focus • \(nextLevel.requiredCompletedTasks) görev • \(nextLevel.requiredStreakDays) gün seri"
+        return "\(nextLevel.requiredFocusSessions) focus • \(tr("rel_task_count", nextLevel.requiredCompletedTasks)) • \(tr("oc_day_streak", nextLevel.requiredStreakDays))"
     }
 
     private func requirementRow(

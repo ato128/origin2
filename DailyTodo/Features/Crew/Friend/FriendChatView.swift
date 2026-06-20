@@ -27,10 +27,11 @@ private enum FriendChatArenaPalette {
     static let green = Color(friendChatHex: "#A3E635")
     static let surface = Color(friendChatHex: "#101118")
 
+    // Updo AI ile birebir: cyan → mor.
     static var appGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(friendChatHex: "#1E6BFF"),
+                Color(friendChatHex: "#2DD4FF"),
                 Color(friendChatHex: "#7C3AED")
             ],
             startPoint: .topLeading,
@@ -41,7 +42,7 @@ private enum FriendChatArenaPalette {
     static var sentBubbleGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(friendChatHex: "#1593FF"),
+                Color(friendChatHex: "#2DD4FF"),
                 Color(friendChatHex: "#7C3AED")
             ],
             startPoint: .topLeading,
@@ -83,6 +84,16 @@ struct FriendChatView: View {
     @EnvironmentObject var session: SessionStore
 
     private let palette = ThemePalette()
+
+    /// Başarısız medya gönderimlerinin retry için bellekte tutulan içeriği (clientID → payload).
+    /// Ekran kapanınca temizlenir — Insta DM davranışıyla aynı.
+    enum FailedMediaPayload {
+        case photo(data: Data, caption: String?)
+        case file(data: Data, fileName: String, mimeType: String, caption: String?)
+        case voice(data: Data, durationText: String)
+    }
+
+    @State var mediaRetryPayloads: [String: FailedMediaPayload] = [:]
 
     @State private var draftMessage: String = ""
     @State private var showFriendInfo = false
@@ -166,14 +177,14 @@ struct FriendChatView: View {
 
     private var composerDisabledReason: String {
         if isSyncingBackendConversation {
-            return "Sohbet hazırlanıyor. Birkaç saniye sonra tekrar dene."
+            return tr("fc_preparing")
         }
 
         if backendSyncError != nil {
-            return "Sohbet bağlantısı hazırlanamadı. Sayfayı kapatıp tekrar aç."
+            return tr("fc_conn_failed")
         }
 
-        return "Sohbet henüz hazır değil."
+        return tr("fc_not_ready")
     }
 
     private var chatRootContent: some View {
@@ -224,7 +235,7 @@ struct FriendChatView: View {
                     draftAttachment = .file(url)
 
                 case .failure(let error):
-                    attachmentAlertText = "Dosya seçilemedi: \(error.localizedDescription)"
+                    attachmentAlertText = "\(tr("fc_file_pick_failed")): \(error.localizedDescription)"
                     showAttachmentAlert = true
                 }
             }
@@ -248,7 +259,7 @@ struct FriendChatView: View {
                         }
                     } catch {
                         await MainActor.run {
-                            attachmentAlertText = "Fotoğraf yüklenemedi: \(error.localizedDescription)"
+                            attachmentAlertText = "\(tr("fc_photo_load_failed")): \(error.localizedDescription)"
                             showAttachmentAlert = true
                         }
                     }
@@ -262,7 +273,7 @@ struct FriendChatView: View {
             .task(id: friendshipID) {
                 guard let friendshipID else { return }
 
-                print("🟡 CHAT TASK START:", friendshipID.uuidString)
+                Log.debug("🟡 CHAT TASK START:", friendshipID.uuidString)
 
                
 
@@ -280,7 +291,7 @@ struct FriendChatView: View {
                 await syncChatBackendFriendshipIfNeeded()
             }
             .onDisappear {
-                            print("🔴 CHAT DISAPPEAR")
+                            Log.debug("🔴 CHAT DISAPPEAR")
 
                             if friendshipID != nil {
                                 ChatBackendSocketClient.shared.disconnect()
@@ -309,9 +320,9 @@ struct FriendChatView: View {
                     }
                 }
 
-                Button("İptal", role: .cancel) { }
+                Button(tr("common_cancel"), role: .cancel) { }
             } message: {
-                Text("Ses mesajı göndermek için mikrofon izni vermen gerekiyor.")
+                Text(tr("fc_mic_permission"))
             }
     }
 }
@@ -319,50 +330,14 @@ struct FriendChatView: View {
 // MARK: - Background
 
 private extension FriendChatView {
+    // Birebir Updo AI chat arka planı.
     var ambientBackground: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-
-            LinearGradient(
-                colors: [
-                    FriendChatArenaPalette.backgroundTop,
-                    FriendChatArenaPalette.backgroundMid,
-                    FriendChatArenaPalette.backgroundBottom
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-
-            Circle()
-                .fill(hexColor(friend.colorHex).opacity(0.16))
-                .frame(width: 300, height: 300)
-                .blur(radius: 105)
-                .offset(x: -175, y: 520)
-
-            Circle()
-                .fill(FriendChatArenaPalette.blue.opacity(0.10))
-                .frame(width: 260, height: 260)
-                .blur(radius: 96)
-                .offset(x: 165, y: -245)
-
-            Circle()
-                .fill(FriendChatArenaPalette.purple.opacity(0.14))
-                .frame(width: 300, height: 300)
-                .blur(radius: 110)
-                .offset(x: 180, y: 260)
-
-            LinearGradient(
-                colors: [
-                    Color.black.opacity(0.18),
-                    Color.clear,
-                    Color.black.opacity(0.44)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-        }
+        ArenaBackground(
+            primaryGlow: Color(arenaHex: "#7C3AED"),
+            secondaryGlow: Color(arenaHex: "#2DD4FF"),
+            warmGlow: Color(arenaHex: "#FF5A44")
+        )
+        .ignoresSafeArea()
     }
 }
 
@@ -517,13 +492,25 @@ private extension FriendChatView {
         VStack(spacing: 16) {
             Spacer()
 
-            ProgressView()
-                .scaleEffect(1.2)
-                .tint(.white.opacity(0.7))
+            // Skeleton bubbles while messages load
+            VStack(spacing: 12) {
+                HStack {
+                    SkeletonView(width: 210, height: 40, radius: 18)
+                    Spacer()
+                }
+                HStack {
+                    Spacer()
+                    SkeletonView(width: 150, height: 40, radius: 18)
+                }
+                HStack {
+                    SkeletonView(width: 180, height: 40, radius: 18)
+                    Spacer()
+                }
+            }
 
-            Text("Mesajlar yükleniyor")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.55))
+            Text(tr("fc_loading_messages"))
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.45))
 
             Spacer()
         }
@@ -545,11 +532,11 @@ private extension FriendChatView {
                 )
 
             VStack(spacing: 7) {
-                Text("Bağlantı sorunu")
+                Text(tr("fc_conn_problem"))
                     .font(.system(size: 22, weight: .black))
                     .foregroundStyle(.white)
 
-                Text("Sohbet yüklenemedi. Sayfayı kapatıp tekrar aç.")
+                Text(tr("fc_load_failed"))
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.50))
                     .multilineTextAlignment(.center)
@@ -617,7 +604,7 @@ private extension FriendChatView {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 2) {
-                                    // En üstte "Daha fazla mesaj yükle" tetikleyici
+                                    // En üstte tr("fc_load_more") tetikleyici
                                     if hasMoreOlderMessages && !backendMessages.isEmpty {
                                         HStack {
                                             Spacer()
@@ -657,6 +644,9 @@ private extension FriendChatView {
                                             friendshipID: friendshipID
                                         )
                                     }
+                                },
+                                onRetry: {
+                                    resendFailedMessage(message)
                                 }
                             )
                             .id(message.id)
@@ -804,7 +794,7 @@ private extension FriendChatView {
                         .frame(width: 10, height: 10)
 
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Ses kaydı")
+                        Text(tr("fc_voice_recording"))
                             .font(.system(size: 13, weight: .black))
                             .foregroundStyle(.white)
 
@@ -823,7 +813,7 @@ private extension FriendChatView {
                         .font(.system(size: 13, weight: .bold, design: .monospaced))
                         .foregroundStyle(.white.opacity(0.9))
 
-                    Button("İptal") {
+                    Button(tr("common_cancel")) {
                         audioRecorder.cancelRecording()
                     }
                     .font(.system(size: 13, weight: .bold))
@@ -849,7 +839,7 @@ private extension FriendChatView {
                         matching: .images,
                         photoLibrary: .shared()
                     ) {
-                        Label("Fotoğraf", systemImage: "photo")
+                        Label(tr("fc_photo"), systemImage: "photo")
                     }
 
                     Button {
@@ -932,7 +922,7 @@ private extension FriendChatView {
                                 do {
                                     try audioRecorder.startRecording()
                                 } catch {
-                                    print("VOICE RECORD START ERROR:", error.localizedDescription)
+                                    Log.debug("VOICE RECORD START ERROR:", error.localizedDescription)
                                 }
                             }
                         }
@@ -946,7 +936,7 @@ private extension FriendChatView {
                         .font(.system(size: hasSendableContent ? 24 : 20, weight: .semibold))
                         .foregroundStyle(
                             hasSendableContent
-                            ? FriendChatArenaPalette.blue
+                            ? FriendChatArenaPalette.cyan
                             : (audioRecorder.isRecording ? Color.red : Color.white.opacity(0.78))
                         )
                     }
@@ -988,86 +978,35 @@ private extension FriendChatView {
 // MARK: - Helpers
 
 private extension FriendChatView {
+    // Birebir Updo AI floating cam-daire.
     var arenaCircleBackground: some View {
         Circle()
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color.white.opacity(0.105),
-                        Color.black.opacity(0.34),
-                        Color.white.opacity(0.055)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .background(
-                Circle()
-                    .fill(.ultraThinMaterial)
-                    .opacity(0.28)
-            )
-            .overlay(
-                Circle()
-                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
-            )
-            .shadow(color: Color.black.opacity(0.28), radius: 14, y: 7)
+            .fill(.ultraThinMaterial)
+            .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
     }
-    
+
+    // Birebir Updo AI floating cam-pill.
     var arenaCapsuleBackground: some View {
         Capsule()
-            .fill(
-                LinearGradient(
-                    colors: [
-                        FriendChatArenaPalette.blue.opacity(0.075),
-                        FriendChatArenaPalette.purple.opacity(0.060),
-                        Color.white.opacity(0.055)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay(
-                Capsule()
-                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
-            )
-            .shadow(color: Color.black.opacity(0.20), radius: 12, y: 6)
+            .fill(.ultraThinMaterial)
+            .overlay(Capsule().strokeBorder(UpdoTheme.border, lineWidth: 1))
     }
     
     var chatHeaderScrim: some View {
+        // Hafif fade: yüzen header elemanları kendi material'ini taşıyor,
+        // mesajlar arkalarından akıyor — ağır siyah blok yok (iMessage hissi).
         VStack(spacing: 0) {
             LinearGradient(
                 stops: [
-                    .init(color: Color.black.opacity(0.96), location: 0.00),
-                    .init(color: Color.black.opacity(0.88), location: 0.24),
-                    .init(color: Color.black.opacity(0.64), location: 0.50),
-                    .init(color: Color.black.opacity(0.31), location: 0.74),
-                    .init(color: Color.black.opacity(0.10), location: 0.90),
+                    .init(color: Color.black.opacity(0.42), location: 0.00),
+                    .init(color: Color.black.opacity(0.18), location: 0.55),
                     .init(color: Color.clear, location: 1.00)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
             )
-            .frame(height: 168)
-            .overlay(alignment: .top) {
-                LinearGradient(
-                    colors: [
-                        Color(friendChatHex: "#05060D").opacity(0.92),
-                        Color(friendChatHex: "#05060D").opacity(0.58),
-                        Color.clear
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(height: 108)
-            }
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(Color.black.opacity(0.10))
-                    .frame(height: 34)
-                    .blur(radius: 18)
-                    .offset(y: 12)
-            }
-            
+            .frame(height: 110)
+
             Spacer(minLength: 0)
         }
     }
@@ -1091,7 +1030,7 @@ private extension FriendChatView {
     func handleScenePhaseChange(_ newPhase: ScenePhase) {
             switch newPhase {
             case .active:
-                print("🟢 CHAT SCENE PHASE: active")
+                Log.debug("🟢 CHAT SCENE PHASE: active")
 
                 // Uygulama foreground'a döndü
                 // Eğer sohbet ekranı hâlâ açıksa, mesajları okundu işaretle
@@ -1125,7 +1064,7 @@ private extension FriendChatView {
                         AppBadgeManager.shared.clearBadge()
                     }
 
-                    print("🟢 CHAT FOREGROUND SYNC OK")
+                    Log.debug("🟢 CHAT FOREGROUND SYNC OK")
                 }
 
                 // Socket'i de yeniden bağla (background'da kopmuş olabilir)
@@ -1134,10 +1073,10 @@ private extension FriendChatView {
                 }
 
             case .background:
-                print("🟠 CHAT SCENE PHASE: background")
+                Log.debug("🟠 CHAT SCENE PHASE: background")
 
             case .inactive:
-                print("⚪️ CHAT SCENE PHASE: inactive")
+                Log.debug("⚪️ CHAT SCENE PHASE: inactive")
 
             @unknown default:
                 break
@@ -1213,7 +1152,7 @@ private extension FriendChatView {
                 case .photo(let image):
                     guard let jpegData = image.jpegData(compressionQuality: 0.82) else {
                         await MainActor.run {
-                            attachmentAlertText = "Fotoğraf hazırlanamadı."
+                            attachmentAlertText = tr("fc_photo_prep_failed")
                             showAttachmentAlert = true
                         }
                         return
@@ -1300,7 +1239,7 @@ private extension FriendChatView {
                     isSendingBackendMessage = false
                     ChatFeedbackManager.shared.playSent()
                 }
-                print("✅ CHAT BACKEND REAL SEND OK:", backendMessage.id.uuidString)
+                Log.debug("✅ CHAT BACKEND REAL SEND OK:", backendMessage.id.uuidString)
             } else {
                 await MainActor.run {
                     markBackendMessageFailed(clientID: clientID)
@@ -1308,16 +1247,115 @@ private extension FriendChatView {
                     isSendingBackendMessage = false
                 }
 
-                print("❌ CHAT BACKEND REAL SEND FAILED")
+                Log.debug("❌ CHAT BACKEND REAL SEND FAILED")
             }
         }
     }
-    
+
+    /// Başarısız bir mesajı aynı clientID ile yeniden gönderir (Insta DM modeli).
+    /// Metin doğrudan, medya ise bellekteki payload üzerinden tekrar yüklenir.
+    /// Backend `on conflict (conversation_id, client_id)` upsert'i sayesinde
+    /// retry hiçbir koşulda çift mesaj üretmez.
+    func resendFailedMessage(_ message: FriendChatMessageItem) {
+        guard message.isFailed, message.isFromMe else { return }
+
+        guard let friendshipID,
+              let backendConversationID,
+              let senderID = session.currentUser?.id else { return }
+
+        // Medya mesajı: bellekteki payload ile aynı clientID üzerinden tekrar gönder
+        if message.messageType != "text",
+           let clientID = message.clientID,
+           let payload = mediaRetryPayloads[clientID] {
+            Task {
+                switch payload {
+                case .photo(let data, let caption):
+                    await sendBackendPhotoMessage(
+                        imageData: data,
+                        caption: caption,
+                        friendshipID: friendshipID,
+                        senderID: senderID,
+                        existingClientID: clientID
+                    )
+
+                case .file(let data, let fileName, let mimeType, let caption):
+                    await sendBackendFileData(
+                        data: data,
+                        fileName: fileName,
+                        mimeType: mimeType,
+                        caption: caption,
+                        friendshipID: friendshipID,
+                        senderID: senderID,
+                        existingClientID: clientID
+                    )
+
+                case .voice(let data, let durationText):
+                    await sendBackendVoiceData(
+                        data: data,
+                        durationText: durationText,
+                        friendshipID: friendshipID,
+                        senderID: senderID,
+                        existingClientID: clientID
+                    )
+                }
+            }
+            return
+        }
+
+        // Medya payload'ı yoksa (ekran yeniden açıldı vb.) kullanıcıyı bilgilendir
+        if message.messageType != "text", message.text.isEmpty == false, message.mediaURL == nil {
+            attachmentAlertText = tr("fc_media_resend_failed")
+            showAttachmentAlert = true
+            return
+        }
+
+        let text = message.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+
+        let clientID = message.clientID ?? UUID().uuidString
+
+        Task {
+            let pendingMessage = makePendingBackendTextMessage(
+                text: text,
+                clientID: clientID,
+                friendshipID: friendshipID,
+                senderID: senderID
+            )
+
+            await MainActor.run {
+                appendOrReplaceBackendMessage(pendingMessage)
+                upsertCachedMessage(pendingMessage, conversationID: backendConversationID)
+            }
+
+            let backendMessage = await ChatBackendClient.shared.sendMessage(
+                conversationID: backendConversationID,
+                text: text,
+                clientID: clientID
+            )
+
+            if let backendMessage,
+               let mappedMessage = mapBackendMessage(backendMessage, friendshipID: friendshipID) {
+                await MainActor.run {
+                    appendOrReplaceBackendMessage(mappedMessage)
+                    upsertCachedMessage(mappedMessage, conversationID: backendConversationID)
+                    ChatFeedbackManager.shared.playSent()
+                }
+            } else {
+                await MainActor.run {
+                    markBackendMessageFailed(clientID: clientID)
+                    updateCachedMessageFailed(clientID: clientID)
+                    HapticManager.shared.error()
+                }
+            }
+        }
+    }
+
     func sendBackendPhotoMessage(
         imageData: Data,
         caption: String?,
         friendshipID: UUID,
-        senderID: UUID
+        senderID: UUID,
+        existingClientID: String? = nil
     ) async {
         guard let backendConversationID else {
             await MainActor.run {
@@ -1327,12 +1365,18 @@ private extension FriendChatView {
             return
         }
 
-        let clientID = UUID().uuidString
+        let clientID = existingClientID ?? UUID().uuidString
+
+        // Retry için içeriği sakla — başarıda silinir
+        await MainActor.run {
+            mediaRetryPayloads[clientID] = .photo(data: imageData, caption: caption)
+        }
+
         let fileName = "photo.jpg"
         let storagePath = "\(friendshipID.uuidString)/images/\(UUID().uuidString).jpg"
         let fallbackText = caption?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
             ? caption!.trimmingCharacters(in: .whitespacesAndNewlines)
-            : "📷 Fotoğraf"
+            : tr("fc_photo_emoji")
 
         let pending = FriendChatMessageItem(
             id: UUID(),
@@ -1378,7 +1422,7 @@ private extension FriendChatView {
                 throw NSError(
                     domain: "FriendChatView",
                     code: 1001,
-                    userInfo: [NSLocalizedDescriptionKey: "Media URL oluşturulamadı"]
+                    userInfo: [NSLocalizedDescriptionKey: tr("fc_media_url_failed")]
                 )
             }
 
@@ -1398,6 +1442,7 @@ private extension FriendChatView {
                 await MainActor.run {
                     appendOrReplaceBackendMessage(mapped)
                     upsertCachedMessage(mapped, conversationID: backendConversationID)
+                    mediaRetryPayloads.removeValue(forKey: clientID)
                     ChatFeedbackManager.shared.playSent()
                 }
             } else {
@@ -1407,7 +1452,7 @@ private extension FriendChatView {
                 }
             }
         } catch {
-            print("❌ BACKEND PHOTO SEND ERROR:", error.localizedDescription)
+            Log.debug("❌ BACKEND PHOTO SEND ERROR:", error.localizedDescription)
 
             await MainActor.run {
                 markBackendMessageFailed(clientID: clientID)
@@ -1439,15 +1484,54 @@ private extension FriendChatView {
 
         guard let data = try? Data(contentsOf: fileURL) else {
             await MainActor.run {
-                attachmentAlertText = "Dosya okunamadı."
+                attachmentAlertText = tr("fc_file_read_failed")
                 showAttachmentAlert = true
             }
             return
         }
 
-        let clientID = UUID().uuidString
         let fileName = fileURL.lastPathComponent
         let mimeType = mimeTypeForFile(url: fileURL)
+
+        await sendBackendFileData(
+            data: data,
+            fileName: fileName,
+            mimeType: mimeType,
+            caption: caption,
+            friendshipID: friendshipID,
+            senderID: senderID
+        )
+    }
+
+    /// Dosya gönderiminin Data tabanlı çekirdeği — retry doğrudan bunu çağırır.
+    func sendBackendFileData(
+        data: Data,
+        fileName: String,
+        mimeType: String,
+        caption: String?,
+        friendshipID: UUID,
+        senderID: UUID,
+        existingClientID: String? = nil
+    ) async {
+        guard let backendConversationID else {
+            await MainActor.run {
+                attachmentAlertText = composerDisabledReason
+                showAttachmentAlert = true
+            }
+            return
+        }
+
+        let clientID = existingClientID ?? UUID().uuidString
+
+        // Retry için içeriği sakla — başarıda silinir
+        await MainActor.run {
+            mediaRetryPayloads[clientID] = .file(
+                data: data,
+                fileName: fileName,
+                mimeType: mimeType,
+                caption: caption
+            )
+        }
         let safeName = "\(UUID().uuidString)-\(fileName)"
         let storagePath = "\(friendshipID.uuidString)/files/\(safeName)"
         let fallbackText = caption?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
@@ -1498,7 +1582,7 @@ private extension FriendChatView {
                 throw NSError(
                     domain: "FriendChatView",
                     code: 1002,
-                    userInfo: [NSLocalizedDescriptionKey: "Dosya URL oluşturulamadı"]
+                    userInfo: [NSLocalizedDescriptionKey: tr("fc_file_url_failed")]
                 )
             }
 
@@ -1518,6 +1602,7 @@ private extension FriendChatView {
                 await MainActor.run {
                     appendOrReplaceBackendMessage(mapped)
                     upsertCachedMessage(mapped, conversationID: backendConversationID)
+                    mediaRetryPayloads.removeValue(forKey: clientID)
                     ChatFeedbackManager.shared.playSent()
                 }
             } else {
@@ -1527,7 +1612,7 @@ private extension FriendChatView {
                 }
             }
         } catch {
-            print("❌ BACKEND FILE SEND ERROR:", error.localizedDescription)
+            Log.debug("❌ BACKEND FILE SEND ERROR:", error.localizedDescription)
 
             await MainActor.run {
                 markBackendMessageFailed(clientID: clientID)
@@ -1561,13 +1646,43 @@ private extension FriendChatView {
 
         guard let data = try? Data(contentsOf: audioURL) else {
             await MainActor.run {
-                attachmentAlertText = "Ses dosyası okunamadı."
+                attachmentAlertText = tr("fc_audio_read_failed")
                 showAttachmentAlert = true
             }
             return
         }
 
-        let clientID = UUID().uuidString
+        await sendBackendVoiceData(
+            data: data,
+            durationText: durationText,
+            friendshipID: friendshipID,
+            senderID: senderID
+        )
+    }
+
+    /// Ses gönderiminin Data tabanlı çekirdeği — retry doğrudan bunu çağırır.
+    func sendBackendVoiceData(
+        data: Data,
+        durationText: String,
+        friendshipID: UUID,
+        senderID: UUID,
+        existingClientID: String? = nil
+    ) async {
+        guard let backendConversationID else {
+            await MainActor.run {
+                attachmentAlertText = composerDisabledReason
+                showAttachmentAlert = true
+            }
+            return
+        }
+
+        let clientID = existingClientID ?? UUID().uuidString
+
+        // Retry için içeriği sakla — başarıda silinir
+        await MainActor.run {
+            mediaRetryPayloads[clientID] = .voice(data: data, durationText: durationText)
+        }
+
         let fileName = "voice-\(UUID().uuidString).m4a"
         let storagePath = "\(friendshipID.uuidString)/voice/\(fileName)"
         let fallbackText = "🎤 \(durationText)"
@@ -1616,7 +1731,7 @@ private extension FriendChatView {
                 throw NSError(
                     domain: "FriendChatView",
                     code: 1003,
-                    userInfo: [NSLocalizedDescriptionKey: "Ses URL oluşturulamadı"]
+                    userInfo: [NSLocalizedDescriptionKey: tr("fc_audio_url_failed")]
                 )
             }
 
@@ -1636,6 +1751,7 @@ private extension FriendChatView {
                 await MainActor.run {
                     appendOrReplaceBackendMessage(mapped)
                     upsertCachedMessage(mapped, conversationID: backendConversationID)
+                    mediaRetryPayloads.removeValue(forKey: clientID)
                     ChatFeedbackManager.shared.playSent()
                 }
             } else {
@@ -1645,7 +1761,7 @@ private extension FriendChatView {
                 }
             }
         } catch {
-            print("❌ BACKEND VOICE SEND ERROR:", error.localizedDescription)
+            Log.debug("❌ BACKEND VOICE SEND ERROR:", error.localizedDescription)
 
             await MainActor.run {
                 markBackendMessageFailed(clientID: clientID)
@@ -1661,7 +1777,7 @@ private extension FriendChatView {
                 .getPublicURL(path: path)
                 .absoluteString
         } catch {
-            print("❌ PUBLIC BACKEND MEDIA URL ERROR:", error.localizedDescription)
+            Log.debug("❌ PUBLIC BACKEND MEDIA URL ERROR:", error.localizedDescription)
             return ""
         }
     }
@@ -1726,11 +1842,11 @@ private extension FriendChatView {
                         }
                         
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Fotoğraf hazır")
+                            Text(tr("fc_photo_ready"))
                                 .font(.system(size: 14, weight: .black))
                                 .foregroundStyle(.white)
                             
-                            Text("Göndermeden önce istersen mesaj ekleyebilirsin.")
+                            Text(tr("fc_add_caption"))
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(.white.opacity(0.48))
                                 .lineLimit(2)
@@ -1760,7 +1876,7 @@ private extension FriendChatView {
                                     .foregroundStyle(.white)
                                     .lineLimit(2)
                                 
-                                Text("Dosya hazır")
+                                Text(tr("fc_file_ready"))
                                     .font(.system(size: 12, weight: .semibold))
                                     .foregroundStyle(.white.opacity(0.48))
                             }
@@ -1889,6 +2005,7 @@ private extension FriendChatView {
             let message: FriendChatMessageItem
             let palette: ThemePalette
             let onDelete: () -> Void
+            let onRetry: () -> Void
             
             @State private var showTime = false
             @State private var showImageViewer = false
@@ -1934,7 +2051,7 @@ private extension FriendChatView {
                                         Button {
                                             saveImageToPhotos()
                                         } label: {
-                                            Label("Fotoğrafı Kaydet", systemImage: "square.and.arrow.down")
+                                            Label(tr("fc_save_photo"), systemImage: "square.and.arrow.down")
                                         }
                                     }
                             }
@@ -1955,8 +2072,25 @@ private extension FriendChatView {
                                 .padding(.horizontal, 6)
                                 .padding(.top, 1)
                             }
+
+                            // Insta DM mantığı: başarısız mesaj tek dokunuşla tekrar gönderilir
+                            if message.isFailed && message.isFromMe {
+                                Button(action: onRetry) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "arrow.clockwise")
+                                            .font(.system(size: 10, weight: .bold))
+
+                                        Text(tr("fc_send_failed_retry"))
+                                            .font(.system(size: 11, weight: .semibold))
+                                    }
+                                    .foregroundStyle(.red.opacity(0.85))
+                                    .padding(.horizontal, 4)
+                                    .padding(.top, 2)
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
-                        
+
                         if !message.isFromMe {
                             Spacer(minLength: 56)
                         }
@@ -2054,7 +2188,7 @@ private extension FriendChatView {
                                     }
                                 }
                                 
-                                Text(message.text.isEmpty ? "Ses mesajı" : message.text)
+                                Text(message.text.isEmpty ? tr("fc_voice_message") : message.text)
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundStyle(message.isFromMe ? .white.opacity(0.88) : .white.opacity(0.72))
                             }
@@ -2114,14 +2248,36 @@ private extension FriendChatView {
                 }
             }
             
+            // Birebir Updo AI baloncuğu: konuşan tarafta köşeli kuyruk.
             private var textMessageBubble: some View {
-                Text(message.text)
+                let shape = UnevenRoundedRectangle(
+                    topLeadingRadius: 18,
+                    bottomLeadingRadius: message.isFromMe ? 18 : 5,
+                    bottomTrailingRadius: message.isFromMe ? 5 : 18,
+                    topTrailingRadius: 18,
+                    style: .continuous
+                )
+
+                return Text(message.text)
                     .font(.system(size: 17, weight: .medium))
                     .foregroundStyle(message.isFromMe ? .white : .white.opacity(0.96))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .background(messageBubbleBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .background {
+                        if message.isFromMe {
+                            shape.fill(
+                                LinearGradient(
+                                    colors: [UpdoTheme.cyan, UpdoTheme.purple],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                        } else {
+                            shape.fill(UpdoTheme.surfaceHigh)
+                                .overlay(shape.strokeBorder(UpdoTheme.border, lineWidth: 1))
+                        }
+                    }
+                    .clipShape(shape)
             }
             
             private var imageMessageBubble: some View {
@@ -2157,7 +2313,7 @@ private extension FriendChatView {
                                             Image(systemName: "photo")
                                                 .font(.system(size: 26, weight: .medium))
                                             
-                                            Text("Görsel yüklenemedi")
+                                            Text(tr("fc_image_load_failed"))
                                                 .font(.system(size: 12, weight: .medium))
                                         }
                                         .foregroundStyle(.white.opacity(0.75))
@@ -2184,7 +2340,7 @@ private extension FriendChatView {
                                         ProgressView()
                                             .tint(.white)
                                         
-                                        Text(message.messageStatus == "uploading" ? "Fotoğraf yükleniyor" : "Hazırlanıyor")
+                                        Text(message.messageStatus == "uploading" ? tr("fc_photo_loading") : tr("fc_preparing_short"))
                                             .font(.system(size: 12, weight: .semibold))
                                             .foregroundStyle(.white)
                                     }
@@ -2193,7 +2349,7 @@ private extension FriendChatView {
                     }
                     
                     if !message.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                       message.text != "📷 Fotoğraf" {
+                       message.text != tr("fc_photo_emoji") {
                         Text(message.text)
                             .font(.system(size: 15, weight: .medium))
                             .foregroundStyle(message.isFromMe ? .white : .white.opacity(0.96))
@@ -2222,7 +2378,7 @@ private extension FriendChatView {
                 
                 URLSession.shared.downloadTask(with: url) { tempURL, _, error in
                     guard let tempURL, error == nil else {
-                        print("❌ Dosya indirilemedi")
+                        Log.debug("❌ Dosya indirilemedi")
                         return
                     }
                     
@@ -2237,7 +2393,7 @@ private extension FriendChatView {
                             presentShareSheet(url: destination)
                         }
                     } catch {
-                        print("❌ Dosya kaydedilemedi:", error)
+                        Log.debug("❌ Dosya kaydedilemedi:", error)
                     }
                 }.resume()
             }
@@ -2359,30 +2515,23 @@ private extension FriendChatView {
             }
             
             @ViewBuilder
+            // Birebir Updo AI baloncuğu: gönderilen cyan→mor gradient, alınan surfaceHigh + border.
             private var messageBubbleBackground: some View {
                 if message.isFromMe {
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(FriendChatArenaPalette.sentBubbleGradient)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                        )
-                        .shadow(color: FriendChatArenaPalette.blue.opacity(0.16), radius: 8, y: 4)
-                } else {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .fill(
                             LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.060),
-                                    Color.white.opacity(0.040)
-                                ],
+                                colors: [UpdoTheme.cyan, UpdoTheme.purple],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                         )
+                } else {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(UpdoTheme.surfaceHigh)
                         .overlay(
                             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .stroke(Color.white.opacity(0.085), lineWidth: 1)
+                                .strokeBorder(UpdoTheme.border, lineWidth: 1)
                         )
                 }
             }
@@ -2393,14 +2542,14 @@ private extension FriendChatView {
             
             private func shortMimeText(_ mime: String) -> String {
                 if mime == "application/pdf" { return "PDF" }
-                if mime.contains("image") { return "Görsel" }
+                if mime.contains("image") { return tr("fc_image") }
                 return "Dosya"
             }
             
             private func saveImageToPhotos() {
                 guard let mediaURL = message.mediaURL,
                       let url = URL(string: mediaURL) else {
-                    imageSaveAlertText = "Görsel bulunamadı."
+                    imageSaveAlertText = tr("fc_image_not_found")
                     showImageSaveAlert = true
                     return
                 }
@@ -2414,7 +2563,7 @@ private extension FriendChatView {
                         guard let data,
                               let image = UIImage(data: data),
                               error == nil else {
-                            imageSaveAlertText = "Görsel indirilemedi."
+                            imageSaveAlertText = tr("fc_image_dl_failed")
                             showImageSaveAlert = true
                             return
                         }
@@ -2422,13 +2571,13 @@ private extension FriendChatView {
                         PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
                             DispatchQueue.main.async {
                                 guard status == .authorized || status == .limited else {
-                                    imageSaveAlertText = "Fotoğraflara kaydetme izni verilmedi."
+                                    imageSaveAlertText = tr("fc_save_permission")
                                     showImageSaveAlert = true
                                     return
                                 }
                                 
                                 UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
-                                imageSaveAlertText = "Fotoğraf galerine kaydedildi."
+                                imageSaveAlertText = tr("fc_saved_to_gallery")
                                 showImageSaveAlert = true
                             }
                         }
@@ -2464,7 +2613,7 @@ private extension FriendChatView {
                                     Image(systemName: "photo")
                                         .font(.system(size: 36))
                                     
-                                    Text("Görsel yüklenemedi")
+                                    Text(tr("fc_image_load_failed"))
                                         .font(.system(size: 15, weight: .medium))
                                 }
                                 .foregroundStyle(.white.opacity(0.8))
@@ -2634,14 +2783,14 @@ private extension FriendChatView {
                                 lastOlderLoadAttemptAt = nil
                             }
                 let friendshipIDText = friendshipID?.uuidString ?? "nil"
-                print("🟡 CHAT BACKEND SYNC START:", friendshipIDText)
+                Log.debug("🟡 CHAT BACKEND SYNC START:", friendshipIDText)
 
                 guard let backendFriendshipID = friend.backendFriendshipID else {
                     await MainActor.run {
                         isSyncingBackendConversation = false
                         backendSyncError = "Missing backendFriendshipID"
                     }
-                    print("❌ CHAT BACKEND SYNC SKIPPED: backendFriendshipID nil")
+                    Log.debug("❌ CHAT BACKEND SYNC SKIPPED: backendFriendshipID nil")
                     return
                 }
 
@@ -2650,7 +2799,7 @@ private extension FriendChatView {
                         isSyncingBackendConversation = false
                         backendSyncError = "Missing backendUserID"
                     }
-                    print("❌ CHAT BACKEND SYNC SKIPPED: backendUserID nil")
+                    Log.debug("❌ CHAT BACKEND SYNC SKIPPED: backendUserID nil")
                     return
                 }
 
@@ -2664,7 +2813,7 @@ private extension FriendChatView {
                         isSyncingBackendConversation = false
                         backendSyncError = "Conversation sync failed"
                     }
-                    print("❌ CHAT BACKEND CONVERSATION ID NIL")
+                    Log.debug("❌ CHAT BACKEND CONVERSATION ID NIL")
                     return
                 }
 
@@ -2737,17 +2886,17 @@ private extension FriendChatView {
                                                             conversationID: conversationID
                                                         )
 
-                                                        print("🟢 WS MESSAGE UPSERTED:", mappedMessage.id.uuidString)
+                                                        Log.debug("🟢 WS MESSAGE UPSERTED:", mappedMessage.id.uuidString)
 
                                                         // Sadece sohbet aktif VE uygulama foreground'daysa "okundu" işaretle
                                                         Task { @MainActor in
                                                             guard friendStore.activeChatFriendshipID == friendshipID else {
-                                                                print("⚪️ MARK READ SKIPPED: chat not active")
+                                                                Log.debug("⚪️ MARK READ SKIPPED: chat not active")
                                                                 return
                                                             }
 
                                                             guard friendStore.isAppActive else {
-                                                                print("⚪️ MARK READ SKIPPED: app not active")
+                                                                Log.debug("⚪️ MARK READ SKIPPED: app not active")
                                                                 return
                                                             }
 
@@ -2801,7 +2950,7 @@ private extension FriendChatView {
                                             )
                                         }
 
-                                        print("🟢 WS MESSAGE SEEN UPDATED:", seenIDs.count)
+                                        Log.debug("🟢 WS MESSAGE SEEN UPDATED:", seenIDs.count)
                                     },
                                     onMessageDelivered: { payload in
                                         let deliveredIDs = Set(payload.messages.map { $0.id })
@@ -2842,12 +2991,12 @@ private extension FriendChatView {
                                             )
                                         }
 
-                                        print("🟢 WS MESSAGE DELIVERED UPDATED:", deliveredIDs.count)
+                                        Log.debug("🟢 WS MESSAGE DELIVERED UPDATED:", deliveredIDs.count)
                                     }
                                 )
 
-                                print("🟢 CHAT BACKEND READY:", conversationID.uuidString)
-                                print("🟢 CHAT BACKEND UI MESSAGES COUNT:", mappedMessages.count)
+                                Log.debug("🟢 CHAT BACKEND READY:", conversationID.uuidString)
+                                Log.debug("🟢 CHAT BACKEND UI MESSAGES COUNT:", mappedMessages.count)
                             }
                             
 
@@ -2992,7 +3141,7 @@ private extension FriendChatView {
                             ]
                             let beforeString = isoFormatter.string(from: oldestMessage.createdAt)
 
-                            print("🟡 LOAD OLDER START:", "before:", beforeString)
+                            Log.debug("🟡 LOAD OLDER START:", "before:", beforeString)
 
                             let olderDTOs = await ChatBackendClient.shared.fetchMessages(
                                 conversationID: backendConversationID,
@@ -3024,9 +3173,9 @@ private extension FriendChatView {
                                 // Eğer beklenen limit'ten az mesaj geldiyse, daha eski mesaj yok demek
                                 if olderMessages.count < 30 {
                                     hasMoreOlderMessages = false
-                                    print("🟡 LOAD OLDER: no more messages")
+                                    Log.debug("🟡 LOAD OLDER: no more messages")
                                 } else {
-                                    print("🟢 LOAD OLDER OK:", olderMessages.count)
+                                    Log.debug("🟢 LOAD OLDER OK:", olderMessages.count)
                                 }
 
                                 isLoadingOlderMessages = false
@@ -3144,15 +3293,15 @@ private extension FriendChatView {
                     let items = cached.map { $0.toFriendChatMessageItem() }
 
                     guard !items.isEmpty else {
-                        print("⚪️ CHAT CACHE EMPTY:", friendshipID.uuidString)
+                        Log.debug("⚪️ CHAT CACHE EMPTY:", friendshipID.uuidString)
                         return
                     }
 
                     mergeBackendMessages(items)
 
-                                        print("🟢 CHAT CACHE LOADED:", items.count)
+                                        Log.debug("🟢 CHAT CACHE LOADED:", items.count)
                 } catch {
-                    print("❌ CHAT CACHE LOAD ERROR:", error.localizedDescription)
+                    Log.debug("❌ CHAT CACHE LOAD ERROR:", error.localizedDescription)
                 }
             }
 
@@ -3220,8 +3369,8 @@ private extension FriendChatView {
 
                     try modelContext.save()
                 } catch {
-                    print("❌ CHAT CACHE UPSERT ERROR:", error.localizedDescription)
-                    print("❌ CHAT CACHE FALLBACK KEY:", serverKey ?? clientKey ?? localKey)
+                    Log.debug("❌ CHAT CACHE UPSERT ERROR:", error.localizedDescription)
+                    Log.debug("❌ CHAT CACHE FALLBACK KEY:", serverKey ?? clientKey ?? localKey)
                 }
             }
 
@@ -3256,7 +3405,7 @@ private extension FriendChatView {
 
                     try modelContext.save()
                 } catch {
-                    print("❌ CHAT CACHE FAILED UPDATE ERROR:", error.localizedDescription)
+                    Log.debug("❌ CHAT CACHE FAILED UPDATE ERROR:", error.localizedDescription)
                 }
             }
 
@@ -3286,7 +3435,7 @@ private extension FriendChatView {
 
                     try modelContext.save()
                 } catch {
-                    print("❌ CHAT CACHE SEEN UPDATE ERROR:", error.localizedDescription)
+                    Log.debug("❌ CHAT CACHE SEEN UPDATE ERROR:", error.localizedDescription)
                 }
             }
 }

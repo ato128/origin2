@@ -26,18 +26,18 @@ extension CrewChatView {
 
         if typingNames.count == 1 {
             return isTurkish
-            ? "\(typingNames[0]) yazıyor..."
+            ? tr("cc_typing_one", typingNames[0])
             : "\(typingNames[0]) is typing..."
         }
 
         if typingNames.count == 2 {
             return isTurkish
-            ? "\(typingNames[0]) ve \(typingNames[1]) yazıyor..."
+            ? tr("cc_typing_two", typingNames[0], typingNames[1])
             : "\(typingNames[0]) and \(typingNames[1]) are typing..."
         }
 
         return isTurkish
-        ? "Birileri yazıyor..."
+        ? tr("cc_typing_some")
         : "Some people are typing..."
     }
 
@@ -68,7 +68,7 @@ extension CrewChatView {
             }
         }
 
-        print("🟡 CREW CHAT BACKEND SYNC START:", crew.id.uuidString)
+        Log.debug("🟡 CREW CHAT BACKEND SYNC START:", crew.id.uuidString)
 
         let conversation = await ChatBackendClient.shared.syncCrew(
             crewID: crew.id,
@@ -84,7 +84,7 @@ extension CrewChatView {
                 backendSyncError = "Crew conversation sync failed"
             }
 
-            print("❌ CREW CHAT BACKEND CONVERSATION ID NIL")
+            Log.debug("❌ CREW CHAT BACKEND CONVERSATION ID NIL")
             return
         }
 
@@ -154,7 +154,7 @@ extension CrewChatView {
                     )
                 }
 
-                print("🟢 CREW WS MESSAGE UPSERTED:", mappedMessage.id.uuidString)
+                Log.debug("🟢 CREW WS MESSAGE UPSERTED:", mappedMessage.id.uuidString)
             },
             onMessageSeen: { payload in
                 guard payload.readerID != session.currentUser?.id else {
@@ -202,12 +202,12 @@ extension CrewChatView {
                     )
                 }
 
-                print("🟢 CREW WS MESSAGE SEEN UPDATED:", seenIDs.count)
+                Log.debug("🟢 CREW WS MESSAGE SEEN UPDATED:", seenIDs.count)
             }
         )
 
-        print("🟢 CREW CHAT BACKEND READY:", conversationID.uuidString)
-        print("🟢 CREW CHAT BACKEND UI MESSAGES COUNT:", mappedMessages.count)
+        Log.debug("🟢 CREW CHAT BACKEND READY:", conversationID.uuidString)
+        Log.debug("🟢 CREW CHAT BACKEND UI MESSAGES COUNT:", mappedMessages.count)
     }
 
     func mapBackendMessage(_ dto: ChatBackendMessageDTO) -> CrewChatMessageItem? {

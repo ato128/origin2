@@ -2,8 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key></key>
-	<string></string>
 	<key>Application supports opening documents in place</key>
 	<true/>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
@@ -25,10 +23,16 @@
 	</array>
 	<key>FOCUS_INVITE_SECRET</key>
 	<string>dailytodo_focus_invite_2026_x9K2mP7QvL4zN8rT1sY6aB3uH5wC9eF2</string>
-	<key>SUPABASE_ANON_KEY</key>
+<key>SUPABASE_ANON_KEY</key>
 	<string>$(SUPABASE_ANON_KEY)</string>
 	<key>SUPABASE_URL</key>
 	<string>https://srzvzaczgydwtopnlrvx.supabase.co</string>
+	<key>REVENUECAT_API_KEY</key>
+	<string>$(REVENUECAT_API_KEY)</string>
+	<key>POSTHOG_API_KEY</key>
+	<string>$(POSTHOG_API_KEY)</string>
+	<key>POSTHOG_HOST</key>
+	<string>$(POSTHOG_HOST)</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

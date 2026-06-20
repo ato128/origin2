@@ -30,9 +30,9 @@ final class ChatFeedbackManager {
                 options: [.mixWithOthers]
             )
             try AVAudioSession.sharedInstance().setActive(true)
-            print("✅ CHAT AUDIO SESSION ACTIVE")
+            Log.debug("✅ CHAT AUDIO SESSION ACTIVE")
         } catch {
-            print("CHAT AUDIO SESSION ERROR:", error.localizedDescription)
+            Log.debug("CHAT AUDIO SESSION ERROR:", error.localizedDescription)
         }
     }
     private func preparePlayers() {
@@ -45,7 +45,7 @@ final class ChatFeedbackManager {
             forResource: fileName,
             withExtension: fileExtension
         ) else {
-            print("⚠️ Chat sound missing:", "\(fileName).\(fileExtension)")
+            Log.debug("⚠️ Chat sound missing:", "\(fileName).\(fileExtension)")
             return nil
         }
 
@@ -53,10 +53,10 @@ final class ChatFeedbackManager {
             let player = try AVAudioPlayer(contentsOf: url)
             player.volume = 1.0
             player.prepareToPlay()
-            print("✅ Chat sound loaded:", "\(fileName).\(fileExtension)")
+            Log.debug("✅ Chat sound loaded:", "\(fileName).\(fileExtension)")
             return player
         } catch {
-            print("CHAT SOUND PLAYER ERROR:", error.localizedDescription)
+            Log.debug("CHAT SOUND PLAYER ERROR:", error.localizedDescription)
             return nil
         }
     }
@@ -91,6 +91,6 @@ final class ChatFeedbackManager {
         }
 
         let ok = player.play()
-        print("🔊 CHAT SOUND PLAY RESULT:", ok)
+        Log.debug("🔊 CHAT SOUND PLAY RESULT:", ok)
     }
 }

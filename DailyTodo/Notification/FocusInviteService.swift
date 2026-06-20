@@ -45,7 +45,7 @@ final class FocusInviteService {
         )
 
         guard !filteredParticipantIDs.isEmpty else {
-            print("FOCUS INVITE: gönderilecek katılımcı yok")
+            Log.debug("FOCUS INVITE: gönderilecek katılımcı yok")
             return
         }
 
@@ -74,7 +74,7 @@ final class FocusInviteService {
                     totalParticipants: totalParticipants
                 )
             } catch {
-                print("FOCUS INVITE SEND ERROR [\(participantID.uuidString)]:", error.localizedDescription)
+                Log.debug("FOCUS INVITE SEND ERROR [\(participantID.uuidString)]:", error.localizedDescription)
             }
         }
     }
@@ -95,7 +95,7 @@ final class FocusInviteService {
 
         guard let accessToken = SupabaseManager.shared.client.auth.currentSession?.accessToken,
               !accessToken.isEmpty else {
-            print("FOCUS INVITE ERROR: access token yok")
+            Log.debug("FOCUS INVITE ERROR: access token yok")
             return
         }
 
@@ -109,17 +109,17 @@ final class FocusInviteService {
 
         let bodyText: String
         if let taskTitle, !taskTitle.isEmpty {
-            bodyText = "\(hostName) \(duration) dk focus başlattı. Görev: \(taskTitle). Katılmak ister misin?"
+            bodyText = tr("fis_invite_task", hostName, duration, taskTitle)
         } else {
-            bodyText = "\(hostName) \(duration) dk focus başlattı. Katılmak ister misin?"
+            bodyText = tr("fis_invite", hostName, duration)
         }
 
-        // Eğer crew adı varsa title'a koy, yoksa default "Takım odakta"
+        // Eğer crew adı varsa title'a koy, yoksa default tr("fis_team_focusing")
         let title: String = {
             if let crewName, !crewName.isEmpty {
                 return "\(crewName) · Focus"
             }
-            return "Takım odakta"
+            return tr("fis_team_focusing")
         }()
 
         var body: [String: Any] = [
@@ -150,25 +150,25 @@ final class FocusInviteService {
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        print("FOCUS INVITE BODY:", body)
+        Log.debug("FOCUS INVITE BODY:", body)
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
-            print("FOCUS INVITE ERROR: function response geçersiz")
+            Log.debug("FOCUS INVITE ERROR: function response geçersiz")
             return
         }
 
         let bodyString = String(data: data, encoding: .utf8) ?? "no-body"
-        print("FOCUS INVITE STATUS:", httpResponse.statusCode)
-        print("FOCUS INVITE RESPONSE:", bodyString)
+        Log.debug("FOCUS INVITE STATUS:", httpResponse.statusCode)
+        Log.debug("FOCUS INVITE RESPONSE:", bodyString)
 
         guard (200...299).contains(httpResponse.statusCode) else {
-            print("FOCUS INVITE FUNCTION ERROR:", httpResponse.statusCode, bodyString)
+            Log.debug("FOCUS INVITE FUNCTION ERROR:", httpResponse.statusCode, bodyString)
             return
         }
 
-        print("FOCUS INVITE SENT -> \(toUserID.uuidString)")
+        Log.debug("FOCUS INVITE SENT -> \(toUserID.uuidString)")
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -187,11 +187,11 @@ final class FocusInviteService {
         let uniqueIDs = Array(Set(participantIDs))
 
         guard !uniqueIDs.isEmpty else {
-            print("FOCUS END PUSH: gönderilecek kullanıcı yok")
+            Log.debug("FOCUS END PUSH: gönderilecek kullanıcı yok")
             return
         }
 
-        print("FOCUS END PUSH SEND -> \(uniqueIDs.count) kullanıcıya")
+        Log.debug("FOCUS END PUSH SEND -> \(uniqueIDs.count) kullanıcıya")
 
         for userID in uniqueIDs {
             if userID.uuidString == currentUserIDString {
@@ -220,11 +220,11 @@ final class FocusInviteService {
         )
 
         guard !filteredIDs.isEmpty else {
-            print("FOCUS LEFT PUSH: bildirilecek diğer kullanıcı yok")
+            Log.debug("FOCUS LEFT PUSH: bildirilecek diğer kullanıcı yok")
             return
         }
 
-        print("FOCUS LEFT PUSH SEND -> \(filteredIDs.count) kullanıcıya")
+        Log.debug("FOCUS LEFT PUSH SEND -> \(filteredIDs.count) kullanıcıya")
 
         for userID in filteredIDs {
             PushService.shared.sendCrewFocusLeftPush(
@@ -253,11 +253,11 @@ final class FocusInviteService {
         )
 
         guard !filteredIDs.isEmpty else {
-            print("FOCUS JOINED PUSH: bildirilecek diğer kullanıcı yok")
+            Log.debug("FOCUS JOINED PUSH: bildirilecek diğer kullanıcı yok")
             return
         }
 
-        print("FOCUS JOINED PUSH SEND -> \(filteredIDs.count) kullanıcıya")
+        Log.debug("FOCUS JOINED PUSH SEND -> \(filteredIDs.count) kullanıcıya")
 
         for userID in filteredIDs {
             PushService.shared.sendCrewFocusJoinedPush(

@@ -85,7 +85,7 @@ final class FriendStore: ObservableObject {
 
             saveFriendshipsToCache(currentUserID: currentUserID)
         } catch {
-            print("LOAD ALL FRIENDSHIPS ERROR:", error.localizedDescription)
+            Log.debug("LOAD ALL FRIENDSHIPS ERROR:", error.localizedDescription)
             if friendships.isEmpty {
                 loadFriendshipsFromCache(currentUserID: currentUserID)
             }
@@ -97,7 +97,7 @@ final class FriendStore: ObservableObject {
             let data = try JSONEncoder().encode(friendships)
             UserDefaults.standard.set(data, forKey: friendshipsCacheKey(for: currentUserID))
         } catch {
-            print("SAVE FRIENDSHIPS CACHE ERROR:", error.localizedDescription)
+            Log.debug("SAVE FRIENDSHIPS CACHE ERROR:", error.localizedDescription)
         }
     }
 
@@ -111,9 +111,9 @@ final class FriendStore: ObservableObject {
                 let r = CrewDateParser.parse(rhs.created_at) ?? .distantPast
                 return l > r
             }
-            print("✅ FRIENDSHIPS LOADED FROM CACHE:", friendships.count)
+            Log.debug("✅ FRIENDSHIPS LOADED FROM CACHE:", friendships.count)
         } catch {
-            print("LOAD FRIENDSHIPS CACHE ERROR:", error.localizedDescription)
+            Log.debug("LOAD FRIENDSHIPS CACHE ERROR:", error.localizedDescription)
         }
     }
     
@@ -168,7 +168,7 @@ final class FriendStore: ObservableObject {
                 saveProfilesToCache(currentUserID: currentUserID)
             }
         } catch {
-            print("LOAD FRIEND PROFILES ERROR:", error.localizedDescription)
+            Log.debug("LOAD FRIEND PROFILES ERROR:", error.localizedDescription)
         }
     }
 
@@ -218,7 +218,7 @@ final class FriendStore: ObservableObject {
             let data = try JSONEncoder().encode(profiles)
             UserDefaults.standard.set(data, forKey: profilesCacheKey(for: currentUserID))
         } catch {
-            print("SAVE PROFILES CACHE ERROR:", error.localizedDescription)
+            Log.debug("SAVE PROFILES CACHE ERROR:", error.localizedDescription)
         }
     }
 
@@ -229,7 +229,7 @@ final class FriendStore: ObservableObject {
             let decoded = try JSONDecoder().decode([UUID: FriendProfileDTO].self, from: data)
             profiles = decoded
         } catch {
-            print("LOAD PROFILES CACHE ERROR:", error.localizedDescription)
+            Log.debug("LOAD PROFILES CACHE ERROR:", error.localizedDescription)
         }
     }
 
@@ -261,7 +261,7 @@ final class FriendStore: ObservableObject {
             else { incomingWeekSharesByFriendship.removeValue(forKey: friendshipID) }
 
         } catch {
-            print("LOAD WEEK SHARE STATUS ERROR:", error.localizedDescription)
+            Log.debug("LOAD WEEK SHARE STATUS ERROR:", error.localizedDescription)
         }
     }
 
@@ -312,7 +312,7 @@ final class FriendStore: ObservableObject {
             await loadWeekShareStatus(friendshipID: friendshipID, currentUserID: currentUserID, friendUserID: friendUserID)
             await loadSharedWeekItems(friendshipID: friendshipID, ownerUserID: currentUserID, viewerUserID: friendUserID)
         } catch {
-            print("SET WEEK SHARE ENABLED ERROR:", error.localizedDescription)
+            Log.debug("SET WEEK SHARE ENABLED ERROR:", error.localizedDescription)
         }
     }
 
@@ -329,7 +329,7 @@ final class FriendStore: ObservableObject {
             let decoded = try JSONDecoder().decode([FriendWeekShareDTO].self, from: response.data)
             weekShareEnabledByUserID[userID] = !decoded.isEmpty
         } catch {
-            print("LOAD WEEK SHARE STATE ERROR:", error.localizedDescription)
+            Log.debug("LOAD WEEK SHARE STATE ERROR:", error.localizedDescription)
             weekShareEnabledByUserID[userID] = false
         }
     }
@@ -349,7 +349,7 @@ final class FriendStore: ObservableObject {
             let decoded = try JSONDecoder().decode([FriendWeekShareItemDTO].self, from: response.data)
             sharedWeekItemsByFriendship[friendshipID] = decoded
         } catch {
-            print("LOAD SHARED WEEK ITEMS ERROR:", error.localizedDescription)
+            Log.debug("LOAD SHARED WEEK ITEMS ERROR:", error.localizedDescription)
             sharedWeekItemsByFriendship[friendshipID] = []
         }
     }
@@ -427,7 +427,7 @@ final class FriendStore: ObservableObject {
         }
 
         do { try modelContext.save() } catch {
-            print("SYNC ACCEPTED FRIENDS LOCAL SAVE ERROR:", error.localizedDescription)
+            Log.debug("SYNC ACCEPTED FRIENDS LOCAL SAVE ERROR:", error.localizedDescription)
         }
     }
 
@@ -509,7 +509,7 @@ final class FriendStore: ObservableObject {
         do {
             try await SupabaseManager.shared.client.from("friendships").delete().eq("id", value: friendshipID.uuidString).execute()
         } catch {
-            print("❌ SUPABASE FRIENDSHIP DELETE ERROR:", error.localizedDescription)
+            Log.debug("❌ SUPABASE FRIENDSHIP DELETE ERROR:", error.localizedDescription)
             throw error
         }
 
@@ -776,7 +776,7 @@ final class FriendStore: ObservableObject {
                 .eq("id", value: friendshipID.uuidString)
                 .execute()
         } catch {
-            print("UPDATE FRIENDSHIP LAST MESSAGE METADATA ERROR:", error.localizedDescription)
+            Log.debug("UPDATE FRIENDSHIP LAST MESSAGE METADATA ERROR:", error.localizedDescription)
         }
     }
 
@@ -803,7 +803,7 @@ final class FriendStore: ObservableObject {
                 .eq("id", value: friendshipID.uuidString)
                 .execute()
         } catch {
-            print("INCREMENT FRIEND UNREAD ERROR:", error.localizedDescription)
+            Log.debug("INCREMENT FRIEND UNREAD ERROR:", error.localizedDescription)
         }
     }
 
@@ -852,7 +852,7 @@ final class FriendStore: ObservableObject {
 
             unreadCountByFriendship[friendshipID] = 0
         } catch {
-            print("RESET FRIEND UNREAD ERROR:", error.localizedDescription)
+            Log.debug("RESET FRIEND UNREAD ERROR:", error.localizedDescription)
         }
     }
 
@@ -898,7 +898,7 @@ final class FriendStore: ObservableObject {
                         self.markFriendsCacheRefreshed()
                         self.saveFriendshipsToCache(currentUserID: currentUserID)
                     } catch {
-                        print("FRIENDSHIPS INSERT REALTIME DECODE ERROR:", error.localizedDescription)
+                        Log.debug("FRIENDSHIPS INSERT REALTIME DECODE ERROR:", error.localizedDescription)
                     }
                 }
             }
@@ -923,7 +923,7 @@ final class FriendStore: ObservableObject {
                         self.markFriendsCacheRefreshed()
                         self.saveFriendshipsToCache(currentUserID: currentUserID)
                     } catch {
-                        print("FRIENDSHIPS UPDATE REALTIME DECODE ERROR:", error.localizedDescription)
+                        Log.debug("FRIENDSHIPS UPDATE REALTIME DECODE ERROR:", error.localizedDescription)
                     }
                 }
             }
@@ -951,9 +951,9 @@ final class FriendStore: ObservableObject {
 
             do {
                 try await channel.subscribeWithError()
-                print("✅ FRIENDSHIPS REALTIME SUBSCRIBED:", currentUserID.uuidString)
+                Log.debug("✅ FRIENDSHIPS REALTIME SUBSCRIBED:", currentUserID.uuidString)
             } catch {
-                print("FRIENDSHIPS REALTIME SUBSCRIBE ERROR:", error.localizedDescription)
+                Log.debug("FRIENDSHIPS REALTIME SUBSCRIBE ERROR:", error.localizedDescription)
 
                 await MainActor.run {
                     self.friendshipsRealtimeChannel = nil
@@ -996,7 +996,7 @@ final class FriendStore: ObservableObject {
                 .eq("id", value: friendshipID.uuidString)
                 .execute()
         } catch {
-            print("SET FRIEND CHAT PINNED ERROR:", error.localizedDescription)
+            Log.debug("SET FRIEND CHAT PINNED ERROR:", error.localizedDescription)
         }
     }
 
@@ -1020,7 +1020,7 @@ final class FriendStore: ObservableObject {
                 .eq("id", value: friendshipID.uuidString)
                 .execute()
         } catch {
-            print("SET FRIEND CHAT MUTED ERROR:", error.localizedDescription)
+            Log.debug("SET FRIEND CHAT MUTED ERROR:", error.localizedDescription)
         }
     }
 
@@ -1044,7 +1044,7 @@ final class FriendStore: ObservableObject {
                 .eq("id", value: friendshipID.uuidString)
                 .execute()
         } catch {
-            print("SET FRIEND CHAT ARCHIVED ERROR:", error.localizedDescription)
+            Log.debug("SET FRIEND CHAT ARCHIVED ERROR:", error.localizedDescription)
         }
     }
 
@@ -1198,7 +1198,7 @@ final class FriendStore: ObservableObject {
                         let dto = try JSONDecoder().decode(FriendTypingStatusDTO.self, from: jsonData)
                         guard dto.user_id != currentUserID else { return }
                         self.typingStatusByFriendship[friendshipID] = dto.is_typing
-                    } catch { print("TYPING INSERT DECODE ERROR:", error.localizedDescription) }
+                    } catch { Log.debug("TYPING INSERT DECODE ERROR:", error.localizedDescription) }
                 }
             }
 
@@ -1211,7 +1211,7 @@ final class FriendStore: ObservableObject {
                         let dto = try JSONDecoder().decode(FriendTypingStatusDTO.self, from: jsonData)
                         guard dto.user_id != currentUserID else { return }
                         self.typingStatusByFriendship[friendshipID] = dto.is_typing
-                    } catch { print("TYPING UPDATE DECODE ERROR:", error.localizedDescription) }
+                    } catch { Log.debug("TYPING UPDATE DECODE ERROR:", error.localizedDescription) }
                 }
             }
 
@@ -1268,7 +1268,7 @@ final class FriendStore: ObservableObject {
                 return
             }
 
-            print("SET TYPING ERROR:", error.localizedDescription)
+            Log.debug("SET TYPING ERROR:", error.localizedDescription)
         }
     }
     
@@ -1287,7 +1287,7 @@ final class FriendStore: ObservableObject {
 
         return message.contains("cancelled")
             || message.contains("canceled")
-            || message.contains("vazgeçildi")
+            || message.contains(tr("fs_cancelled"))
             || message.contains("cancel")
     }
     // MARK: - Append
@@ -1362,7 +1362,7 @@ final class FriendStore: ObservableObject {
 
             await markMessagesDelivered(friendshipID: friendshipID, currentUserID: currentUserID)
         } catch {
-            print("LOAD INITIAL MESSAGES ERROR:", error.localizedDescription)
+            Log.debug("LOAD INITIAL MESSAGES ERROR:", error.localizedDescription)
         }
     }
 
@@ -1410,7 +1410,7 @@ final class FriendStore: ObservableObject {
 
             await markMessagesDelivered(friendshipID: friendshipID, currentUserID: currentUserID)
         } catch {
-            print("LOAD NEW MESSAGES ERROR:", error.localizedDescription)
+            Log.debug("LOAD NEW MESSAGES ERROR:", error.localizedDescription)
         }
     }
 
@@ -1485,7 +1485,7 @@ final class FriendStore: ObservableObject {
                 senderID: resolvedSenderID
             )
         } catch {
-            print("SEND MESSAGE ERROR:", error.localizedDescription)
+            Log.debug("SEND MESSAGE ERROR:", error.localizedDescription)
 
             await MainActor.run {
                 self.markPendingMessageFailed(clientID: clientID, friendshipID: friendshipID)
@@ -1676,7 +1676,7 @@ final class FriendStore: ObservableObject {
                 resolvedSenderID = try await currentAuthUserID()
             }
         } catch {
-            print("SEND PHOTO MESSAGE ERROR: senderID alınamadı -", error.localizedDescription)
+            Log.debug("SEND PHOTO MESSAGE ERROR: senderID alınamadı -", error.localizedDescription)
             return
         }
 
@@ -1684,7 +1684,7 @@ final class FriendStore: ObservableObject {
         let fileName = "photo.jpg"
         let fallbackText = (caption?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
             ? caption!.trimmingCharacters(in: .whitespacesAndNewlines)
-            : "📷 Fotoğraf"
+            : tr("fc_photo_emoji")
 
         let storagePath = "\(friendshipID.uuidString)/images/\(UUID().uuidString).jpg"
 
@@ -1779,7 +1779,7 @@ final class FriendStore: ObservableObject {
                 senderID: resolvedSenderID
             )
         } catch {
-            print("SEND PHOTO MESSAGE ERROR:", error.localizedDescription)
+            Log.debug("SEND PHOTO MESSAGE ERROR:", error.localizedDescription)
             markPendingMessageFailed(clientID: clientID, friendshipID: friendshipID)
         }
     }
@@ -1799,7 +1799,7 @@ final class FriendStore: ObservableObject {
         }
 
         guard let data = try? Data(contentsOf: fileURL) else {
-            print("SEND FILE MESSAGE ERROR: file data could not be read")
+            Log.debug("SEND FILE MESSAGE ERROR: file data could not be read")
             return
         }
 
@@ -1811,7 +1811,7 @@ final class FriendStore: ObservableObject {
                 resolvedSenderID = try await currentAuthUserID()
             }
         } catch {
-            print("SEND FILE MESSAGE ERROR: senderID alınamadı -", error.localizedDescription)
+            Log.debug("SEND FILE MESSAGE ERROR: senderID alınamadı -", error.localizedDescription)
             return
         }
 
@@ -1930,7 +1930,7 @@ final class FriendStore: ObservableObject {
                 senderID: resolvedSenderID
             )
         } catch {
-            print("SEND FILE MESSAGE ERROR:", error.localizedDescription)
+            Log.debug("SEND FILE MESSAGE ERROR:", error.localizedDescription)
             markPendingMessageFailed(clientID: clientID, friendshipID: friendshipID)
         }
     }
@@ -1950,7 +1950,7 @@ final class FriendStore: ObservableObject {
         }
 
         guard let data = try? Data(contentsOf: audioURL) else {
-            print("SEND VOICE MESSAGE ERROR: audio data could not be read")
+            Log.debug("SEND VOICE MESSAGE ERROR: audio data could not be read")
             return
         }
 
@@ -1962,7 +1962,7 @@ final class FriendStore: ObservableObject {
                 resolvedSenderID = try await currentAuthUserID()
             }
         } catch {
-            print("SEND VOICE MESSAGE ERROR: senderID alınamadı -", error.localizedDescription)
+            Log.debug("SEND VOICE MESSAGE ERROR: senderID alınamadı -", error.localizedDescription)
             return
         }
 
@@ -2062,7 +2062,7 @@ final class FriendStore: ObservableObject {
                 senderID: resolvedSenderID
             )
         } catch {
-            print("SEND VOICE MESSAGE ERROR:", error.localizedDescription)
+            Log.debug("SEND VOICE MESSAGE ERROR:", error.localizedDescription)
             markPendingMessageFailed(clientID: clientID, friendshipID: friendshipID)
         }
     }
@@ -2079,7 +2079,7 @@ final class FriendStore: ObservableObject {
             )
 
         default:
-            print("RETRY MESSAGE: medya retry şu an desteklenmiyor ->", message.messageType)
+            Log.debug("RETRY MESSAGE: medya retry şu an desteklenmiyor ->", message.messageType)
         }
     }
     
@@ -2155,7 +2155,7 @@ final class FriendStore: ObservableObject {
                 friendshipID: friendshipID
             )
         } catch {
-            print("UPLOAD / FINALIZE MEDIA ERROR:", error.localizedDescription)
+            Log.debug("UPLOAD / FINALIZE MEDIA ERROR:", error.localizedDescription)
             markPendingMessageFailed(clientID: clientID, friendshipID: friendshipID)
         }
     }
@@ -2167,7 +2167,7 @@ final class FriendStore: ObservableObject {
                 .getPublicURL(path: path)
                 .absoluteString
         } catch {
-            print("PUBLIC MEDIA URL ERROR:", error.localizedDescription)
+            Log.debug("PUBLIC MEDIA URL ERROR:", error.localizedDescription)
             return ""
         }
     }
@@ -2240,7 +2240,7 @@ final class FriendStore: ObservableObject {
             friendMessagesByFriendship[friendshipID] = items
             recomputeUnreadState(for: friendshipID)
         } catch {
-            print("MARK MESSAGES DELIVERED ERROR:", error.localizedDescription)
+            Log.debug("MARK MESSAGES DELIVERED ERROR:", error.localizedDescription)
         }
     }
 
@@ -2316,7 +2316,7 @@ final class FriendStore: ObservableObject {
             friendMessagesByFriendship[friendshipID] = items
             recomputeUnreadState(for: friendshipID)
         } catch {
-            print("MARK MESSAGES SEEN ERROR:", error.localizedDescription)
+            Log.debug("MARK MESSAGES SEEN ERROR:", error.localizedDescription)
         }
     }
     
@@ -2393,7 +2393,7 @@ final class FriendStore: ObservableObject {
                 )
             }
         } catch {
-            print("FORCE MARK MESSAGES SEEN ON EXIT ERROR:", error.localizedDescription)
+            Log.debug("FORCE MARK MESSAGES SEEN ON EXIT ERROR:", error.localizedDescription)
         }
     }
     
@@ -2459,7 +2459,7 @@ final class FriendStore: ObservableObject {
                 .eq("id", value: serverID.uuidString)
                 .execute()
         } catch {
-            print("DELETE MESSAGE ERROR:", error.localizedDescription)
+            Log.debug("DELETE MESSAGE ERROR:", error.localizedDescription)
         }
     }
 
@@ -2488,7 +2488,7 @@ final class FriendStore: ObservableObject {
                         let dto = try JSONDecoder().decode(FriendPresenceDTO.self, from: jsonData)
                         guard userIDs.contains(dto.user_id) else { return }
                         self.presenceByUserID[dto.user_id] = dto
-                    } catch { print("PRESENCE INSERT DECODE ERROR:", error.localizedDescription) }
+                    } catch { Log.debug("PRESENCE INSERT DECODE ERROR:", error.localizedDescription) }
                 }
             }
 
@@ -2501,7 +2501,7 @@ final class FriendStore: ObservableObject {
                         let dto = try JSONDecoder().decode(FriendPresenceDTO.self, from: jsonData)
                         guard userIDs.contains(dto.user_id) else { return }
                         self.presenceByUserID[dto.user_id] = dto
-                    } catch { print("PRESENCE UPDATE DECODE ERROR:", error.localizedDescription) }
+                    } catch { Log.debug("PRESENCE UPDATE DECODE ERROR:", error.localizedDescription) }
                 }
             }
 
@@ -2540,7 +2540,7 @@ final class FriendStore: ObservableObject {
                 presenceByUserID[item.user_id] = item
             }
         } catch {
-            print("LOAD PRESENCE ERROR:", error.localizedDescription)
+            Log.debug("LOAD PRESENCE ERROR:", error.localizedDescription)
         }
     }
 
@@ -2560,7 +2560,7 @@ final class FriendStore: ObservableObject {
         do {
             try await SupabaseManager.shared.client.from("friend_presence").upsert(payload).execute()
         } catch {
-            print("SET PRESENCE ERROR:", error.localizedDescription)
+            Log.debug("SET PRESENCE ERROR:", error.localizedDescription)
         }
     }
 
@@ -2623,7 +2623,7 @@ final class FriendStore: ObservableObject {
                             )
                         }
                     } catch {
-                        print("FRIEND REALTIME INSERT DECODE ERROR:", error.localizedDescription)
+                        Log.debug("FRIEND REALTIME INSERT DECODE ERROR:", error.localizedDescription)
                     }
                 }
             }
@@ -2644,7 +2644,7 @@ final class FriendStore: ObservableObject {
 
                         self.appendFriendMessage(item, friendshipID: friendshipID)
                     } catch {
-                        print("FRIEND REALTIME UPDATE DECODE ERROR:", error.localizedDescription)
+                        Log.debug("FRIEND REALTIME UPDATE DECODE ERROR:", error.localizedDescription)
                     }
                 }
             }
@@ -2675,9 +2675,9 @@ final class FriendStore: ObservableObject {
 
             do {
                 try await channel.subscribeWithError()
-                print("✅ FRIEND MESSAGE REALTIME SUBSCRIBED:", friendshipID.uuidString)
+                Log.debug("✅ FRIEND MESSAGE REALTIME SUBSCRIBED:", friendshipID.uuidString)
             } catch {
-                print("FRIEND MESSAGE REALTIME SUBSCRIBE ERROR:", error.localizedDescription)
+                Log.debug("FRIEND MESSAGE REALTIME SUBSCRIBE ERROR:", error.localizedDescription)
 
                 await MainActor.run {
                     self.friendMessagesChannel = nil

@@ -14,6 +14,23 @@ struct AddTaskView: View {
     @EnvironmentObject private var store: TodoStore
     @EnvironmentObject private var session: SessionStore
 
+    /// When true (Week context) the entry is locked to a task and the
+    /// task/exam segmented switch is hidden.
+    private let lockedToTask: Bool
+
+    init(
+        defaultAddToWeek: Bool = false,
+        defaultWeekDate: Date? = nil,
+        lockedToTask: Bool = false
+    ) {
+        self.lockedToTask = lockedToTask
+        _addToWeek = State(initialValue: defaultAddToWeek)
+        if let defaultWeekDate {
+            _scheduledWeekDate = State(initialValue: defaultWeekDate)
+            _dueDate = State(initialValue: defaultWeekDate)
+        }
+    }
+
     @State private var entryKind: AddEntryKind = .task
 
     @State private var title: String = ""
@@ -39,16 +56,35 @@ struct AddTaskView: View {
     @FocusState private var courseFocused: Bool
     @FocusState private var notesFocused: Bool
 
+    @Namespace private var entryKindNamespace
+
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(.systemGroupedBackground)
+                // Updo identity background: deep navy + soft accent glows
+                UpdoTheme.background
+                    .ignoresSafeArea()
+
+                Circle()
+                    .fill(UpdoTheme.cyan.opacity(0.07))
+                    .frame(width: 280, height: 280)
+                    .blur(radius: 90)
+                    .offset(x: 150, y: -260)
+                    .ignoresSafeArea()
+
+                Circle()
+                    .fill(UpdoTheme.purple.opacity(0.09))
+                    .frame(width: 320, height: 320)
+                    .blur(radius: 100)
+                    .offset(x: -170, y: 380)
                     .ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
                         headerSection
-                        entryKindSection
+                        if !lockedToTask {
+                            entryKindSection
+                        }
                         titleSection
 
                         if entryKind == .task {
@@ -67,17 +103,17 @@ struct AddTaskView: View {
                     .padding(.bottom, 32)
                 }
             }
-            .navigationTitle("Yeni Kayıt")
+            .navigationTitle(tr("at_nav_title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Vazgeç") {
+                    Button(tr("common_cancel")) {
                         dismiss()
                     }
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Ekle") {
+                    Button(tr("common_add")) {
                         add()
                     }
                     .fontWeight(.semibold)
@@ -85,20 +121,22 @@ struct AddTaskView: View {
                 }
             }
         }
+        .preferredColorScheme(.dark)
+        .tint(UpdoTheme.cyan)
     }
 
     // MARK: - Sections
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(entryKind == .task ? "Ne eklemek istiyorsun?" : "Sınavını ekle")
+            Text(entryKind == .task ? tr("at_header_task") : tr("at_header_exam"))
                 .font(.system(size: 30, weight: .bold, design: .rounded))
                 .foregroundStyle(.primary)
 
             Text(
                 entryKind == .task
-                ? "Görevini sade şekilde oluştur, sonra istersen detaylandır."
-                : "Yaklaşan sınavını ekle, sonra Home ve Week içinde akıllı şekilde gösterelim."
+                ? tr("at_sub_task")
+                : tr("at_sub_exam")
             )
             .font(.system(size: 15, weight: .medium))
             .foregroundStyle(.secondary)
@@ -106,14 +144,14 @@ struct AddTaskView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     summaryPill(
-                        icon: entryKind == .task ? selectedType.icon : "graduationcap.fill",
+                        icon: entryKind == .task ? selectedType.icon : "graduationcap",
                         text: entryKind == .task ? selectedType.title : selectedExamType.title,
                         tint: selectedColor.color
                     )
 
                     if !trimmedCourseName.isEmpty {
                         summaryPill(
-                            icon: "book.closed.fill",
+                            icon: "book.closed",
                             text: trimmedCourseName,
                             tint: .secondary
                         )
@@ -138,7 +176,7 @@ struct AddTaskView: View {
                     if showsStudyDuration {
                         summaryPill(
                             icon: "timer",
-                            text: "\(entryKind == .task ? estimatedStudyMinutes : preferredExamStudyMinutes) dk",
+                            text: "\(entryKind == .task ? estimatedStudyMinutes : preferredExamStudyMinutes) \(tr("common_min_short"))",
                             tint: .orange
                         )
                     }
@@ -148,91 +186,62 @@ struct AddTaskView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// Top-level record kind: a clean two-way segmented control.
+    /// tr("at_kind_task") vs tr("at_kind_exam") — subtypes appear below only for Görev.
     private var entryKindSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionLabel("Kayıt Türü")
-
-            HStack(spacing: 10) {
-                entryKindButton(.task, title: "Görev", subtitle: "Bugün yapılacak", icon: "checklist")
-                entryKindButton(.exam, title: "Sınav", subtitle: "Tarih ve hazırlık", icon: "graduationcap.fill")
-            }
+        HStack(spacing: 4) {
+            entryKindSegment(.task, title: tr("at_kind_task"), icon: "checklist")
+            entryKindSegment(.exam, title: tr("at_kind_exam"), icon: "graduationcap")
         }
+        .padding(4)
+        .background(
+            Capsule()
+                .fill(Color.white.opacity(0.045))
+                .overlay(Capsule().stroke(Color.white.opacity(0.08), lineWidth: 1))
+        )
     }
 
-    private func entryKindButton(
-        _ kind: AddEntryKind,
-        title: String,
-        subtitle: String,
-        icon: String
-    ) -> some View {
+    private func entryKindSegment(_ kind: AddEntryKind, title: String, icon: String) -> some View {
         let isSelected = entryKind == kind
-        let tint = kind == .task ? Color.blue : Color.orange
 
         return Button {
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+            HapticManager.shared.selection()
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
                 entryKind = kind
                 if kind == .exam {
                     selectedColor = .orange
                     selectedType = .exam
+                } else if selectedType == .exam {
+                    selectedType = .task
+                    selectedColor = .blue
                 }
             }
         } label: {
-            HStack(spacing: 10) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(tint.opacity(isSelected ? 0.18 : 0.10))
-                        .frame(width: 40, height: 40)
+            HStack(spacing: 7) {
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .semibold))
 
-                    Image(systemName: icon)
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(tint)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.primary)
-
-                    Text(subtitle)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer(minLength: 0)
-
+                Text(title)
+                    .font(.system(size: 14, weight: .bold))
+            }
+            .foregroundStyle(isSelected ? .black : .white.opacity(0.55))
+            .frame(maxWidth: .infinity)
+            .frame(height: 40)
+            .background {
                 if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(tint)
+                    Capsule()
+                        .fill(UpdoTheme.cyan)
+                        .matchedGeometryEffect(id: "entry-kind-segment", in: entryKindNamespace)
                 }
             }
-            .padding(12)
-            .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.white.opacity(0.045))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(
-                                isSelected
-                                ? tint.opacity(0.34)
-                                : Color.white.opacity(0.05),
-                                lineWidth: 1
-                            )
-                    )
-            )
-            .shadow(
-                color: isSelected ? tint.opacity(0.12) : .clear,
-                radius: isSelected ? 8 : 0,
-                y: isSelected ? 2 : 0
-            )
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
     }
 
     private var titleSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionLabel(entryKind == .task ? "Başlık" : "Sınav Başlığı")
+            sectionLabel(entryKind == .task ? tr("at_title") : tr("at_exam_title"))
 
             TextField(titlePlaceholder, text: $title)
                 .focused($titleFocused)
@@ -256,7 +265,7 @@ struct AddTaskView: View {
 
     private var taskTypeSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionLabel("Tür")
+            sectionLabel(tr("at_task_type"))
 
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 2), spacing: 10) {
                 ForEach(StudentTaskType.allCases.filter { $0 != .exam }) { type in
@@ -264,19 +273,22 @@ struct AddTaskView: View {
                     let isSelected = selectedType == type
 
                     Button {
+                        HapticManager.shared.selection()
                         withAnimation(.spring(response: 0.26, dampingFraction: 0.86)) {
                             selectedType = type
                             selectedColor = type.suggestedColor
                         }
                     } label: {
                         HStack(spacing: 10) {
+                            // Monochrome SF Symbol on a subtle tinted circle —
+                            // unified treatment, no filled colored squares.
                             ZStack {
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(typeColor.opacity(isSelected ? 0.18 : 0.10))
+                                Circle()
+                                    .fill(typeColor.opacity(0.15))
                                     .frame(width: 40, height: 40)
 
                                 Image(systemName: type.icon)
-                                    .font(.system(size: 16, weight: .bold))
+                                    .font(.system(size: 20, weight: .medium))
                                     .foregroundStyle(typeColor)
                             }
 
@@ -297,7 +309,7 @@ struct AddTaskView: View {
                             if isSelected {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.system(size: 17, weight: .bold))
-                                    .foregroundStyle(typeColor)
+                                    .foregroundStyle(UpdoTheme.cyan)
                             }
                         }
                         .padding(12)
@@ -307,20 +319,12 @@ struct AddTaskView: View {
                                 .fill(Color.white.opacity(0.045))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .stroke(
-                                            isSelected
-                                            ? typeColor.opacity(0.34)
-                                            : Color.white.opacity(0.05),
-                                            lineWidth: 1
+                                        .strokeBorder(
+                                            isSelected ? UpdoTheme.cyan : Color.white.opacity(0.08),
+                                            lineWidth: isSelected ? 1.5 : 1
                                         )
                                 )
                         )
-                        .shadow(
-                            color: isSelected ? typeColor.opacity(0.12) : .clear,
-                            radius: isSelected ? 8 : 0,
-                            y: isSelected ? 2 : 0
-                        )
-                        .scaleEffect(isSelected ? 1.01 : 1.0)
                     }
                     .buttonStyle(.plain)
                 }
@@ -330,12 +334,12 @@ struct AddTaskView: View {
 
     private var taskDetailsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionLabel("Detaylar")
+            sectionLabel(tr("at_details"))
 
             VStack(spacing: 12) {
                 inputBlock(
-                    title: "Ders Adı",
-                    placeholder: "Örn. Calculus, Physics, Biology",
+                    title: tr("at_course"),
+                    placeholder: tr("at_course_ph"),
                     text: $courseName,
                     focused: $courseFocused,
                     capitalization: .words
@@ -359,16 +363,16 @@ struct AddTaskView: View {
 
     private var taskScheduleSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionLabel("Planlama")
+            sectionLabel(tr("at_planning"))
 
             VStack(spacing: 14) {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Tarih ve saat")
+                        Text(tr("at_datetime"))
                             .font(.system(size: 15, weight: .bold))
                             .foregroundStyle(.primary)
 
-                        Text("Göreve zaman ver")
+                        Text(tr("at_give_time"))
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
@@ -381,7 +385,7 @@ struct AddTaskView: View {
 
                 if hasDueDate {
                     DatePicker(
-                        "Zaman",
+                        tr("at_time"),
                         selection: $dueDate,
                         displayedComponents: [.date, .hourAndMinute]
                     )
@@ -389,11 +393,11 @@ struct AddTaskView: View {
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
-                            quickDateButton("Bugün Akşam") { setTodayEvening() }
-                            quickDateButton("Yarın") { setTomorrow() }
-                            quickDateButton("Haftaya") { setNextWeek() }
-                            quickDateButton("2 Saat Sonra") { setAfterHours(2) }
-                            quickDateButton("Bu Hafta Sonu") { setThisWeekend() }
+                            quickDateButton(tr("at_quick_tonight")) { setTodayEvening() }
+                            quickDateButton(tr("at_quick_tomorrow")) { setTomorrow() }
+                            quickDateButton(tr("at_quick_nextweek")) { setNextWeek() }
+                            quickDateButton(tr("at_quick_2h")) { setAfterHours(2) }
+                            quickDateButton(tr("at_quick_weekend")) { setThisWeekend() }
                         }
                     }
                 }
@@ -405,16 +409,16 @@ struct AddTaskView: View {
 
     private var taskWeekSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionLabel("Week")
+            sectionLabel(tr("at_week_section"))
 
             VStack(spacing: 14) {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Week ekranına da ekle")
+                        Text(tr("at_add_to_week"))
                             .font(.system(size: 15, weight: .bold))
                             .foregroundStyle(.primary)
 
-                        Text("Planlı çalışmalarda kullanışlı")
+                        Text(tr("at_week_hint"))
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
@@ -427,7 +431,7 @@ struct AddTaskView: View {
 
                 if addToWeek {
                     DatePicker(
-                        "Hafta zamanı",
+                        tr("at_week_time"),
                         selection: $scheduledWeekDate,
                         displayedComponents: [.date, .hourAndMinute]
                     )
@@ -443,7 +447,7 @@ struct AddTaskView: View {
 
     private var examTypeSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionLabel("Sınav Türü")
+            sectionLabel(tr("at_exam_type"))
 
             HStack(spacing: 10) {
                 ForEach(StudentExamType.allCases) { type in
@@ -483,12 +487,12 @@ struct AddTaskView: View {
 
     private var examDetailsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionLabel("Sınav Detayları")
+            sectionLabel(tr("at_exam_details"))
 
             VStack(spacing: 12) {
                 inputBlock(
-                    title: "Ders Adı",
-                    placeholder: "Örn. Calculus, Physics, Biology",
+                    title: tr("at_course"),
+                    placeholder: tr("at_course_ph"),
                     text: $courseName,
                     focused: $courseFocused,
                     capitalization: .words
@@ -510,11 +514,11 @@ struct AddTaskView: View {
 
     private var examScheduleSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionLabel("Sınav Tarihi")
+            sectionLabel(tr("at_exam_date"))
 
             VStack(spacing: 14) {
                 DatePicker(
-                    "Sınav zamanı",
+                    tr("at_exam_time"),
                     selection: $examDate,
                     displayedComponents: [.date, .hourAndMinute]
                 )
@@ -522,10 +526,10 @@ struct AddTaskView: View {
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        quickExamDateButton("3 Gün Sonra", days: 3)
-                        quickExamDateButton("5 Gün Sonra", days: 5)
-                        quickExamDateButton("1 Hafta Sonra", days: 7)
-                        quickExamDateButton("2 Hafta Sonra", days: 14)
+                        quickExamDateButton(tr("at_quick_3d"), days: 3)
+                        quickExamDateButton(tr("at_quick_5d"), days: 5)
+                        quickExamDateButton(tr("at_quick_1w"), days: 7)
+                        quickExamDateButton(tr("at_quick_2w"), days: 14)
                     }
                 }
 
@@ -534,7 +538,7 @@ struct AddTaskView: View {
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(selectedColor.color)
 
-                    Text("Bu sınav Home ve Week içinde özel olarak gösterilebilir.")
+                    Text(tr("at_exam_hint"))
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.secondary)
 
@@ -556,11 +560,11 @@ struct AddTaskView: View {
 
     private var notesBlock: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Not")
+            Text(tr("at_note"))
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.secondary)
 
-            TextField("İstersen kısa bir açıklama ekle", text: $notes, axis: .vertical)
+            TextField(tr("at_notes_ph"), text: $notes, axis: .vertical)
                 .focused($notesFocused)
                 .lineLimit(3, reservesSpace: true)
                 .textInputAutocapitalization(.sentences)
@@ -579,7 +583,7 @@ struct AddTaskView: View {
 
     private var colorBlock: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Renk")
+            Text(tr("at_color"))
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.secondary)
 
@@ -622,13 +626,13 @@ struct AddTaskView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(entryKind == .task ? "Tahmini Çalışma" : "Önerilen Çalışma Süresi")
+                Text(entryKind == .task ? tr("at_est_study") : tr("at_sugg_study"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.secondary)
 
                 Spacer()
 
-                Text("\(minutes.wrappedValue) dk")
+                Text("\(minutes.wrappedValue) \(tr("common_min_short"))")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(.primary)
             }
@@ -685,15 +689,15 @@ struct AddTaskView: View {
 
     private var titlePlaceholder: String {
         if entryKind == .exam {
-            return "Örn. Calculus Vizesi"
+            return tr("at_ph_exam_title")
         }
 
         switch selectedType {
-        case .task: return "Örn. Sunum slaytlarını düzenle"
-        case .homework: return "Örn. Fizik ödevi 3. bölüm"
-        case .exam: return "Örn. Calculus vize tekrarı"
-        case .study: return "Örn. Biyoloji tekrar"
-        case .project: return "Örn. DailyTodo UI düzeltmeleri"
+        case .task: return tr("at_ph_task")
+        case .homework: return tr("at_ph_homework")
+        case .exam: return tr("at_ph_exam")
+        case .study: return tr("at_ph_study")
+        case .project: return tr("at_ph_project")
         }
     }
 
@@ -754,10 +758,10 @@ struct AddTaskView: View {
 
         do {
             try modelContext.save()
-            print("✅ EXAM + DTTaskItem SAVED")
+            Log.debug("✅ EXAM + DTTaskItem SAVED")
             dismiss()
         } catch {
-            print("❌ EXAM SAVE ERROR:", error.localizedDescription)
+            Log.debug("❌ EXAM SAVE ERROR:", error.localizedDescription)
         }
     }
 
@@ -793,7 +797,7 @@ struct AddTaskView: View {
         Button {
             minutes.wrappedValue = value
         } label: {
-            Text("\(value) dk")
+            Text("\(value) \(tr("common_min_short"))")
                 .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(minutes.wrappedValue == value ? .white : .primary)
                 .padding(.horizontal, 12)
@@ -922,31 +926,31 @@ private enum StudentTaskType: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .task: return "Görev"
-        case .homework: return "Ödev"
-        case .exam: return "Sınav"
-        case .study: return "Çalışma"
-        case .project: return "Proje"
+        case .task: return tr("at_kind_task")
+        case .homework: return tr("tt_homework")
+        case .exam: return tr("at_kind_exam")
+        case .study: return tr("tt_study")
+        case .project: return tr("tt_project")
         }
     }
 
     var shortSubtitle: String {
         switch self {
-        case .task: return "Yapılacak"
-        case .homework: return "Teslim"
-        case .exam: return "Hazırlık"
-        case .study: return "Odak"
-        case .project: return "Uzun iş"
+        case .task: return tr("tt_sub_todo")
+        case .homework: return tr("tt_sub_due")
+        case .exam: return tr("tt_sub_prep")
+        case .study: return tr("tt_sub_focus")
+        case .project: return tr("tt_sub_long")
         }
     }
 
     var icon: String {
         switch self {
         case .task: return "checklist"
-        case .homework: return "book.closed.fill"
-        case .exam: return "doc.text.fill"
+        case .homework: return "book.closed"
+        case .exam: return "graduationcap"
         case .study: return "brain.head.profile"
-        case .project: return "folder.fill"
+        case .project: return "folder"
         }
     }
 
@@ -980,9 +984,9 @@ private enum StudentExamType: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .midterm: return "Vize"
-        case .final: return "Final"
-        case .quiz: return "Quiz"
+        case .midterm: return tr("et_midterm")
+        case .final: return tr("et_final")
+        case .quiz: return tr("et_quiz")
         }
     }
 

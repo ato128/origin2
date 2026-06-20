@@ -52,15 +52,15 @@ final class PushTokenStore {
         let cleanToken = token.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !cleanToken.isEmpty else {
-            print("⚪️ PUSH TOKEN STORE SKIPPED: empty token")
+            Log.debug("⚪️ PUSH TOKEN STORE SKIPPED: empty token")
             return
         }
 
         UserDefaults.standard.set(cleanToken, forKey: tokenKey)
         UserDefaults.standard.synchronize()
 
-        print("✅ PUSH TOKEN STORED:", currentEnvironment)
-        print("✅ PUSH TOKEN START:", String(cleanToken.prefix(14)))
+        Log.debug("✅ PUSH TOKEN STORED:", currentEnvironment)
+        Log.debug("✅ PUSH TOKEN START:", String(cleanToken.prefix(14)))
     }
 
     // MARK: - Save
@@ -80,19 +80,19 @@ final class PushTokenStore {
 
     func saveCurrentTokenNow(reason: String) async {
         guard !isSaving else {
-            print("⚪️ PUSH TOKEN SAVE SKIPPED: already saving")
+            Log.debug("⚪️ PUSH TOKEN SAVE SKIPPED: already saving")
             return
         }
 
         guard let cleanToken = currentToken, !cleanToken.isEmpty else {
-            print("⚪️ PUSH TOKEN SAVE SKIPPED: token bulunamadı")
+            Log.debug("⚪️ PUSH TOKEN SAVE SKIPPED: token bulunamadı")
             return
         }
 
         let environment = currentEnvironment
 
         if isAlreadySaved(token: cleanToken, environment: environment) {
-            print("⚪️ PUSH TOKEN SAVE SKIPPED: already saved for \(environment)")
+            Log.debug("⚪️ PUSH TOKEN SAVE SKIPPED: already saved for \(environment)")
             return
         }
 
@@ -103,9 +103,9 @@ final class PushTokenStore {
             isSaving = false
         }
 
-        print("🟡 PUSH TOKEN SAVE START:", reason)
-        print("🟡 PUSH TOKEN ENV:", environment)
-        print("🟡 PUSH TOKEN START:", String(cleanToken.prefix(14)))
+        Log.debug("🟡 PUSH TOKEN SAVE START:", reason)
+        Log.debug("🟡 PUSH TOKEN ENV:", environment)
+        Log.debug("🟡 PUSH TOKEN START:", String(cleanToken.prefix(14)))
 
         let success = await ChatBackendClient.shared.savePushTokenWithRetry(
             apnsToken: cleanToken,
@@ -118,9 +118,9 @@ final class PushTokenStore {
             UserDefaults.standard.set(environment, forKey: lastSavedEnvironmentKey)
             UserDefaults.standard.synchronize()
 
-            print("✅ PUSH TOKEN SAVE COMPLETE:", environment)
+            Log.debug("✅ PUSH TOKEN SAVE COMPLETE:", environment)
         } else {
-            print("❌ PUSH TOKEN SAVE FAILED AFTER RETRY:", environment)
+            Log.debug("❌ PUSH TOKEN SAVE FAILED AFTER RETRY:", environment)
         }
     }
 
@@ -129,7 +129,7 @@ final class PushTokenStore {
         UserDefaults.standard.removeObject(forKey: lastSavedEnvironmentKey)
         UserDefaults.standard.synchronize()
 
-        print("🔥 PUSH TOKEN FORCE RESAVE:", reason)
+        Log.debug("🔥 PUSH TOKEN FORCE RESAVE:", reason)
         saveCurrentTokenWithRetry(reason: reason)
     }
 
@@ -139,7 +139,7 @@ final class PushTokenStore {
         UserDefaults.standard.removeObject(forKey: lastSaveAttemptAtKey)
         UserDefaults.standard.synchronize()
 
-        print("🧹 PUSH TOKEN SAVE CACHE CLEARED")
+        Log.debug("🧹 PUSH TOKEN SAVE CACHE CLEARED")
     }
 
     private func isAlreadySaved(token: String, environment: String) -> Bool {

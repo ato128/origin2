@@ -3,10 +3,10 @@
 //  DailyTodo
 //
 //  Telemetri stili kart — son 4 haftanın focus telemetrisi.
-//  - Sol üst: "FOCUS DAKİKA" + büyük % (+18%) + ↑ ok
+//  - Sol üst: tr("ijc_focus_min_caps") + büyük % (+18%) + ↑ ok
 //  - Sağ üst: en iyi haftanın dakikası
 //  - Orta: SVG line chart (4 hafta, gradient line + area fill)
-//  - Alt: insight tag ("Pazartesi en verimli günün")
+//  - Alt: insight tag (tr("ijc_monday_best"))
 //
 
 import SwiftUI
@@ -69,7 +69,7 @@ struct InsightsJourneyCard: View {
 
             HStack(alignment: .bottom, spacing: 14) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(isTurkish ? "FOCUS DAKİKA" : "FOCUS MINUTES")
+                    Text(isTurkish ? tr("ijc_focus_min_caps") : "FOCUS MINUTES")
                         .font(.system(size: 9, weight: .black, design: .monospaced))
                         .tracking(0.8)
                         .foregroundStyle(.white.opacity(0.42))
@@ -87,7 +87,7 @@ struct InsightsJourneyCard: View {
                         }
                     }
 
-                    Text(isTurkish ? "geçen haftaya göre" : "vs. last week")
+                    Text(isTurkish ? tr("ijc_vs_last_week") : "vs. last week")
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.42))
                 }
@@ -95,7 +95,7 @@ struct InsightsJourneyCard: View {
                 Spacer(minLength: 6)
 
                 VStack(alignment: .trailing, spacing: 3) {
-                    Text(isTurkish ? "EN İYİ HAFTA" : "BEST WEEK")
+                    Text(isTurkish ? tr("ijc_best_week_caps") : "BEST WEEK")
                         .font(.system(size: 9, weight: .black, design: .monospaced))
                         .tracking(0.8)
                         .foregroundStyle(.white.opacity(0.42))
@@ -149,7 +149,7 @@ struct InsightsJourneyCard: View {
                     }
                 } else {
                     // Empty state
-                    Text(isTurkish ? "Henüz yolculuk verisi yok" : "No journey data yet")
+                    Text(isTurkish ? tr("ijc_no_data") : "No journey data yet")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.35))
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
@@ -361,17 +361,14 @@ struct InsightsJourneyCard: View {
         }
 
         if isTurkish {
-            return "\(dayName) en verimli günün — ortalama \(durationText)"
+            return tr("ijc_best_day", dayName, durationText)
         } else {
             return "\(dayName) is your best day — average \(durationText)"
         }
     }
 
     private func dayName(for index: Int) -> String {
-        let tr = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
-        let en = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-        let safe = max(0, min(6, index))
-        return isTurkish ? tr[safe] : en[safe]
+        return localizedWeekdayFull(max(0, min(6, index)))
     }
 
     // MARK: Background

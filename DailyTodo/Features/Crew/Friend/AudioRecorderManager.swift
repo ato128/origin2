@@ -72,7 +72,7 @@ final class AudioRecorderManager: NSObject, ObservableObject, AVAudioRecorderDel
             throw NSError(
                 domain: "AudioRecorderManager",
                 code: 1001,
-                userInfo: [NSLocalizedDescriptionKey: "Ses kaydı başlatılamadı."]
+                userInfo: [NSLocalizedDescriptionKey: tr("arm_record_failed")]
             )
         }
 

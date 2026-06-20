@@ -218,7 +218,7 @@ private extension CourseSetupSheet {
 
         switch normalized {
         case "tr":
-            return "Türkiye"
+            return tr("up_turkey")
         case "kktc":
             return "KKTC"
         default:
@@ -900,9 +900,9 @@ private extension CourseSetupSheet {
         do {
             let country = normalizedCountryCode(profile.institutionCountry)
 
-            print("📚 CourseSetup loadCatalog country:", country)
-            print("📚 CourseSetup institution:", institutionName)
-            print("📚 CourseSetup major:", majorName)
+            Log.debug("📚 CourseSetup loadCatalog country:", country)
+            Log.debug("📚 CourseSetup institution:", institutionName)
+            Log.debug("📚 CourseSetup major:", majorName)
 
             let universities = try await StudentCatalogService.fetchUniversities(
                 countryCode: country
@@ -914,8 +914,8 @@ private extension CourseSetupSheet {
             ) else {
                 catalogCourses = []
                 catalogError = "University catalog match not found."
-                print("❌ CourseSetup university match not found:", institutionName)
-                print("❌ Available universities:", universities.map(\.name).joined(separator: ", "))
+                Log.debug("❌ CourseSetup university match not found:", institutionName)
+                Log.debug("❌ Available universities:", universities.map(\.name).joined(separator: ", "))
                 return
             }
 
@@ -929,8 +929,8 @@ private extension CourseSetupSheet {
             ) else {
                 catalogCourses = []
                 catalogError = "Major catalog match not found."
-                print("❌ CourseSetup major match not found:", majorName)
-                print("❌ Available majors:", majors.map(\.name).joined(separator: ", "))
+                Log.debug("❌ CourseSetup major match not found:", majorName)
+                Log.debug("❌ Available majors:", majors.map(\.name).joined(separator: ", "))
                 return
             }
 
@@ -942,11 +942,11 @@ private extension CourseSetupSheet {
             catalogCourses = courses
             catalogError = nil
 
-            print("✅ CourseSetup catalog courses:", courses.count)
+            Log.debug("✅ CourseSetup catalog courses:", courses.count)
         } catch {
             catalogCourses = []
             catalogError = error.localizedDescription
-            print("❌ CourseSetup loadCatalog error:", error.localizedDescription)
+            Log.debug("❌ CourseSetup loadCatalog error:", error.localizedDescription)
         }
     }
 
@@ -1007,7 +1007,7 @@ private extension CourseSetupSheet {
             .lowercased()
 
         switch value {
-        case "tr", "turkey", "türkiye", "turkiye", "Türkiye".lowercased():
+        case "tr", "turkey", "türkiye", "turkiye":
             return "tr"
 
         case "kktc", "kk tc", "trnc", "cy", "cyprus", "north cyprus", "northern cyprus":

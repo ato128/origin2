@@ -53,7 +53,7 @@ final class FocusLiveActivityManager {
                 pushType: nil
             )
         } catch {
-            print("❌ FocusLiveActivity start error:", error.localizedDescription)
+            Log.debug("❌ FocusLiveActivity start error:", error.localizedDescription)
         }
     }
 

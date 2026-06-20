@@ -23,7 +23,7 @@ final class SmartNotificationScheduler {
         reason: String
     ) async {
         guard let currentUserID, !currentUserID.isEmpty else {
-            print("SMART NOTIFICATIONS SKIPPED: missing currentUserID")
+            Log.debug("SMART NOTIFICATIONS SKIPPED: missing currentUserID")
             return
         }
 
@@ -40,7 +40,7 @@ final class SmartNotificationScheduler {
         )
 
         guard !candidates.isEmpty else {
-            print("SMART NOTIFICATIONS: no candidates - \(reason)")
+            Log.debug("SMART NOTIFICATIONS: no candidates - \(reason)")
             return
         }
 
@@ -72,7 +72,7 @@ final class SmartNotificationScheduler {
                 )
                 scheduledCount += 1
             } catch {
-                print("SMART NOTIFICATION SCHEDULE ERROR:", error.localizedDescription)
+                Log.debug("SMART NOTIFICATION SCHEDULE ERROR:", error.localizedDescription)
             }
 
             if scheduledCount >= 2 {
@@ -80,7 +80,7 @@ final class SmartNotificationScheduler {
             }
         }
 
-        print("SMART NOTIFICATIONS SCHEDULED:", scheduledCount, "reason:", reason)
+        Log.debug("SMART NOTIFICATIONS SCHEDULED:", scheduledCount, "reason:", reason)
     }
 
     func cancelAllSmartNotifications() async {
@@ -128,7 +128,7 @@ final class SmartNotificationScheduler {
 
         try await center.add(request)
 
-        print("SMART NOTIFICATION ADDED:", candidate.id, candidate.title)
+        Log.debug("SMART NOTIFICATION ADDED:", candidate.id, candidate.title)
     }
 
     // MARK: - Fetch
@@ -148,7 +148,7 @@ final class SmartNotificationScheduler {
                 $0.ownerUserID == currentUserID
             }
         } catch {
-            print("SMART TASK FETCH ERROR:", error.localizedDescription)
+            Log.debug("SMART TASK FETCH ERROR:", error.localizedDescription)
             return []
         }
     }
@@ -168,7 +168,7 @@ final class SmartNotificationScheduler {
                 $0.ownerUserID == currentUserID
             }
         } catch {
-            print("SMART EXAM FETCH ERROR:", error.localizedDescription)
+            Log.debug("SMART EXAM FETCH ERROR:", error.localizedDescription)
             return []
         }
     }
@@ -188,7 +188,7 @@ final class SmartNotificationScheduler {
                 $0.ownerUserID == currentUserID
             }
         } catch {
-            print("SMART FOCUS RECORD FETCH ERROR:", error.localizedDescription)
+            Log.debug("SMART FOCUS RECORD FETCH ERROR:", error.localizedDescription)
             return []
         }
     }

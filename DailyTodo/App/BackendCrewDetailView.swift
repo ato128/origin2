@@ -53,6 +53,7 @@ struct BackendCrewDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var session: SessionStore
+    @ObservedObject private var socialStats = SocialStatsStore.shared
 
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
     private var palette: ThemePalette { ThemePalette() }
@@ -89,9 +90,9 @@ struct BackendCrewDetailView: View {
 
             var title: String {
                 switch self {
-                case .open: return "Açık"
+                case .open: return tr("tv_open")
                 case .done: return "Biten"
-                case .all: return "Tümü"
+                case .all: return tr("tv_all")
                 }
             }
         }
@@ -267,6 +268,13 @@ struct BackendCrewDetailView: View {
     private func loadCrewDetail() async {
         await crewStore.loadMembers(for: crew.id)
         await crewStore.loadMemberProfiles(for: crewStore.crewMembers)
+
+        // Pro-only social stats for crew members (no request when not Pro).
+        let memberIDs = crewStore.crewMembers
+            .filter { $0.crew_id == crew.id }
+            .map { $0.user_id }
+        socialStats.refresh(userIDs: memberIDs, isPro: SubscriptionManager.shared.isPro, force: true)
+
         await crewStore.loadTasks(for: crew.id)
         await crewStore.loadActivities(for: crew.id)
         await crewStore.loadFocusRecords(for: crew.id)
@@ -291,7 +299,7 @@ extension BackendCrewDetailView {
                     .font(.system(size: 24, weight: .black))
                     .foregroundStyle(.white)
 
-                Text("Bu kodu arkadaşlarınla paylaşarak crew’e davet edebilirsin.")
+                Text(tr("bcd_share_code"))
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.52))
                     .multilineTextAlignment(.center)
@@ -410,7 +418,7 @@ extension BackendCrewDetailView {
                 .fill(BackendCrewArenaPalette.green)
                 .frame(width: 8, height: 8)
 
-            Text("Ortak görevler · üyeler · takım akışı")
+            Text(tr("bcd_subtitle"))
                 .font(.system(size: 11, weight: .bold, design: .monospaced))
                 .tracking(1.1)
                 .foregroundStyle(.white.opacity(0.42))
@@ -431,7 +439,7 @@ extension BackendCrewDetailView {
             sectionTitle(
                 eyebrow: "CREW RHYTHM",
                 title: "Performans",
-                italic: "özeti"
+                italic: tr("bcd_summary_word")
             )
 
             HStack(spacing: 12) {
@@ -488,7 +496,7 @@ extension BackendCrewDetailView {
                     miniIcon(systemName: "crown.fill", tint: BackendCrewArenaPalette.gold)
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Bugünün Lideri")
+                        Text(tr("bcd_todays_leader"))
                             .font(.system(size: 17, weight: .black))
                             .foregroundStyle(.white)
 
@@ -502,7 +510,7 @@ extension BackendCrewDetailView {
                                 .font(.system(size: 12, weight: .bold, design: .monospaced))
                                 .foregroundStyle(BackendCrewArenaPalette.gold)
                         } else {
-                            Text("Henüz focus kaydı yok")
+                            Text(tr("bcd_no_focus"))
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(.white.opacity(0.52))
                                 .fixedSize(horizontal: false, vertical: true)
@@ -756,7 +764,7 @@ extension BackendCrewDetailView {
     }
 
     func focusTimeText(_ minutes: Int) -> String {
-        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+        let isTurkish = !appLanguageIsEnglish()
         let hours = minutes / 60
         let mins = minutes % 60
 
@@ -795,7 +803,7 @@ extension BackendCrewDetailView {
                 sectionTitle(
                     eyebrow: "LIVE ACTIVITY",
                     title: "Aktivite",
-                    italic: "akışı"
+                    italic: tr("tv_flow_word")
                 )
 
                 Spacer()
@@ -1006,12 +1014,12 @@ extension BackendCrewDetailView {
 
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("İlerleme")
+                    Text(tr("ha_progress"))
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .tracking(1.1)
                         .foregroundStyle(.white.opacity(0.42))
 
-                    Text(totalTasks == 0 ? "Crew hazır" : "\(completedTasksCount)/\(totalTasks) tamamlandı")
+                    Text(totalTasks == 0 ? tr("bcd_crew_ready") : tr("rel_done_of", completedTasksCount, totalTasks))
                         .font(.system(size: 16, weight: .black))
                         .foregroundStyle(.white)
                 }
@@ -1083,7 +1091,7 @@ extension BackendCrewDetailView {
                 Button {
                     showCreateTask = true
                 } label: {
-                    Label("Görev", systemImage: "plus")
+                    Label(tr("at_kind_task"), systemImage: "plus")
                         .font(.system(size: 13, weight: .black))
                         .foregroundStyle(.black)
                         .padding(.horizontal, 14)
@@ -1121,14 +1129,14 @@ extension BackendCrewDetailView {
     }
     func heroSubtitle(memberCount: Int, totalTasks: Int) -> String {
             if totalTasks == 0 {
-                return "Crew hazır. İlk ortak görevi ekleyerek akışı başlat."
+                return tr("bcd_crew_ready_sub")
             }
 
             if pendingTasksCount == 0 {
-                return "Bugün için tüm ortak görevler tamamlandı."
+                return tr("bcd_all_done")
             }
 
-            return "\(pendingTasksCount) açık görev, \(memberCount) üyeyle akış devam ediyor."
+            return tr("bcd_flow_continues", pendingTasksCount, memberCount)
         }
     
     func quickStatsRow(completed: Int, pending: Int, memberCount: Int) -> some View {
@@ -1141,14 +1149,14 @@ extension BackendCrewDetailView {
             )
 
             detailMiniStatCard(
-                title: "Açık",
+                title: tr("tv_open"),
                 value: "\(pending)",
                 icon: "clock.fill",
                 tint: BackendCrewArenaPalette.coral
             )
 
             detailMiniStatCard(
-                title: "Üye",
+                title: tr("bcd_member"),
                 value: "\(memberCount)",
                 icon: "person.3.fill",
                 tint: BackendCrewArenaPalette.cyan
@@ -1206,8 +1214,8 @@ extension BackendCrewDetailView {
             HStack(alignment: .center) {
                 sectionTitle(
                     eyebrow: "CREW MEMBERS",
-                    title: "Üyeler",
-                    italic: "takımı"
+                    title: tr("bcd_members"),
+                    italic: tr("bcd_team_word")
                 )
 
                 Spacer()
@@ -1312,6 +1320,8 @@ extension BackendCrewDetailView {
                     .font(.system(size: 12, weight: .bold, design: .monospaced))
                     .foregroundStyle(.white.opacity(0.40))
                     .lineLimit(1)
+
+                memberStatLine(for: member)
             }
 
             Spacer()
@@ -1340,13 +1350,46 @@ extension BackendCrewDetailView {
         }
     }
 
+    @ViewBuilder
+    func memberStatLine(for member: CrewMemberDTO) -> some View {
+        if SubscriptionManager.shared.isPro,
+           let stat = socialStats.stat(for: member.user_id) {
+            HStack(spacing: 8) {
+                if stat.isFocusing {
+                    HStack(spacing: 3) {
+                        Circle()
+                            .fill(BackendCrewArenaPalette.green)
+                            .frame(width: 6, height: 6)
+                        Text("ODAKTA")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                    }
+                    .foregroundStyle(BackendCrewArenaPalette.green)
+                }
+
+                if stat.currentStreak > 0 {
+                    HStack(spacing: 2) {
+                        Image(systemName: "flame.fill")
+                            .font(.system(size: 9, weight: .black))
+                        Text("\(stat.currentStreak)")
+                            .font(.system(size: 11, weight: .black, design: .monospaced))
+                    }
+                    .foregroundStyle(BackendCrewArenaPalette.gold)
+                }
+
+                Text("LV\(stat.level)")
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+        }
+    }
+
     func tasksSection(_ crewTasks: [CrewTaskDTO]) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center) {
                 sectionTitle(
                     eyebrow: "SHARED TASKS",
                     title: "Ortak",
-                    italic: "görevler"
+                    italic: tr("tasks_lc")
                 )
 
                 Spacer()
@@ -1429,7 +1472,7 @@ extension BackendCrewDetailView {
                                                 title: task.title
                                             )
                                         } catch {
-                                            print("DELETE TASK ERROR:", error.localizedDescription)
+                                            Log.debug("DELETE TASK ERROR:", error.localizedDescription)
                                         }
                                     }
                                 } label: {
@@ -1534,39 +1577,39 @@ extension BackendCrewDetailView {
     }
 
     func priorityLabel(_ raw: String) -> String {
-        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+        let isTurkish = !appLanguageIsEnglish()
         switch raw {
-        case "low": return isTurkish ? "Düşük" : "Low"
+        case "low": return isTurkish ? tr("prio_low") : "Low"
         case "medium": return isTurkish ? "Orta" : "Medium"
-        case "high": return isTurkish ? "Yüksek" : "High"
+        case "high": return isTurkish ? tr("prio_high") : "High"
         case "urgent": return isTurkish ? "Acil" : "Urgent"
         default: return raw.capitalized
         }
     }
 
     func statusTitle(_ raw: String) -> String {
-        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+        let isTurkish = !appLanguageIsEnglish()
         switch raw {
-        case "todo": return isTurkish ? "Yapılacak" : "Todo"
+        case "todo": return isTurkish ? tr("status_todo") : "Todo"
         case "inProgress": return isTurkish ? "Devam Ediyor" : "In Progress"
-        case "review": return isTurkish ? "İncelemede" : "Review"
-        case "done": return isTurkish ? "Tamamlandı" : "Done"
+        case "review": return isTurkish ? tr("status_review") : "Review"
+        case "done": return isTurkish ? tr("common_completed") : "Done"
         default: return raw.capitalized
         }
     }
 
     func localizedRole(_ role: String) -> String {
-        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+        let isTurkish = !appLanguageIsEnglish()
         switch role.lowercased() {
         case "owner": return isTurkish ? "Sahip" : "Owner"
-        case "admin": return isTurkish ? "Yönetici" : "Admin"
-        case "member": return isTurkish ? "Üye" : "Member"
+        case "admin": return isTurkish ? tr("bcd_admin") : "Admin"
+        case "member": return isTurkish ? tr("bcd_member") : "Member"
         default: return role.capitalized
         }
     }
 
     func weekdayShort(_ weekday: Int) -> String {
-        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+        let isTurkish = !appLanguageIsEnglish()
         let titles = isTurkish
         ? ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
         : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -1588,7 +1631,7 @@ extension BackendCrewDetailView {
                     .font(.system(size: 18, weight: .black))
                     .foregroundStyle(.white)
 
-                Text("\(memberCount) üyeyle ortak odak alanı hazır")
+                Text(tr("bcd_focus_ready", memberCount))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.48))
                     .lineLimit(2)
@@ -1596,7 +1639,7 @@ extension BackendCrewDetailView {
 
             Spacer()
 
-            Text("Yakında")
+            Text(tr("bcd_soon"))
                 .font(.system(size: 11, weight: .black, design: .monospaced))
                 .foregroundStyle(BackendCrewArenaPalette.green)
                 .padding(.horizontal, 12)

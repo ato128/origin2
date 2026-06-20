@@ -17,6 +17,8 @@ struct InsightsIdentityCardV3: View {
     let hasPendingLevelUp: Bool
     let onTap: () -> Void
 
+    @State private var barFilled = false
+
     private var primaryAccent: Color {
         hasPendingLevelUp ? Color(arenaHex: AppArenaPalette.gold) : snapshot.accent
     }
@@ -96,7 +98,7 @@ struct InsightsIdentityCardV3: View {
                 }
                 .layoutPriority(1)
 
-                Text(hasPendingLevelUp ? "Yeni seviyeye hazırsın" : snapshot.statusText)
+                Text(hasPendingLevelUp ? tr("iid_ready_level") : snapshot.statusText)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(hasPendingLevelUp ? primaryAccent.opacity(0.92) : .white.opacity(0.50))
                     .lineLimit(2)
@@ -153,7 +155,7 @@ struct InsightsIdentityCardV3: View {
             statColumn(
                 label: "STREAK",
                 value: snapshot.streakDays,
-                unit: "GÜN",
+                unit: tr("iid_day_caps"),
                 tint: Color(arenaHex: AppArenaPalette.gold)
             )
 
@@ -162,7 +164,7 @@ struct InsightsIdentityCardV3: View {
             statColumn(
                 label: "TAMAM",
                 value: snapshot.completedTasks,
-                unit: "GÖREV",
+                unit: tr("ct_task_caps"),
                 tint: Color(arenaHex: AppArenaPalette.green)
             )
 
@@ -171,7 +173,7 @@ struct InsightsIdentityCardV3: View {
             statColumn(
                 label: "LEVEL",
                 value: snapshot.level,
-                unit: "AŞAMA",
+                unit: tr("iid_stage_caps"),
                 tint: Color(arenaHex: AppArenaPalette.purple)
             )
         }
@@ -283,13 +285,22 @@ struct InsightsIdentityCardV3: View {
                             )
                         )
                         .frame(
-                            width: max(10, geo.size.width * min(max(snapshot.progress, 0), 1)),
+                            width: barFilled
+                                ? max(10, geo.size.width * min(max(snapshot.progress, 0), 1))
+                                : 10,
                             height: 5
                         )
                         .shadow(color: primaryAccent.opacity(0.30), radius: 6, y: 2)
                 }
             }
             .frame(height: 5)
+            .onAppear {
+                guard !barFilled else { return }
+                // Animated fill with a soft bounce at the end
+                withAnimation(.spring(response: 0.8, dampingFraction: 0.68).delay(0.25)) {
+                    barFilled = true
+                }
+            }
         }
     }
 

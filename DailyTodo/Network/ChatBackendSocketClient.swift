@@ -413,7 +413,7 @@ extension ChatBackendSocketClient: URLSessionWebSocketDelegate {
         didOpenWithProtocol protocol: String?
     ) {
         #if DEBUG
-        print("🟢 WS DID OPEN")
+        Log.debug("🟢 WS DID OPEN")
         #endif
     }
 
@@ -424,7 +424,7 @@ extension ChatBackendSocketClient: URLSessionWebSocketDelegate {
         reason: Data?
     ) {
         #if DEBUG
-        print("🔴 WS DID CLOSE:", closeCode.rawValue)
+        Log.debug("🔴 WS DID CLOSE:", closeCode.rawValue)
         #endif
 
         Task { @MainActor in

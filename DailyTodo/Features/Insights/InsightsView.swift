@@ -8,6 +8,7 @@
 
 import SwiftUI
 import SwiftData
+import Combine
 
 struct InsightsView: View {
     @EnvironmentObject var session: SessionStore
@@ -15,6 +16,10 @@ struct InsightsView: View {
     @Environment(\.modelContext) private var modelContext
 
     @EnvironmentObject var studentStore: StudentStore
+
+    @ObservedObject private var progression = ProgressionManager.shared
+    @ObservedObject private var subscription = SubscriptionManager.shared
+    @State private var showStreakRestorePaywall = false
 
     @AppStorage("smartEngineEnabled") private var smartEngineEnabled: Bool = true
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
@@ -91,7 +96,7 @@ struct InsightsView: View {
             currentLevel: storedIdentityLevel,
             tasks: filteredTasks,
             focusSessions: filteredFocusSessions,
-            streakDays: vm.streakValueForUI
+            streakDays: progression.currentStreak
         )
     }
 
@@ -233,11 +238,15 @@ struct InsightsView: View {
         .sheet(isPresented: $showAchievements) {
             InsightsAchievementsView(badges: vm.allAchievementBadges)
         }
+        .sheet(isPresented: $showStreakRestorePaywall) {
+            PaywallView(context: "streak_restore")
+        }
         .sheet(isPresented: $showPremium) {
-            InsightsPremiumView {
-                withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-                    premiumState = .premium
-                }
+            PaywallView(context: "insights_premium")
+        }
+        .onReceive(SubscriptionManager.shared.$isPro) { isPro in
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                premiumState = isPro ? .premium : .free
             }
         }
         .sheet(isPresented: $showExamPlannerSheet) {
@@ -362,8 +371,8 @@ struct InsightsView: View {
                 .minimumScaleFactor(0.72)
 
                 Text(isStudyMode
-                     ? "Ders, sınav ve odak ritmini tek yerden oku."
-                     : "Görev, focus ve kimlik gelişimini takip et.")
+                     ? tr("ins_sub1")
+                     : tr("ins_sub2"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.48))
                     .lineLimit(2)
@@ -441,6 +450,10 @@ struct InsightsView: View {
                 onTap: handleIdentityTap
             )
 
+            if progression.pendingStreakBreak {
+                streakBreakBand
+            }
+
             // 2. JOURNEY (4 haftalık telemetri)
             InsightsJourneyCard(
                 focusSessions: filteredFocusSessions,
@@ -453,18 +466,93 @@ struct InsightsView: View {
                 onTap: { showAchievements = true }
             )
 
-            // 4. PREMIUM LAB (3 araç + CTA)
+            // 4. PREMIUM LAB (exam planner)
             InsightsPremiumLabCard(
                 isPremium: premiumState != .free,
                 onExamPlanner: { showExamPlannerSheet = true },
-                onComingSoon: { tool in
-                    comingSoonTool = tool
-                },
-                onUpgrade: {
-                    showPremium = true
-                }
+                onCoach: { },
+                onSmartInsights: { },
+                onUpgrade: { showPremium = true }
             )
         }
+    }
+
+    // MARK: - Streak break / restore band
+
+    private var streakBreakBand: some View {
+        let coral = Color(arenaHex: AppArenaPalette.coral)
+        let gold = Color(arenaHex: AppArenaPalette.gold)
+        let restoresLeft = progression.restoresLeftThisMonth
+        let canRestore = subscription.isPro && restoresLeft > 0
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: "flame.slash.fill")
+                    .font(.system(size: 18, weight: .black))
+                    .foregroundStyle(coral)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Seri kırıldı")
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text("\(progression.brokenStreakValue) günlük serini kaybettin · seviye 1 düştü")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 4)
+            }
+
+            Button {
+                if canRestore {
+                    HapticManager.shared.success()
+                    _ = progression.restoreStreak(context: modelContext)
+                } else if !subscription.isPro {
+                    showStreakRestorePaywall = true
+                }
+            } label: {
+                HStack(spacing: 7) {
+                    Image(systemName: subscription.isPro ? "arrow.uturn.backward.circle.fill" : "lock.fill")
+                        .font(.system(size: 13, weight: .black))
+
+                    Text(restoreButtonTitle(canRestore: canRestore, restoresLeft: restoresLeft))
+                        .font(.system(size: 13, weight: .black))
+                }
+                .foregroundStyle(.black)
+                .frame(maxWidth: .infinity)
+                .frame(height: 42)
+                .background(
+                    Capsule().fill(
+                        LinearGradient(colors: [gold, Color(arenaHex: AppArenaPalette.coral)],
+                                       startPoint: .leading, endPoint: .trailing)
+                    )
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(subscription.isPro && restoresLeft == 0)
+            .opacity(subscription.isPro && restoresLeft == 0 ? 0.5 : 1)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white.opacity(0.04))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(coral.opacity(0.3), lineWidth: 1)
+                )
+        )
+    }
+
+    private func restoreButtonTitle(canRestore: Bool, restoresLeft: Int) -> String {
+        if !subscription.isPro {
+            return "Updo Pro ile geri getir"
+        }
+        if restoresLeft > 0 {
+            return "Seri'yi geri getir (bu ay \(restoresLeft)/\(ProgressionManager.monthlyRestoreLimit))"
+        }
+        return "Bu ayki kurtarma hakkın bitti"
     }
 
     // MARK: - Identity tap
@@ -668,7 +756,7 @@ struct InsightsView: View {
 
             Spacer()
 
-            Text("AÇ")
+            Text(tr("ins_open_caps"))
                 .font(.system(size: 10, weight: .black, design: .monospaced))
                 .foregroundStyle(.black)
                 .padding(.horizontal, 12)

@@ -19,11 +19,11 @@ enum AppTab: Hashable, CaseIterable {
 
     var title: String {
         switch self {
-        case .tasks:    return "Home"
-        case .week:     return "Week"
-        case .crew:     return "Crew"
-        case .focus:    return "Focus"
-        case .insights: return "Insights"
+        case .tasks:    return tr("tab_home")
+        case .week:     return tr("tab_week")
+        case .crew:     return tr("tab_crew")
+        case .focus:    return tr("tab_focus")
+        case .insights: return tr("tab_insights")
         }
     }
 
@@ -59,6 +59,10 @@ private enum PendingChatRoute: Identifiable, Equatable {
 struct MainTabView: View {
     @Binding var openFocusFromNotification: Bool
 
+    /// When set (during the onboarding spotlight tour), the displayed tab is
+    /// forced to this value and the user's own tab taps are ignored.
+    var forcedTab: AppTab? = nil
+
     @Environment(\.modelContext) private var modelContext
 
     @EnvironmentObject var store: TodoStore
@@ -69,44 +73,49 @@ struct MainTabView: View {
     @Query(sort: \Friend.createdAt, order: .reverse)
     private var friends: [Friend]
 
+    @Query private var allTasks: [DTTaskItem]
+    @Query private var allFocusRecords: [FocusSessionRecord]
+    @Environment(\.scenePhase) private var scenePhase
+
     @State private var tab: AppTab = .tasks
     @State private var pendingChatRoute: PendingChatRoute?
-    @State private var showTasksSheet: Bool = false
+
+    private var activeTab: AppTab { forcedTab ?? tab }
 
     var body: some View {
         ZStack(alignment: .bottom) {
             // Aktif ekran
-            screenForTab(tab)
+            screenForTab(activeTab)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .transition(.opacity)
 
             // Custom tab bar
-            HomeTabBar(selectedTab: $tab)
+            HomeTabBar(selectedTab: forcedTab != nil ? .constant(forcedTab!) : $tab)
                 .padding(.horizontal, 22)
                 .padding(.bottom, 6)
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
-        .sheet(item: $pendingChatRoute) { route in
+        .fullScreenCover(item: $pendingChatRoute) { route in
             NavigationStack {
                 pendingChatDestination(route)
             }
         }
-        .sheet(isPresented: $showTasksSheet) {
-            NavigationStack {
-                TasksView()
-                    .environmentObject(store)
-                    .environmentObject(session)
-            }
-        }
         .onAppear {
-            print("MAIN TAB CURRENT USER:", session.currentUser?.id.uuidString ?? "nil")
+            Log.debug("MAIN TAB CURRENT USER:", session.currentUser?.id.uuidString ?? "nil")
 
             store.setCurrentUserID(session.currentUser?.id.uuidString)
             crewStore.setCurrentUser(session.currentUser?.id)
-            
+
+            runProgressionEvaluate()
         }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { runProgressionEvaluate() }
+        }
+        .onChange(of: allTasks.count) { _, _ in runProgressionEvaluate() }
+        .onChange(of: completedTaskCount) { _, _ in runProgressionEvaluate() }
+        .onChange(of: completedFocusCount) { _, _ in runProgressionEvaluate() }
         .onChange(of: session.currentUser?.id) { _, newUserID in
-            print("MAIN TAB USER CHANGED:", newUserID?.uuidString ?? "nil")
+            Log.debug("MAIN TAB USER CHANGED:", newUserID?.uuidString ?? "nil")
 
             store.setCurrentUserID(newUserID?.uuidString)
             crewStore.setCurrentUser(newUserID)
@@ -131,7 +140,7 @@ struct MainTabView: View {
             guard let rawID = output.object as? String,
                   let friendshipID = UUID(uuidString: rawID)
             else {
-                print("❌ OPEN FRIEND CHAT FAILED: invalid friendshipID")
+                Log.debug("❌ OPEN FRIEND CHAT FAILED: invalid friendshipID")
                 return
             }
 
@@ -141,7 +150,7 @@ struct MainTabView: View {
             guard let rawID = output.object as? String,
                   let crewID = UUID(uuidString: rawID)
             else {
-                print("❌ OPEN CREW CHAT FAILED: invalid crewID")
+                Log.debug("❌ OPEN CREW CHAT FAILED: invalid crewID")
                 return
             }
 
@@ -178,13 +187,13 @@ private extension MainTabView {
         case .tasks:
             NavigationStack {
                 HomeView(
-                    onAddTask: { showTasksSheet = true },
+                    onAddTask: { setTab(.week) },
                     onOpenWeek: { setTab(.week) },
                     onOpenInsights: { setTab(.insights) },
                     onOpenFocus: { setTab(.focus) },
                     onOpenCrew: { setTab(.crew) },
                     onOpenChat: { setTab(.crew) },
-                    onOpenTasks: { showTasksSheet = true }
+                    onOpenTasks: { setTab(.week) }
                 )
             }
 
@@ -218,6 +227,26 @@ private extension MainTabView {
             tab = newTab
         }
     }
+
+    // MARK: - Unified progression hub
+
+    var completedTaskCount: Int {
+        allTasks.filter(\.isDone).count
+    }
+
+    var completedFocusCount: Int {
+        allFocusRecords.filter { $0.isCompleted && $0.completedSeconds >= 60 }.count
+    }
+
+    func runProgressionEvaluate() {
+        ProgressionManager.shared.evaluate(
+            context: modelContext,
+            ownerUserID: session.currentUser?.id.uuidString,
+            tasks: allTasks,
+            focusRecords: allFocusRecords,
+            isPro: SubscriptionManager.shared.isPro
+        )
+    }
 }
 
 // MARK: - Routing helpers
@@ -233,7 +262,7 @@ private extension MainTabView {
                     .environmentObject(friendStore)
                     .environmentObject(session)
             } else {
-                loadingChatView("Sohbet hazırlanıyor...")
+                loadingChatView(tr("mt_chat_preparing"))
                     .task {
                         await prepareFriendRoute(friendshipID: friendshipID)
                     }
@@ -245,7 +274,7 @@ private extension MainTabView {
                     .environmentObject(crewStore)
                     .environmentObject(session)
             } else {
-                loadingChatView("Crew sohbeti hazırlanıyor...")
+                loadingChatView(tr("mt_crew_chat_preparing"))
                     .task {
                         await prepareCrewRoute(crewID: crewID)
                     }
@@ -257,13 +286,32 @@ private extension MainTabView {
         ZStack {
             AppBackground()
 
+            // Skeleton chat bubbles while the conversation resolves
             VStack(spacing: 14) {
-                ProgressView()
-                    .tint(.white)
+                VStack(spacing: 12) {
+                    HStack {
+                        SkeletonView(width: 200, height: 40, radius: 18)
+                        Spacer()
+                    }
+                    HStack {
+                        Spacer()
+                        SkeletonView(width: 160, height: 40, radius: 18)
+                    }
+                    HStack {
+                        SkeletonView(width: 230, height: 40, radius: 18)
+                        Spacer()
+                    }
+                    HStack {
+                        Spacer()
+                        SkeletonView(width: 120, height: 40, radius: 18)
+                    }
+                }
+                .padding(.horizontal, 20)
 
                 Text(text)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.78))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.45))
+                    .padding(.top, 8)
             }
         }
     }
@@ -555,6 +603,7 @@ struct HomeTabBar: View {
                 }
         )
         .animation(.spring(response: 0.42, dampingFraction: 0.82), value: selectedTab)
+        .onboardingTabAnchor(tab)
     }
 
     private var activeIconGradient: LinearGradient {

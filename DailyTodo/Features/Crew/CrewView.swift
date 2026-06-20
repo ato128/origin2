@@ -40,6 +40,7 @@ struct CrewView: View {
     @State private var selectedCrewIDForDetail: UUID?
     @State private var selectedFriendIDForDetail: UUID?
     @StateObject private var arenaStore = ArenaStore()
+    @ObservedObject private var socialStats = SocialStatsStore.shared
 
     init(initialTab: CrewTabMode = .crews) {
         self.initialTab = initialTab
@@ -103,7 +104,7 @@ struct CrewView: View {
                         .environmentObject(crewStore)
                         .environmentObject(session)
                 } else {
-                    CrewRedesignLoadingView(text: "Crew hazırlanıyor...")
+                    CrewRedesignLoadingView(text: tr("cv_crew_preparing"))
                 }
             }
             .navigationDestination(
@@ -121,7 +122,7 @@ struct CrewView: View {
                         .environmentObject(friendStore)
                         .environmentObject(session)
                 } else {
-                    CrewRedesignLoadingView(text: "Arkadaş hazırlanıyor...")
+                    CrewRedesignLoadingView(text: tr("cv_friend_preparing"))
                 }
             }
             .sheet(isPresented: $showCreateCrewBackend) {
@@ -399,6 +400,7 @@ private extension CrewView {
         backendFriends.map { friend in
             let activeSession = activeFocusSession(for: friend)
             let resolvedOnline = resolvedOnlineState(for: friend)
+            let sharedStat = socialStats.stat(for: friend.backendUserID)
 
             return CrewSocialFriendCardData(
                 id: friend.id,
@@ -407,8 +409,10 @@ private extension CrewView {
                 avatarSymbol: friend.avatarSymbol,
                 colorHex: friend.colorHex,
                 isOnline: resolvedOnline,
-                isFocusing: activeSession != nil,
-                focusMinutes: activeSession.map { focusMinutesLeft(for: $0) }
+                isFocusing: (sharedStat?.isFocusing ?? false) || activeSession != nil,
+                focusMinutes: activeSession.map { focusMinutesLeft(for: $0) },
+                streak: sharedStat?.currentStreak,
+                level: sharedStat?.level
             )
         }
     }
@@ -418,7 +422,7 @@ private extension CrewView {
             CrewSocialRequestCardData(
                 id: request.id,
                 title: requestDisplayName(for: request),
-                subtitle: "Arkadaşlık isteği",
+                subtitle: tr("cv_friend_request"),
                 username: requestUsername(for: request),
                 kind: .incoming
             )
@@ -430,7 +434,7 @@ private extension CrewView {
             CrewSocialRequestCardData(
                 id: request.id,
                 title: requestDisplayName(for: request),
-                subtitle: "İstek gönderildi",
+                subtitle: tr("cv_request_sent"),
                 username: requestUsername(for: request),
                 kind: .sent
             )
@@ -506,7 +510,7 @@ private extension CrewView {
             try await friendStore.acceptFriendRequest(friendshipID: request.id)
             await reloadBackendFriends(force: true)
         } catch {
-            print("ACCEPT FRIEND REQUEST ERROR:", error.localizedDescription)
+            Log.debug("ACCEPT FRIEND REQUEST ERROR:", error.localizedDescription)
         }
     }
 
@@ -520,7 +524,7 @@ private extension CrewView {
 
             await reloadBackendFriends(force: true)
         } catch {
-            print("REMOVE PENDING FRIEND REQUEST ERROR:", error.localizedDescription)
+            Log.debug("REMOVE PENDING FRIEND REQUEST ERROR:", error.localizedDescription)
         }
     }
 }
@@ -641,8 +645,15 @@ private extension CrewView {
         )
 
         friendStore.subscribeToPresenceRealtime(for: otherUserIDs)
-        
+
         friendStore.markFriendsCacheRefreshed()
+
+        // Pro-only social stats layer (no request when the viewer isn't Pro).
+        socialStats.refresh(
+            userIDs: otherUserIDs,
+            isPro: SubscriptionManager.shared.isPro,
+            force: force
+        )
     }
 }
 
@@ -666,14 +677,37 @@ private struct CrewRedesignLoadingView: View {
             )
             .ignoresSafeArea()
 
-            VStack(spacing: 14) {
-                ProgressView()
-                    .tint(.white)
+            // Skeleton layout mimicking a detail screen while it resolves
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(spacing: 14) {
+                    SkeletonView(width: 64, height: 64, radius: 20)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        SkeletonView(width: 150, height: 18, radius: 6)
+                        SkeletonView(width: 100, height: 12, radius: 6)
+                    }
+
+                    Spacer()
+                }
+
+                SkeletonView(height: 90, radius: 20)
+
+                VStack(spacing: 10) {
+                    SkeletonView(height: 56, radius: 16)
+                    SkeletonView(height: 56, radius: 16)
+                    SkeletonView(height: 56, radius: 16)
+                }
+
+                Spacer()
 
                 Text(text)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.78))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.45))
+                    .frame(maxWidth: .infinity)
+                    .padding(.bottom, 24)
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 24)
         }
         .navigationBarTitleDisplayMode(.inline)
     }

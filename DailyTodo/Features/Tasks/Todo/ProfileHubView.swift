@@ -13,6 +13,7 @@ struct ProfileHubView: View {
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var languageManager: LanguageManager
     @EnvironmentObject var studentStore: StudentStore
+    @ObservedObject private var subscription = SubscriptionManager.shared
 
     @AppStorage("smartEngineEnabled") private var smartEngineEnabled = true
     @AppStorage("showOnlyToday") private var showOnlyToday = false
@@ -23,6 +24,7 @@ struct ProfileHubView: View {
     @State private var showNotificationSettings = false
     @State private var showAboutApp = false
     @State private var showMadeWithCare = false
+    @State private var showAppIconPicker = false
 
     private var pageAccent: Color {
         Color(arenaHex: AppArenaPalette.cyan)
@@ -49,7 +51,9 @@ struct ProfileHubView: View {
                 LazyVStack(alignment: .leading, spacing: 16) {
                     headerSection
                     accountSection
+                    proTestSection
                     productivitySection
+                    appearanceSection
                     languageSection
                     supportSection
                     logoutSection
@@ -84,6 +88,77 @@ struct ProfileHubView: View {
         }
         .sheet(isPresented: $showMadeWithCare) {
             MadeWithCareView()
+        }
+        .sheet(isPresented: $showAppIconPicker) {
+            AppIconPickerView()
+        }
+    }
+
+    // TEMP: test toggle to preview Pro features without a purchase.
+    var proTestSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader(
+                eyebrow: "TEST · GEÇİCİ",
+                title: "Updo",
+                italic: "Pro",
+                subtitle: "Pro özelliklerini denemek için aç/kapat (yayın öncesi kaldırılacak).",
+                icon: "crown.fill",
+                tint: Color(arenaHex: AppArenaPalette.gold)
+            )
+
+            VStack(spacing: 16) {
+                toggleRow(
+                    icon: "crown.fill",
+                    iconColor: Color(arenaHex: AppArenaPalette.gold),
+                    title: "Pro (Test)",
+                    subtitle: subscription.isPro ? "Pro aktif — tüm özellikler açık" : "Pro kapalı",
+                    isOn: Binding(
+                        get: { subscription.isPro },
+                        set: { subscription.setDebugPro($0) }
+                    )
+                )
+            }
+            .padding(18)
+            .background(
+                arenaCardBackground(
+                    tint: Color(arenaHex: AppArenaPalette.gold),
+                    radius: 30,
+                    strength: 0.52
+                )
+            )
+        }
+    }
+
+    var appearanceSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader(
+                eyebrow: "APPEARANCE",
+                title: "Uygulama",
+                italic: "ikonu",
+                subtitle: "Ana ekran ikonunu değiştir. Gold & Chrome Updo Pro'ya özel.",
+                icon: "app.badge.fill",
+                tint: Color(arenaHex: AppArenaPalette.gold)
+            )
+
+            Button {
+                showAppIconPicker = true
+            } label: {
+                profileRow(
+                    icon: "app.dashed",
+                    iconColor: Color(arenaHex: AppArenaPalette.gold),
+                    title: "Uygulama İkonu",
+                    subtitle: "Çelik · Gold · Chrome"
+                )
+            }
+            .buttonStyle(.plain)
+            .padding(18)
+            .background(
+                arenaCardBackground(
+                    tint: Color(arenaHex: AppArenaPalette.gold),
+                    radius: 30,
+                    strength: 0.52
+                )
+            )
         }
     }
 }
@@ -140,7 +215,7 @@ private extension ProfileHubView {
                 .lineLimit(1)
                 .minimumScaleFactor(0.70)
 
-                Text("Hesap, öğrenci profili, görünüm ve uygulama ayarların.")
+                Text(tr("ph_header_sub"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.48))
                     .lineLimit(2)
@@ -186,9 +261,9 @@ private extension ProfileHubView {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
                 eyebrow: "ACCOUNT",
-                title: "Hesap",
+                title: tr("ph_w_account"),
                 italic: "profili",
-                subtitle: "Kimlik, akademik bilgiler ve profil düzenlemeleri",
+                subtitle: tr("ph_account_sub"),
                 icon: "person.crop.circle.fill",
                 tint: pageAccent
             )
@@ -224,8 +299,8 @@ private extension ProfileHubView {
                         profileRow(
                             icon: "pencil",
                             iconColor: pageAccent,
-                            title: "Profili Düzenle",
-                            subtitle: "Adını ve kullanıcı adını güncelle"
+                            title: tr("ph_edit_profile"),
+                            subtitle: tr("ph_edit_profile_sub")
                         )
                     }
                     .buttonStyle(.plain)
@@ -239,8 +314,8 @@ private extension ProfileHubView {
                         profileRow(
                             icon: "graduationcap.fill",
                             iconColor: warmAccent,
-                            title: "Öğrenci Bilgileri",
-                            subtitle: "Üniversite, bölüm, yıl ve derslerini düzenle"
+                            title: tr("ph_student_info"),
+                            subtitle: tr("ph_student_info_sub")
                         )
                     }
                     .buttonStyle(.plain)
@@ -252,8 +327,8 @@ private extension ProfileHubView {
                         profileRow(
                             icon: "person.crop.circle.badge.plus",
                             iconColor: pageAccent,
-                            title: "Giriş Yap",
-                            subtitle: "Hesabına giriş yap veya yeni hesap oluştur"
+                            title: tr("ph_sign_in"),
+                            subtitle: tr("ph_sign_in_sub")
                         )
                     }
                     .buttonStyle(.plain)
@@ -270,9 +345,9 @@ private extension ProfileHubView {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
                 eyebrow: "SMART SYSTEM",
-                title: "Akıllı",
-                italic: "akış",
-                subtitle: "Bildirimler, öneriler ve günlük çalışma ritmin",
+                title: tr("ph_w_smart"),
+                italic: tr("ph_w_flow"),
+                subtitle: tr("ph_smart_sub"),
                 icon: "sparkles",
                 tint: Color(arenaHex: AppArenaPalette.green)
             )
@@ -281,8 +356,8 @@ private extension ProfileHubView {
                 toggleRow(
                     icon: "brain.head.profile",
                     iconColor: Color(arenaHex: AppArenaPalette.green),
-                    title: "Akıllı Görev Motoru",
-                    subtitle: "Görev, sınav ve focus önerilerini daha anlamlı hale getirir",
+                    title: tr("ph_engine"),
+                    subtitle: tr("ph_engine_sub"),
                     isOn: $smartEngineEnabled
                 )
 
@@ -292,8 +367,8 @@ private extension ProfileHubView {
                 toggleRow(
                     icon: "calendar",
                     iconColor: warmAccent,
-                    title: "Sadece Bugünü Göster",
-                    subtitle: "Ana ekranda bugünün akışına daha net odaklan",
+                    title: tr("ph_today_only"),
+                    subtitle: tr("ph_today_only_sub"),
                     isOn: $showOnlyToday
                 )
 
@@ -306,8 +381,8 @@ private extension ProfileHubView {
                     profileRow(
                         icon: "bell.badge.fill",
                         iconColor: Color(arenaHex: AppArenaPalette.coral),
-                        title: "Akıllı Bildirimler",
-                        subtitle: "Sınav, seri, görev ve focus hatırlatmalarını yönet"
+                        title: tr("ph_smart_notifs"),
+                        subtitle: tr("ph_smart_notifs_sub")
                     )
                 }
                 .buttonStyle(.plain)
@@ -319,7 +394,7 @@ private extension ProfileHubView {
                     icon: "timer",
                     iconColor: Color(arenaHex: AppArenaPalette.green),
                     title: "Focus Tercihleri",
-                    subtitle: "Odak seans ayarları yakında burada olacak"
+                    subtitle: tr("ph_focus_soon")
                 )
                 .opacity(0.72)
             }
@@ -338,9 +413,9 @@ private extension ProfileHubView {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
                 eyebrow: "LANGUAGE",
-                title: "Dil",
-                italic: "seçimi",
-                subtitle: "Uygulama dilini burada değiştirebilirsin",
+                title: tr("ph_w_language"),
+                italic: tr("ph_w_selection"),
+                subtitle: tr("ph_lang_sub"),
                 icon: "globe",
                 tint: Color(arenaHex: AppArenaPalette.blue)
             )
@@ -353,7 +428,7 @@ private extension ProfileHubView {
                         .font(.system(size: 16, weight: .black))
                         .foregroundStyle(.white)
 
-                    Text("Arayüz dilini seç")
+                    Text(tr("ph_lang_picker"))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.48))
                 }
@@ -386,9 +461,9 @@ private extension ProfileHubView {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
                 eyebrow: "UPDO",
-                title: "Uygulama",
-                italic: "hakkında",
-                subtitle: "Updo’nun amacı, sürüm bilgileri ve yapım notları",
+                title: tr("ph_w_app"),
+                italic: tr("ph_w_about_updo"),
+                subtitle: tr("ph_about_sub"),
                 icon: "info.circle.fill",
                 tint: .white.opacity(0.72)
             )
@@ -400,8 +475,8 @@ private extension ProfileHubView {
                     profileRow(
                         icon: "info.circle.fill",
                         iconColor: pageAccent,
-                        title: "Hakkında",
-                        subtitle: "Updo’nun ne için tasarlandığını ve sürüm bilgisini gör"
+                        title: tr("ph_about"),
+                        subtitle: tr("ph_about_row_sub")
                     )
                 }
                 .buttonStyle(.plain)
@@ -415,8 +490,8 @@ private extension ProfileHubView {
                     profileRow(
                         icon: "heart.fill",
                         iconColor: Color(arenaHex: AppArenaPalette.coral),
-                        title: "Özenle yapıldı",
-                        subtitle: "Bu deneyimin arkasındaki fikir ve tasarım yaklaşımı"
+                        title: tr("ph_made_care"),
+                        subtitle: tr("ph_made_care_sub")
                     )
                 }
                 .buttonStyle(.plain)
@@ -438,9 +513,9 @@ private extension ProfileHubView {
                 VStack(alignment: .leading, spacing: 14) {
                     sectionHeader(
                         eyebrow: "ACCOUNT ACTIONS",
-                        title: "Hesap",
-                        italic: "işlemleri",
-                        subtitle: "Oturum yönetimi ve güvenli çıkış",
+                        title: tr("ph_w_account"),
+                        italic: tr("ph_w_actions"),
+                        subtitle: tr("ph_actions_sub"),
                         icon: "rectangle.portrait.and.arrow.right",
                         tint: Color(arenaHex: AppArenaPalette.coral)
                     )
@@ -457,11 +532,11 @@ private extension ProfileHubView {
                             )
 
                             VStack(alignment: .leading, spacing: 3) {
-                                Text("Çıkış Yap")
+                                Text(tr("ph_sign_out"))
                                     .font(.system(size: 17, weight: .black))
                                     .foregroundStyle(Color(arenaHex: AppArenaPalette.coral))
 
-                                Text("Hesabından güvenli çıkış yap")
+                                Text(tr("ph_sign_out_sub"))
                                     .font(.system(size: 13, weight: .semibold))
                                     .foregroundStyle(.white.opacity(0.48))
                             }
@@ -514,7 +589,7 @@ private extension ProfileHubView {
             }
 
             VStack(alignment: .leading, spacing: 5) {
-                Text(user.fullName.isEmpty ? "Kullanıcı" : user.fullName)
+                Text(user.fullName.isEmpty ? tr("ph_user") : user.fullName)
                     .font(.system(size: 20, weight: .black))
                     .foregroundStyle(.white)
                     .lineLimit(1)
@@ -822,27 +897,27 @@ private extension ProfileHubView {
     func formattedGrade(_ value: String) -> String {
         switch value {
         case "prep":
-            return "Hazırlık"
+            return tr("grade_prep")
         case "1":
-            return "1. Year"
+            return tr("grade_uni_1")
         case "2":
-            return "2. Year"
+            return tr("grade_uni_2")
         case "3":
-            return "3. Year"
+            return tr("grade_uni_3")
         case "4":
-            return "4. Year"
+            return tr("grade_uni_4")
         case "5":
-            return "5. Year"
+            return tr("grade_uni_5")
         case "6":
-            return "6. Year"
+            return tr("grade_uni_6")
         case "9":
-            return "9. Sınıf"
+            return tr("grade_hs_9")
         case "10":
-            return "10. Sınıf"
+            return tr("grade_hs_10")
         case "11":
-            return "11. Sınıf"
+            return tr("grade_hs_11")
         case "12":
-            return "12. Sınıf"
+            return tr("grade_hs_12")
         default:
             return value
         }
@@ -851,13 +926,13 @@ private extension ProfileHubView {
     func formattedTrack(_ value: String?) -> String {
         switch value {
         case "sayisal":
-            return "Sayısal"
+            return tr("track_sayisal")
         case "sozel":
-            return "Sözel"
+            return tr("track_sozel")
         case "esit_agirlik":
-            return "Eşit Ağırlık"
+            return tr("track_esit_agirlik")
         case "dil":
-            return "Dil"
+            return tr("track_dil")
         default:
             return ""
         }
@@ -951,17 +1026,17 @@ private struct SmartNotificationSettingsView: View {
                     .foregroundStyle(coral)
 
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    Text("Akıllı")
+                    Text(tr("ph_w_smart"))
                         .font(.system(size: 38, weight: .black))
                         .foregroundStyle(.white)
 
-                    Text("bildirimler")
+                    Text(tr("ph_w_notifications_lc"))
                         .font(.system(size: 34, weight: .regular, design: .serif))
                         .italic()
                         .foregroundStyle(coral)
                 }
 
-                Text("Updo gün içinde sadece gerçekten değerli olduğunda hatırlatır. Amaç rahatsız etmek değil, ritmini korumak.")
+                Text(tr("ph_notif_intro"))
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.52))
                     .lineSpacing(3)
@@ -976,8 +1051,8 @@ private struct SmartNotificationSettingsView: View {
             toggleRow(
                 icon: "sparkles",
                 tint: cyan,
-                title: "Akıllı Bildirimler",
-                subtitle: "Tüm akıllı hatırlatmaları aç veya kapat",
+                title: tr("ph_smart_notifs"),
+                subtitle: tr("ph_notif_master_sub"),
                 isOn: $smartNotificationsEnabled
             )
 
@@ -986,8 +1061,8 @@ private struct SmartNotificationSettingsView: View {
             toggleRow(
                 icon: "graduationcap.fill",
                 tint: gold,
-                title: "Sınav Hatırlatmaları",
-                subtitle: "Sınava yaklaşırken plan ve tekrar önerileri",
+                title: tr("ph_exam_reminders"),
+                subtitle: tr("ph_exam_reminders_sub"),
                 isOn: $smartExamNotificationsEnabled
             )
             .disabled(!smartNotificationsEnabled)
@@ -999,7 +1074,7 @@ private struct SmartNotificationSettingsView: View {
                 icon: "flame.fill",
                 tint: coral,
                 title: "Seri Koruma",
-                subtitle: "Ritmin bozulmadan önce kısa focus önerisi",
+                subtitle: tr("ph_focus_sug_hint"),
                 isOn: $smartStreakNotificationsEnabled
             )
             .disabled(!smartNotificationsEnabled)
@@ -1010,8 +1085,8 @@ private struct SmartNotificationSettingsView: View {
             toggleRow(
                 icon: "timer",
                 tint: green,
-                title: "Focus Önerileri",
-                subtitle: "Günün akışına göre hafif odak önerileri",
+                title: tr("ph_focus_suggestions"),
+                subtitle: tr("ph_focus_suggestions_sub"),
                 isOn: $smartDailyFocusNotificationsEnabled
             )
             .disabled(!smartNotificationsEnabled)
@@ -1022,8 +1097,8 @@ private struct SmartNotificationSettingsView: View {
             toggleRow(
                 icon: "checklist",
                 tint: purple,
-                title: "Görev Hatırlatmaları",
-                subtitle: "Bugünkü kalan veya geciken görevler için uyarılar",
+                title: tr("ph_task_reminders"),
+                subtitle: tr("ph_task_reminders_sub"),
                 isOn: $smartTaskNotificationsEnabled
             )
             .disabled(!smartNotificationsEnabled)
@@ -1042,7 +1117,7 @@ private struct SmartNotificationSettingsView: View {
                     .font(.system(size: 17, weight: .black))
                     .foregroundStyle(.white)
 
-                Text("22:30 – 08:00 arasında akıllı bildirim planlanmaz.")
+                Text(tr("ph_quiet_hours"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.50))
                     .lineLimit(2)
@@ -1060,17 +1135,17 @@ private struct SmartNotificationSettingsView: View {
                 iconBox("hand.raised.fill", tint: gold)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Spam değil, koç gibi")
+                    Text(tr("ph_not_spam"))
                         .font(.system(size: 17, weight: .black))
                         .foregroundStyle(.white)
 
-                    Text("Günde maksimum birkaç anlamlı dokunuş")
+                    Text(tr("ph_not_spam_sub"))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.50))
                 }
             }
 
-            Text("Updo, aynı gün aynı kategoriden tekrar tekrar bildirim göndermez. Bildirimler arasında mesafe bırakır ve yalnızca aksiyon değeri varsa devreye girer.")
+            Text(tr("ph_not_spam_body"))
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.48))
                 .lineSpacing(3)
@@ -1238,7 +1313,7 @@ private struct AboutUpdoView: View {
                 }
                 .lineLimit(2)
 
-                Text("Updo; görev, ders, sınav, focus ve crew akışını tek yerde toplayan günlük öğrenci kontrol merkezidir.")
+                Text(tr("ph_about_body1"))
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.52))
                     .lineSpacing(3)
@@ -1278,7 +1353,7 @@ private struct AboutUpdoView: View {
                 .font(.system(size: 22, weight: .black))
                 .foregroundStyle(.white)
 
-            Text("Öğrencilikte problem genelde yapılacak şeylerin çok olması değil; neye, ne zaman odaklanacağını bilememektir. Updo bu karmaşayı sade bir günlük akışa çevirir.")
+            Text(tr("ph_about_body2"))
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.52))
                 .lineSpacing(4)
@@ -1289,7 +1364,7 @@ private struct AboutUpdoView: View {
 
     private var featureGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-            miniFeature("Görevler", "checklist", cyan)
+            miniFeature(tr("ph_tasks_word"), "checklist", cyan)
             miniFeature("Hafta", "calendar", blue)
             miniFeature("Focus", "timer", gold)
             miniFeature("Crew", "person.3.fill", purple)
@@ -1432,7 +1507,7 @@ private struct MadeWithCareView: View {
                         }
 
                         VStack(spacing: 8) {
-                            Text("Özenle yapıldı")
+                            Text(tr("ph_made_care"))
                                 .font(.system(size: 38, weight: .regular, design: .serif))
                                 .italic()
                                 .foregroundStyle(
@@ -1443,7 +1518,7 @@ private struct MadeWithCareView: View {
                                     )
                                 )
 
-                            Text("Updo, öğrencinin gününü daha net, daha sakin ve daha sürdürülebilir hale getirmek için tasarlandı.")
+                            Text(tr("ph_made_body"))
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundStyle(.white.opacity(0.55))
                                 .multilineTextAlignment(.center)
@@ -1452,9 +1527,9 @@ private struct MadeWithCareView: View {
                         }
 
                         VStack(spacing: 12) {
-                            careLine("Karmaşayı azaltmak", "sparkles", cyan)
+                            careLine(tr("ph_reduce_clutter"), "sparkles", cyan)
                             careLine("Odak ritmini korumak", "timer", gold)
-                            careLine("Öğrenci hayatını tek akışta toplamak", "scope", coral)
+                            careLine(tr("ph_reduce_clutter_sub"), "scope", coral)
                         }
                         .padding(18)
                         .background(
@@ -1496,4 +1571,192 @@ private struct MadeWithCareView: View {
             Spacer()
         }
     }
+}
+
+// MARK: - App Icon Picker (Pro alternate icons)
+
+import UIKit
+
+struct AppIconPickerView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var subscription = SubscriptionManager.shared
+
+    @State private var current: String? = UIApplication.shared.alternateIconName
+    @State private var showPaywall = false
+
+    private struct Option: Identifiable {
+        let id: String?           // nil = default (Steel)
+        let name: String
+        let pro: Bool
+        let fg: AnyShapeStyle
+        let bg: Color
+        var key: String { id ?? "__default__" }
+    }
+
+    private var options: [Option] {
+        [
+            Option(id: nil, name: "Çelik", pro: false,
+                   fg: AnyShapeStyle(Color(arenaHex: "#5AB6CC")), bg: Color(arenaHex: "#06070E")),
+            Option(id: "AppIcon-Gold", name: "Gold", pro: true,
+                   fg: AnyShapeStyle(LinearGradient(colors: [Color(arenaHex: "#FCD34D"), Color(arenaHex: "#D97706")], startPoint: .topLeading, endPoint: .bottomTrailing)),
+                   bg: Color(arenaHex: "#0B0905")),
+            Option(id: "AppIcon-Chrome", name: "Chrome", pro: true,
+                   fg: AnyShapeStyle(LinearGradient(colors: [Color(arenaHex: "#EEF3F7"), Color(arenaHex: "#5B6770")], startPoint: .topLeading, endPoint: .bottomTrailing)),
+                   bg: Color(arenaHex: "#0A0C10")),
+            Option(id: "AppIcon-Aurora", name: "Aurora", pro: true,
+                   fg: AnyShapeStyle(LinearGradient(colors: [Color(arenaHex: "#22D3EE"), Color(arenaHex: "#7C3AED"), Color(arenaHex: "#EC4899")], startPoint: .topLeading, endPoint: .bottomTrailing)),
+                   bg: Color(arenaHex: "#07060F")),
+            Option(id: "AppIcon-Sunset", name: "Sunset", pro: true,
+                   fg: AnyShapeStyle(LinearGradient(colors: [Color(arenaHex: "#FBBF24"), Color(arenaHex: "#FB7185"), Color(arenaHex: "#F472B6")], startPoint: .topLeading, endPoint: .bottomTrailing)),
+                   bg: Color(arenaHex: "#120705")),
+            Option(id: "AppIcon-Emerald", name: "Emerald", pro: true,
+                   fg: AnyShapeStyle(LinearGradient(colors: [Color(arenaHex: "#6EE7B7"), Color(arenaHex: "#10B981"), Color(arenaHex: "#047857")], startPoint: .topLeading, endPoint: .bottomTrailing)),
+                   bg: Color(arenaHex: "#03100A")),
+            Option(id: "AppIcon-Noir", name: "Noir", pro: true,
+                   fg: AnyShapeStyle(Color(arenaHex: "#F2F4F7")), bg: Color(arenaHex: "#000000")),
+            Option(id: "AppIcon-Carbon", name: "Carbon", pro: true,
+                   fg: AnyShapeStyle(LinearGradient(colors: [Color(arenaHex: "#A8B0BA"), Color(arenaHex: "#4B5563"), Color(arenaHex: "#1F2937")], startPoint: .topLeading, endPoint: .bottomTrailing)),
+                   bg: Color(arenaHex: "#08090C")),
+            Option(id: "AppIcon-Ice", name: "Ice", pro: true,
+                   fg: AnyShapeStyle(LinearGradient(colors: [Color(arenaHex: "#EAF7FF"), Color(arenaHex: "#7DD3FC"), Color(arenaHex: "#38BDF8")], startPoint: .topLeading, endPoint: .bottomTrailing)),
+                   bg: Color(arenaHex: "#050A12"))
+        ]
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                ArenaBackground(primaryGlow: Color(arenaHex: AppArenaPalette.gold),
+                                secondaryGlow: Color(arenaHex: AppArenaPalette.cyan),
+                                warmGlow: Color(arenaHex: AppArenaPalette.coral), intensity: 0.9)
+                    .ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: 16) {
+                        ForEach(options) { opt in
+                            iconRow(opt)
+                        }
+                    }
+                    .padding(20)
+                }
+            }
+            .navigationTitle("Uygulama İkonu")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(tr("common_done")) { dismiss() }
+                        .fontWeight(.bold)
+                }
+            }
+            .preferredColorScheme(.dark)
+            .sheet(isPresented: $showPaywall) {
+                PaywallView(context: "app_icon")
+            }
+        }
+    }
+
+    private func iconRow(_ opt: Option) -> some View {
+        let locked = opt.pro && !subscription.isPro
+        let selected = (current == opt.id)
+        return Button {
+            if locked { showPaywall = true } else { apply(opt.id) }
+        } label: {
+            HStack(spacing: 14) {
+                IconThumb(fg: opt.fg, bg: opt.bg)
+                    .frame(width: 60, height: 60)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.white.opacity(0.09), lineWidth: 1))
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(opt.name)
+                        .font(.system(size: 16, weight: .black))
+                        .foregroundStyle(.white)
+                    Text(opt.pro ? "Updo Pro" : "Varsayılan")
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .foregroundStyle(opt.pro ? Color(arenaHex: AppArenaPalette.gold) : .white.opacity(0.45))
+                }
+
+                Spacer()
+
+                if locked {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundStyle(Color(arenaHex: AppArenaPalette.gold))
+                } else if selected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 20, weight: .black))
+                        .foregroundStyle(Color(arenaHex: AppArenaPalette.green))
+                }
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color.white.opacity(0.04))
+                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(selected ? Color(arenaHex: AppArenaPalette.green).opacity(0.5) : Color.white.opacity(0.07), lineWidth: 1))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func apply(_ id: String?) {
+        guard UIApplication.shared.supportsAlternateIcons else { return }
+        UIApplication.shared.setAlternateIconName(id) { _ in
+            DispatchQueue.main.async { current = UIApplication.shared.alternateIconName }
+        }
+        current = id
+    }
+}
+
+private struct IconThumb: View {
+    let fg: AnyShapeStyle
+    let bg: Color
+    var body: some View {
+        GeometryReader { geo in
+            let n = min(geo.size.width, geo.size.height)
+            let lw = n * 0.052
+            let r = n * 0.285
+            ZStack {
+                bg
+                Circle().stroke(style: StrokeStyle(lineWidth: lw, lineCap: .round)).fill(fg)
+                    .frame(width: r*2, height: r*2)
+                ForEach(0..<4, id: \.self) { i in
+                    Capsule().fill(fg).frame(width: lw, height: n*0.20)
+                        .offset(y: -r).rotationEffect(.degrees(Double(i)*90))
+                }
+                ProfileNorthArrow().fill(fg).frame(width: n*0.215, height: n*0.235).offset(y: -n*0.005)
+            }
+            .frame(width: n, height: n)
+        }
+    }
+}
+
+private struct ProfileNorthArrow: Shape {
+    func path(in rect: CGRect) -> Path {
+        let w = rect.width, h = rect.height
+        let pts = [
+            CGPoint(x: rect.minX + 0.50*w, y: rect.minY + 0.02*h),
+            CGPoint(x: rect.minX + 0.97*w, y: rect.minY + 0.97*h),
+            CGPoint(x: rect.minX + 0.50*w, y: rect.minY + 0.66*h),
+            CGPoint(x: rect.minX + 0.03*w, y: rect.minY + 0.97*h)
+        ]
+        let radius = min(w, h) * 0.10
+        var path = Path()
+        let n = pts.count
+        for i in 0..<n {
+            let cur = pts[i], pr = pts[(i-1+n)%n], nx = pts[(i+1)%n]
+            let tP = unit(cur, pr), tN = unit(cur, nx)
+            let rP = min(radius, dist(cur, pr)/2), rN = min(radius, dist(cur, nx)/2)
+            let st = CGPoint(x: cur.x+tP.x*rP, y: cur.y+tP.y*rP)
+            let en = CGPoint(x: cur.x+tN.x*rN, y: cur.y+tN.y*rN)
+            if i == 0 { path.move(to: st) } else { path.addLine(to: st) }
+            path.addQuadCurve(to: en, control: cur)
+        }
+        path.closeSubpath()
+        return path
+    }
+    private func unit(_ a: CGPoint, _ b: CGPoint) -> CGPoint {
+        let dx = b.x-a.x, dy = b.y-a.y, l = max((dx*dx+dy*dy).squareRoot(), 0.0001)
+        return CGPoint(x: dx/l, y: dy/l)
+    }
+    private func dist(_ a: CGPoint, _ b: CGPoint) -> CGFloat { ((a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y)).squareRoot() }
 }

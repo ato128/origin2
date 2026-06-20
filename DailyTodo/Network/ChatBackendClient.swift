@@ -53,13 +53,13 @@ enum ChatBackendDeviceIDProvider {
 enum ChatBackendLogger {
     static func log(_ items: Any...) {
         #if DEBUG
-        print(items.map { "\($0)" }.joined(separator: " "))
+        Log.debug(items.map { "\($0)" }.joined(separator: " "))
         #endif
     }
 
     static func error(_ items: Any...) {
         #if DEBUG
-        print(items.map { "\($0)" }.joined(separator: " "))
+        Log.debug(items.map { "\($0)" }.joined(separator: " "))
         #endif
     }
 }

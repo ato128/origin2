@@ -92,7 +92,7 @@ struct BackendCrewTaskDetailView: View {
                 .environmentObject(session)
         }
         .confirmationDialog(
-            "Görevi Sil",
+            tr("edit_delete_task"),
             isPresented: $showDeleteConfirm,
             titleVisibility: .visible
         ) {
@@ -102,9 +102,9 @@ struct BackendCrewTaskDetailView: View {
                 }
             }
 
-            Button("Vazgeç", role: .cancel) { }
+            Button(tr("common_cancel"), role: .cancel) { }
         } message: {
-            Text("Bu görev crew içinden kaldırılacak.")
+            Text(tr("bctd_remove_confirm"))
         }
         .task {
             await crewStore.loadTasks(for: crew.id)
@@ -205,7 +205,7 @@ private extension BackendCrewTaskDetailView {
                 Button {
                     showEditSheet = true
                 } label: {
-                    Label("Düzenle", systemImage: "pencil")
+                    Label(tr("common_edit"), systemImage: "pencil")
                 }
 
                 Button(role: .destructive) {
@@ -334,7 +334,7 @@ private extension BackendCrewTaskDetailView {
                         .tracking(1.1)
                         .foregroundStyle(.white.opacity(0.42))
 
-                    Text(currentTask.is_done ? "Görev tamamlandı" : "Görev hâlâ açık")
+                    Text(currentTask.is_done ? tr("bctd_task_done") : tr("bctd_task_open"))
                         .font(.system(size: 16, weight: .black))
                         .foregroundStyle(.white)
                 }
@@ -376,8 +376,8 @@ private extension BackendCrewTaskDetailView {
         VStack(alignment: .leading, spacing: 14) {
             sectionTitle(
                 eyebrow: "QUICK ACTIONS",
-                title: "Hızlı",
-                italic: "işlemler"
+                title: tr("bctd_quick_w"),
+                italic: tr("bctd_actions_w")
             )
 
             HStack(spacing: 10) {
@@ -448,15 +448,15 @@ private extension BackendCrewTaskDetailView {
         VStack(alignment: .leading, spacing: 14) {
             sectionTitle(
                 eyebrow: "TASK META",
-                title: "Görev",
-                italic: "detayı"
+                title: tr("at_kind_task"),
+                italic: tr("bctd_detail_w")
             )
 
             HStack(spacing: 10) {
                 miniStat(
                     icon: "flag.fill",
                     value: priorityLabel(currentTask.priority),
-                    title: "Öncelik",
+                    title: tr("priority_label"),
                     tint: priorityColor(currentTask.priority)
                 )
 
@@ -654,7 +654,7 @@ private extension BackendCrewTaskDetailView {
             )
             dismiss()
         } catch {
-            print("DELETE TASK ERROR:", error.localizedDescription)
+            Log.debug("DELETE TASK ERROR:", error.localizedDescription)
         }
 
         isDeleting = false
@@ -695,31 +695,31 @@ private extension BackendCrewTaskDetailView {
     }
 
     func priorityLabel(_ raw: String) -> String {
-        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+        let isTurkish = !appLanguageIsEnglish()
 
         switch raw {
-        case "low": return isTurkish ? "Düşük" : "Low"
+        case "low": return isTurkish ? tr("prio_low") : "Low"
         case "medium": return isTurkish ? "Orta" : "Medium"
-        case "high": return isTurkish ? "Yüksek" : "High"
+        case "high": return isTurkish ? tr("prio_high") : "High"
         case "urgent": return isTurkish ? "Acil" : "Urgent"
         default: return raw.capitalized
         }
     }
 
     func statusTitle(_ raw: String) -> String {
-        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+        let isTurkish = !appLanguageIsEnglish()
 
         switch raw {
-        case "todo": return isTurkish ? "Yapılacak" : "Todo"
+        case "todo": return isTurkish ? tr("status_todo") : "Todo"
         case "inProgress": return isTurkish ? "Devam Ediyor" : "In Progress"
-        case "review": return isTurkish ? "İncelemede" : "Review"
-        case "done": return isTurkish ? "Tamamlandı" : "Done"
+        case "review": return isTurkish ? tr("status_review") : "Review"
+        case "done": return isTurkish ? tr("common_completed") : "Done"
         default: return raw.capitalized
         }
     }
 
     func weekdayShort(_ weekday: Int) -> String {
-        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+        let isTurkish = !appLanguageIsEnglish()
 
         let titles = isTurkish
         ? ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]

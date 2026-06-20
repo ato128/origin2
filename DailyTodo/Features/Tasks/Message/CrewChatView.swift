@@ -32,6 +32,9 @@ struct CrewChatView: View {
     @State private var localActiveFocusSession: CrewFocusSessionDTO?
     @State var backendConversationID: UUID?
     @State var backendMessages: [CrewChatMessageItem] = []
+
+    /// Başarısız foto gönderimlerinin retry için bellekte tutulan içeriği (clientID → payload).
+    @State var crewMediaRetryPayloads: [String: (data: Data, caption: String?)] = [:]
     @State var seenMessageIDs: Set<UUID> = []
     @State var didLoadCachedMessages = false
     @State var isSyncingBackendConversation = false
@@ -155,7 +158,7 @@ struct CrewChatView: View {
                     }
                 } catch {
                     await MainActor.run {
-                        attachmentAlertText = "Fotoğraf yüklenemedi: \(error.localizedDescription)"
+                        attachmentAlertText = "\(tr("fc_photo_load_failed")): \(error.localizedDescription)"
                         showAttachmentAlert = true
                     }
                 }

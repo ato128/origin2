@@ -15,7 +15,16 @@ import UserNotifications
 final class FocusSessionManager: ObservableObject {
     static let shared = FocusSessionManager()
 
-    @Published var isSessionActive: Bool = false
+    @Published var isSessionActive: Bool = false {
+        didSet {
+            guard oldValue != isSessionActive else { return }
+            let focusing = isSessionActive
+            let until = isSessionActive ? currentSession?.endDate : nil
+            Task.detached {
+                await UserStatsBackendClient.shared.putFocusState(isFocusing: focusing, focusUntil: until)
+            }
+        }
+    }
     @Published var isExpanded: Bool = false
     @Published var isMinimized: Bool = false
     @Published var currentSession: FocusSessionState?
@@ -46,6 +55,7 @@ final class FocusSessionManager: ObservableObject {
     private var timer: Timer?
     private var nowTimer: Timer?
     private var isCompletingSession: Bool = false
+    private var isRetryingExpiredFinalize: Bool = false
 
     private init() {
         restoreSessionIfNeeded()
@@ -76,7 +86,7 @@ final class FocusSessionManager: ObservableObject {
         style: FocusStyle
     ) async -> Bool {
         guard !hasBlockingActiveSession else {
-            print("FOCUS START BLOCKED: another session is already active")
+            Log.debug("FOCUS START BLOCKED: another session is already active")
             return false
         }
 
@@ -99,12 +109,20 @@ final class FocusSessionManager: ObservableObject {
             )
 
         case .friend:
+            // Host starts alone; friends appear as they actually join.
+            let host = FocusParticipant(
+                id: currentUserID ?? UUID(),
+                name: currentUserDisplayName,
+                isHost: true,
+                isReady: true,
+                isActive: true
+            )
             startLocalSession(
                 mode: .friend,
                 durationMinutes: durationMinutes,
                 goal: goal,
                 style: style,
-                participants: FocusParticipant.mockFriend
+                participants: [host]
             )
             return true
         }
@@ -127,7 +145,7 @@ final class FocusSessionManager: ObservableObject {
     /// Kullanıcı stop'a bastığında çağrılır.
     /// Personal/Friend → tebrikler + lokal bildirim
     /// Crew host → herkese end push + tebrikler
-    /// Crew üye → kendisi ayrılır, diğerlerine "X ayrıldı" push
+    /// Crew üye → kendisi ayrılır, diğerlerine tr("fsm_x_left") push
     func closeSession() {
         guard let session = currentSession else {
             clearSessionLocally()
@@ -186,7 +204,7 @@ final class FocusSessionManager: ObservableObject {
                             memberName: leaverName
                         )
 
-                        // Diğerlerine "X ayrıldı" push
+                        // Diğerlerine tr("fsm_x_left") push
                         await self.sendLeftPushToOthers(
                             crewID: crewID,
                             leaverName: leaverName,
@@ -194,13 +212,13 @@ final class FocusSessionManager: ObservableObject {
                         )
                     }
                 } catch {
-                    print("CLOSE SESSION BACKEND ERROR:", error.localizedDescription)
+                    Log.debug("CLOSE SESSION BACKEND ERROR:", error.localizedDescription)
                 }
             }
 
             // Crew için tebrikler + bildirim:
             // - Host → tebrikler + end push diğerlerine (completeAndPersist içinde)
-            // - Üye → kendi tebrikler ekranı (kendisi ayrıldı, "X dk yaptın" göstermek mantıklı)
+            // - Üye → kendi tebrikler ekranı (kendisi ayrıldı, tr("fsm_x_did") göstermek mantıklı)
             completeAndPersist(session, shouldPersistCrewBackend: false)
             return
         }
@@ -241,7 +259,7 @@ final class FocusSessionManager: ObservableObject {
                         applyLocalPause()
                     }
                 } catch {
-                    print("FOCUS PAUSE SESSION ERROR:", error.localizedDescription)
+                    Log.debug("FOCUS PAUSE SESSION ERROR:", error.localizedDescription)
                 }
             }
 
@@ -284,7 +302,7 @@ final class FocusSessionManager: ObservableObject {
                         applyLocalResume()
                     }
                 } catch {
-                    print("FOCUS RESUME SESSION ERROR:", error.localizedDescription)
+                    Log.debug("FOCUS RESUME SESSION ERROR:", error.localizedDescription)
                 }
             }
 
@@ -458,12 +476,12 @@ final class FocusSessionManager: ObservableObject {
         style: FocusStyle
     ) async -> Bool {
         guard let crewStore else {
-            print("START CREW SESSION ERROR: CrewStore not configured")
+            Log.debug("START CREW SESSION ERROR: CrewStore not configured")
             return false
         }
 
         guard let crew = crewStore.crews.first else {
-            print("START CREW SESSION ERROR: No crew found")
+            Log.debug("START CREW SESSION ERROR: No crew found")
             return false
         }
 
@@ -498,7 +516,7 @@ final class FocusSessionManager: ObservableObject {
             await syncLiveActivityIfNeeded()
             return true
         } catch {
-            print("START CREW SESSION ERROR:", error.localizedDescription)
+            Log.debug("START CREW SESSION ERROR:", error.localizedDescription)
             return false
         }
     }
@@ -587,18 +605,18 @@ final class FocusSessionManager: ObservableObject {
         now = Date()
 
         guard canFinalizeSession(session) else {
-            print("⏳ EXPIRED FOCUS WAITING FOR DEPENDENCIES:", reason)
-            print("⏳ mode:", session.mode.rawValue)
-            print("⏳ currentUserID:", currentUserID?.uuidString ?? "nil")
-            print("⏳ crewStore:", crewStore == nil ? "nil" : "ready")
-            print("⏳ currentCrewID:", currentCrewID?.uuidString ?? "nil")
-            print("⏳ backendSessionID:", currentCrewBackendSessionID?.uuidString ?? "nil")
+            Log.debug("⏳ EXPIRED FOCUS WAITING FOR DEPENDENCIES:", reason)
+            Log.debug("⏳ mode:", session.mode.rawValue)
+            Log.debug("⏳ currentUserID:", currentUserID?.uuidString ?? "nil")
+            Log.debug("⏳ crewStore:", crewStore == nil ? "nil" : "ready")
+            Log.debug("⏳ currentCrewID:", currentCrewID?.uuidString ?? "nil")
+            Log.debug("⏳ backendSessionID:", currentCrewBackendSessionID?.uuidString ?? "nil")
 
             retryExpiredFinalizeAfterDependenciesReady(reason: reason)
             return
         }
 
-        print("✅ RECONCILE EXPIRED FOCUS:", reason)
+        Log.debug("✅ RECONCILE EXPIRED FOCUS:", reason)
         finishSession(session)
     }
     
@@ -687,7 +705,7 @@ final class FocusSessionManager: ObservableObject {
         shouldPersistCrewBackend: Bool = true
     ) {
         guard !isCompletingSession else {
-            print("⚪️ COMPLETE SKIPPED: already completing")
+            Log.debug("⚪️ COMPLETE SKIPPED: already completing")
             return
         }
 
@@ -753,11 +771,11 @@ final class FocusSessionManager: ObservableObject {
         let completedLiveSubtitle: String = {
             switch session.mode {
             case .personal:
-                return "Kişisel focus tamamlandı"
+                return tr("fsm_personal_done")
             case .crew:
-                return "Crew focus tamamlandı"
+                return tr("fsm_crew_done")
             case .friend:
-                return "Shared focus tamamlandı"
+                return tr("fsm_shared_done")
             }
         }()
 
@@ -778,7 +796,7 @@ final class FocusSessionManager: ObservableObject {
                     previousMinutes: previousMinutes
                 )
             } else {
-                print("⚪️ LOCAL COMPLETION NOTIF SKIPPED: backup notification already handled")
+                Log.debug("⚪️ LOCAL COMPLETION NOTIF SKIPPED: backup notification already handled")
             }
         }
 
@@ -818,7 +836,7 @@ final class FocusSessionManager: ObservableObject {
                         previousMinutes: previousMinutes
                     )
                 } else {
-                    print("⚪️ CREW FOCUS BACKEND PERSIST SKIPPED: current user is not host")
+                    Log.debug("⚪️ CREW FOCUS BACKEND PERSIST SKIPPED: current user is not host")
                 }
             }
         }
@@ -942,24 +960,24 @@ final class FocusSessionManager: ObservableObject {
         previousMinutes: Int?
     ) -> String {
         guard let previousMinutes, previousMinutes > 0 else {
-            return "\(durationMinutes) dakika focus tamamladın. Güzel başlangıç 🎯"
+            return tr("fsm_done_1", durationMinutes)
         }
 
         let delta = durationMinutes - previousMinutes
 
         if delta >= 5 {
-            return "\(durationMinutes) dakika tamamladın · geçen seferden \(delta) dk daha fazla. İyileşiyorsun 🚀"
+            return tr("fsm_done_2", durationMinutes, delta)
         }
 
         if delta > 0 {
-            return "\(durationMinutes) dakika tamamladın · geçen seferden \(delta) dk daha iyi 👏"
+            return tr("fsm_done_3", durationMinutes, delta)
         }
 
         if delta == 0 {
-            return "\(durationMinutes) dakika tamamladın · ritmini korudun 🔥"
+            return tr("fsm_done_4", durationMinutes)
         }
 
-        return "\(durationMinutes) dakika tamamladın · bugün kısa tuttun ama akışı bozmadın ✅"
+        return tr("fsm_done_5", durationMinutes)
     }
 
     private func lastSavedFocusMinutes() -> Int? {
@@ -986,14 +1004,14 @@ final class FocusSessionManager: ObservableObject {
             guard settings.authorizationStatus == .authorized ||
                   settings.authorizationStatus == .provisional ||
                   settings.authorizationStatus == .ephemeral else {
-                print("⚠️ FOCUS END BACKUP NOTIF SKIPPED: permission not granted")
+                Log.debug("⚠️ FOCUS END BACKUP NOTIF SKIPPED: permission not granted")
                 return
             }
 
             let triggerDate = session.endDate
 
             guard triggerDate > Date().addingTimeInterval(3) else {
-                print("⚠️ FOCUS END BACKUP NOTIF SKIPPED: endDate too close")
+                Log.debug("⚠️ FOCUS END BACKUP NOTIF SKIPPED: endDate too close")
                 return
             }
 
@@ -1001,11 +1019,11 @@ final class FocusSessionManager: ObservableObject {
 
             switch session.mode {
             case .personal:
-                content.title = "Focus tamamlandı 🎉"
+                content.title = tr("fsm_focus_done_emoji")
             case .crew:
-                content.title = "Crew focus tamamlandı 🎉"
+                content.title = tr("fsm_crew_done_emoji")
             case .friend:
-                content.title = "Friend focus tamamlandı 🎉"
+                content.title = tr("fsm_friend_done_emoji")
             }
 
             content.body = self.smartFocusCompletionBody(
@@ -1046,9 +1064,9 @@ final class FocusSessionManager: ObservableObject {
 
             center.add(request) { error in
                 if let error {
-                    print("❌ FOCUS END BACKUP NOTIF ERROR:", error.localizedDescription)
+                    Log.debug("❌ FOCUS END BACKUP NOTIF ERROR:", error.localizedDescription)
                 } else {
-                    print("✅ FOCUS END BACKUP NOTIF SCHEDULED:", triggerDate)
+                    Log.debug("✅ FOCUS END BACKUP NOTIF SCHEDULED:", triggerDate)
                 }
             }
         }
@@ -1061,7 +1079,7 @@ final class FocusSessionManager: ObservableObject {
             withIdentifiers: [identifier]
         )
 
-        print("🧹 FOCUS END BACKUP NOTIF CANCELLED:", identifier)
+        Log.debug("🧹 FOCUS END BACKUP NOTIF CANCELLED:", identifier)
     }
     
     private func collectParticipantUserIDs(
@@ -1086,14 +1104,14 @@ final class FocusSessionManager: ObservableObject {
 
         // Önce permission kontrol et — log için
         center.getNotificationSettings { settings in
-            print("🔔 NOTIF AUTHORIZATION STATUS:", settings.authorizationStatus.rawValue)
-            print("🔔 NOTIF ALERT SETTING:", settings.alertSetting.rawValue)
-            print("🔔 NOTIF SOUND SETTING:", settings.soundSetting.rawValue)
-            print("🔔 NOTIF LOCK SCREEN:", settings.lockScreenSetting.rawValue)
+            Log.debug("🔔 NOTIF AUTHORIZATION STATUS:", settings.authorizationStatus.rawValue)
+            Log.debug("🔔 NOTIF ALERT SETTING:", settings.alertSetting.rawValue)
+            Log.debug("🔔 NOTIF SOUND SETTING:", settings.soundSetting.rawValue)
+            Log.debug("🔔 NOTIF LOCK SCREEN:", settings.lockScreenSetting.rawValue)
         }
 
         let content = UNMutableNotificationContent()
-        content.title = "Focus tamamlandı 🎉"
+        content.title = tr("fsm_focus_done_emoji")
 
         content.body = smartFocusCompletionBody(
             durationMinutes: durationMinutes,
@@ -1118,9 +1136,9 @@ final class FocusSessionManager: ObservableObject {
 
         center.add(request) { error in
             if let error {
-                print("❌ LOCAL FOCUS NOTIF ERROR:", error.localizedDescription)
+                Log.debug("❌ LOCAL FOCUS NOTIF ERROR:", error.localizedDescription)
             } else {
-                print("✅ LOCAL FOCUS NOTIF SCHEDULED for \(durationMinutes) dk")
+                Log.debug("✅ LOCAL FOCUS NOTIF SCHEDULED for \(durationMinutes) dk")
             }
         }
     }
@@ -1151,7 +1169,7 @@ final class FocusSessionManager: ObservableObject {
         taskID: UUID? = nil
     ) async {
         guard let crewStore else {
-            print("❌ CREW FOCUS BACKEND PERSIST SKIPPED: crewStore nil")
+            Log.debug("❌ CREW FOCUS BACKEND PERSIST SKIPPED: crewStore nil")
             return
         }
 
@@ -1171,10 +1189,10 @@ final class FocusSessionManager: ObservableObject {
                     taskID: taskID
                 )
 
-                print("✅ CREW FOCUS BACKEND PERSISTED:", crewID.uuidString)
+                Log.debug("✅ CREW FOCUS BACKEND PERSISTED:", crewID.uuidString)
                 return
             } catch {
-                print("❌ CREW FOCUS END BACKEND ERROR:", error.localizedDescription)
+                Log.debug("❌ CREW FOCUS END BACKEND ERROR:", error.localizedDescription)
             }
         }
 
@@ -1185,7 +1203,7 @@ final class FocusSessionManager: ObservableObject {
             minutes: completedMinutes
         )
 
-        print("✅ CREW FOCUS BACKEND FALLBACK RECORD CREATED:", crewID.uuidString)
+        Log.debug("✅ CREW FOCUS BACKEND FALLBACK RECORD CREATED:", crewID.uuidString)
     }
 
     private func sendLeftPushToOthers(
@@ -1198,7 +1216,7 @@ final class FocusSessionManager: ObservableObject {
         let uniqueIDs = Array(Set(otherParticipantIDs))
 
         guard !uniqueIDs.isEmpty else {
-            print("FOCUS LEFT PUSH SKIPPED: no other participants")
+            Log.debug("FOCUS LEFT PUSH SKIPPED: no other participants")
             return
         }
 
@@ -1224,7 +1242,7 @@ final class FocusSessionManager: ObservableObject {
         switch session.mode {
         case .personal:
             title = "\(session.goal.title) Focus"
-            subtitle = "Kişisel focus aktif"
+            subtitle = tr("fsm_personal_active")
         case .crew:
             title = "Crew Focus"
             subtitle = liveSubtitleText
@@ -1258,27 +1276,38 @@ final class FocusSessionManager: ObservableObject {
     }
     
     private func retryExpiredFinalizeAfterDependenciesReady(reason: String) {
+        // Single-flight: if a retry task is already running, don't spawn another
+        guard !isRetryingExpiredFinalize else { return }
+        isRetryingExpiredFinalize = true
+
         Task { @MainActor [weak self] in
+            defer { self?.isRetryingExpiredFinalize = false }
             guard let self else { return }
 
-            let delays: [UInt64] = [
-                0,
-                700_000_000,
-                1_500_000_000,
-                3_000_000_000
-            ]
+            // Wait at most ~10 s across 4 attempts, then give up
+            let delays: [UInt64] = [700_000_000, 1_500_000_000, 3_000_000_000, 5_000_000_000]
 
             for delay in delays {
-                if delay > 0 {
-                    try? await Task.sleep(nanoseconds: delay)
-                }
+                try? await Task.sleep(nanoseconds: delay)
 
                 guard let session = self.currentSession else { return }
                 guard !session.isPaused else { return }
                 guard session.endDate <= Date() else { return }
 
-                self.reconcileExpiredSessionIfNeeded(reason: "\(reason)_retry")
+                // If userID is still absent, keep waiting (don't recurse)
+                guard self.currentUserID != nil else {
+                    Log.debug("⏳ EXPIRED FOCUS still waiting for userID (\(reason))")
+                    continue
+                }
+
+                if self.canFinalizeSession(session) {
+                    Log.debug("✅ RECONCILE EXPIRED FOCUS (retry):", reason)
+                    self.finishSession(session)
+                    return
+                }
             }
+
+            Log.debug("⛔ EXPIRED FOCUS: dependencies never ready after retries, giving up (\(reason))")
         }
     }
 
@@ -1361,12 +1390,12 @@ final class FocusSessionManager: ObservableObject {
     }
 
     var statusLine: String {
-        guard let session = currentSession else { return "Hazır" }
-        if session.isPaused { return "Focus duraklatıldı" }
+        guard let session = currentSession else { return tr("hf_ready") }
+        if session.isPaused { return tr("fsm_focus_paused") }
 
         switch session.mode {
         case .personal:
-            return "Şu an focustasın"
+            return tr("fsm_now_focusing")
         case .crew:
             return "Crew session aktif"
         case .friend:
@@ -1453,17 +1482,17 @@ final class FocusSessionManager: ObservableObject {
 
     var lastSessionText: String {
         switch selectedMode {
-        case .personal: return "Son oturum 2 saat önce"
-        case .crew: return "Son crew oturumu dün"
-        case .friend: return "Son ortak oturum bugün"
+        case .personal: return tr("fsm_last_2h")
+        case .crew: return tr("fsm_last_crew_yesterday")
+        case .friend: return tr("fsm_last_shared_today")
         }
     }
 
-    var personalMetricOneTitle: String { "Bugün" }
+    var personalMetricOneTitle: String { tr("common_today") }
     var personalMetricOneValue: String { "\(todayFocusMinutes) dk" }
 
     var personalMetricTwoTitle: String { "Seri" }
-    var personalMetricTwoValue: String { "\(streakDays) gün" }
+    var personalMetricTwoValue: String { tr("ch_streak_days_n", streakDays) }
 
     var personalMetricThreeTitle: String { "Hafta" }
     var personalMetricThreeValue: String { "\(weekFocusSessions) session" }
@@ -1471,22 +1500,22 @@ final class FocusSessionManager: ObservableObject {
     var crewMetricOneTitle: String { "Host" }
     var crewMetricOneValue: String { hostName ?? "Atakan" }
 
-    var crewMetricTwoTitle: String { "Katılımcı" }
-    var crewMetricTwoValue: String { "\(max(participantCount, 3)) kişi" }
+    var crewMetricTwoTitle: String { tr("fsm_participant") }
+    var crewMetricTwoValue: String { tr("fsm_people", max(participantCount, 3)) }
 
-    var crewMetricThreeTitle: String { "Hazır" }
+    var crewMetricThreeTitle: String { tr("hf_ready") }
     var crewMetricThreeValue: String { "\(max(readyCount, 2))/\(max(participantCount, 3))" }
 
-    var friendMetricOneTitle: String { "Eşleşme" }
+    var friendMetricOneTitle: String { tr("fsm_match") }
     var friendMetricOneValue: String {
         currentSession?.participants.first(where: { !$0.isHost })?.name ?? "Ece"
     }
 
-    var friendMetricTwoTitle: String { "Hazır" }
+    var friendMetricTwoTitle: String { tr("hf_ready") }
     var friendMetricTwoValue: String { "\(max(readyCount, 2))/\(max(participantCount, 2))" }
 
     var friendMetricThreeTitle: String { "Seri" }
-    var friendMetricThreeValue: String { "\(streakDays) gün" }
+    var friendMetricThreeValue: String { tr("ch_streak_days_n", streakDays) }
 
     func heroMetricItems(for mode: FocusMode) -> [(String, String)] {
         switch mode {

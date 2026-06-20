@@ -36,9 +36,9 @@ final class LiveActivityManager {
             )
 
             UserDefaults.standard.set(activity.id, forKey: currentIDKey)
-            print("🟢 LiveActivity started:", activity.id, event.title)
+            Log.debug("🟢 LiveActivity started:", activity.id, event.title)
         } catch {
-            print("🔴 LiveActivity start error:", error)
+            Log.debug("🔴 LiveActivity start error:", error)
         }
     }
 
@@ -61,7 +61,7 @@ final class LiveActivityManager {
             )
         )
 
-        print("🔵 LiveActivity updated:", activity.id, event.title)
+        Log.debug("🔵 LiveActivity updated:", activity.id, event.title)
     }
 
     func end() async {
@@ -79,7 +79,7 @@ final class LiveActivityManager {
         )
 
         UserDefaults.standard.removeObject(forKey: currentIDKey)
-        print("🟡 LiveActivity ended:", activity.id)
+        Log.debug("🟡 LiveActivity ended:", activity.id)
     }
 
     func startIfNeeded(events: [EventItem]) async {
@@ -122,7 +122,7 @@ final class LiveActivityManager {
                     staleDate: newState.endDate
                 )
             )
-            print("🟣 LiveActivity autoSynced:", target.title)
+            Log.debug("🟣 LiveActivity autoSynced:", target.title)
         }
     }
 

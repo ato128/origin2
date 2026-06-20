@@ -31,7 +31,7 @@ extension HomeDashboardView {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(alignment: .top, spacing: 10) {
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("BUGÜNKÜ PLAN")
+                        Text(tr("oc_todays_plan_caps"))
                             .font(.system(size: 10, weight: .black, design: .monospaced))
                             .tracking(1.6)
                             .foregroundStyle(todayProgressAccent.opacity(0.95))
@@ -278,18 +278,18 @@ extension HomeDashboardView {
 
     var mainMetricCardTitle: String {
         if !hasStudentCourses {
-            return "Başlangıç"
+            return tr("oc_start")
         }
 
         if totalTodayTaskCount == 0 {
-            return "Bugünkü Plan"
+            return tr("oc_todays_plan")
         }
 
         if completedTodayCount >= totalTodayTaskCount {
-            return "Bugün Tamam"
+            return tr("oc_today_done")
         }
 
-        return "Bugünkü İlerleme"
+        return tr("oc_todays_progress")
     }
 
     var mainMetricIcon: String {
@@ -324,32 +324,32 @@ extension HomeDashboardView {
         }
 
         if totalTodayTaskCount == 0 {
-            return "Bir ders seç ve çalış"
+            return tr("oc_pick_class_study")
         }
 
         if completedTodayCount >= totalTodayTaskCount {
-            return "Bugün tamam"
+            return tr("hd_today_done")
         }
 
-        return "\(completedTodayCount)/\(totalTodayTaskCount) görev bitti"
+        return tr("hd_tasks_done_of", completedTodayCount, totalTodayTaskCount)
     }
 
     var todayCompletionFootnoteText: String {
         if !hasStudentCourses {
-            return "Planın buna göre akıllanır"
+            return tr("oc_plan_smartens")
         }
 
         if totalTodayTaskCount == 0 {
-            return "Sana çalışma planı oluşturalım"
+            return tr("oc_lets_make_plan")
         }
 
         let remaining = max(totalTodayTaskCount - completedTodayCount, 0)
 
         if remaining == 0 {
-            return "Bugünü temiz kapattın"
+            return tr("oc_clean_close")
         }
 
-        return "\(remaining) görev daha kaldı"
+        return tr("oc_tasks_left", remaining)
     }
 
     var todayProgressAccent: Color {
@@ -435,7 +435,7 @@ extension HomeDashboardView {
         }
 
         if hasFocusedTodayForHome {
-            return "🔥 ATEŞ"
+            return tr("oc_fire_caps")
         }
 
         return "🔥 FOCUS"
@@ -447,10 +447,10 @@ extension HomeDashboardView {
         }
 
         if hasFocusedTodayForHome {
-            return "Yandı"
+            return tr("oc_burning")
         }
 
-        return "Başla"
+        return tr("hd_start")
     }
 
     var focusMetricSubtitleText: String {
@@ -459,10 +459,10 @@ extension HomeDashboardView {
         }
 
         if hasFocusedTodayForHome {
-            return streakCount > 0 ? "\(streakCount) gün seri" : "bugün odaklandın"
+            return streakCount > 0 ? tr("oc_day_streak", streakCount) : tr("oc_focused_today")
         }
 
-        return "ilk oturumu başlat"
+        return tr("oc_start_first_session")
     }
 
     var focusMetricIconName: String {
@@ -489,7 +489,7 @@ extension HomeDashboardView {
 
     var courseMetricEyebrowText: String {
         if nextEvent != nil {
-            return "✨ SIRADAKİ"
+            return tr("oc_next_caps")
         }
 
         return "✨ DERS"
@@ -525,7 +525,7 @@ extension HomeDashboardView {
                 return coursePreviewText
             }
 
-            return "Derslerini seç, haftanı ona göre kuralım"
+            return tr("oc_pick_classes_week")
         }
 
         let diff = max(nextEvent.startMinute - currentMinuteOfDay(), 0)
@@ -533,15 +533,15 @@ extension HomeDashboardView {
         let now = currentMinuteOfDay()
 
         if now >= nextEvent.startMinute && now < end {
-            return "Şu an aktif"
+            return tr("hd_active_now_label")
         }
 
         if diff <= 0 {
-            return "Başlamak üzere"
+            return tr("oc_about_to_start")
         }
 
         if diff < 60 {
-            return "\(diff) dk sonra başlıyor"
+            return tr("hd_starts_in_min", diff)
         }
 
         let hours = diff / 60
@@ -606,14 +606,14 @@ extension HomeDashboardView {
 
     func studentGradeLabel(_ value: String) -> String {
         switch value {
-        case "prep": return "Hazırlık"
-        case "1": return "1. sınıf"
-        case "2": return "2. sınıf"
-        case "3": return "3. sınıf"
-        case "4": return "4. sınıf"
-        case "5": return "5. sınıf"
-        case "6": return "6. sınıf"
-        default: return "\(value). sınıf"
+        case "prep": return tr("grade_prep")
+        case "1": return tr("grade_uni_1")
+        case "2": return tr("grade_uni_2")
+        case "3": return tr("grade_uni_3")
+        case "4": return tr("grade_uni_4")
+        case "5": return tr("grade_uni_5")
+        case "6": return tr("grade_uni_6")
+        default: return tr("grade_year_fmt", value)
         }
     }
     

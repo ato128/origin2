@@ -36,7 +36,22 @@ struct EditTaskView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(.systemGroupedBackground)
+                // Updo identity background: deep navy + soft accent glows
+                UpdoTheme.background
+                    .ignoresSafeArea()
+
+                Circle()
+                    .fill(UpdoTheme.cyan.opacity(0.07))
+                    .frame(width: 280, height: 280)
+                    .blur(radius: 90)
+                    .offset(x: 150, y: -260)
+                    .ignoresSafeArea()
+
+                Circle()
+                    .fill(UpdoTheme.purple.opacity(0.09))
+                    .frame(width: 320, height: 320)
+                    .blur(radius: 100)
+                    .offset(x: -170, y: 380)
                     .ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
@@ -54,11 +69,11 @@ struct EditTaskView: View {
                     .padding(.bottom, 32)
                 }
             }
-            .navigationTitle("Görevi Düzenle")
+            .navigationTitle(tr("edit_task_title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Vazgeç") {
+                    Button(tr("common_cancel")) {
                         dismiss()
                     }
                 }
@@ -79,11 +94,11 @@ struct EditTaskView: View {
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Kaydı düzenle")
+            Text(tr("et_edit_record"))
                 .font(.system(size: 30, weight: .bold, design: .rounded))
                 .foregroundStyle(.primary)
 
-            Text("Görevin türünü, rengini ve zamanını sade şekilde güncelle.")
+            Text(tr("et_edit_sub"))
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(.secondary)
 
@@ -126,7 +141,7 @@ struct EditTaskView: View {
 
     private var titleSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionLabel("Başlık")
+            sectionLabel(tr("at_title"))
 
             TextField(titlePlaceholder, text: $title)
                 .focused($titleFocused)
@@ -148,7 +163,7 @@ struct EditTaskView: View {
 
     private var typeSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionLabel("Tür")
+            sectionLabel(tr("et_type"))
 
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 2), spacing: 10) {
                 ForEach(StudentEditTaskType.allCases) { type in
@@ -226,19 +241,19 @@ struct EditTaskView: View {
 
             VStack(spacing: 12) {
                 inputBlock(
-                    title: "Ders Adı",
-                    placeholder: "Örn. Calculus, Physics, Biology",
+                    title: tr("at_course"),
+                    placeholder: tr("et_course_ph"),
                     text: $courseName,
                     focused: $courseFocused,
                     capitalization: .words
                 )
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Not")
+                    Text(tr("at_note"))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.secondary)
 
-                    TextField("İstersen kısa bir açıklama ekle", text: $notes, axis: .vertical)
+                    TextField(tr("at_notes_ph"), text: $notes, axis: .vertical)
                         .focused($notesFocused)
                         .lineLimit(3, reservesSpace: true)
                         .textInputAutocapitalization(.sentences)
@@ -255,7 +270,7 @@ struct EditTaskView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Renk")
+                    Text(tr("at_color"))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.secondary)
 
@@ -294,7 +309,7 @@ struct EditTaskView: View {
                 if showsStudyDuration {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
-                            Text("Tahmini Çalışma")
+                            Text(tr("at_est_study"))
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(.secondary)
 
@@ -343,7 +358,7 @@ struct EditTaskView: View {
                             .font(.system(size: 15, weight: .bold))
                             .foregroundStyle(.primary)
 
-                        Text("Görevin zamanını güncelle")
+                        Text(tr("et_update_time"))
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
@@ -364,8 +379,8 @@ struct EditTaskView: View {
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
-                            quickDateButton("Bugün Akşam") { setTodayEvening() }
-                            quickDateButton("Yarın") { setTomorrow() }
+                            quickDateButton(tr("at_quick_tonight")) { setTodayEvening() }
+                            quickDateButton(tr("at_quick_tomorrow")) { setTomorrow() }
                             quickDateButton("Haftaya") { setNextWeek() }
                             quickDateButton("2 Saat Sonra") { setAfterHours(2) }
                             quickDateButton("Bu Hafta Sonu") { setThisWeekend() }
@@ -387,16 +402,16 @@ struct EditTaskView: View {
 
     private var weekSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionLabel("Week")
+            sectionLabel(tr("at_week_section"))
 
             VStack(spacing: 14) {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Week ekranına da ekle")
+                        Text(tr("at_add_to_week"))
                             .font(.system(size: 15, weight: .bold))
                             .foregroundStyle(.primary)
 
-                        Text("Planlı çalışmalarda kullanışlı")
+                        Text(tr("at_week_hint"))
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
@@ -409,7 +424,7 @@ struct EditTaskView: View {
 
                 if addToWeek {
                     DatePicker(
-                        "Hafta zamanı",
+                        tr("at_week_time"),
                         selection: $scheduledWeekDate,
                         displayedComponents: [.date, .hourAndMinute]
                     )
@@ -434,7 +449,7 @@ struct EditTaskView: View {
         } label: {
             HStack {
                 Spacer()
-                Label("Görevi Sil", systemImage: "trash")
+                Label(tr("edit_delete_task"), systemImage: "trash")
                     .font(.system(size: 15, weight: .bold))
                 Spacer()
             }
@@ -472,11 +487,11 @@ struct EditTaskView: View {
 
     private var titlePlaceholder: String {
         switch selectedType {
-        case .task: return "Örn. Sunum slaytlarını düzenle"
-        case .homework: return "Örn. Fizik ödevi 3. bölüm"
-        case .exam: return "Örn. Calculus vize tekrarı"
-        case .study: return "Örn. Biyoloji tekrar"
-        case .project: return "Örn. DailyTodo UI düzeltmeleri"
+        case .task: return tr("at_ph_task")
+        case .homework: return tr("at_ph_homework")
+        case .exam: return tr("et_ph_exam")
+        case .study: return tr("at_ph_study")
+        case .project: return tr("at_ph_project")
         }
     }
 
@@ -535,7 +550,7 @@ struct EditTaskView: View {
         do {
             try context.save()
         } catch {
-            print("Save failed:", error)
+            Log.debug("Save failed:", error)
         }
 
         haptic(.light)
@@ -548,7 +563,7 @@ struct EditTaskView: View {
         do {
             try context.save()
         } catch {
-            print("Save failed:", error)
+            Log.debug("Save failed:", error)
         }
 
         haptic(.heavy)
@@ -711,31 +726,31 @@ private enum StudentEditTaskType: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .task: return "Görev"
-        case .homework: return "Ödev"
-        case .exam: return "Sınav"
-        case .study: return "Çalışma"
-        case .project: return "Proje"
+        case .task: return tr("at_kind_task")
+        case .homework: return tr("tt_homework")
+        case .exam: return tr("at_kind_exam")
+        case .study: return tr("tt_study")
+        case .project: return tr("tt_project")
         }
     }
 
     var subtitle: String {
         switch self {
-        case .task: return "Genel yapılacak"
-        case .homework: return "Ders teslimi"
-        case .exam: return "Sınav hazırlığı"
-        case .study: return "Odak seansı"
-        case .project: return "Uzun iş akışı"
+        case .task: return tr("ttd_task")
+        case .homework: return tr("ttd_homework")
+        case .exam: return tr("ttd_exam")
+        case .study: return tr("ttd_study")
+        case .project: return tr("ttd_project")
         }
     }
 
     var shortSubtitle: String {
         switch self {
-        case .task: return "Yapılacak"
-        case .homework: return "Teslim"
-        case .exam: return "Hazırlık"
-        case .study: return "Odak"
-        case .project: return "Uzun iş"
+        case .task: return tr("tt_sub_todo")
+        case .homework: return tr("tt_sub_due")
+        case .exam: return tr("tt_sub_prep")
+        case .study: return tr("tt_sub_focus")
+        case .project: return tr("tt_sub_long")
         }
     }
 

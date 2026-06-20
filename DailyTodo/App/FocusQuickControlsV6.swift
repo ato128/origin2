@@ -19,7 +19,7 @@ struct FocusQuickControlsV6: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Hızlı Ayarlar")
+            Text(tr("fqc_quick_settings"))
                 .font(.system(size: 14, weight: .heavy, design: .rounded))
                 .foregroundStyle(Color.white.opacity(0.94))
 
@@ -94,7 +94,7 @@ struct FocusQuickControlsV6: View {
 
     private var customChip: some View {
         Button(action: onTapCustom) {
-            Text(selectedPreset == .custom ? "\(customMinutes) dk" : "Özel")
+            Text(selectedPreset == .custom ? "\(customMinutes) dk" : tr("wv_custom"))
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(selectedPreset == .custom ? .white : Color.white.opacity(0.76))
                 .frame(maxWidth: .infinity)

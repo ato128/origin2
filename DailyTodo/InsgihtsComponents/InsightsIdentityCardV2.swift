@@ -85,7 +85,7 @@ struct InsightsIdentityCardV2: View {
                 .lineLimit(2)
                 .minimumScaleFactor(0.72)
 
-            Text(hasPendingLevelUp ? "Yeni seviyeye hazırsın" : snapshot.statusText)
+            Text(hasPendingLevelUp ? tr("iid_ready_level") : snapshot.statusText)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(hasPendingLevelUp ? accent.opacity(0.95) : .white.opacity(0.50))
                 .lineLimit(2)

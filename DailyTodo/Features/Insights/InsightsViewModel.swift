@@ -31,7 +31,7 @@ struct InsightsViewModel {
 
     private var dayLabels: [String] {
         if isTurkish {
-            return ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
+            return (0..<7).map { localizedWeekdayShort($0) }
         } else {
             return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
         }
@@ -176,16 +176,16 @@ struct InsightsViewModel {
         }
 
         guard let bestHour = sessionsByHour.max(by: { $0.value.count < $1.value.count })?.key else {
-            return isTurkish ? "Henüz net değil" : "Not clear yet"
+            return isTurkish ? tr("iv_not_clear") : "Not clear yet"
         }
 
         switch bestHour {
         case 5..<12:
             return isTurkish ? "Sabah" : "Morning"
         case 12..<17:
-            return isTurkish ? "Öğleden sonra" : "Afternoon"
+            return isTurkish ? tr("iv_afternoon") : "Afternoon"
         case 17..<22:
-            return isTurkish ? "Akşam" : "Evening"
+            return isTurkish ? tr("hd_evening") : "Evening"
         default:
             return isTurkish ? "Gece" : "Night"
         }
@@ -252,9 +252,9 @@ struct InsightsViewModel {
         )
 
         if isTurkish {
-            if days == 0 { return "Bugün" }
-            if days == 1 { return "1 gün kaldı" }
-            return "\(days) gün kaldı"
+            if days == 0 { return tr("common_today") }
+            if days == 1 { return tr("iv_one_day_left") }
+            return tr("rel_days_left", days)
         } else {
             if days == 0 { return "Today" }
             if days == 1 { return "1 day left" }
@@ -291,74 +291,74 @@ struct InsightsViewModel {
 
         if hasTaskBacklog {
             suggestions.append(.init(
-                title: isTurkish ? "Yük biraz birikmiş" : "A bit of backlog is building",
+                title: isTurkish ? tr("iv_load_built") : "A bit of backlog is building",
                 message: isTurkish
-                    ? "Önce küçük görevleri temizlemek ritmi hızla toparlar."
+                    ? tr("iv_clear_small")
                     : "Clearing smaller tasks first can quickly restore momentum.",
-                buttonTitle: isTurkish ? "Görevleri Aç" : "Open Tasks",
+                buttonTitle: isTurkish ? tr("hd_open_tasks") : "Open Tasks",
                 action: .openTasks
             ))
         }
 
         if hasNoFocusHabit && activeTasksCount > 0 {
             suggestions.append(.init(
-                title: isTurkish ? "İlk odak bloğunu başlat" : "Start your first focus block",
+                title: isTurkish ? tr("iv_start_first_block") : "Start your first focus block",
                 message: isTurkish
-                    ? "Kısa bir focus oturumu bile bu ekranı daha kişisel hale getirir."
+                    ? tr("iv_short_personal")
                     : "Even a short focus session will make this screen more personal.",
-                buttonTitle: isTurkish ? "Focus Başlat" : "Start Focus",
+                buttonTitle: isTurkish ? tr("iv_start_focus") : "Start Focus",
                 action: .openFocus
             ))
         }
 
         if hasStrongMomentum {
             suggestions.append(.init(
-                title: isTurkish ? "Momentumun iyi görünüyor" : "Your momentum looks good",
+                title: isTurkish ? tr("iv_momentum_good") : "Your momentum looks good",
                 message: isTurkish
-                    ? "Bugünkü akışı korumak için bir görev daha bitir."
+                    ? tr("iv_one_more")
                     : "Complete one more task to preserve today's rhythm.",
-                buttonTitle: isTurkish ? "Görevleri Aç" : "Open Tasks",
+                buttonTitle: isTurkish ? tr("hd_open_tasks") : "Open Tasks",
                 action: .openTasks
             ))
         }
 
         suggestions.append(.init(
-            title: isTurkish ? "Güçlü gününü kullan" : "Use your strongest day",
+            title: isTurkish ? tr("iv_use_strong_day") : "Use your strongest day",
             message: isTurkish
-                ? "\(bestDayLabel) senin için daha güçlü görünüyor."
+                ? tr("iv_strong_day", bestDayLabel)
                 : "\(bestDayLabel) seems to be your strongest day.",
-            buttonTitle: isTurkish ? "Haftayı Aç" : "Open Week",
+            buttonTitle: isTurkish ? tr("hd_open_week") : "Open Week",
             action: .openWeek
         ))
 
         if isEveningProductive {
             suggestions.append(.init(
-                title: isTurkish ? "Akşam ritmin daha güçlü" : "Your evening rhythm is stronger",
+                title: isTurkish ? tr("iv_evening_stronger") : "Your evening rhythm is stronger",
                 message: isTurkish
-                    ? "Önemli işi akşam saatlerine koymak daha iyi çalışabilir."
+                    ? tr("iv_evening_work")
                     : "Placing important work in the evening may work better for you.",
-                buttonTitle: isTurkish ? "Focus Başlat" : "Start Focus",
+                buttonTitle: isTurkish ? tr("iv_start_focus") : "Start Focus",
                 action: .openFocus
             ))
         }
 
         if totalFocusMinutes >= 90 {
             suggestions.append(.init(
-                title: isTurkish ? "Derin çalışma sinyali var" : "There is a deep work signal",
+                title: isTurkish ? tr("iv_deep_signal") : "There is a deep work signal",
                 message: isTurkish
-                    ? "Daha uzun bloklar sende iyi sonuç veriyor olabilir."
+                    ? tr("iv_longer_blocks")
                     : "Longer focus blocks may be working well for you.",
-                buttonTitle: isTurkish ? "Haftayı Aç" : "Open Week",
+                buttonTitle: isTurkish ? tr("hd_open_week") : "Open Week",
                 action: .openWeek
             ))
         }
 
         suggestions.append(.init(
-            title: isTurkish ? "Küçük başla" : "Start small",
+            title: isTurkish ? tr("iv_start_small") : "Start small",
             message: isTurkish
-                ? "Bugün tek net görev seçmek iyi bir başlangıç olur."
+                ? tr("iv_one_clear")
                 : "Picking one clear task is a strong start for today.",
-            buttonTitle: isTurkish ? "Görevleri Aç" : "Open Tasks",
+            buttonTitle: isTurkish ? tr("hd_open_tasks") : "Open Tasks",
             action: .openTasks
         ))
 
@@ -370,11 +370,11 @@ struct InsightsViewModel {
 
         guard !suggestions.isEmpty else {
             return .init(
-                title: isTurkish ? "Başlamak için iyi bir gün" : "A good day to begin",
+                title: isTurkish ? tr("iv_good_day_start") : "A good day to begin",
                 message: isTurkish
-                    ? "İlk görevin veya ilk focus oturumun bu alanı doldurmaya başlar."
+                    ? tr("iv_first_fills")
                     : "Your first task or first focus session will start filling this space.",
-                buttonTitle: isTurkish ? "Görevleri Aç" : "Open Tasks",
+                buttonTitle: isTurkish ? tr("hd_open_tasks") : "Open Tasks",
                 action: .openTasks
             )
         }
@@ -396,9 +396,9 @@ struct InsightsViewModel {
             return .init(
                 title: isTurkish ? "Mini Coach" : "Mini Coach",
                 message: isTurkish
-                    ? "Yaklaşan sınavların var. Kısa ama düzenli bloklar en güvenli yol olur."
+                    ? tr("iv_exams_coming")
                     : "You have upcoming exams. Consistent short blocks are the safest path.",
-                buttonTitle: isTurkish ? "Haftayı Aç" : "Open Week",
+                buttonTitle: isTurkish ? tr("hd_open_week") : "Open Week",
                 action: .openWeek
             )
         }
@@ -407,9 +407,9 @@ struct InsightsViewModel {
             return .init(
                 title: isTurkish ? "Mini Coach" : "Mini Coach",
                 message: isTurkish
-                    ? "Gecikmiş görevleri önce temizlemek ritmini hızlıca toparlar."
+                    ? tr("iv_overdue_first")
                     : "Clearing overdue tasks first will quickly restore your rhythm.",
-                buttonTitle: isTurkish ? "Görevleri Aç" : "Open Tasks",
+                buttonTitle: isTurkish ? tr("hd_open_tasks") : "Open Tasks",
                 action: .openTasks
             )
         }
@@ -418,9 +418,9 @@ struct InsightsViewModel {
             return .init(
                 title: isTurkish ? "Mini Coach" : "Mini Coach",
                 message: isTurkish
-                    ? "Bugün iyi gidiyorsun. Bir focus bloğu daha günü güçlü kapatır."
+                    ? tr("iv_going_well_block")
                     : "You are doing well today. One more focus block would finish the day strong.",
-                buttonTitle: isTurkish ? "Focus Başlat" : "Start Focus",
+                buttonTitle: isTurkish ? tr("iv_start_focus") : "Start Focus",
                 action: .openFocus
             )
         }
@@ -428,9 +428,9 @@ struct InsightsViewModel {
         return .init(
             title: isTurkish ? "Mini Coach" : "Mini Coach",
             message: isTurkish
-                ? "Bugün tek bir net görev seçmek en doğru başlangıç olabilir."
+                ? tr("iv_one_clear_2")
                 : "Choosing one clear task may be the best start for today.",
-            buttonTitle: isTurkish ? "Görevleri Aç" : "Open Tasks",
+            buttonTitle: isTurkish ? tr("hd_open_tasks") : "Open Tasks",
             action: .openTasks
         )
     }
@@ -442,7 +442,7 @@ struct InsightsViewModel {
         let suggestion = smartSuggestion
 
         return InsightsCoachUnifiedData(
-            eyebrow: isTurkish ? "Bugün için önerim" : "My suggestion for today",
+            eyebrow: isTurkish ? tr("iv_my_suggestion") : "My suggestion for today",
             title: coach.title,
             message: coach.message,
             actionTitle: coach.buttonTitle,
@@ -455,21 +455,21 @@ struct InsightsViewModel {
         if !upcomingExams.isEmpty {
             let readiness = Int(averageExamReadiness * 100)
             let nearest = upcomingExams.first
-            let nearestText = nearest.map { countdownText(for: $0) } ?? (isTurkish ? "Yakında" : "Soon")
+            let nearestText = nearest.map { countdownText(for: $0) } ?? (isTurkish ? tr("bcd_soon") : "Soon")
 
             return StudyHeroData(
                 mode: .exams,
-                title: isTurkish ? "Sınav görünümün netleşiyor" : "Your exam view is taking shape",
+                title: isTurkish ? tr("iv_exam_view") : "Your exam view is taking shape",
                 subtitle: isTurkish
-                    ? "En yakın sınav için bugün kısa bir blok yeterli."
+                    ? tr("iv_nearest_exam")
                     : "A short block today is enough for your nearest exam.",
                 primaryValue: "\(readiness)",
-                primaryLabel: isTurkish ? "hazırlık" : "readiness",
-                chip1: isTurkish ? "\(upcomingExams.count) sınav" : "\(upcomingExams.count) exams",
+                primaryLabel: isTurkish ? tr("iv_prep_lc") : "readiness",
+                chip1: isTurkish ? tr("iv_exam_count", upcomingExams.count) : "\(upcomingExams.count) exams",
                 chip2: nearestText,
                 chip3: isTurkish ? "\(totalFocusMinutes) dk" : "\(totalFocusMinutes) min",
                 accent: .orange,
-                actionTitle: isTurkish ? "Sınav Planını Aç" : "Open Exam Plan",
+                actionTitle: isTurkish ? tr("iv_open_exam_plan") : "Open Exam Plan",
                 action: .openWeek
             )
         }
@@ -477,17 +477,17 @@ struct InsightsViewModel {
         if !courseNames.isEmpty {
             return StudyHeroData(
                 mode: .courses,
-                title: isTurkish ? "Ders dengen şekilleniyor" : "Your course balance is forming",
+                title: isTurkish ? tr("iv_balance_forming") : "Your course balance is forming",
                 subtitle: isTurkish
-                    ? "Daha az dokunduğun dersi biraz öne çekmek iyi olur."
+                    ? tr("iv_pull_forward")
                     : "Bringing your weaker course forward would help.",
                 primaryValue: "\(courseNames.count)",
                 primaryLabel: isTurkish ? "aktif ders" : "courses",
                 chip1: isTurkish ? "\(completedTasksCount) tamam" : "\(completedTasksCount) done",
-                chip2: isTurkish ? "\(activeTasksCount) açık" : "\(activeTasksCount) open",
+                chip2: isTurkish ? tr("rel_open_count", activeTasksCount) : "\(activeTasksCount) open",
                 chip3: bestDayLabel,
                 accent: .blue,
-                actionTitle: isTurkish ? "Görevleri Aç" : "Open Tasks",
+                actionTitle: isTurkish ? tr("hd_open_tasks") : "Open Tasks",
                 action: .openTasks
             )
         }
@@ -502,17 +502,17 @@ struct InsightsViewModel {
 
             return StudyHeroData(
                 mode: .rhythm,
-                title: isTurkish ? "Ritmin sana özel hale geliyor" : "Your rhythm is becoming personal",
+                title: isTurkish ? tr("iv_rhythm_personal") : "Your rhythm is becoming personal",
                 subtitle: isTurkish
-                    ? "Bir odak daha, çalışma desenini daha net hale getirir."
+                    ? tr("iv_one_more_focus")
                     : "One more focus session will sharpen your study pattern.",
                 primaryValue: "\(Int(rhythmScore * 100))",
                 primaryLabel: isTurkish ? "ritim" : "rhythm",
-                chip1: isTurkish ? "\(streakCount) gün" : "\(streakCount) days",
+                chip1: isTurkish ? tr("ch_streak_days_n", streakCount) : "\(streakCount) days",
                 chip2: bestDayLabel,
-                chip3: averageFocusMinutes > 0 ? minutesText(averageFocusMinutes) : (isTurkish ? "Kısa başla" : "Start small"),
+                chip3: averageFocusMinutes > 0 ? minutesText(averageFocusMinutes) : (isTurkish ? tr("iv_start_short") : "Start small"),
                 accent: .green,
-                actionTitle: isTurkish ? "Focus Başlat" : "Start Focus",
+                actionTitle: isTurkish ? tr("iv_start_focus") : "Start Focus",
                 action: .openFocus
             )
         }
@@ -521,15 +521,15 @@ struct InsightsViewModel {
             mode: .empty,
             title: isTurkish ? "Insights seni bekliyor" : "Insights is waiting",
             subtitle: isTurkish
-                ? "Bir görev, bir focus oturumu veya bir sınav ile bu alan canlanır."
+                ? tr("iv_space_comes_alive")
                 : "A task, a focus session, or an exam will bring this space to life.",
             primaryValue: "0",
-            primaryLabel: isTurkish ? "canlı içgörü" : "live insights",
-            chip1: isTurkish ? "Görev ekle" : "Add task",
-            chip2: isTurkish ? "Focus başlat" : "Start focus",
-            chip3: isTurkish ? "Sınav ekle" : "Add exam",
+            primaryLabel: isTurkish ? tr("iv_live_insight") : "live insights",
+            chip1: isTurkish ? tr("hv_add_task") : "Add task",
+            chip2: isTurkish ? tr("tv_start_focus") : "Start focus",
+            chip3: isTurkish ? tr("iv_add_exam") : "Add exam",
             accent: .accentColor,
-            actionTitle: isTurkish ? "Görevleri Aç" : "Open Tasks",
+            actionTitle: isTurkish ? tr("hd_open_tasks") : "Open Tasks",
             action: .openTasks
         )
     }
@@ -539,7 +539,7 @@ struct InsightsViewModel {
         let highlight = values.enumerated().max(by: { $0.element < $1.element })?.offset
 
         let completionText = isTurkish
-            ? "\(completedTasksCount) tamamlanan görev"
+            ? tr("iv_completed_tasks", completedTasksCount)
             : "\(completedTasksCount) completed tasks"
 
         let focusText = isTurkish
@@ -547,23 +547,23 @@ struct InsightsViewModel {
             : "\(weeklyFocusMinutesLast7Days) min focus"
 
         let streakText = isTurkish
-            ? "\(streakCount) gün seri"
+            ? tr("oc_day_streak", streakCount)
             : "\(streakCount) day streak"
 
         let summary: String
         if let highlight {
             summary = isTurkish
-                ? "\(dayLabels[highlight]) günü daha güçlü görünüyorsun."
+                ? tr("iv_stronger_day", dayLabels[highlight])
                 : "\(dayLabels[highlight]) looks like your strongest day."
         } else {
             summary = isTurkish
-                ? "Bu hafta ritim verisi oluşmadı."
+                ? tr("iv_no_rhythm_data")
                 : "No rhythm data yet this week."
         }
 
         return WeeklyMomentumData(
-            title: isTurkish ? "Haftalık Momentum" : "Weekly Momentum",
-            subtitle: isTurkish ? "Ritmini ve ilerlemeni gör" : "See your rhythm and progress",
+            title: isTurkish ? tr("iv_weekly_momentum") : "Weekly Momentum",
+            subtitle: isTurkish ? tr("iv_see_rhythm_progress") : "See your rhythm and progress",
             labels: dayLabels,
             values: values,
             highlightIndex: highlight,
@@ -586,38 +586,38 @@ struct InsightsViewModel {
         if totalFocusMinutes >= 180 {
             title = "Deep Worker"
             subtitle = isTurkish
-                ? "Uzun odak bloklarıyla güçleniyorsun."
+                ? tr("iv_deep_growing")
                 : "You are getting stronger with long focus blocks."
             accent = .blue
             traits = isTurkish
-                ? ["Odaklı", "Derin çalışma", "Ritimli"]
+                ? [tr("iv_focused"), tr("iv_deep_work"), "Ritimli"]
                 : ["Focused", "Deep work", "Rhythmic"]
         } else if streakCount >= 4 {
             title = "Consistency Builder"
             subtitle = isTurkish
-                ? "Düzenli ilerleme kimliğin oluşuyor."
+                ? tr("iv_steady_identity")
                 : "Your consistency identity is taking shape."
             accent = .green
             traits = isTurkish
-                ? ["Düzenli", "Güvenilir", "İlerliyor"]
+                ? [tr("iv_steady"), tr("iv_reliable"), tr("iv_progressing")]
                 : ["Consistent", "Reliable", "Growing"]
         } else if isEveningProductive {
             title = "Night Finisher"
             subtitle = isTurkish
-                ? "Akşam saatlerinde daha iyi çalışıyorsun."
+                ? tr("iv_evening_better")
                 : "You seem to perform better in the evening."
             accent = .purple
             traits = isTurkish
-                ? ["Akşam akışı", "Sessiz tempo", "Toparlayan"]
+                ? [tr("iv_evening_flow"), "Sessiz tempo", "Toparlayan"]
                 : ["Evening flow", "Quiet pace", "Finisher"]
         } else {
             title = "Momentum Starter"
             subtitle = isTurkish
-                ? "Küçük başlangıçlarla ritim kuruyorsun."
+                ? tr("iv_small_starts")
                 : "You build momentum through small starts."
             accent = .orange
             traits = isTurkish
-                ? ["Başlangıç", "Esnek", "Potansiyel"]
+                ? [tr("oc_start"), "Esnek", "Potansiyel"]
                 : ["Starting", "Flexible", "Potential"]
         }
 
@@ -658,8 +658,8 @@ struct InsightsViewModel {
             // MARK: - Focus Path
 
             InsightsBadgeData(
-                title: isTurkish ? "İlk Focus" : "First Focus",
-                subtitle: isTurkish ? "İlk odak oturumun" : "Your first focus session",
+                title: isTurkish ? tr("iv_first_focus") : "First Focus",
+                subtitle: isTurkish ? tr("iv_first_focus_sub") : "Your first focus session",
                 icon: "timer",
                 isUnlocked: totalFocusSessionsCount >= 1,
                 progress: min(Double(totalFocusSessionsCount) / 1.0, 1),
@@ -717,32 +717,32 @@ struct InsightsViewModel {
             // MARK: - Streak Path
 
             InsightsBadgeData(
-                title: isTurkish ? "3 Gün Seri" : "3 Day Streak",
-                subtitle: isTurkish ? "Düzenli akış başladı" : "Consistency has started",
+                title: isTurkish ? tr("iv_3day_streak") : "3 Day Streak",
+                subtitle: isTurkish ? tr("iv_3day_sub") : "Consistency has started",
                 icon: "flame.fill",
                 isUnlocked: streakCount >= 3,
                 progress: min(Double(streakCount) / 3.0, 1),
                 accent: .orange
             ),
             InsightsBadgeData(
-                title: isTurkish ? "7 Gün Seri" : "7 Day Streak",
-                subtitle: isTurkish ? "Bir haftalık düzen" : "A full week of consistency",
+                title: isTurkish ? tr("iv_7day_streak") : "7 Day Streak",
+                subtitle: isTurkish ? tr("iv_7day_sub") : "A full week of consistency",
                 icon: "flame.circle.fill",
                 isUnlocked: streakCount >= 7,
                 progress: min(Double(streakCount) / 7.0, 1),
                 accent: .orange
             ),
             InsightsBadgeData(
-                title: isTurkish ? "14 Gün Seri" : "14 Day Streak",
-                subtitle: isTurkish ? "İki haftalık ritim" : "Two weeks of rhythm",
+                title: isTurkish ? tr("iv_14day_streak") : "14 Day Streak",
+                subtitle: isTurkish ? tr("iv_14day_sub") : "Two weeks of rhythm",
                 icon: "flame.circle.fill",
                 isUnlocked: streakCount >= 14,
                 progress: min(Double(streakCount) / 14.0, 1),
                 accent: .orange
             ),
             InsightsBadgeData(
-                title: isTurkish ? "30 Gün Seri" : "30 Day Streak",
-                subtitle: isTurkish ? "Kalıcı alışkanlık" : "A lasting habit",
+                title: isTurkish ? tr("iv_30day_streak") : "30 Day Streak",
+                subtitle: isTurkish ? tr("iv_30day_sub") : "A lasting habit",
                 icon: "flame.circle.fill",
                 isUnlocked: streakCount >= 30,
                 progress: min(Double(streakCount) / 30.0, 1),
@@ -752,8 +752,8 @@ struct InsightsViewModel {
             // MARK: - Task Path
 
             InsightsBadgeData(
-                title: isTurkish ? "İlk Görev" : "First Task",
-                subtitle: isTurkish ? "İlk görevi tamamla" : "Complete your first task",
+                title: isTurkish ? tr("iv_first_task") : "First Task",
+                subtitle: isTurkish ? tr("iv_first_task_sub") : "Complete your first task",
                 icon: "checkmark.circle.fill",
                 isUnlocked: completedTasksCount >= 1,
                 progress: min(Double(completedTasksCount) / 1.0, 1),
@@ -761,7 +761,7 @@ struct InsightsViewModel {
             ),
             InsightsBadgeData(
                 title: "Weekly Warrior",
-                subtitle: isTurkish ? "7 görev tamamla" : "Complete 7 tasks",
+                subtitle: isTurkish ? tr("iv_7task") : "Complete 7 tasks",
                 icon: "bolt.fill",
                 isUnlocked: completedTasksCount >= 7,
                 progress: min(Double(completedTasksCount) / 7.0, 1),
@@ -769,7 +769,7 @@ struct InsightsViewModel {
             ),
             InsightsBadgeData(
                 title: "Task Finisher",
-                subtitle: isTurkish ? "10 görev tamamla" : "Complete 10 tasks",
+                subtitle: isTurkish ? tr("iv_10task") : "Complete 10 tasks",
                 icon: "checkmark.seal.fill",
                 isUnlocked: completedTasksCount >= 10,
                 progress: min(Double(completedTasksCount) / 10.0, 1),
@@ -777,7 +777,7 @@ struct InsightsViewModel {
             ),
             InsightsBadgeData(
                 title: "Task Master",
-                subtitle: isTurkish ? "50 görev tamamla" : "Complete 50 tasks",
+                subtitle: isTurkish ? tr("iv_50task") : "Complete 50 tasks",
                 icon: "checkmark.seal.fill",
                 isUnlocked: completedTasksCount >= 50,
                 progress: min(Double(completedTasksCount) / 50.0, 1),
@@ -785,7 +785,7 @@ struct InsightsViewModel {
             ),
             InsightsBadgeData(
                 title: "Task Legend",
-                subtitle: isTurkish ? "100 görev tamamla" : "Complete 100 tasks",
+                subtitle: isTurkish ? tr("iv_100task") : "Complete 100 tasks",
                 icon: "crown.fill",
                 isUnlocked: completedTasksCount >= 100,
                 progress: min(Double(completedTasksCount) / 100.0, 1),
@@ -796,7 +796,7 @@ struct InsightsViewModel {
 
             InsightsBadgeData(
                 title: "Exam Ready",
-                subtitle: isTurkish ? "Hazırlık dengeli görünüyor" : "Your readiness looks balanced",
+                subtitle: isTurkish ? tr("iv_prep_balanced") : "Your readiness looks balanced",
                 icon: "graduationcap.fill",
                 isUnlocked: !upcomingExams.isEmpty && averageExamReadiness >= 0.60,
                 progress: !upcomingExams.isEmpty ? min(averageExamReadiness / 0.60, 1) : 0,
@@ -804,7 +804,7 @@ struct InsightsViewModel {
             ),
             InsightsBadgeData(
                 title: "Exam Sprint",
-                subtitle: isTurkish ? "Sınav hazırlığını güçlendir" : "Strengthen exam readiness",
+                subtitle: isTurkish ? tr("iv_strengthen_prep") : "Strengthen exam readiness",
                 icon: "graduationcap.circle.fill",
                 isUnlocked: !upcomingExams.isEmpty && averageExamReadiness >= 0.75,
                 progress: !upcomingExams.isEmpty ? min(averageExamReadiness / 0.75, 1) : 0,
@@ -812,7 +812,7 @@ struct InsightsViewModel {
             ),
             InsightsBadgeData(
                 title: "Exam Crusher",
-                subtitle: isTurkish ? "Hazırlık %90 üstüne çıksın" : "Reach 90% exam readiness",
+                subtitle: isTurkish ? tr("iv_prep_90") : "Reach 90% exam readiness",
                 icon: "star.circle.fill",
                 isUnlocked: !upcomingExams.isEmpty && averageExamReadiness >= 0.90,
                 progress: !upcomingExams.isEmpty ? min(averageExamReadiness / 0.90, 1) : 0,
@@ -823,7 +823,7 @@ struct InsightsViewModel {
 
             InsightsBadgeData(
                 title: "Night Mode",
-                subtitle: isTurkish ? "Akşam ritmini kur" : "Build an evening rhythm",
+                subtitle: isTurkish ? tr("iv_build_evening") : "Build an evening rhythm",
                 icon: "moon.stars.fill",
                 isUnlocked: isEveningProductive && totalFocusSessionsCount >= 3,
                 progress: min(Double(totalFocusSessionsCount) / 3.0, 1),
@@ -831,7 +831,7 @@ struct InsightsViewModel {
             ),
             InsightsBadgeData(
                 title: "Comeback",
-                subtitle: isTurkish ? "Seriyi yeniden başlat" : "Restart your rhythm",
+                subtitle: isTurkish ? tr("iv_restart_streak") : "Restart your rhythm",
                 icon: "arrow.clockwise.circle.fill",
                 isUnlocked: streakCount >= 1 && completedTasksCount >= 3,
                 progress: min((Double(streakCount) / 1.0 + Double(completedTasksCount) / 3.0) / 2.0, 1),
@@ -864,7 +864,7 @@ struct InsightsViewModel {
             ),
             InsightsMiniStatData(
                 value: bestDayLabel,
-                label: isTurkish ? "en iyi gün" : "best day",
+                label: isTurkish ? tr("iv_best_day") : "best day",
                 hint: "",
                 accent: .purple
             )
@@ -881,23 +881,23 @@ struct InsightsViewModel {
     var premiumPreview: InsightsPremiumPreviewData {
         InsightsPremiumPreviewData(
             title: isTurkish
-                ? "Daha derin çalışma desenlerini aç"
+                ? tr("iv_unlock_deeper")
                 : "Unlock deeper study patterns",
             subtitle: isTurkish
-                ? "Premium ile ritmini sadece görmez, neden oluştuğunu da anlarsın."
+                ? tr("iv_premium_why")
                 : "With Premium, you do not just see your rhythm — you understand why it forms.",
             bullets: isTurkish
                 ? [
-                    "En iyi çalışma saat tahmini",
-                    "Daha gelişmiş AI koç önerileri",
-                    "Uzun dönem kimlik ve gelişim görünümü"
+                    tr("iv_best_hours_est"),
+                    tr("iv_advanced_coach"),
+                    tr("iv_longterm_identity")
                 ]
                 : [
                     "Best study window prediction",
                     "More advanced AI coaching",
                     "Long-term identity and growth view"
                 ],
-            buttonTitle: isTurkish ? "Premium'u Gör" : "See Premium"
+            buttonTitle: isTurkish ? tr("iv_see_premium") : "See Premium"
         )
     }
    var deepInsightsHero: DeepInsightsHeroData {
@@ -906,7 +906,7 @@ struct InsightsViewModel {
             subtitle: "Your rhythm, patterns, and next moves",
             primaryValue: bestStudyHourRangeText,
             primaryLabel: isTurkish ? "en iyi zaman" : "best window",
-            chip1: isTurkish ? "\(streakCount) gün seri" : "\(streakCount) day streak",
+            chip1: isTurkish ? tr("oc_day_streak", streakCount) : "\(streakCount) day streak",
             chip2: isTurkish ? "\(completedTasksCount) tamamlanan" : "\(completedTasksCount) done"
         )
     }
@@ -914,9 +914,9 @@ struct InsightsViewModel {
     var deepBestStudyWindow: BestStudyWindowData {
         BestStudyWindowData(
             timeRange: bestStudyHourRangeText,
-            confidenceText: isTurkish ? "Güven artıyor" : "Confidence rising",
+            confidenceText: isTurkish ? tr("iv_confidence_up") : "Confidence rising",
             summary: isTurkish
-                ? "Bu zaman aralığında daha uzun odaklanıyor ve daha fazla görev tamamlıyorsun."
+                ? tr("iv_window_better")
                 : "You tend to focus longer and complete more tasks in this window.",
             accent: .purple
         )
@@ -924,14 +924,14 @@ struct InsightsViewModel {
     
     var plusCoachCard: InsightsPlusCoachCardData {
         InsightsPlusCoachCardData(
-            title: isTurkish ? "Bugün tek net görev seç" : "Choose one clear task today",
+            title: isTurkish ? tr("iv_pick_one_clear") : "Choose one clear task today",
             subtitle: isTurkish
-                ? "Kısa bir odak bloğu sonrası tamamlama ihtimalin yükseliyor."
+                ? tr("iv_after_block")
                 : "Your completion chance rises after a short focus block.",
-            hint: isTurkish ? "yüksek güven" : "high confidence",
+            hint: isTurkish ? tr("iv_high_confidence") : "high confidence",
             symbol: "brain.head.profile",
             tint: .cyan,
-            actionTitle: isTurkish ? "Görevleri Aç" : "Open Tasks",
+            actionTitle: isTurkish ? tr("hd_open_tasks") : "Open Tasks",
             action: .openTasks
         )
     }
@@ -940,13 +940,13 @@ struct InsightsViewModel {
         InsightsPlusStudyWindowCardData(
             title: "Best Study Window",
             timeText: bestStudyHourRangeText,
-            confidenceText: isTurkish ? "Güven artıyor" : "Confidence rising",
+            confidenceText: isTurkish ? tr("iv_confidence_up") : "Confidence rising",
             summary: isTurkish
-                ? "Bu pencerede daha uzun odaklanıyor ve daha fazla görev tamamlıyorsun."
+                ? tr("iv_window_better_2")
                 : "You focus longer and complete more tasks in this window.",
             symbol: "clock.fill",
             tint: .purple,
-            actionTitle: isTurkish ? "Focus Başlat" : "Start Focus",
+            actionTitle: isTurkish ? tr("iv_start_focus") : "Start Focus",
             action: .openFocus
         )
     }
@@ -964,11 +964,11 @@ struct InsightsViewModel {
             title: "Weekly Signal",
             strongestDay: dayLabels[strongestIndex],
             weakestDay: dayLabels[weakestIndex],
-            trendText: isTurkish ? "Ritmin toparlanıyor" : "Your rhythm is stabilizing",
+            trendText: isTurkish ? tr("iv_rhythm_recovering") : "Your rhythm is stabilizing",
             values: raw,
             highlightIndex: strongestIndex,
             tint: .blue,
-            actionTitle: isTurkish ? "Haftayı Aç" : "Open Week",
+            actionTitle: isTurkish ? tr("hd_open_week") : "Open Week",
             action: .openWeek
         )
     }
@@ -980,10 +980,10 @@ struct InsightsViewModel {
             strongestDay: bestDayLabel,
             weakestDay: dayLabels[weakest],
             deltaText: isTurkish
-                ? "Geçen haftaya göre ritim toparlanıyor."
+                ? tr("iv_vs_last_week")
                 : "Rhythm is improving compared to last week.",
             recommendation: isTurkish
-                ? "Zayıf gününe kısa bir odak bloğu eklemek haftayı dengeler."
+                ? tr("iv_weak_day")
                 : "Adding a short focus block to your weakest day may balance the week."
         )
     }
@@ -993,7 +993,7 @@ struct InsightsViewModel {
             currentIdentity: identityProfile.title,
             nextIdentity: streakCount >= 4 ? "Deep Worker" : "Consistency Builder",
             progressText: isTurkish
-                ? "Bir sonraki kimliğe yaklaşmak için birkaç aktif gün daha gerekli."
+                ? tr("iv_next_identity")
                 : "A few more active days will move you toward your next identity.",
             progress: min(1.0, identityProfile.progress)
         )
@@ -1003,10 +1003,10 @@ struct InsightsViewModel {
         if upcomingExams.isEmpty {
             return [
                 ExamReadinessProRow(
-                    title: isTurkish ? "Yaklaşan sınav yok" : "No upcoming exams",
+                    title: isTurkish ? tr("iv_no_upcoming_exam") : "No upcoming exams",
                     readinessText: "—",
                     progress: 0,
-                    riskText: isTurkish ? "Sınav eklediğinde burada görünür." : "It appears here when you add an exam.",
+                    riskText: isTurkish ? tr("iv_exam_appears") : "It appears here when you add an exam.",
                     accent: .gray
                 )
             ]
@@ -1030,9 +1030,9 @@ struct InsightsViewModel {
         if isEveningProductive {
             items.append(
                 PatternAlertData(
-                    title: isTurkish ? "Akşam ritmi yükseliyor" : "Evening rhythm is rising",
+                    title: isTurkish ? tr("iv_evening_rising") : "Evening rhythm is rising",
                     message: isTurkish
-                        ? "Akşam saatlerinde daha güçlü performans gösteriyorsun."
+                        ? tr("iv_evening_perf")
                         : "You seem to perform better during evening hours.",
                     icon: "moon.stars.fill",
                     tint: .purple
@@ -1043,9 +1043,9 @@ struct InsightsViewModel {
         if streakCount == 0 {
             items.append(
                 PatternAlertData(
-                    title: isTurkish ? "Seri henüz başlamadı" : "Streak has not started yet",
+                    title: isTurkish ? tr("iv_streak_not_started") : "Streak has not started yet",
                     message: isTurkish
-                        ? "Kısa bir görev bile ritmi başlatabilir."
+                        ? tr("iv_short_starts_rhythm")
                         : "Even a small task can start momentum.",
                     icon: "flame.fill",
                     tint: .orange
@@ -1058,7 +1058,7 @@ struct InsightsViewModel {
                 PatternAlertData(
                     title: isTurkish ? "Tamamlama ritmi var" : "Completion rhythm detected",
                     message: isTurkish
-                        ? "Görev bitirme düzenin oluşmaya başlıyor."
+                        ? tr("iv_completion_forming")
                         : "A task completion pattern is starting to form.",
                     icon: "checkmark.circle.fill",
                     tint: .green
@@ -1071,7 +1071,7 @@ struct InsightsViewModel {
                 PatternAlertData(
                     title: isTurkish ? "Daha fazla veri bekleniyor" : "Waiting for more data",
                     message: isTurkish
-                        ? "Birkaç gün daha kullanım sonrası daha net uyarılar oluşur."
+                        ? tr("iv_more_days")
                         : "A few more days of usage will unlock clearer alerts.",
                     icon: "sparkles",
                     tint: .blue
@@ -1097,11 +1097,11 @@ struct InsightsViewModel {
     }
 
     private var strongestCourseName: String {
-        courseMinutesMap.first?.course ?? (isTurkish ? "Henüz net değil" : "Not clear yet")
+        courseMinutesMap.first?.course ?? (isTurkish ? tr("iv_not_clear") : "Not clear yet")
     }
 
     private var neglectedCourseName: String {
-        courseMinutesMap.last?.course ?? (isTurkish ? "Henüz net değil" : "Not clear yet")
+        courseMinutesMap.last?.course ?? (isTurkish ? tr("iv_not_clear") : "Not clear yet")
     }
 
     private var recommendedNextCourseName: String {
@@ -1130,7 +1130,7 @@ struct InsightsViewModel {
             let focusQualityText: String
             switch progress {
             case 0.75...:
-                focusQualityText = isTurkish ? "yüksek yoğunluk" : "high intensity"
+                focusQualityText = isTurkish ? tr("iv_high_intensity") : "high intensity"
             case 0.40..<0.75:
                 focusQualityText = isTurkish ? "dengeli tempo" : "balanced tempo"
             default:
@@ -1154,19 +1154,19 @@ struct InsightsViewModel {
         let reason: String
         if strongest == recommended {
             reason = isTurkish
-                ? "\(recommended) şu anda ritmine en iyi oturan ders gibi görünüyor."
+                ? tr("iv_best_course", recommended)
                 : "\(recommended) currently matches your rhythm the best."
         } else {
             reason = isTurkish
-                ? "\(recommended) daha az ilgi görüyor ama dengeyi toparlamak için bir sonraki iyi aday."
+                ? tr("iv_balance_course", recommended)
                 : "\(recommended) is receiving less attention and looks like the best next balancing move."
         }
 
         return InsightsStudyWindowDetailData(
             timeRangeText: bestStudyHourRangeText,
-            confidenceText: isTurkish ? "Güven artıyor" : "Confidence rising",
+            confidenceText: isTurkish ? tr("iv_confidence_up") : "Confidence rising",
             summaryText: isTurkish
-                ? "Bu pencerede daha uzun odaklanıyor ve daha fazla görev tamamlıyorsun."
+                ? tr("iv_window_better_2")
                 : "You focus longer and complete more tasks in this window.",
             strongestCourse: strongest,
             neglectedCourse: neglected,
@@ -1187,7 +1187,7 @@ struct InsightsViewModel {
             .sorted { $0.1 > $1.1 }
             .first?.0
 
-        return best ?? (isTurkish ? "Henüz net değil" : "Not clear yet")
+        return best ?? (isTurkish ? tr("iv_not_clear") : "Not clear yet")
     }
 
     private var activeTaskBacklogCount: Int {
@@ -1214,69 +1214,69 @@ struct InsightsViewModel {
         let reason: String
 
         if activeTaskBacklogCount >= 5 {
-            directionTitle = isTurkish ? "Kısa başla, bir görevi temizle" : "Start small, clear one task"
+            directionTitle = isTurkish ? tr("iv_start_clear_one") : "Start small, clear one task"
             directionSubtitle = isTurkish
-                ? "Büyük blok yerine tek net görev seçmek bugün daha verimli olur."
+                ? tr("iv_one_vs_block")
                 : "Choosing one clear task may be more effective than a long block today."
-            strongestSignal = isTurkish ? "Görev yoğunluğu görünür" : "Visible task backlog"
-            blockingSignal = isTurkish ? "Yük birikimi ritmi bastırıyor" : "Backlog is compressing rhythm"
+            strongestSignal = isTurkish ? tr("iv_task_density") : "Visible task backlog"
+            blockingSignal = isTurkish ? tr("iv_load_suppresses") : "Backlog is compressing rhythm"
             reason = isTurkish
-                ? "Kısa bir görev temizliği sonrası focus açmak bugün en mantıklı akış olabilir."
+                ? tr("iv_clear_then_focus")
                 : "Clearing one task before opening a focus block may be your best flow today."
         } else if totalFocusMinutes == 0 && activeTaskBacklogCount > 0 {
-            directionTitle = isTurkish ? "İlk kısa focus bloğunu aç" : "Open your first short focus block"
+            directionTitle = isTurkish ? tr("iv_open_first_block") : "Open your first short focus block"
             directionSubtitle = isTurkish
-                ? "Bugün ritmi başlatmak için 20–25 dakikalık bir odak yeterli."
+                ? tr("iv_2025_enough")
                 : "A 20–25 minute block is enough to start momentum today."
-            strongestSignal = isTurkish ? "Tamamlanabilir yük var" : "Workload is actionable"
-            blockingSignal = isTurkish ? "Odak ritmi başlamadı" : "Focus rhythm has not started"
+            strongestSignal = isTurkish ? tr("iv_completable_load") : "Workload is actionable"
+            blockingSignal = isTurkish ? tr("iv_focus_not_started") : "Focus rhythm has not started"
             reason = isTurkish
-                ? "Görev sayısı yönetilebilir görünüyor; önce kısa focus ritmi kurmak daha doğru."
+                ? tr("iv_manageable_count")
                 : "Your workload looks manageable; building a short focus rhythm first makes sense."
         } else if !upcomingExams.isEmpty {
-            directionTitle = isTurkish ? "Sınava yakın derse dön" : "Return to the nearest exam course"
+            directionTitle = isTurkish ? tr("iv_return_exam_course") : "Return to the nearest exam course"
             directionSubtitle = isTurkish
-                ? "En yakın sınavın olduğu ders bugün en mantıklı yön gibi görünüyor."
+                ? tr("iv_nearest_exam_course")
                 : "The course tied to your nearest exam looks like the most logical direction today."
-            strongestSignal = isTurkish ? "Sınav baskısı artıyor" : "Exam pressure is rising"
-            blockingSignal = isTurkish ? "Dağılım dengesizleşebilir" : "Balance may drift"
+            strongestSignal = isTurkish ? tr("iv_exam_pressure") : "Exam pressure is rising"
+            blockingSignal = isTurkish ? tr("iv_distribution") : "Balance may drift"
             reason = isTurkish
-                ? "Yaklaşan sınav, çalışma yönünü belirlemek için şu anda en güçlü sinyal."
+                ? tr("iv_exam_strongest")
                 : "Your nearest exam is currently the strongest signal for deciding your study direction."
         } else {
-            directionTitle = isTurkish ? "Bugün tek net görev seç" : "Choose one clear task today"
+            directionTitle = isTurkish ? tr("iv_pick_one_clear") : "Choose one clear task today"
             directionSubtitle = isTurkish
-                ? "Kısa bir odak bloğu sonrası tamamlama ihtimalin yükseliyor."
+                ? tr("iv_after_block")
                 : "Your completion chance rises after a short focus block."
             strongestSignal = bestCompletedCourseName
             blockingSignal = activeTaskBacklogCount > 0
-                ? (isTurkish ? "\(activeTaskBacklogCount) açık görev" : "\(activeTaskBacklogCount) open tasks")
-                : (isTurkish ? "Ritim daha yeni oluşuyor" : "Rhythm is still forming")
+                ? (isTurkish ? tr("iv_open_tasks_n", activeTaskBacklogCount) : "\(activeTaskBacklogCount) open tasks")
+                : (isTurkish ? tr("iv_rhythm_forming") : "Rhythm is still forming")
             reason = isTurkish
-                ? "Kısa başlangıçlar şu an ritmine en iyi oturan karar modeli gibi görünüyor."
+                ? tr("iv_short_starts_model")
                 : "Short starts currently seem to fit your rhythm best."
         }
 
         let actions: [InsightsCoachActionRow] = [
             InsightsCoachActionRow(
-                title: isTurkish ? "Kısa görev temizliği" : "Short task cleanup",
-                subtitle: isTurkish ? "Bir açık görevi bitir ve yükü hafiflet" : "Finish one open task and reduce pressure",
-                intensity: isTurkish ? "Kısa" : "Short",
+                title: isTurkish ? tr("iv_short_cleanup") : "Short task cleanup",
+                subtitle: isTurkish ? tr("iv_finish_one_open") : "Finish one open task and reduce pressure",
+                intensity: isTurkish ? tr("iv_short_word") : "Short",
                 symbol: "checkmark.circle.fill",
                 tint: .green,
                 action: .openTasks
             ),
             InsightsCoachActionRow(
-                title: isTurkish ? "Focus bloğu aç" : "Open a focus block",
-                subtitle: isTurkish ? "20–25 dakika ritmi başlatmak için yeterli" : "20–25 minutes is enough to start rhythm",
+                title: isTurkish ? tr("iv_open_focus_block") : "Open a focus block",
+                subtitle: isTurkish ? tr("iv_2025_to_start") : "20–25 minutes is enough to start rhythm",
                 intensity: isTurkish ? "Orta" : "Medium",
                 symbol: "timer",
                 tint: .purple,
                 action: .openFocus
             ),
             InsightsCoachActionRow(
-                title: isTurkish ? "Haftayı hizala" : "Align the week",
-                subtitle: isTurkish ? "Dağılımı ve yaklaşan işleri birlikte gör" : "See distribution and upcoming work together",
+                title: isTurkish ? tr("iv_align_week") : "Align the week",
+                subtitle: isTurkish ? tr("iv_see_distribution") : "See distribution and upcoming work together",
                 intensity: isTurkish ? "Derin" : "Deep",
                 symbol: "calendar",
                 tint: .blue,
@@ -1287,7 +1287,7 @@ struct InsightsViewModel {
         return InsightsCoachDetailData(
             headline: directionTitle,
             summary: directionSubtitle,
-            confidenceText: isTurkish ? "yüksek güven" : "high confidence",
+            confidenceText: isTurkish ? tr("iv_high_confidence") : "high confidence",
             confidenceLevel: confidence,
             todayDirectionTitle: directionTitle,
             todayDirectionSubtitle: directionSubtitle,
@@ -1328,13 +1328,13 @@ struct InsightsViewModel {
 
         return InsightsWeeklySignalDetailData(
             title: isTurkish ? "Weekly Signal" : "Weekly Signal",
-            subtitle: isTurkish ? "Haftalık ritim analizi" : "Weekly rhythm analysis",
+            subtitle: isTurkish ? tr("iv_weekly_analysis") : "Weekly rhythm analysis",
             strongestDay: labels[strongestIndex],
             weakestDay: labels[weakestIndex],
-            trendSummary: isTurkish ? "Ritmin toparlanıyor" : "Your rhythm is stabilizing",
-            completionTotalText: isTurkish ? "\(totalCompletions) görev" : "\(totalCompletions) tasks",
+            trendSummary: isTurkish ? tr("iv_rhythm_recovering") : "Your rhythm is stabilizing",
+            completionTotalText: isTurkish ? tr("rel_task_count", totalCompletions) : "\(totalCompletions) tasks",
             focusTotalText: isTurkish ? "\(totalFocus) dk focus" : "\(totalFocus) min focus",
-            streakText: isTurkish ? "\(streakCount) gün seri" : "\(streakCount) day streak",
+            streakText: isTurkish ? tr("oc_day_streak", streakCount) : "\(streakCount) day streak",
             days: details
         )
     }

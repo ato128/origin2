@@ -12,7 +12,7 @@ extension HomeDashboardView {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Bugünkü İlerleme")
+                    Text(tr("oc_todays_progress"))
                         .font(.system(size: 21, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
                         .shadow(color: .white.opacity(0.04), radius: 2, y: 1)
@@ -33,7 +33,7 @@ extension HomeDashboardView {
                     onOpenInsights()
                 } label: {
                     HStack(spacing: 6) {
-                        Text("İçgörüler")
+                        Text(tr("hd_insights"))
                             .font(.system(size: 11.5, weight: .bold, design: .rounded))
 
                         Image(systemName: "arrow.right")
@@ -157,22 +157,22 @@ extension HomeDashboardView {
 
     var momentumSubtitleText: String {
         if todayBoardTasks.isEmpty {
-            return "Bugün sakin. İstersen küçük bir başlangıç yap."
+            return tr("hm_1")
         }
 
         if boardTodayProgressValue >= 1 {
-            return "Bugünü temiz kapattın. Harika."
+            return tr("hm_2")
         }
 
         if boardTodayProgressValue >= 0.6 {
-            return "İyi gidiyorsun. Bir adım daha var."
+            return tr("hm_3")
         }
 
         if boardTodayProgressValue > 0 {
-            return "Başladın. Birkaç görev daha günü güçlendirir."
+            return tr("hm_4")
         }
 
-        return "Küçük bir adım bile ivme yaratır."
+        return tr("hm_5")
     }
 
     var momentumCardSubtitle: String {
@@ -180,43 +180,43 @@ extension HomeDashboardView {
             let courseTitle = exam.courseName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 ? exam.title
                 : exam.courseName
-            return "\(courseTitle) yaklaşırken bugünkü ritmini takip et."
+            return tr("hm_exam_approaching", courseTitle)
         }
 
         if shouldUseNoTaskMomentumTone {
             switch heroDayPhase {
             case .morning:
-                return "Bugün hâlâ açık. Küçük bir plan güçlü bir başlangıç yaratır."
+                return tr("hm_6")
             case .afternoon:
-                return "Henüz görev yok. Tek bir küçük iş bile günü hareket ettirebilir."
+                return tr("hm_7")
             case .evening, .night:
-                return "Bugün boş geçtiyse bile yarın için küçük bir hazırlık yapabilirsin."
+                return tr("hm_8")
             }
         }
 
         if isDayEffectivelyComplete {
-            return "Bugün için belirlediğin işler tamamlandı."
+            return tr("hm_9")
         }
 
         if boardTodayProgressValue >= 0.6 {
-            return "Ritmin oluştu. Birkaç adım daha günü güçlü kapatır."
+            return tr("hm_10")
         }
 
         if boardTodayProgressValue > 0 {
-            return "Başlangıç yaptın. Devam edersen gün çok daha netleşir."
+            return tr("hm_11")
         }
 
         switch homeLayoutMode {
         case .focusActive:
-            return "Şu an ritmini koruman en önemli şey."
+            return tr("hm_12")
         case .crewFollowUp:
-            return "Önce kişisel tarafı toparlayıp sonra crew akışına geçebilirsin."
+            return tr("hm_13")
         case .insightsFollowUp:
-            return "Bugünkü akışının kısa özeti burada."
+            return tr("hm_14")
         case .completionWrapUp:
-            return "Günün kapanış görünümünü tek bakışta gör."
+            return tr("hm_15")
         case .defaultFlow:
-            return "Günün durumunu tek bakışta gör."
+            return tr("hm_16")
         }
     }
 

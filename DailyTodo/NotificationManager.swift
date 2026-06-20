@@ -25,7 +25,7 @@ final class NotificationManager: ObservableObject {
         do {
             _ = try await center.requestAuthorization(options: [.alert, .sound, .badge])
         } catch {
-            print("🔴 Notification permission error:", error)
+            Log.debug("🔴 Notification permission error:", error)
         }
     }
 
@@ -106,8 +106,8 @@ final class NotificationManager: ObservableObject {
             content.sound = .default
             content.title = event.title
             content.body = minutesBefore == 0
-                ? "Ders başladı."
-                : "\(minutesBefore) dk sonra başlıyor."
+                ? tr("nm_class_started")
+                : tr("nm_starts_in", minutesBefore)
 
             let request = UNNotificationRequest(
                 identifier: eventID(for: event, minutesBefore: minutesBefore),
@@ -117,9 +117,9 @@ final class NotificationManager: ObservableObject {
 
             do {
                 try await center.add(request)
-                print("🟢 Scheduled one-shot:", request.identifier)
+                Log.debug("🟢 Scheduled one-shot:", request.identifier)
             } catch {
-                print("🔴 Schedule one-shot error:", error)
+                Log.debug("🔴 Schedule one-shot error:", error)
             }
 
             return
@@ -160,8 +160,8 @@ final class NotificationManager: ObservableObject {
         content.sound = .default
         content.title = event.title
         content.body = minutesBefore == 0
-            ? "Ders başladı."
-            : "\(minutesBefore) dk sonra başlıyor."
+            ? tr("nm_class_started")
+            : tr("nm_starts_in", minutesBefore)
 
         let request = UNNotificationRequest(
             identifier: eventID(for: event, minutesBefore: minutesBefore),
@@ -171,9 +171,9 @@ final class NotificationManager: ObservableObject {
 
         do {
             try await center.add(request)
-            print("🟢 Scheduled repeating:", request.identifier)
+            Log.debug("🟢 Scheduled repeating:", request.identifier)
         } catch {
-            print("🔴 Schedule repeating error:", error)
+            Log.debug("🔴 Schedule repeating error:", error)
         }
     }
 
@@ -189,7 +189,7 @@ final class NotificationManager: ObservableObject {
 
         let content = UNMutableNotificationContent()
         content.sound = .default
-        content.title = "Focus tamamlandı"
+        content.title = tr("nm_focus_done")
         content.body = "\(title) oturumu bitti."
         content.categoryIdentifier = "FOCUS_FINISHED"
 
@@ -206,9 +206,9 @@ final class NotificationManager: ObservableObject {
 
         do {
             try await center.add(request)
-            print("🟢 Focus finish scheduled:", request.identifier)
+            Log.debug("🟢 Focus finish scheduled:", request.identifier)
         } catch {
-            print("🔴 Focus finish schedule error:", error)
+            Log.debug("🔴 Focus finish schedule error:", error)
         }
     }
 
@@ -230,9 +230,9 @@ final class NotificationManager: ObservableObject {
         let center = UNUserNotificationCenter.current()
         let pending = await center.pendingNotificationRequests()
 
-        print("📬 Pending notifications count:", pending.count)
+        Log.debug("📬 Pending notifications count:", pending.count)
         for req in pending {
-            print("•", req.identifier)
+            Log.debug("•", req.identifier)
         }
     }
 

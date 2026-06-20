@@ -22,6 +22,7 @@ struct WeekView: View {
     @EnvironmentObject private var session: SessionStore
     @EnvironmentObject private var friendStore: FriendStore
     @EnvironmentObject private var studentStore: StudentStore
+    @EnvironmentObject private var store: TodoStore
 
     @Query(sort: \EventItem.startMinute, order: .forward)
     private var allEvents: [EventItem]
@@ -37,6 +38,14 @@ struct WeekView: View {
     /// Add event sheet
     @State private var showingAdd = false
     @State private var editingEvent: EventItem? = nil
+    @State private var showPaywall = false
+
+    /// Add task sheet (Week is now the home for tasks)
+    @State private var showTaskAdd = false
+    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
+
+    /// Sliding indicator under the selected day
+    @Namespace private var dayStripNamespace
 
     /// Animasyon için
     @State private var pageDirection: Int = 0 // -1: geri, +1: ileri
@@ -72,6 +81,7 @@ struct WeekView: View {
             CalendarSheet(
                 selectedDate: $currentDate,
                 allEvents: userScopedEvents,
+                allTasks: store.items,
                 onPick: { picked in
                     pageDirection = picked > currentDate ? 1 : -1
                     withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
@@ -93,6 +103,18 @@ struct WeekView: View {
                 .environmentObject(friendStore)
                 .environmentObject(studentStore)
             }
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView(context: "future_week")
+        }
+        .sheet(isPresented: $showTaskAdd) {
+            AddTaskView(
+                defaultAddToWeek: true,
+                defaultWeekDate: currentDate,
+                lockedToTask: true
+            )
+            .environmentObject(store)
+            .environmentObject(session)
         }
         .sheet(item: $editingEvent) { event in
             NavigationStack {
@@ -156,8 +178,16 @@ struct WeekView: View {
                 Spacer(minLength: 8)
 
                 Button {
+                    Haptics.impact(.light)
+                    requestAddTask()
+                } label: {
+                    taskAddIconButton
+                }
+                .buttonStyle(.plain)
+
+                Button {
                     Haptics.impact(.medium)
-                    showingAdd = true
+                    requestAddEvent()
                 } label: {
                     addIconButton
                 }
@@ -187,6 +217,24 @@ struct WeekView: View {
                         )
                     )
                     .shadow(color: Color(arenaHex: AppArenaPalette.blue).opacity(0.32), radius: 10, y: 5)
+            )
+    }
+
+    /// Separate entry that adds a task (DTTaskItem) scheduled to the selected day.
+    private var taskAddIconButton: some View {
+        Image(systemName: "checklist")
+            .font(.system(size: 15, weight: .black))
+            .foregroundStyle(.white.opacity(0.9))
+            .frame(width: 40, height: 40)
+            .background(
+                Circle()
+                    .fill(Color.white.opacity(0.07))
+                    .overlay(
+                        Circle().stroke(
+                            Color(arenaHex: AppArenaPalette.purple).opacity(0.45),
+                            lineWidth: 1
+                        )
+                    )
             )
     }
 
@@ -263,6 +311,7 @@ struct WeekView: View {
                                 )
                             )
                             .shadow(color: Color(arenaHex: AppArenaPalette.blue).opacity(0.30), radius: 8, y: 4)
+                            .matchedGeometryEffect(id: "selected-day-pill", in: dayStripNamespace)
                     } else if isToday {
                         RoundedRectangle(cornerRadius: 13, style: .continuous)
                             .stroke(Color(arenaHex: AppArenaPalette.cyan).opacity(0.45), lineWidth: 1)
@@ -355,6 +404,10 @@ struct WeekView: View {
                 eventsList
                     .padding(.horizontal, 16)
                     .padding(.top, 2)
+
+                tasksSection
+                    .padding(.horizontal, 16)
+                    .padding(.top, 4)
 
                 Spacer(minLength: 110)
             }
@@ -627,6 +680,104 @@ struct WeekView: View {
         }
     }
 
+    // MARK: Tasks for the selected day
+
+    private var tasksForCurrentDate: [DTTaskItem] {
+        tasksForDate(currentDate)
+    }
+
+    @ViewBuilder
+    private var tasksSection: some View {
+        let tasks = tasksForCurrentDate
+        if !tasks.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: "checklist")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundStyle(Color(arenaHex: AppArenaPalette.purple))
+
+                    Text("GÖREVLER")
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .tracking(1.6)
+                        .foregroundStyle(.white.opacity(0.5))
+
+                    Text("\(tasks.count)")
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.32))
+                }
+                .padding(.leading, 2)
+
+                ForEach(tasks, id: \.taskUUID) { task in
+                    taskRow(task)
+                }
+            }
+        }
+    }
+
+    private func taskRow(_ task: DTTaskItem) -> some View {
+        let tint = colorFromHex(colorHexForTask(task))
+
+        return HStack(spacing: 12) {
+            Button {
+                Haptics.impact(.light)
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    store.toggleDone(task)
+                }
+            } label: {
+                Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(task.isDone ? Color(arenaHex: AppArenaPalette.green) : tint.opacity(0.8))
+            }
+            .buttonStyle(.plain)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(task.title)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.white.opacity(task.isDone ? 0.4 : 0.92))
+                    .strikethrough(task.isDone, color: .white.opacity(0.4))
+                    .lineLimit(1)
+
+                if !task.courseName.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Text(task.courseName)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.42))
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer(minLength: 4)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white.opacity(0.03))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(tint.opacity(0.16), lineWidth: 1)
+                )
+        )
+        .contextMenu {
+            Button(role: .destructive) {
+                store.delete(task)
+            } label: {
+                Label(tr("common_delete"), systemImage: "trash")
+            }
+        }
+    }
+
+    private func colorHexForTask(_ task: DTTaskItem) -> String {
+        switch task.colorName {
+        case "blue": return "#1593FF"
+        case "purple": return "#7C3AED"
+        case "cyan": return "#2DD4FF"
+        case "green": return "#A3E635"
+        case "orange", "amber": return "#F59E0B"
+        case "red", "coral": return "#FF5A44"
+        case "pink": return "#EC4899"
+        default: return "#1593FF"
+        }
+    }
+
     /// Event'ler arasındaki 60+ dk boşlukları "+ EKLE" pill olarak araya serpiştirir.
     /// Sadece BUGÜN ve GELECEK günler için (geçmiş günlerde anlamsız).
     private var eventsListItems: [EventsListItem] {
@@ -659,11 +810,11 @@ struct WeekView: View {
         return result
     }
 
-    /// Boş zaman önerisi satırı: "20:30 · Boş zaman · 90 dk · + EKLE"
+    /// Boş zaman önerisi satırı: tr("wv_free_time_sample")
     private func emptySlotRow(startMin: Int, durationMin: Int) -> some View {
         Button {
             Haptics.impact(.light)
-            showingAdd = true
+            requestAddEvent()
         } label: {
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .center, spacing: 2) {
@@ -681,7 +832,7 @@ struct WeekView: View {
                     .stroke(Color.white.opacity(0.15), style: StrokeStyle(lineWidth: 2, dash: [2, 3]))
                     .frame(width: 3, height: 26)
 
-                Text("Boş zaman · \(durationText(durationMin))")
+                Text("\(tr("wv_free_time")) · \(durationText(durationMin))")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.50))
                     .lineLimit(1)
@@ -727,7 +878,7 @@ struct WeekView: View {
     private var emptyDayCard: some View {
         Button {
             Haptics.impact(.light)
-            showingAdd = true
+            requestAddEvent()
         } label: {
             VStack(spacing: 12) {
                 Image(systemName: "calendar.badge.plus")
@@ -787,9 +938,15 @@ struct WeekView: View {
         let isPast = (event.isCompleted) || (isToday && now >= end)
         let isActive = isToday && now >= start && now < end
         let isRecurring = (event.scheduledDate == nil)
+        let dayHasPassed = Calendar.current.startOfDay(for: currentDate) < Calendar.current.startOfDay(for: Date())
+        let isOverdue = !event.isCompleted && (dayHasPassed || (isToday && now >= end))
 
         let tint = colorFromHex(event.colorHex)
 
+        SwipeToCompleteRow(
+            enabled: !event.isCompleted,
+            onComplete: { markCompleted(event) }
+        ) {
         Button {
             editingEvent = event
         } label: {
@@ -806,10 +963,14 @@ struct WeekView: View {
                 }
                 .frame(minWidth: 50)
 
-                // Color stripe
+                // Color stripe — subtle red accent when overdue
                 RoundedRectangle(cornerRadius: 999, style: .continuous)
-                    .fill(isActive ? Color(arenaHex: AppArenaPalette.coral) : tint)
-                    .frame(width: 3, height: isActive ? 40 : 32)
+                    .fill(
+                        isOverdue
+                            ? Color(arenaHex: "#EF4444").opacity(0.85)
+                            : (isActive ? Color(arenaHex: AppArenaPalette.coral) : tint)
+                    )
+                    .frame(width: isOverdue ? 2 : 3, height: isActive ? 40 : 32)
 
                 // Content
                 VStack(alignment: .leading, spacing: 3) {
@@ -831,7 +992,7 @@ struct WeekView: View {
                             Text("·")
                                 .foregroundStyle(.white.opacity(0.32))
 
-                            Text("\(max(0, end - now)) dk kaldı")
+                            Text(tr("rel_min_left", max(0, end - now)))
                                 .font(.system(size: 11, weight: .black))
                                 .foregroundStyle(Color(arenaHex: AppArenaPalette.coral))
                         }
@@ -841,10 +1002,14 @@ struct WeekView: View {
                 Spacer(minLength: 4)
 
                 // Right side: status or recur badge
-                if isPast {
+                if event.isCompleted {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 16, weight: .black))
                         .foregroundStyle(Color(arenaHex: AppArenaPalette.green).opacity(0.85))
+                } else if isOverdue {
+                    Image(systemName: "exclamationmark.circle")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(Color(arenaHex: "#EF4444").opacity(0.75))
                 } else if isActive {
                     Circle()
                         .fill(Color(arenaHex: AppArenaPalette.coral))
@@ -877,19 +1042,20 @@ struct WeekView: View {
             .opacity(isPast ? 0.62 : 1.0)
         }
         .buttonStyle(.plain)
+        }
         .contextMenu {
             if !event.isCompleted {
                 Button {
                     markCompleted(event)
                 } label: {
-                    Label("Tamamlandı olarak işaretle", systemImage: "checkmark.circle")
+                    Label(tr("wv_mark_done"), systemImage: "checkmark.circle")
                 }
             }
 
             Button {
                 editingEvent = event
             } label: {
-                Label("Düzenle", systemImage: "pencil")
+                Label(tr("common_edit"), systemImage: "pencil")
             }
 
             Button(role: .destructive) {
@@ -929,6 +1095,37 @@ struct WeekView: View {
 
     // MARK: Actions
 
+    private func requestAddEvent() {
+        let cal = Calendar.current
+        let thisWeek = cal.component(.weekOfYear, from: Date())
+        let thisYear = cal.component(.yearForWeekOfYear, from: Date())
+        let selectedWeek = cal.component(.weekOfYear, from: currentDate)
+        let selectedYear = cal.component(.yearForWeekOfYear, from: currentDate)
+        let isFutureWeek = (selectedYear > thisYear) || (selectedYear == thisYear && selectedWeek > thisWeek)
+        if isFutureWeek && !subscriptionManager.isPro {
+            Analytics.shared.track("feature_gate_triggered", properties: ["gate": "future_week"])
+            showPaywall = true
+        } else {
+            showingAdd = true
+        }
+    }
+
+    /// Same future-week premium gate as events, but opens the task composer.
+    private func requestAddTask() {
+        let cal = Calendar.current
+        let thisWeek = cal.component(.weekOfYear, from: Date())
+        let thisYear = cal.component(.yearForWeekOfYear, from: Date())
+        let selectedWeek = cal.component(.weekOfYear, from: currentDate)
+        let selectedYear = cal.component(.yearForWeekOfYear, from: currentDate)
+        let isFutureWeek = (selectedYear > thisYear) || (selectedYear == thisYear && selectedWeek > thisWeek)
+        if isFutureWeek && !subscriptionManager.isPro {
+            Analytics.shared.track("feature_gate_triggered", properties: ["gate": "future_week_task"])
+            showPaywall = true
+        } else {
+            showTaskAdd = true
+        }
+    }
+
     private func navigate(by offset: Int) {
         Haptics.impact(.light)
         pageDirection = offset
@@ -940,11 +1137,13 @@ struct WeekView: View {
     }
 
     private func markCompleted(_ event: EventItem) {
-        event.isCompleted = true
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+            event.isCompleted = true
+        }
 
         do {
             try context.save()
-            Haptics.impact(.medium)
+            Haptics.notify(.success)
             WidgetAppSync.refreshFromSwiftData(context: context)
 
             Task {
@@ -956,7 +1155,7 @@ struct WeekView: View {
                 await friendStore.resyncSharedWeekIfNeeded(for: userID, events: userScopedEvents)
             }
         } catch {
-            print("markCompleted error:", error)
+            Log.debug("markCompleted error:", error)
         }
     }
 
@@ -978,7 +1177,7 @@ struct WeekView: View {
                 await friendStore.resyncSharedWeekIfNeeded(for: userID, events: userScopedEvents)
             }
         } catch {
-            print("WeekView.delete error:", error)
+            Log.debug("WeekView.delete error:", error)
         }
     }
 }
@@ -1055,7 +1254,7 @@ private extension WeekView {
     }
 
     var durationCompactLabel: String {
-        return "süre"
+        return tr("wv_duration_lc")
     }
 
     var heroAccent: Color {
@@ -1079,10 +1278,10 @@ private extension WeekView {
 
     var heroSubtitle: String {
         if eventsForCurrentDate.isEmpty {
-            if isPastDay { return "Bu güne kayıt yok" }
-            if isToday { return "Bugün sakin · plan eklemek için + " }
-            if isTomorrow { return "Yarın boş · şimdiden planlayabilirsin" }
-            return "Bu güne yeni bir şey ekle"
+            if isPastDay { return tr("wv_no_entries") }
+            if isToday { return tr("wv_today_calm") }
+            if isTomorrow { return tr("wv_tomorrow_free") }
+            return tr("wv_add_something")
         }
 
         // ŞU AN aktif ders varsa: küçük chip ile zaten gösteriliyor, burada genel özet
@@ -1104,11 +1303,11 @@ private extension WeekView {
     }
 
     var eyebrowText: String {
-        if activeEventNow != nil { return "ŞU AN · CANLI" }
-        if isToday { return "BUGÜN" }
+        if activeEventNow != nil { return tr("hv_now_live") }
+        if isToday { return tr("wv_today_caps") }
         if isTomorrow { return "YARIN" }
-        if isYesterday { return "DÜN" }
-        if isPastDay { return "GEÇMİŞ" }
+        if isYesterday { return tr("wv_yesterday_caps") }
+        if isPastDay { return tr("wv_past_caps") }
         return "PROGRAM"
     }
 
@@ -1151,10 +1350,10 @@ private extension WeekView {
     }
 
     var emptyTitle: String {
-        if isToday { return "Bugün sakin" }
-        if isTomorrow { return "Yarın boş" }
-        if isPastDay { return "Bu güne kayıt yok" }
-        return "Boş gün"
+        if isToday { return tr("wv_today_empty") }
+        if isTomorrow { return tr("wv_tomorrow_empty") }
+        if isPastDay { return tr("wv_no_entries") }
+        return tr("wv_free_day")
     }
 
     var isToday: Bool {
@@ -1198,9 +1397,7 @@ private extension WeekView {
     /// "P", "S", "Ç" ... week strip için tek harf
     func weekdayShortLetter(_ date: Date) -> String {
         let idx = weekdayIndex(from: date)
-        let letters = ["P", "S", "Ç", "P", "C", "C", "P"]
-        let names = ["PZT", "SAL", "ÇAR", "PER", "CUM", "CMT", "PAZ"]
-        return names[idx]
+        return localizedWeekdayShort(idx)
     }
 
     /// Verilen tarih için etkinlikler (hem haftalık tekrar hem tek seferlik)
@@ -1215,6 +1412,20 @@ private extension WeekView {
                 return ev.weekday == weekday
             }
         }
+    }
+
+    /// Tasks scheduled to (or due on) the given day, completed ones last.
+    func tasksForDate(_ date: Date) -> [DTTaskItem] {
+        let calendar = Calendar.current
+        return store.items
+            .filter { task in
+                guard let day = task.scheduledWeekDate ?? task.dueDate else { return false }
+                return calendar.isDate(day, inSameDayAs: date)
+            }
+            .sorted { lhs, rhs in
+                if lhs.isDone != rhs.isDone { return !lhs.isDone }
+                return lhs.createdAt < rhs.createdAt
+            }
     }
 
     func currentMinuteOfDay() -> Int {
@@ -1275,8 +1486,7 @@ private extension WeekView {
     /// 3 harfli gün adı (Pzt, Sal, Çar, Per, Cum, Cmt, Paz).
     func weekdayShort(_ date: Date) -> String {
         let idx = weekdayIndex(from: date)
-        let titles = ["PZT", "SAL", "ÇAR", "PER", "CUM", "CMT", "PAZ"]
-        return titles[max(0, min(6, idx))]
+        return localizedWeekdayShort(idx)
     }
 
     /// "PER · 4 HAZ" kompakt tarih.
@@ -1284,8 +1494,7 @@ private extension WeekView {
         let calendar = Calendar.current
         let day = calendar.component(.day, from: currentDate)
         let month = calendar.component(.month, from: currentDate)
-        let monthsTR = ["OCA", "ŞUB", "MAR", "NİS", "MAY", "HAZ", "TEM", "AĞU", "EYL", "EKİ", "KAS", "ARA"]
-        let monthShort = monthsTR[max(0, min(11, month - 1))]
+        let monthShort = localizedMonthShort(month - 1)
         return "\(weekdayShort(currentDate)) · \(day) \(monthShort)"
     }
 
@@ -1320,6 +1529,7 @@ private struct CalendarSheet: View {
 
     @Binding var selectedDate: Date
     let allEvents: [EventItem]
+    let allTasks: [DTTaskItem]
     let onPick: (Date) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -1353,6 +1563,10 @@ private struct CalendarSheet: View {
                         legend
                             .padding(.horizontal, 18)
                             .padding(.top, 4)
+
+                        tasksOverview
+                            .padding(.horizontal, 18)
+                            .padding(.top, 6)
                     }
                     .padding(.bottom, 40)
                 }
@@ -1402,7 +1616,7 @@ private struct CalendarSheet: View {
                 .buttonStyle(.plain)
 
                 VStack(spacing: 1) {
-                    Text("TAKVİM")
+                    Text(tr("wv_calendar_caps"))
                         .font(.system(size: 9, weight: .black, design: .monospaced))
                         .tracking(1.6)
                         .foregroundStyle(
@@ -1458,7 +1672,7 @@ private struct CalendarSheet: View {
                 }
                 onPick(Date())
             } label: {
-                Text("Bugün")
+                Text(tr("common_today"))
                     .font(.system(size: 11, weight: .black, design: .monospaced))
                     .tracking(0.4)
                     .foregroundStyle(Color(arenaHex: AppArenaPalette.cyan))
@@ -1511,6 +1725,7 @@ private struct CalendarSheet: View {
         let isPastDay = Calendar.current.startOfDay(for: date) < Calendar.current.startOfDay(for: Date())
         let colors = eventColorsForDate(date)
         let hasSpecialEvent = hasOneTimeEventOn(date)
+        let taskCount = tasksForDay(date).count
 
         return Button {
             Haptics.impact(.light)
@@ -1531,6 +1746,12 @@ private struct CalendarSheet: View {
                         Circle()
                             .fill(colorFromHex(hex))
                             .frame(width: 3.5, height: 3.5)
+                    }
+
+                    if taskCount > 0 {
+                        RoundedRectangle(cornerRadius: 1, style: .continuous)
+                            .fill(Color(arenaHex: AppArenaPalette.purple))
+                            .frame(width: 4, height: 4)
                     }
                 }
                 .frame(height: 5)
@@ -1580,12 +1801,12 @@ private struct CalendarSheet: View {
 
     private var legend: some View {
         HStack(spacing: 14) {
-            legendItem(color: Color(arenaHex: AppArenaPalette.cyan), text: "Bugün")
-            legendItem(color: Color(arenaHex: AppArenaPalette.coral), text: "Özel")
+            legendItem(color: Color(arenaHex: AppArenaPalette.cyan), text: tr("common_today"))
+            legendItem(color: Color(arenaHex: AppArenaPalette.coral), text: tr("wv_custom"))
 
             Spacer()
 
-            Text("tap → gün")
+            Text(tr("wv_tap_day"))
                 .font(.system(size: 9, weight: .black, design: .monospaced))
                 .foregroundStyle(.white.opacity(0.32))
         }
@@ -1613,6 +1834,123 @@ private struct CalendarSheet: View {
         }
     }
 
+    // MARK: Tasks overview (which task on which date)
+
+    @ViewBuilder
+    private var tasksOverview: some View {
+        let groups = taskGroupsForMonth
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: "checklist")
+                    .font(.system(size: 11, weight: .black))
+                    .foregroundStyle(Color(arenaHex: AppArenaPalette.purple))
+
+                Text("BU AYIN GÖREVLERİ")
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(1.4)
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+
+            if groups.isEmpty {
+                Text("Bu ayda planlanmış görev yok.")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.4))
+                    .padding(.vertical, 6)
+            } else {
+                ForEach(groups, id: \.0) { day, tasks in
+                    Button {
+                        onPick(day)
+                    } label: {
+                        taskGroupRow(day: day, tasks: tasks)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func taskGroupRow(day: Date, tasks: [DTTaskItem]) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(spacing: 1) {
+                Text(dayNumberText(day))
+                    .font(.system(size: 17, weight: .black))
+                    .foregroundStyle(.white)
+                    .monospacedDigit()
+
+                Text(weekdayShortText(day))
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.42))
+            }
+            .frame(width: 38)
+
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(tasks, id: \.taskUUID) { task in
+                    HStack(spacing: 7) {
+                        Circle()
+                            .fill(task.isDone
+                                  ? Color(arenaHex: AppArenaPalette.green)
+                                  : Color(arenaHex: AppArenaPalette.purple).opacity(0.8))
+                            .frame(width: 6, height: 6)
+
+                        Text(task.title)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white.opacity(task.isDone ? 0.42 : 0.85))
+                            .strikethrough(task.isDone, color: .white.opacity(0.4))
+                            .lineLimit(1)
+                    }
+                }
+            }
+
+            Spacer(minLength: 4)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.white.opacity(0.030))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                )
+        )
+    }
+
+    private func tasksForDay(_ date: Date) -> [DTTaskItem] {
+        let calendar = Calendar.current
+        return allTasks.filter { task in
+            guard let day = task.scheduledWeekDate ?? task.dueDate else { return false }
+            return calendar.isDate(day, inSameDayAs: date)
+        }
+    }
+
+    /// (day, tasks) pairs for the displayed month, sorted ascending by day.
+    private var taskGroupsForMonth: [(Date, [DTTaskItem])] {
+        let calendar = Calendar.current
+        let monthTasks = allTasks.filter { task in
+            guard let day = task.scheduledWeekDate ?? task.dueDate else { return false }
+            return calendar.isDate(day, equalTo: displayMonth, toGranularity: .month)
+        }
+
+        let grouped = Dictionary(grouping: monthTasks) { (task: DTTaskItem) -> Date in
+            let day = task.scheduledWeekDate ?? task.dueDate ?? Date()
+            return calendar.startOfDay(for: day)
+        }
+
+        return grouped
+            .map { ($0.key, $0.value.sorted { $0.createdAt < $1.createdAt }) }
+            .sorted { $0.0 < $1.0 }
+    }
+
+    private func dayNumberText(_ date: Date) -> String {
+        "\(Calendar.current.component(.day, from: date))"
+    }
+
+    private func weekdayShortText(_ date: Date) -> String {
+        let idx = Calendar.current.component(.weekday, from: date) // 1=Sun
+        let mondayFirst = (idx + 5) % 7
+        return localizedWeekdayLetter(mondayFirst)
+    }
+
     // MARK: Helpers
 
     private var monthName: String {
@@ -1630,7 +1968,7 @@ private struct CalendarSheet: View {
 
     private var weekdaySymbols: [String] {
         // Pazartesi başlangıç
-        ["P", "S", "Ç", "P", "C", "C", "P"]
+        (0..<7).map { localizedWeekdayLetter($0) }
     }
 
     /// Grid'i Pazartesi başlangıçlı şekilde döndürür.
@@ -1716,4 +2054,67 @@ private struct CalendarSheet: View {
 private enum EventsListItem {
     case event(EventItem, Int)              // event + sıra (animasyon delay'i için)
     case gap(startMin: Int, durationMin: Int)
+}
+
+// MARK: - Swipe to Complete
+
+/// Sağa kaydırınca görevi tamamlar — kaydırdıkça arkada yeşil onay işareti büyür.
+/// Dikey scroll ile çakışmaması için yalnızca baskın yatay sürüklemede aktifleşir.
+private struct SwipeToCompleteRow<Content: View>: View {
+    let enabled: Bool
+    let onComplete: () -> Void
+    @ViewBuilder let content: () -> Content
+
+    @State private var dragX: CGFloat = 0
+    @State private var didTrigger = false
+
+    private let triggerDistance: CGFloat = 64
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            // Checkmark trail revealed behind the row as it slides
+            HStack {
+                ZStack {
+                    Circle()
+                        .fill(Color(arenaHex: AppArenaPalette.green).opacity(0.16))
+                        .frame(width: 34, height: 34)
+
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .black))
+                        .foregroundStyle(Color(arenaHex: AppArenaPalette.green))
+                }
+                .scaleEffect(max(0.4, min(1, dragX / triggerDistance)))
+                .opacity(Double(min(1, dragX / triggerDistance)))
+
+                Spacer()
+            }
+            .padding(.leading, 10)
+
+            content()
+                .offset(x: dragX)
+        }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 24)
+                .onChanged { value in
+                    guard enabled, !didTrigger else { return }
+                    let dx = value.translation.width
+                    let dy = abs(value.translation.height)
+                    // Only engage on a clearly horizontal right-drag
+                    guard dx > 0, dx > dy * 1.6 else { return }
+                    dragX = min(dx * 0.7, 110)
+                }
+                .onEnded { _ in
+                    if enabled, !didTrigger, dragX >= triggerDistance {
+                        didTrigger = true
+                        onComplete()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                            didTrigger = false
+                        }
+                    }
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.76)) {
+                        dragX = 0
+                    }
+                }
+        )
+    }
 }

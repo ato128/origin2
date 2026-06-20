@@ -41,10 +41,10 @@ struct TasksView: View {
 
         var localizedTitle: String {
             switch self {
-            case .today: return "Bugün"
-            case .all: return "Tümü"
+            case .today: return tr("common_today")
+            case .all: return tr("tv_all")
             case .done: return "Biten"
-            case .exams: return "Sınavlar"
+            case .exams: return tr("tv_exams")
             }
         }
 
@@ -214,27 +214,27 @@ struct TasksView: View {
             store.reload()
         }
         .confirmationDialog(
-            selectedExamForActions?.title ?? "Sınav",
+            selectedExamForActions?.title ?? tr("at_kind_exam"),
             isPresented: Binding(
                 get: { selectedExamForActions != nil },
                 set: { if !$0 { selectedExamForActions = nil } }
             ),
             titleVisibility: .visible
         ) {
-            Button("Bu sınav için görev ekle") {
+            Button(tr("tv_add_task_for_exam")) {
                 showAddTask = true
             }
 
-            Button("Focus başlat") {
+            Button(tr("tv_start_focus")) {
                 selectedExamForActions = nil
             }
 
-            Button("İptal", role: .cancel) {
+            Button(tr("common_cancel"), role: .cancel) {
                 selectedExamForActions = nil
             }
         } message: {
             if let exam = selectedExamForActions {
-                Text("\(exam.courseName.isEmpty ? exam.title : exam.courseName) için hızlı bir işlem seç.")
+                Text(tr("tv_quick_action_for", exam.courseName.isEmpty ? exam.title : exam.courseName))
             }
         }
     }
@@ -271,11 +271,11 @@ private extension TasksView {
                 }
 
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    Text("Görev")
+                    Text(tr("at_kind_task"))
                         .font(.system(size: 38, weight: .black))
                         .foregroundStyle(.white)
 
-                    Text("akışı")
+                    Text(tr("tv_flow_word"))
                         .font(.system(size: 35, weight: .regular, design: .serif))
                         .italic()
                         .foregroundStyle(
@@ -292,7 +292,7 @@ private extension TasksView {
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
 
-                Text("Bugünkü görevlerin, sınav hazırlığın ve tamamlanan işlerin tek yerde.")
+                Text(tr("tv_header_sub"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.48))
                     .lineLimit(2)
@@ -362,9 +362,9 @@ private extension TasksView {
             }
 
             HStack(spacing: 8) {
-                summaryChip(title: "Açık", value: "\(openCount)", tint: Color(arenaHex: AppArenaPalette.blue))
+                summaryChip(title: tr("tv_open"), value: "\(openCount)", tint: Color(arenaHex: AppArenaPalette.blue))
                 summaryChip(title: "Biten", value: "\(doneCount)", tint: Color(arenaHex: AppArenaPalette.green))
-                summaryChip(title: "Bugün", value: "\(todayOpenCount)", tint: Color(arenaHex: AppArenaPalette.gold))
+                summaryChip(title: tr("common_today"), value: "\(todayOpenCount)", tint: Color(arenaHex: AppArenaPalette.gold))
             }
         }
         .padding(18)
@@ -374,13 +374,13 @@ private extension TasksView {
     var summarySubtitle: String {
         switch selectedFilter {
         case .today:
-            return todayOpenCount == 0 ? "Bugün sakin görünüyor." : "Bugünün açık görevlerine odaklan."
+            return todayOpenCount == 0 ? tr("tv_calm_title") : tr("tv_calm_sub")
         case .all:
-            return "Bütün açık görevlerini tek listede yönet."
+            return tr("tv_all_sub")
         case .done:
-            return "Tamamladığın işlerin arşivi."
+            return tr("tv_done_sub")
         case .exams:
-            return "Sınav hazırlık planlarını ve günlerini takip et."
+            return tr("tv_exams_sub")
         }
     }
 
@@ -482,7 +482,7 @@ private extension TasksView {
                                 .lineLimit(1)
 
                             if isTopPriority && !task.isDone {
-                                smallTag("Öncelikli", tint: accent)
+                                smallTag(tr("tv_priority"), tint: accent)
                             }
                         }
 
@@ -507,9 +507,9 @@ private extension TasksView {
                     Spacer(minLength: 8)
 
                     if task.isDone {
-                        statusBadge(icon: "checkmark.circle.fill", text: "Tamamlandı", tint: Color(arenaHex: AppArenaPalette.green))
+                        statusBadge(icon: "checkmark.circle.fill", text: tr("common_completed"), tint: Color(arenaHex: AppArenaPalette.green))
                     } else if isOverdueTask {
-                        statusBadge(icon: "exclamationmark.triangle.fill", text: "Gecikmiş", tint: Color(arenaHex: AppArenaPalette.coral))
+                        statusBadge(icon: "exclamationmark.triangle.fill", text: tr("common_overdue"), tint: Color(arenaHex: AppArenaPalette.coral))
                     } else {
                         statusBadge(icon: "calendar", text: dueText(for: task), tint: accent)
                     }
@@ -596,7 +596,7 @@ private extension TasksView {
                 }
             } label: {
                 Label(
-                    task.isDone ? "Tekrar Aç" : "Tamamlandı Yap",
+                    task.isDone ? tr("common_reopen") : tr("tv_mark_done"),
                     systemImage: task.isDone ? "arrow.uturn.backward.circle" : "checkmark.circle"
                 )
             }
@@ -604,7 +604,7 @@ private extension TasksView {
             Button {
                 selectedTaskForSchedule = task
             } label: {
-                Label("Planla", systemImage: "calendar.badge.plus")
+                Label(tr("tv_plan"), systemImage: "calendar.badge.plus")
             }
 
             Button(role: .destructive) {
@@ -619,9 +619,9 @@ private extension TasksView {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
                 eyebrow: "EXAM SCHEDULE",
-                title: "Sınav",
+                title: tr("at_kind_exam"),
                 italic: "takvimi",
-                subtitle: "Derslerine göre yaklaşan sınav hazırlıkları",
+                subtitle: tr("tv_exam_section_sub"),
                 icon: "calendar.badge.clock",
                 tint: Color(arenaHex: AppArenaPalette.gold)
             )
@@ -743,9 +743,9 @@ private extension TasksView {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
                 eyebrow: "UPCOMING",
-                title: "Yaklaşan",
-                italic: "sınavlar",
-                subtitle: "Hazırlığını erkenden başlat",
+                title: tr("tv_upcoming"),
+                italic: tr("tv_exams_lc"),
+                subtitle: tr("tv_start_early"),
                 icon: "graduationcap.fill",
                 tint: Color(arenaHex: AppArenaPalette.gold)
             )
@@ -822,7 +822,7 @@ private extension TasksView {
 
                         HStack(spacing: 8) {
                             miniMeta(icon: "calendar", text: examDateText(exam), tint: accent)
-                            miniMeta(icon: "timer", text: "\(exam.preferredStudyMinutes) dk öneri", tint: Color(arenaHex: AppArenaPalette.gold))
+                            miniMeta(icon: "timer", text: tr("tv_study_suggestion", exam.preferredStudyMinutes), tint: Color(arenaHex: AppArenaPalette.gold))
                         }
                     }
 
@@ -845,21 +845,21 @@ private extension TasksView {
             .buttonStyle(.plain)
             .contextMenu {
                 Button {
-                    addQuickStudyTask(for: exam, title: "Konu tekrarı", topic: exam.courseName)
+                    addQuickStudyTask(for: exam, title: tr("tv_topic_review"), topic: exam.courseName)
                 } label: {
-                    Label("Konu tekrarı ekle", systemImage: "book.closed")
+                    Label(tr("tv_add_topic_review"), systemImage: "book.closed")
                 }
 
                 Button {
-                    addQuickStudyTask(for: exam, title: "Soru çözümü", topic: "Çıkmış sorular")
+                    addQuickStudyTask(for: exam, title: tr("tv_solve_q"), topic: tr("tv_past_q"))
                 } label: {
-                    Label("Soru çözümü ekle", systemImage: "pencil.and.list.clipboard")
+                    Label(tr("tv_add_solve"), systemImage: "pencil.and.list.clipboard")
                 }
 
                 Button {
-                    addQuickStudyTask(for: exam, title: "Hızlı tekrar", topic: "Son tekrar")
+                    addQuickStudyTask(for: exam, title: tr("tv_quick_review"), topic: "Son tekrar")
                 } label: {
-                    Label("Hızlı tekrar ekle", systemImage: "bolt.fill")
+                    Label(tr("tv_add_quick_review"), systemImage: "bolt.fill")
                 }
             }
 
@@ -897,7 +897,7 @@ private extension TasksView {
                                 .font(.system(size: 13, weight: .black))
                                 .foregroundStyle(accent)
 
-                            Text("Henüz çalışma adımı yok. Uzun basıp hızlıca ekleyebilirsin.")
+                            Text(tr("tv_no_steps"))
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(.white.opacity(0.50))
 
@@ -1225,9 +1225,9 @@ private extension TasksView {
             to: Calendar.current.startOfDay(for: date)
         ).day ?? 0
 
-        if days <= 0 { return "Bugün" }
-        if days == 1 { return "Yarın" }
-        return "\(days) gün kaldı"
+        if days <= 0 { return tr("common_today") }
+        if days == 1 { return tr("common_tomorrow") }
+        return tr("rel_days_left", days)
     }
 
     func examAccent(for exam: ExamItem) -> Color {
@@ -1258,9 +1258,9 @@ private extension TasksView {
     func examCountdownText(_ exam: ExamItem) -> String {
         let days = daysUntilExam(exam)
 
-        if days <= 0 { return "Bugün" }
-        if days == 1 { return "Yarın" }
-        return "\(days) gün kaldı"
+        if days <= 0 { return tr("common_today") }
+        if days == 1 { return tr("common_tomorrow") }
+        return tr("rel_days_left", days)
     }
 
     func examDateText(_ exam: ExamItem) -> String {
@@ -1290,7 +1290,7 @@ private extension TasksView {
     func examProgressText(for exam: ExamItem) -> String {
         let done = completedLinkedTaskCount(for: exam)
         let total = max(exam.targetStudyTaskCount, totalLinkedTaskCount(for: exam))
-        return "\(done)/\(total) adım tamamlandı"
+        return tr("rel_steps_done", done, total)
     }
 
     func examReadinessText(for exam: ExamItem) -> String {
@@ -1299,22 +1299,22 @@ private extension TasksView {
         let linkedDone = completedLinkedTaskCount(for: exam)
 
         if days <= 1 && linkedDone >= 2 {
-            return "Sınava hazır görünüyorsun"
+            return tr("tv_ready")
         }
 
         if completedMinutes >= exam.targetStudyMinutes {
-            return "Hazırlık iyi gidiyor"
+            return tr("tv_prep_good")
         }
 
         if linkedDone >= 1 {
-            return "Ritim oluştu, devam et"
+            return tr("tv_rhythm")
         }
 
         if days <= 2 {
-            return "Kısa bir tekrar iyi olur"
+            return tr("tv_short_review")
         }
 
-        return "Hazırlığını erkenden başlat"
+        return tr("tv_start_early")
     }
 
     func examRowSubtitle(for exam: ExamItem) -> String {
@@ -1324,7 +1324,7 @@ private extension TasksView {
         if !course.isEmpty, !note.isEmpty { return "\(course) • \(note)" }
         if !course.isEmpty { return course }
         if !note.isEmpty { return note }
-        return "Yaklaşan sınav"
+        return tr("tv_upcoming_exam")
     }
 
     func isExamExpanded(_ exam: ExamItem) -> Bool {
@@ -1350,7 +1350,7 @@ private extension TasksView {
                 try modelContext.save()
                 store.reload()
             } catch {
-                print("❌ linked exam task toggle error:", error.localizedDescription)
+                Log.debug("❌ linked exam task toggle error:", error.localizedDescription)
             }
         }
     }
@@ -1366,7 +1366,7 @@ private extension TasksView {
             exam: exam,
             title: "\(exam.courseName.isEmpty ? exam.title : exam.courseName) • \(title)",
             topic: topic,
-            notes: "\(exam.title) için çalışma adımı",
+            notes: tr("tv_study_step_for", exam.title),
             suggestedMinutes: exam.preferredStudyMinutes,
             dueDate: nil
         )
@@ -1379,23 +1379,23 @@ private extension TasksView {
 
     var emptyTitle: String {
         switch selectedFilter {
-        case .today: return "Bugün için görev yok"
-        case .all: return "Henüz görev eklenmedi"
-        case .done: return "Tamamlanan görev görünmüyor"
-        case .exams: return "Sınav takvimi boş"
+        case .today: return tr("tv_empty_today_title")
+        case .all: return tr("tv_empty_none_title")
+        case .done: return tr("tv_empty_done_title")
+        case .exams: return tr("tv_empty_exams_title")
         }
     }
 
     var emptySubtitle: String {
         switch selectedFilter {
         case .today:
-            return "Bugün sakin görünüyor. Yeni bir görev ekleyebilirsin."
+            return tr("tv_empty_today_sub")
         case .all:
-            return "İlk görevi ekleyerek akışını başlat."
+            return tr("tv_empty_none_sub")
         case .done:
-            return "Tamamladığın görevler burada görünecek."
+            return tr("tv_empty_done_sub")
         case .exams:
-            return "Insights içindeki Sınav Çalışma Programı’ndan sınav tarihi ekleyebilirsin."
+            return tr("tv_empty_exams_sub")
         }
     }
 
@@ -1413,10 +1413,10 @@ private extension TasksView {
 
     var summaryTitle: String {
         switch selectedFilter {
-        case .today: return "Bugüne odaklan"
-        case .all: return "Tüm görevlerin"
+        case .today: return tr("tv_focus_today")
+        case .all: return tr("tv_all_tasks")
         case .done: return "Tamamlananlar"
-        case .exams: return "Sınav Takvimin"
+        case .exams: return tr("tv_your_exam_cal")
         }
     }
 
@@ -1499,7 +1499,7 @@ private extension TasksView {
             try modelContext.save()
             store.reload()
         } catch {
-            print("❌ TasksView toggle save error:", error)
+            Log.debug("❌ TasksView toggle save error:", error)
         }
 
         if willBeDone {
@@ -1555,13 +1555,13 @@ private extension TasksView {
 
     func taskTypeTitle(for task: DTTaskItem) -> String {
         switch task.taskType.lowercased() {
-        case "homework": return "Ödev"
-        case "exam": return "Sınav"
-        case "study": return "Çalışma"
+        case "homework": return tr("tt_homework")
+        case "exam": return tr("at_kind_exam")
+        case "study": return tr("tt_study")
         case "project": return "Proje"
         case "workout": return "Workout"
-        case "exam_study": return "Sınav Çalışması"
-        default: return "Görev"
+        case "exam_study": return tr("tv_exam_study")
+        default: return tr("at_kind_task")
         }
     }
 
@@ -1583,7 +1583,7 @@ private extension TasksView {
         }
 
         if isOverdue(task) {
-            return "Gecikmiş"
+            return tr("common_overdue")
         }
 
         let diff = Int(target.timeIntervalSinceNow)
@@ -1592,18 +1592,18 @@ private extension TasksView {
         let days = minutes / 1440
 
         if task.taskType.lowercased() == "exam" {
-            if days >= 1 { return "\(days) gün kaldı" }
-            if hours >= 1 { return "\(hours) sa kaldı" }
-            return "\(minutes) dk kaldı"
+            if days >= 1 { return tr("rel_days_left", days) }
+            if hours >= 1 { return tr("rel_hours_left", hours) }
+            return tr("rel_min_left", minutes)
         }
 
         if task.taskType.lowercased() == "homework" {
             if Calendar.current.isDateInToday(target) {
-                return "Bugün teslim"
+                return tr("due_today")
             }
 
             if Calendar.current.isDateInTomorrow(target) {
-                return "Yarın teslim"
+                return tr("due_tomorrow")
             }
         }
 
@@ -1613,7 +1613,7 @@ private extension TasksView {
         }
 
         if Calendar.current.isDateInTomorrow(target) {
-            return "Yarın"
+            return tr("common_tomorrow")
         }
 
         return target.formatted(date: .abbreviated, time: .shortened)

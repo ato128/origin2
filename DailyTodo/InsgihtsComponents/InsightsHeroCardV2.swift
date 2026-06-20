@@ -91,7 +91,7 @@ struct InsightsHeroCardV2: View {
         case .courses:
             return "Course"
         case .rhythm:
-            return "Haftanın"
+            return tr("ihc_of_week")
         case .empty:
             return "Yeni"
         }
@@ -110,7 +110,7 @@ struct InsightsHeroCardV2: View {
         case .rhythm:
             return "ritmi"
         case .empty:
-            return "başla"
+            return tr("hh_start_lc")
         }
     }
 
@@ -207,13 +207,13 @@ struct InsightsHeroCardV2: View {
 
             metricCard(
                 value: cleanedMetricValue(data.chip1),
-                label: cleanedMetricLabel(data.chip1, fallback: "görev"),
+                label: cleanedMetricLabel(data.chip1, fallback: tr("task_lc")),
                 tint: secondaryTint
             )
 
             metricCard(
                 value: cleanedMetricValue(data.chip2),
-                label: cleanedMetricLabel(data.chip2, fallback: "aktif gün"),
+                label: cleanedMetricLabel(data.chip2, fallback: tr("ihc_active_days")),
                 tint: Color(arenaHex: AppArenaPalette.cyan)
             )
         }
@@ -310,13 +310,13 @@ struct InsightsHeroCardV2: View {
 
         switch data.mode {
         case .exams:
-            return "Kısa bloklarla sınav ritmini güçlendir."
+            return tr("ihc_tip1")
         case .courses:
-            return "Ders dengeni korudukça haftan netleşir."
+            return tr("ihc_tip2")
         case .rhythm:
-            return "İyi bir ritim yakalıyorsun."
+            return tr("ihc_tip3")
         case .empty:
-            return "Kısa başla, ritim kendiliğinden kurulur."
+            return tr("ihc_tip4")
         }
     }
 

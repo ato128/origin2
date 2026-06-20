@@ -145,7 +145,7 @@ private extension SharedWeekView {
 
     func localizedMinutesLeft(_ minutes: Int) -> String {
         if locale.language.languageCode?.identifier == "tr" {
-            return "\(minutes) dk kaldı"
+            return tr("rel_min_left", minutes)
         } else {
             return "\(minutes) min left"
         }
@@ -161,7 +161,7 @@ private extension SharedWeekView {
 
     func localizedNoEventText(for day: Int) -> String {
         if locale.language.languageCode?.identifier == "tr" {
-            return "\(localizedDayTitle(day)) için paylaşılmış etkinlik yok."
+            return tr("sw_no_shared_for", localizedDayTitle(day))
         } else {
             return "There is no shared event for \(localizedDayTitle(day))."
         }
@@ -172,7 +172,7 @@ private extension SharedWeekView {
         let left = max(0, end - currentMinuteOfDay())
 
         if locale.language.languageCode?.identifier == "tr" {
-            return "Şu an aktif • \(left) dk kaldı"
+            return "\(tr("hd_active_now_label")) • \(tr("rel_min_left", left))"
         } else {
             return "Active now • \(left) min left"
         }
@@ -180,7 +180,7 @@ private extension SharedWeekView {
 
     func localizedSharedWeekTitle(_ name: String) -> String {
         if locale.language.languageCode?.identifier == "tr" {
-            return "\(name) adlı kişinin paylaşılan haftası"
+            return tr("sw_shared_week_of", name)
         } else {
             return "\(name)'s Shared Week"
         }

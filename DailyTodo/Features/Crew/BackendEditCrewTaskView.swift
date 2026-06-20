@@ -295,17 +295,17 @@ private extension BackendEditCrewTaskView {
                     }
 
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text("Görevi")
+                        Text(tr("bce_edit_w1"))
                             .font(.system(size: 30, weight: .black))
                             .foregroundStyle(.white)
 
-                        Text("düzenle")
+                        Text(tr("bce_edit_w2"))
                             .font(.system(size: 25, weight: .regular, design: .serif))
                             .italic()
                             .foregroundStyle(BackendEditTaskArenaPalette.cyan)
                     }
 
-                    Text("Başlığı, atamayı, önceliği ve hafta planını güncelle.")
+                    Text(tr("bce_subtitle"))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.50))
                         .lineLimit(2)
@@ -320,7 +320,7 @@ private extension BackendEditCrewTaskView {
                         .font(.system(size: 13, weight: .black))
                         .foregroundStyle(BackendEditTaskArenaPalette.gold)
 
-                    Text("Kaydedilmemiş değişiklikler var")
+                    Text(tr("bce_unsaved"))
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
                         .foregroundStyle(.white.opacity(0.62))
                 }
@@ -354,11 +354,11 @@ private extension BackendEditCrewTaskView {
 private extension BackendEditCrewTaskView {
     var taskInfoCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionTitle(eyebrow: "TASK INFO", title: "Görev", italic: "bilgisi")
+            sectionTitle(eyebrow: "TASK INFO", title: tr("at_kind_task"), italic: "bilgisi")
 
             VStack(spacing: 10) {
                 fieldBox(
-                    title: "Başlık",
+                    title: tr("at_title"),
                     icon: "text.cursor",
                     tint: BackendEditTaskArenaPalette.blue
                 ) {
@@ -386,7 +386,7 @@ private extension BackendEditCrewTaskView {
 
     var assignmentCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionTitle(eyebrow: "ASSIGNMENT", title: "Atama", italic: "seçimi")
+            sectionTitle(eyebrow: "ASSIGNMENT", title: "Atama", italic: tr("ph_w_selection"))
 
             Picker(selection: $selectedAssigneeID) {
                 Text("backend_crew_unassigned").tag(UUID?.none)
@@ -414,7 +414,7 @@ private extension BackendEditCrewTaskView {
 
     var priorityStatusCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionTitle(eyebrow: "TASK STATE", title: "Öncelik", italic: "durum")
+            sectionTitle(eyebrow: "TASK STATE", title: tr("priority_label"), italic: "durum")
 
             VStack(spacing: 14) {
                 optionGrid(
@@ -456,7 +456,7 @@ private extension BackendEditCrewTaskView {
                     .font(.system(size: 15, weight: .black))
                     .foregroundStyle(.white)
 
-                Text(isDone ? "Bu görev tamamlandı" : "Görev açık durumda")
+                Text(isDone ? tr("bce_task_done") : tr("bce_task_open"))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.44))
             }
@@ -513,7 +513,7 @@ private extension BackendEditCrewTaskView {
                 .padding(14)
                 .background(detailSurface(cornerRadius: 22, tint: BackendEditTaskArenaPalette.green))
             } else {
-                Text("Bu görev Week ekranında görünmez. İstersen tarih ve süre belirleyerek haftaya ekleyebilirsin.")
+                Text(tr("bce_week_hint"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.46))
                     .padding(14)
@@ -540,7 +540,7 @@ private extension BackendEditCrewTaskView {
                         .font(.system(size: 18, weight: .black))
                 }
 
-                Text("Değişiklikleri Kaydet")
+                Text(tr("common_save_changes"))
                     .font(.system(size: 16, weight: .black))
             }
             .foregroundStyle(.black)
@@ -900,9 +900,9 @@ private extension BackendEditCrewTaskView {
         let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
 
         switch raw {
-        case "low": return isTurkish ? "Düşük" : "Low"
+        case "low": return isTurkish ? tr("prio_low") : "Low"
         case "medium": return isTurkish ? "Orta" : "Medium"
-        case "high": return isTurkish ? "Yüksek" : "High"
+        case "high": return isTurkish ? tr("prio_high") : "High"
         case "urgent": return isTurkish ? "Acil" : "Urgent"
         default: return raw.capitalized
         }
@@ -912,10 +912,10 @@ private extension BackendEditCrewTaskView {
         let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
 
         switch raw {
-        case "todo": return isTurkish ? "Yapılacak" : "Todo"
+        case "todo": return isTurkish ? tr("status_todo") : "Todo"
         case "inProgress": return isTurkish ? "Devam Ediyor" : "In Progress"
-        case "review": return isTurkish ? "İncelemede" : "Review"
-        case "done": return isTurkish ? "Tamamlandı" : "Done"
+        case "review": return isTurkish ? tr("status_review") : "Review"
+        case "done": return isTurkish ? tr("common_completed") : "Done"
         default: return raw.capitalized
         }
     }

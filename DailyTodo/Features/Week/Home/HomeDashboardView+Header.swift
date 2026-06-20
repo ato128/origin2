@@ -86,7 +86,7 @@ extension HomeDashboardView {
         case .defaultFlow:
             switch heroDayPhase {
             case .morning:
-                return "başla"
+                return tr("hh_start_lc")
             case .afternoon:
                 return "devam"
             case .evening, .night:
@@ -98,25 +98,25 @@ extension HomeDashboardView {
     var adaptiveGreetingText: String {
         switch homeLayoutMode {
         case .focusActive:
-            return "Akıştasın"
+            return tr("hh_in_flow")
 
         case .crewFollowUp:
             return "Ekip seni bekliyor"
 
         case .insightsFollowUp:
-            return "İyi gidiyorsun"
+            return tr("hh_doing_well")
 
         case .completionWrapUp:
-            return currentHour >= 20 ? "Günü iyi kapatıyorsun" : "İyi gidiyorsun"
+            return currentHour >= 20 ? tr("hh_closing_well") : tr("hh_doing_well")
 
         case .defaultFlow:
             switch heroDayPhase {
             case .morning:
-                return "Günaydın"
+                return tr("hh_good_morning")
             case .afternoon:
-                return "İyi gidiyor"
+                return tr("hh_going_well")
             case .evening, .night:
-                return "İyi akşamlar"
+                return tr("hh_good_evening")
             }
         }
     }
@@ -152,11 +152,11 @@ extension HomeDashboardView {
 
         switch hour {
         case 5..<12:
-            return "Günaydın"
+            return tr("hh_good_morning")
         case 12..<18:
-            return "İyi günler"
+            return tr("hh_good_day")
         default:
-            return "İyi akşamlar"
+            return tr("hh_good_evening")
         }
     }
 
@@ -179,11 +179,11 @@ extension HomeDashboardView {
                     if let task = focusTask {
                         let course = task.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
                         if !course.isEmpty {
-                            return "\(course) odağındasın"
+                            return tr("hh_in_focus", course)
                         }
                         return task.title
                     }
-                    return "Odak açık"
+                    return tr("hd_focus_on")
 
                 case .crew:
                     if let host = focusSession.hostName, !host.isEmpty {
@@ -208,24 +208,24 @@ extension HomeDashboardView {
             }
 
             if activeCrewTaskCount > 0 {
-                return "Crew tarafında açık işler var"
+                return tr("hh_crew_open")
             }
 
-            return "Crew akışına göz at"
+            return tr("hh_check_crew")
 
         case .insightsFollowUp:
             if completedTodayCount > 0 {
-                return "Bugünkü ritmini görebilirsin"
+                return tr("hh_see_rhythm")
             }
 
-            return "Bugünün akışına göz at"
+            return tr("hh_check_today")
 
         case .completionWrapUp:
             if currentHour >= 20 {
-                return "Günü sakin kapatabilirsin"
+                return tr("hh_close_calm")
             }
 
-            return "Bugün iyi ilerliyorsun"
+            return tr("hh_progress_today")
 
         case .defaultFlow:
             if let nextEvent {
@@ -234,7 +234,7 @@ extension HomeDashboardView {
                 let end = nextEvent.startMinute + nextEvent.durationMinute
 
                 if now >= start && now < end {
-                    return "\(nextEvent.title) şu an aktif"
+                    return tr("hh_now_active", nextEvent.title)
                 }
 
                 let diff = start - now
@@ -245,13 +245,13 @@ extension HomeDashboardView {
 
             if let topTask = todayPendingTasks.first {
                 if store.isOverdue(topTask) {
-                    return "Önce geciken görevi temizle"
+                    return tr("hh_clear_overdue")
                 }
 
-                return "Bugün önce \(topTask.title)"
+                return tr("hh_today_first", topTask.title)
             }
 
-            return "Bugün sakin görünüyor"
+            return tr("hh_today_calm")
         }
     }
 }

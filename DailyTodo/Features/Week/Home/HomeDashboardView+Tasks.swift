@@ -204,7 +204,7 @@ extension HomeDashboardView {
                             .foregroundStyle(todayCardAccentColor)
                     }
 
-                    Text("Bugün")
+                    Text(tr("common_today"))
                         .font(.system(size: 25, weight: .black))
                         .foregroundStyle(.white)
 
@@ -251,7 +251,7 @@ extension HomeDashboardView {
                     )
 
                     todayMiniMetricPill(
-                        title: "İlerleme",
+                        title: tr("ha_progress"),
                         value: "\(Int((boardTodayProgressValue * 100).rounded()))%",
                         tint: todayCardAccentColor
                     )
@@ -368,14 +368,14 @@ extension HomeDashboardView {
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Bugün temiz görünüyor")
+                    Text(tr("hdt_today_clean"))
                         .font(.system(size: 16, weight: .black))
                         .foregroundStyle(.white)
 
                     Text(
                         homeLayoutMode == .completionWrapUp || homeLayoutMode == .insightsFollowUp
-                        ? "Bugün için kalan görev görünmüyor."
-                        : "Şimdilik sakin. İstersen küçük bir görev ekleyebilirsin."
+                        ? tr("hdt_no_remaining")
+                        : tr("hdt_calm_add")
                     )
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.50))
@@ -428,44 +428,44 @@ extension HomeDashboardView {
 
     var todayTaskHeaderText: String {
         if todayBoardTasks.isEmpty {
-            return "Bugün sakin görünüyor"
+            return tr("hh_today_calm")
         }
 
         switch homeLayoutMode {
         case .insightsFollowUp, .completionWrapUp:
             if todayPendingBoardCount == 0 {
-                return "Bugünün tüm görevleri tamamlandı"
+                return tr("hdt_all_done")
             }
-            return "\(todayPendingBoardCount) görev kaldı • \(completedTodayBoardCount) tamamlandı"
+            return "\(tr("hdt_tasks_left", todayPendingBoardCount)) • \(tr("rel_done_count", completedTodayBoardCount))"
 
         case .crewFollowUp:
-            return "\(todayPendingBoardCount) kişisel görev kaldı"
+            return tr("hdt_personal_left", todayPendingBoardCount)
 
         case .focusActive:
-            return "\(todayPendingBoardCount) görev kaldı • odak sürüyor"
+            return "\(tr("hdt_tasks_left", todayPendingBoardCount)) • \(tr("hdt_focus_going"))"
 
         case .defaultFlow:
             if todayPendingBoardCount == 0 {
-                return "Bugünün tüm görevleri tamamlandı"
+                return tr("hdt_all_done")
             }
-            return "\(todayPendingBoardCount) görev kaldı • \(completedTodayBoardCount) tamamlandı"
+            return "\(tr("hdt_tasks_left", todayPendingBoardCount)) • \(tr("rel_done_count", completedTodayBoardCount))"
         }
     }
 
     var todayOpenBadgeText: String {
-        todayPendingBoardCount == 0 ? "Temiz" : "\(todayPendingBoardCount) açık"
+        todayPendingBoardCount == 0 ? "Temiz" : tr("rel_open_count", todayPendingBoardCount)
     }
 
     var taskCardPendingSectionTitle: String {
         switch homeLayoutMode {
         case .focusActive:
-            return "Kalan görevler"
+            return tr("hdt_remaining_tasks")
         case .crewFollowUp:
-            return "Kişisel taraf"
+            return tr("hdt_personal_side")
         case .insightsFollowUp, .completionWrapUp:
-            return "Açık kalanlar"
+            return tr("hdt_open_ones")
         case .defaultFlow:
-            return "Sıradaki işler"
+            return tr("hdt_next_tasks")
         }
     }
 
@@ -598,7 +598,7 @@ extension HomeDashboardView {
                 if task.isDone {
                     miniBadge(
                         icon: "checkmark.circle.fill",
-                        text: compact ? "Bitti" : "Tamamlandı",
+                        text: compact ? "Bitti" : tr("common_completed"),
                         tint: Color(arenaHex: AppArenaPalette.green)
                     )
                 } else if isOverdue {
@@ -711,7 +711,7 @@ extension HomeDashboardView {
             do {
                 try modelContext.save()
             } catch {
-                print("❌ today board task toggle error:", error)
+                Log.debug("❌ today board task toggle error:", error)
             }
 
             if task.isDone {
@@ -779,13 +779,13 @@ extension HomeDashboardView {
     }
 
     func dueBadgeText(for task: DTTaskItem) -> String {
-        if task.isDone { return "Tamamlandı" }
+        if task.isDone { return tr("common_completed") }
 
         let type = task.taskType.lowercased()
 
         if store.isOverdue(task) {
-            if type == "exam" { return "Sınav geçti" }
-            return "Gecikmiş"
+            if type == "exam" { return tr("hdt_exam_passed") }
+            return tr("common_overdue")
         }
 
         guard let target = task.dueDate ?? task.scheduledWeekDate else {
@@ -799,14 +799,14 @@ extension HomeDashboardView {
         let days = minutes / 1440
 
         if type == "exam" {
-            if days >= 1 { return "\(days) gün kaldı" }
-            if hours >= 1 { return "\(hours) sa kaldı" }
-            return "\(minutes) dk kaldı"
+            if days >= 1 { return tr("rel_days_left", days) }
+            if hours >= 1 { return tr("rel_hours_left", hours) }
+            return tr("rel_min_left", minutes)
         }
 
         if type == "homework" {
-            if Calendar.current.isDateInToday(target) { return "Bugün teslim" }
-            if Calendar.current.isDateInTomorrow(target) { return "Yarın teslim" }
+            if Calendar.current.isDateInToday(target) { return tr("due_today") }
+            if Calendar.current.isDateInTomorrow(target) { return tr("due_tomorrow") }
         }
 
         if type == "study", let duration = task.workoutDurationMinutes {
@@ -818,19 +818,19 @@ extension HomeDashboardView {
             return "\(minutes) dk sonra"
         }
 
-        if Calendar.current.isDateInTomorrow(target) { return "Yarın" }
+        if Calendar.current.isDateInTomorrow(target) { return tr("common_tomorrow") }
 
         return target.formatted(date: .abbreviated, time: .shortened)
     }
 
     func todayTaskLabel(for task: DTTaskItem) -> String {
         switch task.taskType.lowercased() {
-        case "exam": return "Sınav"
+        case "exam": return tr("at_kind_exam")
         case "project": return "Proje"
         case "workout": return "Antrenman"
-        case "study": return "Çalışma"
-        case "homework": return "Ödev"
-        default: return "Bugün"
+        case "study": return tr("tt_study")
+        case "homework": return tr("tt_homework")
+        default: return tr("common_today")
         }
     }
 
@@ -854,6 +854,6 @@ extension HomeDashboardView {
             return due.formatted(date: .omitted, time: .shortened)
         }
 
-        return task.taskType.isEmpty ? "Görev" : task.taskType.capitalized
+        return task.taskType.isEmpty ? tr("at_kind_task") : task.taskType.capitalized
     }
 }

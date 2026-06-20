@@ -366,7 +366,7 @@ extension HomeDashboardView {
             do {
                 try modelContext.save()
             } catch {
-                print("❌ Linked week event complete error:", error)
+                Log.debug("❌ Linked week event complete error:", error)
             }
         }
     }

@@ -33,7 +33,7 @@ struct EmailVerificationView: View {
                             .foregroundStyle(.white)
                             .multilineTextAlignment(.center)
 
-                        Text("Updo hesabını aktifleştirmek için sana gönderdiğimiz bağlantıya bas.")
+                        Text(tr("ev_subtitle"))
                             .font(.system(size: 16, weight: .semibold, design: .rounded))
                             .foregroundStyle(.white.opacity(0.62))
                             .multilineTextAlignment(.center)
@@ -59,7 +59,7 @@ struct EmailVerificationView: View {
                         }
                     } label: {
                         primaryButtonContent(
-                            title: isChecking || session.isLoading ? "Kontrol ediliyor..." : "Onayladım, devam et",
+                            title: isChecking || session.isLoading ? "Kontrol ediliyor..." : tr("ev_confirmed_continue"),
                             systemImage: "checkmark.circle.fill",
                             isLoading: isChecking || session.isLoading
                         )
@@ -75,7 +75,7 @@ struct EmailVerificationView: View {
                         }
                     } label: {
                         secondaryButtonContent(
-                            title: isResending ? "Gönderiliyor..." : "Maili tekrar gönder",
+                            title: isResending ? tr("ev_sending") : tr("ev_resend"),
                             systemImage: "paperplane.fill",
                             isLoading: isResending
                         )
@@ -86,7 +86,7 @@ struct EmailVerificationView: View {
                     Button {
                         session.signOut()
                     } label: {
-                        Text("Farklı hesap kullan")
+                        Text(tr("ev_different_account"))
                             .font(.system(size: 14, weight: .black, design: .rounded))
                             .foregroundStyle(.white.opacity(0.48))
                             .frame(height: 42)

@@ -38,7 +38,7 @@ struct InsightsAchievementsSectionV2: View {
             HStack(spacing: 12) {
                 if let nextTarget {
                     achievementPreviewCard(
-                        eyebrow: "Sıradaki",
+                        eyebrow: tr("ias_next"),
                         badge: nextTarget,
                         tint: nextTarget.accent,
                         mode: .target
@@ -47,14 +47,14 @@ struct InsightsAchievementsSectionV2: View {
 
                 if let recentUnlocked {
                     achievementPreviewCard(
-                        eyebrow: "Kazanıldı",
+                        eyebrow: tr("ia_earned_label"),
                         badge: recentUnlocked,
                         tint: recentUnlocked.accent,
                         mode: .unlocked
                     )
                 } else if let fallback = activeTargets.dropFirst().first {
                     achievementPreviewCard(
-                        eyebrow: "Yakında",
+                        eyebrow: tr("bcd_soon"),
                         badge: fallback,
                         tint: fallback.accent,
                         mode: .locked
@@ -99,11 +99,11 @@ private extension InsightsAchievementsSectionV2 {
                         .foregroundStyle(sectionAccent)
                 }
 
-                Text("Ödüller")
+                Text(tr("ias_rewards"))
                     .font(.system(size: 25, weight: .black))
                     .foregroundStyle(.white)
 
-                Text("\(unlockedBadges.count) kazanıldı • \(activeTargets.count) hedef aktif")
+                Text("\(tr("ia_unlocked_n", unlockedBadges.count)) • \(tr("ias_targets_active", activeTargets.count))")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.48))
             }
@@ -113,7 +113,7 @@ private extension InsightsAchievementsSectionV2 {
             Button {
                 onSeeAll()
             } label: {
-                Text("TÜMÜ")
+                Text(tr("ch_all_caps"))
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(0.8)
                     .foregroundStyle(sectionAccent)
@@ -310,7 +310,7 @@ struct InsightsAchievementMiniCard: View {
                         .monospacedDigit()
                         .lineLimit(1)
 
-                    Text("ödül kazanıldı")
+                    Text(tr("ias_reward_earned"))
                         .font(.system(size: 12, weight: .black))
                         .foregroundStyle(.white.opacity(0.58))
                         .lineLimit(1)
@@ -322,7 +322,7 @@ struct InsightsAchievementMiniCard: View {
                     .frame(height: 1)
 
                 VStack(alignment: .leading, spacing: 7) {
-                    Text(activeTarget?.title ?? "İlk hedefini aç")
+                    Text(activeTarget?.title ?? tr("ias_unlock_first"))
                         .font(.system(size: 12, weight: .black))
                         .foregroundStyle(.white.opacity(0.68))
                         .lineLimit(1)

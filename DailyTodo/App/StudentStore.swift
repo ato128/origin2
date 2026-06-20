@@ -103,7 +103,7 @@ final class StudentStore: ObservableObject {
                 $0.ownerUserID == currentUserID && !$0.isArchived
             }
         } catch {
-            print("❌ StudentStore.reload error:", error)
+            Log.debug("❌ StudentStore.reload error:", error)
             profile = nil
             courses = []
         }
@@ -155,7 +155,7 @@ final class StudentStore: ObservableObject {
 
             reload()
         } catch {
-            print("❌ StudentStore.loadFromRemote error:", error)
+            Log.debug("❌ StudentStore.loadFromRemote error:", error)
             reload()
         }
     }
@@ -269,7 +269,7 @@ final class StudentStore: ObservableObject {
                 .upsert(profilePayload, onConflict: "user_id")
                 .execute()
         } catch {
-            print("❌ StudentStore.upsert profile error:", error)
+            Log.debug("❌ StudentStore.upsert profile error:", error)
 
             throw NSError(
                 domain: "StudentStore",
@@ -285,7 +285,7 @@ final class StudentStore: ObservableObject {
                 .eq("user_id", value: userUUID.uuidString)
                 .execute()
         } catch {
-            print("❌ StudentStore.delete remote courses error:", error)
+            Log.debug("❌ StudentStore.delete remote courses error:", error)
 
             throw NSError(
                 domain: "StudentStore",
@@ -314,7 +314,7 @@ final class StudentStore: ObservableObject {
                     .insert(payload)
                     .execute()
             } catch {
-                print("❌ StudentStore.insert remote course error:", error)
+                Log.debug("❌ StudentStore.insert remote course error:", error)
 
                 throw NSError(
                     domain: "StudentStore",
@@ -460,7 +460,7 @@ final class StudentStore: ObservableObject {
 
             reload()
         } catch {
-            print("❌ addCourseAndSync error:", error)
+            Log.debug("❌ addCourseAndSync error:", error)
         }
     }
     
@@ -485,7 +485,7 @@ final class StudentStore: ObservableObject {
 
             reload()
         } catch {
-            print("❌ deleteCourseAndSync error:", error)
+            Log.debug("❌ deleteCourseAndSync error:", error)
         }
     }
 
@@ -504,7 +504,7 @@ final class StudentStore: ObservableObject {
     
     func forceRestoreCoursesFromOnboardingDrafts(_ drafts: [OnboardingCourseDraft]) {
         guard let currentUserID else {
-            print("❌ forceRestoreCourses failed: currentUserID nil")
+            Log.debug("❌ forceRestoreCourses failed: currentUserID nil")
             return
         }
 
@@ -564,7 +564,7 @@ final class StudentStore: ObservableObject {
             let all = try context.fetch(descriptor)
             existing = all.first(where: { $0.ownerUserID == userID })
         } catch {
-            print("❌ upsertLocalProfile fetch error:", error)
+            Log.debug("❌ upsertLocalProfile fetch error:", error)
             return
         }
 
@@ -625,7 +625,7 @@ final class StudentStore: ObservableObject {
 
             saveContextOnly()
         } catch {
-            print("❌ replaceLocalCourses error:", error)
+            Log.debug("❌ replaceLocalCourses error:", error)
         }
     }
 
@@ -642,7 +642,7 @@ final class StudentStore: ObservableObject {
             saveContextOnly()
             reload()
         } catch {
-            print("❌ clearLocalCoursesForCurrentUser error:", error)
+            Log.debug("❌ clearLocalCoursesForCurrentUser error:", error)
         }
     }
 
@@ -668,7 +668,7 @@ final class StudentStore: ObservableObject {
         do {
             try context.save()
         } catch {
-            print("❌ StudentStore.save error:", error)
+            Log.debug("❌ StudentStore.save error:", error)
         }
     }
 }

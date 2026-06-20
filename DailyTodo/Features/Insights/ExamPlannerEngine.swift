@@ -85,21 +85,21 @@ private extension ExamPlannerEngine {
         var title: String {
             switch self {
             case .syllabusScan:
-                return "Konu listesi çıkar"
+                return tr("epe_topic_list")
             case .lectureReview:
-                return "Ders notlarını oku"
+                return tr("epe_read_notes")
             case .noteRewrite:
-                return "Özet not hazırla"
+                return tr("epe_summary")
             case .examples:
-                return "Örnek soruları incele"
+                return tr("epe_examples")
             case .problemSet:
-                return "Soru çözümü"
+                return tr("tv_solve_q")
             case .pastQuestions:
-                return "Çıkmış soru çöz"
+                return tr("epe_past_q")
             case .weakTopics:
-                return "Zayıf konuları kapat"
+                return tr("epe_weak_topics")
             case .mockExam:
-                return "Deneme sınavı"
+                return tr("epe_mock_exam")
             case .finalReview:
                 return "Son tekrar"
             }

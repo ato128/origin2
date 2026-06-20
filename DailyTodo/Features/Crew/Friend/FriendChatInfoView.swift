@@ -366,8 +366,8 @@ private extension FriendChatInfoView {
         VStack(alignment: .leading, spacing: 14) {
             sectionTitle(
                 eyebrow: "SOCIAL ACTIONS",
-                title: "Hızlı",
-                italic: "işlemler"
+                title: tr("bctd_quick_w"),
+                italic: tr("bctd_actions_w")
             )
 
             VStack(spacing: 10) {
@@ -406,7 +406,7 @@ private extension FriendChatInfoView {
             sectionTitle(
                 eyebrow: "CHAT SETTINGS",
                 title: "Sohbet",
-                italic: "ayarları"
+                italic: tr("fci_settings_w")
             )
 
             VStack(spacing: 10) {
@@ -511,7 +511,7 @@ private extension FriendChatInfoView {
     var clearChatRow: some View {
         Button(role: .destructive) {
             infoMessage = locale.language.languageCode?.identifier == "tr"
-            ? "Sohbet temizleme yakında eklenecek."
+            ? tr("fci_clear_soon")
             : "Clear chat will be added soon."
         } label: {
             HStack(spacing: 13) {
@@ -526,7 +526,7 @@ private extension FriendChatInfoView {
                         .foregroundStyle(FriendChatInfoArenaPalette.coral)
 
                     Text(locale.language.languageCode?.identifier == "tr"
-                         ? "Bu işlem henüz aktif değil."
+                         ? tr("fci_not_active")
                          : "This action is not active yet.")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.44))

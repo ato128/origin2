@@ -38,15 +38,31 @@ struct HomeView: View {
     @State private var showProfileHub = false
     @State private var showMessages = false
     @State private var showTimelineDetail = false
+    @State private var showUpdoAI = false
     @State private var pageAppeared = false
     @State private var now: Date = Date()
+
+    // Streak bubble
+    @State private var showStreakBubble = false
+    @State private var streakBubbleMode: StreakBubbleMode = .info
+    @State private var bubbleStreakValue = 0
+    @Environment(\.scenePhase) private var scenePhase
+
+    private let lastSeenStreakKey = "home.lastSeenStreak"
 
     @State private var pulse = false
     @State private var breathe = false
     @State private var shimmer = false
     @State private var shimmerPhase: CGFloat = -1.2
+    @State private var aiCardPressed = false
 
-    private let secondTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    @StateObject private var aiChatStore = UpdoAIChatStore()
+    @ObservedObject private var credits = DailyCreditsManager.shared
+    @ObservedObject private var progression = ProgressionManager.shared
+
+    // `now` is only read at minute granularity (timeline position, day checks) —
+    // 15 s keeps it fresh without re-rendering the whole view every second.
+    private let secondTimer = Timer.publish(every: 15, on: .main, in: .common).autoconnect()
     private let pulseTimer = Timer.publish(every: 1.2, on: .main, in: .common).autoconnect()
     private let breatheTimer = Timer.publish(every: 2.8, on: .main, in: .common).autoconnect()
     private let shimmerTimer = Timer.publish(every: 3.2, on: .main, in: .common).autoconnect()
@@ -85,7 +101,6 @@ struct HomeView: View {
                     heroSection
                     focusCard
                     timelineSection
-                    statsRow
 
                     Color.clear.frame(height: focusSession.isSessionActive ? 168 : 96)
                 }
@@ -93,6 +108,19 @@ struct HomeView: View {
                 .padding(.top, focusSession.isSessionActive ? 4 : 6)
             }
             .animation(.spring(response: 0.44, dampingFraction: 0.88), value: focusSession.isSessionActive)
+
+            if showStreakBubble {
+                StreakBubble(
+                    streak: bubbleStreakValue,
+                    mode: streakBubbleMode,
+                    onClose: { showStreakBubble = false }
+                )
+                .padding(.leading, 14)
+                .padding(.top, 70)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .transition(.opacity)
+                .zIndex(10)
+            }
         }
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showProfileHub) {
@@ -104,6 +132,21 @@ struct HomeView: View {
             NavigationStack {
                 MessagesView()
             }
+        }
+        .fullScreenCover(isPresented: $showUpdoAI) {
+            UpdoAIView(
+                onDismissAndOpenWeek: {
+                    showUpdoAI = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { onOpenWeek() }
+                },
+                onDismissAndAddTask: {
+                    showUpdoAI = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { onAddTask() }
+                }
+            )
+            .environmentObject(session)
+            .environmentObject(store)
+            .environmentObject(studentStore)
         }
         .sheet(isPresented: $showTimelineDetail) {
             TimelineDetailSheet(
@@ -123,6 +166,10 @@ struct HomeView: View {
         .onAppear {
             pageAppeared = true
             startShimmerLoop()
+            evaluateStreakChange()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { evaluateStreakChange() }
         }
         .onReceive(secondTimer) { value in
             now = value
@@ -147,6 +194,45 @@ struct HomeView: View {
     private func startShimmerLoop() {
         withAnimation(.linear(duration: 2.6).repeatForever(autoreverses: false)) {
             shimmerPhase = 1.4
+        }
+    }
+
+    // MARK: - Streak bubble
+
+    /// Compares the current streak to the last value we showed the user. If it
+    /// grew, auto-presents the "Seri arttı" bubble and lets it self-dismiss.
+    private func evaluateStreakChange() {
+        let current = progression.currentStreak
+        let defaults = UserDefaults.standard
+        let hasSeen = defaults.object(forKey: lastSeenStreakKey) != nil
+        let lastSeen = defaults.integer(forKey: lastSeenStreakKey)
+
+        if hasSeen && current > lastSeen && current > 0 {
+            bubbleStreakValue = current
+            streakBubbleMode = .increased
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.8)) {
+                showStreakBubble = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.2) {
+                if streakBubbleMode == .increased {
+                    withAnimation(.easeIn(duration: 0.25)) { showStreakBubble = false }
+                }
+            }
+        }
+
+        defaults.set(current, forKey: lastSeenStreakKey)
+    }
+
+    /// Toggles the informational bubble when the user taps the flame badge.
+    private func toggleStreakInfo() {
+        if showStreakBubble && streakBubbleMode == .info {
+            withAnimation(.easeIn(duration: 0.2)) { showStreakBubble = false }
+            return
+        }
+        bubbleStreakValue = progression.currentStreak
+        streakBubbleMode = .info
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.8)) {
+            showStreakBubble = true
         }
     }
 }
@@ -182,26 +268,19 @@ private extension HomeView {
             }
             .buttonStyle(.plain)
 
+            StreakFlameBadge(streak: progression.currentStreak) {
+                toggleStreakInfo()
+            }
+
             Spacer(minLength: 8)
 
-            HStack(spacing: 9) {
-                topBarIconButton(
-                    icon: "checklist",
-                    tint: overdueTaskCount > 0 ? accentGold : .white.opacity(0.88),
-                    badge: overdueTaskCount > 0 ? "\(min(overdueTaskCount, 9))" : nil,
-                    badgeColor: accentGold
-                ) {
-                    onOpenTasks()
-                }
-
-                topBarIconButton(
-                    icon: "bubble.left.and.bubble.right.fill",
-                    tint: unreadMessageCount > 0 ? accentWarm : .white.opacity(0.88),
-                    badge: unreadMessageCount > 0 ? "\(min(unreadMessageCount, 9))" : nil,
-                    badgeColor: accentWarm
-                ) {
-                    showMessages = true
-                }
+            topBarIconButton(
+                icon: "bubble.left.and.bubble.right.fill",
+                tint: unreadMessageCount > 0 ? accentWarm : .white.opacity(0.88),
+                badge: unreadMessageCount > 0 ? "\(min(unreadMessageCount, 9))" : nil,
+                badgeColor: accentWarm
+            ) {
+                showMessages = true
             }
         }
         .padding(.top, 4)
@@ -363,7 +442,7 @@ private extension HomeView {
         if focusSession.isSessionActive {
             activeFocusCountdownCard
         } else {
-            suggestedFocusCard
+            updoAICard
         }
     }
 
@@ -385,7 +464,7 @@ private extension HomeView {
                         .opacity(pulse ? 0.48 : 1.0)
                         .shadow(color: (isCritical ? accentGold : accentGreen).opacity(0.55), radius: 6)
 
-                    Text(isCritical ? "BİTMEK ÜZERE" : (isPaused ? "DURAKLATILDI" : "AKTİF FOCUS"))
+                    Text(isCritical ? tr("hv_ending_soon_caps") : (isPaused ? "DURAKLATILDI" : tr("hv_active_focus_caps")))
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .tracking(1.9)
                         .foregroundStyle(isCritical ? accentGold : accentCyan)
@@ -489,7 +568,7 @@ private extension HomeView {
             .frame(height: 5)
 
             HStack {
-                Text(isPaused ? "Duraklatıldı" : "Odak devam ediyor")
+                Text(isPaused ? tr("hv_paused") : "Odak devam ediyor")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.46))
 
@@ -509,78 +588,142 @@ private extension HomeView {
         .animation(.spring(response: 0.6, dampingFraction: 0.86).delay(0.08), value: pageAppeared)
     }
 
-    var suggestedFocusCard: some View {
-        let state = resolveSuggestedFocus()
+    var updoAICard: some View {
+        let hasConversation = !aiChatStore.lastPreviewText.isEmpty
+        let aiPrimary = Color(arenaHex: "#7C3AED")
+        let aiSecondary = Color(arenaHex: "#2DD4FF")
 
         return Button {
-            Task {
-                _ = await focusSession.startRequestedSession(
-                    mode: .personal,
-                    durationMinutes: state.minutes,
-                    goal: .study,
-                    style: .silent
-                )
+            withAnimation(.spring(response: 0.22, dampingFraction: 0.7)) { aiCardPressed = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.75)) { aiCardPressed = false }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { showUpdoAI = true }
             }
         } label: {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .center, spacing: 14) {
-                    VStack(alignment: .leading, spacing: 7) {
-                        HStack(spacing: 8) {
-                            Circle()
-                                .fill(accentCyan)
-                                .frame(width: 6, height: 6)
+            VStack(alignment: .leading, spacing: 14) {
+                // Top row: icon + labels + credit pill
+                HStack(alignment: .center, spacing: 13) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [aiPrimary.opacity(0.22), aiSecondary.opacity(0.14)],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 48, height: 48)
 
-                            Text(state.eyebrow)
-                                .font(.system(size: 10, weight: .black, design: .monospaced))
-                                .tracking(1.9)
-                                .foregroundStyle(accentCyan)
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 19, weight: .semibold))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [aiSecondary, aiPrimary],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                )
+                            )
+                    }
+                    .shadow(color: aiPrimary.opacity(0.28), radius: 8, y: 3)
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack(alignment: .center, spacing: 0) {
+                            Text("UPDO AI")
+                                .font(.system(size: 11, weight: .black, design: .monospaced))
+                                .tracking(2.5)
+                                .foregroundStyle(.white.opacity(0.92))
+
+                            Spacer(minLength: 8)
+
+                            if credits.isLoaded {
+                                let remaining = credits.tokensRemaining
+                                let pillTint: Color = remaining > 50 ? aiSecondary : accentWarm
+                                Text("\(remaining) kredi")
+                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                    .foregroundStyle(pillTint)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(
+                                        Capsule()
+                                            .fill(pillTint.opacity(0.14))
+                                            .overlay(Capsule().stroke(pillTint.opacity(0.28), lineWidth: 1))
+                                    )
+                            }
                         }
 
-                        Text(state.title)
-                            .font(.system(size: 20, weight: .black))
-                            .foregroundStyle(.white)
+                        Text(hasConversation ? aiChatStore.lastPreviewText : tr("hv_ai_prompt"))
+                            .font(.system(size: 14, weight: .regular))
+                            .foregroundStyle(hasConversation ? .white.opacity(0.70) : .white.opacity(0.42))
                             .lineLimit(1)
-                            .minimumScaleFactor(0.78)
-
-                        Text(state.subtitle)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.48))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.78)
+                            .truncationMode(.tail)
                     }
-
-                    Spacer(minLength: 10)
-
-                    ZStack {
-                        Circle()
-                            .fill(homePrimaryGradient)
-                            .frame(width: 54, height: 54)
-
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 16, weight: .black))
-                            .foregroundStyle(.white)
-                            .offset(x: 1)
-                    }
-                    .shadow(color: accentCyan.opacity(0.18), radius: 12, y: 7)
                 }
 
-                HStack(spacing: 8) {
-                    HomeFocusMiniPill(icon: "timer", text: "\(state.minutes) dk", tint: accentCyan)
-                    HomeFocusMiniPill(icon: "book.closed", text: "Study", tint: accentPrimary)
-                    HomeFocusMiniPill(icon: "speaker.slash", text: "Silent", tint: accentSecondary)
+                // Bottom row: quick action pills + chevron
+                HStack(spacing: 7) {
+                    aiQuickPill(icon: "calendar.badge.clock", label: tr("at_kind_exam"))
+                    aiQuickPill(icon: "checklist", label: "Plan")
+                    aiQuickPill(icon: "chart.bar.fill", label: "Analiz")
+
                     Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.28))
                 }
             }
-            .padding(17)
+            .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(homeSurface(cornerRadius: 28, tint: accentCyan, secondaryTint: accentPrimary))
-            .shadow(color: Color.black.opacity(0.22), radius: 18, y: 10)
-            .scaleEffect(breathe ? 1.002 : 1.0)
+            .background(
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.068),
+                                aiPrimary.opacity(0.065),
+                                aiSecondary.opacity(0.038)
+                            ],
+                            startPoint: .topLeading, endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        // Breathing glow: opacity-only (GPU composited), driven by the
+                        // shared `breathe` toggle — no extra timers, no layout passes.
+                        RoundedRectangle(cornerRadius: 26, style: .continuous)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [
+                                        aiSecondary.opacity(breathe ? 0.52 : 0.30),
+                                        aiPrimary.opacity(breathe ? 0.38 : 0.20)
+                                    ],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1
+                            )
+                    )
+            )
+            .shadow(color: aiPrimary.opacity(breathe ? 0.18 : 0.10), radius: 16, y: 8)
+            .scaleEffect(aiCardPressed ? 0.97 : 1.0)
         }
         .buttonStyle(.plain)
         .opacity(pageAppeared ? 1 : 0)
         .offset(y: pageAppeared ? 0 : 12)
         .animation(.spring(response: 0.6, dampingFraction: 0.86).delay(0.08), value: pageAppeared)
+    }
+
+    private func aiQuickPill(icon: String, label: String) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .semibold))
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+        }
+        .foregroundStyle(.white.opacity(0.52))
+        .padding(.horizontal, 9)
+        .frame(height: 26)
+        .background(
+            Capsule()
+                .fill(Color.white.opacity(0.07))
+                .overlay(Capsule().stroke(Color.white.opacity(0.10), lineWidth: 1))
+        )
     }
 
     func homeSurface(
@@ -625,7 +768,7 @@ private extension HomeView {
     var timelineSection: some View {
         VStack(alignment: .leading, spacing: focusSession.isSessionActive ? 12 : 14) {
             HStack(spacing: 10) {
-                sectionTitle("BUGÜNÜN AKIŞI")
+                sectionTitle(tr("hv_todays_flow_caps"))
 
                 Spacer()
 
@@ -669,22 +812,7 @@ private extension HomeView {
     }
 
     func sectionTitle(_ title: String) -> some View {
-        HStack(spacing: 10) {
-            Rectangle()
-                .fill(Color.white.opacity(0.08))
-                .frame(width: 28, height: 1)
-
-            Text(title)
-                .font(.system(size: 9, weight: .black, design: .monospaced))
-                .tracking(1.9)
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [accentCyan, accentSecondary],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-        }
+        SectionHeader(title, accent: accentCyan)
     }
 
     var filledTimeline: some View {
@@ -694,7 +822,7 @@ private extension HomeView {
             VStack(alignment: .leading, spacing: focusSession.isSessionActive ? 11 : 13) {
                 HStack(spacing: 6) {
                     Text("\(todayEvents.count)")
-                        .font(.system(size: focusSession.isSessionActive ? 19 : 21, weight: .black))
+                        .font(.system(size: focusSession.isSessionActive ? 19 : 21, weight: .black, design: .rounded))
                         .foregroundStyle(.white)
 
                     Text("etkinlik")
@@ -705,7 +833,7 @@ private extension HomeView {
                         Text("·")
                             .foregroundStyle(.white.opacity(0.28))
 
-                        Text("\(pastEventsCount) tamamlandı")
+                        Text(tr("rel_done_count", pastEventsCount))
                             .font(.system(size: 12, weight: .black))
                             .foregroundStyle(accentGreen.opacity(0.92))
                     }
@@ -751,11 +879,11 @@ private extension HomeView {
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Gün senin")
+                    Text(tr("hv_day_is_yours"))
                         .font(.system(size: 18, weight: .black))
                         .foregroundStyle(.white)
 
-                    Text("Programına şekil ver, akış kendiliğinden gelir.")
+                    Text(tr("hv_shape_schedule"))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.52))
                         .lineLimit(2)
@@ -789,7 +917,7 @@ private extension HomeView {
                         Image(systemName: "plus.circle.fill")
                             .font(.system(size: 11, weight: .black))
 
-                        Text("Görev ekle")
+                        Text(tr("hv_add_task"))
                             .font(.system(size: 12, weight: .black))
                     }
                     .foregroundStyle(.white.opacity(0.86))
@@ -815,157 +943,6 @@ private extension HomeView {
     }
 }
 
-// MARK: - Stats Row
-
-private extension HomeView {
-    var statsRow: some View {
-        HStack(spacing: 10) {
-            HomeMetricCard(
-                kind: .focus,
-                eyebrow: "FOCUS",
-                value: "\(weeklyFocusMinutes)",
-                unit: "dk",
-                subtitle: focusMetricSubtitle,
-                progress: min(Double(weeklyFocusMinutes) / 120.0, 1.0),
-                primaryTint: accentCyan,
-                secondaryTint: accentSecondary,
-                icon: "timer",
-                isActive: weeklyFocusMinutes > 0,
-                isCompleted: weeklyFocusMinutes >= 120
-            )
-
-            HomeMetricCard(
-                kind: .task,
-                eyebrow: "GÖREV",
-                value: "\(activeTaskCount)",
-                unit: activeTaskCount == 0 ? "aktif" : "aktif",
-                subtitle: taskMetricSubtitle,
-                progress: taskMetricProgress,
-                primaryTint: taskMetricTint,
-                secondaryTint: accentPrimary,
-                icon: taskMetricIcon,
-                isActive: activeTaskCount > 0,
-                isCompleted: taskMetricCompleted
-            )
-
-            HomeMetricCard(
-                kind: .streak,
-                eyebrow: "SERİ",
-                value: "\(streakDays)",
-                unit: "gün",
-                subtitle: streakMetricSubtitle,
-                progress: min(Double(streakDays) / 7.0, 1.0),
-                primaryTint: streakMetricTint,
-                secondaryTint: accentWarm,
-                icon: "flame.fill",
-                isActive: streakDays > 0,
-                isCompleted: streakDays >= 7
-            )
-        }
-        .opacity(pageAppeared ? 1 : 0)
-        .offset(y: pageAppeared ? 0 : 12)
-        .animation(.spring(response: 0.6, dampingFraction: 0.86).delay(0.18), value: pageAppeared)
-    }
-    var focusMetricSubtitle: String {
-        if weeklyFocusMinutes >= 120 {
-            return "güçlü hafta"
-        }
-
-        if weeklyFocusMinutes >= 60 {
-            return "iyi odak"
-        }
-
-        if weeklyFocusMinutes >= 15 {
-            return "ritim başladı"
-        }
-
-        return "başlatmaya hazır"
-    }
-
-    var taskMetricCompleted: Bool {
-        let totalTodayRelevant = activeTaskCount + completedTodayCount
-        return totalTodayRelevant > 0 && activeTaskCount == 0 && completedTodayCount > 0
-    }
-
-    var taskMetricProgress: Double {
-        let total = activeTaskCount + completedTodayCount
-        guard total > 0 else { return 0 }
-        return min(Double(completedTodayCount) / Double(total), 1.0)
-    }
-
-    var taskMetricTint: Color {
-        if taskMetricCompleted {
-            return accentGreen
-        }
-
-        if completedTodayCount > 0 {
-            return accentGreen
-        }
-
-        if activeTaskCount > 0 {
-            return accentPrimary
-        }
-
-        return accentPrimary.opacity(0.78)
-    }
-
-    var taskMetricIcon: String {
-        if taskMetricCompleted {
-            return "checkmark.circle.fill"
-        }
-
-        if activeTaskCount > 0 {
-            return "slider.horizontal.3"
-        }
-
-        return "checklist"
-    }
-
-    var taskMetricSubtitle: String {
-        if taskMetricCompleted {
-            return "görevler tamam"
-        }
-
-        if completedTodayCount > 0 {
-            return "\(completedTodayCount) tamamlandı"
-        }
-
-        if activeTaskCount > 0 {
-            return "akış hazır"
-        }
-
-        return "ilk görevi ekle"
-    }
-
-    var streakMetricTint: Color {
-        if streakDays >= 7 {
-            return accentGold
-        }
-
-        if streakDays > 0 {
-            return accentWarm
-        }
-
-        return accentGold.opacity(0.72)
-    }
-
-    var streakMetricSubtitle: String {
-        if streakDays >= 7 {
-            return "ateş gibi"
-        }
-
-        if streakDays >= 3 {
-            return "ritim oluşuyor"
-        }
-
-        if streakDays > 0 {
-            return "seri başladı"
-        }
-
-        return "bugün başlasın"
-    }
-}
-
 // MARK: - State Resolution
 
 private extension HomeView {
@@ -984,17 +961,10 @@ private extension HomeView {
         let text: String
     }
 
-    struct SuggestedFocusState {
-        let eyebrow: String
-        let title: String
-        let subtitle: String
-        let minutes: Int
-    }
-
     func resolveHomeState() -> HeroState {
         if focusSession.isSessionActive {
             return HeroState(
-                eyebrow: "ŞU AN · ODAKTASIN",
+                eyebrow: tr("hv_now_focusing"),
                 title: "Focus",
                 italicLine: "devam et",
                 metaItems: [
@@ -1012,12 +982,12 @@ private extension HomeView {
             let remaining = max(0, endMin - currentMinuteOfDay)
 
             return HeroState(
-                eyebrow: "ŞU AN · CANLI",
+                eyebrow: tr("hv_now_live"),
                 title: active.title,
                 italicLine: "aktif ders",
                 metaItems: locationAndTimeMeta(
                     event: active,
-                    extra: "\(remaining) dk kaldı"
+                    extra: tr("rel_min_left", remaining)
                 ),
                 showLiveDot: true,
                 accent: accentGold,
@@ -1029,7 +999,7 @@ private extension HomeView {
             let mins = upcoming.startMinute - currentMinuteOfDay
 
             return HeroState(
-                eyebrow: "SIRADAKİ DERS · YAKINDA",
+                eyebrow: tr("hv_next_class_soon"),
                 title: upcoming.title,
                 italicLine: timingPhrase(minutesUntil: mins),
                 metaItems: locationAndTimeMeta(event: upcoming, extra: nil),
@@ -1041,11 +1011,11 @@ private extension HomeView {
 
         if overdueTaskCount > 0 {
             return HeroState(
-                eyebrow: "BUGÜN · ÖNCELİKLİ",
-                title: "\(overdueTaskCount) görev",
+                eyebrow: tr("hv_today_priority"),
+                title: tr("rel_task_count", overdueTaskCount),
                 italicLine: "seni bekliyor",
                 metaItems: [
-                    MetaItem(icon: "checklist", text: "\(activeTaskCount) aktif görev")
+                    MetaItem(icon: "checklist", text: tr("rel_active_task_count", activeTaskCount))
                 ],
                 showLiveDot: true,
                 accent: accentWarm,
@@ -1055,11 +1025,11 @@ private extension HomeView {
 
         if streakDays > 0 && !hasFocusToday {
             return HeroState(
-                eyebrow: "SERİ · KORU",
-                title: "\(streakDays) günlük",
+                eyebrow: tr("hv_streak_keep"),
+                title: tr("rel_streak_days", streakDays),
                 italicLine: "serini koru",
                 metaItems: [
-                    MetaItem(icon: "flame.fill", text: "bugün focus yap")
+                    MetaItem(icon: "flame.fill", text: tr("hv_focus_today"))
                 ],
                 showLiveDot: false,
                 accent: accentGold,
@@ -1069,11 +1039,11 @@ private extension HomeView {
 
         if activeTaskCount > 0 {
             return HeroState(
-                eyebrow: "BUGÜN · DEVAM",
+                eyebrow: tr("hv_today_continue"),
                 title: greetingPrefix,
-                italicLine: displayName.isEmpty ? "akışı kur" : displayName,
+                italicLine: displayName.isEmpty ? tr("hv_build_flow") : displayName,
                 metaItems: [
-                    MetaItem(icon: "checklist", text: "\(activeTaskCount) aktif görev")
+                    MetaItem(icon: "checklist", text: tr("rel_active_task_count", activeTaskCount))
                 ],
                 showLiveDot: false,
                 accent: accentCyan,
@@ -1082,9 +1052,9 @@ private extension HomeView {
         }
 
         return HeroState(
-            eyebrow: "BUGÜN · SAKİN",
+            eyebrow: tr("hv_today_calm"),
             title: greetingPrefix,
-            italicLine: displayName.isEmpty ? "hoş geldin" : displayName,
+            italicLine: displayName.isEmpty ? tr("hv_welcome") : displayName,
             metaItems: [],
             showLiveDot: false,
             accent: accentCyan,
@@ -1092,70 +1062,6 @@ private extension HomeView {
         )
     }
 
-    func resolveSuggestedFocus() -> SuggestedFocusState {
-        if let upcoming = upcomingEventWithin(minutes: 60) {
-            let mins = upcoming.startMinute - currentMinuteOfDay
-            let suggested: Int
-
-            if mins >= 35 {
-                suggested = 25
-            } else if mins >= 20 {
-                suggested = 15
-            } else {
-                suggested = 10
-            }
-
-            return SuggestedFocusState(
-                eyebrow: "DERS ÖNCESİ",
-                title: "\(suggested) dk hazırlık focus'u",
-                subtitle: "\(upcoming.title) için zihnini hazırla",
-                minutes: suggested
-            )
-        }
-
-        if streakDays > 0 && !hasFocusToday {
-            return SuggestedFocusState(
-                eyebrow: "SERİ KORUMA",
-                title: "Bugün 15 dk yeter",
-                subtitle: "\(streakDays) günlük ritmini kaybetme",
-                minutes: 15
-            )
-        }
-
-        if overdueTaskCount > 0 {
-            return SuggestedFocusState(
-                eyebrow: "ÖNCELİK",
-                title: "25 dk derin çalışma",
-                subtitle: "\(overdueTaskCount) bekleyen görevi erit",
-                minutes: 25
-            )
-        }
-
-        if activeTaskCount > 0 {
-            return SuggestedFocusState(
-                eyebrow: "SIRADAKİ",
-                title: "20 dk görev focus'u",
-                subtitle: "Aktif görevlerden birini ilerlet",
-                minutes: 20
-            )
-        }
-
-        if weeklyFocusMinutes >= 90 {
-            return SuggestedFocusState(
-                eyebrow: "RİTİM",
-                title: "10 dk hafif focus",
-                subtitle: "Bugünü küçük bir kapanışla tamamla",
-                minutes: 10
-            )
-        }
-
-        return SuggestedFocusState(
-            eyebrow: "ÖNERİLEN",
-            title: "15 dk hızlı focus",
-            subtitle: "Sakin bir başlangıç yap",
-            minutes: 15
-        )
-    }
     func locationAndTimeMeta(event: EventItem, extra: String?) -> [MetaItem] {
         var items: [MetaItem] = []
 
@@ -1175,7 +1081,7 @@ private extension HomeView {
     }
 
     func timingPhrase(minutesUntil: Int) -> String {
-        if minutesUntil <= 0 { return "başlıyor" }
+        if minutesUntil <= 0 { return tr("hv_starting") }
         if minutesUntil < 60 { return "\(minutesUntil) dakikada" }
 
         let h = minutesUntil / 60
@@ -1229,11 +1135,11 @@ private extension HomeView {
 
         switch hour {
         case 5..<12:
-            return "Günaydın,"
+            return tr("hv_good_morning")
         case 12..<18:
-            return "Tünaydın,"
+            return tr("hv_good_afternoon")
         default:
-            return "İyi akşamlar,"
+            return tr("hv_good_evening")
         }
     }
 
@@ -1323,12 +1229,12 @@ private extension HomeView {
         if elapsed >= 3600 {
             let h = elapsed / 3600
             let m = (elapsed % 3600) / 60
-            return "\(h)s \(m)dk geçti"
+            return tr("rel_hm_elapsed", h, m)
         } else if elapsed >= 60 {
-            return "\(elapsed / 60) dk geçti"
+            return tr("rel_min_elapsed", elapsed / 60)
         }
 
-        return "\(elapsed) sn geçti"
+        return tr("rel_sec_elapsed", elapsed)
     }
 
     var overdueTaskCount: Int {
@@ -1490,6 +1396,8 @@ private struct CurvedTimelineView: View {
     private var trackBlue: Color { Color(arenaHex: "#1593FF") }
     private var trackViolet: Color { Color(arenaHex: "#7C3AED") }
 
+    @State private var drawProgress: CGFloat = 0
+
     var body: some View {
         GeometryReader { proxy in
             let width = proxy.size.width
@@ -1505,6 +1413,16 @@ private struct CurvedTimelineView: View {
                 if dayContainsNow {
                     nowIndicator(width: width, height: height)
                 }
+            }
+            // One-shot left-to-right draw reveal on appear
+            .mask(alignment: .leading) {
+                Rectangle().frame(width: width * drawProgress)
+            }
+        }
+        .onAppear {
+            guard drawProgress == 0 else { return }
+            withAnimation(.easeOut(duration: 0.85).delay(0.15)) {
+                drawProgress = 1
             }
         }
     }
@@ -1802,36 +1720,6 @@ private struct CurvedTimelineView: View {
     }
 }
 
-// MARK: - Mini Pill
-
-private struct HomeFocusMiniPill: View {
-    let icon: String
-    let text: String
-    let tint: Color
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 10, weight: .black))
-
-            Text(text)
-                .font(.system(size: 10, weight: .black, design: .monospaced))
-                .tracking(0.5)
-        }
-        .foregroundStyle(tint)
-        .padding(.horizontal, 10)
-        .frame(height: 28)
-        .background(
-            Capsule()
-                .fill(tint.opacity(0.105))
-                .overlay(
-                    Capsule()
-                        .stroke(tint.opacity(0.14), lineWidth: 1)
-                )
-        )
-    }
-}
-
 // MARK: - Metric Card
 
 private enum HomeMetricKind {
@@ -1870,7 +1758,7 @@ private struct HomeMetricCard: View {
 
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(value)
-                    .font(.system(size: 31, weight: .black))
+                    .font(.system(size: 31, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.62)
@@ -2080,7 +1968,7 @@ private struct TimelineDetailSheet: View {
                     )
                     .frame(width: 22, height: 1)
 
-                Text("BUGÜNÜN AKIŞI · DETAY")
+                Text(tr("hv_todays_flow_detail"))
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(2.35)
                     .foregroundStyle(
@@ -2093,7 +1981,7 @@ private struct TimelineDetailSheet: View {
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("Günün")
+                Text(tr("hv_your_day"))
                     .font(.system(size: 38, weight: .black))
                     .foregroundStyle(.white)
 
@@ -2111,7 +1999,7 @@ private struct TimelineDetailSheet: View {
                 Spacer()
             }
 
-            Text("\(events.count) etkinlik · \(pastEventsCount) tamamlandı · şu an \(formatHHmm(currentMinute))")
+            Text("\(events.count) \(tr("import_events")) · \(pastEventsCount) \(tr("done_word")) · \(tr("now_label")) \(formatHHmm(currentMinute))")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.50))
         }
@@ -2122,7 +2010,7 @@ private struct TimelineDetailSheet: View {
     var bigTimeline: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("DETAYLI GÖRÜNÜM")
+                Text(tr("hv_detailed_view"))
                     .font(.system(size: 9, weight: .black, design: .monospaced))
                     .tracking(1.8)
                     .foregroundStyle(accentCyan.opacity(0.85))
@@ -2174,17 +2062,17 @@ private struct TimelineDetailSheet: View {
     var peakInsights: some View {
         HStack(spacing: 10) {
             insightCard(
-                eyebrow: "ZİRVE",
+                eyebrow: tr("hv_peak"),
                 title: peakHourText,
-                subtitle: "yoğunluğun zirvesi",
+                subtitle: tr("hv_peak_sub"),
                 icon: "flame.fill",
                 tint: accentGold
             )
 
             insightCard(
-                eyebrow: "SAKİN",
+                eyebrow: tr("hv_calm_caps"),
                 title: quietHourText,
-                subtitle: "boş zaman penceresi",
+                subtitle: tr("hv_free_window"),
                 icon: "moon.zzz.fill",
                 tint: accentCyan
             )
@@ -2242,7 +2130,7 @@ private struct TimelineDetailSheet: View {
     var eventListSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("ETKİNLİKLER")
+                Text(tr("hv_events_caps"))
                     .font(.system(size: 9, weight: .black, design: .monospaced))
                     .tracking(1.8)
                     .foregroundStyle(accentCyan.opacity(0.85))
@@ -2271,7 +2159,7 @@ private struct TimelineDetailSheet: View {
         let statusColor: Color
 
         if isActive {
-            statusText = "ŞU AN"
+            statusText = tr("now_label_caps")
             statusColor = accentGreen
         } else if isPast {
             statusText = "TAMAM"
@@ -2401,7 +2289,7 @@ private struct TimelineDetailSheet: View {
     }
 
     var quietHourText: String {
-        guard !events.isEmpty else { return "Tüm gün" }
+        guard !events.isEmpty else { return tr("hv_all_day") }
 
         var bestHour = 6
         var lowestScore = Double.infinity
@@ -2430,6 +2318,263 @@ private struct TimelineDetailSheet: View {
         let h = minute / 60
         let m = minute % 60
         return String(format: "%02d:%02d", h, m)
+    }
+}
+
+// MARK: - Streak flame badge
+//
+// The home streak indicator: a small animated flame badge that lives next to
+// the profile avatar. It flickers gently (30 fps, no animated blur) and the
+// flame grows warmer / brighter the longer the streak runs. Tapping it opens
+// the StreakBubble.
+
+struct StreakFlameBadge: View {
+
+    let streak: Int
+    var onTap: () -> Void = {}
+
+    // 0…1 "heat" — how hot the flame burns. Saturates around a 30-day streak.
+    private var level: Double { min(Double(max(streak, 0)), 30) / 30 }
+
+    private var isLit: Bool { streak > 0 }
+
+    private let fGold  = Color(arenaHex: "#FBBF24")
+    private let fAmber = Color(arenaHex: "#F59E0B")
+    private let fCoral = Color(arenaHex: "#FF6A3D")
+    private let fRed   = Color(arenaHex: "#EF4444")
+
+    var body: some View {
+        Button {
+            HapticManager.shared.navigation()
+            onTap()
+        } label: {
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                let t = timeline.date.timeIntervalSinceReferenceDate
+                content(t: t)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Seri: \(streak) gün")
+    }
+
+    private func content(t: TimeInterval) -> some View {
+        // Two desynced sines → organic flicker. Stronger swing as the streak grows.
+        let flick: Double = (sin(t * 7.3) * 0.6 + sin(t * 11.7 + 1.1) * 0.4)
+        let swing: Double = isLit ? (0.04 + 0.06 * level) : 0.015
+        let scale: CGFloat = 1.0 + CGFloat(flick * swing)
+        let lift: CGFloat = CGFloat(flick * (isLit ? 1.2 : 0.4))
+        let glowOpacity: Double = isLit ? (0.30 + 0.55 * level + 0.10 * flick) : 0.10
+
+        return HStack(spacing: 6) {
+            flameStack(scale: scale, lift: lift, glowOpacity: glowOpacity)
+
+            Text("\(streak)")
+                .font(.system(size: 16, weight: .black, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(isLit ? .white : .white.opacity(0.55))
+        }
+        .padding(.horizontal, 11)
+        .frame(height: 48)
+        .background(badgeBackground(glowOpacity: glowOpacity))
+    }
+
+    private func flameStack(scale: CGFloat, lift: CGFloat, glowOpacity: Double) -> some View {
+        ZStack {
+            // Static-radius halo (no animated blur — only opacity reacts).
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [fCoral.opacity(glowOpacity), .clear],
+                        center: .center, startRadius: 1, endRadius: 18
+                    )
+                )
+                .frame(width: 34, height: 34)
+
+            // Back layers light up as the streak climbs (more "alevli").
+            if streak >= 3 {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 22, weight: .black))
+                    .foregroundStyle(fRed.opacity(0.55))
+                    .scaleEffect(scale * 1.12)
+                    .offset(y: lift * 0.5)
+                    .blur(radius: 2)
+            }
+
+            Image(systemName: "flame.fill")
+                .font(.system(size: 19, weight: .black))
+                .foregroundStyle(flameGradient)
+                .scaleEffect(scale)
+                .offset(y: -lift)
+                .shadow(color: fAmber.opacity(isLit ? 0.6 : 0.15), radius: 5)
+
+            // Bright inner core for high streaks.
+            if streak >= 7 {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 11, weight: .black))
+                    .foregroundStyle(Color(arenaHex: "#FFF3D2").opacity(0.9))
+                    .scaleEffect(scale)
+                    .offset(y: -lift * 1.4)
+            }
+        }
+        .frame(width: 26, height: 30)
+    }
+
+    private var flameGradient: LinearGradient {
+        if !isLit {
+            return LinearGradient(colors: [.white.opacity(0.35), .white.opacity(0.22)],
+                                  startPoint: .top, endPoint: .bottom)
+        }
+        // Cooler (gold) at low streak → hotter (red) at high streak.
+        let topColor = level > 0.5 ? Color(arenaHex: "#FFF3D2") : fGold
+        return LinearGradient(
+            colors: [topColor, fAmber, fCoral, fRed],
+            startPoint: .top, endPoint: .bottom
+        )
+    }
+
+    private func badgeBackground(glowOpacity: Double) -> some View {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        fCoral.opacity(isLit ? 0.16 : 0.05),
+                        Color.white.opacity(0.045)
+                    ],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(fAmber.opacity(isLit ? (0.22 + 0.25 * level) : 0.10), lineWidth: 1)
+            )
+            .shadow(color: fCoral.opacity(glowOpacity * 0.5), radius: 10, y: 4)
+    }
+}
+
+// MARK: - Streak bubble
+
+enum StreakBubbleMode {
+    case info       // user tapped the badge
+    case increased  // streak went up since last visit
+}
+
+struct StreakBubble: View {
+
+    let streak: Int
+    let mode: StreakBubbleMode
+    var onClose: () -> Void = {}
+
+    @State private var shown = false
+
+    private let fAmber = Color(arenaHex: "#F59E0B")
+    private let fCoral = Color(arenaHex: "#FF6A3D")
+
+    private var titleText: String {
+        switch mode {
+        case .increased: return "Seri arttı! 🔥"
+        case .info:      return streak > 0 ? "\(streak) günlük seri 🔥" : "Serini başlat 🔥"
+        }
+    }
+
+    private var bodyText: String {
+        switch mode {
+        case .increased:
+            return "Harika gidiyorsun — \(streak) gündür hem görevini bitiriyor hem odaklanıyorsun. Yarın da tekrarla, seri büyüsün."
+        case .info:
+            if streak > 0 {
+                return "Her gün bir görev tamamla VE bir odak (focus) yap — serin devam eder. Birini bile atlarsan sıfırlanır ve seviyen 1 düşer."
+            }
+            return "Serini başlatmak için bugün bir görev tamamla ve bir odak (focus) yap. İkisini her gün sürdürdükçe alev büyür."
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Little tail pointing up toward the badge.
+            StreakBubbleTriangle()
+                .fill(bubbleFill)
+                .frame(width: 18, height: 9)
+                .padding(.leading, 26)
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 14, weight: .black))
+                        .foregroundStyle(
+                            LinearGradient(colors: [fAmber, fCoral],
+                                           startPoint: .top, endPoint: .bottom)
+                        )
+
+                    Text(titleText)
+                        .font(.system(size: 15, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+
+                    Spacer(minLength: 0)
+
+                    if mode == .info {
+                        Button {
+                            close()
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 10, weight: .black))
+                                .foregroundStyle(.white.opacity(0.55))
+                                .frame(width: 22, height: 22)
+                                .background(Circle().fill(Color.white.opacity(0.08)))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                Text(bodyText)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.72))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(bubbleFill)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(fAmber.opacity(0.28), lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.35), radius: 18, y: 10)
+            )
+        }
+        .frame(maxWidth: 290, alignment: .leading)
+        .scaleEffect(shown ? 1 : 0.82, anchor: .topLeading)
+        .opacity(shown ? 1 : 0)
+        .onAppear {
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.74)) {
+                shown = true
+            }
+        }
+    }
+
+    private var bubbleFill: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(arenaHex: "#241910").opacity(0.98),
+                Color(arenaHex: "#16110C").opacity(0.98)
+            ],
+            startPoint: .topLeading, endPoint: .bottomTrailing
+        )
+    }
+
+    private func close() {
+        withAnimation(.easeIn(duration: 0.22)) { shown = false }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) { onClose() }
+    }
+}
+
+private struct StreakBubbleTriangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: rect.midX, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        p.closeSubpath()
+        return p
     }
 }
 

@@ -187,7 +187,7 @@ struct CrewFocusInviteSheet: View {
                 joinButton
 
                 Button(action: onDismiss) {
-                    Text("Şimdi değil")
+                    Text(tr("cfi_not_now"))
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.55))
                 }
@@ -299,7 +299,7 @@ struct CrewFocusInviteSheet: View {
             HStack(spacing: 8) {
                 Image(systemName: "target")
                     .font(.system(size: 12, weight: .black))
-                Text("FOCUS DAVETİ")
+                Text(tr("cfi_focus_invite_caps"))
                     .font(.system(size: 11, weight: .black, design: .monospaced))
                     .tracking(2.0)
             }
@@ -328,7 +328,7 @@ struct CrewFocusInviteSheet: View {
                 )
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("GÖREV")
+                Text(tr("ct_task_caps"))
                     .font(.system(size: 9, weight: .black, design: .monospaced))
                     .tracking(1.4)
                     .foregroundStyle(.white.opacity(0.42))
@@ -358,7 +358,7 @@ struct CrewFocusInviteSheet: View {
         VStack(spacing: 14) {
             HStack(spacing: 10) {
                 durationCell(
-                    title: "TOPLAM SÜRE",
+                    title: tr("cfi_total_time_caps"),
                     value: "\(payload.durationMinutes) dk",
                     subtitle: nil,
                     icon: "clock.fill",
@@ -367,9 +367,9 @@ struct CrewFocusInviteSheet: View {
 
                 if hasStarted {
                     durationCell(
-                        title: isExpired ? "TAMAMLANDI" : "ŞU AN",
+                        title: isExpired ? "TAMAMLANDI" : tr("now_label_caps"),
                         value: isExpired ? "Bitti" : "\(elapsedMinutes). dk",
-                        subtitle: isExpired ? nil : "\(remainingMinutes) dk kaldı",
+                        subtitle: isExpired ? nil : tr("rel_min_left", remainingMinutes),
                         icon: isExpired ? "checkmark.circle.fill" : "play.fill",
                         accent: isExpired ? greenAccent : secondaryAccent
                     )
@@ -377,7 +377,7 @@ struct CrewFocusInviteSheet: View {
                     durationCell(
                         title: "DURUM",
                         value: "Bekliyor",
-                        subtitle: "Başlatılmadı",
+                        subtitle: tr("cfi_not_started"),
                         icon: "hourglass",
                         accent: secondaryAccent
                     )
@@ -463,7 +463,7 @@ struct CrewFocusInviteSheet: View {
 
                 Spacer()
 
-                Text("\(Int(progress * 100))% tamamlandı")
+                Text(tr("cfi_percent_done", Int(progress * 100)))
                     .font(.system(size: 10, weight: .heavy, design: .monospaced))
                     .foregroundStyle(.white.opacity(0.62))
 
@@ -586,7 +586,7 @@ struct CrewFocusInviteSheet: View {
                         .font(.system(size: 16, weight: .black))
                 }
 
-                Text(isJoining ? "Katılıyor..." : "Katıl ve Başla")
+                Text(isJoining ? tr("cfi_joining") : tr("cfi_join_start"))
                     .font(.system(size: 17, weight: .black, design: .rounded))
 
                 if !isJoining {

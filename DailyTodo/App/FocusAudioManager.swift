@@ -21,7 +21,7 @@ final class FocusAudioManager {
         guard let fileName = fileName(for: style) else { return }
 
         guard let url = Bundle.main.url(forResource: fileName, withExtension: "mp3") else {
-            print("🔇 Audio file not found: \(fileName).mp3")
+            Log.debug("🔇 Audio file not found: \(fileName).mp3")
             return
         }
 
@@ -36,7 +36,7 @@ final class FocusAudioManager {
             player?.prepareToPlay()
             player?.play()
         } catch {
-            print("🔇 Audio playback error: \(error)")
+            Log.debug("🔇 Audio playback error: \(error)")
         }
     }
 

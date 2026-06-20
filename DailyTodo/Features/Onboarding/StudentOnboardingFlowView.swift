@@ -1271,7 +1271,7 @@ private extension StudentOnboardingFlowView {
         } catch {
             submitError = "Setup could not be saved. Check your connection and try again."
             StudentSetupHaptics.warning()
-            print("❌ STUDENT ONBOARDING COMPLETE ERROR:", error.localizedDescription)
+            Log.debug("❌ STUDENT ONBOARDING COMPLETE ERROR:", error.localizedDescription)
         }
     }
 
@@ -1351,22 +1351,22 @@ private extension StudentOnboardingFlowView {
         }
 
         do {
-            print("🟡 loadMajors start")
-            print("🟡 universityID:", selectedUniversityID.uuidString)
-            print("🟡 institutionName:", institutionName)
-            print("🟡 institutionCountry:", institutionCountry)
+            Log.debug("🟡 loadMajors start")
+            Log.debug("🟡 universityID:", selectedUniversityID.uuidString)
+            Log.debug("🟡 institutionName:", institutionName)
+            Log.debug("🟡 institutionCountry:", institutionCountry)
 
             let majors = try await StudentCatalogService.fetchMajors(
                 universityID: selectedUniversityID
             )
 
             guard majorLoadRequestID == requestID else {
-                print("⚪️ loadMajors ignored: stale request")
+                Log.debug("⚪️ loadMajors ignored: stale request")
                 return
             }
 
-            print("✅ loadMajors completed:", majors.count)
-            print("✅ loadMajors names:", majors.prefix(10).map(\.name).joined(separator: ", "))
+            Log.debug("✅ loadMajors completed:", majors.count)
+            Log.debug("✅ loadMajors names:", majors.prefix(10).map(\.name).joined(separator: ", "))
 
             remoteMajors = majors
             majorLoadError = nil
@@ -1393,7 +1393,7 @@ private extension StudentOnboardingFlowView {
 
             let message = error.localizedDescription
 
-            print("❌ loadMajorsForSelectedUniversity error:", message)
+            Log.debug("❌ loadMajorsForSelectedUniversity error:", message)
 
             remoteMajors = []
             remoteSuggestedCourses = []
@@ -1437,12 +1437,12 @@ private extension StudentOnboardingFlowView {
             )
 
             guard curriculumLoadRequestID == requestID else {
-                print("⚪️ curriculum ignored: stale request")
+                Log.debug("⚪️ curriculum ignored: stale request")
                 return
             }
 
             guard self.selectedMajorID == selectedMajorID else {
-                print("⚪️ curriculum ignored: major changed")
+                Log.debug("⚪️ curriculum ignored: major changed")
                 return
             }
 
@@ -1463,7 +1463,7 @@ private extension StudentOnboardingFlowView {
         } catch {
             guard curriculumLoadRequestID == requestID else { return }
 
-            print("❌ applySuggestedUniversityCoursesIfAvailable error:", error.localizedDescription)
+            Log.debug("❌ applySuggestedUniversityCoursesIfAvailable error:", error.localizedDescription)
 
             remoteSuggestedCourses = []
             curriculumLoadError = "Could not load suggested courses. \(error.localizedDescription)"
@@ -1501,12 +1501,12 @@ private extension StudentOnboardingFlowView {
             )
 
             guard allCoursesLoadRequestID == requestID else {
-                print("⚪️ all courses ignored: stale request")
+                Log.debug("⚪️ all courses ignored: stale request")
                 return
             }
 
             guard self.selectedMajorID == selectedMajorID else {
-                print("⚪️ all courses ignored: major changed")
+                Log.debug("⚪️ all courses ignored: major changed")
                 return
             }
 
@@ -1515,7 +1515,7 @@ private extension StudentOnboardingFlowView {
         } catch {
             guard allCoursesLoadRequestID == requestID else { return }
 
-            print("❌ loadAllCoursesForSelectedMajor error:", error.localizedDescription)
+            Log.debug("❌ loadAllCoursesForSelectedMajor error:", error.localizedDescription)
 
             allMajorCourses = []
             filteredCourseSuggestions = []
@@ -1679,10 +1679,10 @@ private extension StudentOnboardingFlowView {
 
     func labelForTrack(_ value: String) -> String {
         switch value {
-        case "sayisal": return "Sayısal"
-        case "sozel": return "Sözel"
-        case "esit_agirlik": return "Eşit Ağırlık"
-        case "dil": return "Dil"
+        case "sayisal": return tr("track_sayisal")
+        case "sozel": return tr("track_sozel")
+        case "esit_agirlik": return tr("track_esit_agirlik")
+        case "dil": return tr("track_dil")
         default: return value
         }
     }

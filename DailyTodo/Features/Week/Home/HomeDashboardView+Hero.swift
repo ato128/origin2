@@ -88,7 +88,7 @@ extension HomeDashboardView {
 
     private var todayWhatHeader: some View {
         ArenaSectionTitle(
-            eyebrow: "BUGÜN NE VAR",
+            eyebrow: tr("hd_today_caps"),
             title: todayWhatTitle,
             italic: nil,
             accent: Color(arenaHex: AppArenaPalette.cyan)
@@ -192,7 +192,7 @@ extension HomeDashboardView {
                     Image(systemName: "flame.fill")
                         .font(.system(size: 12, weight: .black))
 
-                    Text("SERİ")
+                    Text(tr("hv_streak_caps"))
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .tracking(1.3)
                 }
@@ -203,7 +203,7 @@ extension HomeDashboardView {
                     .foregroundStyle(Color(arenaHex: AppArenaPalette.gold))
                     .monospacedDigit()
 
-                Text("gün üst üste")
+                Text(tr("hd_days_streak"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.46))
                     .lineLimit(1)
@@ -261,18 +261,18 @@ extension HomeDashboardView {
         }
 
         if todayPendingBoardCount == 0 && completedTodayBoardCount > 0 {
-            return "Bugün tamam"
+            return tr("hd_today_done")
         }
 
         if shouldShowNoTaskPromptHero {
-            return "Bugün boş"
+            return tr("hd_today_empty")
         }
 
         if let task = focusTask {
             return task.title
         }
 
-        return "Bugün ne var?"
+        return tr("hd_whats_today")
     }
 
     var todayWhatSubtitle: String {
@@ -282,20 +282,20 @@ extension HomeDashboardView {
 
         if let event = nextEvent {
             if isNextClassLiveNow {
-                return "Şu an aktif ders"
+                return tr("hd_active_class")
             }
             if let minutes = nextClassStartsInMinutes {
-                return "\(minutes) dk sonra başlıyor"
+                return tr("hd_starts_in_min", minutes)
             }
-            return "Bugünün sıradaki dersi"
+            return tr("hd_next_class")
         }
 
         if todayPendingBoardCount == 0 && completedTodayBoardCount > 0 {
-            return "Günü temiz kapattın"
+            return tr("hd_clean_day")
         }
 
         if shouldShowNoTaskPromptHero {
-            return "İstersen küçük bir başlangıç yap"
+            return tr("hd_small_start_opt")
         }
 
         return homePriorityLine
@@ -342,18 +342,18 @@ extension HomeDashboardView {
         }
 
         if todayPendingBoardCount == 0 && completedTodayBoardCount > 0 {
-            return "tamamlandı"
+            return tr("done_word")
         }
 
-        return "tamamlandı"
+        return tr("done_word")
     }
 
     var progressCardBottomText: String {
         if shouldShowNoTaskPromptHero {
             switch heroDayPhase {
-            case .morning: return "Küçük bir başlangıç yap"
-            case .afternoon: return "Günü hareket ettir"
-            case .evening, .night: return "Yarını boş bırakma"
+            case .morning: return tr("hd_make_small_start")
+            case .afternoon: return tr("hd_get_day_moving")
+            case .evening, .night: return tr("hd_dont_leave_tomorrow")
             }
         }
 
@@ -362,7 +362,7 @@ extension HomeDashboardView {
         }
 
         if todayProgressValue == 0 {
-            return "Hadi başlayalım!"
+            return tr("hd_lets_start")
         }
 
         if todayProgressValue < 1 {
@@ -382,7 +382,7 @@ extension HomeDashboardView {
         }
 
         if todayPendingBoardCount == 0 && completedTodayBoardCount > 0 {
-            return "✅ BUGÜN"
+            return tr("hd_today_check_caps")
         }
 
         return "✨ PLAN"
@@ -399,10 +399,10 @@ extension HomeDashboardView {
         }
 
         if todayPendingBoardCount == 0 && completedTodayBoardCount > 0 {
-            return "Tamamlandı"
+            return tr("common_completed")
         }
 
-        return "Boş gün"
+        return tr("wv_free_day")
     }
 
     var priorityMiniSubtitle: String {
@@ -412,7 +412,7 @@ extension HomeDashboardView {
 
         if let event = nextEvent {
             if isNextClassLiveNow {
-                return "Şimdi aktif"
+                return tr("hd_active_now")
             }
             if let minutes = nextClassStartsInMinutes {
                 return "\(minutes) dk sonra"
@@ -421,7 +421,7 @@ extension HomeDashboardView {
         }
 
         if todayPendingBoardCount == 0 && completedTodayBoardCount > 0 {
-            return "\(completedTodayBoardCount) görev bitti"
+            return tr("hd_tasks_finished", completedTodayBoardCount)
         }
 
         return "Kendin planla"
@@ -477,7 +477,7 @@ extension HomeDashboardView {
         if let friend = recentChatFriend {
             return "\(friend.name) ile devam et"
         }
-        return "Sosyal akışa göz at"
+        return tr("hd_check_social")
     }
 
     var isNextClassLiveNow: Bool {
@@ -503,7 +503,7 @@ extension HomeDashboardView {
     }
 
     var nextEventTimeText: String {
-        guard let event = nextEvent else { return "Bugün" }
+        guard let event = nextEvent else { return tr("common_today") }
         return "\(hm(event.startMinute)) • \(event.durationMinute) dk"
     }
 
@@ -525,15 +525,15 @@ extension HomeDashboardView {
         switch heroDayPhase {
         case .morning:
             return TodayHeroState(
-                eyebrow: "Temiz başlangıç",
-                title: "Bugünü netleştir",
-                subtitle: "Henüz görev görünmüyor. Küçük bir başlangıç yeterli.",
+                eyebrow: tr("hd_clean_start"),
+                title: tr("hd_clarify_today"),
+                subtitle: tr("hd_no_tasks_yet"),
                 icon: "sparkles",
                 accent: .blue,
                 badge1: HeroBadge(icon: "sun.max.fill", text: "Sabah", tint: .orange),
-                badge2: HeroBadge(icon: "checklist", text: "Boş akış", tint: .blue),
-                contextLine: "İlk görevini belirlemek günün yönünü netleştirir.",
-                primaryCTA: "Görev Ekle",
+                badge2: HeroBadge(icon: "checklist", text: tr("hd_empty_flow"), tint: .blue),
+                contextLine: tr("hd_first_task_sets"),
+                primaryCTA: tr("common_add_task"),
                 primaryIcon: "plus",
                 primaryAction: { onAddTask() },
                 secondaryCTA: HeroCTA(title: "Hafta", icon: "calendar", action: { onOpenWeek() })
@@ -541,15 +541,15 @@ extension HomeDashboardView {
 
         case .afternoon:
             return TodayHeroState(
-                eyebrow: "Henüz plan oluşmadı",
-                title: "Günü hareket ettir",
-                subtitle: "Tek bir küçük görev bile ritmi başlatabilir.",
+                eyebrow: tr("hd_no_plan"),
+                title: tr("hd_get_day_moving"),
+                subtitle: tr("hd_one_task_rhythm"),
                 icon: "bolt.fill",
                 accent: .green,
-                badge1: HeroBadge(icon: "clock.fill", text: "Öğle", tint: .orange),
-                badge2: HeroBadge(icon: "checklist", text: "Boş akış", tint: .green),
-                contextLine: "Kısa ve net bir görev eklemek günü toparlar.",
-                primaryCTA: "Görev Ekle",
+                badge1: HeroBadge(icon: "clock.fill", text: tr("hd_noon"), tint: .orange),
+                badge2: HeroBadge(icon: "checklist", text: tr("hd_empty_flow"), tint: .green),
+                contextLine: tr("hd_short_task_tidies"),
+                primaryCTA: tr("common_add_task"),
                 primaryIcon: "plus",
                 primaryAction: { onAddTask() },
                 secondaryCTA: HeroCTA(title: "Hafta", icon: "calendar", action: { onOpenWeek() })
@@ -557,18 +557,18 @@ extension HomeDashboardView {
 
         case .evening, .night:
             return TodayHeroState(
-                eyebrow: "Akşam kapanışı",
-                title: "Yarını boş bırakma",
-                subtitle: "Yarın için 1–2 küçük adım belirlemek iyi olabilir.",
+                eyebrow: tr("hd_evening_close"),
+                title: tr("hd_dont_leave_tomorrow"),
+                subtitle: tr("hd_tomorrow_steps"),
                 icon: "calendar.badge.plus",
                 accent: .purple,
-                badge1: HeroBadge(icon: "moon.stars.fill", text: "Akşam", tint: .purple),
-                badge2: HeroBadge(icon: "calendar", text: "Yarın", tint: .blue),
-                contextLine: "Şimdi yapılan küçük bir plan sabahı kolaylaştırır.",
-                primaryCTA: "Yarını Planla",
+                badge1: HeroBadge(icon: "moon.stars.fill", text: tr("hd_evening"), tint: .purple),
+                badge2: HeroBadge(icon: "calendar", text: tr("common_tomorrow"), tint: .blue),
+                contextLine: tr("hd_small_plan_morning"),
+                primaryCTA: tr("hd_plan_tomorrow"),
                 primaryIcon: "calendar.badge.plus",
                 primaryAction: { onOpenWeek() },
-                secondaryCTA: HeroCTA(title: "Görev Ekle", icon: "plus", action: { onAddTask() })
+                secondaryCTA: HeroCTA(title: tr("common_add_task"), icon: "plus", action: { onAddTask() })
             )
         }
     }
@@ -586,8 +586,8 @@ extension HomeDashboardView {
                 tint: activeSession.is_paused ? .orange : .blue
             ),
             badge2: HeroBadge(icon: "person.2.fill", text: "Crew", tint: .pink),
-            contextLine: activeSession.is_paused ? "Oturum duraklatılmış." : "Şu an ekip odağı aktif.",
-            primaryCTA: "Odayı Aç",
+            contextLine: activeSession.is_paused ? tr("hd_session_paused") : tr("hd_crew_focus_active"),
+            primaryCTA: tr("hd_open_room"),
             primaryIcon: "arrow.right.circle.fill",
             primaryAction: {
                 NotificationCenter.default.post(
@@ -603,14 +603,14 @@ extension HomeDashboardView {
         let title = homeLiveFocusMainTitle.isEmpty ? "Odak devam ediyor" : homeLiveFocusMainTitle
 
         return TodayHeroState(
-            eyebrow: "Akış sürüyor",
+            eyebrow: tr("hd_flow_going"),
             title: title,
-            subtitle: "Şimdilik ritmi koru.",
+            subtitle: tr("hd_keep_rhythm"),
             icon: focusWorkoutMode ? "figure.strengthtraining.traditional" : "sparkles",
             accent: .blue,
-            badge1: HeroBadge(icon: "scope", text: "Odak açık", tint: .blue),
-            badge2: HeroBadge(icon: "calendar", text: "Bugün", tint: .blue),
-            contextLine: "İstersen görevleri ya da haftayı hızlıca açabilirsin.",
+            badge1: HeroBadge(icon: "scope", text: tr("hd_focus_on"), tint: .blue),
+            badge2: HeroBadge(icon: "calendar", text: tr("common_today"), tint: .blue),
+            contextLine: tr("hd_open_tasks_week"),
             primaryCTA: "Devam Et",
             primaryIcon: "play.fill",
             primaryAction: { showTasksShortcut = true },
@@ -626,18 +626,18 @@ extension HomeDashboardView {
         let primaryCTA: String
 
         if isNextClassLiveNow {
-            subtitle = "Şu an \(event.title) dersindesin."
+            subtitle = tr("hd_in_class_now", event.title)
             context = "Ders bitince ritmini koru."
-            primaryCTA = "Haftayı Aç"
+            primaryCTA = tr("hd_open_week")
         } else {
             let minutes = nextClassStartsInMinutes ?? 0
-            subtitle = "\(minutes) dk sonra \(event.title) başlıyor."
-            context = "Ders öncesi zihnini toparlamak iyi olabilir."
+            subtitle = tr("hd_class_starts_in", minutes, event.title)
+            context = tr("hd_pre_class")
             primaryCTA = "Programa Git"
         }
 
         return TodayHeroState(
-            eyebrow: isNextClassLiveNow ? "Şu an aktif" : "Sıradaki ders",
+            eyebrow: isNextClassLiveNow ? tr("hd_active_now_label") : tr("hd_next_class_label"),
             title: event.title,
             subtitle: subtitle,
             icon: "book.closed.fill",
@@ -647,29 +647,29 @@ extension HomeDashboardView {
                 text: nextEventTimeText,
                 tint: accent
             ),
-            badge2: HeroBadge(icon: "calendar", text: "Bugün", tint: .blue),
+            badge2: HeroBadge(icon: "calendar", text: tr("common_today"), tint: .blue),
             contextLine: context,
             primaryCTA: primaryCTA,
             primaryIcon: "calendar",
             primaryAction: { onOpenWeek() },
-            secondaryCTA: HeroCTA(title: "Görevler", icon: "list.bullet", action: { showTasksShortcut = true })
+            secondaryCTA: HeroCTA(title: tr("ph_tasks_word"), icon: "list.bullet", action: { showTasksShortcut = true })
         )
     }
 
     var socialFollowUpHeroState: TodayHeroState {
         let title = socialFollowUpTitle
-        let subtitle = recentChatFriend != nil ? "İstersen kaldığın yerden devam et." : "Arkadaşlarınla bağlantıda kal."
+        let subtitle = recentChatFriend != nil ? tr("hd_resume") : tr("hd_stay_connected")
 
         return TodayHeroState(
-            eyebrow: "Sosyal akış",
+            eyebrow: tr("hd_social_flow"),
             title: title,
             subtitle: subtitle,
             icon: "bubble.left.and.bubble.right.fill",
             accent: .blue,
             badge1: HeroBadge(icon: "message.fill", text: "Sohbet", tint: .blue),
-            badge2: HeroBadge(icon: "person.2.fill", text: "Arkadaşlar", tint: .pink),
-            contextLine: "Kısa bir mesaj bile seni akışa geri bağlayabilir.",
-            primaryCTA: "Sohbeti Aç",
+            badge2: HeroBadge(icon: "person.2.fill", text: tr("hd_friends"), tint: .pink),
+            contextLine: tr("hd_short_msg"),
+            primaryCTA: tr("hd_open_chat"),
             primaryIcon: "bubble.left.and.bubble.right.fill",
             primaryAction: {
                 if recentChatFriend != nil {
@@ -706,18 +706,18 @@ extension HomeDashboardView {
     }
 
     var completionFollowUpHeroStateV2: TodayHeroState {
-        let completedTitle = latestCompletedTodayTaskTitle ?? "Görev"
+        let completedTitle = latestCompletedTodayTaskTitle ?? tr("at_kind_task")
 
         return TodayHeroState(
-            eyebrow: "Güzel ilerliyorsun",
-            title: "\(completedTitle) tamamlandı",
-            subtitle: "Bugün bir adım attın.",
+            eyebrow: tr("hd_nice_progress"),
+            title: tr("hd_x_done", completedTitle),
+            subtitle: tr("hd_took_step"),
             icon: "checkmark.circle.fill",
             accent: .green,
-            badge1: HeroBadge(icon: "checkmark.circle.fill", text: "Tamamlandı", tint: .green),
+            badge1: HeroBadge(icon: "checkmark.circle.fill", text: tr("common_completed"), tint: .green),
             badge2: HeroBadge(icon: "flame.fill", text: "Seri \(streakCount)", tint: .orange),
-            contextLine: "İstersen kalan işlere ya da içgörülere geç.",
-            primaryCTA: todayPendingBoardCount > 0 ? "Kalanlara Bak" : "İçgörülere Git",
+            contextLine: tr("hd_go_remaining"),
+            primaryCTA: todayPendingBoardCount > 0 ? "Kalanlara Bak" : tr("hd_go_insights"),
             primaryIcon: todayPendingBoardCount > 0 ? "list.bullet" : "chart.bar.fill",
             primaryAction: {
                 if todayPendingBoardCount > 0 {
@@ -736,35 +736,35 @@ extension HomeDashboardView {
 
     var nightPlanningHeroStateV2: TodayHeroState {
         TodayHeroState(
-            eyebrow: "Günü kapat",
-            title: "Yarını hafiflet",
-            subtitle: "Küçük bir plan yarına çok şey katar.",
+            eyebrow: tr("hd_close_day"),
+            title: tr("hd_lighten_tomorrow"),
+            subtitle: tr("hd_small_plan_adds"),
             icon: "moon.stars.fill",
             accent: .purple,
-            badge1: HeroBadge(icon: "calendar.badge.plus", text: "Yarın", tint: .purple),
-            badge2: HeroBadge(icon: "checkmark.circle.fill", text: "Bugün temiz", tint: .green),
-            contextLine: "1–2 net adım belirlemek sabahı kolaylaştırır.",
-            primaryCTA: "Yarını Planla",
+            badge1: HeroBadge(icon: "calendar.badge.plus", text: tr("common_tomorrow"), tint: .purple),
+            badge2: HeroBadge(icon: "checkmark.circle.fill", text: tr("hd_today_clean"), tint: .green),
+            contextLine: tr("hd_clear_steps_morning"),
+            primaryCTA: tr("hd_plan_tomorrow"),
             primaryIcon: "calendar.badge.plus",
             primaryAction: { onOpenWeek() },
-            secondaryCTA: HeroCTA(title: "İçgörüler", icon: "chart.bar.fill", action: { onOpenInsights() })
+            secondaryCTA: HeroCTA(title: tr("hd_insights"), icon: "chart.bar.fill", action: { onOpenInsights() })
         )
     }
 
     var lowMomentumHeroStateV2: TodayHeroState {
         TodayHeroState(
-            eyebrow: "Küçük bir başlangıç",
-            title: "Bugünü hareket ettir",
-            subtitle: "Tek bir küçük görev bile akışı başlatabilir.",
+            eyebrow: tr("hd_small_start"),
+            title: tr("hd_get_today_moving"),
+            subtitle: tr("hd_one_task_flow"),
             icon: "bolt.fill",
             accent: .orange,
-            badge1: HeroBadge(icon: "exclamationmark.circle.fill", text: "Başlangıç lazım", tint: .orange),
-            badge2: HeroBadge(icon: "list.bullet", text: "\(todayPendingBoardCount) açık", tint: .blue),
-            contextLine: "Mükemmel olmak zorunda değil.",
-            primaryCTA: "Görevleri Aç",
+            badge1: HeroBadge(icon: "exclamationmark.circle.fill", text: tr("hd_need_start"), tint: .orange),
+            badge2: HeroBadge(icon: "list.bullet", text: tr("rel_open_count", todayPendingBoardCount), tint: .blue),
+            contextLine: tr("hd_not_perfect"),
+            primaryCTA: tr("hd_open_tasks"),
             primaryIcon: "list.bullet",
             primaryAction: { showTasksShortcut = true },
-            secondaryCTA: HeroCTA(title: "Odak Başlat", icon: "play.fill", action: { startInlineFocus() })
+            secondaryCTA: HeroCTA(title: tr("hd_start_focus"), icon: "play.fill", action: { startInlineFocus() })
         )
     }
 
@@ -783,14 +783,14 @@ extension HomeDashboardView {
 
     var crewFollowUpHeroState: TodayHeroState {
         TodayHeroState(
-            eyebrow: "Sıradaki alan",
+            eyebrow: tr("hd_next_area"),
             title: "Crew seni bekliyor",
-            subtitle: "Kişisel tarafı bitirdin.",
+            subtitle: tr("hd_personal_done"),
             icon: "person.3.fill",
             accent: .pink,
-            badge1: HeroBadge(icon: "checklist", text: "\(activeCrewTaskCount) açık iş", tint: .pink),
+            badge1: HeroBadge(icon: "checklist", text: tr("hd_open_work", activeCrewTaskCount), tint: .pink),
             badge2: HeroBadge(icon: "bolt.fill", text: "Crew", tint: .orange),
-            contextLine: "Ekip akışını da kapatabilirsin.",
+            contextLine: tr("hd_close_crew"),
             primaryCTA: "Crew’e Git",
             primaryIcon: "person.3.fill",
             primaryAction: { onOpenWeek() },
@@ -800,15 +800,15 @@ extension HomeDashboardView {
 
     var insightsFollowUpHeroState: TodayHeroState {
         TodayHeroState(
-            eyebrow: "Bugün bitti",
-            title: "Akışını kontrol et",
-            subtitle: "Bugünkü ilerlemeni ve ritmini görebilirsin.",
+            eyebrow: tr("hd_today_finished"),
+            title: tr("hd_check_flow"),
+            subtitle: tr("hd_see_progress"),
             icon: "chart.bar.fill",
             accent: .blue,
             badge1: HeroBadge(icon: "flame.fill", text: "Seri \(streakCount)", tint: .orange),
             badge2: HeroBadge(icon: "chart.bar.fill", text: "Insights", tint: .blue),
-            contextLine: "Yarını daha iyi kurmana yardım eder.",
-            primaryCTA: "İçgörülere Git",
+            contextLine: tr("hd_helps_tomorrow"),
+            primaryCTA: tr("hd_go_insights"),
             primaryIcon: "chart.bar.fill",
             primaryAction: { onOpenInsights() },
             secondaryCTA: HeroCTA(title: "Hafta", icon: "calendar", action: { onOpenWeek() })
@@ -817,18 +817,18 @@ extension HomeDashboardView {
 
     var wrapUpHeroState: TodayHeroState {
         TodayHeroState(
-            eyebrow: "Gün tamamlandı",
-            title: "Yarını hazırlayabilirsin",
-            subtitle: "Bugün sakin kapandı.",
+            eyebrow: tr("hd_day_complete"),
+            title: tr("hd_prepare_tomorrow"),
+            subtitle: tr("hd_calm_close"),
             icon: "calendar.badge.plus",
             accent: .green,
             badge1: HeroBadge(icon: "checkmark.circle.fill", text: "Tamam", tint: .green),
-            badge2: HeroBadge(icon: "calendar", text: "Yarın", tint: .blue),
-            contextLine: "Kısa bir plan sabah sürtünmesini azaltır.",
-            primaryCTA: "Haftayı Aç",
+            badge2: HeroBadge(icon: "calendar", text: tr("common_tomorrow"), tint: .blue),
+            contextLine: tr("hd_short_plan_friction"),
+            primaryCTA: tr("hd_open_week"),
             primaryIcon: "calendar",
             primaryAction: { onOpenWeek() },
-            secondaryCTA: HeroCTA(title: "Görev Ekle", icon: "plus", action: { onAddTask() })
+            secondaryCTA: HeroCTA(title: tr("common_add_task"), icon: "plus", action: { onAddTask() })
         )
     }
 
@@ -847,18 +847,18 @@ extension HomeDashboardView {
         let course = task.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
 
         return TodayHeroState(
-            eyebrow: "Önce bunu temizle",
+            eyebrow: tr("hd_clear_first"),
             title: task.title,
-            subtitle: "Bu görev gecikmiş.",
+            subtitle: tr("hd_task_overdue"),
             icon: focusSymbol(for: task),
             accent: accent,
-            badge1: HeroBadge(icon: "exclamationmark.triangle.fill", text: "Gecikmiş", tint: accent),
+            badge1: HeroBadge(icon: "exclamationmark.triangle.fill", text: tr("common_overdue"), tint: accent),
             badge2: course.isEmpty ? nil : HeroBadge(icon: "book.closed.fill", text: course, tint: accent),
             contextLine: priorityTaskContextLine(for: task),
-            primaryCTA: "Başla",
+            primaryCTA: tr("hd_start"),
             primaryIcon: "play.fill",
             primaryAction: { startInlineFocus() },
-            secondaryCTA: HeroCTA(title: "Tüm Görevler", icon: "list.bullet", action: { showTasksShortcut = true })
+            secondaryCTA: HeroCTA(title: tr("hd_all_tasks"), icon: "list.bullet", action: { showTasksShortcut = true })
         )
     }
 
@@ -867,7 +867,7 @@ extension HomeDashboardView {
         let course = task.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
 
         return TodayHeroState(
-            eyebrow: "Bugünün önceliği",
+            eyebrow: tr("hd_today_priority2"),
             title: task.title,
             subtitle: focusCardStatusTextStudent,
             icon: focusSymbol(for: task),
@@ -875,28 +875,28 @@ extension HomeDashboardView {
             badge1: HeroBadge(icon: "scope", text: dueBadgeText(for: task), tint: accent),
             badge2: course.isEmpty ? nil : HeroBadge(icon: "book.closed.fill", text: course, tint: accent),
             contextLine: priorityTaskContextLine(for: task),
-            primaryCTA: "Başla",
+            primaryCTA: tr("hd_start"),
             primaryIcon: "play.fill",
             primaryAction: { startInlineFocus() },
-            secondaryCTA: HeroCTA(title: "Tüm Görevler", icon: "list.bullet", action: { showTasksShortcut = true })
+            secondaryCTA: HeroCTA(title: tr("hd_all_tasks"), icon: "list.bullet", action: { showTasksShortcut = true })
         )
     }
 
     func priorityTaskContextLine(for task: DTTaskItem) -> String {
         if store.isOverdue(task) {
             switch heroDayPhase {
-            case .morning: return "Güne bunu temizleyerek başlamak iyi olur."
-            case .afternoon: return "Bunu bitirmen günü rahatlatır."
-            case .evening: return "Akşam kapanmadan bunu temizlemek iyi olur."
-            case .night: return "Bunu kapatıp günü daha hafif bitirebilirsin."
+            case .morning: return tr("hd_start_clearing")
+            case .afternoon: return tr("hd_finish_relax")
+            case .evening: return tr("hd_clear_before_evening")
+            case .night: return tr("hd_close_lighter")
             }
         }
 
         switch heroDayPhase {
-        case .morning: return "Erken başlarsan momentum kazanırsın."
-        case .afternoon: return "Şimdi başlarsan momentum kazanırsın."
-        case .evening: return "Bugün bitirmen akşamı rahatlatır."
-        case .night: return "Kısa bir başlangıç bile yarını kolaylaştırır."
+        case .morning: return tr("hd_early_momentum")
+        case .afternoon: return tr("hd_now_momentum")
+        case .evening: return tr("hd_finish_evening")
+        case .night: return tr("hd_short_start_tomorrow")
         }
     }
 
@@ -971,15 +971,15 @@ extension HomeDashboardView {
         let label = suggestedStudyLabel(for: exam)
 
         return TodayHeroState(
-            eyebrow: "Yaklaşan sınav",
+            eyebrow: tr("tv_upcoming_exam"),
             title: "\(exam.courseName.isEmpty ? exam.title : exam.courseName) \(exam.examType)",
-            subtitle: "\(examCountdownText(exam)) • Bugün \(minutes) dk \(label.lowercased()) iyi olabilir.",
+            subtitle: "\(examCountdownText(exam)) • \(tr("hd_exam_study_block", minutes, label.lowercased()))",
             icon: "graduationcap.fill",
             accent: accent,
             badge1: HeroBadge(icon: "calendar", text: examDateText(exam), tint: accent),
             badge2: HeroBadge(icon: "timer", text: "\(minutes) dk", tint: .orange),
-            contextLine: "Sınava yaklaşırken küçük ama net bir çalışma bloğu stresi azaltır.",
-            primaryCTA: "Başlat",
+            contextLine: tr("hd_exam_block_sub"),
+            primaryCTA: tr("hd_start_btn"),
             primaryIcon: "play.fill",
             primaryAction: { startInlineFocus() },
             secondaryCTA: HeroCTA(title: "Planla", icon: "calendar.badge.plus", action: { onOpenWeek() })

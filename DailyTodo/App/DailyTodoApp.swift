@@ -10,6 +10,8 @@ import SwiftData
 import WidgetKit
 import UserNotifications
 import UIKit
+import RevenueCat
+import PostHog
 
 @main
 struct DailyTodoApp: App {
@@ -26,6 +28,7 @@ struct DailyTodoApp: App {
     @StateObject private var languageManager = LanguageManager()
     @StateObject private var focusSession = FocusSessionManager.shared
     @StateObject private var studentStore: StudentStore
+    @StateObject private var subscriptionManager = SubscriptionManager.shared
 
     @State private var openFocusFromNotification: Bool = false
     @State private var crewFocusInvitePayload: CrewFocusInvitePayload?
@@ -122,6 +125,7 @@ struct DailyTodoApp: App {
         .environmentObject(focusSession)
         .environment(\.locale, languageManager.activeLocale)
         .environmentObject(studentStore)
+        .environmentObject(subscriptionManager)
         .overlay {
             InAppBannerOverlay()
         }
@@ -204,6 +208,10 @@ struct DailyTodoApp: App {
     }
 
     private func handleAppAppear() {
+        SubscriptionManager.shared.configure()
+        Analytics.shared.configure()
+        Analytics.shared.track("app_opened")
+
         observeAPNSTokenNotificationIfNeeded()
 
         Task {
@@ -246,14 +254,14 @@ struct DailyTodoApp: App {
     }
     
     private func handleCrewFocusInviteReceived(_ userInfo: [AnyHashable: Any]) {
-        print("📨 RECEIVED INVITE NOTIFICATION:", userInfo)
+        Log.debug("📨 RECEIVED INVITE NOTIFICATION:", userInfo)
         
         guard let payload = CrewFocusInvitePayload.from(userInfo: userInfo) else {
-            print("⚠️ CrewFocusInvitePayload parse FAILED")
+            Log.debug("⚠️ CrewFocusInvitePayload parse FAILED")
             return
         }
         
-        print("✅ INVITE PARSED:", payload.crewName, payload.hostName)
+        Log.debug("✅ INVITE PARSED:", payload.crewName, payload.hostName)
      
         handleCrewFocusInviteReceivedPayload(payload)
     }
@@ -261,7 +269,7 @@ struct DailyTodoApp: App {
     private func handleCrewFocusInviteReceivedPayload(_ payload: CrewFocusInvitePayload) {
         if focusSession.isSessionActive,
            focusSession.currentCrewBackendSessionID == payload.sessionID {
-            print("⚪️ INVITE SKIPPED: already in this session")
+            Log.debug("⚪️ INVITE SKIPPED: already in this session")
             return
         }
 
@@ -269,7 +277,7 @@ struct DailyTodoApp: App {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             crewFocusInvitePayload = payload
-            print("📤 INVITE SHEET ATANDI")
+            Log.debug("📤 INVITE SHEET ATANDI")
         }
     }
      
@@ -308,7 +316,7 @@ struct DailyTodoApp: App {
                     openFocusFromNotification = true
                 }
             } catch {
-                print("JOIN INVITE FROM SHEET ERROR:", error.localizedDescription)
+                Log.debug("JOIN INVITE FROM SHEET ERROR:", error.localizedDescription)
                 await MainActor.run {
                     crewFocusInvitePayload = nil
                 }
@@ -329,7 +337,7 @@ struct DailyTodoApp: App {
             queue: .main
         ) { _ in
             Task { @MainActor in
-                print("🔥 TOKEN RECEIVED -> SAVE WITH RETRY")
+                Log.debug("🔥 TOKEN RECEIVED -> SAVE WITH RETRY")
                 PushTokenStore.shared.saveCurrentTokenWithRetry(
                     reason: "didReceiveAPNSToken observer"
                 )
@@ -339,7 +347,7 @@ struct DailyTodoApp: App {
 
     private func handleAPNSTokenNotification() {
         Task { @MainActor in
-            print("🔥 TOKEN RECEIVED -> SAVE WITH RETRY FROM ONRECEIVE")
+            Log.debug("🔥 TOKEN RECEIVED -> SAVE WITH RETRY FROM ONRECEIVE")
             PushTokenStore.shared.saveCurrentTokenWithRetry(
                 reason: "didReceiveAPNSToken onReceive"
             )
@@ -348,6 +356,12 @@ struct DailyTodoApp: App {
 
     private func handleCurrentUserChanged(_ newID: UUID?) {
         let userIDString = newID.map { $0.uuidString }
+
+        if let userIDString {
+            Analytics.shared.identify(userID: userIDString)
+        } else {
+            Analytics.shared.reset()
+        }
 
         todoStore.setCurrentUserID(userIDString)
         studentStore.setCurrentUserID(userIDString)
@@ -378,7 +392,7 @@ struct DailyTodoApp: App {
             try? await Task.sleep(nanoseconds: 1_000_000_000)
 
             await MainActor.run {
-                print("💾 TOKEN SAVE RETRY (user change)...")
+                Log.debug("💾 TOKEN SAVE RETRY (user change)...")
                 PushTokenStore.shared.forceResaveCurrentToken(
                     reason: "session user changed"
                 )
@@ -434,6 +448,7 @@ struct DailyTodoApp: App {
         switch newPhase {
         case .active:
             LiveActivityScheduler.shared.startForegroundLoop(container: container)
+            Task { await SubscriptionManager.shared.refresh() }
 
             focusSession.reconcileExpiredSessionIfNeeded(reason: "scene active")
             
@@ -448,7 +463,7 @@ struct DailyTodoApp: App {
             }
 
             Task { @MainActor in
-                print("🔥 PUSH TOKEN SAVE ON ACTIVE")
+                Log.debug("🔥 PUSH TOKEN SAVE ON ACTIVE")
                 PushTokenStore.shared.saveCurrentTokenWithRetry(
                     reason: "scene active"
                 )
@@ -496,7 +511,7 @@ struct DailyTodoApp: App {
         conversation: ChatBackendConversationDTO?
     ) {
         guard let friendshipID = conversation?.supabaseFriendshipId else {
-            print("⚪️ INBOX CACHE SKIPPED: missing friendshipID")
+            Log.debug("⚪️ INBOX CACHE SKIPPED: missing friendshipID")
             return
         }
 
@@ -598,9 +613,9 @@ struct DailyTodoApp: App {
 
             try context.save()
 
-            print("🟢 INBOX CACHE UPSERTED:", message.id.uuidString)
+            Log.debug("🟢 INBOX CACHE UPSERTED:", message.id.uuidString)
         } catch {
-            print("❌ INBOX CACHE UPSERT ERROR:", error.localizedDescription)
+            Log.debug("❌ INBOX CACHE UPSERT ERROR:", error.localizedDescription)
         }
     }
     
@@ -627,9 +642,9 @@ struct DailyTodoApp: App {
 
             try context.save()
 
-            print("🟢 INBOX CONVERSATION CACHE UPSERTED:", conversation.id.uuidString)
+            Log.debug("🟢 INBOX CONVERSATION CACHE UPSERTED:", conversation.id.uuidString)
         } catch {
-            print("❌ INBOX CONVERSATION CACHE ERROR:", error.localizedDescription)
+            Log.debug("❌ INBOX CONVERSATION CACHE ERROR:", error.localizedDescription)
         }
     }
 
@@ -641,7 +656,7 @@ struct DailyTodoApp: App {
         let seenAt = Date()
 
         guard !ids.isEmpty else {
-            print("⚪️ INBOX CACHE SEEN SKIPPED: empty ids")
+            Log.debug("⚪️ INBOX CACHE SEEN SKIPPED: empty ids")
             return
         }
 
@@ -670,9 +685,9 @@ struct DailyTodoApp: App {
 
             try context.save()
 
-            print("🟢 INBOX CACHE SEEN UPDATED:", ids.count)
+            Log.debug("🟢 INBOX CACHE SEEN UPDATED:", ids.count)
         } catch {
-            print("❌ INBOX CACHE SEEN ERROR:", error.localizedDescription)
+            Log.debug("❌ INBOX CACHE SEEN ERROR:", error.localizedDescription)
         }
     }
 
@@ -697,7 +712,7 @@ struct DailyTodoApp: App {
             )
             
             await MainActor.run {
-                print("📡 REGISTERING FOR REMOTE NOTIFICATIONS:", reason)
+                Log.debug("📡 REGISTERING FOR REMOTE NOTIFICATIONS:", reason)
                 UIApplication.shared.registerForRemoteNotifications()
 
                 PushTokenStore.shared.saveCurrentTokenWithRetry(
@@ -809,7 +824,7 @@ struct DailyTodoApp: App {
     }
     
     private func handleAuthCallbackURL(_ url: URL) {
-        print("🔐 AUTH CALLBACK URL:", url.absoluteString)
+        Log.debug("🔐 AUTH CALLBACK URL:", url.absoluteString)
 
         Task {
             await session.handleAuthCallback(url: url)
@@ -839,7 +854,7 @@ struct DailyTodoApp: App {
               let crewID = UUID(uuidString: crewIDString),
               let sessionID = UUID(uuidString: sessionIDString)
         else {
-            print("⚠️ FOCUS INVITE URL PARSE FAILED:", url.absoluteString)
+            Log.debug("⚠️ FOCUS INVITE URL PARSE FAILED:", url.absoluteString)
             return
         }
 
@@ -851,7 +866,7 @@ struct DailyTodoApp: App {
                   dto.is_active,
                   dto.ended_at == nil
             else {
-                print("⚪️ FOCUS INVITE URL SESSION NOT ACTIVE:", sessionIDString)
+                Log.debug("⚪️ FOCUS INVITE URL SESSION NOT ACTIVE:", sessionIDString)
                 return
             }
 

@@ -119,7 +119,7 @@ private extension AuthView {
                 }
                 .lineLimit(1)
 
-                Text("Öğrenci hayatını görevler, ders programı, focus ve arkadaşlarınla tek sistemde yönet.")
+                Text(tr("av_subtitle"))
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(Color.white.opacity(0.62))
                     .multilineTextAlignment(.center)
@@ -142,7 +142,7 @@ private extension AuthView {
                 premiumActionButton(
                     eyebrow: "WELCOME BACK",
                     title: "Login",
-                    subtitle: "Hesabınla devam et",
+                    subtitle: tr("av_continue_account"),
                     systemImage: "arrow.right.circle.fill",
                     highlighted: true
                 ) {
@@ -152,7 +152,7 @@ private extension AuthView {
                 premiumActionButton(
                     eyebrow: "NEW ACCOUNT",
                     title: "Sign Up",
-                    subtitle: "Yeni öğrenci sistemini oluştur",
+                    subtitle: tr("av_create_system"),
                     systemImage: "person.crop.circle.badge.plus",
                     highlighted: false
                 ) {
@@ -160,7 +160,7 @@ private extension AuthView {
                 }
             }
 
-            Text("Devam ederek Updo deneyimi ve hesap akışını kullanmayı kabul edersin.")
+            Text(tr("av_terms_note"))
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Color.white.opacity(0.38))
                 .multilineTextAlignment(.center)

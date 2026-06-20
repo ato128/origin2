@@ -1,2 +1,12 @@
 SUPABASE_URL = https://srzvzaczgydwtopnlrvx.supabase.co
 SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNyenZ6YWN6Z3lkd3RvcG5scnZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NjIzNjAsImV4cCI6MjA4OTQzODM2MH0.8eSacyni-OQZEU6wbMZwjSPhLdQthZFGvUwHlCiaaF4
+// ⚠️ REVENUECAT — bu bir TEST STORE key'idir ("test_" öneki).
+// App Store'da GERÇEK satın alma bu key ile ÇALIŞMAZ. Yayın öncesi:
+//   1) App Store Connect'te uygulamayı + abonelik ürünlerini oluştur
+//   2) RevenueCat'te iOS app'i ekleyip App Store Connect'e bağla
+//   3) RevenueCat → Project Settings → API Keys'ten "appl_" ile başlayan
+//      public App Store SDK key'ini al
+// Geçiş TEK SATIR: aşağıdaki değeri "appl_..." key'iyle değiştir, başka hiçbir yer değişmez.
+REVENUECAT_API_KEY = test_PqTgTRmxEFtOkWZQIIiQTANEeid
+POSTHOG_API_KEY = phc_pNTV4jAfcbzCcwiA9YBNjsBK6pCpWdyMSvieHgCKDfGp
+POSTHOG_HOST = https://eu.i.posthog.com

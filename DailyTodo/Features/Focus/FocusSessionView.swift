@@ -1060,9 +1060,9 @@ private extension FocusSessionView {
 
             do {
                 try modelContext.save()
-                print("✅ Focus saved directly from FocusSessionView:", record.completedSeconds)
+                Log.debug("✅ Focus saved directly from FocusSessionView:", record.completedSeconds)
             } catch {
-                print("❌ Focus save error:", error)
+                Log.debug("❌ Focus save error:", error)
             }
 
             NotificationCenter.default.post(

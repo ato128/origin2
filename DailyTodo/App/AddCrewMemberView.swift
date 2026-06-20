@@ -158,7 +158,7 @@ private extension AddCrewMemberView {
                     .tracking(2.2)
                     .foregroundStyle(AddCrewMemberArenaPalette.cyan)
 
-                Text("Üye Ekle")
+                Text(tr("am_add_member"))
                     .font(.system(size: 21, weight: .black))
                     .foregroundStyle(.white)
             }
@@ -215,13 +215,13 @@ private extension AddCrewMemberView {
                             .font(.system(size: 30, weight: .black))
                             .foregroundStyle(.white)
 
-                        Text("üye")
+                        Text(tr("member_lc"))
                             .font(.system(size: 25, weight: .regular, design: .serif))
                             .italic()
                             .foregroundStyle(AddCrewMemberArenaPalette.cyan)
                     }
 
-                    Text("Kullanıcı adını girerek bu crew’e yeni bir üye ekle.")
+                    Text(tr("acm_subtitle"))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.50))
                         .lineLimit(2)
@@ -256,8 +256,8 @@ private extension AddCrewMemberView {
         VStack(alignment: .leading, spacing: 14) {
             sectionTitle(
                 eyebrow: "MEMBER LOOKUP",
-                title: "Kullanıcı",
-                italic: "adı"
+                title: tr("uname_w1"),
+                italic: tr("uname_w2")
             )
 
             HStack(alignment: .top, spacing: 13) {
@@ -289,7 +289,7 @@ private extension AddCrewMemberView {
                             }
                         }
 
-                    Text("Başında @ olmadan yazabilirsin.")
+                    Text(tr("uname_hint"))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.38))
                 }
@@ -316,7 +316,7 @@ private extension AddCrewMemberView {
                         .font(.system(size: 18, weight: .black))
                 }
 
-                Text("Üyeyi Ekle")
+                Text(tr("acm_add_member_btn"))
                     .font(.system(size: 16, weight: .black))
             }
             .foregroundStyle(.black)
@@ -434,7 +434,7 @@ private extension AddCrewMemberView {
             try await crewStore.addMember(by: normalizedUsername, to: crewID)
             dismiss()
         } catch {
-            print("ADD MEMBER VIEW ERROR:", error.localizedDescription)
+            Log.debug("ADD MEMBER VIEW ERROR:", error.localizedDescription)
             errorMessage = error.localizedDescription
         }
     }

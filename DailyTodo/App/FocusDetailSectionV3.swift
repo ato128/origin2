@@ -16,13 +16,13 @@ struct FocusDetailSectionV3: View {
 
             VStack(spacing: 10) {
                 detailRow(
-                    title: "Önerilen mod",
+                    title: tr("fds_suggested_mode"),
                     subtitle: detailSubtitle(for: .medium),
                     icon: "target"
                 )
 
                 detailRow(
-                    title: "Kısa başlangıç",
+                    title: tr("fds_short_start"),
                     subtitle: detailSubtitle(for: .short),
                     icon: "bolt.fill"
                 )
@@ -190,37 +190,37 @@ private extension FocusDetailSectionV3 {
         case .personal:
             switch preset {
             case .short:
-                return "15 dk hızlı çalışma"
+                return tr("fds_15_quick")
             case .medium:
                 return "25 dk derin odak"
             case .long:
-                return "45 dk yoğun akış"
+                return tr("fds_45_intense")
             case .custom:
-                return "Özel süreli kişisel odak"
+                return tr("fds_custom_personal")
             }
 
         case .crew:
             switch preset {
             case .short:
-                return "20 dk senkron başlangıç"
+                return tr("fds_20_sync")
             case .medium:
-                return "30 dk ekip akışı"
+                return tr("fds_30_team")
             case .long:
-                return "50 dk takım odak modu"
+                return tr("fds_50_team")
             case .custom:
-                return "Özel süreli ekip oturumu"
+                return tr("fds_custom_team")
             }
 
         case .friend:
             switch preset {
             case .short:
-                return "15 dk eşleşmiş odak"
+                return tr("fds_15_matched")
             case .medium:
                 return "25 dk birlikte odak"
             case .long:
-                return "45 dk beraber derin akış"
+                return tr("fds_45_deep")
             case .custom:
-                return "Özel süreli ortak odak"
+                return tr("fds_custom_shared")
             }
         }
     }

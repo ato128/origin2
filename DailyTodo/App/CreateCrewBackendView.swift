@@ -36,12 +36,14 @@ struct CreateCrewBackendView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var crewStore: CrewStore
+    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
 
     @State private var name = ""
     @State private var icon = "person.3.fill"
     @State private var colorHex = "#4F8CFF"
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @State private var showPaywall = false
 
     private let iconOptions: [String] = [
         "person.3.fill",
@@ -120,6 +122,9 @@ struct CreateCrewBackendView: View {
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+        .sheet(isPresented: $showPaywall) {
+            PaywallView(context: "crew_limit")
+        }
     }
 }
 
@@ -201,7 +206,7 @@ private extension CreateCrewBackendView {
                     .tracking(2.2)
                     .foregroundStyle(CreateCrewArenaPalette.cyan)
 
-                Text("Crew Oluştur")
+                Text(tr("cc_create"))
                     .font(.system(size: 21, weight: .black))
                     .foregroundStyle(.white)
             }
@@ -283,7 +288,7 @@ private extension CreateCrewBackendView {
                             .foregroundStyle(CreateCrewArenaPalette.cyan)
                     }
 
-                    Text("Birlikte görev, focus ve takım akışı için yeni alan.")
+                    Text(tr("ccb_subtitle"))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.50))
                         .lineLimit(2)
@@ -333,7 +338,7 @@ private extension CreateCrewBackendView {
                 icon: "text.cursor",
                 tint: CreateCrewArenaPalette.blue
             ) {
-                TextField("Crew adı", text: $name)
+                TextField(tr("ccb_crew_name"), text: $name)
                     .font(.system(size: 18, weight: .black))
                     .foregroundStyle(.white)
                     .textInputAutocapitalization(.words)
@@ -346,7 +351,7 @@ private extension CreateCrewBackendView {
                         }
                     }
 
-                Text("Örnek: Focus, Study Sprint, Code Lab")
+                Text(tr("ccb_name_ph"))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.38))
             }
@@ -359,8 +364,8 @@ private extension CreateCrewBackendView {
         VStack(alignment: .leading, spacing: 14) {
             sectionTitle(
                 eyebrow: "CREW SYMBOL",
-                title: "İkon",
-                italic: "seç"
+                title: tr("ccb_icon_w"),
+                italic: tr("ccb_pick_w")
             )
 
             LazyVGrid(
@@ -403,7 +408,7 @@ private extension CreateCrewBackendView {
             sectionTitle(
                 eyebrow: "CREW ACCENT",
                 title: "Renk",
-                italic: "seç"
+                italic: tr("ccb_pick_w")
             )
 
             LazyVGrid(
@@ -468,7 +473,7 @@ private extension CreateCrewBackendView {
                         .font(.system(size: 18, weight: .black))
                 }
 
-                Text("Crew Oluştur")
+                Text(tr("cc_create"))
                     .font(.system(size: 16, weight: .black))
             }
             .foregroundStyle(.black)
@@ -623,6 +628,12 @@ private extension CreateCrewBackendView {
 
         let cleanName = cleanName
         guard !cleanName.isEmpty else { return }
+
+        if crewStore.crews.count >= 1, !subscriptionManager.isPro {
+            Analytics.shared.track("feature_gate_triggered", properties: ["gate": "crew_limit"])
+            showPaywall = true
+            return
+        }
 
         isSaving = true
         errorMessage = nil

@@ -181,7 +181,7 @@ struct FocusView: View {
                 await crewStore.loadActiveFocusSession(for: crewID)
 
                 guard let dto = crewStore.activeFocusSessionByCrew[crewID] else {
-                    print("⚪️ ACTIVE CREW FOCUS NOT FOUND:", crewID.uuidString)
+                    Log.debug("⚪️ ACTIVE CREW FOCUS NOT FOUND:", crewID.uuidString)
                     return
                 }
 
@@ -304,11 +304,11 @@ private extension FocusView {
 
         switch selectedMode {
         case .personal:
-            return "Kendi ritmini başlat, tek dokunuşla odakta kal."
+            return tr("fv_personal_sub")
         case .crew:
-            return "Takım odası kur, görevi seç, birlikte odaklan."
+            return tr("fv_crew_sub")
         case .friend:
-            return "Yakın çevrenle kısa bir focus akışı başlat."
+            return tr("fv_friend_sub")
         }
     }
 
@@ -409,11 +409,11 @@ private extension FocusView {
                 )
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("Crew başlatma")
+                Text(tr("fv_crew_start"))
                     .font(.system(size: 16, weight: .black))
                     .foregroundStyle(.white)
 
-                Text("Başlatınca crew, görev ve katılımcı seçimi açılır.")
+                Text(tr("fv_crew_start_sub"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.50))
                     .lineLimit(2)
@@ -510,7 +510,7 @@ private extension FocusView {
         Button {
             showCustomDurationSheet = true
         } label: {
-            Text(selectedPreset == .custom ? "\(customMinutes) dk" : "Özel")
+            Text(selectedPreset == .custom ? "\(customMinutes) dk" : tr("wv_custom"))
                 .font(.system(size: 14, weight: .black, design: .monospaced))
                 .foregroundStyle(selectedPreset == .custom ? .black : .white.opacity(0.58))
                 .frame(maxWidth: .infinity)
@@ -641,11 +641,11 @@ private extension FocusView {
 
         switch mode {
         case .personal:
-            return "Şu anda kişisel bir focus aktif"
+            return tr("fv_personal_active")
         case .crew:
-            return "Şu anda crew focus aktif"
+            return tr("fv_crew_active")
         case .friend:
-            return "Şu anda friend focus aktif"
+            return tr("fv_friend_active")
         }
     }
 
@@ -690,7 +690,7 @@ private extension FocusView {
                     Image(systemName: focusSession.isSessionActive ? "lock.fill" : "play.fill")
                         .font(.system(size: 15, weight: .black))
 
-                    Text(focusSession.isSessionActive ? "Aktif Focusu Aç" : modeCTA)
+                    Text(focusSession.isSessionActive ? tr("fv_open_active") : modeCTA)
                         .font(.system(size: 17, weight: .black))
                         .lineLimit(1)
                         .minimumScaleFactor(0.74)
@@ -787,14 +787,14 @@ private extension FocusView {
                                 .foregroundStyle(.primary)
                                 .lineLimit(1)
 
-                            Text("\(activeSession.host_name) başlattı • \(activeSession.duration_minutes) dk")
+                            Text("\(tr("hf_started_by", activeSession.host_name)) • \(tr("rel_min_short_n", activeSession.duration_minutes))")
                                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                                 .foregroundStyle(.secondary)
                         }
 
                         Spacer()
 
-                        Text("Katıl")
+                        Text(tr("hf_join"))
                             .font(.system(size: 13, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 12)
@@ -820,6 +820,8 @@ private extension FocusView {
     }
     
     func triggerFocusLaunch() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+
         if focusSession.isSessionActive {
             focusSession.expandSession()
             return
@@ -850,7 +852,7 @@ private extension FocusView {
             )
 
             if !started {
-                print("FOCUS START FAILED")
+                Log.debug("FOCUS START FAILED")
             }
 
             try? await Task.sleep(nanoseconds: 280_000_000)
@@ -878,14 +880,14 @@ private extension FocusView {
     var effectiveStageStatusText: String {
         if focusSession.isSessionActive {
             if focusSession.isPaused {
-                return "Duraklatıldı"
+                return tr("hv_paused")
             }
 
             switch focusSession.selectedMode {
             case .personal:
                 return "Aktif session"
             case .crew:
-                return "\(focusSession.readyCount)/\(max(focusSession.participantCount, 1)) hazır"
+                return tr("hf_ready_count", focusSession.readyCount, max(focusSession.participantCount, 1))
             case .friend:
                 return "Birlikte aktif"
             }
@@ -912,11 +914,11 @@ private extension FocusView {
         NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 18) {
-                    Text("Crew Focus Başlat")
+                    Text(tr("fv_start_crew"))
                         .font(.system(size: 28, weight: .heavy, design: .rounded))
                         .foregroundStyle(.primary)
 
-                    Text("Crew, görev ve katılımcıları seç. Görevsiz de başlatabilirsin.")
+                    Text(tr("fv_crew_pick_sub"))
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .foregroundStyle(.secondary)
 
@@ -932,7 +934,7 @@ private extension FocusView {
                     } label: {
                         HStack(spacing: 10) {
                             Image(systemName: "play.fill")
-                            Text("Crew Focus Başlat")
+                            Text(tr("fv_start_crew"))
                                 .font(.system(size: 17, weight: .heavy, design: .rounded))
                         }
                         .foregroundStyle(.white)
@@ -962,22 +964,22 @@ private extension FocusView {
     
     var crewLaunchSummaryCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Özet")
+            Text(tr("fv_summary"))
                 .font(.system(size: 15, weight: .heavy, design: .rounded))
 
             HStack(spacing: 10) {
                 summaryMiniPill(
-                    title: "Süre",
+                    title: tr("duration_label"),
                     value: durationText
                 )
 
                 summaryMiniPill(
-                    title: "Görev",
-                    value: selectedCrewTaskID == nil ? "Yok" : "Seçili"
+                    title: tr("at_kind_task"),
+                    value: selectedCrewTaskID == nil ? "Yok" : tr("fv_selected")
                 )
 
                 summaryMiniPill(
-                    title: "Kişi",
+                    title: tr("fv_person"),
                     value: "\(selectedParticipantIDs.count)"
                 )
             }
@@ -1048,7 +1050,7 @@ private extension FocusView {
                                 .font(.system(size: 17, weight: .heavy, design: .rounded))
                                 .foregroundStyle(.primary)
 
-                            Text("Crew alanı")
+                            Text(tr("fv_crew_space"))
                                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                                 .foregroundStyle(.secondary)
                         }
@@ -1083,7 +1085,7 @@ private extension FocusView {
 
     var crewTaskSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Görev")
+            Text(tr("at_kind_task"))
                 .font(.system(size: 15, weight: .heavy, design: .rounded))
 
             Button {
@@ -1112,7 +1114,7 @@ private extension FocusView {
                     .frame(width: 46, height: 46)
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Görevsiz başlat")
+                        Text(tr("fv_start_no_task"))
                             .font(.system(size: 15, weight: .heavy, design: .rounded))
                             .foregroundStyle(.primary)
 
@@ -1214,7 +1216,7 @@ private extension FocusView {
     var crewParticipantSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Katılımcılar")
+                Text(tr("cfr_participants"))
                     .font(.system(size: 15, weight: .heavy, design: .rounded))
 
                 Spacer()
@@ -1270,7 +1272,7 @@ private extension FocusView {
                                 .font(.system(size: 15, weight: .heavy, design: .rounded))
                                 .foregroundStyle(.primary)
 
-                            Text(isLocked ? "Zorunlu katılımcı" : member.role.capitalized)
+                            Text(isLocked ? tr("fv_required_participant") : member.role.capitalized)
                                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                                 .foregroundStyle(.secondary)
                         }
@@ -1344,7 +1346,7 @@ private extension FocusView {
         let invitedParticipantIDs = selectedParticipantIDs.filter { $0 != focusSession.currentUserID }
 
         guard !invitedParticipantIDs.isEmpty else {
-            print("CREW START BLOCKED: en az 1 davetli katılımcı seçilmeli")
+            Log.debug("CREW START BLOCKED: en az 1 davetli katılımcı seçilmeli")
             return
         }
 
@@ -1418,7 +1420,7 @@ private extension FocusView {
                 totalParticipants: totalCount
             )
         } catch {
-            print("CREW START SHEET ERROR:", error.localizedDescription)
+            Log.debug("CREW START SHEET ERROR:", error.localizedDescription)
         }
 
         try? await Task.sleep(nanoseconds: 250_000_000)
@@ -1491,7 +1493,7 @@ private extension FocusView {
             }
         }
 
-        return "Kullanıcı"
+        return tr("uname_w1")
     }
 
     var launchOverlay: some View {
@@ -1529,7 +1531,7 @@ private extension FocusView {
                     .font(.system(size: 34, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
 
-                Text("Focus hazırlanıyor")
+                Text(tr("fv_focus_preparing"))
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundStyle(Color.white.opacity(0.72))
             }
@@ -1618,26 +1620,26 @@ private extension FocusView {
         if focusSession.isSessionActive && focusSession.selectedMode == selectedMode {
             switch selectedMode {
             case .personal:
-                return focusSession.isPaused ? "Duraklatıldı" : "Aktif"
+                return focusSession.isPaused ? tr("hv_paused") : "Aktif"
             case .crew:
-                return "\(focusSession.readyCount)/\(max(focusSession.participantCount, 1)) hazır"
+                return tr("hf_ready_count", focusSession.readyCount, max(focusSession.participantCount, 1))
             case .friend:
-                return focusSession.participantCount >= 2 ? "2/2 hazır" : "Bekleniyor"
+                return focusSession.participantCount >= 2 ? tr("fv_two_ready") : "Bekleniyor"
             }
         }
 
         switch selectedMode {
-        case .personal: return "Hazır"
-        case .crew: return "Takım hazır"
-        case .friend: return "Eşleşti"
+        case .personal: return tr("hf_ready")
+        case .crew: return tr("fv_team_ready")
+        case .friend: return tr("fv_matched")
         }
     }
 
     var modeCTA: String {
         switch selectedMode {
-        case .personal: return "Kişisel Focus Başlat"
-        case .crew: return "Crew Focus Başlat"
-        case .friend: return "Friend Focus Başlat"
+        case .personal: return tr("fv_start_personal")
+        case .crew: return tr("fv_start_crew")
+        case .friend: return tr("fv_start_friend")
         }
     }
 
@@ -1645,11 +1647,11 @@ private extension FocusView {
         NavigationStack {
             VStack(spacing: 18) {
                 VStack(spacing: 8) {
-                    Text("Özel Süre")
+                    Text(tr("fv_custom_duration"))
                         .font(.system(size: 28, weight: .heavy, design: .rounded))
                         .foregroundStyle(.primary)
 
-                    Text("Focus oturumun için istediğin süreyi seç.")
+                    Text(tr("fv_custom_sub"))
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -1735,11 +1737,11 @@ private extension FocusView {
     var goalPickerSheet: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                Text("Goal Seç")
+                Text(tr("fv_pick_goal"))
                     .font(.system(size: 28, weight: .heavy, design: .rounded))
                     .foregroundStyle(.primary)
 
-                Text("Bu session’ın amacını belirle.")
+                Text(tr("fv_goal_sub"))
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .foregroundStyle(.secondary)
 
@@ -1806,7 +1808,7 @@ private extension FocusView {
     var stylePickerSheet: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                Text("Sound Seç")
+                Text(tr("fv_pick_sound"))
                     .font(.system(size: 28, weight: .heavy, design: .rounded))
                     .foregroundStyle(.primary)
 
@@ -1878,7 +1880,7 @@ private extension FocusView {
 private struct PressScaleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.985 : 1.0)
-            .animation(.spring(response: 0.22, dampingFraction: 0.82), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
+            .animation(.spring(response: 0.28, dampingFraction: 0.72), value: configuration.isPressed)
     }
 }

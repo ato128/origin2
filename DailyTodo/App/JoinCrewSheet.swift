@@ -164,7 +164,7 @@ private extension JoinCrewSheet {
                     .tracking(2.2)
                     .foregroundStyle(JoinCrewArenaPalette.cyan)
 
-                Text("Crew’e Katıl")
+                Text(tr("jc_join_crew"))
                     .font(.system(size: 21, weight: .black))
                     .foregroundStyle(.white)
             }
@@ -225,7 +225,7 @@ private extension JoinCrewSheet {
                             .font(.system(size: 30, weight: .black))
                             .foregroundStyle(.white)
 
-                        Text("alanına katıl")
+                        Text(tr("jc_join_space"))
                             .font(.system(size: 25, weight: .regular, design: .serif))
                             .italic()
                             .foregroundStyle(JoinCrewArenaPalette.cyan)
@@ -233,7 +233,7 @@ private extension JoinCrewSheet {
                     .lineLimit(1)
                     .minimumScaleFactor(0.64)
 
-                    Text("Arkadaşının gönderdiği davet kodunu gir ve ortak çalışma alanına katıl.")
+                    Text(tr("jc_subtitle"))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.50))
                         .lineLimit(2)
@@ -308,7 +308,7 @@ private extension JoinCrewSheet {
                         }
                     }
 
-                Text("Kod sadece harf ve rakamlardan oluşur.")
+                Text(tr("jc_code_hint"))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.38))
             }
@@ -320,7 +320,7 @@ private extension JoinCrewSheet {
                 } label: {
                     actionPill(
                         icon: didCopy ? "checkmark" : "doc.on.doc",
-                        title: didCopy ? "Kopyalandı" : "Kopyala",
+                        title: didCopy ? tr("jc_copied") : "Kopyala",
                         tint: JoinCrewArenaPalette.cyan,
                         filled: false
                     )
@@ -338,7 +338,7 @@ private extension JoinCrewSheet {
                 } label: {
                     actionPill(
                         icon: "arrow.down.doc",
-                        title: "Yapıştır",
+                        title: tr("jc_paste"),
                         tint: JoinCrewArenaPalette.blue,
                         filled: true
                     )
@@ -354,8 +354,8 @@ private extension JoinCrewSheet {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle(
                 eyebrow: "HOW IT WORKS",
-                title: "Nasıl",
-                italic: "çalışır?"
+                title: tr("how_w1"),
+                italic: tr("how_w2")
             )
 
             HStack(alignment: .top, spacing: 13) {
@@ -369,11 +369,11 @@ private extension JoinCrewSheet {
                     )
 
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Kod doğruysa crew’e katılırsın.")
+                    Text(tr("jc_step1"))
                         .font(.system(size: 15, weight: .black))
                         .foregroundStyle(.white)
 
-                    Text("Katıldıktan sonra ortak görevler, üyeler ve takım akışı senin için açılır.")
+                    Text(tr("jc_step2"))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.48))
                         .fixedSize(horizontal: false, vertical: true)
@@ -403,7 +403,7 @@ private extension JoinCrewSheet {
                         .font(.system(size: 18, weight: .black))
                 }
 
-                Text("Crew’e Katıl")
+                Text(tr("jc_join_crew"))
                     .font(.system(size: 16, weight: .black))
             }
             .foregroundStyle(.black)

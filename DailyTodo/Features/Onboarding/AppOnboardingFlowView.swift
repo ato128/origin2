@@ -115,6 +115,7 @@ struct AppOnboardingFlowView: View {
 
     @State private var isFinishing = false
     @State private var finishError: String?
+    @State private var welcomeAppeared = false
 
     private var stage: AppOnboardingStage {
         AppOnboardingStage(rawValue: stageRawValue) ?? .welcome
@@ -128,16 +129,17 @@ struct AppOnboardingFlowView: View {
                     .transition(screenTransition)
 
             case .student:
-                StudentOnboardingFlowView()
+                // The AI flow calls onComplete deterministically after saving —
+                // we no longer rely on observing the computed hasCompletedStudentProfile
+                // (which didn't fire the live transition reliably).
+                AIOnboardingFlowView(onComplete: { goToFocusPreview() })
                     .environmentObject(studentStore)
                     .transition(screenTransition)
-                    .onChange(of: studentStore.hasCompletedStudentProfile) { _, completed in
-                        guard completed else { return }
-                        goToFocusPreview()
-                    }
 
             case .focus:
-                focusScreen
+                // "Sell the app" — premium Arena showcase of all five pillars,
+                // ending in the paywall, then enters the app.
+                OnboardingShowcaseView(onFinish: { enterApp() })
                     .transition(screenTransition)
 
             case .crew:
@@ -158,9 +160,10 @@ struct AppOnboardingFlowView: View {
             normalizeStage()
             crewStore.setCurrentUser(session.currentUser?.id)
         }
-        .onChange(of: studentStore.hasCompletedStudentProfile) { _, _ in
-            normalizeStage()
-        }
+        // NOTE: the live student→focus transition is driven (animated) by the
+        // `.student` stage's own onChange → goToFocusPreview(). We deliberately do
+        // NOT re-run normalizeStage() on that change, because its un-animated
+        // stageRawValue write would pre-empt and "snap" the transition.
     }
 
     private var screenTransition: AnyTransition {
@@ -271,18 +274,96 @@ struct AppOnboardingFlowView: View {
 
 private extension AppOnboardingFlowView {
     var welcomeScreen: some View {
-        OnboardingShell(
-            progressText: "1 / 6",
-            title: "Updo",
-            accent: "Study OS",
-            subtitle: "Plan. Focus. Grow. Together.",
-            keywords: "TASKS  •  FOCUS  •  CREW  •  ARENA",
-            primaryTitle: "Start",
-            primaryIcon: "arrow.right",
-            isPrimaryLoading: false,
-            primaryAction: goToStudentSetup
-        ) {
-            BrandOpeningHero()
+        ZStack {
+            // The app's own signature field — multi-color edge-lit glows.
+            ArenaBackground(
+                primaryGlow: Color(arenaHex: AppArenaPalette.cyan),
+                secondaryGlow: Color(arenaHex: AppArenaPalette.purple),
+                warmGlow: Color(arenaHex: AppArenaPalette.coral),
+                intensity: 1.0
+            )
+
+            VStack(spacing: 0) {
+                Spacer()
+
+                // App mark — directional brand glyph on the app gradient.
+                ZStack {
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .fill(AppArenaPalette.appGradient)
+                        .frame(width: 98, height: 98)
+                        .shadow(color: Color(arenaHex: AppArenaPalette.purple).opacity(0.5), radius: 28, y: 14)
+                    Image(systemName: "location.north.fill")
+                        .font(.system(size: 44, weight: .black))
+                        .foregroundStyle(.white)
+                }
+                .scaleEffect(welcomeAppeared ? 1 : 0.82)
+                .opacity(welcomeAppeared ? 1 : 0)
+
+                // Monospaced tracked eyebrow with rule lines.
+                HStack(spacing: 8) {
+                    Rectangle().fill(Color(arenaHex: AppArenaPalette.cyan)).frame(width: 18, height: 1)
+                    Text(tr("ob_sc_welcome_eyebrow"))
+                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .tracking(2.4)
+                        .foregroundStyle(Color(arenaHex: AppArenaPalette.cyan))
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                    Rectangle().fill(Color(arenaHex: AppArenaPalette.cyan)).frame(width: 18, height: 1)
+                }
+                .padding(.top, 30)
+                .opacity(welcomeAppeared ? 1 : 0)
+
+                // Wordmark — "Up" black + "do" italic serif blue (brand identity).
+                HStack(alignment: .firstTextBaseline, spacing: 1) {
+                    Text("Up")
+                        .font(.system(size: 64, weight: .black))
+                        .foregroundStyle(.white)
+                    Text("do")
+                        .font(.system(size: 60, weight: .regular, design: .serif)).italic()
+                        .foregroundStyle(Color(arenaHex: AppArenaPalette.blue))
+                }
+                .padding(.top, 12)
+                .opacity(welcomeAppeared ? 1 : 0)
+
+                Text(tr("ob_sc_welcome_sub"))
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.56))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(3)
+                    .padding(.horizontal, 44)
+                    .padding(.top, 12)
+                    .opacity(welcomeAppeared ? 1 : 0)
+
+                Spacer()
+
+                Button {
+                    HapticManager.shared.action()
+                    goToStudentSetup()
+                } label: {
+                    HStack(spacing: 8) {
+                        Text(tr("ob_sc_welcome_cta"))
+                            .font(.system(size: 17, weight: .black))
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 15, weight: .black))
+                    }
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity).frame(height: 56)
+                    .background(
+                        Capsule().fill(
+                            LinearGradient(
+                                colors: [Color(arenaHex: AppArenaPalette.cyan), Color(arenaHex: AppArenaPalette.blue)],
+                                startPoint: .leading, endPoint: .trailing
+                            )
+                        )
+                        .shadow(color: Color(arenaHex: AppArenaPalette.cyan).opacity(0.3), radius: 16, y: 8)
+                    )
+                }
+                .buttonStyle(OnboardingScaleButtonStyle())
+                .padding(.horizontal, 24)
+                .padding(.bottom, 44)
+            }
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.78).delay(0.12)) { welcomeAppeared = true }
         }
     }
 
@@ -933,7 +1014,7 @@ private struct CrewMessageStrip: View {
                     .font(.system(size: 14, weight: .heavy))
                     .foregroundStyle(.white)
 
-                Text("Algorithm final için kütüphanedeyim 📚")
+                Text(tr("ob_demo_msg"))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.50))
                     .lineLimit(1)

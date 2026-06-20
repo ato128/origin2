@@ -61,7 +61,7 @@ final class ArenaStore: ObservableObject {
             summary = resolvedSummary.asDisplayModel
         } else {
             summary = nil
-            lastError = "Arena summary yüklenemedi."
+            lastError = tr("as_summary_failed")
         }
 
         leaderboard = resolvedLeaderboard.map { $0.asDisplayModel }

@@ -184,8 +184,8 @@ final class SessionStore: ObservableObject {
         let cleanPassword = password.trimmingCharacters(in: .whitespacesAndNewlines)
 
         do {
-            print("EMAIL SENT:", cleanEmail)
-            print("USERNAME SENT:", cleanUsername)
+            Log.debug("EMAIL SENT:", cleanEmail)
+            Log.debug("USERNAME SENT:", cleanUsername)
 
             _ = try await SupabaseManager.shared.client.auth.signUp(
                 email: cleanEmail,
@@ -204,11 +204,11 @@ final class SessionStore: ObservableObject {
 
             try await requestBackendVerificationEmail(email: cleanEmail)
 
-            verificationMessage = "Onay bağlantısı \(cleanEmail) adresine gönderildi."
+            verificationMessage = tr("ss_confirm_sent", cleanEmail)
 
         } catch {
-            print("SIGN UP ERROR FULL:", error)
-            print("SIGN UP ERROR DESC:", error.localizedDescription)
+            Log.debug("SIGN UP ERROR FULL:", error)
+            Log.debug("SIGN UP ERROR DESC:", error.localizedDescription)
             throw error
         }
     }
@@ -255,7 +255,7 @@ final class SessionStore: ObservableObject {
                     }
                 }
 
-                verificationMessage = "Email henüz onaylanmamış görünüyor."
+                verificationMessage = tr("ss_not_confirmed")
                 return
             }
 
@@ -264,10 +264,10 @@ final class SessionStore: ObservableObject {
             isEmailVerified = true
             pendingVerificationEmail = nil
             removePendingVerificationEmail()
-            verificationMessage = "Email onaylandı. Devam edebilirsin."
+            verificationMessage = tr("ss_confirmed")
 
         } catch {
-            print("EMAIL VERIFICATION REFRESH FAILED:", error.localizedDescription)
+            Log.debug("EMAIL VERIFICATION REFRESH FAILED:", error.localizedDescription)
             verificationMessage = "Onay durumu kontrol edilemedi. Biraz sonra tekrar dene."
         }
     }
@@ -276,7 +276,7 @@ final class SessionStore: ObservableObject {
         guard let email = pendingVerificationEmail?
             .trimmingCharacters(in: .whitespacesAndNewlines),
               !email.isEmpty else {
-            verificationMessage = "Onay maili için email bulunamadı."
+            verificationMessage = tr("ss_no_email")
             return
         }
 
@@ -286,9 +286,9 @@ final class SessionStore: ObservableObject {
 
         do {
             try await resendBackendVerificationEmail(email: email)
-            verificationMessage = "Onay maili tekrar gönderildi."
+            verificationMessage = tr("ss_resent")
         } catch {
-            print("RESEND VERIFICATION EMAIL ERROR:", error.localizedDescription)
+            Log.debug("RESEND VERIFICATION EMAIL ERROR:", error.localizedDescription)
             verificationMessage = readableBackendError(error)
         }
     }
@@ -310,7 +310,7 @@ final class SessionStore: ObservableObject {
             _ = try await SupabaseManager.shared.client.auth.session(from: url)
             await refreshEmailVerificationStatus()
         } catch {
-            print("AUTH CALLBACK ERROR:", error.localizedDescription)
+            Log.debug("AUTH CALLBACK ERROR:", error.localizedDescription)
             await refreshEmailVerificationStatus()
         }
     }
@@ -320,9 +320,13 @@ final class SessionStore: ObservableObject {
         }
 
         if didStartInitialSessionResolve {
-            while !didResolveInitialSession {
+            // Another caller is already resolving — wait up to 15 s, then unblock
+            // the UI rather than spinning forever on a hung network call.
+            for _ in 0..<150 {
+                if didResolveInitialSession { return }
                 try? await Task.sleep(nanoseconds: 100_000_000)
             }
+            didResolveInitialSession = true
             return
         }
 
@@ -351,7 +355,7 @@ final class SessionStore: ObservableObject {
                     savePendingVerificationEmail(email)
                 }
 
-                print("⚠️ SUPABASE SESSION EXISTS BUT CUSTOM EMAIL NOT VERIFIED")
+                Log.debug("⚠️ SUPABASE SESSION EXISTS BUT CUSTOM EMAIL NOT VERIFIED")
                 return
             }
 
@@ -361,9 +365,9 @@ final class SessionStore: ObservableObject {
             pendingVerificationEmail = nil
             removePendingVerificationEmail()
 
-            print("✅ SUPABASE SESSION RESTORED:", user.id.uuidString)
+            Log.debug("✅ SUPABASE SESSION RESTORED:", user.id.uuidString)
         } catch {
-            print("⚠️ SUPABASE SESSION RESTORE FAILED:", error.localizedDescription)
+            Log.debug("⚠️ SUPABASE SESSION RESTORE FAILED:", error.localizedDescription)
 
             if currentUser == nil {
                 isEmailVerified = false
@@ -427,7 +431,7 @@ final class SessionStore: ObservableObject {
         let decoded = try JSONDecoder().decode(BackendVerificationResponse.self, from: data)
 
         guard (200...299).contains(http.statusCode), decoded.ok else {
-            throw AuthFlowError.backend(decoded.error ?? "Onay maili gönderilemedi.")
+            throw AuthFlowError.backend(decoded.error ?? tr("ss_send_failed"))
         }
     }
 
@@ -449,7 +453,7 @@ final class SessionStore: ObservableObject {
         let decoded = try JSONDecoder().decode(BackendVerificationResponse.self, from: data)
 
         guard (200...299).contains(http.statusCode), decoded.ok else {
-            throw AuthFlowError.backend(decoded.error ?? "Onay maili tekrar gönderilemedi.")
+            throw AuthFlowError.backend(decoded.error ?? tr("ss_resend_failed"))
         }
     }
 
@@ -468,7 +472,7 @@ final class SessionStore: ObservableObject {
         let decoded = try JSONDecoder().decode(BackendVerificationStatusResponse.self, from: data)
 
         guard (200...299).contains(http.statusCode), decoded.ok else {
-            throw AuthFlowError.backend(decoded.error ?? "Onay durumu alınamadı.")
+            throw AuthFlowError.backend(decoded.error ?? tr("ss_status_failed"))
         }
 
         return decoded.isVerified
@@ -543,7 +547,7 @@ final class SessionStore: ObservableObject {
         let message = error.localizedDescription
 
         if message.lowercased().contains("too many requests") {
-            return "Çok sık denedin. Biraz bekleyip tekrar dene."
+            return tr("ss_too_often")
         }
 
         return message
@@ -563,9 +567,9 @@ enum AuthFlowError: LocalizedError {
         case .emailNotVerified:
             return "Emailini onaylaman gerekiyor."
         case .invalidBackendURL:
-            return "Backend bağlantı adresi geçersiz."
+            return tr("ss_invalid_url")
         case .invalidBackendResponse:
-            return "Backend yanıtı okunamadı."
+            return tr("ss_response_failed")
         case .backend(let message):
             return message
         }

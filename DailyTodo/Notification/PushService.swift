@@ -22,17 +22,17 @@ final class PushService {
 
     private func performRequest(bodyObject: [String: Any]) {
         guard let url = URL(string: endpoint) else {
-            print("PUSH URL ERROR: endpoint invalid")
+            Log.debug("PUSH URL ERROR: endpoint invalid")
             return
         }
 
         guard JSONSerialization.isValidJSONObject(bodyObject) else {
-            print("PUSH BODY ERROR: invalid JSON object")
+            Log.debug("PUSH BODY ERROR: invalid JSON object")
             return
         }
 
         guard let body = try? JSONSerialization.data(withJSONObject: bodyObject) else {
-            print("PUSH BODY SERIALIZE ERROR")
+            Log.debug("PUSH BODY SERIALIZE ERROR")
             return
         }
 
@@ -44,25 +44,25 @@ final class PushService {
         request.setValue("Bearer \(anonKey)", forHTTPHeaderField: "Authorization")
         request.httpBody = body
 
-        print("🚀 PUSH REQUEST BODY:", String(data: body, encoding: .utf8) ?? "nil")
+        Log.debug("🚀 PUSH REQUEST BODY:", String(data: body, encoding: .utf8) ?? "nil")
 
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error {
-                print("🔴 PUSH SEND ERROR:", error.localizedDescription)
+                Log.debug("🔴 PUSH SEND ERROR:", error.localizedDescription)
                 return
             }
 
             let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
             let responseText = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
 
-            print("🟡 PUSH HTTP STATUS:", statusCode)
+            Log.debug("🟡 PUSH HTTP STATUS:", statusCode)
 
             if !responseText.isEmpty {
-                print("🟣 PUSH RESPONSE:", responseText)
+                Log.debug("🟣 PUSH RESPONSE:", responseText)
             }
 
             if !(200...299).contains(statusCode) {
-                print("🔴 PUSH FAILED HTTP:", statusCode)
+                Log.debug("🔴 PUSH FAILED HTTP:", statusCode)
             }
         }
         .resume()
@@ -74,23 +74,23 @@ final class PushService {
         var bodyObject = bodyObject
         bodyObject["environment"] = "production"
         guard let url = URL(string: "\(ChatBackendEnvironment.httpBaseURL)/v1\(path)") else {
-            print("FOCUS BACKEND PUSH URL ERROR")
+            Log.debug("FOCUS BACKEND PUSH URL ERROR")
             return
         }
 
         guard JSONSerialization.isValidJSONObject(bodyObject) else {
-            print("FOCUS BACKEND PUSH BODY ERROR: invalid JSON")
+            Log.debug("FOCUS BACKEND PUSH BODY ERROR: invalid JSON")
             return
         }
 
         guard let body = try? JSONSerialization.data(withJSONObject: bodyObject) else {
-            print("FOCUS BACKEND PUSH BODY SERIALIZE ERROR")
+            Log.debug("FOCUS BACKEND PUSH BODY SERIALIZE ERROR")
             return
         }
 
         guard let accessToken = SupabaseManager.shared.client.auth.currentSession?.accessToken,
               !accessToken.isEmpty else {
-            print("FOCUS BACKEND PUSH ERROR: access token yok")
+            Log.debug("FOCUS BACKEND PUSH ERROR: access token yok")
             return
         }
 
@@ -101,26 +101,26 @@ final class PushService {
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         request.httpBody = body
 
-        print("🚀 FOCUS BACKEND PUSH URL:", url.absoluteString)
-        print("🚀 FOCUS BACKEND PUSH BODY:", String(data: body, encoding: .utf8) ?? "nil")
+        Log.debug("🚀 FOCUS BACKEND PUSH URL:", url.absoluteString)
+        Log.debug("🚀 FOCUS BACKEND PUSH BODY:", String(data: body, encoding: .utf8) ?? "nil")
 
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error {
-                print("🔴 FOCUS BACKEND PUSH ERROR:", error.localizedDescription)
+                Log.debug("🔴 FOCUS BACKEND PUSH ERROR:", error.localizedDescription)
                 return
             }
 
             let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
             let responseText = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
 
-            print("🟡 FOCUS BACKEND PUSH STATUS:", statusCode)
+            Log.debug("🟡 FOCUS BACKEND PUSH STATUS:", statusCode)
 
             if !responseText.isEmpty {
-                print("🟣 FOCUS BACKEND PUSH RESPONSE:", responseText)
+                Log.debug("🟣 FOCUS BACKEND PUSH RESPONSE:", responseText)
             }
 
             if !(200...299).contains(statusCode) {
-                print("🔴 FOCUS BACKEND PUSH FAILED:", statusCode)
+                Log.debug("🔴 FOCUS BACKEND PUSH FAILED:", statusCode)
             }
         }
         .resume()
@@ -137,14 +137,14 @@ final class PushService {
         let cleanFriendshipID = friendshipID.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !cleanToUserId.isEmpty, !cleanFriendshipID.isEmpty else {
-            print("FRIEND PUSH SKIPPED: missing toUserId or friendshipID")
+            Log.debug("FRIEND PUSH SKIPPED: missing toUserId or friendshipID")
             return
         }
 
-        print("🚀 FRIEND PUSH SEND CALLED")
-        print("🚀 toUserId:", cleanToUserId)
-        print("🚀 friendshipID:", cleanFriendshipID)
-        print("🚀 environment:", currentEnvironment)
+        Log.debug("🚀 FRIEND PUSH SEND CALLED")
+        Log.debug("🚀 toUserId:", cleanToUserId)
+        Log.debug("🚀 friendshipID:", cleanFriendshipID)
+        Log.debug("🚀 environment:", currentEnvironment)
 
         performRequest(bodyObject: [
             "toUserId": cleanToUserId,
@@ -169,19 +169,19 @@ final class PushService {
         let cleanCrewID = crewID.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !cleanToUserId.isEmpty, !cleanCrewID.isEmpty else {
-            print("CREW PUSH SKIPPED: missing toUserId or crewID")
+            Log.debug("CREW PUSH SKIPPED: missing toUserId or crewID")
             return
         }
 
-        print("🚀 CREW PUSH SEND CALLED")
-        print("🚀 toUserId:", cleanToUserId)
-        print("🚀 crewID:", cleanCrewID)
-        print("🚀 environment:", currentEnvironment)
+        Log.debug("🚀 CREW PUSH SEND CALLED")
+        Log.debug("🚀 toUserId:", cleanToUserId)
+        Log.debug("🚀 crewID:", cleanCrewID)
+        Log.debug("🚀 environment:", currentEnvironment)
 
         performRequest(bodyObject: [
             "toUserId": cleanToUserId,
             "title": crewName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Crew" : crewName,
-            "message": message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Yeni crew mesajı" : message,
+            "message": message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? tr("ps_new_crew_msg") : message,
             "type": "crew_chat",
             "crew_id": cleanCrewID,
             "deep_link": "dailytodo://crew-chat?crew_id=\(cleanCrewID)",
@@ -194,26 +194,26 @@ final class PushService {
         toUserId: String,
         crewID: String,
         crewName: String,
-        message: String = "Focus odası başladı",
+        message: String = tr("ps_focus_room_started"),
         badge: Int = 1
     ) {
         let cleanToUserId = toUserId.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanCrewID = crewID.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !cleanToUserId.isEmpty, !cleanCrewID.isEmpty else {
-            print("FOCUS PUSH SKIPPED: missing toUserId or crewID")
+            Log.debug("FOCUS PUSH SKIPPED: missing toUserId or crewID")
             return
         }
 
-        print("🚀 FOCUS PUSH SEND CALLED")
-        print("🚀 toUserId:", cleanToUserId)
-        print("🚀 crewID:", cleanCrewID)
-        print("🚀 environment:", currentEnvironment)
+        Log.debug("🚀 FOCUS PUSH SEND CALLED")
+        Log.debug("🚀 toUserId:", cleanToUserId)
+        Log.debug("🚀 crewID:", cleanCrewID)
+        Log.debug("🚀 environment:", currentEnvironment)
 
         performRequest(bodyObject: [
             "toUserId": cleanToUserId,
             "title": crewName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Focus" : crewName,
-            "message": message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Focus odası başladı" : message,
+            "message": message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? tr("ps_focus_room_started") : message,
             "type": "focus_room",
             "crew_id": cleanCrewID,
             "deep_link": "dailytodo://crew-chat?crew_id=\(cleanCrewID)",
@@ -233,14 +233,14 @@ final class PushService {
         let cleanCrewID = crewID.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !cleanToUserId.isEmpty, !cleanCrewID.isEmpty else {
-            print("CREW FOCUS INVITE PUSH SKIPPED: missing toUserId or crewID")
+            Log.debug("CREW FOCUS INVITE PUSH SKIPPED: missing toUserId or crewID")
             return
         }
 
-        print("🚀 CREW FOCUS INVITE PUSH SEND CALLED")
-        print("🚀 toUserId:", cleanToUserId)
-        print("🚀 crewID:", cleanCrewID)
-        print("🚀 environment:", currentEnvironment)
+        Log.debug("🚀 CREW FOCUS INVITE PUSH SEND CALLED")
+        Log.debug("🚀 toUserId:", cleanToUserId)
+        Log.debug("🚀 crewID:", cleanCrewID)
+        Log.debug("🚀 environment:", currentEnvironment)
 
         performRequest(bodyObject: [
             "toUserId": cleanToUserId,
@@ -259,7 +259,7 @@ final class PushService {
     // ════════════════════════════════════════════════════════════════
 
     /// Crew focus bitince participantlara gönderilir.
-    /// `durationMinutes`: tamamlanmış dakika (UI'da "X dk tamamladın" göstermek için).
+    /// `durationMinutes`: tamamlanmış dakika (UI'da tr("ps_x_min_done") göstermek için).
     func sendCrewFocusEndedPush(
         toUserId: String,
         crewID: String,
@@ -272,7 +272,7 @@ final class PushService {
         let cleanCrewID = crewID.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !cleanToUserId.isEmpty, !cleanCrewID.isEmpty else {
-            print("CREW FOCUS ENDED PUSH SKIPPED: missing toUserId or crewID")
+            Log.debug("CREW FOCUS ENDED PUSH SKIPPED: missing toUserId or crewID")
             return
         }
 
@@ -310,7 +310,7 @@ final class PushService {
         let cleanCrewID = crewID.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !cleanToUserId.isEmpty, !cleanCrewID.isEmpty else {
-            print("CREW FOCUS LEFT PUSH SKIPPED: missing toUserId or crewID")
+            Log.debug("CREW FOCUS LEFT PUSH SKIPPED: missing toUserId or crewID")
             return
         }
 
@@ -348,7 +348,7 @@ final class PushService {
         let cleanSessionID = sessionID.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !cleanToUserId.isEmpty, !cleanCrewID.isEmpty, !cleanSessionID.isEmpty else {
-            print("CREW FOCUS JOINED PUSH SKIPPED: missing toUserId, crewID or sessionID")
+            Log.debug("CREW FOCUS JOINED PUSH SKIPPED: missing toUserId, crewID or sessionID")
             return
         }
 

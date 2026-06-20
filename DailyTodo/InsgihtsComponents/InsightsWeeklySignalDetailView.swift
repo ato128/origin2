@@ -303,7 +303,7 @@ struct InsightsWeeklySignalDetailView: View {
                         .frame(height: 8)
 
                         VStack(alignment: .trailing, spacing: 2) {
-                            Text("\(day.completedCount) görev")
+                            Text(tr("rel_task_count", day.completedCount))
                                 .font(.system(size: 11, weight: .black))
                                 .foregroundStyle(.white.opacity(0.82))
 
@@ -343,7 +343,7 @@ struct InsightsWeeklySignalDetailView: View {
                         dismiss()
                         onOpenFocus()
                     } label: {
-                        Text("FOCUS BAŞLAT")
+                        Text(tr("iws_start_focus_caps"))
                             .font(.system(size: 10, weight: .black, design: .monospaced))
                             .tracking(0.8)
                             .foregroundStyle(.black)
@@ -360,7 +360,7 @@ struct InsightsWeeklySignalDetailView: View {
                         dismiss()
                         onOpenWeek()
                     } label: {
-                        Text("HAFTAYI AÇ")
+                        Text(tr("iws_open_week_caps"))
                             .font(.system(size: 10, weight: .black, design: .monospaced))
                             .tracking(0.8)
                             .foregroundStyle(.white.opacity(0.84))

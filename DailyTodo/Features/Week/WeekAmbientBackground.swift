@@ -11,7 +11,7 @@ struct WeekAmbientBackground: View {
     var body: some View {
         ZStack {
 
-            Color(.systemGroupedBackground)
+            UpdoTheme.background
                 .ignoresSafeArea()
 
             LinearGradient(

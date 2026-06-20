@@ -18,7 +18,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         let center = UNUserNotificationCenter.current()
         center.delegate = self
 
-        print("✅ APP DID FINISH LAUNCHING")
+        Log.debug("✅ APP DID FINISH LAUNCHING")
 
         requestPushPermissionAndRegister(application)
 
@@ -34,28 +34,28 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             switch settings.authorizationStatus {
             case .authorized, .provisional, .ephemeral:
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    print("📡 REGISTERING FOR REMOTE NOTIFICATIONS...")
+                    Log.debug("📡 REGISTERING FOR REMOTE NOTIFICATIONS...")
                     application.registerForRemoteNotifications()
                 }
 
             case .notDetermined:
                 UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
                     if let error {
-                        print("🔴 NOTIFICATION PERMISSION ERROR:", error.localizedDescription)
+                        Log.debug("🔴 NOTIFICATION PERMISSION ERROR:", error.localizedDescription)
                     }
 
-                    print("🔔 NOTIFICATION PERMISSION GRANTED:", granted)
+                    Log.debug("🔔 NOTIFICATION PERMISSION GRANTED:", granted)
 
                     guard granted else { return }
 
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                        print("📡 REGISTERING FOR REMOTE NOTIFICATIONS...")
+                        Log.debug("📡 REGISTERING FOR REMOTE NOTIFICATIONS...")
                         application.registerForRemoteNotifications()
                     }
                 }
 
             case .denied:
-                print("⛔️ NOTIFICATION PERMISSION DENIED")
+                Log.debug("⛔️ NOTIFICATION PERMISSION DENIED")
 
             @unknown default:
                 break
@@ -80,7 +80,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
     ) {
         let token = deviceToken.map { String(format: "%02x", $0) }.joined()
-        print("🟢 APNS TOKEN:", token)
+        #if DEBUG
+        Log.debug("🟢 APNS TOKEN:", token)
+        #endif
 
         Task { @MainActor in
             PushTokenStore.shared.storeToken(token)
@@ -94,7 +96,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         _ application: UIApplication,
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
-        print("🔴 APNS REGISTER FAILED:", error.localizedDescription)
+        Log.debug("🔴 APNS REGISTER FAILED:", error.localizedDescription)
     }
 
     func userNotificationCenter(
@@ -285,7 +287,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             }
 
         case "crew_focus_left":
-            print("📢 CREW FOCUS LEFT:", userInfo["leaver_name"] ?? "")
+            Log.debug("📢 CREW FOCUS LEFT:", userInfo["leaver_name"] ?? "")
 
             Task { @MainActor in
                 NotificationCenter.default.post(
@@ -295,7 +297,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             }
 
         case "crew_focus_joined":
-            print("📢 CREW FOCUS JOINED:", userInfo["joined_name"] ?? "")
+            Log.debug("📢 CREW FOCUS JOINED:", userInfo["joined_name"] ?? "")
 
             NotificationCenter.default.post(
                 name: .crewFocusJoinedFromNotification,

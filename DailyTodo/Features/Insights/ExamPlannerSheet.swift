@@ -28,7 +28,13 @@ struct ExamPlannerSheet: View {
 
     @State private var manualDate: Date = .now
     @State private var manualMinutes: Int = 45
-    @State private var manualTopic: String = "Soru çözümü"
+    @State private var manualTopic: String = tr("tv_solve_q")
+
+    // AI plan generation
+    @State private var examTopics: String = ""
+    @State private var dailyStudyHours: Int = 3
+    @State private var isGeneratingAIPlan = false
+    @State private var aiPlanError: String? = nil
 
     private var accent: Color {
         Color(arenaHex: AppArenaPalette.gold)
@@ -120,7 +126,7 @@ struct ExamPlannerSheet: View {
                     .tracking(1.8)
                     .foregroundStyle(accent)
 
-                Text("Sınav Planı")
+                Text(tr("ep_exam_plan"))
                     .font(.system(size: 18, weight: .black))
                     .foregroundStyle(.white)
             }
@@ -180,11 +186,11 @@ struct ExamPlannerSheet: View {
                     }
 
                     HStack(alignment: .firstTextBaseline, spacing: 7) {
-                        Text("Sınav")
+                        Text(tr("at_kind_exam"))
                             .font(.system(size: 34, weight: .black))
                             .foregroundStyle(.white)
 
-                        Text("planı")
+                        Text(tr("ep_plan_w"))
                             .font(.system(size: 31, weight: .regular, design: .serif))
                             .italic()
                             .foregroundStyle(
@@ -222,9 +228,9 @@ struct ExamPlannerSheet: View {
             }
 
             HStack(spacing: 8) {
-                compactMetric(icon: "calendar", title: "Sınav", value: nextExamDateText)
+                compactMetric(icon: "calendar", title: tr("at_kind_exam"), value: nextExamDateText)
                 compactMetric(icon: "flame.fill", title: "Risk", value: riskText)
-                compactMetric(icon: "timer", title: "Bugün", value: todayFocusText)
+                compactMetric(icon: "timer", title: tr("common_today"), value: todayFocusText)
             }
         }
         .padding(18)
@@ -256,11 +262,11 @@ struct ExamPlannerSheet: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(showNewExamForm ? "Formu kapat" : "Yeni sınav ekle")
+                    Text(showNewExamForm ? "Formu kapat" : tr("ha_add_new_exam"))
                         .font(.system(size: 19, weight: .black))
                         .foregroundStyle(.white)
 
-                    Text(showNewExamForm ? "Takvime dön" : "Ders, tarih ve sınav tipini seç")
+                    Text(showNewExamForm ? tr("ep_back_calendar") : tr("ep_pick_sub"))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.48))
                 }
@@ -279,7 +285,7 @@ struct ExamPlannerSheet: View {
 
     private var createExamCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionHeader(title: "Yeni sınav", eyebrow: "CREATE PLAN", icon: "sparkles", tint: accent)
+            sectionHeader(title: tr("ep_new_exam"), eyebrow: "CREATE PLAN", icon: "sparkles", tint: accent)
 
             Picker("Ders", selection: $selectedCourseID) {
                 ForEach(courses) { course in
@@ -290,7 +296,7 @@ struct ExamPlannerSheet: View {
             .pickerStyle(.menu)
             .tint(accent)
 
-            Picker("Sınav", selection: $selectedType) {
+            Picker(tr("at_kind_exam"), selection: $selectedType) {
                 ForEach(ExamPlannerType.allCases) { type in
                     Text(type.title).tag(type)
                 }
@@ -309,14 +315,80 @@ struct ExamPlannerSheet: View {
                     .tint(accent)
             }
 
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: "list.bullet")
+                        .font(.system(size: 12, weight: .black))
+                        .foregroundStyle(accent)
+                    Text("KONULAR")
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .tracking(1.2)
+                        .foregroundStyle(accent)
+                }
+
+                TextField(tr("ep_topics_ph"), text: $examTopics)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .tint(accent)
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color.white.opacity(0.065))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                            )
+                    )
+            }
+
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 12, weight: .black))
+                        .foregroundStyle(accent)
+                    Text(tr("ep_daily_hours"))
+                        .font(.system(size: 14, weight: .black))
+                        .foregroundStyle(.white.opacity(0.82))
+                }
+                Spacer()
+                Stepper("\(dailyStudyHours) saat", value: $dailyStudyHours, in: 1...12)
+                    .font(.system(size: 14, weight: .black))
+                    .foregroundStyle(.white)
+            }
+
+            if let err = aiPlanError {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text(err)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.82))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color.orange.opacity(0.12))
+                )
+            }
+
             Button {
-                createPlan()
+                Task { await createAIPlan() }
             } label: {
                 HStack {
-                    Image(systemName: "sparkles")
-                    Text("AKILLI PLAN OLUŞTUR")
-                    Spacer()
-                    Image(systemName: "arrow.right")
+                    if isGeneratingAIPlan {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(.black)
+                            .scaleEffect(0.8)
+                        Text(tr("ep_ai_preparing"))
+                    } else {
+                        Image(systemName: "sparkles")
+                        Text(tr("ep_create_ai_caps"))
+                        Spacer()
+                        Image(systemName: "arrow.right")
+                    }
                 }
                 .font(.system(size: 12, weight: .black, design: .monospaced))
                 .tracking(0.8)
@@ -333,9 +405,11 @@ struct ExamPlannerSheet: View {
                             )
                         )
                         .shadow(color: accent.opacity(0.20), radius: 14, y: 7)
+                        .opacity(isGeneratingAIPlan ? 0.7 : 1)
                 )
             }
             .buttonStyle(.plain)
+            .disabled(isGeneratingAIPlan || selectedCourse == nil)
 
             Button {
                 withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
@@ -344,7 +418,7 @@ struct ExamPlannerSheet: View {
             } label: {
                 HStack {
                     Image(systemName: "slider.horizontal.3")
-                    Text("KENDİN OLUŞTUR")
+                    Text(tr("ep_create_self_caps"))
                     Spacer()
                     Image(systemName: showManualBuilder ? "chevron.up" : "chevron.down")
                 }
@@ -391,12 +465,12 @@ struct ExamPlannerSheet: View {
                         )
                 )
 
-            DatePicker("Gün", selection: $manualDate, displayedComponents: .date)
+            DatePicker(tr("cs_day"), selection: $manualDate, displayedComponents: .date)
                 .tint(accent)
                 .font(.system(size: 15, weight: .black))
                 .foregroundStyle(.white)
 
-            Stepper("Süre: \(manualMinutes) dk", value: $manualMinutes, in: 15...180, step: 15)
+            Stepper("\(tr("duration_label")): \(manualMinutes) \(tr("common_min_short"))", value: $manualMinutes, in: 15...180, step: 15)
                 .font(.system(size: 15, weight: .black))
                 .foregroundStyle(.white)
 
@@ -405,7 +479,7 @@ struct ExamPlannerSheet: View {
             } label: {
                 HStack {
                     Image(systemName: "plus")
-                    Text("GÜNÜ EKLE")
+                    Text(tr("ep_add_day_caps"))
                     Spacer()
                 }
                 .font(.system(size: 11, weight: .black, design: .monospaced))
@@ -433,10 +507,10 @@ struct ExamPlannerSheet: View {
 
     private var examTimeline: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionHeader(title: "Sınav Takvimi", eyebrow: "TIMELINE", icon: "calendar.badge.clock", tint: accent)
+            sectionHeader(title: tr("ep_exam_calendar"), eyebrow: "TIMELINE", icon: "calendar.badge.clock", tint: accent)
 
             if examGroups.isEmpty {
-                emptyMiniCard("Henüz sınav yok", icon: "calendar")
+                emptyMiniCard(tr("ep_no_exams"), icon: "calendar")
             } else {
                 VStack(spacing: 10) {
                     ForEach(examGroups, id: \.key) { group in
@@ -451,7 +525,7 @@ struct ExamPlannerSheet: View {
         Group {
             if !plannedCourses.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
-                    sectionHeader(title: "Ders Planları", eyebrow: "COURSE PLANS", icon: "book.closed.fill", tint: Color(arenaHex: AppArenaPalette.blue))
+                    sectionHeader(title: tr("ep_course_plans"), eyebrow: "COURSE PLANS", icon: "book.closed.fill", tint: Color(arenaHex: AppArenaPalette.blue))
 
                     ForEach(plannedCourses) { course in
                         let items = scopedItems
@@ -525,7 +599,7 @@ struct ExamPlannerSheet: View {
                 Button(role: .destructive) {
                     deleteExamPlan(items)
                 } label: {
-                    Label("Sınav planını sil", systemImage: "trash")
+                    Label(tr("ep_delete_plan"), systemImage: "trash")
                 }
             }
         )
@@ -549,7 +623,7 @@ struct ExamPlannerSheet: View {
                     .foregroundStyle(.white)
                     .lineLimit(2)
 
-                Text("\(items.count) günlük plan")
+                Text(tr("ep_day_plan", items.count))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.50))
             }
@@ -614,8 +688,96 @@ struct ExamPlannerSheet: View {
             Button(role: .destructive) {
                 deleteStudyDay(item)
             } label: {
-                Label("Bu günü sil", systemImage: "trash")
+                Label(tr("ep_delete_day"), systemImage: "trash")
             }
+        }
+    }
+
+    @MainActor
+    private func createAIPlan() async {
+        guard let course = selectedCourse else { return }
+        isGeneratingAIPlan = true
+        aiPlanError = nil
+
+        do {
+            let system = PromptBuilder.examPlannerSystem()
+            let user = PromptBuilder.examPlannerUser(
+                courseName: course.name,
+                examType: selectedType.title,
+                examDate: examDate,
+                topics: examTopics,
+                dailyHours: dailyStudyHours,
+                languageCode: Locale.current.identifier
+            )
+
+            let raw = try await AIService.shared.complete(system: system, user: user, feature: "exam-planner")
+
+            // Strip possible markdown code fences
+            var json = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if json.hasPrefix("```") {
+                json = json.components(separatedBy: "\n").dropFirst().dropLast().joined(separator: "\n")
+            }
+
+            guard let data = json.data(using: .utf8),
+                  let planDays = try? JSONDecoder().decode([AIStudyPlanDay].self, from: data) else {
+                aiPlanError = tr("ep_parse_failed")
+                isGeneratingAIPlan = false
+                return
+            }
+
+            let fmt = ISO8601DateFormatter()
+            fmt.formatOptions = [.withFullDate]
+            let examGroupID = UUID()
+
+            for day in planDays {
+                guard let studyDate = fmt.date(from: day.date) else { continue }
+                let isRevision = ["weakTopics", "mockExam", "finalReview"].contains(day.phase)
+                let isWeakBoost = day.phase == "weakTopics"
+
+                let item = ExamStudyPlanItem(
+                    ownerUserID: ownerUserID,
+                    courseID: course.id,
+                    courseName: course.name,
+                    courseCode: course.code,
+                    examType: selectedType,
+                    examDate: examDate,
+                    studyDate: studyDate,
+                    minutes: day.minutes,
+                    topic: day.topic,
+                    isRevisionDay: isRevision,
+                    isWeakTopicBoost: isWeakBoost,
+                    examGroupID: examGroupID
+                )
+                modelContext.insert(item)
+
+                let task = DTTaskItem(
+                    ownerUserID: ownerUserID,
+                    title: "\(course.name) • \(day.topic)",
+                    dueDate: studyDate,
+                    notes: day.notes,
+                    taskType: "exam_study",
+                    colorName: "orange",
+                    courseName: course.name,
+                    workoutDurationMinutes: day.minutes,
+                    scheduledWeekDate: studyDate,
+                    scheduledWeekDurationMinutes: day.minutes,
+                    linkedExamID: examGroupID,
+                    studyTopic: day.topic
+                )
+                modelContext.insert(task)
+            }
+
+            try? modelContext.save()
+
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                expandedCourseID = course.id
+                showNewExamForm = false
+                showManualBuilder = false
+                isGeneratingAIPlan = false
+            }
+        } catch {
+            aiPlanError = error.localizedDescription
+            isGeneratingAIPlan = false
         }
     }
 
@@ -640,7 +802,7 @@ struct ExamPlannerSheet: View {
                 title: "\(course.name) • \(item.topic)",
                 isDone: false,
                 dueDate: item.studyDate,
-                notes: "\(selectedType.title) hazırlığı",
+                notes: tr("ep_prep_for", selectedType.title),
                 taskType: "exam_study",
                 colorName: "orange",
                 courseName: course.name,
@@ -679,7 +841,7 @@ struct ExamPlannerSheet: View {
             minutes: manualMinutes,
             topic: manualTopic,
             isRevisionDay: manualTopic.lowercased().contains("tekrar"),
-            isWeakTopicBoost: manualTopic.lowercased().contains("zayıf")
+            isWeakTopicBoost: manualTopic.lowercased().contains(tr("ep_weak"))
         )
 
         item.examGroupID = groupID
@@ -689,7 +851,7 @@ struct ExamPlannerSheet: View {
             ownerUserID: ownerUserID,
             title: "\(course.name) • \(manualTopic)",
             dueDate: manualDate,
-            notes: "\(selectedType.title) hazırlığı",
+            notes: tr("ep_prep_for", selectedType.title),
             taskType: "exam_study",
             colorName: "orange",
             courseName: course.name,
@@ -936,7 +1098,7 @@ struct ExamPlannerSheet: View {
 
     private var heroTitle: String {
         guard let first = nextExamGroup?.first else {
-            return "Sınav planını kur"
+            return tr("ep_build_plan")
         }
 
         return first.courseName
@@ -969,8 +1131,8 @@ struct ExamPlannerSheet: View {
         let completed = nextExamGroup?.filter(\.isCompleted).count ?? 0
         let progress = Double(completed) / Double(max(total, 1))
 
-        if days <= 3 && progress < 0.5 { return "Yüksek" }
-        if progress > 0.6 { return "İyi" }
+        if days <= 3 && progress < 0.5 { return tr("prio_high") }
+        if progress > 0.6 { return tr("ep_good") }
         return "Orta"
     }
 
@@ -981,14 +1143,24 @@ struct ExamPlannerSheet: View {
             to: Calendar.current.startOfDay(for: date)
         ).day ?? 0
 
-        if days <= 0 { return "Bugün" }
-        if days == 1 { return "Yarın" }
-        return "\(days) gün"
+        if days <= 0 { return tr("common_today") }
+        if days == 1 { return tr("common_tomorrow") }
+        return tr("ch_streak_days_n", days)
     }
 
     private func dateText(_ date: Date) -> String {
         date.formatted(.dateTime.day().month(.abbreviated))
     }
+}
+
+// MARK: - AI Response Model
+
+private struct AIStudyPlanDay: Decodable {
+    let date: String
+    let topic: String
+    let minutes: Int
+    let phase: String
+    let notes: String
 }
 
 extension Notification.Name {

@@ -85,7 +85,7 @@ extension HomeDashboardView {
                             Image(systemName: "play.fill")
                                 .font(.system(size: 13, weight: .bold))
 
-                            Text("25 dk Başlat")
+                            Text(tr("hf_start_25"))
                                 .font(.system(size: 15, weight: .bold))
                         }
                         .frame(maxWidth: .infinity)
@@ -157,7 +157,7 @@ extension HomeDashboardView {
                             .foregroundStyle(palette.primaryText)
                             .lineLimit(1)
 
-                        Text("\(session.host_name) başlattı")
+                        Text(tr("hf_started_by", session.host_name))
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(palette.secondaryText)
                     }
@@ -194,7 +194,7 @@ extension HomeDashboardView {
                             object: session.crew_id.uuidString
                         )
                     } label: {
-                        Text(isFinished ? "Tamamlandı" : "Katıl")
+                        Text(isFinished ? tr("common_completed") : tr("hf_join"))
                             .font(.system(size: 14, weight: .bold))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
@@ -214,7 +214,7 @@ extension HomeDashboardView {
                             object: session.crew_id.uuidString
                         )
                     } label: {
-                        Text("Aç")
+                        Text(tr("hf_open"))
                             .font(.system(size: 14, weight: .bold))
                             .foregroundStyle(accent)
                             .frame(maxWidth: .infinity)
@@ -315,7 +315,7 @@ extension HomeDashboardView {
 
                             Spacer()
 
-                            Text("Katıl")
+                            Text(tr("hf_join"))
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 10)
@@ -345,7 +345,7 @@ extension HomeDashboardView {
                         )
                     }
                 } label: {
-                    Text("İlk Oturumu Aç")
+                    Text(tr("hf_open_first"))
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
@@ -366,7 +366,7 @@ extension HomeDashboardView {
                         )
                     }
                 } label: {
-                    Text("Tümünü Gör")
+                    Text(tr("hf_see_all"))
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(Color.pink)
                         .frame(maxWidth: .infinity)
@@ -446,7 +446,7 @@ extension HomeDashboardView {
                             .foregroundStyle(accent)
 
                         if focusSession.selectedMode == .crew {
-                            Text("\(focusSession.readyCount)/\(max(focusSession.participantCount, 1)) hazır")
+                            Text(tr("hf_ready_count", focusSession.readyCount, max(focusSession.participantCount, 1)))
                                 .font(.system(size: 11, weight: .bold, design: .rounded))
                                 .foregroundStyle(palette.secondaryText)
                         }
@@ -526,7 +526,7 @@ extension HomeDashboardView {
                             Image(systemName: focusSession.selectedMode == .crew ? "person.3.fill" : "arrow.up.forward.app.fill")
                                 .font(.system(size: 13, weight: .bold))
 
-                            Text(focusSession.selectedMode == .crew ? "Aç" : "Devam Et")
+                            Text(focusSession.selectedMode == .crew ? tr("hf_open") : "Devam Et")
                                 .font(.system(size: 14, weight: .bold))
                         }
                         .foregroundStyle(.white)
@@ -556,7 +556,7 @@ extension HomeDashboardView {
                             Image(systemName: "slider.horizontal.3")
                                 .font(.system(size: 13, weight: .bold))
 
-                            Text("Yönet")
+                            Text(tr("hf_manage"))
                                 .font(.system(size: 14, weight: .bold))
                         }
                         .foregroundStyle(accent)
@@ -649,15 +649,15 @@ extension HomeDashboardView {
 
     var homeLiveFocusSubtitle: String {
         if focusSession.isPaused {
-            return "Oturum şu an beklemede"
+            return tr("hf_session_waiting")
         }
 
         switch focusSession.selectedMode {
         case .personal:
-            return "Kişisel focus akışı aktif"
+            return tr("hf_personal_active")
         case .crew:
             if let host = focusSession.hostName, !host.isEmpty {
-                return "\(host) başlattı"
+                return tr("hf_started_by", host)
             }
             return "Ortak odak devam ediyor"
         case .friend:
@@ -672,7 +672,7 @@ extension HomeDashboardView {
         case .personal:
             return "Aktif"
         case .crew:
-            return "Canlı"
+            return tr("hf_live")
         case .friend:
             return "Birlikte"
         }
@@ -688,7 +688,7 @@ extension HomeDashboardView {
         }
 
         if remaining <= 300 {
-            return "Yakında bitiyor"
+            return tr("hf_ending_soon")
         }
 
         return "Devam ediyor"
@@ -704,34 +704,34 @@ extension HomeDashboardView {
     }
 
     var focusCardStatusTextStudent: String {
-        guard let task = focusTask else { return "Bugün için öneri yok" }
-        if store.isOverdue(task) { return "Öncelikli" }
-        if let due = task.dueDate, Calendar.current.isDateInToday(due) { return "Sıradaki odak" }
-        return "Hazır"
+        guard let task = focusTask else { return tr("hf_no_suggestion") }
+        if store.isOverdue(task) { return tr("tv_priority") }
+        if let due = task.dueDate, Calendar.current.isDateInToday(due) { return tr("hf_next_focus") }
+        return tr("hf_ready")
     }
 
     func focusSectionTitle(for task: DTTaskItem) -> String {
-        if store.isOverdue(task) { return "Öncelikli Odak" }
-        if let due = task.dueDate, Calendar.current.isDateInToday(due) { return "Bugünün Odak Noktası" }
-        return "Çalışma Seansı"
+        if store.isOverdue(task) { return tr("hf_priority_focus") }
+        if let due = task.dueDate, Calendar.current.isDateInToday(due) { return tr("hf_today_focus_point") }
+        return tr("hf_study_session")
     }
 
     func focusReasonText(for task: DTTaskItem) -> String {
         if store.isOverdue(task) {
-            return "Bu görev gecikmiş. Önce bunu temizlemek iyi olur."
+            return tr("hf_overdue")
         }
 
         if let due = task.dueDate {
             let minutes = Int(due.timeIntervalSinceNow / 60)
             if minutes > 0 && minutes <= 90 {
-                return "Teslime yakın. Kısa bir odak çok iş çıkarır."
+                return tr("hf_due_soon")
             }
             if Calendar.current.isDateInToday(due) {
-                return "Bugün bitirmen iyi olur."
+                return tr("hf_finish_today")
             }
         }
 
-        return "Şimdi başlamak için uygun bir görev."
+        return tr("hf_good_to_start")
     }
 
     func focusAccentColor(for task: DTTaskItem) -> Color {

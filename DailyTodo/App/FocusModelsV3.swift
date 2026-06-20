@@ -33,7 +33,7 @@ enum FocusMode: String, CaseIterable, Identifiable, Codable {
 
     var heroTitle: String {
         switch self {
-        case .personal: return "Kişisel\nFocus"
+        case .personal: return tr("fm_personal_focus")
         case .crew: return "Crew\nFocus"
         case .friend: return "Friend\nFocus"
         }
@@ -41,41 +41,41 @@ enum FocusMode: String, CaseIterable, Identifiable, Codable {
 
     var heroSubtitle: String {
         switch self {
-        case .personal: return "Sessiz bir odak oturumu başlat"
-        case .crew: return "Ekibinle birlikte ortak akışa gir"
-        case .friend: return "Bir arkadaşınla birlikte odakta kal"
+        case .personal: return tr("fm_personal_desc")
+        case .crew: return tr("fm_crew_desc")
+        case .friend: return tr("fm_friend_desc")
         }
     }
 
     var statusText: String {
         switch self {
-        case .personal: return "Hazır"
-        case .crew: return "Takım hazır"
-        case .friend: return "Eşleşti"
+        case .personal: return tr("hf_ready")
+        case .crew: return tr("fv_team_ready")
+        case .friend: return tr("fv_matched")
         }
     }
 
     var supportText: String {
         switch self {
-        case .personal: return "başlamaya uygun"
-        case .crew: return "eş zamanlı başlatılabilir"
-        case .friend: return "beraber odaklanmaya hazır"
+        case .personal: return tr("fm_ready_start")
+        case .crew: return tr("fm_sync_start")
+        case .friend: return tr("fm_ready_together")
         }
     }
 
     var ctaTitle: String {
         switch self {
-        case .personal: return "Kişisel Focus Başlat"
-        case .crew: return "Crew Focus Başlat"
-        case .friend: return "Friend Focus Başlat"
+        case .personal: return tr("fv_start_personal")
+        case .crew: return tr("fv_start_crew")
+        case .friend: return tr("fv_start_friend")
         }
     }
 
     var startLine: String {
         switch self {
-        case .personal: return "Kişisel odak akışını başlat"
-        case .crew: return "Crew ile ortak focus başlat"
-        case .friend: return "Arkadaşınla focus akışını başlat"
+        case .personal: return tr("fm_personal_flow")
+        case .crew: return tr("fm_crew_flow")
+        case .friend: return tr("fm_friend_flow")
         }
     }
 
@@ -119,16 +119,16 @@ enum FocusDurationPreset: Int, CaseIterable, Identifiable {
         case .short: return "KISA"
         case .medium: return "ORTA"
         case .long: return "UZUN"
-        case .custom: return "ÖZEL"
+        case .custom: return tr("fm_custom_caps")
         }
     }
 
     var subtitle: String {
         switch self {
-        case .short: return "hızlı çalışma"
+        case .short: return tr("fm_quick_study")
         case .medium: return "derin odak"
-        case .long: return "yoğun akış"
-        case .custom: return "özel süre"
+        case .long: return tr("fm_intense_flow")
+        case .custom: return tr("fm_custom_time")
         }
     }
 }
@@ -203,9 +203,9 @@ enum FocusGoal: String, CaseIterable, Identifiable, Codable {
     var subtitle: String {
         switch self {
         case .study: return "Ders ve tekrar"
-        case .deepWork: return "Kesintisiz çalışma"
-        case .reading: return "Okuma akışı"
-        case .planning: return "Planlama zamanı"
+        case .deepWork: return tr("fm_uninterrupted")
+        case .reading: return tr("fm_reading")
+        case .planning: return tr("fm_planning")
         case .workout: return "Aktif odak modu"
         }
     }
@@ -241,9 +241,9 @@ enum FocusStyle: String, CaseIterable, Identifiable, Codable {
     var subtitle: String {
         switch self {
         case .silent: return "Sessiz mod"
-        case .ambient: return "Yumuşak arka plan"
-        case .rain: return "Yağmur sesi hissi"
-        case .library: return "Kütüphane atmosferi"
+        case .ambient: return tr("fm_soft_bg")
+        case .rain: return tr("fm_rain")
+        case .library: return tr("fm_library")
         }
     }
 

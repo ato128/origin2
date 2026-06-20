@@ -64,18 +64,18 @@ enum DailyFlowEngine {
 
             if hour >= 19 {
                 return SuggestedTaskAction(
-                    title: "Yarını hafiflet",
-                    subtitle: "Bugün sakin görünüyor. Yarın için 1–2 net adım belirlemek iyi olabilir.",
-                    ctaTitle: "Yarını Planla",
+                    title: tr("hd_lighten_tomorrow"),
+                    subtitle: tr("df_calm_plan"),
+                    ctaTitle: tr("hd_plan_tomorrow"),
                     taskUUID: nil,
                     style: .planTomorrow,
                     score: 40
                 )
             } else {
                 return SuggestedTaskAction(
-                    title: "Küçük bir başlangıç yap",
-                    subtitle: "Bugün açık görev görünmüyor. Yeni bir görev ekleyerek ritmi başlatabilirsin.",
-                    ctaTitle: "Görev Ekle",
+                    title: tr("hd_make_small_start"),
+                    subtitle: tr("df_no_open"),
+                    ctaTitle: tr("common_add_task"),
                     taskUUID: nil,
                     style: .keepMomentum,
                     score: 30
@@ -86,8 +86,8 @@ enum DailyFlowEngine {
         if let overdue = highestPriorityOverdueTask(in: openTasks, now: now) {
             return SuggestedTaskAction(
                 title: overdue.title,
-                subtitle: "Bu görev gecikmiş. Önce bunu temizlemek bugünü hafifletir.",
-                ctaTitle: "Başla",
+                subtitle: tr("df_overdue"),
+                ctaTitle: tr("hd_start"),
                 taskUUID: overdue.taskUUID,
                 style: .overdueRecovery,
                 score: 100
@@ -101,8 +101,8 @@ enum DailyFlowEngine {
         ) {
             return SuggestedTaskAction(
                 title: beforeClassTask.title,
-                subtitle: "Sıradaki etkinlikten önce buna kısa bir başlangıç yapabilirsin.",
-                ctaTitle: "Şimdi Yap",
+                subtitle: tr("df_before_event"),
+                ctaTitle: tr("df_do_now"),
                 taskUUID: beforeClassTask.taskUUID,
                 style: .beforeClass,
                 score: 90
@@ -112,8 +112,8 @@ enum DailyFlowEngine {
         if let quickWin = bestQuickWinTask(in: openTasks, now: now) {
             return SuggestedTaskAction(
                 title: quickWin.title,
-                subtitle: "Kısa ve yönetilebilir görünüyor. Momentum açmak için iyi bir başlangıç olabilir.",
-                ctaTitle: "Başla",
+                subtitle: tr("df_manageable"),
+                ctaTitle: tr("hd_start"),
                 taskUUID: quickWin.taskUUID,
                 style: .quickWin,
                 score: 80
@@ -123,9 +123,9 @@ enum DailyFlowEngine {
         let hour = Calendar.current.component(.hour, from: now)
         if hour >= 20 {
             return SuggestedTaskAction(
-                title: "Bugünü sakin kapat",
-                subtitle: "Kalan işleri gözden geçirip yarın için küçük bir plan yapmak daha mantıklı olabilir.",
-                ctaTitle: "Yarını Planla",
+                title: tr("df_close_calm"),
+                subtitle: tr("df_review_plan"),
+                ctaTitle: tr("hd_plan_tomorrow"),
                 taskUUID: nil,
                 style: .planTomorrow,
                 score: 60
@@ -135,8 +135,8 @@ enum DailyFlowEngine {
         if let focusCandidate = highestPriorityTask(in: openTasks, now: now) {
             return SuggestedTaskAction(
                 title: focusCandidate.title,
-                subtitle: "Şu an için en mantıklı adım bu görünüyor. Kısa bir odak ile başlayabilirsin.",
-                ctaTitle: "Odak Aç",
+                subtitle: tr("df_most_logical"),
+                ctaTitle: tr("df_open_focus"),
                 taskUUID: focusCandidate.taskUUID,
                 style: .startFocus,
                 score: 70
@@ -144,9 +144,9 @@ enum DailyFlowEngine {
         }
 
         return SuggestedTaskAction(
-            title: "Bugünü sade tut",
-            subtitle: "Açık işler var ama önce küçük bir tanesini seçmek akışı kolaylaştırır.",
-            ctaTitle: "Görevleri Aç",
+            title: tr("df_keep_simple"),
+            subtitle: tr("df_pick_small"),
+            ctaTitle: tr("hd_open_tasks"),
             taskUUID: nil,
             style: .lightenLoad,
             score: 50

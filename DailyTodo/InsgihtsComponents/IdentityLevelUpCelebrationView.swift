@@ -191,7 +191,7 @@ struct IdentityLevelUpCelebrationView: View {
                 .lineLimit(2)
                 .minimumScaleFactor(0.72)
 
-            Text("Yeni statü açıldı. İlerlemen kaydedildi.")
+            Text(tr("ilu_new_status"))
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.50))
                 .multilineTextAlignment(.center)
