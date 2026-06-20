@@ -2,6 +2,16 @@ import Foundation
 import Combine
 import RevenueCat
 
+enum SubscriptionError: LocalizedError {
+    case notConfigured
+    var errorDescription: String? {
+        switch self {
+        case .notConfigured:
+            return "Satın alma şu an kullanılamıyor."
+        }
+    }
+}
+
 @MainActor
 final class SubscriptionManager: ObservableObject {
     static let shared = SubscriptionManager()
@@ -12,6 +22,10 @@ final class SubscriptionManager: ObservableObject {
 
     private let proEntitlement = "pro"
     private let cacheKey = "subscription_is_pro"
+
+    /// True only after `Purchases.configure` actually ran. Guards every
+    /// `Purchases.shared` access so we never touch an unconfigured SDK.
+    private var isConfigured = false
 
     // MARK: - Debug Pro override (test only)
     // Lets us preview Pro features without a real purchase. Persists across
@@ -40,14 +54,36 @@ final class SubscriptionManager: ObservableObject {
     }
 
     func configure() {
-        // ⚠️ AppSecrets.revenueCatAPIKey şu an Config.xcconfig'deki TEST STORE key'ini döndürüyor.
-        // App Store'da gerçek satın alma için Config.xcconfig'deki değeri "appl_..." production
-        // key'iyle değiştir (App Store Connect ürünleri + RevenueCat bağlantısı sonrası). Tek satır.
+        let key = AppSecrets.revenueCatAPIKey
+
+        // ⚠️ RevenueCat'in TEST STORE key'i ("test_" öneki) bir RELEASE/TestFlight
+        // build'inde Purchases.configure'a verilirse SDK kasıtlı olarak assertion ile
+        // ÇÖKER (checkForSimulatedStoreAPIKeyInRelease). Bu yüzden Release'te test key
+        // ile ASLA configure etmiyoruz; uygulama çökmek yerine Pro'suz açılır.
+        // Gerçek satın alma için Config.xcconfig'deki değeri "appl_..." production
+        // key'iyle değiştir — o zaman bu guard otomatik geçer. Tek satır.
+        let isTestStoreKey = key.hasPrefix("test_")
+        #if DEBUG
+        let canConfigure = !key.isEmpty
+        #else
+        let canConfigure = !key.isEmpty && !isTestStoreKey
+        #endif
+
+        guard canConfigure else {
+            isConfigured = false
+            if isTestStoreKey {
+                Log.debug("⚠️ RevenueCat NOT configured: Release build with test_ key. Swap Config.xcconfig to an appl_ key.")
+            }
+            return
+        }
+
         Purchases.logLevel = .warn
-        Purchases.configure(withAPIKey: AppSecrets.revenueCatAPIKey)
+        Purchases.configure(withAPIKey: key)
+        isConfigured = true
     }
 
     func refresh() async {
+        guard isConfigured else { return }
         do {
             let info = try await Purchases.shared.customerInfo()
             updateStatus(from: info)
@@ -57,6 +93,7 @@ final class SubscriptionManager: ObservableObject {
     }
 
     func loadOfferings() async {
+        guard isConfigured else { return }
         do {
             let offerings = try await Purchases.shared.offerings()
             availablePackages = offerings.current?.availablePackages ?? []
@@ -64,6 +101,7 @@ final class SubscriptionManager: ObservableObject {
     }
 
     func purchase(package pkg: Package) async throws {
+        guard isConfigured else { throw SubscriptionError.notConfigured }
         isLoading = true
         defer { isLoading = false }
         let result = try await Purchases.shared.purchase(package: pkg)
@@ -75,6 +113,7 @@ final class SubscriptionManager: ObservableObject {
     }
 
     func restorePurchases() async throws {
+        guard isConfigured else { throw SubscriptionError.notConfigured }
         isLoading = true
         defer { isLoading = false }
         let info = try await Purchases.shared.restorePurchases()

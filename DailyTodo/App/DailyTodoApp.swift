@@ -83,10 +83,22 @@ struct DailyTodoApp: App {
                 url: storeURL
             )
 
-            container = try ModelContainer(
-                for: schema,
-                configurations: [configuration]
-            )
+            // Resilient creation: if an in-place migration of the existing store
+            // fails (e.g. after a schema change), don't crash on launch — back up
+            // the incompatible store and start fresh so the app stays usable.
+            do {
+                container = try ModelContainer(
+                    for: schema,
+                    configurations: [configuration]
+                )
+            } catch {
+                Log.debug("⚠️ ModelContainer migration failed, recovering store:", error)
+                Self.backupIncompatibleStore(at: storeURL)
+                container = try ModelContainer(
+                    for: schema,
+                    configurations: [configuration]
+                )
+            }
 
             FocusCompletionRecorder.shared.configure(container: container)
 
@@ -102,6 +114,19 @@ struct DailyTodoApp: App {
 
         } catch {
             fatalError("SwiftData container oluşturulamadı: \(error)")
+        }
+    }
+
+    /// Moves an incompatible SwiftData store aside (keeping a timestamped backup)
+    /// so a fresh store can be created instead of crashing at launch.
+    private static func backupIncompatibleStore(at storeURL: URL) {
+        let fm = FileManager.default
+        let stamp = Int(Date().timeIntervalSince1970)
+        for suffix in ["", "-wal", "-shm"] {
+            let src = URL(fileURLWithPath: storeURL.path + suffix)
+            guard fm.fileExists(atPath: src.path) else { continue }
+            let dst = URL(fileURLWithPath: storeURL.path + ".bak\(stamp)" + suffix)
+            try? fm.moveItem(at: src, to: dst)
         }
     }
 
