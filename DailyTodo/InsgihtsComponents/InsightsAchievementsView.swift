@@ -131,7 +131,7 @@ struct InsightsAchievementsView: View {
                         .fill(accent)
                         .frame(width: 20, height: 1)
 
-                    Text("ACHIEVEMENT PATHS")
+                    Text(tr("iav_paths_caps"))
                         .font(.system(size: 11, weight: .black, design: .monospaced))
                         .tracking(2.3)
                         .foregroundStyle(accent)
@@ -140,13 +140,13 @@ struct InsightsAchievementsView: View {
                 }
 
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    Text("Achievements")
+                    Text(tr("iav_achievements"))
                         .font(.system(size: 37, weight: .black))
                         .foregroundStyle(.white)
                         .lineLimit(1)
                         .minimumScaleFactor(0.72)
 
-                    Text("map")
+                    Text(tr("iav_map"))
                         .font(.system(size: 34, weight: .regular, design: .serif))
                         .italic()
                         .foregroundStyle(
@@ -172,7 +172,7 @@ struct InsightsAchievementsView: View {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 15, weight: .black))
                     .foregroundStyle(.white)
                     .frame(width: 44, height: 44)
@@ -207,7 +207,7 @@ struct InsightsAchievementsView: View {
                         .fill(accent)
                         .frame(width: 18, height: 1)
 
-                    Text("PROGRESS")
+                    Text(tr("iav_progress_caps"))
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .tracking(1.7)
                         .foregroundStyle(accent)
@@ -259,7 +259,7 @@ struct InsightsAchievementsView: View {
                         .foregroundStyle(.white)
                         .monospacedDigit()
 
-                    Text("PATH")
+                    Text(tr("iav_path_caps"))
                         .font(.system(size: 9, weight: .black, design: .monospaced))
                         .foregroundStyle(.white.opacity(0.42))
                 }
@@ -363,7 +363,7 @@ private enum AchievementPathBuilder {
         return [
             AchievementPath(
                 id: "focus",
-                title: "Focus Path",
+                title: tr("iav_focus_path"),
                 subtitle: tr("ia_improve_focus"),
                 icon: "timer",
                 tint: Color(arenaHex: AppArenaPalette.cyan),
@@ -371,7 +371,7 @@ private enum AchievementPathBuilder {
             ),
             AchievementPath(
                 id: "streak",
-                title: "Streak Path",
+                title: tr("iav_streak_path"),
                 subtitle: tr("ia_grow_streak"),
                 icon: "flame.fill",
                 tint: Color(arenaHex: AppArenaPalette.gold),
@@ -379,7 +379,7 @@ private enum AchievementPathBuilder {
             ),
             AchievementPath(
                 id: "task",
-                title: "Task Path",
+                title: tr("iav_task_path"),
                 subtitle: tr("ia_boost_completion"),
                 icon: "checkmark.seal.fill",
                 tint: Color(arenaHex: AppArenaPalette.green),
@@ -387,7 +387,7 @@ private enum AchievementPathBuilder {
             ),
             AchievementPath(
                 id: "exam",
-                title: "Exam Path",
+                title: tr("iav_exam_path"),
                 subtitle: tr("iv_strengthen_prep"),
                 icon: "graduationcap.fill",
                 tint: Color(arenaHex: AppArenaPalette.purple),
@@ -395,7 +395,7 @@ private enum AchievementPathBuilder {
             ),
             AchievementPath(
                 id: "other",
-                title: "Special Path",
+                title: tr("iav_special_path"),
                 subtitle: tr("ia_other"),
                 icon: "sparkles",
                 tint: Color(arenaHex: AppArenaPalette.coral),
@@ -644,7 +644,7 @@ private struct EarnedBadgeCard: View {
 
                     Spacer()
 
-                    Text("KAZANILDI")
+                    Text(tr("iav_earned_caps"))
                         .font(.system(size: 9, weight: .black, design: .monospaced))
                         .tracking(0.7)
                         .foregroundStyle(Color(arenaHex: AppArenaPalette.green))
@@ -763,7 +763,7 @@ private struct AchievementDetailSheet: View {
                             .fill(badge.accent)
                             .frame(width: 18, height: 1)
 
-                        Text("ACHIEVEMENT")
+                        Text(tr("iav_achievement_caps"))
                             .font(.system(size: 10, weight: .black, design: .monospaced))
                             .tracking(1.8)
                             .foregroundStyle(badge.accent)
@@ -774,7 +774,7 @@ private struct AchievementDetailSheet: View {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark")
+                        Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                             .font(.system(size: 12, weight: .black))
                             .foregroundStyle(.white)
                             .frame(width: 34, height: 34)
@@ -896,7 +896,7 @@ private struct AchievementPathDetailSheet: View {
                         .fill(path.tint)
                         .frame(width: 20, height: 1)
 
-                    Text("PATH DETAIL")
+                    Text(tr("iav_path_detail_caps"))
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .tracking(1.8)
                         .foregroundStyle(path.tint)
@@ -916,7 +916,7 @@ private struct AchievementPathDetailSheet: View {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 14, weight: .black))
                     .foregroundStyle(.white)
                     .frame(width: 40, height: 40)

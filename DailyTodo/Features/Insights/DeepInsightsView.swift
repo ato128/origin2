@@ -42,11 +42,11 @@ struct DeepInsightsView: View {
     private var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Deep Insights")
+                Text(tr("di_title"))
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
-                Text("Your premium performance view")
+                Text(tr("di_sub"))
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.white.opacity(0.60))
             }
@@ -56,7 +56,7 @@ struct DeepInsightsView: View {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: 36, height: 36)
@@ -102,7 +102,7 @@ struct DeepInsightsView: View {
     private var bestWindowCard: some View {
         premiumCard(tint: bestWindow.accent) {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Best Study Window")
+                Text(tr("di_best_window"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.60))
 
@@ -124,14 +124,14 @@ struct DeepInsightsView: View {
     private var weeklyReviewCard: some View {
         premiumCard(tint: .blue) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Weekly Deep Review")
+                Text(tr("di_weekly_review"))
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
-                Text("Strongest: \(weeklyReview.strongestDay)")
+                Text(tr("di_strongest", weeklyReview.strongestDay))
                     .foregroundStyle(.white.opacity(0.84))
 
-                Text("Weakest: \(weeklyReview.weakestDay)")
+                Text(tr("di_weakest", weeklyReview.weakestDay))
                     .foregroundStyle(.white.opacity(0.84))
 
                 Text(weeklyReview.deltaText)
@@ -147,7 +147,7 @@ struct DeepInsightsView: View {
     private var identityEvolutionCard: some View {
         premiumCard(tint: .orange) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Identity Evolution")
+                Text(tr("di_identity_evo"))
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
@@ -155,7 +155,7 @@ struct DeepInsightsView: View {
                     .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
-                Text("Next: \(identityEvolution.nextIdentity)")
+                Text(tr("di_next", identityEvolution.nextIdentity))
                     .foregroundStyle(.white.opacity(0.76))
 
                 ProgressView(value: identityEvolution.progress)
@@ -171,7 +171,7 @@ struct DeepInsightsView: View {
     private var examReadinessCard: some View {
         premiumCard(tint: .pink) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Exam Readiness Pro")
+                Text(tr("di_exam_readiness"))
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
@@ -199,7 +199,7 @@ struct DeepInsightsView: View {
 
     private var alertsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Pattern Alerts")
+            Text(tr("di_pattern_alerts"))
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
 

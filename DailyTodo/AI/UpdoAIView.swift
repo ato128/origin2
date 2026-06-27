@@ -126,7 +126,7 @@ struct UpdoAIView: View {
         }
         .preferredColorScheme(.dark)
         .alert("Sohbeti Temizle", isPresented: $showClearAlert) {
-            Button("Temizle", role: .destructive) {
+            Button(tr("ai_clear"), role: .destructive) {
                 chatStore.clearHistory()
                 executedActionIDs.removeAll()
                 dismissedActionIDs.removeAll()
@@ -567,7 +567,7 @@ struct UpdoAIView: View {
                                         .controlSize(.small)
                                         .tint(.black)
                                 } else {
-                                    Image(systemName: "arrow.up")
+                                    Image(systemName: "arrow.up").accessibilityLabel(tr("a11y_send"))
                                         .font(.system(size: 13, weight: .bold))
                                         .foregroundStyle(canSend ? .black : .secondary)
                                 }
@@ -638,7 +638,7 @@ struct UpdoAIView: View {
                 Button {
                     withAnimation(.easeInOut(duration: 0.18)) { _ = dismissedActionIDs.insert(msgID) }
                 } label: {
-                    Text("Kapat")
+                    Text(tr("event_close"))
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(.secondary)
                 }
@@ -649,7 +649,7 @@ struct UpdoAIView: View {
                     withAnimation(.easeInOut(duration: 0.18)) { _ = executedActionIDs.insert(msgID) }
                     triggerToast(tr("ai_tasks_added"))
                 } label: {
-                    Text("Ekle")
+                    Text(tr("common_add"))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 14)
@@ -791,7 +791,7 @@ private struct FocusHistorySheet: View {
                 if sessions.isEmpty {
                     EmptyStateView(
                         icon: "timer",
-                        title: "Focus oturumu yok",
+                        title: tr("ai_no_focus_session"),
                         subtitle: tr("ai_no_sessions")
                     )
                     .listRowInsets(.init())
@@ -808,7 +808,7 @@ private struct FocusHistorySheet: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Kapat") { dismiss() }
+                    Button(tr("event_close")) { dismiss() }
                 }
             }
         }

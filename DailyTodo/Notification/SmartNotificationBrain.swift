@@ -12,6 +12,7 @@ enum SmartNotificationCategory: String, Codable {
     case streakProtection
     case dailyFocus
     case todayTasks
+    case aiSuggestion
 }
 
 struct SmartNotificationPreferences {
@@ -20,6 +21,7 @@ struct SmartNotificationPreferences {
     let streakEnabled: Bool
     let dailyFocusEnabled: Bool
     let taskEnabled: Bool
+    let aiSuggestionEnabled: Bool
 
     static var current: SmartNotificationPreferences {
         let defaults = UserDefaults.standard
@@ -29,7 +31,8 @@ struct SmartNotificationPreferences {
             examEnabled: defaults.object(forKey: "smartExamNotificationsEnabled") as? Bool ?? true,
             streakEnabled: defaults.object(forKey: "smartStreakNotificationsEnabled") as? Bool ?? true,
             dailyFocusEnabled: defaults.object(forKey: "smartDailyFocusNotificationsEnabled") as? Bool ?? true,
-            taskEnabled: defaults.object(forKey: "smartTaskNotificationsEnabled") as? Bool ?? true
+            taskEnabled: defaults.object(forKey: "smartTaskNotificationsEnabled") as? Bool ?? true,
+            aiSuggestionEnabled: defaults.object(forKey: "smartAiSuggestionNotificationsEnabled") as? Bool ?? true
         )
     }
 }
@@ -49,6 +52,7 @@ struct SmartNotificationBrain {
     static func makeCandidates(
         tasks: [DTTaskItem],
         exams: [ExamItem],
+        events: [EventItem] = [],
         focusRecords: [FocusSessionRecord],
         now: Date = Date()
     ) -> [SmartNotificationCandidate] {
@@ -59,6 +63,18 @@ struct SmartNotificationBrain {
         }
 
         var candidates: [SmartNotificationCandidate] = []
+
+        if preferences.aiSuggestionEnabled {
+            candidates.append(
+                contentsOf: aiSuggestionCandidates(
+                    tasks: tasks,
+                    exams: exams,
+                    events: events,
+                    focusRecords: focusRecords,
+                    now: now
+                )
+            )
+        }
 
         if preferences.examEnabled {
             candidates.append(
@@ -108,6 +124,73 @@ struct SmartNotificationBrain {
 
                 return $0.triggerDate < $1.triggerDate
             }
+    }
+
+    // MARK: - Updo AI Suggestion (empty-plan nudge)
+
+    /// Fires only when the user has nothing on deck — no pending tasks, no exam in
+    /// the next week. The copy adapts to who they are (brand-new vs. returning
+    /// focuser) and the time of day, so Updo AI nudges them to take a first action.
+    private static func aiSuggestionCandidates(
+        tasks: [DTTaskItem],
+        exams: [ExamItem],
+        events: [EventItem],
+        focusRecords: [FocusSessionRecord],
+        now: Date
+    ) -> [SmartNotificationCandidate] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: now)
+
+        let hasPendingTask = tasks.contains { !$0.isDone }
+
+        let hasUpcomingExam = exams.contains { exam in
+            guard !exam.isCompleted else { return false }
+            guard let days = calendar.dateComponents([.day], from: today, to: calendar.startOfDay(for: exam.examDate)).day
+            else { return false }
+            return days >= 0 && days <= 7
+        }
+
+        // The plan is "empty" only when there's genuinely nothing to act on.
+        guard !hasPendingTask, !hasUpcomingExam else { return [] }
+
+        let hour = calendar.component(.hour, from: now)
+        let hasEverFocused = focusRecords.contains { $0.isCompleted }
+        let hasSchedule = !events.isEmpty
+
+        // Pick the trigger window + adaptive body for who/when this is.
+        let body: String
+        let triggerHour: Int
+
+        if !hasEverFocused, !hasSchedule {
+            // Brand-new: invite the very first action, mid-morning.
+            body = tr("snb_ai_new")
+            triggerHour = 11
+        } else if hour < 12 {
+            body = tr("snb_ai_morning")
+            triggerHour = 11
+        } else if hour < 18 {
+            body = tr("snb_ai_focus")
+            triggerHour = 17
+        } else {
+            body = tr("snb_ai_evening")
+            triggerHour = 20
+        }
+
+        guard let trigger = triggerDateToday(hour: triggerHour, minute: 15, now: now) else {
+            return []
+        }
+
+        return [
+            SmartNotificationCandidate(
+                id: "smart.ai.suggestion.\(dayKey(now))",
+                category: .aiSuggestion,
+                title: tr("snb_ai_title"),
+                body: body,
+                triggerDate: trigger,
+                deepLink: "dailytodo://week",
+                priority: 48
+            )
+        ]
     }
 
     // MARK: - Exams

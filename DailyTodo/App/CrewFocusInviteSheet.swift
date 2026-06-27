@@ -211,7 +211,7 @@ struct CrewFocusInviteSheet: View {
     private var topBar: some View {
         HStack {
             Button(action: onDismiss) {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 14, weight: .black))
                     .foregroundStyle(.white.opacity(0.85))
                     .frame(width: 38, height: 38)

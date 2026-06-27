@@ -102,12 +102,15 @@ final class NotificationManager: ObservableObject {
                 repeats: false
             )
 
-            let content = UNMutableNotificationContent()
-            content.sound = .default
-            content.title = event.title
-            content.body = minutesBefore == 0
-                ? tr("nm_class_started")
-                : tr("nm_starts_in", minutesBefore)
+            let content = NotificationContentFactory.make(
+                title: event.title,
+                body: minutesBefore == 0
+                    ? tr("nm_class_started")
+                    : tr("nm_starts_in", minutesBefore),
+                category: "EVENT_REMINDER",
+                threadID: "event.\(event.id.uuidString)",
+                relevance: 0.7
+            )
 
             let request = UNNotificationRequest(
                 identifier: eventID(for: event, minutesBefore: minutesBefore),
@@ -156,12 +159,15 @@ final class NotificationManager: ObservableObject {
             repeats: true
         )
 
-        let content = UNMutableNotificationContent()
-        content.sound = .default
-        content.title = event.title
-        content.body = minutesBefore == 0
-            ? tr("nm_class_started")
-            : tr("nm_starts_in", minutesBefore)
+        let content = NotificationContentFactory.make(
+            title: event.title,
+            body: minutesBefore == 0
+                ? tr("nm_class_started")
+                : tr("nm_starts_in", minutesBefore),
+            category: "EVENT_REMINDER",
+            threadID: "event.\(event.id.uuidString)",
+            relevance: 0.7
+        )
 
         let request = UNNotificationRequest(
             identifier: eventID(for: event, minutesBefore: minutesBefore),
@@ -187,11 +193,13 @@ final class NotificationManager: ObservableObject {
 
         let center = UNUserNotificationCenter.current()
 
-        let content = UNMutableNotificationContent()
-        content.sound = .default
-        content.title = tr("nm_focus_done")
-        content.body = "\(title) oturumu bitti."
-        content.categoryIdentifier = "FOCUS_FINISHED"
+        let content = NotificationContentFactory.make(
+            title: tr("nm_focus_done"),
+            body: "\(title) oturumu bitti.",
+            category: "FOCUS_FINISHED",
+            threadID: "focus.finished",
+            relevance: 0.9
+        )
 
         let trigger = UNTimeIntervalNotificationTrigger(
             timeInterval: TimeInterval(seconds),

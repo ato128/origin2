@@ -80,9 +80,9 @@ enum CrewCommunityScope: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .department:
-            return "Bölüm"
+            return tr("ch_scope_department")
         case .university:
-            return "Üni"
+            return tr("ch_scope_university")
         case .country:
             return "Türkiye"
         case .global:
@@ -110,26 +110,26 @@ enum CrewCommunityScope: String, CaseIterable, Identifiable {
             let courseCount = studentContext.courseCount
 
             if courseCount > 0 {
-                return "\(department) · \(courseCount) DERS · LIVE"
+                return tr("ch_eyebrow_dept_courses", department, courseCount)
             }
 
-            return "\(department) · AKADEMİK ARENA"
+            return tr("ch_eyebrow_dept_arena", department)
 
         case .university:
             let university = studentContext.universityShortName
 
             if university == "Üniversite" {
-                return "CAMPUS · LIVE"
+                return tr("ch_eyebrow_campus")
             }
 
-            return "\(university) · CAMPUS · LIVE"
+            return tr("ch_eyebrow_campus_named", university)
 
         case .country:
             let country = studentContext.institutionCountry?.uppercased() ?? "TÜRKİYE"
-            return "\(country) · LIVE"
+            return tr("ch_eyebrow_country", country)
 
         case .global:
-            return "GLOBAL · STUDY ARENA"
+            return tr("ch_eyebrow_global")
         }
     }
 
@@ -183,11 +183,11 @@ enum CrewLeaderboardRange: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .week:
-            return "Hafta"
+            return tr("ch_range_week")
         case .month:
-            return "Ay"
+            return tr("ch_range_month")
         case .all:
-            return "All"
+            return tr("ch_range_all")
         }
     }
 }
@@ -201,11 +201,11 @@ enum CrewJoinState: String, CaseIterable {
     var title: String {
         switch self {
         case .join:
-            return "KATIL"
+            return tr("ch_join_caps")
         case .pending:
             return tr("ch_pending_caps")
         case .full:
-            return "DOLU"
+            return tr("ch_full_caps")
         case .member:
             return tr("ch_member_caps")
         }
@@ -543,55 +543,55 @@ enum CrewCommunityMockFactory {
         switch scope {
         case .department:
             return CrewCommunityScopeSummary(
-                label: "SENİN BÖLÜMÜN",
+                label: tr("ch_sum_dept_label"),
                 title: departmentCode,
                 italicTitle: departmentName,
-                subtitle: "Bölüm içi canlı akademik rekabet",
+                subtitle: tr("ch_sum_dept_sub"),
                 icon: "graduationcap.fill",
                 rankDeltaText: "↑ 12",
-                primaryLiveText: "847 şimdi odakta",
-                secondaryText: "\(studentContext.courseCount) aktif ders",
+                primaryLiveText: tr("ch_focusing_now", "847"),
+                secondaryText: tr("ch_active_courses", studentContext.courseCount),
                 metrics: [
                     CrewMetricData(value: "340", title: "CREW", accentHex: "#FBBF24"),
                     CrewMetricData(value: "12.4K", title: tr("ch_member_caps"), accentHex: "#FBBF24"),
-                    CrewMetricData(value: "847", title: "LIVE", accentHex: "#A3E635"),
-                    CrewMetricData(value: "+18", title: "BUGÜN", accentHex: "#A3E635")
+                    CrewMetricData(value: "847", title: tr("ch_metric_live"), accentHex: "#A3E635"),
+                    CrewMetricData(value: "+18", title: tr("ch_metric_today"), accentHex: "#A3E635")
                 ]
             )
 
         case .university:
             return CrewCommunityScopeSummary(
-                label: "SENİN ÜNİVERSİTEN",
+                label: tr("ch_sum_uni_label"),
                 title: universityCode,
                 italicTitle: universityName,
-                subtitle: "Üniversite içi focus ve crew ligi",
+                subtitle: tr("ch_sum_uni_sub"),
                 icon: "building.columns.fill",
                 rankDeltaText: "↑ 8",
-                primaryLiveText: "2.8K şimdi odakta",
+                primaryLiveText: tr("ch_focusing_now", "2.8K"),
                 secondaryText: studentContext.institutionCountry ?? "Campus",
                 metrics: [
                     CrewMetricData(value: "1.2K", title: "CREW", accentHex: "#FBBF24"),
                     CrewMetricData(value: "41K", title: tr("ch_member_caps"), accentHex: "#FBBF24"),
-                    CrewMetricData(value: "2.8K", title: "LIVE", accentHex: "#A3E635"),
-                    CrewMetricData(value: "+124", title: "BUGÜN", accentHex: "#A3E635")
+                    CrewMetricData(value: "2.8K", title: tr("ch_metric_live"), accentHex: "#A3E635"),
+                    CrewMetricData(value: "+124", title: tr("ch_metric_today"), accentHex: "#A3E635")
                 ]
             )
 
         case .country:
             return CrewCommunityScopeSummary(
-                label: "ÜLKE ARENASI",
+                label: tr("ch_sum_country_label"),
                 title: "Türkiye",
-                italicTitle: "Ligi",
-                subtitle: "Üniversiteler arası akademik yarış",
+                italicTitle: tr("ch_sum_league"),
+                subtitle: tr("ch_sum_country_sub"),
                 icon: "flag.fill",
                 rankDeltaText: "↑ 21",
-                primaryLiveText: "84K şimdi odakta",
-                secondaryText: "ülke geneli",
+                primaryLiveText: tr("ch_focusing_now", "84K"),
+                secondaryText: tr("ch_nationwide"),
                 metrics: [
                     CrewMetricData(value: "29K", title: "CREW", accentHex: "#FBBF24"),
                     CrewMetricData(value: "1.7M", title: tr("ch_member_caps"), accentHex: "#FBBF24"),
-                    CrewMetricData(value: "84K", title: "LIVE", accentHex: "#A3E635"),
-                    CrewMetricData(value: "+18K", title: "BUGÜN", accentHex: "#A3E635")
+                    CrewMetricData(value: "84K", title: tr("ch_metric_live"), accentHex: "#A3E635"),
+                    CrewMetricData(value: "+18K", title: tr("ch_metric_today"), accentHex: "#A3E635")
                 ]
             )
 
@@ -599,147 +599,22 @@ enum CrewCommunityMockFactory {
             return CrewCommunityScopeSummary(
                 label: "GLOBAL ARENA",
                 title: "10.4M",
-                italicTitle: "öğrenci",
-                subtitle: "Dünyanın canlı akademik arenası",
+                italicTitle: tr("ch_students_lc"),
+                subtitle: tr("ch_sum_global_sub"),
                 icon: "globe",
                 rankDeltaText: "↑ 247K",
-                primaryLiveText: "284K şimdi odakta",
+                primaryLiveText: tr("ch_focusing_now", "284K"),
                 secondaryText: "global",
                 metrics: [
-                    CrewMetricData(value: "127K", title: "ÜNİ", accentHex: "#FBBF24"),
+                    CrewMetricData(value: "127K", title: tr("ch_metric_uni"), accentHex: "#FBBF24"),
                     CrewMetricData(value: "340K", title: "CREW", accentHex: "#FBBF24"),
-                    CrewMetricData(value: "2.4B", title: "SAAT", accentHex: "#FBBF24"),
-                    CrewMetricData(value: "+247K", title: "BUGÜN", accentHex: "#A3E635")
+                    CrewMetricData(value: "2.4B", title: tr("ch_metric_hours"), accentHex: "#FBBF24"),
+                    CrewMetricData(value: "+247K", title: tr("ch_metric_today"), accentHex: "#A3E635")
                 ]
             )
         }
     }
 
-    static let weeklyChallenge = CrewWeeklyChallengeData(
-        label: "HAFTANIN MEYDAN OKUMASI",
-        title: "CMSE Focus War",
-        italicTitle: "Hafta 18",
-        timeLeftText: "3h 24m kaldı",
-        participantText: "1,247 katılımcı",
-        rewardText: "Diamond Badge + Arena Rank Boost",
-        progress: 0.64
-    )
-
-    static let students: [CrewStudentLeaderboardEntry] = [
-        CrewStudentLeaderboardEntry(
-            rank: 2,
-            displayName: "Mert K.",
-            universityShort: "ODTÜ",
-            focusMinutes: 2302,
-            badges: ["⚡️", "🔥", "💎"],
-            colorHex: "#E5E7EB",
-            isCurrentUser: false,
-            deltaRank: 2
-        ),
-        CrewStudentLeaderboardEntry(
-            rank: 1,
-            displayName: "Deniz Y.",
-            universityShort: "BOĞ",
-            focusMinutes: 3134,
-            badges: ["👑", "🏆", "💎", "⚡️", "🔥"],
-            colorHex: "#FBBF24",
-            isCurrentUser: false,
-            deltaRank: 7
-        ),
-        CrewStudentLeaderboardEntry(
-            rank: 3,
-            displayName: "Selin A.",
-            universityShort: "İTÜ",
-            focusMinutes: 1868,
-            badges: ["🥉", "🔥"],
-            colorHex: "#C7783A",
-            isCurrentUser: false,
-            deltaRank: -1
-        ),
-        CrewStudentLeaderboardEntry(
-            rank: 247,
-            displayName: "Ali",
-            universityShort: "CMSE",
-            focusMinutes: 1172,
-            badges: ["🔥"],
-            colorHex: "#FF523D",
-            isCurrentUser: true,
-            deltaRank: 18
-        )
-    ]
-
-    static let topCrews: [CrewCommunityCrewEntry] = [
-        CrewCommunityCrewEntry(
-            rank: 1,
-            name: "Quantum Lab",
-            icon: "👑",
-            universityShort: "İTÜ",
-            focusMinutes: 8842,
-            memberCount: 8,
-            capacity: 8,
-            badges: ["👑", "🏆", "💎"],
-            colorHex: "#FBBF24",
-            joinState: .full,
-            deltaRank: 2,
-            isLive: false
-        ),
-        CrewCommunityCrewEntry(
-            rank: 2,
-            name: "Code Rangers",
-            icon: "🚀",
-            universityShort: "BOĞ",
-            focusMinutes: 7725,
-            memberCount: 4,
-            capacity: 6,
-            badges: ["🏆", "⚡️", "🔥"],
-            colorHex: "#FF523D",
-            joinState: .join,
-            deltaRank: 1,
-            isLive: true
-        ),
-        CrewCommunityCrewEntry(
-            rank: 3,
-            name: "Logic Lab",
-            icon: "🧠",
-            universityShort: "ODTÜ",
-            focusMinutes: 5892,
-            memberCount: 5,
-            capacity: 6,
-            badges: ["⚡️", "💎"],
-            colorHex: "#8B5CF6",
-            joinState: .pending,
-            deltaRank: -2,
-            isLive: false
-        ),
-        CrewCommunityCrewEntry(
-            rank: 4,
-            name: "Green Code",
-            icon: "🌱",
-            universityShort: "METU",
-            focusMinutes: 5224,
-            memberCount: 5,
-            capacity: 8,
-            badges: ["⚡️"],
-            colorHex: "#84CC16",
-            joinState: .join,
-            deltaRank: 3,
-            isLive: true
-        ),
-        CrewCommunityCrewEntry(
-            rank: 5,
-            name: "Star Builders",
-            icon: "⭐️",
-            universityShort: "BOĞ",
-            focusMinutes: 4491,
-            memberCount: 2,
-            capacity: 6,
-            badges: ["⚡️"],
-            colorHex: "#FBBF24",
-            joinState: .join,
-            deltaRank: 0,
-            isLive: false
-        )
-    ]
 }
 
 // MARK: - Formatters

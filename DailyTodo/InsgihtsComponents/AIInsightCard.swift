@@ -55,7 +55,7 @@ struct AIInsightCard: View {
     }
 
     private var accentColor: Color {
-        Color(hex: item.accent) ?? .accentColor
+        Color(arenaHex: item.accent)
     }
 
     private var iconView: some View {
@@ -76,111 +76,5 @@ struct AIInsightCard: View {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .stroke(accentColor.opacity(0.18), lineWidth: 1)
             )
-    }
-}
-
-struct AIInsightsSectionView: View {
-    @ObservedObject var store: AISmartInsightsStore
-    let onRefresh: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            header
-
-            if store.isLoading {
-                loadingView
-            } else if let err = store.error {
-                errorView(err)
-            } else if store.insights.isEmpty {
-                emptyView
-            } else {
-                ForEach(store.insights.prefix(3)) { item in
-                    AIInsightCard(item: item)
-                }
-            }
-        }
-    }
-
-    private var header: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Image(systemName: "brain.head.profile")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(.secondary)
-                    Text("AI ANALYSIS")
-                        .font(.system(size: 10, weight: .black, design: .monospaced))
-                        .tracking(1.4)
-                        .foregroundStyle(.secondary)
-                }
-                Text("Smart Insights")
-                    .font(.system(size: 20, weight: .black))
-                    .foregroundStyle(.primary)
-            }
-            Spacer()
-            if !store.isLoading {
-                Button(action: onRefresh) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 34, height: 34)
-                        .background(Circle().fill(Color.primary.opacity(0.07)))
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    private var loadingView: some View {
-        HStack(spacing: 12) {
-            ProgressView().progressViewStyle(.circular).scaleEffect(0.9)
-            Text(tr("aic_analyzing"))
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.secondary)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(Color.primary.opacity(0.05)))
-    }
-
-    private func errorView(_ msg: String) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-            Text(msg)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .fill(Color.orange.opacity(0.08)))
-    }
-
-    private var emptyView: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "chart.bar.fill").foregroundStyle(.secondary)
-            Text(tr("aic_no_data"))
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.secondary)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .fill(Color.primary.opacity(0.05)))
-    }
-}
-
-private extension Color {
-    init?(hex: String) {
-        var h = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        if h.hasPrefix("#") { h = String(h.dropFirst()) }
-        guard h.count == 6, let value = UInt64(h, radix: 16) else { return nil }
-        self.init(
-            red: Double((value >> 16) & 0xFF) / 255,
-            green: Double((value >> 8) & 0xFF) / 255,
-            blue: Double(value & 0xFF) / 255
-        )
     }
 }

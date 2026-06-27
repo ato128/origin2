@@ -214,7 +214,7 @@ struct EditCrewTaskView: View {
                         Capsule()
                             .fill(
                                 LinearGradient(
-                                    colors: [UpdoTheme.cyan, Color(updoHex: "#22D3EE")],
+                                    colors: [UpdoTheme.cyan, Color(arenaHex: "#22D3EE")],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
@@ -250,12 +250,12 @@ struct EditCrewTaskView: View {
                     Text(tr("edit_delete_task"))
                 }
                 .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(Color(updoHex: "#EF4444"))
+                .foregroundStyle(Color(arenaHex: "#EF4444"))
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
                 .background(
                     Capsule()
-                        .fill(Color(updoHex: "#EF4444").opacity(0.12))
+                        .fill(Color(arenaHex: "#EF4444").opacity(0.12))
                 )
             }
             .buttonStyle(.plain)
@@ -289,7 +289,7 @@ struct EditCrewTaskView: View {
         case "low": return UpdoTheme.cyan
         case "medium": return UpdoTheme.lime
         case "high": return UpdoTheme.orange
-        case "urgent": return Color(updoHex: "#EF4444")
+        case "urgent": return Color(arenaHex: "#EF4444")
         default: return UpdoTheme.cyan
         }
     }

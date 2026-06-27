@@ -18,11 +18,11 @@ struct PaywallView: View {
 
     // MARK: – Palette (gold = premium)
 
-    private let bg       = Color(pwHex: "#080A12")
-    private let card     = Color(pwHex: "#141826")
-    private let gold     = Color(pwHex: "#FBBF24")
-    private let goldSoft = Color(pwHex: "#FFD166")
-    private let ink      = Color(pwHex: "#1A1206")
+    private let bg       = Color(arenaHex: "#080A12")
+    private let card     = Color(arenaHex: "#141826")
+    private let gold     = Color(arenaHex: "#FBBF24")
+    private let goldSoft = Color(arenaHex: "#FFD166")
+    private let ink      = Color(arenaHex: "#1A1206")
 
     private var goldGradient: LinearGradient {
         LinearGradient(colors: [goldSoft, gold], startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -325,18 +325,5 @@ struct PaywallView: View {
             }
             .padding(.top, 16).padding(.trailing, 20)
         }
-    }
-}
-
-private extension Color {
-    init(pwHex hex: String) {
-        let h = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-        var int: UInt64 = 0
-        Scanner(string: h).scanHexInt64(&int)
-        self.init(
-            red:   Double((int >> 16) & 0xFF) / 255,
-            green: Double((int >>  8) & 0xFF) / 255,
-            blue:  Double( int        & 0xFF) / 255
-        )
     }
 }

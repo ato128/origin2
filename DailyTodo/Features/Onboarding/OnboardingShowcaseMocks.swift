@@ -194,7 +194,7 @@ private struct HomeMock: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 5) {
                     Circle().fill(cGreen).frame(width: 5, height: 5)
-                    Text("ŞU AN · CANLI").font(.system(size: 8, weight: .bold, design: .monospaced))
+                    Text(tr("ob_mk_now_live")).font(.system(size: 8, weight: .bold, design: .monospaced))
                         .tracking(1.4).foregroundStyle(cGold)
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
@@ -332,7 +332,7 @@ private struct WeekMock: View {
                     Text("Haziran 2026").font(.system(size: 11, weight: .bold)).foregroundStyle(.white)
                 }
                 Spacer()
-                Image(systemName: "plus").font(.system(size: 12, weight: .black)).foregroundStyle(.black)
+                Image(systemName: "plus").accessibilityLabel(tr("common_add")).font(.system(size: 12, weight: .black)).foregroundStyle(.black)
                     .frame(width: 26, height: 26).background(Circle().fill(cCyan))
             }
 
@@ -356,13 +356,13 @@ private struct WeekMock: View {
                 HStack {
                     HStack(spacing: 4) {
                         Circle().fill(cCoral).frame(width: 5, height: 5)
-                        Text("ŞU AN · CANLI").font(.system(size: 7, weight: .black, design: .monospaced)).tracking(1).foregroundStyle(cCoral)
+                        Text(tr("ob_mk_now_live")).font(.system(size: 7, weight: .black, design: .monospaced)).tracking(1).foregroundStyle(cCoral)
                     }
                     Spacer()
                     Text("PER · 18 HAZ").font(.system(size: 7, weight: .bold, design: .monospaced)).foregroundStyle(.white.opacity(0.4))
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    Text("Perşembe").font(.system(size: 16, weight: .black)).foregroundStyle(.white)
+                    Text(localizedWeekdayFull(3)).font(.system(size: 16, weight: .black)).foregroundStyle(.white)
                     Text("18 Haziran").font(.system(size: 14, weight: .regular, design: .serif)).italic().foregroundStyle(cCoral)
                 }
                 .lineLimit(1).minimumScaleFactor(0.7)
@@ -479,7 +479,7 @@ private struct FocusMock: View {
                     .padding(.horizontal, 7).padding(.vertical, 4).background(Capsule().fill(cCyan.opacity(0.12)))
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text("Kişisel").font(.system(size: 15, weight: .black)).foregroundStyle(.white)
+                    Text(tr("ob_mk_personal")).font(.system(size: 15, weight: .black)).foregroundStyle(.white)
                     Text("Focus").font(.system(size: 14, weight: .regular, design: .serif)).italic().foregroundStyle(cCyan)
                     Spacer()
                 }
@@ -515,7 +515,7 @@ private struct FocusMock: View {
                 durPill("15 dk", active: false)
                 durPill("25 dk", active: true)
                 durPill("45 dk", active: false)
-                durPill("Özel", active: false)
+                durPill(tr("ob_mk_custom"), active: false)
             }
 
             // Goal + Sound cards
@@ -576,9 +576,9 @@ private struct CrewMock: View {
         VStack(alignment: .leading, spacing: 11) {
             // Header
             HStack {
-                MockHeader(eyebrow: "AKTİF ALAN · 0 LIVE", title: "The", accent: "Crew", accentColor: cBlue)
+                MockHeader(eyebrow: tr("crew_active_zone_live", 0), title: "The", accent: "Crew", accentColor: cBlue)
                 MockIconChip(icon: "person.badge.plus")
-                Image(systemName: "plus").font(.system(size: 12, weight: .black)).foregroundStyle(.black)
+                Image(systemName: "plus").accessibilityLabel(tr("common_add")).font(.system(size: 12, weight: .black)).foregroundStyle(.black)
                     .frame(width: 26, height: 26).background(Circle().fill(cBlue))
             }
 
@@ -594,7 +594,7 @@ private struct CrewMock: View {
                         Text("2").font(.system(size: 15, weight: .black)).foregroundStyle(cCyan)
                         Text("crew").font(.system(size: 11, weight: .regular, design: .serif)).italic().foregroundStyle(.white.opacity(0.8))
                         Text("· 5").font(.system(size: 15, weight: .black)).foregroundStyle(.white)
-                        Text("arkadaş").font(.system(size: 11, weight: .regular, design: .serif)).italic().foregroundStyle(.white.opacity(0.8))
+                        Text(tr("ob_mk_friend")).font(.system(size: 11, weight: .regular, design: .serif)).italic().foregroundStyle(.white.opacity(0.8))
                     }
                     .lineLimit(1).minimumScaleFactor(0.7)
                     HStack(spacing: 4) {
@@ -615,7 +615,7 @@ private struct CrewMock: View {
             // Tabs
             HStack(spacing: 8) {
                 crewTab(tr("ob_mk_crews"), count: "2", active: true)
-                crewTab("Arkadaşlar", count: "5", active: false)
+                crewTab(tr("ob_mk_friends"), count: "5", active: false)
             }
 
             // Crew card

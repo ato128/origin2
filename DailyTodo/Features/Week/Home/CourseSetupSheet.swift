@@ -28,12 +28,12 @@ struct CourseSetupSheet: View {
         case name
     }
 
-    private var accent: Color { Color(courseSetupHex: CourseSetupPalette.cyan) }
-    private var secondaryAccent: Color { Color(courseSetupHex: CourseSetupPalette.purple) }
-    private var gold: Color { Color(courseSetupHex: CourseSetupPalette.gold) }
-    private var green: Color { Color(courseSetupHex: CourseSetupPalette.green) }
-    private var coral: Color { Color(courseSetupHex: CourseSetupPalette.coral) }
-    private var blue: Color { Color(courseSetupHex: CourseSetupPalette.blue) }
+    private var accent: Color { Color(arenaHex: CourseSetupPalette.cyan) }
+    private var secondaryAccent: Color { Color(arenaHex: CourseSetupPalette.purple) }
+    private var gold: Color { Color(arenaHex: CourseSetupPalette.gold) }
+    private var green: Color { Color(arenaHex: CourseSetupPalette.green) }
+    private var coral: Color { Color(arenaHex: CourseSetupPalette.coral) }
+    private var blue: Color { Color(arenaHex: CourseSetupPalette.blue) }
 
     private var canSaveCatalogSelection: Bool {
         !selectedIDs.isEmpty
@@ -94,21 +94,21 @@ private extension CourseSetupSheet {
                             )
                             .frame(width: 22, height: 2)
 
-                        Text("COURSE SETUP")
+                        Text(tr("css_setup_caps"))
                             .font(.system(size: 10, weight: .heavy, design: .monospaced))
                             .tracking(2.1)
                             .foregroundStyle(accent)
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Courses")
+                        Text(tr("css_courses"))
                             .font(.system(size: 42, weight: .heavy))
                             .tracking(-1.0)
                             .foregroundStyle(.white)
                             .lineLimit(1)
                             .minimumScaleFactor(0.72)
 
-                        Text("Build your semester.")
+                        Text(tr("css_build_semester"))
                             .font(.system(size: 19, weight: .semibold))
                             .tracking(-0.2)
                             .foregroundStyle(
@@ -128,7 +128,7 @@ private extension CourseSetupSheet {
                 Button {
                     dismiss()
                 } label: {
-                    Image(systemName: "xmark")
+                    Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                         .font(.system(size: 14, weight: .black))
                         .foregroundStyle(.white.opacity(0.88))
                         .frame(width: 42, height: 42)
@@ -144,7 +144,7 @@ private extension CourseSetupSheet {
                 .buttonStyle(.plain)
             }
 
-            Text("Choose catalog courses or add your own. Updo uses these for Home, Focus, Week and Insights.")
+            Text(tr("css_header_body"))
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.50))
                 .lineSpacing(2)
@@ -160,22 +160,22 @@ private extension CourseSetupSheet {
     var profileSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
-                eyebrow: "STUDENT PROFILE",
-                title: "Setup source",
+                eyebrow: tr("css_student_profile_caps"),
+                title: tr("css_setup_source"),
                 icon: "graduationcap.fill",
                 tint: accent
             )
 
             HStack(spacing: 10) {
                 infoCard(
-                    title: "University",
+                    title: tr("sas_university"),
                     value: studentStore.profile?.institutionName ?? "Not selected",
                     icon: "building.columns.fill",
                     tint: accent
                 )
 
                 infoCard(
-                    title: "Major",
+                    title: tr("css_major"),
                     value: studentStore.profile?.majorName ?? "Not selected",
                     icon: "book.closed.fill",
                     tint: secondaryAccent
@@ -184,14 +184,14 @@ private extension CourseSetupSheet {
 
             HStack(spacing: 10) {
                 infoCard(
-                    title: "Year",
+                    title: tr("css_year"),
                     value: formattedGradeLevel,
                     icon: "calendar",
                     tint: gold
                 )
 
                 infoCard(
-                    title: "Country",
+                    title: tr("css_country"),
                     value: formattedCountry,
                     icon: "globe.europe.africa.fill",
                     tint: blue
@@ -233,8 +233,8 @@ private extension CourseSetupSheet {
     var catalogSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
-                eyebrow: "CATALOG",
-                title: "Recommended",
+                eyebrow: tr("sas_catalog_caps"),
+                title: tr("css_recommended"),
                 icon: "books.vertical.fill",
                 tint: gold
             )
@@ -257,7 +257,7 @@ private extension CourseSetupSheet {
                         saveSelected()
                     } label: {
                         primaryActionButton(
-                            title: "ADD SELECTED COURSES",
+                            title: tr("css_add_selected_caps"),
                             icon: "checkmark.circle.fill",
                             tint: green,
                             foreground: .black
@@ -279,11 +279,11 @@ private extension CourseSetupSheet {
                 .scaleEffect(0.94)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("Loading catalog")
+                Text(tr("css_loading_catalog"))
                     .font(.system(size: 15, weight: .heavy))
                     .foregroundStyle(.white)
 
-                Text("Finding courses for your major.")
+                Text(tr("css_finding_courses"))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.46))
             }
@@ -307,11 +307,11 @@ private extension CourseSetupSheet {
                     )
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("No catalog courses yet")
+                    Text(tr("css_no_catalog_yet"))
                         .font(.system(size: 16, weight: .heavy))
                         .foregroundStyle(.white)
 
-                    Text("You can add courses manually for now.")
+                    Text(tr("css_add_manual_for_now"))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.48))
                 }
@@ -325,7 +325,7 @@ private extension CourseSetupSheet {
                 }
             } label: {
                 secondaryActionButton(
-                    title: "RETRY CATALOG",
+                    title: tr("css_retry_catalog_caps"),
                     icon: "arrow.clockwise",
                     tint: gold
                 )
@@ -349,7 +349,7 @@ private extension CourseSetupSheet {
                     )
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Catalog unavailable")
+                    Text(tr("css_catalog_unavailable"))
                         .font(.system(size: 16, weight: .heavy))
                         .foregroundStyle(.white)
 
@@ -368,7 +368,7 @@ private extension CourseSetupSheet {
                 }
             } label: {
                 secondaryActionButton(
-                    title: "TRY AGAIN",
+                    title: tr("css_try_again_caps"),
                     icon: "arrow.clockwise",
                     tint: coral
                 )
@@ -412,7 +412,7 @@ private extension CourseSetupSheet {
                         miniLabel("Y\(item.year_number) T\(item.term_number ?? 0)", tint: .white.opacity(0.46))
 
                         if item.is_elective == true {
-                            miniLabel("ELECTIVE", tint: secondaryAccent)
+                            miniLabel(tr("sas_elective_caps"), tint: secondaryAccent)
                         }
                     }
                 }
@@ -449,15 +449,15 @@ private extension CourseSetupSheet {
     var manualSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
-                eyebrow: "CUSTOM COURSE",
-                title: "Add manually",
+                eyebrow: tr("sas_custom_course_caps"),
+                title: tr("sas_add_manually"),
                 icon: "plus.circle.fill",
                 tint: green
             )
 
             HStack(spacing: 10) {
                 courseTextField(
-                    placeholder: "Code",
+                    placeholder: tr("sas_code"),
                     text: $manualCode,
                     icon: "number",
                     tint: green,
@@ -467,7 +467,7 @@ private extension CourseSetupSheet {
                 .focused($focusedField, equals: .code)
 
                 courseTextField(
-                    placeholder: "Course name",
+                    placeholder: tr("ae_class_name"),
                     text: $manualName,
                     icon: "pencil",
                     tint: green,
@@ -480,7 +480,7 @@ private extension CourseSetupSheet {
                 addManualCourse()
             } label: {
                 primaryActionButton(
-                    title: "ADD COURSE",
+                    title: tr("css_add_course_caps"),
                     icon: "plus.circle.fill",
                     tint: green,
                     foreground: .black
@@ -501,8 +501,8 @@ private extension CourseSetupSheet {
     var currentCoursesSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
-                eyebrow: "ACTIVE",
-                title: "Current courses",
+                eyebrow: tr("sas_active_caps"),
+                title: tr("css_current_courses"),
                 icon: "checkmark.seal.fill",
                 tint: blue
             )
@@ -519,11 +519,11 @@ private extension CourseSetupSheet {
                         )
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("No active courses")
+                        Text(tr("sas_no_active_courses"))
                             .font(.system(size: 15, weight: .heavy))
                             .foregroundStyle(.white)
 
-                        Text("Add catalog or manual courses.")
+                        Text(tr("sas_add_catalog_or_manual"))
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(.white.opacity(0.48))
                     }
@@ -1081,9 +1081,9 @@ private struct CourseSetupBackground: View {
 
             LinearGradient(
                 colors: [
-                    Color(courseSetupHex: CourseSetupPalette.backgroundTop),
-                    Color(courseSetupHex: CourseSetupPalette.backgroundMid),
-                    Color(courseSetupHex: CourseSetupPalette.backgroundBottom)
+                    Color(arenaHex: CourseSetupPalette.backgroundTop),
+                    Color(arenaHex: CourseSetupPalette.backgroundMid),
+                    Color(arenaHex: CourseSetupPalette.backgroundBottom)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -1091,25 +1091,25 @@ private struct CourseSetupBackground: View {
             .ignoresSafeArea()
 
             Circle()
-                .fill(Color(courseSetupHex: CourseSetupPalette.blue).opacity(0.11))
+                .fill(Color(arenaHex: CourseSetupPalette.blue).opacity(0.11))
                 .frame(width: 270, height: 270)
                 .blur(radius: 100)
                 .offset(x: 170, y: -220)
 
             Circle()
-                .fill(Color(courseSetupHex: CourseSetupPalette.purple).opacity(0.14))
+                .fill(Color(arenaHex: CourseSetupPalette.purple).opacity(0.14))
                 .frame(width: 330, height: 330)
                 .blur(radius: 118)
                 .offset(x: -190, y: 500)
 
             Circle()
-                .fill(Color(courseSetupHex: CourseSetupPalette.coral).opacity(0.060))
+                .fill(Color(arenaHex: CourseSetupPalette.coral).opacity(0.060))
                 .frame(width: 280, height: 280)
                 .blur(radius: 110)
                 .offset(x: 165, y: 285)
 
             Circle()
-                .fill(Color(courseSetupHex: CourseSetupPalette.gold).opacity(0.045))
+                .fill(Color(arenaHex: CourseSetupPalette.gold).opacity(0.045))
                 .frame(width: 210, height: 210)
                 .blur(radius: 95)
                 .offset(x: -145, y: -155)
@@ -1129,52 +1129,3 @@ private struct CourseSetupBackground: View {
 }
 
 // MARK: - Color Hex
-
-private extension Color {
-    init(courseSetupHex hex: String) {
-        var cleaned = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        cleaned = cleaned.replacingOccurrences(of: "#", with: "")
-
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let a: UInt64
-        let r: UInt64
-        let g: UInt64
-        let b: UInt64
-
-        switch cleaned.count {
-        case 3:
-            a = 255
-            r = (int >> 8) * 17
-            g = ((int >> 4) & 0xF) * 17
-            b = (int & 0xF) * 17
-
-        case 6:
-            a = 255
-            r = int >> 16
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        case 8:
-            a = int >> 24
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        default:
-            a = 255
-            r = 45
-            g = 212
-            b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-}

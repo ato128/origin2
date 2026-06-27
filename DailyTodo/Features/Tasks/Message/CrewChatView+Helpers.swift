@@ -22,7 +22,7 @@ extension CrewChatView {
     var typingText: String? {
         guard !typingNames.isEmpty else { return nil }
 
-        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+        let isTurkish = !appLanguageIsEnglish()
 
         if typingNames.count == 1 {
             return isTurkish

@@ -84,7 +84,7 @@ struct StudyCoachSheet: View {
             }
 
             Button { dismiss() } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 14, weight: .black))
                     .foregroundStyle(.white)
                     .frame(width: 38, height: 38)

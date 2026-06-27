@@ -61,7 +61,12 @@ struct ScheduleLiveActivityWidget: Widget {
                                 .foregroundStyle(.secondary)
                                 .monospacedDigit()
                         }
-                        GlowProgressBar(progress: scheduleProgress(now: now, start: start, end: end), accent: accent, height: 7)
+                        UpdoLiveProgressBar(
+                            running: scheduleRunningRange(now: now, start: start, end: end),
+                            staticProgress: scheduleProgress(now: now, start: start, end: end),
+                            accent: accent,
+                            height: 7
+                        )
                     }
                     .padding(.top, 2)
                 }
@@ -91,64 +96,125 @@ private struct ScheduleLockScreenView: View {
         let start = context.state.startDate
         let end = context.state.endDate
 
-        VStack(alignment: .leading, spacing: 13) {
-            HStack(spacing: 11) {
-                ScheduleIconBubble(accent: accent, now: now, start: start, end: end, size: 42)
-
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 6) {
-                        Rectangle()
-                            .fill(UpdoWidgetPalette.cyan)
-                            .frame(width: 12, height: 2.5)
-                            .clipShape(Capsule())
-                        Text("BUGÜN")
-                            .font(.system(size: 10, weight: .heavy, design: .rounded))
-                            .tracking(1.4)
-                            .foregroundStyle(UpdoWidgetPalette.cyan)
-                    }
-                    Text(context.state.title)
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                }
-
-                Spacer()
-
-                Link(destination: URL(string: "dailytodo://live/stop")!) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 32, height: 32)
-                        .background(Circle().fill(Color.white.opacity(0.08)))
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 9) {
-                HStack(alignment: .firstTextBaseline) {
-                    scheduleTimer(now: now, start: start, end: end)
-                        .font(.system(size: 32, weight: .heavy, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(.white)
-                    Spacer()
-                    Text(scheduleStatus(now: now, start: start, end: end))
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(accent)
-                }
-                GlowProgressBar(progress: scheduleProgress(now: now, start: start, end: end), accent: accent, height: 8)
-            }
+        VStack(spacing: 0) {
+            headerBand(accent: accent, now: now, start: start, end: end)
+            bodyBlock(accent: accent, now: now, start: start, end: end)
         }
-        .padding(16)
         .background(
             ZStack {
                 LinearGradient(
-                    colors: [UpdoWidgetPalette.bgTop, UpdoWidgetPalette.bgBottom],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
+                    colors: [UpdoWidgetPalette.bgMid, UpdoWidgetPalette.bgBottom],
+                    startPoint: .top, endPoint: .bottom
                 )
-                RadialGradient(colors: [accent.opacity(0.14), .clear], center: .topTrailing, startRadius: 6, endRadius: 200)
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(accent.opacity(0.14), lineWidth: 1)
+                RadialGradient(colors: [accent.opacity(0.14), .clear], center: .bottomTrailing, startRadius: 8, endRadius: 240)
             }
         )
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(accent.opacity(0.18), lineWidth: 1)
+        )
+    }
+
+    private func headerBand(accent: Color, now: Date, start: Date, end: Date) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("BUGÜN")
+                    .font(.system(size: 11, weight: .black, design: .rounded))
+                    .tracking(1.6)
+                    .foregroundStyle(.white.opacity(0.95))
+
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    scheduleTimer(now: now, start: start, end: end)
+                        .font(.system(size: 40, weight: .heavy, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+
+                    Text(now < start ? "kala" : (now < end ? "kaldı" : ""))
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+            }
+
+            Spacer(minLength: 6)
+
+            HStack(spacing: 9) {
+                UpdoWidgetLogo(size: 24)
+                    .shadow(color: .black.opacity(0.4), radius: 4, y: 1)
+
+                Link(destination: URL(string: "dailytodo://live/stop")!) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 28, height: 28)
+                        .background(Circle().fill(Color.white.opacity(0.12)))
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 13)
+        .padding(.bottom, 12)
+        .background(
+            LinearGradient(
+                colors: [accent.opacity(0.42), accent.opacity(0.10), .clear],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+        )
+    }
+
+    private func bodyBlock(accent: Color, now: Date, start: Date, end: Date) -> some View {
+        VStack(alignment: .leading, spacing: 11) {
+            HStack(spacing: 11) {
+                ScheduleIconBubble(accent: accent, now: now, start: start, end: end, size: 36)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(context.state.title)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+
+                    Text("\(hmDate(start))–\(hmDate(end))")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.55))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 4)
+            }
+
+            UpdoLiveProgressBar(
+                running: scheduleRunningRange(now: now, start: start, end: end),
+                staticProgress: scheduleProgress(now: now, start: start, end: end),
+                accent: accent,
+                height: 8
+            )
+
+            HStack(spacing: 6) {
+                Image(systemName: scheduleIcon(now: now, start: start, end: end))
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(accent)
+
+                Text(scheduleStatus(now: now, start: start, end: end))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+
+                Spacer(minLength: 4)
+
+                Text("\(Int(scheduleProgress(now: now, start: start, end: end) * 100))%")
+                    .font(.system(size: 12, weight: .black, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(accent)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 14)
     }
 }
 
@@ -228,6 +294,12 @@ private func scheduleCompactTimer(now: Date, start: Date, end: Date) -> some Vie
     } else {
         Text("·")
     }
+}
+
+/// Interval for the auto-advancing bar, or nil once the class is over.
+private func scheduleRunningRange(now: Date, start: Date, end: Date) -> ClosedRange<Date>? {
+    guard end > start, now < end else { return nil }
+    return start...end
 }
 
 private func scheduleProgress(now: Date, start: Date, end: Date) -> CGFloat {

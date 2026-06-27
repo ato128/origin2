@@ -477,7 +477,7 @@ struct CoachChatOverlay: View {
                 Button {
                     submitInput()
                 } label: {
-                    Image(systemName: "arrow.up.circle.fill")
+                    Image(systemName: "arrow.up.circle.fill").accessibilityLabel(tr("a11y_send"))
                         .font(.system(size: 34))
                         .foregroundStyle(
                             canSubmit

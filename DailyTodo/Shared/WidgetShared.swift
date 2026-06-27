@@ -24,6 +24,22 @@ enum WidgetShared {
         guard let data = UserDefaults(suiteName: appGroupID)?.data(forKey: payloadKey) else { return nil }
         return try? JSONDecoder().decode(WidgetPayload.self, from: data)
     }
+
+    // MARK: - User state (icon theme + Pro stats) for widgets / live activities
+
+    static let userStateKey = "widget_user_state_v1"
+
+    static func writeUserState(_ state: WidgetUserState) {
+        guard let data = try? JSONEncoder().encode(state) else { return }
+        UserDefaults(suiteName: appGroupID)?.set(data, forKey: userStateKey)
+    }
+
+    static func readUserState() -> WidgetUserState {
+        guard let data = UserDefaults(suiteName: appGroupID)?.data(forKey: userStateKey),
+              let state = try? JSONDecoder().decode(WidgetUserState.self, from: data)
+        else { return .placeholder }
+        return state
+    }
 }
 
 // MARK: - Models written to App Group
@@ -41,4 +57,27 @@ struct WidgetEvent: Codable, Identifiable {
     var durationMinute: Int
     var location: String?
     var colorHex: String
+}
+
+/// Shared snapshot the app pushes for widget/live-activity theming and Pro extras.
+struct WidgetUserState: Codable {
+    /// Selected alternate app-icon name (nil = default "Steel"). Drives the logo
+    /// + accent color so widgets mirror the chosen icon.
+    var iconName: String?
+    var isPro: Bool
+    var streak: Int
+    var level: Int
+    var todayFocusMinutes: Int
+    var statsShared: Bool
+    var longestStreak: Int = 0
+
+    static let placeholder = WidgetUserState(
+        iconName: nil,
+        isPro: false,
+        streak: 0,
+        level: 1,
+        todayFocusMinutes: 0,
+        statsShared: true,
+        longestStreak: 0
+    )
 }

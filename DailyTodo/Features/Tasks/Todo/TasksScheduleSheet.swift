@@ -20,20 +20,20 @@ struct TaskScheduleSheet: View {
 
             VStack(alignment: .leading, spacing: 18) {
                 HStack {
-                    Text("Schedule Task")
+                    Text(tr("tss_title"))
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
 
                     Spacer()
 
-                    Button("Done") {
+                    Button(tr("common_ok")) {
                         dismiss()
                     }
                     .font(.headline)
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Task")
+                    Text(tr("tss_task"))
                         .font(.headline)
                         .foregroundStyle(palette.primaryText)
 
@@ -45,7 +45,7 @@ struct TaskScheduleSheet: View {
                 .background(cardBackground)
 
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Date & Time")
+                    Text(tr("tss_datetime"))
                         .font(.headline)
                         .foregroundStyle(palette.primaryText)
 
@@ -67,7 +67,7 @@ struct TaskScheduleSheet: View {
                         in: 15...240,
                         step: 15
                     ) {
-                        Text("Duration: \(task.scheduledWeekDurationMinutes ?? 60) min")
+                        Text(tr("tss_duration", task.scheduledWeekDurationMinutes ?? 60))
                             .foregroundStyle(palette.primaryText)
                     }
                 }
@@ -77,7 +77,7 @@ struct TaskScheduleSheet: View {
                 Button {
                     dismiss()
                 } label: {
-                    Text("Save Schedule")
+                    Text(tr("tss_save"))
                         .font(.headline)
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)

@@ -655,6 +655,8 @@
 "task_detail_duration" = "Süre";
 "task_detail_history_last" = "Son";
 "task_detail_history_best" = "En İyi";
+"task_detail_identity" = "Kimlik";
+"task_detail_seconds" = "Saniye";
 
 "task_detail_sets" = "Set";
 "task_detail_reps" = "Tekrar";
@@ -836,8 +838,6 @@
 
 "smart_suggestion_default_title" = "You can keep the rhythm";
 "smart_suggestion_default_message" = "Completing one small task could help you build momentum today.";
-
-"todo_minutes_format" = "%d dk";
 
 "chat_today" = "Bugün";
 "chat_yesterday" = "Dün";
@@ -1022,6 +1022,437 @@
 "ph_w_account" = "Hesap";
 "ph_w_actions" = "işlemleri";
 "ph_w_notifications_lc" = "bildirimler";
+
+/* Profile Hub — eyebrows (caps) & header strays */
+"ph_profile_hub_caps" = "PROFİL MERKEZİ";
+"ph_header_title" = "Profil";
+"ph_header_italic" = "merkezi";
+"ph_account_caps" = "HESAP";
+"ph_w_account_italic" = "profili";
+"ph_smart_system_caps" = "AKILLI SİSTEM";
+"ph_focus_prefs" = "Focus Tercihleri";
+"ph_language_caps" = "DİL";
+"ph_updo_caps" = "UPDO";
+"ph_account_actions_caps" = "HESAP İŞLEMLERİ";
+"ph_appearance_caps" = "GÖRÜNÜM";
+"ph_w_appearance_app" = "Uygulama";
+"ph_w_appearance_icon" = "ikonu";
+"ph_appearance_sub" = "Ana ekran ikonunu değiştir. Gold & Chrome Updo Pro'ya özel.";
+"ph_app_icon_title" = "Uygulama İkonu";
+"ph_app_icon_variants" = "Çelik · Gold · Chrome";
+
+/* Profile Hub — sheets (notifications, about, made-with-care, icons) */
+"ph_smart_notifs_caps" = "AKILLI BİLDİRİMLER";
+"ph_streak_protect_title" = "Seri Koruma";
+"ph_quiet_hours_title" = "Sessiz Saatler";
+"ph_about_updo_caps" = "UPDO HAKKINDA";
+"ph_about_title" = "Öğrenci";
+"ph_about_title_italic" = "işletim sistemi";
+"ph_about_why" = "Neden var?";
+"ph_feat_week" = "Hafta";
+"ph_feat_focus" = "Focus";
+"ph_feat_crew" = "Crew";
+"ph_about_version" = "Sürüm 1.0 • Öğrenciler için";
+"ph_protect_focus_rhythm" = "Odak ritmini korumak";
+"ph_icon_steel" = "Çelik";
+"ph_icon_default" = "Varsayılan";
+
+/* Crew Home — zone header, stats sharing, challenges, leaderboard */
+"crew_active_zone_live" = "AKTİF ALAN · %d CANLI";
+"crew_see_friends_close" = "Arkadaşlarını yakından gör";
+"crew_friends_locked_sub" = "Kim odakta, serisi & seviyesi kaç — Updo Pro ile aç";
+"crew_share_my_stats" = "İstatistiğimi paylaş";
+"crew_stats_shared_on" = "Arkadaşların seri, seviye ve odak durumunu görür";
+"crew_stats_shared_off" = "İstatistiğin kimseye gözükmüyor";
+"crew_stats_pro_caps" = "İSTATİSTİK · PRO";
+"crew_weekly_challenge_prep" = "Haftalık meydan okuması hazırlanıyor";
+"crew_weekly_challenge_prep_sub" = "Arena backend bağlı. Gerçek challenge verileri geldiğinde burada görünecek.";
+"crew_top_crews_soon" = "En iyi crew'ler yakında";
+"crew_top_crews_soon_sub" = "Bölüm, kampüs ve ülke crew sıralamaları backend'den geldikçe burada listelenecek.";
+"crew_week_challenge_title" = "Haftanın meydan okuması";
+"crew_reward" = "Ödül";
+"crew_your_rank" = "Senin sıra";
+"crew_be_first" = "İlk sıraya sen çık";
+"crew_be_first_sub" = "Focus oturumu tamamlayınca bölüm, kampüs ve ülke sıralamasında görünürsün.";
+
+/* Insights — streak broken & restore */
+"ins_streak_broken_title" = "Seri kırıldı";
+"ins_streak_broken_sub" = "%d günlük serini kaybettin · seviye 1 düştü";
+"ins_restore_with_pro" = "Updo Pro ile geri getir";
+"ins_restore_with_count" = "Seri'yi geri getir (bu ay %d/%d)";
+"ins_restore_exhausted" = "Bu ayki kurtarma hakkın bitti";
+
+/* Home — streak badge & coaching bubble */
+"home_streak_ax" = "Seri: %d gün";
+"home_streak_up_title" = "Seri arttı! 🔥";
+"home_streak_count_title" = "%d günlük seri 🔥";
+"home_streak_start_title" = "Serini başlat 🔥";
+"home_streak_up_body" = "Harika gidiyorsun — %d gündür hem görevini bitiriyor hem odaklanıyorsun. Yarın da tekrarla, seri büyüsün.";
+"home_streak_info_body_active" = "Her gün bir görev tamamla VE bir odak (focus) yap — serin devam eder. Birini bile atlarsan sıfırlanır ve seviyen 1 düşer.";
+"home_streak_info_body_start" = "Serini başlatmak için bugün bir görev tamamla ve bir odak (focus) yap. İkisini her gün sürdürdükçe alev büyür.";
+
+/* Week — task section headers */
+"wv_tasks_caps" = "GÖREVLER";
+"wv_month_tasks_caps" = "BU AYIN GÖREVLERİ";
+"wv_no_month_tasks" = "Bu ayda planlanmış görev yok.";
+
+/* Focus — hero labels */
+"focus_countdown_caps" = "GERİ SAYIM";
+"focus_minutes_caps" = "DAKİKA";
+"focus_finish_prefix" = "bitiş %@";
+
+/* Onboarding showcase mocks */
+"ob_mk_now_live" = "ŞU AN · CANLI";
+"ob_mk_personal" = "Kişisel";
+"ob_mk_custom" = "Özel";
+"ob_mk_friend" = "arkadaş";
+"ob_mk_friends" = "Arkadaşlar";
+
+/* TasksView — eyebrows & exam prep */
+"tv_task_flow_caps" = "GÖREV AKIŞI";
+"tv_academic_flow_caps" = "AKADEMİK AKIŞ";
+"tv_exam_schedule_caps" = "SINAV TAKVİMİ";
+"tv_prep_caps" = "HAZIRLIK";
+"tv_upcoming_caps" = "YAKLAŞAN";
+"tv_min_progress" = "%d/%d dk";
+
+/* MessagesView — hub header & section eyebrows */
+"mv_social_hub_caps" = "SOSYAL MERKEZ";
+"mv_title" = "Mesajlar";
+"mv_title_italic" = "merkezi";
+"mv_sub" = "Arkadaş & Crew sohbetleri tek yerde.";
+"mv_chats_caps" = "SOHBET";
+"mv_online_caps" = "ÇEVRİMİÇİ";
+"mv_live_now_caps" = "ŞU AN CANLI";
+"mv_all_chats_caps" = "TÜM SOHBETLER";
+
+/* App onboarding showcase carousel (Focus/Crew/Community/Ready pages) */
+"ob_sc_focus_title" = "Focus";
+"ob_sc_focus_accent" = "Derinleş";
+"ob_sc_focus_sub" = "Zamanlayıcı. Hedef. Live Activity.";
+"ob_sc_focus_keywords" = "DERİN ÇALIŞMA  •  ZAMANLAYICI  •  CANLI";
+"ob_sc_crew_title" = "Crew";
+"ob_sc_crew_accent" = "Birlikte çalış";
+"ob_sc_crew_sub" = "Arkadaşlar. Odalar. Ortak ilerleme.";
+"ob_sc_crew_keywords" = "ARKADAŞLAR  •  ODALAR  •  ORTAK GÖREVLER";
+"ob_sc_comm_title" = "Topluluk";
+"ob_sc_comm_accent" = "Akışta kal";
+"ob_sc_comm_sub" = "Arena. Sıralamalar. Momentum.";
+"ob_sc_comm_keywords" = "ARENA  •  KEŞFET  •  YARIŞ";
+"ob_sc_ready_title" = "Hazırsın";
+"ob_sc_ready_accent" = "Sistem hazır";
+"ob_sc_ready_sub" = "Çalışma alanın kuruldu.";
+"ob_sc_ready_keywords" = "ANA SAYFA  •  HAFTA  •  FOCUS  •  CREW";
+"ob_sc_continue" = "Devam";
+"ob_sc_preparing" = "Hazırlanıyor...";
+"ob_sc_enter_updo" = "Updo'ya gir";
+"ob_sc_study_focus" = "Çalışma Odağı";
+"ob_sc_live_on_lock" = "Kilit Ekranında Canlı";
+
+/* Crew Arena (CrewHomeModels) — scope, range, join, eyebrows, fallback summary */
+"ch_scope_department" = "Bölüm";
+"ch_scope_university" = "Üni";
+"ch_range_week" = "Hafta";
+"ch_range_month" = "Ay";
+"ch_range_all" = "Tümü";
+"ch_join_caps" = "KATIL";
+"ch_full_caps" = "DOLU";
+"ch_eyebrow_dept_courses" = "%@ · %d DERS · CANLI";
+"ch_eyebrow_dept_arena" = "%@ · AKADEMİK ARENA";
+"ch_eyebrow_campus" = "KAMPÜS · CANLI";
+"ch_eyebrow_campus_named" = "%@ · KAMPÜS · CANLI";
+"ch_eyebrow_country" = "%@ · CANLI";
+"ch_eyebrow_global" = "GLOBAL · ÇALIŞMA ARENASI";
+"ch_metric_live" = "CANLI";
+"ch_metric_today" = "BUGÜN";
+"ch_metric_uni" = "ÜNİ";
+"ch_metric_hours" = "SAAT";
+"ch_focusing_now" = "%@ şimdi odakta";
+"ch_active_courses" = "%d aktif ders";
+"ch_nationwide" = "ülke geneli";
+"ch_students_lc" = "öğrenci";
+"ch_sum_dept_label" = "SENİN BÖLÜMÜN";
+"ch_sum_dept_sub" = "Bölüm içi canlı akademik rekabet";
+"ch_sum_uni_label" = "SENİN ÜNİVERSİTEN";
+"ch_sum_uni_sub" = "Üniversite içi focus ve crew ligi";
+"ch_sum_country_label" = "ÜLKE ARENASI";
+"ch_sum_league" = "Ligi";
+"ch_sum_country_sub" = "Üniversiteler arası akademik yarış";
+"ch_sum_global_sub" = "Dünyanın canlı akademik arenası";
+
+/* BackendCrewDetailView */
+"bcd_invite_code" = "Davet Kodu";
+"bcd_rhythm_caps" = "CREW RİTMİ";
+"bcd_performance" = "Performans";
+"bcd_next_badge_label" = "Sonraki rozet";
+"bcd_streak" = "Seri %@";
+"bcd_min_focus" = "%d dk odak";
+"bcd_live_activity_caps" = "CANLI AKTİVİTE";
+"bcd_activity" = "Aktivite";
+"bcd_crew_space_caps" = "CREW ALANI";
+"bcd_active_crew_caps" = "AKTİF CREW";
+"bcd_invite" = "Davet Et";
+"bcd_members_caps" = "CREW ÜYELERİ";
+"bcd_focusing_caps" = "ODAKTA";
+"bcd_shared_tasks_caps" = "ORTAK GÖREVLER";
+"bcd_shared" = "Ortak";
+"bcd_new" = "Yeni";
+"bcd_focus_together" = "Birlikte Focus";
+
+/* FriendDetailView */
+"fd_friend_space_caps" = "ARKADAŞ ALANI";
+"fd_today_plan_caps" = "BUGÜNÜN PLANI";
+"fd_study_profile_caps" = "ÇALIŞMA PROFİLİ";
+"fd_social_actions_caps" = "SOSYAL İŞLEMLER";
+
+/* AddEventView */
+"ae_week_event_caps" = "HAFTA ETKİNLİĞİ";
+"ae_lesson_lc" = "ders";
+"ae_preview_caps" = "ÖNİZLEME";
+"ae_my_lessons" = "Derslerim";
+"ae_courses_caps" = "DERSLER";
+"ae_extra_lesson" = "Ekstra ders";
+"ae_no_lessons" = "Ders yok";
+"ae_every_week" = "Her hafta";
+
+/* ExamPlannerSheet */
+"eps_planner_caps" = "SINAV PLANLAYICI";
+"eps_flow_caps" = "SINAV AKIŞI";
+"eps_topics_caps" = "KONULAR";
+"eps_date" = "Tarih";
+
+/* HomeDashboard quick actions */
+"hda_add_new" = "Yeni ekle";
+"hda_view_detail" = "Detaya bak";
+"hda_dont_forget" = "Eklemeyi unutma";
+"hdh_today_flow_caps" = "BUGÜNÜN AKIŞI";
+"hdh_shared_focus_active" = "Ortak odak aktif";
+"hdh_session_with" = "%@ ile oturum devam ediyor.";
+"hdh_crew_waiting" = "Crew seni bekliyor";
+"hdt_today_board_caps" = "BUGÜNÜN PANOSU";
+"hdt_completed" = "Tamamlanan";
+"hdt_remaining" = "Kalan";
+"hdt_streak" = "Seri";
+
+/* Insights detail views (study window / weekly signal / achievements) */
+"ins_next_move_caps" = "SONRAKİ HAMLE";
+"ins_next_move" = "Sonraki Hamle";
+"iswd_caps" = "ÇALIŞMA PENCERESİ";
+"iswd_study" = "Çalışma";
+"iswd_window" = "penceresi";
+"iswd_sub" = "Premium ders bazlı odak analizi.";
+"iswd_best_caps" = "EN İYİ PENCERE";
+"iswd_chart_caps" = "DERS GRAFİĞİ";
+"iswd_breakdown" = "Ders Dağılımı";
+"iswd_top" = "En çok";
+"iswd_low" = "En az";
+"iswd_empty" = "Bu grafiği açmak için görevlere ders etiketi ekle.";
+"iswd_smart_caps" = "AKILLI OKUMA";
+"iswd_smart" = "Akıllı Okuma";
+"iwsd_caps" = "HAFTALIK SİNYAL";
+"iwsd_weekly" = "Haftalık";
+"iwsd_signal" = "sinyal";
+"iwsd_sub" = "Premium haftalık ritim analizi.";
+"iwsd_overview_caps" = "SİNYAL ÖZETİ";
+"iwsd_7day_caps" = "7 GÜNLÜK GRAFİK";
+"iwsd_7day" = "7 Günlük Ritim";
+"iwsd_daily_caps" = "GÜNLÜK DETAYLAR";
+"iwsd_breakdown" = "Günlük Dağılım";
+"iwsd_tip" = "En güçlü gününü şablon al, en zayıf gününü kısa bir blokla güçlendir.";
+"iav_paths_caps" = "BAŞARI YOLLARI";
+"iav_achievements" = "Başarılar";
+"iav_map" = "haritası";
+"iav_progress_caps" = "İLERLEME";
+"iav_path_caps" = "YOL";
+"iav_focus_path" = "Odak Yolu";
+"iav_streak_path" = "Seri Yolu";
+"iav_task_path" = "Görev Yolu";
+"iav_exam_path" = "Sınav Yolu";
+"iav_special_path" = "Özel Yol";
+"iav_earned_caps" = "KAZANILDI";
+"iav_achievement_caps" = "BAŞARI";
+"iav_path_detail_caps" = "YOL DETAYI";
+
+/* CrewFocusRoomView (extra; base cfr_ keys live below) */
+"cfr_host_label" = "Sahip: %@";
+"cfr_no_participants" = "Henüz katılımcı yok";
+"cfr_host" = "Sahip";
+"cfr_crew_streak" = "Crew Serisi";
+"cfr_leave" = "Oturumdan Ayrıl";
+"cfr_end" = "Oturumu Bitir";
+
+/* BackendCrewTaskDetailView */
+"bctd_delete" = "Sil";
+"bctd_task_detail_caps" = "GÖREV DETAYI";
+"bctd_task_lc" = "görev";
+"bctd_status" = "Durum";
+"bctd_quick_actions_caps" = "HIZLI İŞLEMLER";
+"bctd_assignment_caps" = "ATAMA";
+"bctd_assignment" = "Atama";
+"bctd_task_meta_caps" = "GÖREV BİLGİSİ";
+
+/* CrewChatInfoView */
+"cci_info" = "Crew Bilgisi";
+"cci_workspace" = "Crew çalışma alanı";
+"cci_members" = "Üyeler";
+"cci_tasks" = "Görevler";
+"cci_no_members" = "Henüz üye yok";
+"cci_mute" = "Crew Bildirimlerini Sustur";
+"cci_mute_sub" = "Bu crew'den bildirim alma";
+"cci_open_later" = "Crew'i Sonra Aç";
+
+/* Tail batch: chat, AI, auth, university picker, edit task, identity */
+"fcv_camera" = "Kamera";
+"fcv_file" = "Dosya";
+"ai_clear" = "Temizle";
+"ai_no_focus_session" = "Focus oturumu yok";
+"auth_welcome_back_caps" = "TEKRAR HOŞ GELDİN";
+"auth_login" = "Giriş";
+"auth_new_account_caps" = "YENİ HESAP";
+"auth_signup" = "Kayıt Ol";
+"ups_choose" = "Seç";
+"ups_university_lc" = "üniversiteni";
+"ups_sub" = "Üniversiteni ara, eşleşen bölüm ve ders kataloğuyla devam et.";
+"ups_search" = "Üniversite ara";
+"ups_catalog_ready" = "Katalog hazır";
+"ups_loading" = "Üniversiteler yükleniyor...";
+"ups_preparing" = "Seçtiğin ülke için katalog hazırlanıyor.";
+"ups_could_not_load" = "Üniversiteler yüklenemedi";
+"ups_no_university" = "Üniversite bulunamadı";
+"ups_try_different" = "Farklı bir arama dene ya da ülke değiştir.";
+"etv_details" = "Detaylar";
+"etv_planning" = "Planlama";
+"etv_date_time" = "Tarih ve saat";
+"etv_next_week" = "Haftaya";
+"etv_in_2_hours" = "2 Saat Sonra";
+"etv_this_weekend" = "Bu Hafta Sonu";
+"iic_identity_caps" = "KİMLİK";
+
+/* Final cluster: create crew, auth form, schedule sheet, join crew, focus room backend, create crew task */
+"ccb_new_crew_caps" = "YENİ CREW";
+"ccb_preview_caps" = "CREW ÖNİZLEME";
+"ccb_info_caps" = "CREW BİLGİSİ";
+"afs_name" = "Ad";
+"afs_name_ph" = "Adın";
+"afs_email" = "E-posta";
+"afs_password" = "Şifre";
+"tss_title" = "Görevi Planla";
+"tss_task" = "Görev";
+"tss_datetime" = "Tarih & Saat";
+"tss_duration" = "Süre: %d dk";
+"tss_save" = "Planı Kaydet";
+"jcs_join_crew_caps" = "CREW'E KATIL";
+"jcs_invite_code_caps" = "DAVET KODU";
+"jcs_crew_code_caps" = "CREW KODU";
+"jcs_invite" = "Davet";
+"cfrb_done" = "Bitti";
+"cfrb_waiting" = "Bekliyor";
+"cfrb_required" = "Gerekli";
+"bcts_new_task_caps" = "YENİ CREW GÖREVİ";
+"bcts_flow_caps" = "CREW AKIŞI";
+"bcts_detail" = "Detay";
+"bcts_week_title" = "Haftaya";
+"bcts_week_italic" = "ekle";
+
+/* Straggler batch: create crew symbol/accent, momentum/focus chips, deep insights, crew badge, identity level */
+"ccb_symbol_caps" = "CREW SİMGESİ";
+"ccb_accent_caps" = "CREW RENGİ";
+"ccb_color" = "Renk";
+"hdf_focusing" = "Odakta";
+"hdf_shared_focus" = "Ortak Odak";
+"hdf_multiple_active" = "Birden Fazla Aktif Crew Focus";
+"di_title" = "Derin Analiz";
+"di_sub" = "Premium performans görünümün";
+"di_best_window" = "En İyi Çalışma Penceresi";
+"di_weekly_review" = "Haftalık Derin İnceleme";
+"di_strongest" = "En güçlü: %@";
+"di_weakest" = "En zayıf: %@";
+"di_identity_evo" = "Kimlik Evrimi";
+"di_next" = "Sonraki: %@";
+"di_exam_readiness" = "Sınav Hazırlığı Pro";
+"di_pattern_alerts" = "Desen Uyarıları";
+"cbc_title" = "Crew Rozeti";
+"cbc_unlocked_by" = "Toplam odak süresiyle açılır";
+"cbc_unlocked" = "Açıldı!";
+"cbc_streak" = "Seri: %d";
+"iils_caps" = "KİMLİK SEVİYESİ";
+"iils_identity" = "Kimlik";
+"iils_level" = "seviyesi";
+"iils_current_caps" = "MEVCUT DURUM";
+"iils_requirements_caps" = "GEREKSİNİMLER";
+"iils_focus_session" = "Focus oturumu";
+
+/* Accessibility (VoiceOver) labels */
+"a11y_back" = "Geri";
+"a11y_more" = "Daha fazla";
+"a11y_send" = "Gönder";
+
+/* StudentAcademicSettingsView */
+"sas_setup_caps" = "AKADEMİK KURULUM";
+"sas_student" = "Öğrenci";
+"sas_academic_profile" = "Akademik profil.";
+"sas_header_body" = "Üniversite, bölüm, yıl ve derslerini güncelle. Updo bu kurulumu Ana sayfa, Focus, Hafta ve Insights'ta kullanır.";
+"sas_school_caps" = "OKUL";
+"sas_university" = "Üniversite";
+"sas_university_caps" = "ÜNİVERSİTE";
+"sas_year_caps" = "YIL";
+"sas_major_caps" = "BÖLÜM";
+"sas_department" = "Bölüm";
+"sas_choose_uni_first" = "Önce üniversite seç";
+"sas_major_after_uni" = "Bölüm kataloğu üniversite seçildikten sonra yüklenir.";
+"sas_loading_majors" = "Bölümler yükleniyor";
+"sas_finding_departments" = "Üniversiten için bölümler bulunuyor.";
+"sas_major_catalog_unavail" = "Bölüm kataloğu yok";
+"sas_department_caps" = "BÖLÜM";
+"sas_manual_entry_available" = "Elle giriş mümkün";
+"sas_custom_major_caps" = "ÖZEL BÖLÜM";
+"sas_type_department" = "Bölümünü yaz";
+"sas_catalog_caps" = "KATALOG";
+"sas_recommended_courses" = "Önerilen dersler";
+"sas_loading_courses" = "Dersler yükleniyor";
+"sas_preparing_suggestions" = "%@ için öneriler hazırlanıyor.";
+"sas_course_catalog_unavail" = "Ders kataloğu yok";
+"sas_no_catalog_courses" = "Katalog dersi yok";
+"sas_elective_caps" = "SEÇMELİ";
+"sas_active_caps" = "AKTİF";
+"sas_my_courses" = "Derslerim";
+"sas_no_active_courses" = "Aktif ders yok";
+"sas_add_catalog_or_manual" = "Katalog veya manuel ders ekle.";
+"sas_custom_course_caps" = "ÖZEL DERS";
+"sas_add_manually" = "Elle ekle";
+"sas_code" = "Kod";
+"sas_choose_major" = "Bölüm seç";
+"sas_search_or_type" = "Bölümünü ara ya da elle yaz.";
+"sas_search_major" = "Bölüm ara";
+"sas_preparing_dept_catalog" = "Bölüm kataloğu hazırlanıyor.";
+"sas_could_not_load_majors" = "Bölümler yüklenemedi";
+"sas_retry_caps" = "TEKRAR DENE";
+"sas_no_matching_major" = "Eşleşen bölüm yok";
+"sas_try_another" = "Başka bir arama dene ya da bölümünü elle yaz.";
+"sas_type_manually_caps" = "ELLE YAZ";
+"sas_use_manual_caps" = "MANUEL BÖLÜM KULLAN";
+
+/* CourseSetupSheet */
+"css_setup_caps" = "DERS KURULUMU";
+"css_courses" = "Dersler";
+"css_build_semester" = "Dönemini oluştur.";
+"css_header_body" = "Katalogdan ders seç ya da kendin ekle. Updo bunları Ana sayfa, Focus, Hafta ve Insights'ta kullanır.";
+"css_student_profile_caps" = "ÖĞRENCİ PROFİLİ";
+"css_setup_source" = "Kurulum kaynağı";
+"css_major" = "Bölüm";
+"css_year" = "Yıl";
+"css_country" = "Ülke";
+"css_recommended" = "Önerilen";
+"css_add_selected_caps" = "SEÇİLİ DERSLERİ EKLE";
+"css_loading_catalog" = "Katalog yükleniyor";
+"css_finding_courses" = "Bölümün için dersler bulunuyor.";
+"css_no_catalog_yet" = "Henüz katalog dersi yok";
+"css_add_manual_for_now" = "Şimdilik dersleri elle ekleyebilirsin.";
+"css_retry_catalog_caps" = "KATALOĞU YENİDEN DENE";
+"css_catalog_unavailable" = "Katalog yok";
+"css_try_again_caps" = "TEKRAR DENE";
+"css_add_course_caps" = "DERS EKLE";
+"css_current_courses" = "Mevcut dersler";
 
 /* TasksView */
 "tv_all" = "Tümü";
@@ -2314,3 +2745,120 @@
 "ob_mk_crews" = "Crewler";
 "ob_sc_see_pro" = "Updo Pro'yu Gör";
 "ob_sc_more_prompt" = "Daha fazlasına erişmek ister misin?";
+
+/* Home — Getting Started / activation card */
+"starter_caps" = "BAŞLANGIÇ";
+"starter_title" = "Updo'yu senin yap";
+"starter_sub" = "Birkaç adımda ritmini kur — uygulama sen ilerledikçe dolar.";
+"starter_progress" = "%d/%d tamam";
+"starter_step_task" = "İlk görevini ekle";
+"starter_step_task_sub" = "Bugünün ilk adımını netleştir";
+"starter_step_schedule" = "Programını oluştur";
+"starter_step_schedule_sub" = "Derslerini ekle, Updo gününü kursun";
+"starter_step_focus" = "İlk odak seansını dene";
+"starter_step_focus_sub" = "25 dakikalık derin çalışma";
+"starter_step_social" = "Bir arkadaş veya crew ekle";
+"starter_step_social_sub" = "Birlikte çalış, motive kal";
+"starter_hide" = "Sonra gizle";
+"starter_done_caps" = "HAZIRSIN";
+"starter_done_title" = "Updo artık seninle çalışıyor";
+"starter_done_sub" = "Temeli kurdun. Buradan sonra uygulama sen ilerledikçe akıllanır.";
+"starter_done_cta" = "Bitir";
+
+/* Home — Updo AI rule-based suggestion card (no LLM) */
+"ai_sg_eyebrow" = "UPDO AI";
+"ai_sg_collapsed" = "Updo AI senin için bir öneri hazırladı";
+"ai_sg_intro" = "Updo AI sana şunu öneriyor";
+"ai_sg_exam_head" = "%@ için bugün bir çalışma bloğu aç";
+"ai_sg_exam_reason" = "Sınavına %@ kaldı — bugün %d dk çalışmak seni öne taşır.";
+"ai_sg_exam_cta" = "Çalışmaya başla";
+"ai_sg_class_head" = "Ders öncesi zamanı değerlendir";
+"ai_sg_class_reason" = "%@ %d dk sonra. Kısa bir hazırlık ritmini kurar.";
+"ai_sg_class_cta" = "Programa git";
+"ai_sg_streak_head" = "Serini bugün koru";
+"ai_sg_streak_reason" = "%d günlük serin var ve bugün henüz bir şey tamamlamadın. Küçük bir görev yeter.";
+"ai_sg_streak_cta" = "Hızlı görev ekle";
+"ai_sg_focus_head" = "Bir odak seansı tam zamanı";
+"ai_sg_focus_reason" = "Genelde odaklanıyorsun ama bugün henüz başlamadın. 25 dk derin çalışma iyi gelir.";
+"ai_sg_focus_cta" = "Odağı başlat";
+"ai_sg_morning_head" = "Güne küçük bir adımla başla";
+"ai_sg_morning_reason" = "Bugün için henüz bir plan yok. İlk görev günün ritmini kurar.";
+"ai_sg_morning_cta" = "Görev ekle";
+"ai_sg_evening_head" = "Yarını şimdiden hafiflet";
+"ai_sg_evening_reason" = "Günü kapatıyorsun. Yarına 1-2 adım koymak sabahı kolaylaştırır.";
+"ai_sg_evening_cta" = "Yarını planla";
+"ai_sg_default_head" = "Küçük bir adımla devam et";
+"ai_sg_default_reason" = "Bugün için net bir öncelik görmüyorum. Sen bir görev ekle, gerisini Updo halletsin.";
+"ai_sg_default_cta" = "Görev ekle";
+
+/* Home — Updo AI social challenge mode (rule-based, no LLM) */
+"ai_sg_challenge_chip" = "CHALLENGE";
+"ai_sg_ch_collapsed_crew" = "Updo AI crew'ine bir challenge okuyor";
+"ai_sg_ch_collapsed_friend" = "Updo AI sana bir challenge okuyor";
+"ai_sg_ch_intro_crew" = "Updo AI crew'ine şu challenge'ı veriyor";
+"ai_sg_ch_intro_friend" = "Updo AI sana şu challenge'ı veriyor";
+"ai_sg_ch_crew_1_head" = "Crew odak yarışı";
+"ai_sg_ch_crew_1_reason" = "Bugün crew olarak toplam 1 saat odaklanın — ilk 25 dk'yı sen başlat.";
+"ai_sg_ch_crew_1_cta" = "Odağı başlat";
+"ai_sg_ch_crew_2_head" = "Görev maratonu";
+"ai_sg_ch_crew_2_reason" = "Bu akşama kadar crew'de herkes 3 görev bitirsin. Sen önden git.";
+"ai_sg_ch_crew_2_cta" = "Crew'e git";
+"ai_sg_ch_crew_3_head" = "İlk bitiren sen ol";
+"ai_sg_ch_crew_3_reason" = "Bir görev ekle ve crew'de bugün ilk tamamlayan sen ol.";
+"ai_sg_ch_crew_3_cta" = "Görev ekle";
+"ai_sg_ch_friend_1_head" = "%@ ile odak düellosu";
+"ai_sg_ch_friend_1_reason" = "Bugün kim önce 25 dk odaklanacak? Meydanı sen aç.";
+"ai_sg_ch_friend_1_cta" = "Odağı başlat";
+"ai_sg_ch_friend_2_head" = "%@'a meydan oku";
+"ai_sg_ch_friend_2_reason" = "İkiniz de bugün 1 görev bitirin — sohbette söz verin.";
+"ai_sg_ch_friend_2_cta" = "Sohbeti aç";
+"ai_sg_ch_friend_3_head" = "Bugünü birlikte kapatın";
+"ai_sg_ch_friend_3_reason" = "%@ ile bugün ikiniz de planınızı tamamlayın. Bir görev ekleyerek başla.";
+"ai_sg_ch_friend_3_cta" = "Görev ekle";
+"ai_sg_ch_accepted" = "Challenge kabul edildi";
+"ai_sg_ch_accepted_caps" = "KABUL EDİLDİ";
+"ai_sg_ch_continue" = "Devam et";
+
+/* ProfileHub — Updo AI challenge streak badge */
+"ph_ch_streak_caps" = "CHALLENGE SERİSİ";
+"ph_ch_streak_title" = "seri";
+"ph_ch_streak_total" = "Toplam %d challenge kabul edildi";
+
+/* Smart notifications — Updo AI empty-plan suggestion (adaptive, no LLM) */
+"snb_ai_title" = "Updo AI · Planın boş görünüyor";
+"snb_ai_new" = "Updo seni bekliyor — ilk görevini ekleyerek başla.";
+"snb_ai_morning" = "Güne küçük bir adımla başla. Bir görev ekle, Updo gerisini şekillendirsin.";
+"snb_ai_focus" = "Bugün planın boş. 25 dakikalık bir odak bloğuyla ritmini kur.";
+"snb_ai_evening" = "Yarını hafiflet — 1-2 adım planla, sabahın net olsun.";
+"ph_ai_suggestions" = "Updo AI Önerileri";
+"ph_ai_suggestions_sub" = "Planın boşken Updo AI seni harekete geçirsin";
+"ai_exam_days_n" = "%d gün";
+"ai_sg_tasks_head" = "Görevlerine devam et";
+"ai_sg_tasks_reason" = "Bugün için adımların hazır. Birini bitirerek ritmini koru.";
+"ai_sg_tasks_cta" = "Görevleri aç";
+"ai_sg_open_chat" = "Updo AI ile konuş";
+"ai_sg_ch_done" = "Challenge tamamlandı";
+"ai_sg_ch_progress_tasks" = "%d / %d görev";
+"ai_sg_ch_progress_focus" = "%d / %d dakika";
+
+/* Insights — clean data dashboard */
+"insd_focus_week_caps" = "ODAK · BU HAFTA";
+"insd_today" = "Bugün";
+"insd_sessions_label" = "Seans";
+"insd_total" = "Toplam";
+"insd_streak_label" = "Seri";
+"insd_tasks_label" = "Bu hafta görev";
+"insd_recent_caps" = "SON SEANSLAR";
+"insd_empty" = "Henüz odak seansı yok. İlk seansını başlat.";
+"insd_h" = "s";
+"insd_min" = "dk";
+"insd_yesterday" = "Dün";
+"insd_days_ago" = "%d gün önce";
+"insd_day_unit" = "gün";
+"insd_focus_untitled" = "Odak";
+"insd_tasks_caps" = "GÖREVLER · BU HAFTA";
+"insd_completed_label" = "tamamlandı";
+"insd_focus_detail_title" = "Odak Geçmişi";
+"insd_avg" = "Ort. seans";
+"insd_all_sessions_caps" = "TÜM SEANSLAR";
+"insd_tap_hint" = "Detay için dokun";

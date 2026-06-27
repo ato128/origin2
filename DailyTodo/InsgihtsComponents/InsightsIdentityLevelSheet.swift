@@ -69,7 +69,7 @@ struct InsightsIdentityLevelSheet: View {
                         .fill(accent)
                         .frame(width: 20, height: 1)
 
-                    Text("IDENTITY LEVEL")
+                    Text(tr("iils_caps"))
                         .font(.system(size: 11, weight: .black, design: .monospaced))
                         .tracking(2.3)
                         .foregroundStyle(accent)
@@ -77,11 +77,11 @@ struct InsightsIdentityLevelSheet: View {
                 }
 
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    Text("Identity")
+                    Text(tr("iils_identity"))
                         .font(.system(size: 38, weight: .black))
                         .foregroundStyle(.white)
 
-                    Text("level")
+                    Text(tr("iils_level"))
                         .font(.system(size: 35, weight: .regular, design: .serif))
                         .italic()
                         .foregroundStyle(
@@ -108,7 +108,7 @@ struct InsightsIdentityLevelSheet: View {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 15, weight: .black))
                     .foregroundStyle(.white)
                     .frame(width: 44, height: 44)
@@ -144,7 +144,7 @@ struct InsightsIdentityLevelSheet: View {
                             .fill(accent)
                             .frame(width: 18, height: 1)
 
-                        Text("CURRENT STATUS")
+                        Text(tr("iils_current_caps"))
                             .font(.system(size: 10, weight: .black, design: .monospaced))
                             .tracking(1.7)
                             .foregroundStyle(accent)
@@ -203,7 +203,7 @@ struct InsightsIdentityLevelSheet: View {
                             .fill(accent)
                             .frame(width: 18, height: 1)
 
-                        Text("REQUIREMENTS")
+                        Text(tr("iils_requirements_caps"))
                             .font(.system(size: 10, weight: .black, design: .monospaced))
                             .tracking(1.7)
                             .foregroundStyle(accent)
@@ -234,7 +234,7 @@ struct InsightsIdentityLevelSheet: View {
 
             requirementRow(
                 icon: "scope",
-                title: "Focus oturumu",
+                title: tr("iils_focus_session"),
                 currentValue: snapshot.focusSessions,
                 targetValue: nextLevel.requiredFocusSessions,
                 ratio: snapshot.focusRatio,

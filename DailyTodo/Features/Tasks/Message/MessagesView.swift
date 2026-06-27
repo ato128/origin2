@@ -299,18 +299,18 @@ private extension MessagesView {
                         .fill(Color(arenaHex: AppArenaPalette.cyan))
                         .frame(width: 20, height: 1)
 
-                    Text("SOCIAL HUB")
+                    Text(tr("mv_social_hub_caps"))
                         .font(.system(size: 11, weight: .black, design: .monospaced))
                         .tracking(2.4)
                         .foregroundStyle(Color(arenaHex: AppArenaPalette.cyan))
                 }
 
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    Text("Messages")
+                    Text(tr("mv_title"))
                         .font(.system(size: 39, weight: .black))
                         .foregroundStyle(.white)
 
-                    Text("hub")
+                    Text(tr("mv_title_italic"))
                         .font(.system(size: 36, weight: .regular, design: .serif))
                         .italic()
                         .foregroundStyle(Color(arenaHex: AppArenaPalette.cyan))
@@ -318,7 +318,7 @@ private extension MessagesView {
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
 
-                Text("Friend & Crew sohbetleri tek yerde.")
+                Text(tr("mv_sub"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.48))
                     .lineLimit(1)
@@ -329,7 +329,7 @@ private extension MessagesView {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 17, weight: .black))
                     .foregroundStyle(.white)
                     .frame(width: 46, height: 46)
@@ -392,13 +392,13 @@ private extension MessagesView {
         HStack(spacing: 10) {
             messageMetricPill(
                 value: "\(activeConversationCount)",
-                title: "SOHBET",
+                title: tr("mv_chats_caps"),
                 tint: Color(arenaHex: AppArenaPalette.blue)
             )
 
             messageMetricPill(
                 value: "\(onlineItems.count)",
-                title: "ONLINE",
+                title: tr("mv_online_caps"),
                 tint: Color(arenaHex: AppArenaPalette.green)
             )
 
@@ -415,7 +415,7 @@ private extension MessagesView {
     var onlineSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle(
-                eyebrow: "LIVE NOW",
+                eyebrow: tr("mv_live_now_caps"),
                 title: tr("mv_now"),
                 italic: "online",
                 tint: Color(arenaHex: AppArenaPalette.green)
@@ -441,7 +441,7 @@ private extension MessagesView {
     var conversationsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle(
-                eyebrow: "ALL CHATS",
+                eyebrow: tr("mv_all_chats_caps"),
                 title: tr("mv_all"),
                 italic: "sohbetler",
                 tint: Color(arenaHex: AppArenaPalette.cyan)

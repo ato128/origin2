@@ -191,7 +191,7 @@ private struct PremiumInAppBannerCard: View {
                 Spacer(minLength: 8)
 
                 Button(action: onClose) {
-                    Image(systemName: "xmark")
+                    Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(.white.opacity(0.82))
                         .frame(width: 28, height: 28)

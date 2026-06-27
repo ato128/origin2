@@ -110,7 +110,7 @@ private extension SharedWeekView {
 
     func localizedDayTitle(_ day: Int) -> String {
         let safeDay = max(0, min(6, day))
-        let isTR = locale.language.languageCode?.identifier == "tr"
+        let isTR = !appLanguageIsEnglish()
 
         if isTR {
             switch safeDay {
@@ -136,7 +136,7 @@ private extension SharedWeekView {
     }
 
     func localizedEventCount(_ count: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
+        if !appLanguageIsEnglish() {
             return "\(count) etkinlik"
         } else {
             return "\(count) event"
@@ -144,7 +144,7 @@ private extension SharedWeekView {
     }
 
     func localizedMinutesLeft(_ minutes: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
+        if !appLanguageIsEnglish() {
             return tr("rel_min_left", minutes)
         } else {
             return "\(minutes) min left"
@@ -152,7 +152,7 @@ private extension SharedWeekView {
     }
 
     func localizedInMinutes(_ minutes: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
+        if !appLanguageIsEnglish() {
             return "\(minutes) dk sonra"
         } else {
             return "In \(minutes) min"
@@ -160,7 +160,7 @@ private extension SharedWeekView {
     }
 
     func localizedNoEventText(for day: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
+        if !appLanguageIsEnglish() {
             return tr("sw_no_shared_for", localizedDayTitle(day))
         } else {
             return "There is no shared event for \(localizedDayTitle(day))."
@@ -171,7 +171,7 @@ private extension SharedWeekView {
         let end = item.start_minute + item.duration_minute
         let left = max(0, end - currentMinuteOfDay())
 
-        if locale.language.languageCode?.identifier == "tr" {
+        if !appLanguageIsEnglish() {
             return "\(tr("hd_active_now_label")) • \(tr("rel_min_left", left))"
         } else {
             return "Active now • \(left) min left"
@@ -179,7 +179,7 @@ private extension SharedWeekView {
     }
 
     func localizedSharedWeekTitle(_ name: String) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
+        if !appLanguageIsEnglish() {
             return tr("sw_shared_week_of", name)
         } else {
             return "\(name)'s Shared Week"
@@ -221,7 +221,7 @@ private extension SharedWeekView {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "chevron.left")
+                Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
                     .font(.system(size: 19, weight: .bold))
                     .foregroundStyle(palette.primaryText)
                     .frame(width: 44, height: 44)

@@ -104,7 +104,7 @@ struct AddEventView: View {
                         .fill(accent)
                         .frame(width: 20, height: 1)
 
-                    Text("WEEK EVENT")
+                    Text(tr("ae_week_event_caps"))
                         .font(.system(size: 11, weight: .black, design: .monospaced))
                         .tracking(2.3)
                         .foregroundStyle(accent)
@@ -112,11 +112,11 @@ struct AddEventView: View {
                 }
 
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    Text("Yeni")
+                    Text(tr("common_new"))
                         .font(.system(size: 38, weight: .black))
                         .foregroundStyle(.white)
 
-                    Text("ders")
+                    Text(tr("ae_lesson_lc"))
                         .font(.system(size: 35, weight: .regular, design: .serif))
                         .italic()
                         .foregroundStyle(
@@ -144,7 +144,7 @@ struct AddEventView: View {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 15, weight: .black))
                     .foregroundStyle(.white)
                     .frame(width: 44, height: 44)
@@ -193,7 +193,7 @@ struct AddEventView: View {
                         .fill(accent)
                         .frame(width: 16, height: 1)
 
-                    Text("PREVIEW")
+                    Text(tr("ae_preview_caps"))
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .tracking(1.5)
                         .foregroundStyle(accent)
@@ -237,8 +237,8 @@ struct AddEventView: View {
     private var coursesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
-                title: "Derslerim",
-                eyebrow: "COURSES",
+                title: tr("ae_my_lessons"),
+                eyebrow: tr("ae_courses_caps"),
                 icon: "graduationcap.fill",
                 tint: Color(arenaHex: AppArenaPalette.cyan)
             )
@@ -263,7 +263,7 @@ struct AddEventView: View {
                 }
             } label: {
                 disclosureHeader(
-                    title: "Ekstra ders",
+                    title: tr("ae_extra_lesson"),
                     subtitle: tr("ae_add_missing_class"),
                     icon: "plus.circle",
                     tint: Color(arenaHex: AppArenaPalette.green),
@@ -412,7 +412,7 @@ struct AddEventView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Ders yok")
+                Text(tr("ae_no_lessons"))
                     .font(.system(size: 17, weight: .black))
                     .foregroundStyle(.white)
 
@@ -482,7 +482,7 @@ struct AddEventView: View {
 
                         Spacer()
 
-                        Label("Her hafta", systemImage: "repeat")
+                        Label(tr("ae_every_week"), systemImage: "repeat")
                             .font(.system(size: 10, weight: .black, design: .monospaced))
                             .foregroundStyle(.white.opacity(0.44))
                     }

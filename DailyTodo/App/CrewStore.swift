@@ -10,13 +10,6 @@ import Combine
 import SwiftUI
 
 
-struct CreateFocusRecordPayload: Encodable {
-    let crew_id: String
-    let user_id: String?
-    let member_name: String
-    let minutes: Int
-}
-
 @MainActor
 final class CrewStore: ObservableObject {
     @Published var crews: [CrewDTO] = []

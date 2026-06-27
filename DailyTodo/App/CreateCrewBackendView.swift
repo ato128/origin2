@@ -8,23 +8,23 @@
 import SwiftUI
 
 private enum CreateCrewArenaPalette {
-    static let backgroundTop = Color(createCrewHex: "#05060D")
-    static let backgroundMid = Color(createCrewHex: "#070713")
-    static let backgroundBottom = Color(createCrewHex: "#07040C")
+    static let backgroundTop = Color(arenaHex: "#05060D")
+    static let backgroundMid = Color(arenaHex: "#070713")
+    static let backgroundBottom = Color(arenaHex: "#07040C")
 
-    static let blue = Color(createCrewHex: "#1593FF")
-    static let cyan = Color(createCrewHex: "#2DD4FF")
-    static let purple = Color(createCrewHex: "#7C3AED")
-    static let coral = Color(createCrewHex: "#FF5A44")
-    static let gold = Color(createCrewHex: "#FBBF24")
-    static let green = Color(createCrewHex: "#A3E635")
-    static let surface = Color(createCrewHex: "#101118")
+    static let blue = Color(arenaHex: "#1593FF")
+    static let cyan = Color(arenaHex: "#2DD4FF")
+    static let purple = Color(arenaHex: "#7C3AED")
+    static let coral = Color(arenaHex: "#FF5A44")
+    static let gold = Color(arenaHex: "#FBBF24")
+    static let green = Color(arenaHex: "#A3E635")
+    static let surface = Color(arenaHex: "#101118")
 
     static var appGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(createCrewHex: "#1E6BFF"),
-                Color(createCrewHex: "#7C3AED")
+                Color(arenaHex: "#1E6BFF"),
+                Color(arenaHex: "#7C3AED")
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -182,7 +182,7 @@ private extension CreateCrewBackendView {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 17, weight: .black))
                     .foregroundStyle(.white)
                     .frame(width: 46, height: 46)
@@ -201,7 +201,7 @@ private extension CreateCrewBackendView {
             Spacer()
 
             VStack(spacing: 3) {
-                Text("NEW CREW")
+                Text(tr("ccb_new_crew_caps"))
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .tracking(2.2)
                     .foregroundStyle(CreateCrewArenaPalette.cyan)
@@ -270,7 +270,7 @@ private extension CreateCrewBackendView {
                     )
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("CREW PREVIEW")
+                    Text(tr("ccb_preview_caps"))
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .tracking(2)
                         .foregroundStyle(CreateCrewArenaPalette.cyan)
@@ -328,13 +328,13 @@ private extension CreateCrewBackendView {
     var crewInfoCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionTitle(
-                eyebrow: "CREW INFO",
+                eyebrow: tr("ccb_info_caps"),
                 title: "Crew",
                 italic: "bilgisi"
             )
 
             fieldBox(
-                title: "CREW NAME",
+                title: tr("cc_name_caps"),
                 icon: "text.cursor",
                 tint: CreateCrewArenaPalette.blue
             ) {
@@ -363,7 +363,7 @@ private extension CreateCrewBackendView {
     var iconPickerCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionTitle(
-                eyebrow: "CREW SYMBOL",
+                eyebrow: tr("ccb_symbol_caps"),
                 title: tr("ccb_icon_w"),
                 italic: tr("ccb_pick_w")
             )
@@ -406,8 +406,8 @@ private extension CreateCrewBackendView {
     var colorPickerCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionTitle(
-                eyebrow: "CREW ACCENT",
-                title: "Renk",
+                eyebrow: tr("ccb_accent_caps"),
+                title: tr("ccb_color"),
                 italic: tr("ccb_pick_w")
             )
 
@@ -654,56 +654,8 @@ private extension CreateCrewBackendView {
     }
 
     func hexColor(_ hex: String) -> Color {
-        Color(createCrewHex: hex)
+        Color(arenaHex: hex)
     }
 }
 
 // MARK: - Color Hex
-
-private extension Color {
-    init(createCrewHex hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let a: UInt64
-        let r: UInt64
-        let g: UInt64
-        let b: UInt64
-
-        switch cleaned.count {
-        case 3:
-            a = 255
-            r = (int >> 8) * 17
-            g = ((int >> 4) & 0xF) * 17
-            b = (int & 0xF) * 17
-
-        case 6:
-            a = 255
-            r = int >> 16
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        case 8:
-            a = int >> 24
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        default:
-            a = 255
-            r = 255
-            g = 255
-            b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-}

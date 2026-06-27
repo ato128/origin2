@@ -12,75 +12,56 @@ struct FocusModeSwitcherV3: View {
     @Namespace private var namespace
 
     var body: some View {
-        HStack(spacing: 7) {
+        HStack(spacing: 0) {
             ForEach(FocusMode.allCases) { mode in
+                let isSelected = selectedMode == mode
+
                 Button {
                     withAnimation(.spring(response: 0.30, dampingFraction: 0.86)) {
                         selectedMode = mode
                     }
                 } label: {
-                    ZStack {
-                        if selectedMode == mode {
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            accent(for: mode),
-                                            secondaryAccent(for: mode)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .matchedGeometryEffect(id: "focus_mode_bg", in: namespace)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                        .stroke(Color.white.opacity(0.13), lineWidth: 1)
-                                )
-                                .shadow(
-                                    color: accent(for: mode).opacity(0.22),
-                                    radius: 14,
-                                    y: 7
-                                )
-                        }
-
-                        HStack(spacing: 7) {
+                    VStack(spacing: 9) {
+                        HStack(spacing: 6) {
                             Image(systemName: icon(for: mode))
-                                .font(.system(size: 13, weight: .black))
+                                .font(.system(size: 12, weight: .black))
 
                             Text(mode.title)
                                 .font(.system(size: 13, weight: .black, design: .monospaced))
-                                .tracking(selectedMode == mode ? 0.2 : 0)
+                                .tracking(0.2)
                                 .lineLimit(1)
+                                .minimumScaleFactor(0.7)
                         }
-                        .foregroundStyle(selectedMode == mode ? .black : .white.opacity(0.48))
+                        .foregroundStyle(isSelected ? .white : .white.opacity(0.38))
+
+                        ZStack {
+                            Capsule()
+                                .fill(Color.white.opacity(0.05))
+                                .frame(height: 2.5)
+
+                            if isSelected {
+                                Capsule()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [accent(for: mode), secondaryAccent(for: mode)],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .frame(height: 2.5)
+                                    .matchedGeometryEffect(id: "focus_mode_underline", in: namespace)
+                                    .shadow(color: accent(for: mode).opacity(0.5), radius: 5, y: 1)
+                            }
+                        }
                         .frame(maxWidth: .infinity)
-                        .frame(height: 48)
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(6)
-        .background(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(arenaHex: AppArenaPalette.blue).opacity(0.055),
-                            Color(arenaHex: AppArenaPalette.purple).opacity(0.040),
-                            Color.white.opacity(0.030)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .stroke(Color.white.opacity(0.080), lineWidth: 1)
-                )
-                .shadow(color: Color.black.opacity(0.22), radius: 14, y: 7)
-        )
     }
 
     private func icon(for mode: FocusMode) -> String {

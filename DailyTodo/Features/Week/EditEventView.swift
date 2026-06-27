@@ -78,7 +78,7 @@ struct EditEventView: View {
                     .padding(.bottom, 32)
                 }
             }
-            .navigationTitle("event_edit_title")
+            .navigationTitle(tr("event_edit_title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbarContent }
             .onAppear { loadFromEvent() }
@@ -87,7 +87,7 @@ struct EditEventView: View {
                 isPresented: $showDeleteConfirm,
                 titleVisibility: .visible
             ) {
-                Button("event_delete", role: .destructive) {
+                Button(tr("event_delete"), role: .destructive) {
                     Haptics.impact(.heavy)
 
                     Task {
@@ -110,11 +110,11 @@ struct EditEventView: View {
                     }
                 }
 
-                Button("week_cancel", role: .cancel) { }
+                Button(tr("week_cancel"), role: .cancel) { }
             }
             .alert("event_conflict_title", isPresented: $showConflictAlert) {
-                Button("week_cancel", role: .cancel) { }
-                Button("event_save_anyway") { saveIgnoringConflicts() }
+                Button(tr("week_cancel"), role: .cancel) { }
+                Button(tr("event_save_anyway")) { saveIgnoringConflicts() }
             } message: {
                 Text(conflictSummary)
             }
@@ -126,11 +126,11 @@ struct EditEventView: View {
     private var toolbarContent: some ToolbarContent {
         Group {
             ToolbarItem(placement: .topBarLeading) {
-                Button("event_close") { dismiss() }
+                Button(tr("event_close")) { dismiss() }
             }
 
             ToolbarItem(placement: .topBarTrailing) {
-                Button("event_save") { trySaveWithConflictCheck() }
+                Button(tr("event_save")) { trySaveWithConflictCheck() }
                     .fontWeight(.semibold)
                     .disabled(!canSave)
             }
@@ -141,7 +141,7 @@ struct EditEventView: View {
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("event_edit_title")
+            Text(tr("event_edit_title"))
                 .font(.system(size: 30, weight: .bold, design: .rounded))
                 .foregroundStyle(.primary)
 
@@ -214,7 +214,7 @@ struct EditEventView: View {
                 .font(.system(size: 15, weight: .semibold))
 
                 HStack {
-                    Text("event_duration")
+                    Text(tr("event_duration"))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.secondary)
 
@@ -321,7 +321,7 @@ struct EditEventView: View {
             HapticManager.shared.selection()
             showDeleteConfirm = true
         } label: {
-            actionRow(icon: "trash", titleKey: "event_delete", tint: Color(updoHex: "#EF4444"))
+            actionRow(icon: "trash", titleKey: "event_delete", tint: Color(arenaHex: "#EF4444"))
         }
         .buttonStyle(.plain)
         .padding(.top, 4)
@@ -468,7 +468,7 @@ struct EditEventView: View {
         let h = d / 60
         let m = d % 60
 
-        if locale.language.languageCode?.identifier == "tr" {
+        if !appLanguageIsEnglish() {
             if h == 0 { return "\(m) dk" }
             if m == 0 { return "\(h) saat" }
             return "\(h) saat \(m) dk"
@@ -481,7 +481,7 @@ struct EditEventView: View {
 
     private func localizedDayTitle(_ day: Int) -> String {
         let safeDay = max(0, min(6, day))
-        let isTR = locale.language.languageCode?.identifier == "tr"
+        let isTR = !appLanguageIsEnglish()
 
         if isTR {
             switch safeDay {
@@ -575,7 +575,7 @@ struct EditEventView: View {
             .joined(separator: "\n")
 
         if conflicts.count > 4 {
-            if locale.language.languageCode?.identifier == "tr" {
+            if !appLanguageIsEnglish() {
                 conflictSummary += "\n+ \(conflicts.count - 4) daha"
             } else {
                 conflictSummary += "\n+ \(conflicts.count - 4) more"

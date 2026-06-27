@@ -27,17 +27,12 @@ final class SubscriptionManager: ObservableObject {
     /// `Purchases.shared` access so we never touch an unconfigured SDK.
     private var isConfigured = false
 
-    // MARK: - Debug Pro override (test only)
-    // Lets us preview Pro features without a real purchase. Persists across
-    // launches and takes precedence over RevenueCat. TODO: remove before release.
+#if DEBUG
+    // MARK: - Debug Pro override (DEBUG builds only)
+    // Lets us preview Pro features without a real purchase. Compiled out of
+    // Release/App Store builds entirely, so it can never ship.
     private let debugOverrideKey = "pro_debug_override"
     @Published private(set) var debugProEnabled: Bool = UserDefaults.standard.bool(forKey: "pro_debug_override")
-
-    private init() {
-        let override = UserDefaults.standard.bool(forKey: debugOverrideKey)
-        debugProEnabled = override
-        isPro = override || UserDefaults.standard.bool(forKey: cacheKey)
-    }
 
     /// Force Pro on/off for testing. When turned off, the real entitlement is
     /// re-checked.
@@ -51,6 +46,17 @@ final class SubscriptionManager: ObservableObject {
             isPro = UserDefaults.standard.bool(forKey: cacheKey)
             Task { await refresh() }
         }
+    }
+#endif
+
+    private init() {
+        #if DEBUG
+        let override = UserDefaults.standard.bool(forKey: debugOverrideKey)
+        debugProEnabled = override
+        isPro = override || UserDefaults.standard.bool(forKey: cacheKey)
+        #else
+        isPro = UserDefaults.standard.bool(forKey: cacheKey)
+        #endif
     }
 
     func configure() {
@@ -123,6 +129,10 @@ final class SubscriptionManager: ObservableObject {
     private func updateStatus(from info: CustomerInfo) {
         let entitled = info.entitlements[proEntitlement]?.isActive == true
         UserDefaults.standard.set(entitled, forKey: cacheKey)
+        #if DEBUG
         isPro = debugProEnabled || entitled
+        #else
+        isPro = entitled
+        #endif
     }
 }

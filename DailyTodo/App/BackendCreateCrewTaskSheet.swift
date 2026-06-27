@@ -8,23 +8,23 @@
 import SwiftUI
 
 private enum BackendCreateTaskArenaPalette {
-    static let backgroundTop = Color(createTaskHex: "#05060D")
-    static let backgroundMid = Color(createTaskHex: "#070713")
-    static let backgroundBottom = Color(createTaskHex: "#07040C")
+    static let backgroundTop = Color(arenaHex: "#05060D")
+    static let backgroundMid = Color(arenaHex: "#070713")
+    static let backgroundBottom = Color(arenaHex: "#07040C")
 
-    static let blue = Color(createTaskHex: "#1593FF")
-    static let cyan = Color(createTaskHex: "#2DD4FF")
-    static let purple = Color(createTaskHex: "#7C3AED")
-    static let coral = Color(createTaskHex: "#FF5A44")
-    static let gold = Color(createTaskHex: "#FBBF24")
-    static let green = Color(createTaskHex: "#A3E635")
-    static let surface = Color(createTaskHex: "#101118")
+    static let blue = Color(arenaHex: "#1593FF")
+    static let cyan = Color(arenaHex: "#2DD4FF")
+    static let purple = Color(arenaHex: "#7C3AED")
+    static let coral = Color(arenaHex: "#FF5A44")
+    static let gold = Color(arenaHex: "#FBBF24")
+    static let green = Color(arenaHex: "#A3E635")
+    static let surface = Color(arenaHex: "#101118")
 
     static var appGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(createTaskHex: "#1E6BFF"),
-                Color(createTaskHex: "#7C3AED")
+                Color(arenaHex: "#1E6BFF"),
+                Color(arenaHex: "#7C3AED")
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -152,7 +152,7 @@ private extension BackendCreateCrewTaskSheet {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 17, weight: .black))
                     .foregroundStyle(.white)
                     .frame(width: 46, height: 46)
@@ -170,7 +170,7 @@ private extension BackendCreateCrewTaskSheet {
             Spacer()
 
             VStack(spacing: 3) {
-                Text("NEW CREW TASK")
+                Text(tr("bcts_new_task_caps"))
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .tracking(2.2)
                     .foregroundStyle(BackendCreateTaskArenaPalette.cyan)
@@ -224,13 +224,13 @@ private extension BackendCreateCrewTaskSheet {
                     )
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("CREW FLOW")
+                    Text(tr("bcts_flow_caps"))
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .tracking(2)
                         .foregroundStyle(BackendCreateTaskArenaPalette.cyan)
 
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text("Yeni")
+                        Text(tr("common_new"))
                             .font(.system(size: 30, weight: .black))
                             .foregroundStyle(.white)
 
@@ -292,7 +292,7 @@ private extension BackendCreateCrewTaskSheet {
                 }
 
                 fieldBox(
-                    title: "Detay",
+                    title: tr("bcts_detail"),
                     icon: "text.alignleft",
                     tint: BackendCreateTaskArenaPalette.purple
                 ) {
@@ -349,7 +349,7 @@ private extension BackendCreateCrewTaskSheet {
                 )
 
                 optionGrid(
-                    title: "Durum",
+                    title: tr("bctd_status"),
                     options: statusOptions,
                     selection: $status,
                     colorProvider: statusColor,
@@ -364,7 +364,7 @@ private extension BackendCreateCrewTaskSheet {
     var weekPlanningCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                sectionTitle(eyebrow: "WEEK PLAN", title: "Haftaya", italic: "ekle")
+                sectionTitle(eyebrow: tr("ct_week_plan_caps"), title: tr("bcts_week_title"), italic: tr("bcts_week_italic"))
 
                 Spacer()
 
@@ -722,7 +722,7 @@ private extension BackendCreateCrewTaskSheet {
     }
 
     func priorityLabel(_ raw: String) -> String {
-        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+        let isTurkish = !appLanguageIsEnglish()
 
         switch raw {
         case "low": return isTurkish ? tr("prio_low") : "Low"
@@ -734,7 +734,7 @@ private extension BackendCreateCrewTaskSheet {
     }
 
     func statusLabel(_ raw: String) -> String {
-        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+        let isTurkish = !appLanguageIsEnglish()
 
         switch raw {
         case "todo": return isTurkish ? tr("status_todo") : "Todo"
@@ -747,51 +747,3 @@ private extension BackendCreateCrewTaskSheet {
 }
 
 // MARK: - Color Hex
-
-private extension Color {
-    init(createTaskHex hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let a: UInt64
-        let r: UInt64
-        let g: UInt64
-        let b: UInt64
-
-        switch cleaned.count {
-        case 3:
-            a = 255
-            r = (int >> 8) * 17
-            g = ((int >> 4) & 0xF) * 17
-            b = (int & 0xF) * 17
-
-        case 6:
-            a = 255
-            r = int >> 16
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        case 8:
-            a = int >> 24
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        default:
-            a = 255
-            r = 255
-            g = 255
-            b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-}

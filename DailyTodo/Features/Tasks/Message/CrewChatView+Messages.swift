@@ -129,7 +129,7 @@ extension CrewChatView {
                 Image(systemName: "checkmark")
             }
             .font(.system(size: 9, weight: .bold))
-            .foregroundStyle(seen ? Color(crewChatMessageHex: "#2DD4FF") : .white.opacity(0.72))
+            .foregroundStyle(seen ? Color(arenaHex: "#2DD4FF") : .white.opacity(0.72))
         }
     }
 
@@ -163,7 +163,7 @@ extension CrewChatView {
                 HStack(spacing: 9) {
                     Image(systemName: "timer")
                         .font(.system(size: 12, weight: .black))
-                        .foregroundStyle(Color(crewChatMessageHex: "#A3E635"))
+                        .foregroundStyle(Color(arenaHex: "#A3E635"))
 
                     Text(message.displayText)
                         .font(.system(size: 12, weight: .bold))
@@ -178,8 +178,8 @@ extension CrewChatView {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color(crewChatMessageHex: "#A3E635").opacity(0.10),
-                                    Color(crewChatMessageHex: "#1593FF").opacity(0.060),
+                                    Color(arenaHex: "#A3E635").opacity(0.10),
+                                    Color(arenaHex: "#1593FF").opacity(0.060),
                                     Color.white.opacity(0.045)
                                 ],
                                 startPoint: .topLeading,
@@ -365,7 +365,7 @@ extension CrewChatView {
                 .fill(
                     isFromMe
                     ? Color.white.opacity(0.78)
-                    : Color(crewChatMessageHex: "#2DD4FF").opacity(0.90)
+                    : Color(arenaHex: "#2DD4FF").opacity(0.90)
                 )
                 .frame(width: 3, height: 26)
                 .clipShape(Capsule())
@@ -373,7 +373,7 @@ extension CrewChatView {
             VStack(alignment: .leading, spacing: 2) {
                 Text("crew_chat_reply_label")
                     .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .foregroundStyle(isFromMe ? .white.opacity(0.82) : Color(crewChatMessageHex: "#2DD4FF"))
+                    .foregroundStyle(isFromMe ? .white.opacity(0.82) : Color(arenaHex: "#2DD4FF"))
 
                 Text(replyPreview)
                     .font(.system(size: 11, weight: .semibold))
@@ -544,11 +544,11 @@ extension CrewChatView {
 
     func senderNameTint(for name: String) -> Color {
         let palette: [Color] = [
-            Color(crewChatMessageHex: "#2DD4FF"),
-            Color(crewChatMessageHex: "#A3E635"),
-            Color(crewChatMessageHex: "#FBBF24"),
-            Color(crewChatMessageHex: "#FF5A44"),
-            Color(crewChatMessageHex: "#C084FC")
+            Color(arenaHex: "#2DD4FF"),
+            Color(arenaHex: "#A3E635"),
+            Color(arenaHex: "#FBBF24"),
+            Color(arenaHex: "#FF5A44"),
+            Color(arenaHex: "#C084FC")
         ]
 
         let value = abs(name.unicodeScalars.map { Int($0.value) }.reduce(0, +))
@@ -557,51 +557,3 @@ extension CrewChatView {
 }
 
 // MARK: - Color Hex
-
-private extension Color {
-    init(crewChatMessageHex hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let a: UInt64
-        let r: UInt64
-        let g: UInt64
-        let b: UInt64
-
-        switch cleaned.count {
-        case 3:
-            a = 255
-            r = (int >> 8) * 17
-            g = ((int >> 4) & 0xF) * 17
-            b = (int & 0xF) * 17
-
-        case 6:
-            a = 255
-            r = int >> 16
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        case 8:
-            a = int >> 24
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        default:
-            a = 255
-            r = 255
-            g = 255
-            b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-}

@@ -198,7 +198,7 @@ extension HomeDashboardView {
                             .fill(todayCardAccentColor)
                             .frame(width: 18, height: 1)
 
-                        Text("TODAY BOARD")
+                        Text(tr("hdt_today_board_caps"))
                             .font(.system(size: 10, weight: .black, design: .monospaced))
                             .tracking(1.7)
                             .foregroundStyle(todayCardAccentColor)
@@ -237,13 +237,13 @@ extension HomeDashboardView {
             if !todayBoardTasks.isEmpty {
                 HStack(spacing: 10) {
                     todayMiniMetricPill(
-                        title: "Tamamlanan",
+                        title: tr("hdt_completed"),
                         value: "\(completedTodayBoardCount)",
                         tint: Color(arenaHex: AppArenaPalette.green)
                     )
 
                     todayMiniMetricPill(
-                        title: "Kalan",
+                        title: tr("hdt_remaining"),
                         value: "\(todayPendingBoardCount)",
                         tint: todayPendingTasks.contains(where: { store.isOverdue($0) })
                         ? Color(arenaHex: AppArenaPalette.gold)
@@ -308,7 +308,7 @@ extension HomeDashboardView {
                 if !todayCompletedTasks.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
                         sectionEyebrow(
-                            title: "Tamamlananlar",
+                            title: tr("week_completed"),
                             count: "\(todayCompletedTasks.count)",
                             tint: Color(arenaHex: AppArenaPalette.green)
                         )
@@ -325,19 +325,19 @@ extension HomeDashboardView {
 
                 HStack(spacing: 8) {
                     smallStatsChip(
-                        title: "Seri",
+                        title: tr("hdt_streak"),
                         value: "\(streakCount)",
                         tint: Color(arenaHex: AppArenaPalette.gold)
                     )
 
                     smallStatsChip(
-                        title: "Biten",
+                        title: tr("tasks_summary_done"),
                         value: "\(completedTodayBoardCount)",
                         tint: Color(arenaHex: AppArenaPalette.green)
                     )
 
                     smallStatsChip(
-                        title: "Kalan",
+                        title: tr("hdt_remaining"),
                         value: "\(todayPendingBoardCount)",
                         tint: todayPendingTasks.contains(where: { store.isOverdue($0) })
                         ? Color(arenaHex: AppArenaPalette.gold)
@@ -385,19 +385,19 @@ extension HomeDashboardView {
 
             HStack(spacing: 8) {
                 smallStatsChip(
-                    title: "Seri",
+                    title: tr("hdt_streak"),
                     value: "\(streakCount)",
                     tint: Color(arenaHex: AppArenaPalette.gold)
                 )
 
                 smallStatsChip(
-                    title: "Biten",
+                    title: tr("tasks_summary_done"),
                     value: "0",
                     tint: Color(arenaHex: AppArenaPalette.green)
                 )
 
                 smallStatsChip(
-                    title: "Kalan",
+                    title: tr("hdt_remaining"),
                     value: "0",
                     tint: Color(arenaHex: AppArenaPalette.blue)
                 )
@@ -572,7 +572,7 @@ extension HomeDashboardView {
                             .lineLimit(1)
 
                         if isFocused && !task.isDone {
-                            Text("ODAKTA")
+                            Text(tr("bcd_focusing_caps"))
                                 .font(.system(size: 9, weight: .black, design: .monospaced))
                                 .tracking(0.7)
                                 .foregroundStyle(accent)

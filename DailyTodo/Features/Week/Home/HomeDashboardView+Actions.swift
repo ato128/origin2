@@ -225,7 +225,7 @@ extension HomeDashboardView {
                     }
                 ),
                 HomeQuickAction(
-                    title: "Planla",
+                    title: tr("tv_plan"),
                     subtitle: tr("ha_place_in_week"),
                     systemImage: "calendar.badge.plus",
                     tint: .purple,
@@ -257,7 +257,7 @@ extension HomeDashboardView {
                     action: { showTasksShortcut = true }
                 ),
                 HomeQuickAction(
-                    title: "Hafta",
+                    title: tr("tab_week"),
                     subtitle: tr("ha_open_schedule"),
                     systemImage: "calendar",
                     tint: .purple,
@@ -285,7 +285,7 @@ extension HomeDashboardView {
                     action: onOpenWeek
                 ),
                 HomeQuickAction(
-                    title: "Hafta",
+                    title: tr("tab_week"),
                     subtitle: tr("ha_open_plan"),
                     systemImage: "calendar.badge.plus",
                     tint: .purple,
@@ -306,14 +306,14 @@ extension HomeDashboardView {
             return [
                 HomeQuickAction(
                     title: tr("hd_insights"),
-                    subtitle: "Detaya bak",
+                    subtitle: tr("hda_view_detail"),
                     systemImage: "chart.bar.fill",
                     tint: .orange,
                     isHighlighted: true,
                     action: onOpenInsights
                 ),
                 HomeQuickAction(
-                    title: "Hafta",
+                    title: tr("tab_week"),
                     subtitle: tr("ha_open_flow"),
                     systemImage: "calendar",
                     tint: .purple,
@@ -322,7 +322,7 @@ extension HomeDashboardView {
                 ),
                 HomeQuickAction(
                     title: tr("at_kind_task"),
-                    subtitle: "Yeni ekle",
+                    subtitle: tr("hda_add_new"),
                     systemImage: "checklist",
                     tint: .green,
                     isHighlighted: false,
@@ -364,7 +364,7 @@ extension HomeDashboardView {
             if hour < 12 {
                 return [
                     HomeQuickAction(
-                        title: "Planla",
+                        title: tr("tv_plan"),
                         subtitle: tr("ha_arrange_day"),
                         systemImage: "calendar",
                         tint: .purple,
@@ -372,7 +372,7 @@ extension HomeDashboardView {
                         action: onOpenWeek
                     ),
                     HomeQuickAction(
-                        title: "Odak",
+                        title: tr("tab_focus"),
                         subtitle: tr("ha_start_25"),
                         systemImage: "play.fill",
                         tint: .blue,
@@ -381,7 +381,7 @@ extension HomeDashboardView {
                     ),
                     HomeQuickAction(
                         title: tr("at_kind_task"),
-                        subtitle: "Yeni ekle",
+                        subtitle: tr("hda_add_new"),
                         systemImage: "plus",
                         tint: .green,
                         isHighlighted: false,
@@ -393,7 +393,7 @@ extension HomeDashboardView {
             if hour < 18 {
                 return [
                     HomeQuickAction(
-                        title: "Odak",
+                        title: tr("tab_focus"),
                         subtitle: tr("ha_start_now"),
                         systemImage: "scope",
                         tint: .blue,
@@ -409,7 +409,7 @@ extension HomeDashboardView {
                         action: onAddTask
                     ),
                     HomeQuickAction(
-                        title: "Hafta",
+                        title: tr("tab_week"),
                         subtitle: tr("ha_open_schedule"),
                         systemImage: "calendar.badge.plus",
                         tint: .purple,
@@ -422,7 +422,7 @@ extension HomeDashboardView {
             return [
                 HomeQuickAction(
                     title: tr("common_tomorrow"),
-                    subtitle: "Planla",
+                    subtitle: tr("tv_plan"),
                     systemImage: "calendar",
                     tint: .purple,
                     isHighlighted: true,
@@ -430,7 +430,7 @@ extension HomeDashboardView {
                 ),
                 HomeQuickAction(
                     title: tr("at_kind_task"),
-                    subtitle: "Eklemeyi unutma",
+                    subtitle: tr("hda_dont_forget"),
                     systemImage: "plus",
                     tint: .green,
                     isHighlighted: false,

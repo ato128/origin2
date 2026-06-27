@@ -111,7 +111,7 @@ private extension CrewFocusRoomView {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "chevron.left")
+                Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(palette.primaryText)
                     .frame(width: 44, height: 44)
@@ -128,7 +128,7 @@ private extension CrewFocusRoomView {
 
             Spacer()
 
-            Text("Focus Room")
+            Text(tr("cfr_focus_room"))
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
@@ -211,7 +211,7 @@ private extension CrewFocusRoomView {
                 Image(systemName: "person.fill")
                     .foregroundStyle(accent)
 
-                Text("Host: \(session.hostName)")
+                Text(tr("cfr_host_label", session.hostName))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(palette.secondaryText)
             }
@@ -274,12 +274,12 @@ private extension CrewFocusRoomView {
 
     var participantsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Participants")
+            Text(tr("cfr_participants"))
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
             if session.participantNames.isEmpty {
-                Text("No participants yet")
+                Text(tr("cfr_no_participants"))
                     .font(.subheadline)
                     .foregroundStyle(palette.secondaryText)
             } else {
@@ -301,7 +301,7 @@ private extension CrewFocusRoomView {
                         Spacer()
 
                         if name == session.hostName {
-                            Text("Host")
+                            Text(tr("cfr_host"))
                                 .font(.caption2.weight(.bold))
                                 .foregroundStyle(.green)
                                 .padding(.horizontal, 8)
@@ -332,7 +332,7 @@ private extension CrewFocusRoomView {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Crew Streak")
+                Text(tr("cfr_crew_streak"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(palette.primaryText)
 
@@ -372,7 +372,7 @@ private extension CrewFocusRoomView {
             Button {
                 leaveSession()
             } label: {
-                Text("Leave Session")
+                Text(tr("cfr_leave"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(palette.primaryText)
                     .frame(maxWidth: .infinity)
@@ -416,7 +416,7 @@ private extension CrewFocusRoomView {
                 Button {
                     endSession()
                 } label: {
-                    Text("End Session")
+                    Text(tr("cfr_end"))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.red)
                         .frame(maxWidth: .infinity)

@@ -9,23 +9,23 @@ import SwiftUI
 import SwiftData
 
 private enum FriendDetailArenaPalette {
-    static let backgroundTop = Color(friendDetailHex: "#05060D")
-    static let backgroundMid = Color(friendDetailHex: "#070713")
-    static let backgroundBottom = Color(friendDetailHex: "#07040C")
+    static let backgroundTop = Color(arenaHex: "#05060D")
+    static let backgroundMid = Color(arenaHex: "#070713")
+    static let backgroundBottom = Color(arenaHex: "#07040C")
 
-    static let blue = Color(friendDetailHex: "#1593FF")
-    static let cyan = Color(friendDetailHex: "#2DD4FF")
-    static let purple = Color(friendDetailHex: "#7C3AED")
-    static let coral = Color(friendDetailHex: "#FF5A44")
-    static let gold = Color(friendDetailHex: "#FBBF24")
-    static let green = Color(friendDetailHex: "#A3E635")
-    static let surface = Color(friendDetailHex: "#101118")
+    static let blue = Color(arenaHex: "#1593FF")
+    static let cyan = Color(arenaHex: "#2DD4FF")
+    static let purple = Color(arenaHex: "#7C3AED")
+    static let coral = Color(arenaHex: "#FF5A44")
+    static let gold = Color(arenaHex: "#FBBF24")
+    static let green = Color(arenaHex: "#A3E635")
+    static let surface = Color(arenaHex: "#101118")
 
     static var appGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(friendDetailHex: "#1E6BFF"),
-                Color(friendDetailHex: "#7C3AED")
+                Color(arenaHex: "#1E6BFF"),
+                Color(arenaHex: "#7C3AED")
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -135,7 +135,7 @@ struct FriendDetailView: View {
     }
 
     private var friendAccent: Color {
-        Color(friendDetailHex: friend.colorHex)
+        Color(arenaHex: friend.colorHex)
     }
 
     private var isOnlineText: String {
@@ -150,7 +150,7 @@ struct FriendDetailView: View {
         }
 
         if weeklyFocusCount >= 4 {
-            return locale.language.languageCode?.identifier == "tr"
+            return !appLanguageIsEnglish()
             ? tr("fd_steady_rhythm")
             : "Looks consistent this week."
         }
@@ -160,12 +160,12 @@ struct FriendDetailView: View {
             formatter.locale = Locale.current
             let relative = formatter.localizedString(for: lastFocusDate, relativeTo: Date())
 
-            return locale.language.languageCode?.identifier == "tr"
+            return !appLanguageIsEnglish()
             ? "Son odak: \(relative)"
             : "Last focus: \(relative)"
         }
 
-        return locale.language.languageCode?.identifier == "tr"
+        return !appLanguageIsEnglish()
         ? tr("fd_no_focus_data")
         : "No focus data yet."
     }
@@ -231,15 +231,15 @@ struct FriendDetailView: View {
             )
         }
         .alert("crew_remove_friend_confirm_title", isPresented: $showRemoveFriendAlert) {
-            Button("crew_keep_friend", role: .cancel) { }
+            Button(tr("crew_keep_friend"), role: .cancel) { }
 
-            Button("crew_remove", role: .destructive) {
+            Button(tr("crew_remove"), role: .destructive) {
                 Task {
                     await removeFriend()
                 }
             }
         } message: {
-            Text("friend_detail_remove_message")
+            Text(tr("friend_detail_remove_message"))
         }
     }
 }
@@ -298,7 +298,7 @@ private extension FriendDetailView {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "chevron.left")
+                Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
                     .font(.system(size: 19, weight: .black))
                     .foregroundStyle(.white)
                     .frame(width: 46, height: 46)
@@ -316,7 +316,7 @@ private extension FriendDetailView {
             Spacer()
 
             VStack(spacing: 3) {
-                Text("FRIEND SPACE")
+                Text(tr("fd_friend_space_caps"))
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .tracking(2.2)
                     .foregroundStyle(FriendDetailArenaPalette.cyan)
@@ -336,13 +336,13 @@ private extension FriendDetailView {
                         .environmentObject(friendStore)
                         .environmentObject(session)
                 } label: {
-                    Label("crew_chat", systemImage: "message.fill")
+                    Label(tr("crew_chat"), systemImage: "message.fill")
                 }
 
                 Button(role: .destructive) {
                     showRemoveFriendAlert = true
                 } label: {
-                    Label("crew_remove_friend", systemImage: "person.crop.circle.badge.xmark")
+                    Label(tr("crew_remove_friend"), systemImage: "person.crop.circle.badge.xmark")
                 }
             } label: {
                 ZStack {
@@ -350,7 +350,7 @@ private extension FriendDetailView {
                         ProgressView()
                             .tint(.white)
                     } else {
-                        Image(systemName: "ellipsis")
+                        Image(systemName: "ellipsis").accessibilityLabel(tr("a11y_more"))
                             .font(.system(size: 19, weight: .black))
                             .foregroundStyle(.white)
                     }
@@ -510,7 +510,7 @@ private extension FriendDetailView {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 sectionTitle(
-                    eyebrow: "TODAY PLAN",
+                    eyebrow: tr("fd_today_plan_caps"),
                     title: tr("fd_todays"),
                     italic: "program"
                 )
@@ -549,7 +549,7 @@ private extension FriendDetailView {
     var friendInsightsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionTitle(
-                eyebrow: "STUDY PROFILE",
+                eyebrow: tr("fd_study_profile_caps"),
                 title: tr("tt_study"),
                 italic: "profili"
             )
@@ -557,19 +557,19 @@ private extension FriendDetailView {
             HStack(spacing: 10) {
                 insightStatCard(
                     value: "\(totalFocusMinutes)",
-                    title: locale.language.languageCode?.identifier == "tr" ? "Toplam dk" : "Total min",
+                    title: !appLanguageIsEnglish() ? "Toplam dk" : "Total min",
                     tint: friendAccent
                 )
 
                 insightStatCard(
                     value: "\(weeklyFocusCount)",
-                    title: locale.language.languageCode?.identifier == "tr" ? "Bu hafta" : "This week",
+                    title: !appLanguageIsEnglish() ? "Bu hafta" : "This week",
                     tint: FriendDetailArenaPalette.blue
                 )
 
                 insightStatCard(
                     value: "\(longestFocusMinutes)",
-                    title: locale.language.languageCode?.identifier == "tr" ? "En uzun" : "Longest",
+                    title: !appLanguageIsEnglish() ? "En uzun" : "Longest",
                     tint: FriendDetailArenaPalette.green
                 )
             }
@@ -577,7 +577,7 @@ private extension FriendDetailView {
             HStack(spacing: 10) {
                 miniInsightPill(
                     icon: "calendar",
-                    text: locale.language.languageCode?.identifier == "tr"
+                    text: !appLanguageIsEnglish()
                     ? tr("fd_today_plans", sharedScheduleCount)
                     : "\(sharedScheduleCount) today items",
                     tint: FriendDetailArenaPalette.coral
@@ -585,7 +585,7 @@ private extension FriendDetailView {
 
                 miniInsightPill(
                     icon: "timer",
-                    text: locale.language.languageCode?.identifier == "tr"
+                    text: !appLanguageIsEnglish()
                     ? "\(weeklyFocusMinutes) dk hafta"
                     : "\(weeklyFocusMinutes) min week",
                     tint: FriendDetailArenaPalette.purple
@@ -619,7 +619,7 @@ private extension FriendDetailView {
     var actionsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionTitle(
-                eyebrow: "SOCIAL ACTIONS",
+                eyebrow: tr("fd_social_actions_caps"),
                 title: tr("bctd_quick_w"),
                 italic: tr("bctd_actions_w")
             )
@@ -631,7 +631,7 @@ private extension FriendDetailView {
                         .environmentObject(session)
                 } label: {
                     actionTile(
-                        title: locale.language.languageCode?.identifier == "tr" ? "Sohbet" : "Chat",
+                        title: !appLanguageIsEnglish() ? "Sohbet" : "Chat",
                         systemImage: "message.fill",
                         tint: FriendDetailArenaPalette.blue,
                         filled: true
@@ -640,7 +640,7 @@ private extension FriendDetailView {
                 .buttonStyle(.plain)
 
                 actionTile(
-                    title: locale.language.languageCode?.identifier == "tr" ? "Profil" : "Profile",
+                    title: !appLanguageIsEnglish() ? "Profil" : "Profile",
                     systemImage: "person.crop.circle.fill",
                     tint: friendAccent,
                     filled: false
@@ -648,7 +648,7 @@ private extension FriendDetailView {
 
                 actionTile(
                     title: activeFocusSession != nil
-                    ? (locale.language.languageCode?.identifier == "tr" ? "Odakta" : "In Focus")
+                    ? (!appLanguageIsEnglish() ? "Odakta" : "In Focus")
                     : (friend.isOnline ? "Online" : "Offline"),
                     systemImage: activeFocusSession != nil ? "timer" : (friend.isOnline ? "circle.fill" : "moon.fill"),
                     tint: activeFocusSession != nil ? FriendDetailArenaPalette.green : friendAccent,
@@ -953,25 +953,25 @@ private extension FriendDetailView {
     }
 
     func localizedThisWeek(_ count: Int) -> String {
-        locale.language.languageCode?.identifier == "tr" ? "Bu Hafta" : "This Week"
+        !appLanguageIsEnglish() ? "Bu Hafta" : "This Week"
     }
 
     func localizedToday(_ count: Int) -> String {
-        locale.language.languageCode?.identifier == "tr" ? tr("common_today") : "Today"
+        !appLanguageIsEnglish() ? tr("common_today") : "Today"
     }
 
     func localizedMessages(_ count: Int) -> String {
-        locale.language.languageCode?.identifier == "tr" ? "Mesajlar" : "Messages"
+        !appLanguageIsEnglish() ? "Mesajlar" : "Messages"
     }
 
     func localizedInFocusNow(_ minutes: Int) -> String {
-        locale.language.languageCode?.identifier == "tr"
+        !appLanguageIsEnglish()
         ? "\(tr("fd_focusing_now")) • \(tr("rel_min_short_n", minutes))"
         : "In focus now • \(minutes) min"
     }
 
     func localizedScheduleCount(_ count: Int) -> String {
-        locale.language.languageCode?.identifier == "tr"
+        !appLanguageIsEnglish()
         ? tr("fd_item_count", count)
         : "\(count) items"
     }
@@ -990,51 +990,3 @@ private extension FriendDetailView {
 }
 
 // MARK: - Color Hex
-
-private extension Color {
-    init(friendDetailHex hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let a: UInt64
-        let r: UInt64
-        let g: UInt64
-        let b: UInt64
-
-        switch cleaned.count {
-        case 3:
-            a = 255
-            r = (int >> 8) * 17
-            g = ((int >> 4) & 0xF) * 17
-            b = (int & 0xF) * 17
-
-        case 6:
-            a = 255
-            r = int >> 16
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        case 8:
-            a = int >> 24
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        default:
-            a = 255
-            r = 255
-            g = 255
-            b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-}

@@ -51,7 +51,7 @@ struct InsightsIdentityCardV2: View {
                     .fill(accent)
                     .frame(width: 16, height: 1)
 
-                Text("IDENTITY")
+                Text(tr("iic_identity_caps"))
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(1.7)
                     .foregroundStyle(accent)
@@ -166,19 +166,19 @@ struct InsightsIdentityCardV2: View {
                 .frame(height: 1)
 
             stat(
-                title: "Focus",
+                title: tr("tab_focus"),
                 value: "\(snapshot.focusSessions)/\(snapshot.nextRequirement.requiredFocusSessions)",
                 tint: Color(arenaHex: AppArenaPalette.cyan)
             )
 
             stat(
-                title: "Tasks",
+                title: tr("cci_tasks"),
                 value: "\(snapshot.completedTasks)/\(snapshot.nextRequirement.requiredCompletedTasks)",
                 tint: Color(arenaHex: AppArenaPalette.green)
             )
 
             stat(
-                title: "Streak",
+                title: tr("hdt_streak"),
                 value: "\(snapshot.streakDays)/\(snapshot.nextRequirement.requiredStreakDays)",
                 tint: Color(arenaHex: AppArenaPalette.gold)
             )

@@ -40,8 +40,8 @@ private enum CrewArenaPalette {
     static var appGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(crewHex: appBlueSoft),
-                Color(crewHex: appPurple)
+                Color(arenaHex: appBlueSoft),
+                Color(arenaHex: appPurple)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -51,8 +51,8 @@ private enum CrewArenaPalette {
     static var appSoftGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(crewHex: appBlue).opacity(0.14),
-                Color(crewHex: appPurple).opacity(0.14),
+                Color(arenaHex: appBlue).opacity(0.14),
+                Color(arenaHex: appPurple).opacity(0.14),
                 Color.white.opacity(0.035)
             ],
             startPoint: .topLeading,
@@ -63,8 +63,8 @@ private enum CrewArenaPalette {
     static var hotGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(crewHex: crewCoral),
-                Color(crewHex: "#FF8A4C")
+                Color(arenaHex: crewCoral),
+                Color(arenaHex: "#FF8A4C")
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -74,8 +74,8 @@ private enum CrewArenaPalette {
     static var goldGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(crewHex: gold),
-                Color(crewHex: goldSoft)
+                Color(arenaHex: gold),
+                Color(arenaHex: goldSoft)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -85,9 +85,9 @@ private enum CrewArenaPalette {
     static var crewCardGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(crewHex: appBlueSoft).opacity(0.90),
-                Color(crewHex: appPurple).opacity(0.88),
-                Color(crewHex: crewCoral).opacity(0.60)
+                Color(arenaHex: appBlueSoft).opacity(0.90),
+                Color(arenaHex: appPurple).opacity(0.88),
+                Color(arenaHex: crewCoral).opacity(0.60)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -259,9 +259,9 @@ private struct CrewArenaBackground: View {
 
             LinearGradient(
                 colors: [
-                    Color(crewHex: CrewArenaPalette.backgroundTop),
-                    Color(crewHex: CrewArenaPalette.backgroundMid),
-                    Color(crewHex: CrewArenaPalette.backgroundBottom)
+                    Color(arenaHex: CrewArenaPalette.backgroundTop),
+                    Color(arenaHex: CrewArenaPalette.backgroundMid),
+                    Color(arenaHex: CrewArenaPalette.backgroundBottom)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -269,25 +269,25 @@ private struct CrewArenaBackground: View {
             .ignoresSafeArea()
 
             Circle()
-                .fill(Color(crewHex: CrewArenaPalette.appBlue).opacity(0.10))
+                .fill(Color(arenaHex: CrewArenaPalette.appBlue).opacity(0.10))
                 .frame(width: 260, height: 260)
                 .blur(radius: 96)
                 .offset(x: 165, y: -245)
 
             Circle()
-                .fill(Color(crewHex: CrewArenaPalette.appPurple).opacity(0.18))
+                .fill(Color(arenaHex: CrewArenaPalette.appPurple).opacity(0.18))
                 .frame(width: 320, height: 320)
                 .blur(radius: 110)
                 .offset(x: -175, y: 500)
 
             Circle()
-                .fill(Color(crewHex: CrewArenaPalette.crewCoral).opacity(0.08))
+                .fill(Color(arenaHex: CrewArenaPalette.crewCoral).opacity(0.08))
                 .frame(width: 270, height: 270)
                 .blur(radius: 100)
                 .offset(x: 170, y: 280)
 
             Circle()
-                .fill(Color(crewHex: CrewArenaPalette.gold).opacity(0.055))
+                .fill(Color(arenaHex: CrewArenaPalette.gold).opacity(0.055))
                 .frame(width: 240, height: 240)
                 .blur(radius: 95)
                 .offset(x: -160, y: -170)
@@ -324,7 +324,7 @@ private struct CrewArenaHeader: View {
     private var eyebrow: String {
         switch mode {
         case .social:
-            return "AKTİF ALAN · \(liveCount) LIVE"
+            return tr("crew_active_zone_live", liveCount)
         case .community:
             return scope.headerEyebrow(studentContext: studentContext)
         }
@@ -350,14 +350,14 @@ private struct CrewArenaHeader: View {
 
     private var accentStart: Color {
         mode == .social
-        ? Color(crewHex: CrewArenaPalette.appCyan)
-        : Color(crewHex: CrewArenaPalette.gold)
+        ? Color(arenaHex: CrewArenaPalette.appCyan)
+        : Color(arenaHex: CrewArenaPalette.gold)
     }
 
     private var accentEnd: Color {
         mode == .social
-        ? Color(crewHex: CrewArenaPalette.appPurple)
-        : Color(crewHex: CrewArenaPalette.goldSoft)
+        ? Color(arenaHex: CrewArenaPalette.appPurple)
+        : Color(arenaHex: CrewArenaPalette.goldSoft)
     }
 
     private var animationKey: String {
@@ -372,8 +372,8 @@ private struct CrewArenaHeader: View {
                         Rectangle()
                             .fill(
                                 mode == .social
-                                ? Color(crewHex: CrewArenaPalette.appBlue)
-                                : Color(crewHex: CrewArenaPalette.gold)
+                                ? Color(arenaHex: CrewArenaPalette.appBlue)
+                                : Color(arenaHex: CrewArenaPalette.gold)
                             )
                             .frame(width: 20, height: 1)
 
@@ -382,8 +382,8 @@ private struct CrewArenaHeader: View {
                             .tracking(2.6)
                             .foregroundStyle(
                                 mode == .social
-                                ? Color(crewHex: CrewArenaPalette.appCyan)
-                                : Color(crewHex: CrewArenaPalette.gold)
+                                ? Color(arenaHex: CrewArenaPalette.appCyan)
+                                : Color(arenaHex: CrewArenaPalette.gold)
                             )
                             .lineLimit(1)
                             .minimumScaleFactor(0.68)
@@ -483,7 +483,7 @@ private struct CrewHeaderIconButton: View {
                     .frame(width: 44, height: 44)
                     .background(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(emphasized ? Color(crewHex: CrewArenaPalette.appBlue) : Color.white.opacity(0.075))
+                            .fill(emphasized ? Color(arenaHex: CrewArenaPalette.appBlue) : Color.white.opacity(0.075))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                                     .stroke(.white.opacity(0.10), lineWidth: 1)
@@ -495,7 +495,7 @@ private struct CrewHeaderIconButton: View {
                         .font(.system(size: 10, weight: .black, design: .rounded))
                         .foregroundStyle(.black)
                         .frame(minWidth: 17, minHeight: 17)
-                        .background(Circle().fill(Color(crewHex: CrewArenaPalette.gold)))
+                        .background(Circle().fill(Color(arenaHex: CrewArenaPalette.gold)))
                         .offset(x: 5, y: -5)
                 }
             }
@@ -531,17 +531,17 @@ private struct CrewArenaScopeDropdown: View {
             HStack(spacing: 7) {
                 Image(systemName: selectedScope.icon)
                     .font(.system(size: 13, weight: .black))
-                    .foregroundStyle(Color(crewHex: CrewArenaPalette.gold))
+                    .foregroundStyle(Color(arenaHex: CrewArenaPalette.gold))
 
                 Text(selectedScope.title.uppercased())
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(0.8)
-                    .foregroundStyle(Color(crewHex: CrewArenaPalette.gold))
+                    .foregroundStyle(Color(arenaHex: CrewArenaPalette.gold))
                     .lineLimit(1)
 
                 Image(systemName: "chevron.down")
                     .font(.system(size: 8, weight: .black))
-                    .foregroundStyle(Color(crewHex: CrewArenaPalette.gold))
+                    .foregroundStyle(Color(arenaHex: CrewArenaPalette.gold))
             }
             .padding(.horizontal, 12)
             .frame(height: 44)
@@ -550,8 +550,8 @@ private struct CrewArenaScopeDropdown: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color(crewHex: CrewArenaPalette.gold).opacity(0.16),
-                                Color(crewHex: CrewArenaPalette.crewCoral).opacity(0.08)
+                                Color(arenaHex: CrewArenaPalette.gold).opacity(0.16),
+                                Color(arenaHex: CrewArenaPalette.crewCoral).opacity(0.08)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -559,9 +559,9 @@ private struct CrewArenaScopeDropdown: View {
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(Color(crewHex: CrewArenaPalette.gold).opacity(0.30), lineWidth: 1)
+                            .stroke(Color(arenaHex: CrewArenaPalette.gold).opacity(0.30), lineWidth: 1)
                     )
-                    .shadow(color: Color(crewHex: CrewArenaPalette.gold).opacity(0.15), radius: 10, y: 5)
+                    .shadow(color: Color(arenaHex: CrewArenaPalette.gold).opacity(0.15), radius: 10, y: 5)
             )
         }
     }
@@ -602,8 +602,8 @@ private struct CrewModeSwitch: View {
                                 .shadow(
                                     color: (
                                         selectedMode == .social
-                                        ? Color(crewHex: CrewArenaPalette.appBlue)
-                                        : Color(crewHex: CrewArenaPalette.crewCoral)
+                                        ? Color(arenaHex: CrewArenaPalette.appBlue)
+                                        : Color(arenaHex: CrewArenaPalette.crewCoral)
                                     ).opacity(0.18),
                                     radius: 10,
                                     y: 5
@@ -650,9 +650,9 @@ private struct CrewSocialContent: View {
     @ObservedObject private var subscription = SubscriptionManager.shared
     @ObservedObject private var progression = ProgressionManager.shared
     @State private var showStatsPaywall = false
+    @Namespace private var tabNamespace
 
     var body: some View {
-        // No top card / no sub-tabs: crews and friends live together on one screen.
         VStack(alignment: .leading, spacing: 18) {
             if subscription.isPro {
                 statsSharingToggle
@@ -660,21 +660,75 @@ private struct CrewSocialContent: View {
                 socialProBanner
             }
 
-            CrewSocialCrewSection(
-                crews: crews,
-                onOpenCrew: onOpenCrew,
-                onCreateCrew: onCreateCrew,
-                onJoinCrew: onJoinCrew
-            )
+            // Tappable Crews / Friends switcher (Focus-style).
+            crewTabSwitcher
 
-            CrewSocialFriendsSection(
-                friends: friends,
-                onOpenFriend: onOpenFriend,
-                onAddFriend: onAddFriend
-            )
+            if selectedTab == .friends {
+                CrewSocialFriendsSection(
+                    friends: friends,
+                    onOpenFriend: onOpenFriend,
+                    onAddFriend: onAddFriend
+                )
+            } else {
+                CrewSocialCrewSection(
+                    crews: crews,
+                    onOpenCrew: onOpenCrew,
+                    onCreateCrew: onCreateCrew,
+                    onJoinCrew: onJoinCrew
+                )
+            }
         }
         .sheet(isPresented: $showStatsPaywall) {
             PaywallView(context: "social_stats")
+        }
+    }
+
+    private var crewTabSwitcher: some View {
+        HStack(spacing: 0) {
+            ForEach([CrewSocialTab.crews, .friends]) { tab in
+                let isSelected = (tab == .crews && selectedTab != .friends) || selectedTab == tab
+
+                Button {
+                    withAnimation(.spring(response: 0.30, dampingFraction: 0.86)) {
+                        selectedTab = tab
+                    }
+                } label: {
+                    VStack(spacing: 9) {
+                        HStack(spacing: 6) {
+                            Image(systemName: tab == .crews ? "person.3.fill" : "person.2.fill")
+                                .font(.system(size: 12, weight: .black))
+                            Text(tab.title)
+                                .font(.system(size: 13, weight: .black, design: .monospaced))
+                                .tracking(0.2)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                        .foregroundStyle(isSelected ? .white : .white.opacity(0.38))
+
+                        ZStack {
+                            Capsule().fill(Color.white.opacity(0.05)).frame(height: 2.5)
+                            if isSelected {
+                                Capsule()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [Color(arenaHex: CrewArenaPalette.appBlue),
+                                                     Color(arenaHex: CrewArenaPalette.appCyan)],
+                                            startPoint: .leading, endPoint: .trailing
+                                        )
+                                    )
+                                    .frame(height: 2.5)
+                                    .matchedGeometryEffect(id: "crew_tab_underline", in: tabNamespace)
+                                    .shadow(color: Color(arenaHex: CrewArenaPalette.appBlue).opacity(0.5), radius: 5, y: 1)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 
@@ -691,18 +745,18 @@ private struct CrewSocialContent: View {
                     .background(
                         Circle().fill(
                             LinearGradient(
-                                colors: [Color(crewHex: CrewArenaPalette.gold), Color(crewHex: CrewArenaPalette.appCyan)],
+                                colors: [Color(arenaHex: CrewArenaPalette.gold), Color(arenaHex: CrewArenaPalette.appCyan)],
                                 startPoint: .topLeading, endPoint: .bottomTrailing
                             )
                         )
                     )
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Arkadaşlarını yakından gör")
+                    Text(tr("crew_see_friends_close"))
                         .font(.system(size: 14, weight: .black))
                         .foregroundStyle(.white)
 
-                    Text("Kim odakta, serisi & seviyesi kaç — Updo Pro ile aç")
+                    Text(tr("crew_friends_locked_sub"))
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.6))
                         .lineLimit(2)
@@ -718,10 +772,10 @@ private struct CrewSocialContent: View {
             .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color(crewHex: CrewArenaPalette.gold).opacity(0.08))
+                    .fill(Color(arenaHex: CrewArenaPalette.gold).opacity(0.08))
                     .overlay(
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(Color(crewHex: CrewArenaPalette.gold).opacity(0.3), lineWidth: 1)
+                            .stroke(Color(arenaHex: CrewArenaPalette.gold).opacity(0.3), lineWidth: 1)
                     )
             )
         }
@@ -734,17 +788,17 @@ private struct CrewSocialContent: View {
             Image(systemName: progression.statsSharingEnabled ? "eye.fill" : "eye.slash.fill")
                 .font(.system(size: 14, weight: .black))
                 .foregroundStyle(progression.statsSharingEnabled
-                                 ? Color(crewHex: CrewArenaPalette.liveGreen)
+                                 ? Color(arenaHex: CrewArenaPalette.liveGreen)
                                  : .white.opacity(0.5))
 
             VStack(alignment: .leading, spacing: 1) {
-                Text("İstatistiğimi paylaş")
+                Text(tr("crew_share_my_stats"))
                     .font(.system(size: 13, weight: .black))
                     .foregroundStyle(.white)
 
                 Text(progression.statsSharingEnabled
-                     ? "Arkadaşların seri, seviye ve odak durumunu görür"
-                     : "İstatistiğin kimseye gözükmüyor")
+                     ? tr("crew_stats_shared_on")
+                     : tr("crew_stats_shared_off"))
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.5))
                     .lineLimit(1)
@@ -757,7 +811,7 @@ private struct CrewSocialContent: View {
                 set: { progression.setStatsSharing($0, context: modelContext) }
             ))
             .labelsHidden()
-            .tint(Color(crewHex: CrewArenaPalette.liveGreen))
+            .tint(Color(arenaHex: CrewArenaPalette.liveGreen))
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 11)
@@ -784,8 +838,8 @@ private struct CrewSocialHero: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color(crewHex: CrewArenaPalette.appCyan),
-                                Color(crewHex: CrewArenaPalette.appPurple)
+                                Color(arenaHex: CrewArenaPalette.appCyan),
+                                Color(arenaHex: CrewArenaPalette.appPurple)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -801,13 +855,13 @@ private struct CrewSocialHero: View {
             VStack(alignment: .leading, spacing: 7) {
                 HStack(spacing: 7) {
                     Circle()
-                        .fill(Color(crewHex: CrewArenaPalette.appCyan))
+                        .fill(Color(arenaHex: CrewArenaPalette.appCyan))
                         .frame(width: 7, height: 7)
 
                     Text(tr("ch_study_circle_caps"))
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .tracking(1.8)
-                        .foregroundStyle(Color(crewHex: CrewArenaPalette.appCyan))
+                        .foregroundStyle(Color(arenaHex: CrewArenaPalette.appCyan))
                 }
 
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
@@ -821,8 +875,8 @@ private struct CrewSocialHero: View {
                         .foregroundStyle(
                             LinearGradient(
                                 colors: [
-                                    Color(crewHex: CrewArenaPalette.appCyan),
-                                    Color(crewHex: CrewArenaPalette.appPurple)
+                                    Color(arenaHex: CrewArenaPalette.appCyan),
+                                    Color(arenaHex: CrewArenaPalette.appPurple)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -847,18 +901,18 @@ private struct CrewSocialHero: View {
 
                 HStack(spacing: 8) {
                     Circle()
-                        .fill(Color(crewHex: CrewArenaPalette.liveGreen))
+                        .fill(Color(arenaHex: CrewArenaPalette.liveGreen))
                         .frame(width: 7, height: 7)
 
                     Text(tr("ch_people_focusing", summary.liveCount))
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundStyle(Color(crewHex: CrewArenaPalette.liveGreen))
+                        .foregroundStyle(Color(arenaHex: CrewArenaPalette.liveGreen))
                         .lineLimit(1)
 
                     if summary.requestCount > 0 {
                         Text("· \(summary.requestCount) istek")
                             .font(.system(size: 11, weight: .bold, design: .monospaced))
-                            .foregroundStyle(Color(crewHex: CrewArenaPalette.gold))
+                            .foregroundStyle(Color(arenaHex: CrewArenaPalette.gold))
                             .lineLimit(1)
                     }
                 }
@@ -883,9 +937,9 @@ private struct CrewSocialHero: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color(crewHex: CrewArenaPalette.appCyan).opacity(0.070),
-                            Color(crewHex: CrewArenaPalette.appPurple).opacity(0.055),
-                            Color(crewHex: CrewArenaPalette.surface).opacity(0.94),
+                            Color(arenaHex: CrewArenaPalette.appCyan).opacity(0.070),
+                            Color(arenaHex: CrewArenaPalette.appPurple).opacity(0.055),
+                            Color(arenaHex: CrewArenaPalette.surface).opacity(0.94),
                             Color.white.opacity(0.025)
                         ],
                         startPoint: .topLeading,
@@ -910,7 +964,7 @@ private struct CrewCompactHeroMetric: View {
             HStack {
                 Image(systemName: icon)
                     .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(Color(crewHex: accentHex))
+                    .foregroundStyle(Color(arenaHex: accentHex))
 
                 Spacer()
             }
@@ -934,10 +988,10 @@ private struct CrewCompactHeroMetric: View {
         .frame(height: 82)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color(crewHex: accentHex).opacity(0.075))
+                .fill(Color(arenaHex: accentHex).opacity(0.075))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color(crewHex: accentHex).opacity(0.15), lineWidth: 1)
+                        .stroke(Color(arenaHex: accentHex).opacity(0.15), lineWidth: 1)
                 )
         )
     }
@@ -967,10 +1021,10 @@ private struct CrewHeroMetric: View {
         .frame(height: 62)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(crewHex: accentHex).opacity(0.080))
+                .fill(Color(arenaHex: accentHex).opacity(0.080))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color(crewHex: accentHex).opacity(0.14), lineWidth: 1)
+                        .stroke(Color(arenaHex: accentHex).opacity(0.14), lineWidth: 1)
                 )
         )
     }
@@ -1029,10 +1083,10 @@ private struct CrewSocialTabBar: View {
                     .background {
                         if selectedTab == tab {
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(Color(crewHex: CrewArenaPalette.appBlue).opacity(0.18))
+                                .fill(Color(arenaHex: CrewArenaPalette.appBlue).opacity(0.18))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        .stroke(Color(crewHex: CrewArenaPalette.appBlue).opacity(0.32), lineWidth: 1)
+                                        .stroke(Color(arenaHex: CrewArenaPalette.appBlue).opacity(0.32), lineWidth: 1)
                                 )
                         }
                     }
@@ -1103,8 +1157,8 @@ private struct CrewSocialCrewCard: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color(crewHex: crew.colorHex).opacity(0.95),
-                                    Color(crewHex: CrewArenaPalette.appPurple).opacity(0.82)
+                                    Color(arenaHex: crew.colorHex).opacity(0.95),
+                                    Color(arenaHex: CrewArenaPalette.appPurple).opacity(0.82)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -1129,19 +1183,19 @@ private struct CrewSocialCrewCard: View {
                         if crew.isPinned {
                             Image(systemName: "pin.fill")
                                 .font(.system(size: 10, weight: .black))
-                                .foregroundStyle(Color(crewHex: CrewArenaPalette.gold))
+                                .foregroundStyle(Color(arenaHex: CrewArenaPalette.gold))
                         }
                     }
 
                     HStack(spacing: 8) {
                         Text(crew.rankText)
                             .font(.system(size: 10, weight: .black, design: .monospaced))
-                            .foregroundStyle(Color(crewHex: CrewArenaPalette.appCyan))
+                            .foregroundStyle(Color(arenaHex: CrewArenaPalette.appCyan))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                             .background(
                                 Capsule()
-                                    .fill(Color(crewHex: CrewArenaPalette.appCyan).opacity(0.12))
+                                    .fill(Color(arenaHex: CrewArenaPalette.appCyan).opacity(0.12))
                             )
 
                         Text(crew.memberText)
@@ -1164,8 +1218,8 @@ private struct CrewSocialCrewCard: View {
                         Circle()
                             .fill(
                                 crew.isLive
-                                ? Color(crewHex: CrewArenaPalette.crewCoral)
-                                : Color(crewHex: CrewArenaPalette.liveGreen)
+                                ? Color(arenaHex: CrewArenaPalette.crewCoral)
+                                : Color(arenaHex: CrewArenaPalette.liveGreen)
                             )
                             .frame(width: 7, height: 7)
 
@@ -1174,8 +1228,8 @@ private struct CrewSocialCrewCard: View {
                             .tracking(0.8)
                             .foregroundStyle(
                                 crew.isLive
-                                ? Color(crewHex: CrewArenaPalette.crewCoral)
-                                : Color(crewHex: CrewArenaPalette.liveGreen)
+                                ? Color(arenaHex: CrewArenaPalette.crewCoral)
+                                : Color(arenaHex: CrewArenaPalette.liveGreen)
                             )
                             .lineLimit(1)
                     }
@@ -1199,14 +1253,14 @@ private struct CrewSocialCrewCard: View {
                         Text(tr("ch_streak_days_n", crew.streakDays))
                             .font(.system(size: 11, weight: .bold, design: .monospaced))
                     }
-                    .foregroundStyle(Color(crewHex: CrewArenaPalette.gold))
+                    .foregroundStyle(Color(arenaHex: CrewArenaPalette.gold))
 
                     Text("·")
                         .foregroundStyle(.white.opacity(0.22))
 
                     Text(crew.taskCount > 0 ? crew.progressText : "aktif")
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundStyle(Color(crewHex: CrewArenaPalette.appCyan))
+                        .foregroundStyle(Color(arenaHex: CrewArenaPalette.appCyan))
                         .lineLimit(1)
                 }
 
@@ -1220,9 +1274,9 @@ private struct CrewSocialCrewCard: View {
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color(crewHex: CrewArenaPalette.appCyan),
-                                        Color(crewHex: CrewArenaPalette.appPurple),
-                                        Color(crewHex: crew.colorHex)
+                                        Color(arenaHex: CrewArenaPalette.appCyan),
+                                        Color(arenaHex: CrewArenaPalette.appPurple),
+                                        Color(arenaHex: crew.colorHex)
                                     ],
                                     startPoint: .leading,
                                     endPoint: .trailing
@@ -1264,7 +1318,7 @@ private struct CrewSocialCrewCard: View {
                         .frame(minWidth: 20, minHeight: 20)
                         .background(
                             Capsule()
-                                .fill(Color(crewHex: CrewArenaPalette.gold))
+                                .fill(Color(arenaHex: CrewArenaPalette.gold))
                         )
                 }
 
@@ -1279,9 +1333,9 @@ private struct CrewSocialCrewCard: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color(crewHex: crew.colorHex).opacity(0.060),
-                            Color(crewHex: CrewArenaPalette.appPurple).opacity(0.045),
-                            Color(crewHex: CrewArenaPalette.surface).opacity(0.96)
+                            Color(arenaHex: crew.colorHex).opacity(0.060),
+                            Color(arenaHex: CrewArenaPalette.appPurple).opacity(0.045),
+                            Color(arenaHex: CrewArenaPalette.surface).opacity(0.96)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -1306,9 +1360,9 @@ private struct CrewMiniAvatarStack: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color(crewHex: CrewArenaPalette.appBlue).opacity(0.85),
-                                Color(crewHex: CrewArenaPalette.appPurple).opacity(0.85),
-                                Color(crewHex: accentHex).opacity(0.60)
+                                Color(arenaHex: CrewArenaPalette.appBlue).opacity(0.85),
+                                Color(arenaHex: CrewArenaPalette.appPurple).opacity(0.85),
+                                Color(arenaHex: accentHex).opacity(0.60)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -1317,7 +1371,7 @@ private struct CrewMiniAvatarStack: View {
                     .frame(width: 27, height: 27)
                     .overlay(
                         Circle()
-                            .stroke(Color(crewHex: CrewArenaPalette.surface2), lineWidth: 2)
+                            .stroke(Color(arenaHex: CrewArenaPalette.surface2), lineWidth: 2)
                     )
                     .overlay(
                         Text(String(["A", "M", "B", "C"][index]))
@@ -1377,9 +1431,9 @@ private struct CrewPresenceDot: View {
 
     var body: some View {
         Circle()
-            .fill(isLive ? Color(crewHex: CrewArenaPalette.liveGreen) : Color.gray.opacity(0.55))
+            .fill(isLive ? Color(arenaHex: CrewArenaPalette.liveGreen) : Color.gray.opacity(0.55))
             .frame(width: 12, height: 12)
-            .overlay(Circle().stroke(Color(crewHex: CrewArenaPalette.surface), lineWidth: 2))
+            .overlay(Circle().stroke(Color(arenaHex: CrewArenaPalette.surface), lineWidth: 2))
             .opacity(isLive ? (glow ? 1.0 : 0.6) : 1.0)
             .onAppear {
                 guard isLive else { return }
@@ -1407,8 +1461,8 @@ private struct CrewFriendRow: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color(crewHex: friend.colorHex),
-                                Color(crewHex: CrewArenaPalette.appPurple)
+                                Color(arenaHex: friend.colorHex),
+                                Color(arenaHex: CrewArenaPalette.appPurple)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -1435,7 +1489,7 @@ private struct CrewFriendRow: View {
                     if friend.isOnline {
                         Image(systemName: "checkmark.seal.fill")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(Color(crewHex: CrewArenaPalette.appBlue))
+                            .foregroundStyle(Color(arenaHex: CrewArenaPalette.appBlue))
                     }
                 }
 
@@ -1457,7 +1511,7 @@ private struct CrewFriendRow: View {
                                 .font(.system(size: 11, weight: .bold, design: .monospaced))
                                 .lineLimit(1)
                         }
-                        .foregroundStyle(friend.isFocusing ? Color(crewHex: CrewArenaPalette.liveGreen) : Color(crewHex: CrewArenaPalette.appBlue))
+                        .foregroundStyle(friend.isFocusing ? Color(arenaHex: CrewArenaPalette.liveGreen) : Color(arenaHex: CrewArenaPalette.appBlue))
 
                         if let streak = friend.streak, streak > 0 {
                             HStack(spacing: 2) {
@@ -1466,7 +1520,7 @@ private struct CrewFriendRow: View {
                                 Text("\(streak)")
                                     .font(.system(size: 11, weight: .black, design: .monospaced))
                             }
-                            .foregroundStyle(Color(crewHex: CrewArenaPalette.gold))
+                            .foregroundStyle(Color(arenaHex: CrewArenaPalette.gold))
                         }
 
                         if let level = friend.level {
@@ -1479,12 +1533,12 @@ private struct CrewFriendRow: View {
                     HStack(spacing: 4) {
                         Image(systemName: "lock.fill")
                             .font(.system(size: 8, weight: .black))
-                        Text("İSTATİSTİK · PRO")
+                        Text(tr("crew_stats_pro_caps"))
                             .font(.system(size: 10, weight: .black, design: .monospaced))
                             .tracking(0.6)
                             .lineLimit(1)
                     }
-                    .foregroundStyle(Color(crewHex: CrewArenaPalette.gold).opacity(0.85))
+                    .foregroundStyle(Color(arenaHex: CrewArenaPalette.gold).opacity(0.85))
                 }
             }
 
@@ -1497,7 +1551,7 @@ private struct CrewFriendRow: View {
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .fill(Color(crewHex: CrewArenaPalette.appBlue))
+                        .fill(Color(arenaHex: CrewArenaPalette.appBlue))
                 )
         }
         .padding(14)
@@ -1620,19 +1674,19 @@ private struct CrewRequestRow: View {
     var body: some View {
         HStack(spacing: 13) {
             RoundedRectangle(cornerRadius: 17, style: .continuous)
-                .fill(Color(crewHex: request.kind.accentHex).opacity(0.16))
+                .fill(Color(arenaHex: request.kind.accentHex).opacity(0.16))
                 .frame(width: 50, height: 50)
                 .overlay(
                     Image(systemName: "person.fill")
                         .font(.system(size: 19, weight: .bold))
-                        .foregroundStyle(Color(crewHex: request.kind.accentHex))
+                        .foregroundStyle(Color(arenaHex: request.kind.accentHex))
                 )
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(request.kind.title)
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(1.2)
-                    .foregroundStyle(Color(crewHex: request.kind.accentHex))
+                    .foregroundStyle(Color(arenaHex: request.kind.accentHex))
 
                 Text(request.title)
                     .font(.system(size: 15, weight: .black))
@@ -1655,7 +1709,7 @@ private struct CrewRequestRow: View {
                             .foregroundStyle(.black)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 8)
-                            .background(Capsule().fill(Color(crewHex: CrewArenaPalette.liveGreen)))
+                            .background(Capsule().fill(Color(arenaHex: CrewArenaPalette.liveGreen)))
                     }
                     .buttonStyle(.plain)
                 }
@@ -1664,12 +1718,12 @@ private struct CrewRequestRow: View {
                     Button(action: onSecondary) {
                         Text(secondaryTitle)
                             .font(.system(size: 10, weight: .black, design: .monospaced))
-                            .foregroundStyle(Color(crewHex: request.kind.accentHex))
+                            .foregroundStyle(Color(arenaHex: request.kind.accentHex))
                             .padding(.horizontal, 10)
                             .padding(.vertical, 8)
                             .background(
                                 Capsule()
-                                    .fill(Color(crewHex: request.kind.accentHex).opacity(0.12))
+                                    .fill(Color(arenaHex: request.kind.accentHex).opacity(0.12))
                             )
                     }
                     .buttonStyle(.plain)
@@ -1716,8 +1770,8 @@ private struct CrewCommunityContent: View {
                     CrewWeeklyBattleCard(challenge: weeklyChallenge)
                 } else {
                     CrewArenaPreparingCard(
-                        title: "Haftalık challenge hazırlanıyor",
-                        subtitle: "Arena backend bağlı. Gerçek challenge verileri geldiğinde burada görünecek."
+                        title: tr("crew_weekly_challenge_prep"),
+                        subtitle: tr("crew_weekly_challenge_prep_sub")
                     )
                 }
             }
@@ -1758,8 +1812,8 @@ private struct CrewCommunityContent: View {
             Group {
                 if arenaStore.topCrews.isEmpty {
                     CrewArenaPreparingCard(
-                        title: "Top crews yakında",
-                        subtitle: "Bölüm, kampüs ve ülke crew sıralamaları backend’den geldikçe burada listelenecek."
+                        title: tr("crew_top_crews_soon"),
+                        subtitle: tr("crew_top_crews_soon_sub")
                     )
                 } else {
                     CrewTopCrewsSection(crews: arenaStore.topCrews)
@@ -1822,12 +1876,12 @@ private struct CrewCommunityHero: View {
                     Text(summary.label)
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .tracking(2.2)
-                        .foregroundStyle(Color(crewHex: CrewArenaPalette.gold))
+                        .foregroundStyle(Color(arenaHex: CrewArenaPalette.gold))
 
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(summary.title)
                             .font(.system(size: 25, weight: .black))
-                            .foregroundStyle(Color(crewHex: CrewArenaPalette.gold))
+                            .foregroundStyle(Color(arenaHex: CrewArenaPalette.gold))
 
                         Text(summary.italicTitle)
                             .font(.system(size: 22, weight: .regular, design: .serif))
@@ -1839,12 +1893,12 @@ private struct CrewCommunityHero: View {
 
                     HStack(spacing: 8) {
                         Circle()
-                            .fill(Color(crewHex: CrewArenaPalette.liveGreen))
+                            .fill(Color(arenaHex: CrewArenaPalette.liveGreen))
                             .frame(width: 7, height: 7)
 
                         Text(summary.primaryLiveText)
                             .font(.system(size: 12, weight: .black, design: .monospaced))
-                            .foregroundStyle(Color(crewHex: CrewArenaPalette.liveGreen))
+                            .foregroundStyle(Color(arenaHex: CrewArenaPalette.liveGreen))
                             .lineLimit(1)
                             .minimumScaleFactor(0.65)
                     }
@@ -1854,15 +1908,15 @@ private struct CrewCommunityHero: View {
 
                 Text(summary.rankDeltaText)
                     .font(.system(size: 12, weight: .black, design: .monospaced))
-                    .foregroundStyle(Color(crewHex: CrewArenaPalette.gold))
+                    .foregroundStyle(Color(arenaHex: CrewArenaPalette.gold))
                     .padding(.horizontal, 11)
                     .padding(.vertical, 7)
                     .background(
                         Capsule()
-                            .fill(Color(crewHex: CrewArenaPalette.gold).opacity(0.12))
+                            .fill(Color(arenaHex: CrewArenaPalette.gold).opacity(0.12))
                             .overlay(
                                 Capsule()
-                                    .stroke(Color(crewHex: CrewArenaPalette.gold).opacity(0.22), lineWidth: 1)
+                                    .stroke(Color(arenaHex: CrewArenaPalette.gold).opacity(0.22), lineWidth: 1)
                             )
                     )
             }
@@ -1879,9 +1933,9 @@ private struct CrewCommunityHero: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color(crewHex: CrewArenaPalette.gold).opacity(0.11),
-                            Color(crewHex: CrewArenaPalette.appPurple).opacity(0.07),
-                            Color(crewHex: CrewArenaPalette.surface).opacity(0.98)
+                            Color(arenaHex: CrewArenaPalette.gold).opacity(0.11),
+                            Color(arenaHex: CrewArenaPalette.appPurple).opacity(0.07),
+                            Color(arenaHex: CrewArenaPalette.surface).opacity(0.98)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -1889,7 +1943,7 @@ private struct CrewCommunityHero: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(Color(crewHex: CrewArenaPalette.gold).opacity(0.18), lineWidth: 1)
+                        .stroke(Color(arenaHex: CrewArenaPalette.gold).opacity(0.18), lineWidth: 1)
                 )
                 .shadow(color: Color.black.opacity(0.18), radius: 18, y: 10)
         )
@@ -1921,7 +1975,7 @@ private struct CrewCommunityMetric: View {
                 .fill(Color.white.opacity(0.045))
                 .overlay(
                     RoundedRectangle(cornerRadius: 15, style: .continuous)
-                        .stroke(Color(crewHex: metric.accentHex).opacity(0.13), lineWidth: 1)
+                        .stroke(Color(arenaHex: metric.accentHex).opacity(0.13), lineWidth: 1)
                 )
         )
     }
@@ -1934,7 +1988,7 @@ private struct CrewWeeklyBattleCard: View {
         VStack(alignment: .leading, spacing: 13) {
             HStack(alignment: .center, spacing: 13) {
                 RoundedRectangle(cornerRadius: 15, style: .continuous)
-                    .fill(Color(crewHex: CrewArenaPalette.crewCoral))
+                    .fill(Color(arenaHex: CrewArenaPalette.crewCoral))
                     .frame(width: 50, height: 50)
                     .overlay(
                         Image(systemName: "bolt.shield.fill")
@@ -1951,13 +2005,13 @@ private struct CrewWeeklyBattleCard: View {
                             .padding(.vertical, 5)
                             .background(
                                 RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                    .fill(Color(crewHex: CrewArenaPalette.crewCoral))
+                                    .fill(Color(arenaHex: CrewArenaPalette.crewCoral))
                             )
 
-                        Text("Haftanın meydan okuması")
+                        Text(tr("crew_week_challenge_title"))
                             .font(.system(size: 10, weight: .semibold, design: .monospaced))
                             .tracking(1.4)
-                            .foregroundStyle(Color(crewHex: CrewArenaPalette.crewCoralSoft))
+                            .foregroundStyle(Color(arenaHex: CrewArenaPalette.crewCoralSoft))
                             .lineLimit(1)
                     }
 
@@ -1995,8 +2049,8 @@ private struct CrewWeeklyBattleCard: View {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color(crewHex: CrewArenaPalette.crewCoral),
-                                    Color(crewHex: CrewArenaPalette.appPurple)
+                                    Color(arenaHex: CrewArenaPalette.crewCoral),
+                                    Color(arenaHex: CrewArenaPalette.appPurple)
                                 ],
                                 startPoint: .leading,
                                 endPoint: .trailing
@@ -2008,7 +2062,7 @@ private struct CrewWeeklyBattleCard: View {
             .frame(height: 6)
 
             HStack {
-                Text("Ödül")
+                Text(tr("crew_reward"))
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .tracking(1.2)
                     .foregroundStyle(.white.opacity(0.34))
@@ -2018,7 +2072,7 @@ private struct CrewWeeklyBattleCard: View {
                 Text("💎 Diamond Badge")
                     .font(.system(size: 11, weight: .black, design: .monospaced))
                     .tracking(1.1)
-                    .foregroundStyle(Color(crewHex: CrewArenaPalette.gold))
+                    .foregroundStyle(Color(arenaHex: CrewArenaPalette.gold))
                     .lineLimit(1)
             }
         }
@@ -2028,9 +2082,9 @@ private struct CrewWeeklyBattleCard: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color(crewHex: CrewArenaPalette.crewCoral).opacity(0.14),
-                            Color(crewHex: CrewArenaPalette.appPurple).opacity(0.08),
-                            Color(crewHex: CrewArenaPalette.surface).opacity(0.98)
+                            Color(arenaHex: CrewArenaPalette.crewCoral).opacity(0.14),
+                            Color(arenaHex: CrewArenaPalette.appPurple).opacity(0.08),
+                            Color(arenaHex: CrewArenaPalette.surface).opacity(0.98)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -2038,7 +2092,7 @@ private struct CrewWeeklyBattleCard: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .stroke(Color(crewHex: CrewArenaPalette.crewCoral).opacity(0.22), lineWidth: 1)
+                        .stroke(Color(arenaHex: CrewArenaPalette.crewCoral).opacity(0.22), lineWidth: 1)
                 )
         )
     }
@@ -2066,12 +2120,12 @@ private struct CrewPodiumCard: View {
 
                 Text("LIVE RANK")
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .foregroundStyle(Color(crewHex: CrewArenaPalette.gold))
+                    .foregroundStyle(Color(arenaHex: CrewArenaPalette.gold))
                     .padding(.horizontal, 9)
                     .padding(.vertical, 5)
                     .background(
                         Capsule()
-                            .fill(Color(crewHex: CrewArenaPalette.gold).opacity(0.12))
+                            .fill(Color(arenaHex: CrewArenaPalette.gold).opacity(0.12))
                     )
 
                 Spacer()
@@ -2099,9 +2153,9 @@ private struct CrewPodiumPerson: View {
         VStack(spacing: 7) {
             ZStack(alignment: .bottomTrailing) {
                 Circle()
-                    .fill(Color(crewHex: entry.colorHex))
+                    .fill(Color(arenaHex: entry.colorHex))
                     .frame(width: entry.rank == 1 ? 64 : 56, height: entry.rank == 1 ? 64 : 56)
-                    .shadow(color: Color(crewHex: entry.colorHex).opacity(entry.rank == 1 ? 0.22 : 0.06), radius: 12, y: 6)
+                    .shadow(color: Color(arenaHex: entry.colorHex).opacity(entry.rank == 1 ? 0.22 : 0.06), radius: 12, y: 6)
                     .overlay(
                         Text(String(entry.displayName.prefix(1)))
                             .font(.system(size: 25, weight: .regular, design: .serif))
@@ -2130,7 +2184,7 @@ private struct CrewPodiumPerson: View {
 
             Text(entry.focusTimeText)
                 .font(.system(size: 13, weight: .black, design: .monospaced))
-                .foregroundStyle(entry.rank == 1 ? Color(crewHex: CrewArenaPalette.gold) : .white.opacity(0.82))
+                .foregroundStyle(entry.rank == 1 ? Color(arenaHex: CrewArenaPalette.gold) : .white.opacity(0.82))
                 .lineLimit(1)
                 .minimumScaleFactor(0.62)
         }
@@ -2146,13 +2200,13 @@ private struct CrewYourRankStrip: View {
             Text("#\(entry.rank)")
                 .font(.system(size: 25, weight: .regular, design: .serif))
                 .italic()
-                .foregroundStyle(Color(crewHex: CrewArenaPalette.crewCoral))
+                .foregroundStyle(Color(arenaHex: CrewArenaPalette.crewCoral))
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Senin sıra")
+                Text(tr("crew_your_rank"))
                     .font(.system(size: 9, weight: .bold, design: .monospaced))
                     .tracking(1.5)
-                    .foregroundStyle(Color(crewHex: CrewArenaPalette.crewCoralSoft))
+                    .foregroundStyle(Color(arenaHex: CrewArenaPalette.crewCoralSoft))
 
                 Text("\(entry.displayName) · \(entry.universityShort)")
                     .font(.system(size: 15, weight: .black))
@@ -2166,12 +2220,12 @@ private struct CrewYourRankStrip: View {
             VStack(alignment: .trailing, spacing: 3) {
                 Text(entry.focusTimeText)
                     .font(.system(size: 14, weight: .black, design: .monospaced))
-                    .foregroundStyle(Color(crewHex: CrewArenaPalette.crewCoral))
+                    .foregroundStyle(Color(arenaHex: CrewArenaPalette.crewCoral))
                     .lineLimit(1)
 
                 Text("↑ \(entry.deltaRank)")
                     .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .foregroundStyle(Color(crewHex: CrewArenaPalette.liveGreen))
+                    .foregroundStyle(Color(arenaHex: CrewArenaPalette.liveGreen))
                     .lineLimit(1)
             }
         }
@@ -2181,8 +2235,8 @@ private struct CrewYourRankStrip: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color(crewHex: CrewArenaPalette.crewCoral).opacity(0.12),
-                            Color(crewHex: CrewArenaPalette.appPurple).opacity(0.07),
+                            Color(arenaHex: CrewArenaPalette.crewCoral).opacity(0.12),
+                            Color(arenaHex: CrewArenaPalette.appPurple).opacity(0.07),
                             Color.black.opacity(0.18)
                         ],
                         startPoint: .topLeading,
@@ -2191,7 +2245,7 @@ private struct CrewYourRankStrip: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color(crewHex: CrewArenaPalette.crewCoral).opacity(0.22), lineWidth: 1)
+                        .stroke(Color(arenaHex: CrewArenaPalette.crewCoral).opacity(0.22), lineWidth: 1)
                 )
         )
     }
@@ -2216,12 +2270,12 @@ private struct CrewTopCrewsSection: View {
 
                 HStack(spacing: 7) {
                     Circle()
-                        .fill(Color(crewHex: CrewArenaPalette.liveGreen))
+                        .fill(Color(arenaHex: CrewArenaPalette.liveGreen))
                         .frame(width: 8, height: 8)
 
                     Text("LIVE")
                         .font(.system(size: 11, weight: .black, design: .monospaced))
-                        .foregroundStyle(Color(crewHex: CrewArenaPalette.liveGreen))
+                        .foregroundStyle(Color(arenaHex: CrewArenaPalette.liveGreen))
                 }
             }
 
@@ -2249,14 +2303,14 @@ private struct CrewCommunityLeaderboardRow: View {
 
     private var rankColor: Color {
         if crew.rank == 1 {
-            return Color(crewHex: CrewArenaPalette.gold)
+            return Color(arenaHex: CrewArenaPalette.gold)
         }
 
         if crew.rank == 2 {
-            return Color(crewHex: CrewArenaPalette.liveGreen)
+            return Color(arenaHex: CrewArenaPalette.liveGreen)
         }
 
-        return Color(crewHex: CrewArenaPalette.crewCoral)
+        return Color(arenaHex: CrewArenaPalette.crewCoral)
     }
 
     var body: some View {
@@ -2269,7 +2323,7 @@ private struct CrewCommunityLeaderboardRow: View {
                 if crew.deltaRank != 0 {
                     Text(crew.deltaRank > 0 ? "↑\(crew.deltaRank)" : "↓\(abs(crew.deltaRank))")
                         .font(.system(size: 9, weight: .black, design: .monospaced))
-                        .foregroundStyle(crew.deltaRank > 0 ? Color(crewHex: CrewArenaPalette.liveGreen) : Color(crewHex: CrewArenaPalette.crewCoral))
+                        .foregroundStyle(crew.deltaRank > 0 ? Color(arenaHex: CrewArenaPalette.liveGreen) : Color(arenaHex: CrewArenaPalette.crewCoral))
                 }
             }
             .frame(width: 38)
@@ -2279,8 +2333,8 @@ private struct CrewCommunityLeaderboardRow: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color(crewHex: crew.colorHex).opacity(0.24),
-                                Color(crewHex: CrewArenaPalette.appPurple).opacity(0.12)
+                                Color(arenaHex: crew.colorHex).opacity(0.24),
+                                Color(arenaHex: CrewArenaPalette.appPurple).opacity(0.12)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -2294,11 +2348,11 @@ private struct CrewCommunityLeaderboardRow: View {
 
                 if crew.isLive {
                     Circle()
-                        .fill(Color(crewHex: CrewArenaPalette.liveGreen))
+                        .fill(Color(arenaHex: CrewArenaPalette.liveGreen))
                         .frame(width: 11, height: 11)
                         .overlay(
                             Circle()
-                                .stroke(Color(crewHex: CrewArenaPalette.surface), lineWidth: 2)
+                                .stroke(Color(arenaHex: CrewArenaPalette.surface), lineWidth: 2)
                         )
                         .offset(x: 2, y: 2)
                 }
@@ -2327,7 +2381,7 @@ private struct CrewCommunityLeaderboardRow: View {
                         .font(.system(size: 11, weight: .black, design: .monospaced))
                         .foregroundStyle(
                             crew.focusMinutes > 0
-                            ? Color(crewHex: CrewArenaPalette.crewCoral)
+                            ? Color(arenaHex: CrewArenaPalette.crewCoral)
                             : .white.opacity(0.38)
                         )
                         .lineLimit(1)
@@ -2348,19 +2402,19 @@ private struct CrewCommunityLeaderboardRow: View {
 
             Text(crew.joinState.title)
                 .font(.system(size: 10, weight: .black, design: .monospaced))
-                .foregroundStyle(crew.joinState == .join ? .black : Color(crewHex: crew.colorHex))
+                .foregroundStyle(crew.joinState == .join ? .black : Color(arenaHex: crew.colorHex))
                 .padding(.horizontal, 11)
                 .frame(height: 36)
                 .background(
                     RoundedRectangle(cornerRadius: 13, style: .continuous)
                         .fill(
                             crew.joinState == .join
-                            ? Color(crewHex: CrewArenaPalette.crewCoral)
+                            ? Color(arenaHex: CrewArenaPalette.crewCoral)
                             : Color.white.opacity(0.07)
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 13, style: .continuous)
-                                .stroke(Color(crewHex: crew.colorHex).opacity(0.22), lineWidth: 1)
+                                .stroke(Color(arenaHex: crew.colorHex).opacity(0.22), lineWidth: 1)
                         )
                 )
         }
@@ -2456,12 +2510,12 @@ private struct CrewArenaPreparingCard: View {
     var body: some View {
         HStack(spacing: 13) {
             RoundedRectangle(cornerRadius: 17, style: .continuous)
-                .fill(Color(crewHex: CrewArenaPalette.gold).opacity(0.14))
+                .fill(Color(arenaHex: CrewArenaPalette.gold).opacity(0.14))
                 .frame(width: 50, height: 50)
                 .overlay(
                     Image(systemName: "sparkles")
                         .font(.system(size: 20, weight: .black))
-                        .foregroundStyle(Color(crewHex: CrewArenaPalette.gold))
+                        .foregroundStyle(Color(arenaHex: CrewArenaPalette.gold))
                 )
 
             VStack(alignment: .leading, spacing: 5) {
@@ -2492,8 +2546,8 @@ private struct CrewArenaEmptyLeaderboardCard: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color(crewHex: CrewArenaPalette.gold).opacity(0.22),
-                                Color(crewHex: CrewArenaPalette.crewCoral).opacity(0.14)
+                                Color(arenaHex: CrewArenaPalette.gold).opacity(0.22),
+                                Color(arenaHex: CrewArenaPalette.crewCoral).opacity(0.14)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -2503,15 +2557,15 @@ private struct CrewArenaEmptyLeaderboardCard: View {
                     .overlay(
                         Image(systemName: "trophy.fill")
                             .font(.system(size: 21, weight: .black))
-                            .foregroundStyle(Color(crewHex: CrewArenaPalette.gold))
+                            .foregroundStyle(Color(arenaHex: CrewArenaPalette.gold))
                     )
 
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("İlk sıraya sen çık")
+                    Text(tr("crew_be_first"))
                         .font(.system(size: 17, weight: .black))
                         .foregroundStyle(.white)
 
-                    Text("Focus oturumu tamamlayınca bölüm, kampüs ve ülke sıralamasında görünürsün.")
+                    Text(tr("crew_be_first_sub"))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.50))
                         .lineLimit(2)
@@ -2535,7 +2589,7 @@ private struct CrewArenaEmptyLeaderboardCard: View {
                 .padding(.vertical, 12)
                 .background(
                     Capsule()
-                        .fill(Color(crewHex: CrewArenaPalette.gold))
+                        .fill(Color(arenaHex: CrewArenaPalette.gold))
                 )
             }
             .buttonStyle(.plain)
@@ -2557,12 +2611,12 @@ private struct CrewEmptyStateCard: View {
     var body: some View {
         VStack(spacing: 14) {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color(crewHex: CrewArenaPalette.appBlue).opacity(0.14))
+                .fill(Color(arenaHex: CrewArenaPalette.appBlue).opacity(0.14))
                 .frame(width: 66, height: 66)
                 .overlay(
                     Image(systemName: icon)
                         .font(.system(size: 28, weight: .black))
-                        .foregroundStyle(Color(crewHex: CrewArenaPalette.appBlue))
+                        .foregroundStyle(Color(arenaHex: CrewArenaPalette.appBlue))
                 )
 
             VStack(spacing: 6) {
@@ -2584,7 +2638,7 @@ private struct CrewEmptyStateCard: View {
                             .foregroundStyle(.black)
                             .padding(.horizontal, 16)
                             .frame(height: 42)
-                            .background(Capsule().fill(Color(crewHex: CrewArenaPalette.appBlue)))
+                            .background(Capsule().fill(Color(arenaHex: CrewArenaPalette.appBlue)))
                     }
                     .buttonStyle(.plain)
                 }
@@ -2616,8 +2670,8 @@ private struct CrewSurface: View {
             .fill(
                 LinearGradient(
                     colors: [
-                        Color(crewHex: CrewArenaPalette.appBlue).opacity(0.035),
-                        Color(crewHex: CrewArenaPalette.appPurple).opacity(0.045),
+                        Color(arenaHex: CrewArenaPalette.appBlue).opacity(0.035),
+                        Color(arenaHex: CrewArenaPalette.appPurple).opacity(0.045),
                         Color.white.opacity(0.040)
                     ],
                     startPoint: .topLeading,
@@ -2656,54 +2710,6 @@ private struct DottedPattern: View {
 
 // MARK: - Color Hex
 
-private extension Color {
-    init(crewHex hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let a: UInt64
-        let r: UInt64
-        let g: UInt64
-        let b: UInt64
-
-        switch cleaned.count {
-        case 3:
-            a = 255
-            r = (int >> 8) * 17
-            g = ((int >> 4) & 0xF) * 17
-            b = (int & 0xF) * 17
-
-        case 6:
-            a = 255
-            r = int >> 16
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        case 8:
-            a = int >> 24
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        default:
-            a = 255
-            r = 255
-            g = 255
-            b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-}
-
 // MARK: - Badge Mapping (emoji keys from backend → SF Symbols)
 
 /// Backend rozet anahtarları emoji string olarak gelir; UI'da SF Symbol kullanılır.
@@ -2724,12 +2730,12 @@ private func crewBadgeSymbol(_ badge: String) -> String {
 
 private func crewBadgeTint(_ badge: String) -> Color {
     switch badge {
-    case "👑", "🏆", "🥇": return Color(crewHex: CrewArenaPalette.gold)
-    case "💎":             return Color(crewHex: CrewArenaPalette.appCyan)
-    case "⚡️", "⚡":       return Color(crewHex: CrewArenaPalette.appCyan)
-    case "🔥":             return Color(crewHex: CrewArenaPalette.crewCoral)
+    case "👑", "🏆", "🥇": return Color(arenaHex: CrewArenaPalette.gold)
+    case "💎":             return Color(arenaHex: CrewArenaPalette.appCyan)
+    case "⚡️", "⚡":       return Color(arenaHex: CrewArenaPalette.appCyan)
+    case "🔥":             return Color(arenaHex: CrewArenaPalette.crewCoral)
     case "🥈":             return Color.white.opacity(0.7)
-    case "🥉":             return Color(crewHex: CrewArenaPalette.crewCoral).opacity(0.8)
-    default:               return Color(crewHex: CrewArenaPalette.gold)
+    case "🥉":             return Color(arenaHex: CrewArenaPalette.crewCoral).opacity(0.8)
+    default:               return Color(arenaHex: CrewArenaPalette.gold)
     }
 }

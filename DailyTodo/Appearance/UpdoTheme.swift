@@ -17,19 +17,19 @@ import UIKit
 enum UpdoTheme {
 
     // Backgrounds & surfaces
-    static let background   = Color(updoHex: "#080C18")
-    static let surface      = Color(updoHex: "#0E1420")
-    static let surfaceHigh  = Color(updoHex: "#1C1C2E")
+    static let background   = Color(arenaHex: "#080C18")
+    static let surface      = Color(arenaHex: "#0E1420")
+    static let surfaceHigh  = Color(arenaHex: "#1C1C2E")
 
     // Accents
-    static let cyan         = Color(updoHex: "#2DD4FF")   // primary actions, AI, highlights
-    static let purple       = Color(updoHex: "#7C3AED")   // crew, social, premium
-    static let orange       = Color(updoHex: "#F97316")   // focus, energy, streak
-    static let lime         = Color(updoHex: "#A3E635")   // completion, success
+    static let cyan         = Color(arenaHex: "#2DD4FF")   // primary actions, AI, highlights
+    static let purple       = Color(arenaHex: "#7C3AED")   // crew, social, premium
+    static let orange       = Color(arenaHex: "#F97316")   // focus, energy, streak
+    static let lime         = Color(arenaHex: "#A3E635")   // completion, success
 
     // Text
-    static let textPrimary  = Color(updoHex: "#EEF4FF")
-    static let textMuted    = Color(updoHex: "#64748B")
+    static let textPrimary  = Color(arenaHex: "#EEF4FF")
+    static let textMuted    = Color(arenaHex: "#64748B")
 
     // Border
     static let border       = Color.white.opacity(0.08)
@@ -42,13 +42,13 @@ enum UpdoTheme {
     )
 
     static let gradientFocus = LinearGradient(
-        colors: [orange, Color(updoHex: "#FBBF24")],
+        colors: [orange, Color(arenaHex: "#FBBF24")],
         startPoint: .leading,
         endPoint: .trailing
     )
 
     static let gradientPro = LinearGradient(
-        colors: [orange, Color(updoHex: "#EC4899")],
+        colors: [orange, Color(arenaHex: "#EC4899")],
         startPoint: .leading,
         endPoint: .trailing
     )
@@ -180,30 +180,3 @@ final class HapticManager {
     }
 }
 
-// MARK: - Hex init (single source, file-scoped name to avoid collisions)
-
-extension Color {
-    init(updoHex hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let r, g, b: UInt64
-        switch cleaned.count {
-        case 6:
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-        default:
-            r = 255; g = 255; b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: 1
-        )
-    }
-}

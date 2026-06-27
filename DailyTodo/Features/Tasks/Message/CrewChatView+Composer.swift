@@ -47,7 +47,7 @@ extension CrewChatView {
                         Label(tr("fc_photo"), systemImage: "photo")
                     }
                 } label: {
-                    Image(systemName: "plus")
+                    Image(systemName: "plus").accessibilityLabel(tr("common_add"))
                         .font(.system(size: 20, weight: .black))
                         .foregroundStyle(.white.opacity(0.95))
                         .frame(width: 42, height: 42)
@@ -65,7 +65,7 @@ extension CrewChatView {
                     .textFieldStyle(.plain)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(.white)
-                    .tint(Color(crewChatComposerHex: "#2DD4FF"))
+                    .tint(Color(arenaHex: "#2DD4FF"))
                     .focused($isComposerFocused)
                     .submitLabel(.send)
                     .onSubmit {
@@ -92,7 +92,7 @@ extension CrewChatView {
     func replyPreviewBar(_ currentReply: CrewChatMessageItem) -> some View {
         HStack(spacing: 10) {
             Rectangle()
-                .fill(Color(crewChatComposerHex: "#2DD4FF"))
+                .fill(Color(arenaHex: "#2DD4FF"))
                 .frame(width: 3, height: 30)
                 .clipShape(Capsule())
 
@@ -103,7 +103,7 @@ extension CrewChatView {
 
                 Text("crew_chat_replying_to \(replyingName)")
                     .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .foregroundStyle(Color(crewChatComposerHex: "#2DD4FF"))
+                    .foregroundStyle(Color(arenaHex: "#2DD4FF"))
                     .lineLimit(1)
 
                 Text(currentReply.displayText)
@@ -117,7 +117,7 @@ extension CrewChatView {
             Button {
                 replyingTo = nil
             } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 12, weight: .black))
                     .foregroundStyle(.white.opacity(0.78))
                     .frame(width: 26, height: 26)
@@ -139,8 +139,8 @@ extension CrewChatView {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color(crewChatComposerHex: "#1593FF").opacity(0.070),
-                            Color(crewChatComposerHex: "#7C3AED").opacity(0.055),
+                            Color(arenaHex: "#1593FF").opacity(0.070),
+                            Color(arenaHex: "#7C3AED").opacity(0.055),
                             Color.white.opacity(0.045)
                         ],
                         startPoint: .topLeading,
@@ -235,8 +235,8 @@ extension CrewChatView {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color(crewChatComposerHex: "#1593FF").opacity(0.055),
-                            Color(crewChatComposerHex: "#7C3AED").opacity(0.045),
+                            Color(arenaHex: "#1593FF").opacity(0.055),
+                            Color(arenaHex: "#7C3AED").opacity(0.045),
                             Color.white.opacity(0.040)
                         ],
                         startPoint: .topLeading,
@@ -908,51 +908,3 @@ extension CrewChatView {
 }
 
 // MARK: - Color Hex
-
-private extension Color {
-    init(crewChatComposerHex hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let a: UInt64
-        let r: UInt64
-        let g: UInt64
-        let b: UInt64
-
-        switch cleaned.count {
-        case 3:
-            a = 255
-            r = (int >> 8) * 17
-            g = ((int >> 4) & 0xF) * 17
-            b = (int & 0xF) * 17
-
-        case 6:
-            a = 255
-            r = int >> 16
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        case 8:
-            a = int >> 24
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        default:
-            a = 255
-            r = 255
-            g = 255
-            b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-}

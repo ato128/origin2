@@ -31,11 +31,13 @@ final class SmartNotificationScheduler {
 
         let tasks = fetchTasks(context: context, currentUserID: currentUserID)
         let exams = fetchExams(context: context, currentUserID: currentUserID)
+        let events = fetchEvents(context: context, currentUserID: currentUserID)
         let focusRecords = fetchFocusRecords(context: context, currentUserID: currentUserID)
 
         let candidates = SmartNotificationBrain.makeCandidates(
             tasks: tasks,
             exams: exams,
+            events: events,
             focusRecords: focusRecords
         )
 
@@ -104,16 +106,20 @@ final class SmartNotificationScheduler {
             from: candidate.triggerDate
         )
 
-        let content = UNMutableNotificationContent()
-        content.title = candidate.title
-        content.body = candidate.body
-        content.sound = .default
-        content.categoryIdentifier = "SMART_NOTIFICATION"
-        content.userInfo = [
-            "type": "smart_notification",
-            "smart_category": candidate.category.rawValue,
-            "deep_link": candidate.deepLink
-        ]
+        let relevance = min(1.0, Double(candidate.priority) / 100.0)
+
+        let content = NotificationContentFactory.make(
+            title: candidate.title,
+            body: candidate.body,
+            category: "SMART_NOTIFICATION",
+            threadID: "smart.\(candidate.category.rawValue)",
+            userInfo: [
+                "type": "smart_notification",
+                "smart_category": candidate.category.rawValue,
+                "deep_link": candidate.deepLink
+            ],
+            relevance: relevance
+        )
 
         let trigger = UNCalendarNotificationTrigger(
             dateMatching: components,
@@ -169,6 +175,21 @@ final class SmartNotificationScheduler {
             }
         } catch {
             Log.debug("SMART EXAM FETCH ERROR:", error.localizedDescription)
+            return []
+        }
+    }
+
+    private func fetchEvents(
+        context: ModelContext,
+        currentUserID: String
+    ) -> [EventItem] {
+        do {
+            let descriptor = FetchDescriptor<EventItem>()
+            return try context.fetch(descriptor).filter {
+                $0.ownerUserID == currentUserID
+            }
+        } catch {
+            Log.debug("SMART EVENT FETCH ERROR:", error.localizedDescription)
             return []
         }
     }

@@ -106,9 +106,9 @@ extension HomeDashboardView {
             .frame(height: 12)
 
             HStack(spacing: 8) {
-                smallStatsChip(title: "Seri", value: "\(streakCount)", tint: .orange)
-                smallStatsChip(title: "Biten", value: "\(completedTodayBoardCount)", tint: .green)
-                smallStatsChip(title: "Kalan", value: "\(todayPendingBoardCount)", tint: .blue)
+                smallStatsChip(title: tr("hdt_streak"), value: "\(streakCount)", tint: .orange)
+                smallStatsChip(title: tr("tasks_summary_done"), value: "\(completedTodayBoardCount)", tint: .green)
+                smallStatsChip(title: tr("hdt_remaining"), value: "\(todayPendingBoardCount)", tint: .blue)
             }
         }
         .padding(18)

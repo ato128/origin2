@@ -53,12 +53,12 @@ struct StudentAcademicSettingsView: View {
         case courseName
     }
 
-    private var accent: Color { Color(academicSettingsHex: AcademicSettingsPalette.cyan) }
-    private var secondaryAccent: Color { Color(academicSettingsHex: AcademicSettingsPalette.purple) }
-    private var gold: Color { Color(academicSettingsHex: AcademicSettingsPalette.gold) }
-    private var green: Color { Color(academicSettingsHex: AcademicSettingsPalette.green) }
-    private var coral: Color { Color(academicSettingsHex: AcademicSettingsPalette.coral) }
-    private var blue: Color { Color(academicSettingsHex: AcademicSettingsPalette.blue) }
+    private var accent: Color { Color(arenaHex: AcademicSettingsPalette.cyan) }
+    private var secondaryAccent: Color { Color(arenaHex: AcademicSettingsPalette.purple) }
+    private var gold: Color { Color(arenaHex: AcademicSettingsPalette.gold) }
+    private var green: Color { Color(arenaHex: AcademicSettingsPalette.green) }
+    private var coral: Color { Color(arenaHex: AcademicSettingsPalette.coral) }
+    private var blue: Color { Color(arenaHex: AcademicSettingsPalette.blue) }
 
     private var canSaveProfile: Bool {
         !institutionName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
@@ -167,21 +167,21 @@ private extension StudentAcademicSettingsView {
                             )
                             .frame(width: 22, height: 2)
 
-                        Text("ACADEMIC SETUP")
+                        Text(tr("sas_setup_caps"))
                             .font(.system(size: 10, weight: .heavy, design: .monospaced))
                             .tracking(2.1)
                             .foregroundStyle(accent)
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Student")
+                        Text(tr("sas_student"))
                             .font(.system(size: 42, weight: .heavy))
                             .tracking(-1.0)
                             .foregroundStyle(.white)
                             .lineLimit(1)
                             .minimumScaleFactor(0.72)
 
-                        Text("Academic profile.")
+                        Text(tr("sas_academic_profile"))
                             .font(.system(size: 19, weight: .semibold))
                             .tracking(-0.2)
                             .foregroundStyle(
@@ -201,7 +201,7 @@ private extension StudentAcademicSettingsView {
                 Button {
                     dismiss()
                 } label: {
-                    Image(systemName: "xmark")
+                    Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                         .font(.system(size: 14, weight: .black))
                         .foregroundStyle(.white.opacity(0.88))
                         .frame(width: 42, height: 42)
@@ -217,7 +217,7 @@ private extension StudentAcademicSettingsView {
                 .buttonStyle(.plain)
             }
 
-            Text("Update your university, major, year and courses. Updo uses this setup across Home, Focus, Week and Insights.")
+            Text(tr("sas_header_body"))
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.50))
                 .lineSpacing(2)
@@ -246,8 +246,8 @@ private extension StudentAcademicSettingsView {
     var schoolSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
-                eyebrow: "SCHOOL",
-                title: "University",
+                eyebrow: tr("sas_school_caps"),
+                title: tr("sas_university"),
                 icon: "building.columns.fill",
                 tint: accent
             )
@@ -267,7 +267,7 @@ private extension StudentAcademicSettingsView {
                         )
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("UNIVERSITY")
+                        Text(tr("sas_university_caps"))
                             .font(.system(size: 9, weight: .heavy, design: .monospaced))
                             .tracking(1.1)
                             .foregroundStyle(.white.opacity(0.38))
@@ -297,7 +297,7 @@ private extension StudentAcademicSettingsView {
             .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 11) {
-                Text("YEAR")
+                Text(tr("sas_year_caps"))
                     .font(.system(size: 9, weight: .heavy, design: .monospaced))
                     .tracking(1.1)
                     .foregroundStyle(.white.opacity(0.38))
@@ -370,8 +370,8 @@ private extension StudentAcademicSettingsView {
     var majorSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
-                eyebrow: "MAJOR",
-                title: "Department",
+                eyebrow: tr("sas_major_caps"),
+                title: tr("sas_department"),
                 icon: "graduationcap.fill",
                 tint: secondaryAccent
             )
@@ -379,19 +379,19 @@ private extension StudentAcademicSettingsView {
             if institutionName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 infoNotice(
                     icon: "building.columns",
-                    title: "Choose university first",
-                    subtitle: "Major catalog will load after university selection.",
+                    title: tr("sas_choose_uni_first"),
+                    subtitle: tr("sas_major_after_uni"),
                     tint: secondaryAccent
                 )
             } else if isLoadingMajors || isResolvingCatalog {
                 loadingRow(
-                    title: "Loading majors",
-                    subtitle: "Finding departments for your university.",
+                    title: tr("sas_loading_majors"),
+                    subtitle: tr("sas_finding_departments"),
                     tint: secondaryAccent
                 )
             } else if let majorLoadError {
                 errorNotice(
-                    title: "Major catalog unavailable",
+                    title: tr("sas_major_catalog_unavail"),
                     message: majorLoadError,
                     tint: coral
                 ) {
@@ -437,7 +437,7 @@ private extension StudentAcademicSettingsView {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("DEPARTMENT")
+                    Text(tr("sas_department_caps"))
                         .font(.system(size: 9, weight: .heavy, design: .monospaced))
                         .tracking(1.1)
                         .foregroundStyle(.white.opacity(0.38))
@@ -463,7 +463,7 @@ private extension StudentAcademicSettingsView {
                         .foregroundStyle(secondaryAccent.opacity(0.82))
                         .lineLimit(1)
                     } else if majors.isEmpty {
-                        Text("Manual entry available")
+                        Text(tr("sas_manual_entry_available"))
                             .font(.system(size: 10, weight: .heavy, design: .monospaced))
                             .tracking(0.6)
                             .foregroundStyle(.white.opacity(0.34))
@@ -489,7 +489,7 @@ private extension StudentAcademicSettingsView {
 
     var customMajorField: some View {
         VStack(alignment: .leading, spacing: 9) {
-            Text("CUSTOM MAJOR")
+            Text(tr("sas_custom_major_caps"))
                 .font(.system(size: 9, weight: .heavy, design: .monospaced))
                 .tracking(1.1)
                 .foregroundStyle(.white.opacity(0.38))
@@ -507,7 +507,7 @@ private extension StudentAcademicSettingsView {
                             handleManualMajorTextChanged(newValue)
                         }
                     ),
-                    prompt: Text("Type your department").foregroundStyle(.white.opacity(0.30))
+                    prompt: Text(tr("sas_type_department")).foregroundStyle(.white.opacity(0.30))
                 )
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(.white)
@@ -530,21 +530,21 @@ private extension StudentAcademicSettingsView {
     var suggestionsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
-                eyebrow: "CATALOG",
-                title: "Recommended courses",
+                eyebrow: tr("sas_catalog_caps"),
+                title: tr("sas_recommended_courses"),
                 icon: "books.vertical.fill",
                 tint: gold
             )
 
             if isLoadingSuggestions {
                 loadingRow(
-                    title: "Loading courses",
-                    subtitle: "Preparing suggestions for \(yearTitle(gradeLevel)).",
+                    title: tr("sas_loading_courses"),
+                    subtitle: tr("sas_preparing_suggestions", yearTitle(gradeLevel)),
                     tint: gold
                 )
             } else if let suggestionsError {
                 errorNotice(
-                    title: "Course catalog unavailable",
+                    title: tr("sas_course_catalog_unavail"),
                     message: suggestionsError,
                     tint: coral
                 ) {
@@ -555,7 +555,7 @@ private extension StudentAcademicSettingsView {
             } else if suggestedCourses.isEmpty {
                 infoNotice(
                     icon: "book.closed",
-                    title: "No catalog courses",
+                    title: tr("sas_no_catalog_courses"),
                     subtitle: majorName.isEmpty ? "Choose a major first." : "You can add courses manually.",
                     tint: gold
                 )
@@ -622,7 +622,7 @@ private extension StudentAcademicSettingsView {
                         miniLabel("Y\(course.year_number) T\(course.term_number ?? 0)", tint: .white.opacity(0.46))
 
                         if course.is_elective == true {
-                            miniLabel("ELECTIVE", tint: secondaryAccent)
+                            miniLabel(tr("sas_elective_caps"), tint: secondaryAccent)
                         }
                     }
                 }
@@ -643,8 +643,8 @@ private extension StudentAcademicSettingsView {
     var myCoursesSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
-                eyebrow: "ACTIVE",
-                title: "My courses",
+                eyebrow: tr("sas_active_caps"),
+                title: tr("sas_my_courses"),
                 icon: "checkmark.seal.fill",
                 tint: blue
             )
@@ -652,8 +652,8 @@ private extension StudentAcademicSettingsView {
             if uniqueStudentCourses.isEmpty {
                 infoNotice(
                     icon: "tray",
-                    title: "No active courses",
-                    subtitle: "Add catalog or manual courses.",
+                    title: tr("sas_no_active_courses"),
+                    subtitle: tr("sas_add_catalog_or_manual"),
                     tint: blue
                 )
             } else {
@@ -722,15 +722,15 @@ private extension StudentAcademicSettingsView {
     var manualCourseSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
-                eyebrow: "CUSTOM COURSE",
-                title: "Add manually",
+                eyebrow: tr("sas_custom_course_caps"),
+                title: tr("sas_add_manually"),
                 icon: "plus.circle.fill",
                 tint: green
             )
 
             HStack(spacing: 10) {
                 courseTextField(
-                    placeholder: "Code",
+                    placeholder: tr("sas_code"),
                     text: $courseCode,
                     icon: "number",
                     tint: green,
@@ -740,7 +740,7 @@ private extension StudentAcademicSettingsView {
                 .focused($focusedField, equals: .courseCode)
 
                 courseTextField(
-                    placeholder: "Course name",
+                    placeholder: tr("ae_class_name"),
                     text: $courseName,
                     icon: "pencil",
                     tint: green,
@@ -1198,10 +1198,10 @@ private struct AcademicMajorPickerSheet: View {
     @State private var searchText = ""
     @State private var manualMajorText = ""
 
-    private var accent: Color { Color(academicSettingsHex: AcademicSettingsPalette.cyan) }
-    private var purple: Color { Color(academicSettingsHex: AcademicSettingsPalette.purple) }
-    private var green: Color { Color(academicSettingsHex: AcademicSettingsPalette.green) }
-    private var coral: Color { Color(academicSettingsHex: AcademicSettingsPalette.coral) }
+    private var accent: Color { Color(arenaHex: AcademicSettingsPalette.cyan) }
+    private var purple: Color { Color(arenaHex: AcademicSettingsPalette.purple) }
+    private var green: Color { Color(arenaHex: AcademicSettingsPalette.green) }
+    private var coral: Color { Color(arenaHex: AcademicSettingsPalette.coral) }
 
     private var filteredMajors: [CatalogMajor] {
         let query = academicNormalizedSearchKey(searchText)
@@ -1272,18 +1272,18 @@ private struct AcademicMajorPickerSheet: View {
                         )
                         .frame(width: 22, height: 2)
 
-                    Text("DEPARTMENT")
+                    Text(tr("sas_department_caps"))
                         .font(.system(size: 10, weight: .heavy, design: .monospaced))
                         .tracking(2.0)
                         .foregroundStyle(accent)
                 }
 
-                Text("Choose major")
+                Text(tr("sas_choose_major"))
                     .font(.system(size: 34, weight: .heavy))
                     .tracking(-0.8)
                     .foregroundStyle(.white)
 
-                Text("Search your department or type it manually.")
+                Text(tr("sas_search_or_type"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.50))
             }
@@ -1293,7 +1293,7 @@ private struct AcademicMajorPickerSheet: View {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 14, weight: .black))
                     .foregroundStyle(.white.opacity(0.88))
                     .frame(width: 42, height: 42)
@@ -1322,7 +1322,7 @@ private struct AcademicMajorPickerSheet: View {
             TextField(
                 "",
                 text: $searchText,
-                prompt: Text("Search major").foregroundStyle(.white.opacity(0.30))
+                prompt: Text(tr("sas_search_major")).foregroundStyle(.white.opacity(0.30))
             )
             .textInputAutocapitalization(.words)
             .autocorrectionDisabled()
@@ -1359,11 +1359,11 @@ private struct AcademicMajorPickerSheet: View {
                 .tint(accent)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("Loading majors")
+                Text(tr("sas_loading_majors"))
                     .font(.system(size: 15, weight: .heavy))
                     .foregroundStyle(.white)
 
-                Text("Preparing department catalog.")
+                Text(tr("sas_preparing_dept_catalog"))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.48))
             }
@@ -1387,7 +1387,7 @@ private struct AcademicMajorPickerSheet: View {
                     )
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Could not load majors")
+                    Text(tr("sas_could_not_load_majors"))
                         .font(.system(size: 15, weight: .heavy))
                         .foregroundStyle(.white)
 
@@ -1403,7 +1403,7 @@ private struct AcademicMajorPickerSheet: View {
             Button {
                 onRetry()
             } label: {
-                Text("RETRY")
+                Text(tr("sas_retry_caps"))
                     .font(.system(size: 10, weight: .heavy, design: .monospaced))
                     .tracking(0.8)
                     .foregroundStyle(coral)
@@ -1437,11 +1437,11 @@ private struct AcademicMajorPickerSheet: View {
                     )
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("No matching major")
+                    Text(tr("sas_no_matching_major"))
                         .font(.system(size: 15, weight: .heavy))
                         .foregroundStyle(.white)
 
-                    Text("Try another search or type your department manually.")
+                    Text(tr("sas_try_another"))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.50))
                         .lineLimit(2)
@@ -1503,7 +1503,7 @@ private struct AcademicMajorPickerSheet: View {
 
     private var manualEntryCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("TYPE MANUALLY")
+            Text(tr("sas_type_manually_caps"))
                 .font(.system(size: 9, weight: .heavy, design: .monospaced))
                 .tracking(1.1)
                 .foregroundStyle(.white.opacity(0.38))
@@ -1516,7 +1516,7 @@ private struct AcademicMajorPickerSheet: View {
                 TextField(
                     "",
                     text: $manualMajorText,
-                    prompt: Text("Type your department").foregroundStyle(.white.opacity(0.30))
+                    prompt: Text(tr("sas_type_department")).foregroundStyle(.white.opacity(0.30))
                 )
                 .textInputAutocapitalization(.words)
                 .autocorrectionDisabled()
@@ -1540,7 +1540,7 @@ private struct AcademicMajorPickerSheet: View {
                 guard !cleaned.isEmpty else { return }
                 onManualMajor(cleaned)
             } label: {
-                Text("USE MANUAL MAJOR")
+                Text(tr("sas_use_manual_caps"))
                     .font(.system(size: 10, weight: .heavy, design: .monospaced))
                     .tracking(0.8)
                     .foregroundStyle(.black)
@@ -1732,7 +1732,7 @@ private extension StudentAcademicSettingsView {
                     Image(systemName: "arrow.clockwise")
                         .font(.system(size: 12, weight: .black))
 
-                    Text("RETRY")
+                    Text(tr("sas_retry_caps"))
                         .font(.system(size: 10, weight: .heavy, design: .monospaced))
                         .tracking(0.8)
 
@@ -1955,9 +1955,9 @@ private struct AcademicSettingsBackground: View {
 
             LinearGradient(
                 colors: [
-                    Color(academicSettingsHex: AcademicSettingsPalette.backgroundTop),
-                    Color(academicSettingsHex: AcademicSettingsPalette.backgroundMid),
-                    Color(academicSettingsHex: AcademicSettingsPalette.backgroundBottom)
+                    Color(arenaHex: AcademicSettingsPalette.backgroundTop),
+                    Color(arenaHex: AcademicSettingsPalette.backgroundMid),
+                    Color(arenaHex: AcademicSettingsPalette.backgroundBottom)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -1965,25 +1965,25 @@ private struct AcademicSettingsBackground: View {
             .ignoresSafeArea()
 
             Circle()
-                .fill(Color(academicSettingsHex: AcademicSettingsPalette.blue).opacity(0.11))
+                .fill(Color(arenaHex: AcademicSettingsPalette.blue).opacity(0.11))
                 .frame(width: 270, height: 270)
                 .blur(radius: 100)
                 .offset(x: 170, y: -220)
 
             Circle()
-                .fill(Color(academicSettingsHex: AcademicSettingsPalette.purple).opacity(0.14))
+                .fill(Color(arenaHex: AcademicSettingsPalette.purple).opacity(0.14))
                 .frame(width: 330, height: 330)
                 .blur(radius: 118)
                 .offset(x: -190, y: 500)
 
             Circle()
-                .fill(Color(academicSettingsHex: AcademicSettingsPalette.coral).opacity(0.060))
+                .fill(Color(arenaHex: AcademicSettingsPalette.coral).opacity(0.060))
                 .frame(width: 280, height: 280)
                 .blur(radius: 110)
                 .offset(x: 165, y: 285)
 
             Circle()
-                .fill(Color(academicSettingsHex: AcademicSettingsPalette.gold).opacity(0.045))
+                .fill(Color(arenaHex: AcademicSettingsPalette.gold).opacity(0.045))
                 .frame(width: 210, height: 210)
                 .blur(radius: 95)
                 .offset(x: -145, y: -155)
@@ -2013,54 +2013,5 @@ private enum AcademicSettingsHaptics {
         let generator = UINotificationFeedbackGenerator()
         generator.prepare()
         generator.notificationOccurred(.success)
-    }
-}
-
-private extension Color {
-    init(academicSettingsHex hex: String) {
-        var cleaned = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        cleaned = cleaned.replacingOccurrences(of: "#", with: "")
-
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let a: UInt64
-        let r: UInt64
-        let g: UInt64
-        let b: UInt64
-
-        switch cleaned.count {
-        case 3:
-            a = 255
-            r = (int >> 8) * 17
-            g = ((int >> 4) & 0xF) * 17
-            b = (int & 0xF) * 17
-
-        case 6:
-            a = 255
-            r = int >> 16
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        case 8:
-            a = int >> 24
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        default:
-            a = 255
-            r = 45
-            g = 212
-            b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
     }
 }

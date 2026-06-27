@@ -10,6 +10,49 @@ import SwiftData
 import WidgetKit
 
 enum WidgetAppSync {
+
+    // MARK: - User state (icon theme + Pro stats)
+
+    /// Pushes the full user snapshot used by widgets / live activities.
+    static func writeUserState(
+        iconName: String?,
+        isPro: Bool,
+        streak: Int,
+        level: Int,
+        todayFocusMinutes: Int,
+        statsShared: Bool,
+        longestStreak: Int = 0
+    ) {
+        let new = WidgetUserState(
+            iconName: iconName,
+            isPro: isPro,
+            streak: streak,
+            level: level,
+            todayFocusMinutes: todayFocusMinutes,
+            statsShared: statsShared,
+            longestStreak: longestStreak
+        )
+
+        // Only reload timelines when something actually changed (cheap dedupe).
+        let old = WidgetShared.readUserState()
+        WidgetShared.writeUserState(new)
+        if old.iconName != new.iconName || old.isPro != new.isPro ||
+            old.streak != new.streak || old.level != new.level ||
+            old.todayFocusMinutes != new.todayFocusMinutes ||
+            old.longestStreak != new.longestStreak {
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+    }
+
+    /// Updates just the icon (keeps the rest of the snapshot intact).
+    static func updateIcon(_ iconName: String?) {
+        var state = WidgetShared.readUserState()
+        guard state.iconName != iconName else { return }
+        state.iconName = iconName
+        WidgetShared.writeUserState(state)
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
     static func refreshFromSwiftData(context: ModelContext) {
         do {
             let descriptor = FetchDescriptor<EventItem>(

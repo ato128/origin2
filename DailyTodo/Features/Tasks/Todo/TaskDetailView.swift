@@ -83,7 +83,7 @@ private extension TaskDetailView {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "chevron.left")
+                Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(palette.primaryText)
                     .frame(width: 44, height: 44)
@@ -212,7 +212,7 @@ private extension TaskDetailView {
 
     var identityCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionLabel("Kimlik")
+            sectionLabel(tr("task_detail_identity"))
 
             VStack(spacing: 12) {
                 labeledTextField(
@@ -243,8 +243,8 @@ private extension TaskDetailView {
                         Text(tr("tt_homework")).tag("homework")
                         Text(tr("at_kind_exam")).tag("exam")
                         Text(tr("tt_study")).tag("study")
-                        Text("Proje").tag("project")
-                        Text("Workout").tag("workout")
+                        Text(tr("tt_project")).tag("project")
+                        Text(tr("task_type_workout")).tag("workout")
                     }
                     .pickerStyle(.segmented)
                     .onChange(of: task.taskType) { _, _ in
@@ -273,7 +273,7 @@ private extension TaskDetailView {
 
     var notesCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionLabel("Notlar")
+            sectionLabel(tr("task_detail_notes"))
 
             TextEditor(text: $task.notes)
                 .frame(minHeight: 130)
@@ -417,17 +417,17 @@ private extension TaskDetailView {
             if latestHistory(for: exercise) != nil || bestHistory(for: exercise) != nil {
                 VStack(alignment: .leading, spacing: 6) {
                     if let latest = latestHistory(for: exercise) {
-                        historyMiniLine(title: "Son", value: historyText(for: latest))
+                        historyMiniLine(title: tr("task_detail_history_last"), value: historyText(for: latest))
                     }
 
                     if let best = bestHistory(for: exercise) {
-                        historyMiniLine(title: "En iyi", value: historyText(for: best))
+                        historyMiniLine(title: tr("task_detail_history_best"), value: historyText(for: best))
                     }
                 }
             }
 
             HStack(spacing: 10) {
-                stepCard(title: "Set", value: exercise.sets) {
+                stepCard(title: tr("task_detail_sets"), value: exercise.sets) {
                     if exercise.sets > 1 { exercise.sets -= 1 }
                     try? modelContext.save()
                 } increment: {
@@ -435,7 +435,7 @@ private extension TaskDetailView {
                     try? modelContext.save()
                 }
 
-                stepCard(title: "Tekrar", value: exercise.reps) {
+                stepCard(title: tr("task_detail_reps"), value: exercise.reps) {
                     if exercise.reps > 1 { exercise.reps -= 1 }
                     try? modelContext.save()
                 } increment: {
@@ -445,7 +445,7 @@ private extension TaskDetailView {
             }
 
             HStack(spacing: 10) {
-                stepCard(title: "KG", value: Int(exercise.weight)) {
+                stepCard(title: tr("task_detail_kg"), value: Int(exercise.weight)) {
                     if exercise.weight >= 2.5 { exercise.weight -= 2.5 }
                     try? modelContext.save()
                 } increment: {
@@ -462,7 +462,7 @@ private extension TaskDetailView {
                         }
                     )
                 ) {
-                    Text("Superset")
+                    Text(tr("task_detail_superset"))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -480,7 +480,7 @@ private extension TaskDetailView {
             }
 
             HStack(spacing: 10) {
-                stepCard(title: "Saniye", value: exercise.durationSeconds) {
+                stepCard(title: tr("task_detail_seconds"), value: exercise.durationSeconds) {
                     if exercise.durationSeconds >= 5 { exercise.durationSeconds -= 5 }
                     try? modelContext.save()
                 } increment: {
@@ -488,7 +488,7 @@ private extension TaskDetailView {
                     try? modelContext.save()
                 }
 
-                stepCard(title: "Dinlenme", value: exercise.restSeconds) {
+                stepCard(title: tr("task_detail_rest"), value: exercise.restSeconds) {
                     if exercise.restSeconds >= 5 { exercise.restSeconds -= 5 }
                     try? modelContext.save()
                 } increment: {
@@ -592,7 +592,7 @@ private extension TaskDetailView {
                         .frame(height: 18)
 
                     Button(action: increment) {
-                        Image(systemName: "plus")
+                        Image(systemName: "plus").accessibilityLabel(tr("common_add"))
                             .font(.caption.bold())
                     }
                 }
@@ -681,7 +681,7 @@ private extension TaskDetailView {
     var workoutCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                sectionLabel("Workout")
+                sectionLabel(tr("task_type_workout"))
 
                 Spacer()
 
@@ -702,7 +702,7 @@ private extension TaskDetailView {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Workout Day")
+                Text(tr("task_detail_workout_day"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(palette.primaryText)
 
@@ -782,7 +782,7 @@ private extension TaskDetailView {
                     in: 10...180,
                     step: 5
                 ) {
-                    Text("\(task.workoutDurationMinutes ?? 45) dk")
+                    Text(tr("rel_min_short_n", task.workoutDurationMinutes ?? 45))
                         .foregroundStyle(palette.primaryText)
                 }
                 .padding(12)
@@ -857,7 +857,7 @@ private extension TaskDetailView {
                     dismiss()
                 }
             } label: {
-                Text("Week’e Ekle")
+                Text(tr("task_detail_add_to_week"))
                     .font(.headline)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)

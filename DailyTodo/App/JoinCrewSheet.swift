@@ -9,23 +9,23 @@ import SwiftUI
 import UIKit
 
 private enum JoinCrewArenaPalette {
-    static let backgroundTop = Color(joinCrewHex: "#05060D")
-    static let backgroundMid = Color(joinCrewHex: "#070713")
-    static let backgroundBottom = Color(joinCrewHex: "#07040C")
+    static let backgroundTop = Color(arenaHex: "#05060D")
+    static let backgroundMid = Color(arenaHex: "#070713")
+    static let backgroundBottom = Color(arenaHex: "#07040C")
 
-    static let blue = Color(joinCrewHex: "#1593FF")
-    static let cyan = Color(joinCrewHex: "#2DD4FF")
-    static let purple = Color(joinCrewHex: "#7C3AED")
-    static let coral = Color(joinCrewHex: "#FF5A44")
-    static let gold = Color(joinCrewHex: "#FBBF24")
-    static let green = Color(joinCrewHex: "#A3E635")
-    static let surface = Color(joinCrewHex: "#101118")
+    static let blue = Color(arenaHex: "#1593FF")
+    static let cyan = Color(arenaHex: "#2DD4FF")
+    static let purple = Color(arenaHex: "#7C3AED")
+    static let coral = Color(arenaHex: "#FF5A44")
+    static let gold = Color(arenaHex: "#FBBF24")
+    static let green = Color(arenaHex: "#A3E635")
+    static let surface = Color(arenaHex: "#101118")
 
     static var appGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(joinCrewHex: "#1E6BFF"),
-                Color(joinCrewHex: "#7C3AED")
+                Color(arenaHex: "#1E6BFF"),
+                Color(arenaHex: "#7C3AED")
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -140,7 +140,7 @@ private extension JoinCrewSheet {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 17, weight: .black))
                     .foregroundStyle(.white)
                     .frame(width: 46, height: 46)
@@ -159,7 +159,7 @@ private extension JoinCrewSheet {
             Spacer()
 
             VStack(spacing: 3) {
-                Text("JOIN CREW")
+                Text(tr("jcs_join_crew_caps"))
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .tracking(2.2)
                     .foregroundStyle(JoinCrewArenaPalette.cyan)
@@ -215,7 +215,7 @@ private extension JoinCrewSheet {
                     )
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("INVITE CODE")
+                    Text(tr("jcs_invite_code_caps"))
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .tracking(2)
                         .foregroundStyle(JoinCrewArenaPalette.cyan)
@@ -275,13 +275,13 @@ private extension JoinCrewSheet {
     var codeInputCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionTitle(
-                eyebrow: "CREW CODE",
-                title: "Davet",
+                eyebrow: tr("jcs_crew_code_caps"),
+                title: tr("jcs_invite"),
                 italic: "kodu"
             )
 
             fieldBox(
-                title: "INVITE CODE",
+                title: tr("jcs_invite_code_caps"),
                 icon: "number",
                 tint: JoinCrewArenaPalette.cyan
             ) {
@@ -599,51 +599,3 @@ private extension JoinCrewSheet {
 }
 
 // MARK: - Color Hex
-
-private extension Color {
-    init(joinCrewHex hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let a: UInt64
-        let r: UInt64
-        let g: UInt64
-        let b: UInt64
-
-        switch cleaned.count {
-        case 3:
-            a = 255
-            r = (int >> 8) * 17
-            g = ((int >> 4) & 0xF) * 17
-            b = (int & 0xF) * 17
-
-        case 6:
-            a = 255
-            r = int >> 16
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        case 8:
-            a = int >> 24
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        default:
-            a = 255
-            r = 255
-            g = 255
-            b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-}

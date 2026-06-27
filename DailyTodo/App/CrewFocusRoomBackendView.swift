@@ -356,7 +356,7 @@ private extension CrewFocusRoomBackendView {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "chevron.left")
+                Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(palette.primaryText)
                     .frame(width: 44, height: 44)
@@ -439,11 +439,11 @@ private extension CrewFocusRoomBackendView {
                         .foregroundStyle(accent)
 
                     if finished {
-                        Text("Bitti")
+                        Text(tr("cfrb_done"))
                             .font(.system(size: 42, weight: .bold, design: .rounded))
                             .foregroundStyle(.green)
                     } else if localSession.is_waiting == true {
-                        Text("Bekliyor")
+                        Text(tr("cfrb_waiting"))
                             .font(.system(size: 34, weight: .bold, design: .rounded))
                             .foregroundStyle(.orange)
                     } else {
@@ -464,7 +464,7 @@ private extension CrewFocusRoomBackendView {
                 Image(systemName: "person.fill")
                     .foregroundStyle(accent)
 
-                Text("Host: \(localSession.host_name)")
+                Text(tr("cfr_host_label", localSession.host_name))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(palette.secondaryText)
             }
@@ -560,7 +560,7 @@ private extension CrewFocusRoomBackendView {
             }
 
             HStack(spacing: 10) {
-                waitingMiniPill(title: "Gerekli", value: "\(requiredParticipantCount)")
+                waitingMiniPill(title: tr("cfrb_required"), value: "\(requiredParticipantCount)")
                 waitingMiniPill(title: tr("cfr_joined"), value: "\(participants.count)")
                 waitingMiniPill(title: "Durum", value: hasEnoughParticipants ? tr("hf_ready") : "Bekliyor")
             }
@@ -619,7 +619,7 @@ private extension CrewFocusRoomBackendView {
                         Spacer()
 
                         if participant.member_name == localSession.host_name {
-                            Text("Host")
+                            Text(tr("cfr_host"))
                                 .font(.caption2.weight(.bold))
                                 .foregroundStyle(.green)
                                 .padding(.horizontal, 8)
@@ -678,7 +678,7 @@ private extension CrewFocusRoomBackendView {
     }
 
     func localizedMinutesText(_ minutes: Int) -> String {
-        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+        let isTurkish = !appLanguageIsEnglish()
         return isTurkish ? "\(minutes) dk" : "\(minutes) min"
     }
 }

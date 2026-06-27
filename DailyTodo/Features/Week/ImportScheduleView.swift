@@ -161,7 +161,7 @@ struct ImportScheduleView: View {
                 Capsule()
                     .fill(
                         LinearGradient(
-                            colors: [UpdoTheme.cyan, Color(updoHex: "#22D3EE")],
+                            colors: [UpdoTheme.cyan, Color(arenaHex: "#22D3EE")],
                             startPoint: .leading,
                             endPoint: .trailing
                         )

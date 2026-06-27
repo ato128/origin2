@@ -20,6 +20,17 @@ struct HomeDashboardView: View {
 
     @AppStorage("homeDashboardAnimatedAppearCount") private var homeDashboardAnimatedAppearCount: Int = 0
 
+    /// First-run activation card state — 0 = unevaluated, 1 = active, 2 = retired.
+    @AppStorage("homeStarterStateV1") var homeStarterStateRaw: Int = 0
+
+    /// Day-of-year on which the user accepted today's Updo AI challenge (-1 = none).
+    @AppStorage("updoChallengeAcceptedDayV1") var challengeAcceptedDay: Int = -1
+
+    /// Lifetime + streak counters for accepted Updo AI challenges.
+    @AppStorage("challengeStreakCountV1") var challengeStreakCount: Int = 0
+    @AppStorage("challengeAcceptedTotalV1") var challengeAcceptedTotal: Int = 0
+    @AppStorage("lastAcceptedChallengeDayV1") var lastAcceptedChallengeDay: Int = -100
+
     let palette = ThemePalette()
 
     @Environment(\.modelContext) var modelContext
@@ -36,6 +47,7 @@ struct HomeDashboardView: View {
     @Query(sort: \FriendMessage.createdAt, order: .reverse) var allFriendMessages: [FriendMessage]
     @Query var focusSessions: [CrewFocusSession]
     @Query var allWorkoutExercises: [WorkoutExerciseItem]
+    @Query var allFocusRecords: [FocusSessionRecord]
 
     let onAddTask: () -> Void
     let onOpenWeek: () -> Void
@@ -46,6 +58,7 @@ struct HomeDashboardView: View {
     
     @State var selectedDay: Int = 0
     @State var showFriendsShortcut = false
+    @State var showCrewShortcut = false
     @State var showRecentFriendChat = false
     @State var showTasksShortcut = false
     @State var showStudyCoach = false
@@ -58,6 +71,9 @@ struct HomeDashboardView: View {
     @State var showTodayTasksCard = false
     @State var showMomentumCard = false
     @State var showWeekCard = false
+
+    @State var aiSuggestionExpanded: Bool = false
+    @State var didAutoOpenAISuggestion: Bool = false
 
     @State var inlineWorkoutExerciseIndex: Int = 0
     @State var inlineWorkoutCurrentSet: Int = 1
@@ -382,6 +398,17 @@ struct HomeDashboardView: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 16) {
+                if shouldShowStarterCard {
+                    starterCard
+                        .offset(y: showHeaderCard ? 0 : 18)
+                        .opacity(showHeaderCard ? 1 : 0)
+                        .scaleEffect(showHeaderCard ? 1 : 0.985)
+                        .transition(.asymmetric(
+                            insertion: .opacity,
+                            removal: .scale(scale: 0.95).combined(with: .opacity)
+                        ))
+                }
+
                 todayOverviewTopCards
                     .offset(y: showOverviewCards ? 0 : 18)
                     .opacity(showOverviewCards ? 1 : 0)
@@ -395,6 +422,16 @@ struct HomeDashboardView: View {
                 }
 
                 suggestedActionSection
+
+                if shouldShowUpdoAISuggestion {
+                    updoAISuggestionCard
+                        .offset(y: showOverviewCards ? 0 : 18)
+                        .opacity(showOverviewCards ? 1 : 0)
+                        .transition(.asymmetric(
+                            insertion: .opacity,
+                            removal: .scale(scale: 0.96).combined(with: .opacity)
+                        ))
+                }
 
                 if shouldShowTodayTasksCard {
                     todayTasksCard
@@ -437,6 +474,11 @@ struct HomeDashboardView: View {
                 CrewView(initialTab: .friends)
             }
         }
+        .sheet(isPresented: $showCrewShortcut) {
+            NavigationStack {
+                CrewView(initialTab: .crews)
+            }
+        }
         .sheet(isPresented: $showTasksShortcut) {
             NavigationStack {
                 TasksView()
@@ -453,6 +495,8 @@ struct HomeDashboardView: View {
         }
         .onAppear {
             selectedDay = weekdayIndexToday()
+
+            evaluateStarterCardOnAppear()
 
             if !didLoadCrewFocusSessions {
                 didLoadCrewFocusSessions = true

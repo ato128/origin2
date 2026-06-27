@@ -9,25 +9,25 @@ import SwiftUI
 import UIKit
 
 private enum BackendCrewArenaPalette {
-    static let backgroundTop = Color(crewDetailHex: "#05060D")
-    static let backgroundMid = Color(crewDetailHex: "#070713")
-    static let backgroundBottom = Color(crewDetailHex: "#07040C")
+    static let backgroundTop = Color(arenaHex: "#05060D")
+    static let backgroundMid = Color(arenaHex: "#070713")
+    static let backgroundBottom = Color(arenaHex: "#07040C")
 
-    static let blue = Color(crewDetailHex: "#1593FF")
-    static let cyan = Color(crewDetailHex: "#2DD4FF")
-    static let purple = Color(crewDetailHex: "#7C3AED")
-    static let coral = Color(crewDetailHex: "#FF5A44")
-    static let gold = Color(crewDetailHex: "#FBBF24")
-    static let green = Color(crewDetailHex: "#A3E635")
+    static let blue = Color(arenaHex: "#1593FF")
+    static let cyan = Color(arenaHex: "#2DD4FF")
+    static let purple = Color(arenaHex: "#7C3AED")
+    static let coral = Color(arenaHex: "#FF5A44")
+    static let gold = Color(arenaHex: "#FBBF24")
+    static let green = Color(arenaHex: "#A3E635")
 
-    static let surface = Color(crewDetailHex: "#101118")
-    static let surface2 = Color(crewDetailHex: "#171821")
+    static let surface = Color(arenaHex: "#101118")
+    static let surface2 = Color(arenaHex: "#171821")
 
     static var appGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(crewDetailHex: "#1E6BFF"),
-                Color(crewDetailHex: "#7C3AED")
+                Color(arenaHex: "#1E6BFF"),
+                Color(arenaHex: "#7C3AED")
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -37,9 +37,9 @@ private enum BackendCrewArenaPalette {
     static var crewGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(crewDetailHex: "#1E6BFF").opacity(0.88),
-                Color(crewDetailHex: "#7C3AED").opacity(0.86),
-                Color(crewDetailHex: "#FF5A44").opacity(0.58)
+                Color(arenaHex: "#1E6BFF").opacity(0.88),
+                Color(arenaHex: "#7C3AED").opacity(0.86),
+                Color(arenaHex: "#FF5A44").opacity(0.58)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -231,7 +231,7 @@ struct BackendCrewDetailView: View {
                 memberToRemove = nil
             }
         } message: {
-            Text("backend_crew_remove_member_message")
+            Text(tr("backend_crew_remove_member_message"))
         }
         .confirmationDialog(
             String(localized: "backend_crew_delete_title"),
@@ -260,7 +260,7 @@ struct BackendCrewDetailView: View {
 
             Button(String(localized: "common_cancel"), role: .cancel) { }
         } message: {
-            Text("backend_crew_delete_message")
+            Text(tr("backend_crew_delete_message"))
         }
     }
 
@@ -295,7 +295,7 @@ extension BackendCrewDetailView {
                 )
 
             VStack(spacing: 8) {
-                Text("Davet Kodu")
+                Text(tr("bcd_invite_code"))
                     .font(.system(size: 24, weight: .black))
                     .foregroundStyle(.white)
 
@@ -337,7 +337,7 @@ extension BackendCrewDetailView {
             .buttonStyle(.plain)
 
             if inviteCopied {
-                Text("backend_crew_code_copied_success")
+                Text(tr("backend_crew_code_copied_success"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.52))
                     .transition(.opacity)
@@ -437,8 +437,8 @@ extension BackendCrewDetailView {
 
         return VStack(alignment: .leading, spacing: 16) {
             sectionTitle(
-                eyebrow: "CREW RHYTHM",
-                title: "Performans",
+                eyebrow: tr("bcd_rhythm_caps"),
+                title: tr("bcd_performance"),
                 italic: tr("bcd_summary_word")
             )
 
@@ -460,7 +460,7 @@ extension BackendCrewDetailView {
                     if let nextTarget {
                         VStack(alignment: .leading, spacing: 7) {
                             HStack {
-                                Text("Sonraki rozet")
+                                Text(tr("bcd_next_badge_label"))
                                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                                     .tracking(1.1)
                                     .foregroundStyle(.white.opacity(0.38))
@@ -483,7 +483,7 @@ extension BackendCrewDetailView {
                             .font(.system(size: 12, weight: .black))
                             .foregroundStyle(BackendCrewArenaPalette.coral)
 
-                        Text("Seri \(currentStreakText)")
+                        Text(tr("bcd_streak", currentStreakText))
                             .font(.system(size: 12, weight: .black, design: .monospaced))
                             .foregroundStyle(BackendCrewArenaPalette.coral)
                     }
@@ -506,7 +506,7 @@ extension BackendCrewDetailView {
                                 .foregroundStyle(.white.opacity(0.78))
                                 .lineLimit(1)
 
-                            Text("\(topMember.minutes) dk odak")
+                            Text(tr("bcd_min_focus", topMember.minutes))
                                 .font(.system(size: 12, weight: .bold, design: .monospaced))
                                 .foregroundStyle(BackendCrewArenaPalette.gold)
                         } else {
@@ -642,19 +642,19 @@ extension BackendCrewDetailView {
     var leaderboardCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("backend_crew_leaderboard")
+                Text(tr("backend_crew_leaderboard"))
                     .font(.headline)
                     .foregroundStyle(palette.primaryText)
 
                 Spacer()
 
-                Text("common_today")
+                Text(tr("common_today"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(palette.secondaryText)
             }
 
             if topThreeLeaderboard.isEmpty {
-                Text("backend_crew_no_focus_today")
+                Text(tr("backend_crew_no_focus_today"))
                     .font(.subheadline)
                     .foregroundStyle(palette.secondaryText)
             } else {
@@ -681,11 +681,11 @@ extension BackendCrewDetailView {
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("backend_crew_badge")
+                    Text(tr("backend_crew_badge"))
                         .font(.headline)
                         .foregroundStyle(palette.primaryText)
 
-                    Text("backend_crew_badge_subtitle")
+                    Text(tr("backend_crew_badge_subtitle"))
                         .font(.caption)
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -733,7 +733,7 @@ extension BackendCrewDetailView {
             if let nextTarget {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text("backend_crew_next_badge")
+                        Text(tr("backend_crew_next_badge"))
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(palette.secondaryText)
 
@@ -801,8 +801,8 @@ extension BackendCrewDetailView {
         return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center) {
                 sectionTitle(
-                    eyebrow: "LIVE ACTIVITY",
-                    title: "Aktivite",
+                    eyebrow: tr("bcd_live_activity_caps"),
+                    title: tr("bcd_activity"),
                     italic: tr("tv_flow_word")
                 )
 
@@ -895,7 +895,7 @@ extension BackendCrewDetailView {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "chevron.left")
+                Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
                     .font(.system(size: 19, weight: .black))
                     .foregroundStyle(.white)
                     .frame(width: 46, height: 46)
@@ -913,7 +913,7 @@ extension BackendCrewDetailView {
             Spacer()
 
             VStack(spacing: 3) {
-                Text("CREW SPACE")
+                Text(tr("bcd_crew_space_caps"))
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .tracking(2.2)
                     .foregroundStyle(BackendCrewArenaPalette.cyan)
@@ -939,7 +939,7 @@ extension BackendCrewDetailView {
                         ProgressView()
                             .tint(.white)
                     } else {
-                        Image(systemName: "ellipsis")
+                        Image(systemName: "ellipsis").accessibilityLabel(tr("a11y_more"))
                             .font(.system(size: 19, weight: .black))
                             .foregroundStyle(.white)
                     }
@@ -984,7 +984,7 @@ extension BackendCrewDetailView {
                     )
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("ACTIVE CREW")
+                    Text(tr("bcd_active_crew_caps"))
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .tracking(2)
                         .foregroundStyle(BackendCrewArenaPalette.cyan)
@@ -1072,7 +1072,7 @@ extension BackendCrewDetailView {
                         }
                     }
                 } label: {
-                    Label("Davet Et", systemImage: "person.badge.plus")
+                    Label(tr("bcd_invite"), systemImage: "person.badge.plus")
                         .font(.system(size: 13, weight: .black))
                         .foregroundStyle(BackendCrewArenaPalette.green)
                         .padding(.horizontal, 14)
@@ -1142,7 +1142,7 @@ extension BackendCrewDetailView {
     func quickStatsRow(completed: Int, pending: Int, memberCount: Int) -> some View {
         HStack(spacing: 10) {
             detailMiniStatCard(
-                title: "Biten",
+                title: tr("tasks_summary_done"),
                 value: "\(completed)",
                 icon: "checkmark.circle.fill",
                 tint: BackendCrewArenaPalette.green
@@ -1213,7 +1213,7 @@ extension BackendCrewDetailView {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center) {
                 sectionTitle(
-                    eyebrow: "CREW MEMBERS",
+                    eyebrow: tr("bcd_members_caps"),
                     title: tr("bcd_members"),
                     italic: tr("bcd_team_word")
                 )
@@ -1251,7 +1251,7 @@ extension BackendCrewDetailView {
                     Button {
                         showAddMember = true
                     } label: {
-                        Image(systemName: "plus")
+                        Image(systemName: "plus").accessibilityLabel(tr("common_add"))
                             .font(.system(size: 13, weight: .black))
                             .foregroundStyle(BackendCrewArenaPalette.blue)
                             .frame(width: 36, height: 36)
@@ -1360,7 +1360,7 @@ extension BackendCrewDetailView {
                         Circle()
                             .fill(BackendCrewArenaPalette.green)
                             .frame(width: 6, height: 6)
-                        Text("ODAKTA")
+                        Text(tr("bcd_focusing_caps"))
                             .font(.system(size: 10, weight: .black, design: .monospaced))
                     }
                     .foregroundStyle(BackendCrewArenaPalette.green)
@@ -1387,8 +1387,8 @@ extension BackendCrewDetailView {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center) {
                 sectionTitle(
-                    eyebrow: "SHARED TASKS",
-                    title: "Ortak",
+                    eyebrow: tr("bcd_shared_tasks_caps"),
+                    title: tr("bcd_shared"),
                     italic: tr("tasks_lc")
                 )
 
@@ -1398,8 +1398,8 @@ extension BackendCrewDetailView {
                     showCreateTask = true
                 } label: {
                     HStack(spacing: 7) {
-                        Image(systemName: "plus")
-                        Text("Yeni")
+                        Image(systemName: "plus").accessibilityLabel(tr("common_add"))
+                        Text(tr("bcd_new"))
                     }
                     .font(.system(size: 12, weight: .black, design: .monospaced))
                     .foregroundStyle(.black)
@@ -1627,7 +1627,7 @@ extension BackendCrewDetailView {
             miniIcon(systemName: "timer", tint: BackendCrewArenaPalette.green)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Birlikte Focus")
+                Text(tr("bcd_focus_together"))
                     .font(.system(size: 18, weight: .black))
                     .foregroundStyle(.white)
 
@@ -1917,53 +1917,5 @@ extension BackendCrewDetailView {
                         )
                     )
             )
-    }
-}
-
-private extension Color {
-    init(crewDetailHex hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let a: UInt64
-        let r: UInt64
-        let g: UInt64
-        let b: UInt64
-
-        switch cleaned.count {
-        case 3:
-            a = 255
-            r = (int >> 8) * 17
-            g = ((int >> 4) & 0xF) * 17
-            b = (int & 0xF) * 17
-
-        case 6:
-            a = 255
-            r = int >> 16
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        case 8:
-            a = int >> 24
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        default:
-            a = 255
-            r = 255
-            g = 255
-            b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
     }
 }

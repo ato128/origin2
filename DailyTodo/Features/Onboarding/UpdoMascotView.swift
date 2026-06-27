@@ -32,10 +32,10 @@ struct UpdoMascotView: View {
     @State private var glow: Double = 0
 
     // Gold engineering palette (no blue/purple).
-    private let gBright = Color(updoHex: "#FFF3D2")
-    private let gGold   = Color(updoHex: "#FBBF24")
-    private let gAmber  = Color(updoHex: "#F59E0B")
-    private let gDeep   = Color(updoHex: "#B45309")
+    private let gBright = Color(arenaHex: "#FFF3D2")
+    private let gGold   = Color(arenaHex: "#FBBF24")
+    private let gAmber  = Color(arenaHex: "#F59E0B")
+    private let gDeep   = Color(arenaHex: "#B45309")
 
     private var totalW: CGFloat { size * 2.30 }
     private var stripH: CGFloat { size * 1.05 }
@@ -256,7 +256,7 @@ struct NorthArrowShape: Shape {
 
 #Preview {
     ZStack {
-        Color(updoHex: "#05060D").ignoresSafeArea()
+        Color(arenaHex: "#05060D").ignoresSafeArea()
         UpdoMascotView(isSpeaking: true)
     }
 }

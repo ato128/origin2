@@ -15,24 +15,24 @@ import SwiftData
 import Supabase
 
 private enum FriendChatArenaPalette {
-    static let backgroundTop = Color(friendChatHex: "#05060D")
-    static let backgroundMid = Color(friendChatHex: "#070713")
-    static let backgroundBottom = Color(friendChatHex: "#07040C")
+    static let backgroundTop = Color(arenaHex: "#05060D")
+    static let backgroundMid = Color(arenaHex: "#070713")
+    static let backgroundBottom = Color(arenaHex: "#07040C")
 
-    static let blue = Color(friendChatHex: "#1593FF")
-    static let cyan = Color(friendChatHex: "#2DD4FF")
-    static let purple = Color(friendChatHex: "#7C3AED")
-    static let coral = Color(friendChatHex: "#FF5A44")
-    static let gold = Color(friendChatHex: "#FBBF24")
-    static let green = Color(friendChatHex: "#A3E635")
-    static let surface = Color(friendChatHex: "#101118")
+    static let blue = Color(arenaHex: "#1593FF")
+    static let cyan = Color(arenaHex: "#2DD4FF")
+    static let purple = Color(arenaHex: "#7C3AED")
+    static let coral = Color(arenaHex: "#FF5A44")
+    static let gold = Color(arenaHex: "#FBBF24")
+    static let green = Color(arenaHex: "#A3E635")
+    static let surface = Color(arenaHex: "#101118")
 
     // Updo AI ile birebir: cyan → mor.
     static var appGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(friendChatHex: "#2DD4FF"),
-                Color(friendChatHex: "#7C3AED")
+                Color(arenaHex: "#2DD4FF"),
+                Color(arenaHex: "#7C3AED")
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -42,8 +42,8 @@ private enum FriendChatArenaPalette {
     static var sentBubbleGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(friendChatHex: "#2DD4FF"),
-                Color(friendChatHex: "#7C3AED")
+                Color(arenaHex: "#2DD4FF"),
+                Color(arenaHex: "#7C3AED")
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -266,7 +266,7 @@ struct FriendChatView: View {
                 }
             }
             .alert("Bilgi", isPresented: $showAttachmentAlert) {
-                Button("Tamam", role: .cancel) { }
+                Button(tr("common_ok"), role: .cancel) { }
             } message: {
                 Text(attachmentAlertText)
             }
@@ -314,7 +314,7 @@ struct FriendChatView: View {
                             handleScenePhaseChange(newPhase)
                         }
                         .alert("Mikrofon izni gerekli", isPresented: $showMicPermissionAlert) {
-                Button("Ayarlar") {
+                Button(tr("settings_title")) {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
                         UIApplication.shared.open(url)
                     }
@@ -353,7 +353,7 @@ private extension FriendChatView {
                 Button {
                     dismiss()
                 } label: {
-                    Image(systemName: "chevron.left")
+                    Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
                         .font(.system(size: 19, weight: .black))
                         .foregroundStyle(.white)
                         .frame(width: 46, height: 46)
@@ -429,7 +429,7 @@ private extension FriendChatView {
                 Button {
                     showFriendInfo = true
                 } label: {
-                    Image(systemName: "ellipsis")
+                    Image(systemName: "ellipsis").accessibilityLabel(tr("a11y_more"))
                         .font(.system(size: 19, weight: .black))
                         .foregroundStyle(.white)
                         .frame(width: 46, height: 46)
@@ -547,7 +547,7 @@ private extension FriendChatView {
                     await syncChatBackendFriendshipIfNeeded()
                 }
             } label: {
-                Text("Tekrar dene")
+                Text(tr("common_retry"))
                     .font(.system(size: 14, weight: .black))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 22)
@@ -845,16 +845,16 @@ private extension FriendChatView {
                     Button {
                         showCamera = true
                     } label: {
-                        Label("Kamera", systemImage: "camera")
+                        Label(tr("fcv_camera"), systemImage: "camera")
                     }
 
                     Button {
                         showFileImporter = true
                     } label: {
-                        Label("Dosya", systemImage: "doc")
+                        Label(tr("fcv_file"), systemImage: "doc")
                     }
                 } label: {
-                    Image(systemName: "plus")
+                    Image(systemName: "plus").accessibilityLabel(tr("common_add"))
                         .font(.system(size: 20, weight: .black))
                         .foregroundStyle(.white.opacity(0.95))
                         .frame(width: 42, height: 42)
@@ -2117,7 +2117,7 @@ private extension FriendChatView {
                     }
                 }
                 .alert("Bilgi", isPresented: $showImageSaveAlert) {
-                    Button("Tamam", role: .cancel) { }
+                    Button(tr("common_ok"), role: .cancel) { }
                 } message: {
                     Text(imageSaveAlertText)
                 }
@@ -2639,7 +2639,7 @@ private extension FriendChatView {
                             Button {
                                 dismiss()
                             } label: {
-                                Image(systemName: "xmark")
+                                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                                     .font(.system(size: 18, weight: .semibold))
                                     .foregroundStyle(.white)
                                     .frame(width: 42, height: 42)
@@ -2717,53 +2717,6 @@ private extension FriendChatView {
         
         // MARK: - Color Hex
         
-        private extension Color {
-            init(friendChatHex hex: String) {
-                let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-                
-                var int: UInt64 = 0
-                Scanner(string: cleaned).scanHexInt64(&int)
-                
-                let a: UInt64
-                let r: UInt64
-                let g: UInt64
-                let b: UInt64
-                
-                switch cleaned.count {
-                case 3:
-                    a = 255
-                    r = (int >> 8) * 17
-                    g = ((int >> 4) & 0xF) * 17
-                    b = (int & 0xF) * 17
-                    
-                case 6:
-                    a = 255
-                    r = int >> 16
-                    g = (int >> 8) & 0xFF
-                    b = int & 0xFF
-                    
-                case 8:
-                    a = int >> 24
-                    r = (int >> 16) & 0xFF
-                    g = (int >> 8) & 0xFF
-                    b = int & 0xFF
-                    
-                default:
-                    a = 255
-                    r = 255
-                    g = 255
-                    b = 255
-                }
-                
-                self.init(
-                    .sRGB,
-                    red: Double(r) / 255,
-                    green: Double(g) / 255,
-                    blue: Double(b) / 255,
-                    opacity: Double(a) / 255
-                )
-            }
-        }
         private extension FriendChatView {
             func syncChatBackendFriendshipIfNeeded() async {
                             await MainActor.run {

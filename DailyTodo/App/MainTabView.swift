@@ -9,6 +9,7 @@
 import SwiftUI
 import SwiftData
 import Foundation
+import UIKit
 
 enum AppTab: Hashable, CaseIterable {
     case tasks
@@ -245,6 +246,17 @@ private extension MainTabView {
             tasks: allTasks,
             focusRecords: allFocusRecords,
             isPro: SubscriptionManager.shared.isPro
+        )
+
+        // Mirror unified stats into widgets / live activities (icon, Pro, streak…).
+        WidgetAppSync.writeUserState(
+            iconName: UIApplication.shared.alternateIconName,
+            isPro: SubscriptionManager.shared.isPro,
+            streak: ProgressionManager.shared.currentStreak,
+            level: ProgressionManager.shared.level,
+            todayFocusMinutes: FocusSessionManager.shared.todayFocusMinutes,
+            statsShared: ProgressionManager.shared.statsSharingEnabled,
+            longestStreak: ProgressionManager.shared.longestStreak
         )
     }
 }

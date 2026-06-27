@@ -121,7 +121,7 @@ struct ExamPlannerSheet: View {
     private var headerBar: some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("EXAM PLANNER")
+                Text(tr("eps_planner_caps"))
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(1.8)
                     .foregroundStyle(accent)
@@ -136,7 +136,7 @@ struct ExamPlannerSheet: View {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 15, weight: .black))
                     .foregroundStyle(.white)
                     .frame(width: 42, height: 42)
@@ -179,7 +179,7 @@ struct ExamPlannerSheet: View {
                             .fill(accent)
                             .frame(width: 20, height: 1)
 
-                        Text("EXAM FLOW")
+                        Text(tr("eps_flow_caps"))
                             .font(.system(size: 10, weight: .black, design: .monospaced))
                             .tracking(1.8)
                             .foregroundStyle(accent)
@@ -304,7 +304,7 @@ struct ExamPlannerSheet: View {
             .pickerStyle(.segmented)
 
             HStack {
-                Label("Tarih", systemImage: "calendar")
+                Label(tr("eps_date"), systemImage: "calendar")
                     .font(.system(size: 15, weight: .black))
                     .foregroundStyle(.white.opacity(0.82))
 
@@ -320,7 +320,7 @@ struct ExamPlannerSheet: View {
                     Image(systemName: "list.bullet")
                         .font(.system(size: 12, weight: .black))
                         .foregroundStyle(accent)
-                    Text("KONULAR")
+                    Text(tr("eps_topics_caps"))
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .tracking(1.2)
                         .foregroundStyle(accent)
@@ -478,7 +478,7 @@ struct ExamPlannerSheet: View {
                 createManualDay()
             } label: {
                 HStack {
-                    Image(systemName: "plus")
+                    Image(systemName: "plus").accessibilityLabel(tr("common_add"))
                     Text(tr("ep_add_day_caps"))
                     Spacer()
                 }

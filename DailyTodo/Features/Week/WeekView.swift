@@ -200,7 +200,7 @@ struct WeekView: View {
     }
 
     private var addIconButton: some View {
-        Image(systemName: "plus")
+        Image(systemName: "plus").accessibilityLabel(tr("common_add"))
             .font(.system(size: 16, weight: .black))
             .foregroundStyle(.black)
             .frame(width: 40, height: 40)
@@ -696,7 +696,7 @@ struct WeekView: View {
                         .font(.system(size: 11, weight: .black))
                         .foregroundStyle(Color(arenaHex: AppArenaPalette.purple))
 
-                    Text("GÖREVLER")
+                    Text(tr("wv_tasks_caps"))
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .tracking(1.6)
                         .foregroundStyle(.white.opacity(0.5))
@@ -840,7 +840,7 @@ struct WeekView: View {
                 Spacer(minLength: 4)
 
                 HStack(spacing: 4) {
-                    Image(systemName: "plus")
+                    Image(systemName: "plus").accessibilityLabel(tr("common_add"))
                         .font(.system(size: 9, weight: .black))
 
                     Text("EKLE")
@@ -896,7 +896,7 @@ struct WeekView: View {
                 }
 
                 HStack(spacing: 6) {
-                    Image(systemName: "plus")
+                    Image(systemName: "plus").accessibilityLabel(tr("common_add"))
                         .font(.system(size: 11, weight: .black))
 
                     Text("EKLE")
@@ -1584,7 +1584,7 @@ private struct CalendarSheet: View {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 13, weight: .black))
                     .foregroundStyle(.white)
                     .frame(width: 36, height: 36)
@@ -1608,7 +1608,7 @@ private struct CalendarSheet: View {
                         }
                     }
                 } label: {
-                    Image(systemName: "chevron.left")
+                    Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
                         .font(.system(size: 11, weight: .black))
                         .foregroundStyle(.white.opacity(0.65))
                         .frame(width: 32, height: 32)
@@ -1845,14 +1845,14 @@ private struct CalendarSheet: View {
                     .font(.system(size: 11, weight: .black))
                     .foregroundStyle(Color(arenaHex: AppArenaPalette.purple))
 
-                Text("BU AYIN GÖREVLERİ")
+                Text(tr("wv_month_tasks_caps"))
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(1.4)
                     .foregroundStyle(.white.opacity(0.5))
             }
 
             if groups.isEmpty {
-                Text("Bu ayda planlanmış görev yok.")
+                Text(tr("wv_no_month_tasks"))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.4))
                     .padding(.vertical, 6)

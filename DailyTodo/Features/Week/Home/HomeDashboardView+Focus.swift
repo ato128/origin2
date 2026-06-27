@@ -30,7 +30,7 @@ extension HomeDashboardView {
                                     .lineLimit(1)
 
                                 if isLinkedToCurrentFocus {
-                                    focusStateTag(title: "Odakta", tint: accent)
+                                    focusStateTag(title: tr("hdf_focusing"), tint: accent)
                                 }
                             }
 
@@ -148,7 +148,7 @@ extension HomeDashboardView {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Ortak Odak")
+                        Text(tr("hdf_shared_focus"))
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(palette.secondaryText)
 
@@ -259,11 +259,11 @@ extension HomeDashboardView {
         return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Ortak Odak")
+                    Text(tr("hdf_shared_focus"))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(palette.secondaryText)
 
-                    Text("Birden Fazla Aktif Crew Focus")
+                    Text(tr("hdf_multiple_active"))
                         .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
                         .lineLimit(2)

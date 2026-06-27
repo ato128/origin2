@@ -47,10 +47,10 @@ struct AuthFormSheetView: View {
                     dismiss()
                 } label: {
                     HStack(spacing: 7) {
-                        Text("Close")
+                        Text(tr("event_close"))
                             .font(.system(size: 13, weight: .black, design: .rounded))
 
-                        Image(systemName: "xmark")
+                        Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                             .font(.system(size: 12, weight: .black))
                     }
                     .foregroundStyle(.white.opacity(0.82))
@@ -77,7 +77,7 @@ private extension AuthFormSheetView {
             Text("— \(mode.eyebrow) —")
                 .font(.system(size: 10, weight: .semibold, design: .monospaced))
                 .tracking(2.5)
-                .foregroundStyle(Color(authFormHex: AuthFormPalette.appCyan))
+                .foregroundStyle(Color(arenaHex: AuthFormPalette.appCyan))
 
             HStack(alignment: .firstTextBaseline, spacing: 7) {
                 Text(mode.titleFirst)
@@ -90,8 +90,8 @@ private extension AuthFormSheetView {
                     .foregroundStyle(
                         LinearGradient(
                             colors: [
-                                Color(authFormHex: AuthFormPalette.appCyan),
-                                Color(authFormHex: AuthFormPalette.appPurple)
+                                Color(arenaHex: AuthFormPalette.appCyan),
+                                Color(arenaHex: AuthFormPalette.appPurple)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -114,8 +114,8 @@ private extension AuthFormSheetView {
         VStack(spacing: 15) {
             if mode == .signup {
                 premiumField(
-                    title: "Name",
-                    placeholder: "Your name",
+                    title: tr("afs_name"),
+                    placeholder: tr("afs_name_ph"),
                     text: $name,
                     systemImage: "person.fill",
                     capitalization: .words
@@ -123,7 +123,7 @@ private extension AuthFormSheetView {
             }
 
             premiumField(
-                title: "Email",
+                title: tr("afs_email"),
                 placeholder: "you@example.com",
                 text: $email,
                 systemImage: "envelope.fill",
@@ -131,7 +131,7 @@ private extension AuthFormSheetView {
             )
 
             passwordField(
-                title: "Password",
+                title: tr("afs_password"),
                 placeholder: "Password",
                 text: $password,
                 showText: $showPassword
@@ -187,7 +187,7 @@ private extension AuthFormSheetView {
                         .stroke(Color.white.opacity(canSubmit ? 0.16 : 0.06), lineWidth: 1)
                 )
                 .shadow(
-                    color: canSubmit ? Color(authFormHex: AuthFormPalette.appPurple).opacity(0.24) : .clear,
+                    color: canSubmit ? Color(arenaHex: AuthFormPalette.appPurple).opacity(0.24) : .clear,
                     radius: 16,
                     y: 8
                 )
@@ -342,7 +342,7 @@ private extension AuthFormSheetView {
             HStack(spacing: 12) {
                 Image(systemName: systemImage)
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(Color(authFormHex: AuthFormPalette.appCyan))
+                    .foregroundStyle(Color(arenaHex: AuthFormPalette.appCyan))
                     .frame(width: 20)
 
                 TextField(placeholder, text: text)
@@ -351,7 +351,7 @@ private extension AuthFormSheetView {
                     .keyboardType(title.lowercased() == "email" ? .emailAddress : .default)
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(.white)
-                    .tint(Color(authFormHex: AuthFormPalette.appCyan))
+                    .tint(Color(arenaHex: AuthFormPalette.appCyan))
             }
             .padding(.horizontal, 16)
             .frame(height: 56)
@@ -374,7 +374,7 @@ private extension AuthFormSheetView {
             HStack(spacing: 12) {
                 Image(systemName: "lock.fill")
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(Color(authFormHex: AuthFormPalette.appCyan))
+                    .foregroundStyle(Color(arenaHex: AuthFormPalette.appCyan))
                     .frame(width: 20)
 
                 Group {
@@ -388,7 +388,7 @@ private extension AuthFormSheetView {
                 .autocorrectionDisabled()
                 .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(.white)
-                .tint(Color(authFormHex: AuthFormPalette.appCyan))
+                .tint(Color(arenaHex: AuthFormPalette.appCyan))
 
                 Button {
                     showText.wrappedValue.toggle()
@@ -418,7 +418,7 @@ private extension AuthFormSheetView {
         HStack(spacing: 11) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 16, weight: .black))
-                .foregroundStyle(Color(authFormHex: AuthFormPalette.coral))
+                .foregroundStyle(Color(arenaHex: AuthFormPalette.coral))
 
             Text(text)
                 .font(.system(size: 13, weight: .bold))
@@ -430,11 +430,11 @@ private extension AuthFormSheetView {
         .padding(13)
         .background(
             RoundedRectangle(cornerRadius: 19, style: .continuous)
-                .fill(Color(authFormHex: AuthFormPalette.coral).opacity(0.12))
+                .fill(Color(arenaHex: AuthFormPalette.coral).opacity(0.12))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 19, style: .continuous)
-                .stroke(Color(authFormHex: AuthFormPalette.coral).opacity(0.22), lineWidth: 1)
+                .stroke(Color(arenaHex: AuthFormPalette.coral).opacity(0.22), lineWidth: 1)
         )
     }
 }
@@ -456,9 +456,9 @@ private enum AuthFormPalette {
     static var hotGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(authFormHex: appBlue),
-                Color(authFormHex: appPurple),
-                Color(authFormHex: coral)
+                Color(arenaHex: appBlue),
+                Color(arenaHex: appPurple),
+                Color(arenaHex: coral)
             ],
             startPoint: .leading,
             endPoint: .trailing
@@ -475,9 +475,9 @@ private struct AuthFormArenaBackground: View {
 
             LinearGradient(
                 colors: [
-                    Color(authFormHex: AuthFormPalette.backgroundTop),
-                    Color(authFormHex: AuthFormPalette.backgroundMid),
-                    Color(authFormHex: AuthFormPalette.backgroundBottom)
+                    Color(arenaHex: AuthFormPalette.backgroundTop),
+                    Color(arenaHex: AuthFormPalette.backgroundMid),
+                    Color(arenaHex: AuthFormPalette.backgroundBottom)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -485,19 +485,19 @@ private struct AuthFormArenaBackground: View {
             .ignoresSafeArea()
 
             Circle()
-                .fill(Color(authFormHex: AuthFormPalette.appBlue).opacity(0.12))
+                .fill(Color(arenaHex: AuthFormPalette.appBlue).opacity(0.12))
                 .frame(width: 270, height: 270)
                 .blur(radius: 98)
                 .offset(x: 165, y: -220)
 
             Circle()
-                .fill(Color(authFormHex: AuthFormPalette.appPurple).opacity(0.16))
+                .fill(Color(arenaHex: AuthFormPalette.appPurple).opacity(0.16))
                 .frame(width: 330, height: 330)
                 .blur(radius: 115)
                 .offset(x: -180, y: 500)
 
             Circle()
-                .fill(Color(authFormHex: AuthFormPalette.coral).opacity(0.070))
+                .fill(Color(arenaHex: AuthFormPalette.coral).opacity(0.070))
                 .frame(width: 280, height: 280)
                 .blur(radius: 105)
                 .offset(x: 170, y: 285)
@@ -528,54 +528,6 @@ private struct AuthFormPressButtonStyle: ButtonStyle {
 }
 
 // MARK: - Color Hex
-
-private extension Color {
-    init(authFormHex hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let a: UInt64
-        let r: UInt64
-        let g: UInt64
-        let b: UInt64
-
-        switch cleaned.count {
-        case 3:
-            a = 255
-            r = (int >> 8) * 17
-            g = ((int >> 4) & 0xF) * 17
-            b = (int & 0xF) * 17
-
-        case 6:
-            a = 255
-            r = int >> 16
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        case 8:
-            a = int >> 24
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        default:
-            a = 255
-            r = 21
-            g = 147
-            b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-}
 
 // MARK: - Mode
 

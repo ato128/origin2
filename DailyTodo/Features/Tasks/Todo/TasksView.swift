@@ -249,7 +249,7 @@ private extension TasksView {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "chevron.left")
+                Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
                     .font(.system(size: 18, weight: .black))
                     .foregroundStyle(.white)
                     .frame(width: 46, height: 46)
@@ -263,7 +263,7 @@ private extension TasksView {
                         .fill(pageAccent)
                         .frame(width: 20, height: 1)
 
-                    Text("TASK FLOW")
+                    Text(tr("tv_task_flow_caps"))
                         .font(.system(size: 11, weight: .black, design: .monospaced))
                         .tracking(2.3)
                         .foregroundStyle(pageAccent)
@@ -303,7 +303,7 @@ private extension TasksView {
             Button {
                 showAddTask = true
             } label: {
-                Image(systemName: "plus")
+                Image(systemName: "plus").accessibilityLabel(tr("common_add"))
                     .font(.system(size: 19, weight: .black))
                     .foregroundStyle(.black)
                     .frame(width: 48, height: 48)
@@ -326,7 +326,7 @@ private extension TasksView {
                             .fill(pageAccent)
                             .frame(width: 18, height: 1)
 
-                        Text("ACADEMIC FLOW")
+                        Text(tr("tv_academic_flow_caps"))
                             .font(.system(size: 10, weight: .black, design: .monospaced))
                             .tracking(1.7)
                             .foregroundStyle(pageAccent)
@@ -363,7 +363,7 @@ private extension TasksView {
 
             HStack(spacing: 8) {
                 summaryChip(title: tr("tv_open"), value: "\(openCount)", tint: Color(arenaHex: AppArenaPalette.blue))
-                summaryChip(title: "Biten", value: "\(doneCount)", tint: Color(arenaHex: AppArenaPalette.green))
+                summaryChip(title: tr("tasks_summary_done"), value: "\(doneCount)", tint: Color(arenaHex: AppArenaPalette.green))
                 summaryChip(title: tr("common_today"), value: "\(todayOpenCount)", tint: Color(arenaHex: AppArenaPalette.gold))
             }
         }
@@ -618,7 +618,7 @@ private extension TasksView {
     var examScheduleSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
-                eyebrow: "EXAM SCHEDULE",
+                eyebrow: tr("tv_exam_schedule_caps"),
                 title: tr("at_kind_exam"),
                 italic: "takvimi",
                 subtitle: tr("tv_exam_section_sub"),
@@ -693,7 +693,7 @@ private extension TasksView {
                     .font(.system(size: 16, weight: .black, design: .monospaced))
                     .foregroundStyle(accent)
 
-                Text("HAZIRLIK")
+                Text(tr("tv_prep_caps"))
                     .font(.system(size: 9, weight: .black, design: .monospaced))
                     .tracking(0.7)
                     .foregroundStyle(.white.opacity(0.40))
@@ -742,7 +742,7 @@ private extension TasksView {
     var upcomingExamsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
-                eyebrow: "UPCOMING",
+                eyebrow: tr("tv_upcoming_caps"),
                 title: tr("tv_upcoming"),
                 italic: tr("tv_exams_lc"),
                 subtitle: tr("tv_start_early"),
@@ -873,7 +873,7 @@ private extension TasksView {
 
                             Spacer()
 
-                            Text("\(completedLinkedMinutes(for: exam))/\(exam.targetStudyMinutes) dk")
+                            Text(tr("tv_min_progress", completedLinkedMinutes(for: exam), exam.targetStudyMinutes))
                                 .font(.system(size: 11, weight: .black, design: .monospaced))
                                 .foregroundStyle(.white.opacity(0.46))
                         }
@@ -952,7 +952,7 @@ private extension TasksView {
                 Spacer()
 
                 if let mins = task.workoutDurationMinutes {
-                    Text("\(mins) dk")
+                    Text(tr("rel_min_short_n", mins))
                         .font(.system(size: 11, weight: .black, design: .monospaced))
                         .foregroundStyle(task.isDone ? .white.opacity(0.40) : Color(arenaHex: AppArenaPalette.gold))
                 }

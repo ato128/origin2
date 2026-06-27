@@ -64,7 +64,7 @@ struct JoinFocusSheet: View {
                     Button {
                         let joinMessage = FriendMessage(
                             friendID: friend.id,
-                            senderName: locale.language.languageCode?.identifier == "tr" ? "Ben" : "Me",
+                            senderName: !appLanguageIsEnglish() ? "Ben" : "Me",
                             text: localizedJoinedMessage(),
                             isFromMe: true
                         )
@@ -124,7 +124,7 @@ struct JoinFocusSheet: View {
     }
 
     func localizedSharedFocusSubtitle() -> String {
-        if locale.language.languageCode?.identifier == "tr" {
+        if !appLanguageIsEnglish() {
             return tr("jf_in_session", friend.name)
         } else {
             return "\(friend.name) is currently in a shared focus session."
@@ -132,7 +132,7 @@ struct JoinFocusSheet: View {
     }
 
     func localizedMinutes(_ minutes: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
+        if !appLanguageIsEnglish() {
             return "\(minutes) dk"
         } else {
             return "\(minutes) min"
@@ -140,7 +140,7 @@ struct JoinFocusSheet: View {
     }
 
     func localizedMinutesLeft(_ minutes: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
+        if !appLanguageIsEnglish() {
             return tr("rel_min_left", minutes)
         } else {
             return "\(minutes) min left"
@@ -148,7 +148,7 @@ struct JoinFocusSheet: View {
     }
 
     func localizedJoinedMessage() -> String {
-        if locale.language.languageCode?.identifier == "tr" {
+        if !appLanguageIsEnglish() {
             return tr("jf_joined", friend.name)
         } else {
             return "I joined \(friend.name)’s shared focus session."
@@ -156,7 +156,7 @@ struct JoinFocusSheet: View {
     }
 
     func localizedFocusWithFriendTitle() -> String {
-        if locale.language.languageCode?.identifier == "tr" {
+        if !appLanguageIsEnglish() {
             return "\(friend.name) ile odaklan"
         } else {
             return "Focus with \(friend.name)"

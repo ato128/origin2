@@ -26,7 +26,7 @@ struct InsightsViewModel {
     }
 
     private var isTurkish: Bool {
-        localeIdentifier.hasPrefix("tr")
+        !appLanguageIsEnglish()
     }
 
     private var dayLabels: [String] {

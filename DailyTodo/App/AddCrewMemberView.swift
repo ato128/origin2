@@ -7,23 +7,23 @@
 import SwiftUI
 
 private enum AddCrewMemberArenaPalette {
-    static let backgroundTop = Color(addMemberHex: "#05060D")
-    static let backgroundMid = Color(addMemberHex: "#070713")
-    static let backgroundBottom = Color(addMemberHex: "#07040C")
+    static let backgroundTop = Color(arenaHex: "#05060D")
+    static let backgroundMid = Color(arenaHex: "#070713")
+    static let backgroundBottom = Color(arenaHex: "#07040C")
 
-    static let blue = Color(addMemberHex: "#1593FF")
-    static let cyan = Color(addMemberHex: "#2DD4FF")
-    static let purple = Color(addMemberHex: "#7C3AED")
-    static let coral = Color(addMemberHex: "#FF5A44")
-    static let gold = Color(addMemberHex: "#FBBF24")
-    static let green = Color(addMemberHex: "#A3E635")
-    static let surface = Color(addMemberHex: "#101118")
+    static let blue = Color(arenaHex: "#1593FF")
+    static let cyan = Color(arenaHex: "#2DD4FF")
+    static let purple = Color(arenaHex: "#7C3AED")
+    static let coral = Color(arenaHex: "#FF5A44")
+    static let gold = Color(arenaHex: "#FBBF24")
+    static let green = Color(arenaHex: "#A3E635")
+    static let surface = Color(arenaHex: "#101118")
 
     static var appGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(addMemberHex: "#1E6BFF"),
-                Color(addMemberHex: "#7C3AED")
+                Color(arenaHex: "#1E6BFF"),
+                Color(arenaHex: "#7C3AED")
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -135,7 +135,7 @@ private extension AddCrewMemberView {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 17, weight: .black))
                     .foregroundStyle(.white)
                     .frame(width: 46, height: 46)
@@ -441,51 +441,3 @@ private extension AddCrewMemberView {
 }
 
 // MARK: - Color Hex
-
-private extension Color {
-    init(addMemberHex hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let a: UInt64
-        let r: UInt64
-        let g: UInt64
-        let b: UInt64
-
-        switch cleaned.count {
-        case 3:
-            a = 255
-            r = (int >> 8) * 17
-            g = ((int >> 4) & 0xF) * 17
-            b = (int & 0xF) * 17
-
-        case 6:
-            a = 255
-            r = int >> 16
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        case 8:
-            a = int >> 24
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        default:
-            a = 255
-            r = 255
-            g = 255
-            b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-}

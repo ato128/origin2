@@ -45,34 +45,33 @@ struct FocusView: View {
             
             GeometryReader { geo in
                 ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 14) {
-                        Color.clear.frame(height: 4)
-                        
+                    VStack(alignment: .leading, spacing: 0) {
                         pageHeader
-                        
+
+                        Spacer(minLength: 18)
+
                         FocusModeSwitcherV3(selectedMode: $selectedMode)
-                        
-                        FocusFullPageStageV7(
-                            mode: effectiveStageMode,
-                            durationText: effectiveStageDurationText,
-                            statusText: effectiveStageStatusText,
-                            metaText: effectiveStageMetaText,
-                            progress: effectiveStageProgress,
-                            isLaunching: isLaunchingFocus
-                        )
-                        
+
+                        Spacer(minLength: 18)
+
+                        focusHeroNumber
+
+                        Spacer(minLength: 16)
+
                         compactControlsSection
-                        
-                        bigStartButton
-                        
+
                         if selectedMode == .crew {
+                            Spacer(minLength: 14)
                             crewSummaryHint
                         }
-                        
-                        Color.clear.frame(height: 112)
+
+                        Spacer(minLength: 16)
+
+                        bigStartButton
+
+                        Color.clear.frame(height: 96)
                     }
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 14)
                     .frame(minHeight: geo.size.height, alignment: .top)
                     .blur(radius: isLaunchingFocus ? 1.5 : 0)
                     .scaleEffect(isLaunchingFocus ? 0.992 : 1)
@@ -210,6 +209,89 @@ struct FocusView: View {
 }
 
 private extension FocusView {
+    /// Bold-number hero: the duration as a large, typography-driven centerpiece
+    /// (matches the Updo widget identity). When a session is live it switches to
+    /// the running MM:SS. No decorative ring — the real progress ring appears in
+    /// the active focus screen.
+    /// Editorial minimal hero — left-aligned giant number, a thin accent rule,
+    /// the unit label and the estimated finish time. Calm, luxurious, restrained
+    /// (no card, no glow chrome). The number is the page.
+    var focusHeroNumber: some View {
+        let isActive = focusSession.isSessionActive
+
+        return VStack(alignment: .leading, spacing: 8) {
+            // Live status
+            HStack(spacing: 7) {
+                Circle()
+                    .fill(selectedModeAccent)
+                    .frame(width: 6, height: 6)
+                    .shadow(color: selectedModeAccent.opacity(0.6), radius: 5)
+
+                Text(effectiveStageStatusText.uppercased())
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                    .tracking(1.8)
+                    .foregroundStyle(.white.opacity(0.55))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+
+            // Giant number — home active-focus serif italic identity
+            FocusHeroDigits(
+                text: isActive ? focusSession.timeString : "\(resolvedMinutes)",
+                accent: selectedModeAccent,
+                size: isActive ? 86 : 104
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(alignment: .leading) {
+                Ellipse()
+                    .fill(selectedModeAccent.opacity(0.12))
+                    .frame(width: 300, height: 190)
+                    .blur(radius: 95)
+                    .offset(x: -40, y: 8)
+                    .allowsHitTesting(false)
+            }
+            .animation(.spring(response: 0.40, dampingFraction: 0.86), value: isActive)
+
+            // Accent rule + unit + finish
+            HStack(spacing: 10) {
+                Rectangle()
+                    .fill(selectedModeAccent)
+                    .frame(width: 38, height: 2)
+
+                Text(isActive ? tr("focus_countdown_caps") : tr("focus_minutes_caps"))
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                    .tracking(2.5)
+                    .foregroundStyle(.white.opacity(0.55))
+
+                Spacer(minLength: 8)
+
+                Text(isActive ? effectiveStageMetaText : tr("focus_finish_prefix", focusFinishText))
+                    .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.40))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .opacity(pageAppeared ? 1 : 0)
+        .scaleEffect(isLaunchingFocus ? 1.02 : 1, anchor: .leading)
+        .blur(radius: isLaunchingFocus ? 0.6 : 0)
+        .animation(.spring(response: 0.6, dampingFraction: 0.88), value: pageAppeared)
+        .animation(.easeInOut(duration: 0.28), value: isLaunchingFocus)
+    }
+
+    /// Estimated clock time the session would end if started now.
+    var focusFinishText: String {
+        let end = Date().addingTimeInterval(TimeInterval(resolvedMinutes * 60))
+        return end.formatted(.dateTime.hour().minute())
+    }
+
+    var editorialDivider: some View {
+        Rectangle()
+            .fill(Color.white.opacity(0.07))
+            .frame(height: 1)
+    }
+
     var pageHeader: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 7) {
@@ -247,11 +329,6 @@ private extension FocusView {
                 }
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
-
-                Text(focusHeaderSubtitle)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
-                    .lineLimit(2)
             }
 
             Spacer(minLength: 8)
@@ -360,41 +437,80 @@ private extension FocusView {
     }
 
     var compactControlsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Rectangle()
-                    .fill(selectedModeAccent.opacity(0.85))
-                    .frame(width: 18, height: 1)
-
-                Text("SETTINGS")
-                    .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .tracking(1.8)
-                    .foregroundStyle(selectedModeAccent)
-            }
-
+        VStack(alignment: .leading, spacing: 18) {
             durationRow
 
-            HStack(spacing: 10) {
-                compactInfoCard(
-                    title: "Goal",
+            VStack(spacing: 0) {
+                editorialDivider
+
+                editorialSettingRow(
+                    title: "GOAL",
                     value: selectedGoal.title,
                     subtitle: selectedGoal.subtitle,
                     icon: selectedGoal.icon,
                     action: { showGoalPicker = true }
                 )
 
-                compactInfoCard(
-                    title: "Sound",
+                editorialDivider
+
+                editorialSettingRow(
+                    title: "SOUND",
                     value: selectedStyle.title,
                     subtitle: selectedStyle.subtitle,
                     icon: selectedStyle.icon,
                     action: { showStylePicker = true }
                 )
+
+                editorialDivider
             }
         }
         .opacity(isLaunchingFocus ? 0.0 : 1)
         .offset(y: isLaunchingFocus ? 10 : 0)
         .animation(.easeInOut(duration: 0.22), value: isLaunchingFocus)
+    }
+
+    func editorialSettingRow(
+        title: String,
+        value: String,
+        subtitle: String,
+        icon: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 13) {
+                Image(systemName: icon)
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(selectedModeAccent)
+                    .frame(width: 22)
+
+                Text(title)
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(1.3)
+                    .foregroundStyle(.white.opacity(0.40))
+                    .frame(width: 50, alignment: .leading)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(value)
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+
+                    Text(subtitle)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.42))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+
+                Spacer(minLength: 6)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .black))
+                    .foregroundStyle(.white.opacity(0.24))
+            }
+            .padding(.vertical, 12)
+        }
+        .buttonStyle(.plain)
     }
 
     var crewSummaryHint: some View {
@@ -458,50 +574,7 @@ private extension FocusView {
             }
         } label: {
             Text(text)
-                .font(.system(size: 14, weight: .black, design: .monospaced))
-                .foregroundStyle(selectedPreset == preset ? .black : .white.opacity(0.58))
-                .frame(maxWidth: .infinity)
-                .frame(height: 42)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(
-                            selectedPreset == preset
-                            ? AnyShapeStyle(
-                                LinearGradient(
-                                    colors: [
-                                        selectedModeAccent,
-                                        selectedModeSecondaryAccent
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            : AnyShapeStyle(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.055),
-                                        Color.white.opacity(0.030)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                        )
-                        .overlay(
-                            Capsule(style: .continuous)
-                                .stroke(
-                                    selectedPreset == preset
-                                    ? Color.white.opacity(0.12)
-                                    : Color.white.opacity(0.070),
-                                    lineWidth: 1
-                                )
-                        )
-                )
-                .shadow(
-                    color: selectedPreset == preset ? selectedModeAccent.opacity(0.20) : .clear,
-                    radius: 14,
-                    y: 7
-                )
+                .editorialDurationChip(selected: selectedPreset == preset, accent: selectedModeAccent)
         }
         .buttonStyle(.plain)
     }
@@ -511,50 +584,7 @@ private extension FocusView {
             showCustomDurationSheet = true
         } label: {
             Text(selectedPreset == .custom ? "\(customMinutes) dk" : tr("wv_custom"))
-                .font(.system(size: 14, weight: .black, design: .monospaced))
-                .foregroundStyle(selectedPreset == .custom ? .black : .white.opacity(0.58))
-                .frame(maxWidth: .infinity)
-                .frame(height: 42)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(
-                            selectedPreset == .custom
-                            ? AnyShapeStyle(
-                                LinearGradient(
-                                    colors: [
-                                        selectedModeAccent,
-                                        selectedModeSecondaryAccent
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            : AnyShapeStyle(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.055),
-                                        Color.white.opacity(0.030)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                        )
-                        .overlay(
-                            Capsule(style: .continuous)
-                                .stroke(
-                                    selectedPreset == .custom
-                                    ? Color.white.opacity(0.12)
-                                    : Color.white.opacity(0.070),
-                                    lineWidth: 1
-                                )
-                        )
-                )
-                .shadow(
-                    color: selectedPreset == .custom ? selectedModeAccent.opacity(0.20) : .clear,
-                    radius: 14,
-                    y: 7
-                )
+                .editorialDurationChip(selected: selectedPreset == .custom, accent: selectedModeAccent)
         }
         .buttonStyle(.plain)
     }
@@ -1877,6 +1907,60 @@ private extension FocusView {
     }
 }
 
+/// Focus hero number rendered in the same serif-italic identity as the home
+/// active-focus card (PremiumCountdownView): bold serif italic digits, a lighter
+/// serif italic colon. Scales as a unit so MM:SS never overflows.
+private struct FocusHeroDigits: View {
+    let text: String
+    let accent: Color
+    var size: CGFloat = 112
+
+    /// Premium brushed-silver fill: bright at the crown, settling into a deep
+    /// graphite with only a whisper of the mode accent at the base. Reads dark
+    /// and expensive rather than neon.
+    private var fill: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color.white.opacity(0.96),
+                Color.white.opacity(0.74),
+                Color(white: 0.42),
+                accent.opacity(0.45)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    var body: some View {
+        let parts = text.split(separator: ":").map(String.init)
+
+        HStack(alignment: .firstTextBaseline, spacing: 0) {
+            ForEach(Array(parts.enumerated()), id: \.offset) { idx, part in
+                if idx > 0 {
+                    Text(":")
+                        .font(.system(size: size * 0.76, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(.white.opacity(0.32))
+                        .offset(y: -size * 0.06)
+                        .padding(.horizontal, 1)
+                }
+
+                Text(part)
+                    .font(.system(size: size, weight: .bold, design: .serif))
+                    .italic()
+                    .foregroundStyle(fill)
+                    .kerning(-size * 0.024)
+                    .contentTransition(.numericText(countsDown: true))
+                    .animation(.spring(response: 0.42, dampingFraction: 0.82), value: part)
+            }
+        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.4)
+        .shadow(color: Color.black.opacity(0.55), radius: 14, y: 8)
+        .shadow(color: accent.opacity(0.16), radius: 26)
+    }
+}
+
 private struct PressScaleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -1884,3 +1968,27 @@ private struct PressScaleButtonStyle: ButtonStyle {
             .animation(.spring(response: 0.28, dampingFraction: 0.72), value: configuration.isPressed)
     }
 }
+
+private extension View {
+    /// Editorial minimal duration chip: faint base, accent outline + accent
+    /// text when selected (no heavy gradient fill).
+    func editorialDurationChip(selected: Bool, accent: Color) -> some View {
+        self
+            .font(.system(size: 13, weight: .black, design: .monospaced))
+            .foregroundStyle(selected ? accent : Color.white.opacity(0.5))
+            .frame(maxWidth: .infinity)
+            .frame(height: 40)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(selected ? accent.opacity(0.13) : Color.white.opacity(0.035))
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .stroke(
+                                selected ? accent.opacity(0.55) : Color.white.opacity(0.08),
+                                lineWidth: selected ? 1.5 : 1
+                            )
+                    )
+            )
+    }
+}
+

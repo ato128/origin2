@@ -79,7 +79,7 @@ struct EditTaskView: View {
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Kaydet") {
+                    Button(tr("common_save")) {
                         save()
                     }
                     .fontWeight(.semibold)
@@ -237,7 +237,7 @@ struct EditTaskView: View {
 
     private var detailsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionLabel("Detaylar")
+            sectionLabel(tr("etv_details"))
 
             VStack(spacing: 12) {
                 inputBlock(
@@ -349,12 +349,12 @@ struct EditTaskView: View {
 
     private var scheduleSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionLabel("Planlama")
+            sectionLabel(tr("etv_planning"))
 
             VStack(spacing: 14) {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Tarih ve saat")
+                        Text(tr("etv_date_time"))
                             .font(.system(size: 15, weight: .bold))
                             .foregroundStyle(.primary)
 
@@ -381,9 +381,9 @@ struct EditTaskView: View {
                         HStack(spacing: 8) {
                             quickDateButton(tr("at_quick_tonight")) { setTodayEvening() }
                             quickDateButton(tr("at_quick_tomorrow")) { setTomorrow() }
-                            quickDateButton("Haftaya") { setNextWeek() }
-                            quickDateButton("2 Saat Sonra") { setAfterHours(2) }
-                            quickDateButton("Bu Hafta Sonu") { setThisWeekend() }
+                            quickDateButton(tr("etv_next_week")) { setNextWeek() }
+                            quickDateButton(tr("etv_in_2_hours")) { setAfterHours(2) }
+                            quickDateButton(tr("etv_this_weekend")) { setThisWeekend() }
                         }
                     }
                 }

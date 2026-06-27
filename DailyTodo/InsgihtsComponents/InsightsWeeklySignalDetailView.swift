@@ -72,7 +72,7 @@ struct InsightsWeeklySignalDetailView: View {
                         .fill(accent)
                         .frame(width: 20, height: 1)
 
-                    Text("WEEKLY SIGNAL")
+                    Text(tr("iwsd_caps"))
                         .font(.system(size: 11, weight: .black, design: .monospaced))
                         .tracking(2.3)
                         .foregroundStyle(accent)
@@ -80,11 +80,11 @@ struct InsightsWeeklySignalDetailView: View {
                 }
 
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    Text("Weekly")
+                    Text(tr("iwsd_weekly"))
                         .font(.system(size: 38, weight: .black))
                         .foregroundStyle(.white)
 
-                    Text("signal")
+                    Text(tr("iwsd_signal"))
                         .font(.system(size: 35, weight: .regular, design: .serif))
                         .italic()
                         .foregroundStyle(
@@ -101,7 +101,7 @@ struct InsightsWeeklySignalDetailView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
 
-                Text("Premium weekly rhythm analysis.")
+                Text(tr("iwsd_sub"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.48))
             }
@@ -111,7 +111,7 @@ struct InsightsWeeklySignalDetailView: View {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 15, weight: .black))
                     .foregroundStyle(.white)
                     .frame(width: 44, height: 44)
@@ -148,7 +148,7 @@ struct InsightsWeeklySignalDetailView: View {
                                 .fill(accent)
                                 .frame(width: 18, height: 1)
 
-                            Text("SIGNAL OVERVIEW")
+                            Text(tr("iwsd_overview_caps"))
                                 .font(.system(size: 10, weight: .black, design: .monospaced))
                                 .tracking(1.7)
                                 .foregroundStyle(accent)
@@ -190,8 +190,8 @@ struct InsightsWeeklySignalDetailView: View {
         premiumSurface(tint: Color(arenaHex: AppArenaPalette.blue)) {
             VStack(alignment: .leading, spacing: 16) {
                 sectionHeader(
-                    eyebrow: "7-DAY CHART",
-                    title: "7-Day Rhythm",
+                    eyebrow: tr("iwsd_7day_caps"),
+                    title: tr("iwsd_7day"),
                     icon: "chart.bar.fill",
                     tint: Color(arenaHex: AppArenaPalette.blue)
                 )
@@ -259,8 +259,8 @@ struct InsightsWeeklySignalDetailView: View {
         premiumSurface(tint: Color(arenaHex: AppArenaPalette.purple)) {
             VStack(alignment: .leading, spacing: 14) {
                 sectionHeader(
-                    eyebrow: "DAILY DETAILS",
-                    title: "Daily Breakdown",
+                    eyebrow: tr("iwsd_daily_caps"),
+                    title: tr("iwsd_breakdown"),
                     icon: "list.bullet.rectangle",
                     tint: Color(arenaHex: AppArenaPalette.purple)
                 )
@@ -327,13 +327,13 @@ struct InsightsWeeklySignalDetailView: View {
         premiumSurface(tint: Color(arenaHex: AppArenaPalette.gold)) {
             VStack(alignment: .leading, spacing: 14) {
                 sectionHeader(
-                    eyebrow: "NEXT MOVE",
-                    title: "Next Move",
+                    eyebrow: tr("ins_next_move_caps"),
+                    title: tr("ins_next_move"),
                     icon: "arrow.up.forward",
                     tint: Color(arenaHex: AppArenaPalette.gold)
                 )
 
-                Text("Use your strongest day as a template and reinforce your weakest one with a short block.")
+                Text(tr("iwsd_tip"))
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.56))
                     .lineLimit(3)

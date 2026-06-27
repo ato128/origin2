@@ -19,9 +19,10 @@ struct HomeView: View {
 
     // MARK: - SwiftData Queries
 
-    @Query(sort: \EventItem.startMinute, order: .forward) private var allEvents: [EventItem]
-    @Query private var allFocusRecords: [FocusSessionRecord]
-    @Query(sort: \FriendMessage.createdAt, order: .reverse) private var allFriendMessages: [FriendMessage]
+    @Query(sort: \EventItem.startMinute, order: .forward) var allEvents: [EventItem]
+    @Query var allFocusRecords: [FocusSessionRecord]
+    @Query(sort: \FriendMessage.createdAt, order: .reverse) var allFriendMessages: [FriendMessage]
+    @Query(sort: \ExamItem.examDate, order: .forward) var allExams: [ExamItem]
 
     // MARK: - Callbacks
 
@@ -38,8 +39,8 @@ struct HomeView: View {
     @State private var showProfileHub = false
     @State private var showMessages = false
     @State private var showTimelineDetail = false
-    @State private var showUpdoAI = false
-    @State private var pageAppeared = false
+    @State var showUpdoAI = false
+    @State var pageAppeared = false
     @State private var now: Date = Date()
 
     // Streak bubble
@@ -56,8 +57,20 @@ struct HomeView: View {
     @State private var shimmerPhase: CGFloat = -1.2
     @State private var aiCardPressed = false
 
-    @StateObject private var aiChatStore = UpdoAIChatStore()
-    @ObservedObject private var credits = DailyCreditsManager.shared
+    // Updo AI rule-based suggestion / challenge card
+    @State var aiSuggestionExpanded = false
+    @State var didAutoOpenSuggestion = false
+    @AppStorage("updoChallengeAcceptedDayV1") var challengeAcceptedDay: Int = -1
+    @AppStorage("challengeStreakCountV1") var challengeStreakCount: Int = 0
+    @AppStorage("challengeAcceptedTotalV1") var challengeAcceptedTotal: Int = 0
+    @AppStorage("lastAcceptedChallengeDayV1") var lastAcceptedChallengeDay: Int = -100
+    // Accepted-challenge progress tracking (real data, no LLM).
+    @AppStorage("challengeKindV1") var challengeKindRaw: String = "tasks"
+    @AppStorage("challengeTargetV1") var challengeTarget: Int = 0
+    @AppStorage("challengeBaselineV1") var challengeBaseline: Int = 0
+    @AppStorage("challengeCompletedDayV1") var challengeCompletedDay: Int = -1
+
+    @ObservedObject var credits = DailyCreditsManager.shared
     @ObservedObject private var progression = ProgressionManager.shared
 
     // `now` is only read at minute granularity (timeline position, day checks) —
@@ -485,6 +498,7 @@ private extension HomeView {
                     isPaused: isPaused,
                     warm: accentWarm,
                     gold: accentGold,
+                    accent: accentCyan,
                     pulse: pulse
                 )
                 .layoutPriority(1)
@@ -586,144 +600,6 @@ private extension HomeView {
         .opacity(pageAppeared ? 1 : 0)
         .offset(y: pageAppeared ? 0 : 12)
         .animation(.spring(response: 0.6, dampingFraction: 0.86).delay(0.08), value: pageAppeared)
-    }
-
-    var updoAICard: some View {
-        let hasConversation = !aiChatStore.lastPreviewText.isEmpty
-        let aiPrimary = Color(arenaHex: "#7C3AED")
-        let aiSecondary = Color(arenaHex: "#2DD4FF")
-
-        return Button {
-            withAnimation(.spring(response: 0.22, dampingFraction: 0.7)) { aiCardPressed = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.75)) { aiCardPressed = false }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { showUpdoAI = true }
-            }
-        } label: {
-            VStack(alignment: .leading, spacing: 14) {
-                // Top row: icon + labels + credit pill
-                HStack(alignment: .center, spacing: 13) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [aiPrimary.opacity(0.22), aiSecondary.opacity(0.14)],
-                                    startPoint: .topLeading, endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 48, height: 48)
-
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 19, weight: .semibold))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [aiSecondary, aiPrimary],
-                                    startPoint: .topLeading, endPoint: .bottomTrailing
-                                )
-                            )
-                    }
-                    .shadow(color: aiPrimary.opacity(0.28), radius: 8, y: 3)
-
-                    VStack(alignment: .leading, spacing: 5) {
-                        HStack(alignment: .center, spacing: 0) {
-                            Text("UPDO AI")
-                                .font(.system(size: 11, weight: .black, design: .monospaced))
-                                .tracking(2.5)
-                                .foregroundStyle(.white.opacity(0.92))
-
-                            Spacer(minLength: 8)
-
-                            if credits.isLoaded {
-                                let remaining = credits.tokensRemaining
-                                let pillTint: Color = remaining > 50 ? aiSecondary : accentWarm
-                                Text("\(remaining) kredi")
-                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                    .foregroundStyle(pillTint)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 3)
-                                    .background(
-                                        Capsule()
-                                            .fill(pillTint.opacity(0.14))
-                                            .overlay(Capsule().stroke(pillTint.opacity(0.28), lineWidth: 1))
-                                    )
-                            }
-                        }
-
-                        Text(hasConversation ? aiChatStore.lastPreviewText : tr("hv_ai_prompt"))
-                            .font(.system(size: 14, weight: .regular))
-                            .foregroundStyle(hasConversation ? .white.opacity(0.70) : .white.opacity(0.42))
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                    }
-                }
-
-                // Bottom row: quick action pills + chevron
-                HStack(spacing: 7) {
-                    aiQuickPill(icon: "calendar.badge.clock", label: tr("at_kind_exam"))
-                    aiQuickPill(icon: "checklist", label: "Plan")
-                    aiQuickPill(icon: "chart.bar.fill", label: "Analiz")
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.28))
-                }
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.068),
-                                aiPrimary.opacity(0.065),
-                                aiSecondary.opacity(0.038)
-                            ],
-                            startPoint: .topLeading, endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(
-                        // Breathing glow: opacity-only (GPU composited), driven by the
-                        // shared `breathe` toggle — no extra timers, no layout passes.
-                        RoundedRectangle(cornerRadius: 26, style: .continuous)
-                            .stroke(
-                                LinearGradient(
-                                    colors: [
-                                        aiSecondary.opacity(breathe ? 0.52 : 0.30),
-                                        aiPrimary.opacity(breathe ? 0.38 : 0.20)
-                                    ],
-                                    startPoint: .topLeading, endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1
-                            )
-                    )
-            )
-            .shadow(color: aiPrimary.opacity(breathe ? 0.18 : 0.10), radius: 16, y: 8)
-            .scaleEffect(aiCardPressed ? 0.97 : 1.0)
-        }
-        .buttonStyle(.plain)
-        .opacity(pageAppeared ? 1 : 0)
-        .offset(y: pageAppeared ? 0 : 12)
-        .animation(.spring(response: 0.6, dampingFraction: 0.86).delay(0.08), value: pageAppeared)
-    }
-
-    private func aiQuickPill(icon: String, label: String) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: icon)
-                .font(.system(size: 10, weight: .semibold))
-            Text(label)
-                .font(.system(size: 11, weight: .medium))
-        }
-        .foregroundStyle(.white.opacity(0.52))
-        .padding(.horizontal, 9)
-        .frame(height: 26)
-        .background(
-            Capsule()
-                .fill(Color.white.opacity(0.07))
-                .overlay(Capsule().stroke(Color.white.opacity(0.10), lineWidth: 1))
-        )
     }
 
     func homeSurface(
@@ -1332,6 +1208,7 @@ private struct PremiumCountdownView: View {
     let isPaused: Bool
     let warm: Color
     let gold: Color
+    let accent: Color
     let pulse: Bool
 
     var body: some View {
@@ -1352,18 +1229,38 @@ private struct PremiumCountdownView: View {
                 Text(part)
                     .font(.system(size: 58, weight: .bold, design: .serif))
                     .italic()
-                    .foregroundStyle(digitColor)
+                    .foregroundStyle(digitFill)
                     .kerning(-1.4)
                     .contentTransition(.numericText(countsDown: true))
                     .animation(.spring(response: 0.40, dampingFraction: 0.86), value: part)
             }
         }
+        .shadow(color: Color.black.opacity(0.45), radius: 8, y: 5)
+        .shadow(color: (isCritical ? warm : accent).opacity(0.14), radius: 16)
         .opacity(isPaused ? 0.55 : 1.0)
         .animation(.easeInOut(duration: 0.30), value: isPaused)
     }
 
-    private var digitColor: Color {
-        isCritical ? warm : .white
+    /// Brushed-silver fill — bright crown into deep graphite with a whisper of
+    /// accent at the base. Critical keeps the vivid warm alert tone.
+    private var digitFill: LinearGradient {
+        if isCritical {
+            return LinearGradient(
+                colors: [warm.opacity(0.98), gold.opacity(0.72)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+        return LinearGradient(
+            colors: [
+                Color.white.opacity(0.96),
+                Color.white.opacity(0.74),
+                Color(white: 0.44),
+                accent.opacity(0.45)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
     }
 
     private var separatorColor: Color {
@@ -2354,7 +2251,7 @@ struct StreakFlameBadge: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Seri: \(streak) gün")
+        .accessibilityLabel(tr("home_streak_ax", streak))
     }
 
     private func content(t: TimeInterval) -> some View {
@@ -2471,20 +2368,20 @@ struct StreakBubble: View {
 
     private var titleText: String {
         switch mode {
-        case .increased: return "Seri arttı! 🔥"
-        case .info:      return streak > 0 ? "\(streak) günlük seri 🔥" : "Serini başlat 🔥"
+        case .increased: return tr("home_streak_up_title")
+        case .info:      return streak > 0 ? tr("home_streak_count_title", streak) : tr("home_streak_start_title")
         }
     }
 
     private var bodyText: String {
         switch mode {
         case .increased:
-            return "Harika gidiyorsun — \(streak) gündür hem görevini bitiriyor hem odaklanıyorsun. Yarın da tekrarla, seri büyüsün."
+            return tr("home_streak_up_body", streak)
         case .info:
             if streak > 0 {
-                return "Her gün bir görev tamamla VE bir odak (focus) yap — serin devam eder. Birini bile atlarsan sıfırlanır ve seviyen 1 düşer."
+                return tr("home_streak_info_body_active")
             }
-            return "Serini başlatmak için bugün bir görev tamamla ve bir odak (focus) yap. İkisini her gün sürdürdükçe alev büyür."
+            return tr("home_streak_info_body_start")
         }
     }
 
@@ -2515,7 +2412,7 @@ struct StreakBubble: View {
                         Button {
                             close()
                         } label: {
-                            Image(systemName: "xmark")
+                            Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                                 .font(.system(size: 10, weight: .black))
                                 .foregroundStyle(.white.opacity(0.55))
                                 .frame(width: 22, height: 22)

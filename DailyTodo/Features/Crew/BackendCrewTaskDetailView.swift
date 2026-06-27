@@ -7,25 +7,25 @@
 import SwiftUI
 
 private enum BackendCrewTaskArenaPalette {
-    static let backgroundTop = Color(taskHex: "#05060D")
-    static let backgroundMid = Color(taskHex: "#070713")
-    static let backgroundBottom = Color(taskHex: "#07040C")
+    static let backgroundTop = Color(arenaHex: "#05060D")
+    static let backgroundMid = Color(arenaHex: "#070713")
+    static let backgroundBottom = Color(arenaHex: "#07040C")
 
-    static let blue = Color(taskHex: "#1593FF")
-    static let cyan = Color(taskHex: "#2DD4FF")
-    static let purple = Color(taskHex: "#7C3AED")
-    static let coral = Color(taskHex: "#FF5A44")
-    static let gold = Color(taskHex: "#FBBF24")
-    static let green = Color(taskHex: "#A3E635")
+    static let blue = Color(arenaHex: "#1593FF")
+    static let cyan = Color(arenaHex: "#2DD4FF")
+    static let purple = Color(arenaHex: "#7C3AED")
+    static let coral = Color(arenaHex: "#FF5A44")
+    static let gold = Color(arenaHex: "#FBBF24")
+    static let green = Color(arenaHex: "#A3E635")
 
-    static let surface = Color(taskHex: "#101118")
-    static let surface2 = Color(taskHex: "#171821")
+    static let surface = Color(arenaHex: "#101118")
+    static let surface2 = Color(arenaHex: "#171821")
 
     static var appGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(taskHex: "#1E6BFF"),
-                Color(taskHex: "#7C3AED")
+                Color(arenaHex: "#1E6BFF"),
+                Color(arenaHex: "#7C3AED")
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -96,7 +96,7 @@ struct BackendCrewTaskDetailView: View {
             isPresented: $showDeleteConfirm,
             titleVisibility: .visible
         ) {
-            Button("Sil", role: .destructive) {
+            Button(tr("bctd_delete"), role: .destructive) {
                 Task {
                     await deleteCurrentTask()
                 }
@@ -169,7 +169,7 @@ private extension BackendCrewTaskDetailView {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "chevron.left")
+                Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
                     .font(.system(size: 19, weight: .black))
                     .foregroundStyle(.white)
                     .frame(width: 46, height: 46)
@@ -187,7 +187,7 @@ private extension BackendCrewTaskDetailView {
             Spacer()
 
             VStack(spacing: 3) {
-                Text("TASK DETAIL")
+                Text(tr("bctd_task_detail_caps"))
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .tracking(2.2)
                     .foregroundStyle(BackendCrewTaskArenaPalette.cyan)
@@ -211,7 +211,7 @@ private extension BackendCrewTaskDetailView {
                 Button(role: .destructive) {
                     showDeleteConfirm = true
                 } label: {
-                    Label("Sil", systemImage: "trash")
+                    Label(tr("bctd_delete"), systemImage: "trash")
                 }
             } label: {
                 ZStack {
@@ -219,7 +219,7 @@ private extension BackendCrewTaskDetailView {
                         ProgressView()
                             .tint(.white)
                     } else {
-                        Image(systemName: "ellipsis")
+                        Image(systemName: "ellipsis").accessibilityLabel(tr("a11y_more"))
                             .font(.system(size: 19, weight: .black))
                             .foregroundStyle(.white)
                     }
@@ -281,7 +281,7 @@ private extension BackendCrewTaskDetailView {
                             .font(.system(size: 30, weight: .black))
                             .foregroundStyle(.white)
 
-                        Text("task")
+                        Text(tr("bctd_task_lc"))
                             .font(.system(size: 25, weight: .regular, design: .serif))
                             .italic()
                             .foregroundStyle(BackendCrewTaskArenaPalette.cyan)
@@ -329,7 +329,7 @@ private extension BackendCrewTaskDetailView {
 
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Durum")
+                    Text(tr("bctd_status"))
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .tracking(1.1)
                         .foregroundStyle(.white.opacity(0.42))
@@ -375,7 +375,7 @@ private extension BackendCrewTaskDetailView {
     var quickActionsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionTitle(
-                eyebrow: "QUICK ACTIONS",
+                eyebrow: tr("bctd_quick_actions_caps"),
                 title: tr("bctd_quick_w"),
                 italic: tr("bctd_actions_w")
             )
@@ -418,8 +418,8 @@ private extension BackendCrewTaskDetailView {
     var assignmentCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionTitle(
-                eyebrow: "ASSIGNMENT",
-                title: "Atama",
+                eyebrow: tr("bctd_assignment_caps"),
+                title: tr("bctd_assignment"),
                 italic: "bilgisi"
             )
 
@@ -447,7 +447,7 @@ private extension BackendCrewTaskDetailView {
     var detailInfoCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionTitle(
-                eyebrow: "TASK META",
+                eyebrow: tr("bctd_task_meta_caps"),
                 title: tr("at_kind_task"),
                 italic: tr("bctd_detail_w")
             )
@@ -463,7 +463,7 @@ private extension BackendCrewTaskDetailView {
                 miniStat(
                     icon: "slider.horizontal.3",
                     value: statusTitle(currentTask.status),
-                    title: "Durum",
+                    title: tr("bctd_status"),
                     tint: statusColor(currentTask.status)
                 )
 
@@ -736,51 +736,3 @@ private extension BackendCrewTaskDetailView {
 }
 
 // MARK: - Color Hex
-
-private extension Color {
-    init(taskHex hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let a: UInt64
-        let r: UInt64
-        let g: UInt64
-        let b: UInt64
-
-        switch cleaned.count {
-        case 3:
-            a = 255
-            r = (int >> 8) * 17
-            g = ((int >> 4) & 0xF) * 17
-            b = (int & 0xF) * 17
-
-        case 6:
-            a = 255
-            r = int >> 16
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        case 8:
-            a = int >> 24
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        default:
-            a = 255
-            r = 255
-            g = 255
-            b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-}

@@ -78,6 +78,9 @@ struct ScheduleWidgetView: View {
         return UpdoWidgetPalette.cyan
     }
 
+    /// Brand accent follows the selected app icon (header, glow, watermark).
+    private var brandAccent: Color { UpdoWidgetIconTheme.current().accent }
+
     var body: some View {
         VStack(alignment: .leading, spacing: isSmall ? 9 : 11) {
             headerRow
@@ -97,39 +100,62 @@ struct ScheduleWidgetView: View {
             lessonRows
         }
         .padding(isSmall ? 14 : 16)
-        .widgetUpdoBackground(accent: accent)
+        // Faint crosshair watermark (art/depth), bleeding off the bottom-right.
+        .background(alignment: .bottomTrailing) {
+            UpdoWidgetLogo(size: isSmall ? 96 : 124, tint: AnyShapeStyle(brandAccent.opacity(0.06)))
+                .offset(x: 26, y: 22)
+        }
+        .widgetUpdoBackground(accent: brandAccent)
     }
 
     // MARK: - Header
 
     private var headerRow: some View {
         HStack(spacing: 7) {
-            // Cyan section-label imzası ("— BUGÜN")
+            // Section-label imzası ("— BUGÜN"), brand-accent renkli
             Rectangle()
-                .fill(UpdoWidgetPalette.cyan)
+                .fill(brandAccent)
                 .frame(width: 14, height: 2.5)
                 .clipShape(Capsule())
 
             Text("BUGÜN")
-                .font(.system(size: 11, weight: .heavy, design: .rounded))
+                .font(.system(size: 11, weight: .black, design: .rounded))
                 .tracking(1.5)
-                .foregroundStyle(UpdoWidgetPalette.cyan)
+                .foregroundStyle(brandAccent)
 
             if !todayEvents.isEmpty {
                 Text("\(todayEvents.count)")
                     .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(.white.opacity(0.8))
                     .frame(width: 17, height: 17)
-                    .background(Circle().fill(Color.white.opacity(0.08)))
+                    .background(Circle().fill(brandAccent.opacity(0.20)))
             }
 
-            Spacer()
-
-            Text(dayTitles[safeIndex(todayWeekday)])
+            Text("· \(dayTitles[safeIndex(todayWeekday)])")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .tracking(1)
                 .foregroundStyle(.white.opacity(0.45))
+
+            Spacer()
+
+            // Updo imza markası (seçili icon renginde)
+            UpdoWidgetCornerMark(size: 19)
         }
+        .padding(.horizontal, 11)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [brandAccent.opacity(0.22), brandAccent.opacity(0.06)],
+                        startPoint: .leading, endPoint: .trailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(brandAccent.opacity(0.22), lineWidth: 1)
+                )
+        )
     }
 
     // MARK: - Live
@@ -377,7 +403,7 @@ private struct PulseDot: View {
 
 // MARK: - Updo Background
 
-private extension View {
+extension View {
     @ViewBuilder
     func widgetUpdoBackground(accent: Color) -> some View {
         if #available(iOSApplicationExtension 17.0, *) {

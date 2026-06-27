@@ -489,7 +489,7 @@ private extension FocusSessionView {
             Button {
                 showCustomInput = true
             } label: {
-                Image(systemName: "plus")
+                Image(systemName: "plus").accessibilityLabel(tr("common_add"))
                     .font(.subheadline.weight(.bold))
                     .padding(10)
                     .background(
@@ -1090,7 +1090,7 @@ private extension FocusSessionView {
 
         if UserDefaults.standard.string(forKey: Keys.focusMode) == "shared" {
             if let name = UserDefaults.standard.string(forKey: Keys.focusFriendName), !name.isEmpty {
-                if locale.language.languageCode?.identifier == "tr" {
+                if !appLanguageIsEnglish() {
                     return "\(name) ile focus"
                 } else {
                     return "Focus with \(name)"
@@ -1102,7 +1102,7 @@ private extension FocusSessionView {
         return String(localized: "focus_deep_work")
     }
     func localizedSetText(current: Int, total: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
+        if !appLanguageIsEnglish() {
             return "Set \(current) / \(total)"
         } else {
             return "Set \(current) / \(total)"
@@ -1110,7 +1110,7 @@ private extension FocusSessionView {
     }
 
     func localizedSetCompactText(current: Int, total: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
+        if !appLanguageIsEnglish() {
             return "Set \(current)/\(total)"
         } else {
             return "Set \(current)/\(total)"
@@ -1118,7 +1118,7 @@ private extension FocusSessionView {
     }
 
     func localizedMinutePreset(_ minutes: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
+        if !appLanguageIsEnglish() {
             return "\(minutes) dk"
         } else {
             return "\(minutes) min"
@@ -1126,7 +1126,7 @@ private extension FocusSessionView {
     }
 
     func localizedSecondsText(_ seconds: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
+        if !appLanguageIsEnglish() {
             return "\(seconds) sn"
         } else {
             return "\(seconds) sec"

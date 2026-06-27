@@ -54,7 +54,7 @@ struct CreateCrewView: View {
                     .ignoresSafeArea()
 
                 Circle()
-                    .fill(Color(updoHex: selectedColorHex).opacity(0.10))
+                    .fill(Color(arenaHex: selectedColorHex).opacity(0.10))
                     .frame(width: 300, height: 300)
                     .blur(radius: 95)
                     .offset(x: 150, y: -260)
@@ -104,18 +104,18 @@ struct CreateCrewView: View {
         VStack(spacing: 14) {
             ZStack {
                 Circle()
-                    .fill(Color(updoHex: selectedColorHex).opacity(0.18))
+                    .fill(Color(arenaHex: selectedColorHex).opacity(0.18))
                     .frame(width: 88, height: 88)
 
                 Circle()
-                    .stroke(Color(updoHex: selectedColorHex).opacity(0.35), lineWidth: 1.5)
+                    .stroke(Color(arenaHex: selectedColorHex).opacity(0.35), lineWidth: 1.5)
                     .frame(width: 88, height: 88)
 
                 Image(systemName: selectedIcon)
                     .font(.system(size: 34, weight: .semibold))
-                    .foregroundStyle(Color(updoHex: selectedColorHex))
+                    .foregroundStyle(Color(arenaHex: selectedColorHex))
             }
-            .shadow(color: Color(updoHex: selectedColorHex).opacity(0.25), radius: 16, y: 6)
+            .shadow(color: Color(arenaHex: selectedColorHex).opacity(0.25), radius: 16, y: 6)
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedIcon)
             .animation(.easeInOut(duration: 0.3), value: selectedColorHex)
 
@@ -170,7 +170,7 @@ struct CreateCrewView: View {
                     } label: {
                         Image(systemName: icon)
                             .font(.system(size: 22, weight: .medium))
-                            .foregroundStyle(isSelected ? Color(updoHex: selectedColorHex) : .white.opacity(0.55))
+                            .foregroundStyle(isSelected ? Color(arenaHex: selectedColorHex) : .white.opacity(0.55))
                             .frame(maxWidth: .infinity)
                             .frame(height: 60)
                             .background(
@@ -179,7 +179,7 @@ struct CreateCrewView: View {
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                                             .strokeBorder(
-                                                isSelected ? Color(updoHex: selectedColorHex) : Color.white.opacity(0.08),
+                                                isSelected ? Color(arenaHex: selectedColorHex) : Color.white.opacity(0.08),
                                                 lineWidth: isSelected ? 1.5 : 1
                                             )
                                     )
@@ -207,7 +207,7 @@ struct CreateCrewView: View {
                     } label: {
                         ZStack {
                             Circle()
-                                .fill(Color(updoHex: hex))
+                                .fill(Color(arenaHex: hex))
                                 .frame(width: 32, height: 32)
 
                             if isSelected {
@@ -216,7 +216,7 @@ struct CreateCrewView: View {
                                     .frame(width: 40, height: 40)
 
                                 Circle()
-                                    .stroke(Color(updoHex: hex).opacity(0.22), lineWidth: 6)
+                                    .stroke(Color(arenaHex: hex).opacity(0.22), lineWidth: 6)
                                     .frame(width: 46, height: 46)
                             }
                         }
@@ -253,7 +253,7 @@ struct CreateCrewView: View {
                 Capsule()
                     .fill(
                         LinearGradient(
-                            colors: [UpdoTheme.cyan, Color(updoHex: "#22D3EE")],
+                            colors: [UpdoTheme.cyan, Color(arenaHex: "#22D3EE")],
                             startPoint: .leading,
                             endPoint: .trailing
                         )

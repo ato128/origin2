@@ -55,7 +55,7 @@ private extension AuthView {
         VStack(spacing: 22) {
             ZStack {
                 Circle()
-                    .fill(Color(authHex: AuthArenaPalette.appBlue).opacity(0.16))
+                    .fill(Color(arenaHex: AuthArenaPalette.appBlue).opacity(0.16))
                     .frame(width: 150, height: 150)
                     .blur(radius: 2)
 
@@ -63,8 +63,8 @@ private extension AuthView {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color(authHex: AuthArenaPalette.appBlue).opacity(0.26),
-                                Color(authHex: AuthArenaPalette.appPurple).opacity(0.20),
+                                Color(arenaHex: AuthArenaPalette.appBlue).opacity(0.26),
+                                Color(arenaHex: AuthArenaPalette.appPurple).opacity(0.20),
                                 Color.white.opacity(0.055)
                             ],
                             startPoint: .topLeading,
@@ -76,15 +76,15 @@ private extension AuthView {
                         Circle()
                             .stroke(Color.white.opacity(0.10), lineWidth: 1)
                     )
-                    .shadow(color: Color(authHex: AuthArenaPalette.appPurple).opacity(0.22), radius: 22, y: 12)
+                    .shadow(color: Color(arenaHex: AuthArenaPalette.appPurple).opacity(0.22), radius: 22, y: 12)
 
                 Image(systemName: "checklist.checked")
                     .font(.system(size: 46, weight: .black))
                     .foregroundStyle(
                         LinearGradient(
                             colors: [
-                                Color(authHex: AuthArenaPalette.appCyan),
-                                Color(authHex: AuthArenaPalette.appPurple)
+                                Color(arenaHex: AuthArenaPalette.appCyan),
+                                Color(arenaHex: AuthArenaPalette.appPurple)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -96,7 +96,7 @@ private extension AuthView {
                 Text("— STUDENT OS —")
                     .font(.system(size: 10, weight: .semibold, design: .monospaced))
                     .tracking(2.8)
-                    .foregroundStyle(Color(authHex: AuthArenaPalette.appCyan))
+                    .foregroundStyle(Color(arenaHex: AuthArenaPalette.appCyan))
 
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
                     Text("Up")
@@ -109,8 +109,8 @@ private extension AuthView {
                         .foregroundStyle(
                             LinearGradient(
                                 colors: [
-                                    Color(authHex: AuthArenaPalette.appCyan),
-                                    Color(authHex: AuthArenaPalette.appPurple)
+                                    Color(arenaHex: AuthArenaPalette.appCyan),
+                                    Color(arenaHex: AuthArenaPalette.appPurple)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -140,8 +140,8 @@ private extension AuthView {
         VStack(spacing: 16) {
             VStack(spacing: 14) {
                 premiumActionButton(
-                    eyebrow: "WELCOME BACK",
-                    title: "Login",
+                    eyebrow: tr("auth_welcome_back_caps"),
+                    title: tr("auth_login"),
                     subtitle: tr("av_continue_account"),
                     systemImage: "arrow.right.circle.fill",
                     highlighted: true
@@ -150,8 +150,8 @@ private extension AuthView {
                 }
 
                 premiumActionButton(
-                    eyebrow: "NEW ACCOUNT",
-                    title: "Sign Up",
+                    eyebrow: tr("auth_new_account_caps"),
+                    title: tr("auth_signup"),
                     subtitle: tr("av_create_system"),
                     systemImage: "person.crop.circle.badge.plus",
                     highlighted: false
@@ -223,7 +223,7 @@ private extension AuthView {
                         .tracking(1.5)
                         .foregroundStyle(
                             highlighted
-                            ? Color(authHex: AuthArenaPalette.appCyan)
+                            ? Color(arenaHex: AuthArenaPalette.appCyan)
                             : Color.white.opacity(0.38)
                         )
 
@@ -241,7 +241,7 @@ private extension AuthView {
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 14, weight: .black))
-                    .foregroundStyle(highlighted ? Color(authHex: AuthArenaPalette.appCyan) : Color.white.opacity(0.38))
+                    .foregroundStyle(highlighted ? Color(arenaHex: AuthArenaPalette.appCyan) : Color.white.opacity(0.38))
             }
             .padding(16)
             .frame(maxWidth: .infinity)
@@ -257,13 +257,13 @@ private extension AuthView {
                 RoundedRectangle(cornerRadius: 27, style: .continuous)
                     .stroke(
                         highlighted
-                        ? Color(authHex: AuthArenaPalette.appBlue).opacity(0.20)
+                        ? Color(arenaHex: AuthArenaPalette.appBlue).opacity(0.20)
                         : Color.white.opacity(0.075),
                         lineWidth: 1
                     )
             )
             .shadow(
-                color: highlighted ? Color(authHex: AuthArenaPalette.appPurple).opacity(0.20) : Color.black.opacity(0.20),
+                color: highlighted ? Color(arenaHex: AuthArenaPalette.appPurple).opacity(0.20) : Color.black.opacity(0.20),
                 radius: highlighted ? 18 : 12,
                 y: highlighted ? 10 : 7
             )
@@ -289,8 +289,8 @@ private enum AuthArenaPalette {
     static var appGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(authHex: appBlueSoft),
-                Color(authHex: appPurple)
+                Color(arenaHex: appBlueSoft),
+                Color(arenaHex: appPurple)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -300,8 +300,8 @@ private enum AuthArenaPalette {
     static var highlightedCardGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(authHex: appBlue).opacity(0.14),
-                Color(authHex: appPurple).opacity(0.12),
+                Color(arenaHex: appBlue).opacity(0.14),
+                Color(arenaHex: appPurple).opacity(0.12),
                 Color.white.opacity(0.045)
             ],
             startPoint: .topLeading,
@@ -331,9 +331,9 @@ private struct AuthArenaBackground: View {
 
             LinearGradient(
                 colors: [
-                    Color(authHex: AuthArenaPalette.backgroundTop),
-                    Color(authHex: AuthArenaPalette.backgroundMid),
-                    Color(authHex: AuthArenaPalette.backgroundBottom)
+                    Color(arenaHex: AuthArenaPalette.backgroundTop),
+                    Color(arenaHex: AuthArenaPalette.backgroundMid),
+                    Color(arenaHex: AuthArenaPalette.backgroundBottom)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -341,25 +341,25 @@ private struct AuthArenaBackground: View {
             .ignoresSafeArea()
 
             Circle()
-                .fill(Color(authHex: AuthArenaPalette.appBlue).opacity(0.12))
+                .fill(Color(arenaHex: AuthArenaPalette.appBlue).opacity(0.12))
                 .frame(width: 280, height: 280)
                 .blur(radius: 100)
                 .offset(x: 170, y: -250)
 
             Circle()
-                .fill(Color(authHex: AuthArenaPalette.appPurple).opacity(0.18))
+                .fill(Color(arenaHex: AuthArenaPalette.appPurple).opacity(0.18))
                 .frame(width: 330, height: 330)
                 .blur(radius: 115)
                 .offset(x: -180, y: 500)
 
             Circle()
-                .fill(Color(authHex: AuthArenaPalette.coral).opacity(0.075))
+                .fill(Color(arenaHex: AuthArenaPalette.coral).opacity(0.075))
                 .frame(width: 280, height: 280)
                 .blur(radius: 105)
                 .offset(x: 170, y: 300)
 
             Circle()
-                .fill(Color(authHex: AuthArenaPalette.gold).opacity(0.050))
+                .fill(Color(arenaHex: AuthArenaPalette.gold).opacity(0.050))
                 .frame(width: 240, height: 240)
                 .blur(radius: 95)
                 .offset(x: -170, y: -180)
@@ -386,54 +386,6 @@ private struct AuthPressButtonStyle: ButtonStyle {
             .scaleEffect(configuration.isPressed ? 0.975 : 1.0)
             .opacity(configuration.isPressed ? 0.92 : 1.0)
             .animation(.spring(response: 0.22, dampingFraction: 0.82), value: configuration.isPressed)
-    }
-}
-
-private extension Color {
-    init(authHex hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let a: UInt64
-        let r: UInt64
-        let g: UInt64
-        let b: UInt64
-
-        switch cleaned.count {
-        case 3:
-            a = 255
-            r = (int >> 8) * 17
-            g = ((int >> 4) & 0xF) * 17
-            b = (int & 0xF) * 17
-
-        case 6:
-            a = 255
-            r = int >> 16
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        case 8:
-            a = int >> 24
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        default:
-            a = 255
-            r = 21
-            g = 147
-            b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
     }
 }
 

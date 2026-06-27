@@ -78,7 +78,7 @@ extension CrewChatView {
                         LinearGradient(
                             colors: [
                                 focusBannerAccent(session).opacity(0.090),
-                                Color(crewChatFocusHex: "#1593FF").opacity(0.050),
+                                Color(arenaHex: "#1593FF").opacity(0.050),
                                 Color.white.opacity(0.042)
                             ],
                             startPoint: .topLeading,
@@ -117,11 +117,11 @@ extension CrewChatView {
 
     func focusBannerAccent(_ session: CrewFocusSessionDTO) -> Color {
         if !session.is_active {
-            return Color(crewChatFocusHex: "#A3E635")
+            return Color(arenaHex: "#A3E635")
         }
 
         if session.is_paused {
-            return Color(crewChatFocusHex: "#FBBF24")
+            return Color(arenaHex: "#FBBF24")
         }
 
         let remainingText = focusRemainingText(session)
@@ -129,82 +129,34 @@ extension CrewChatView {
 
         if let minString = parts.first, let minutes = Int(minString) {
             if minutes <= 3 {
-                return Color(crewChatFocusHex: "#FF5A44")
+                return Color(arenaHex: "#FF5A44")
             } else if minutes <= 10 {
-                return Color(crewChatFocusHex: "#FBBF24")
+                return Color(arenaHex: "#FBBF24")
             }
         }
 
-        return Color(crewChatFocusHex: "#1593FF")
+        return Color(arenaHex: "#1593FF")
     }
 
     func priorityColor(_ priority: String) -> Color {
         switch priority.lowercased() {
         case "low":
-            return Color(crewChatFocusHex: "#A3E635")
+            return Color(arenaHex: "#A3E635")
         case "medium":
-            return Color(crewChatFocusHex: "#FBBF24")
+            return Color(arenaHex: "#FBBF24")
         case "high":
-            return Color(crewChatFocusHex: "#FF5A44")
+            return Color(arenaHex: "#FF5A44")
         case "urgent":
-            return Color(crewChatFocusHex: "#C084FC")
+            return Color(arenaHex: "#C084FC")
         default:
-            return Color(crewChatFocusHex: "#1593FF")
+            return Color(arenaHex: "#1593FF")
         }
     }
 
     func localizedMinutesText(_ minutes: Int) -> String {
-        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+        let isTurkish = !appLanguageIsEnglish()
         return isTurkish ? "\(minutes) dk" : "\(minutes) min"
     }
 }
 
 // MARK: - Color Hex
-
-private extension Color {
-    init(crewChatFocusHex hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let a: UInt64
-        let r: UInt64
-        let g: UInt64
-        let b: UInt64
-
-        switch cleaned.count {
-        case 3:
-            a = 255
-            r = (int >> 8) * 17
-            g = ((int >> 4) & 0xF) * 17
-            b = (int & 0xF) * 17
-
-        case 6:
-            a = 255
-            r = int >> 16
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        case 8:
-            a = int >> 24
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        default:
-            a = 255
-            r = 255
-            g = 255
-            b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-}

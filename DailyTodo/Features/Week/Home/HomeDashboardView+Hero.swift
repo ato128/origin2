@@ -163,7 +163,7 @@ extension HomeDashboardView {
                 Spacer(minLength: 0)
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("TODAY FLOW")
+                    Text(tr("hdh_today_flow_caps"))
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .tracking(1.5)
                         .foregroundStyle(progressCardAccent.opacity(0.92))
@@ -536,7 +536,7 @@ extension HomeDashboardView {
                 primaryCTA: tr("common_add_task"),
                 primaryIcon: "plus",
                 primaryAction: { onAddTask() },
-                secondaryCTA: HeroCTA(title: "Hafta", icon: "calendar", action: { onOpenWeek() })
+                secondaryCTA: HeroCTA(title: tr("tab_week"), icon: "calendar", action: { onOpenWeek() })
             )
 
         case .afternoon:
@@ -552,7 +552,7 @@ extension HomeDashboardView {
                 primaryCTA: tr("common_add_task"),
                 primaryIcon: "plus",
                 primaryAction: { onAddTask() },
-                secondaryCTA: HeroCTA(title: "Hafta", icon: "calendar", action: { onOpenWeek() })
+                secondaryCTA: HeroCTA(title: tr("tab_week"), icon: "calendar", action: { onOpenWeek() })
             )
 
         case .evening, .night:
@@ -575,9 +575,9 @@ extension HomeDashboardView {
 
     func sharedFocusHeroState(_ activeSession: CrewFocusSessionDTO) -> TodayHeroState {
         TodayHeroState(
-            eyebrow: "Ortak odak aktif",
+            eyebrow: tr("hdh_shared_focus_active"),
             title: activeSession.title,
-            subtitle: "\(activeSession.host_name) ile oturum devam ediyor.",
+            subtitle: tr("hdh_session_with", activeSession.host_name),
             icon: activeSession.is_paused ? "pause.fill" : "person.2.fill",
             accent: activeSession.is_paused ? .orange : .blue,
             badge1: HeroBadge(
@@ -614,7 +614,7 @@ extension HomeDashboardView {
             primaryCTA: "Devam Et",
             primaryIcon: "play.fill",
             primaryAction: { showTasksShortcut = true },
-            secondaryCTA: HeroCTA(title: "Hafta", icon: "calendar", action: { onOpenWeek() })
+            secondaryCTA: HeroCTA(title: tr("tab_week"), icon: "calendar", action: { onOpenWeek() })
         )
     }
 
@@ -784,7 +784,7 @@ extension HomeDashboardView {
     var crewFollowUpHeroState: TodayHeroState {
         TodayHeroState(
             eyebrow: tr("hd_next_area"),
-            title: "Crew seni bekliyor",
+            title: tr("hdh_crew_waiting"),
             subtitle: tr("hd_personal_done"),
             icon: "person.3.fill",
             accent: .pink,
@@ -794,7 +794,7 @@ extension HomeDashboardView {
             primaryCTA: "Crew’e Git",
             primaryIcon: "person.3.fill",
             primaryAction: { onOpenWeek() },
-            secondaryCTA: HeroCTA(title: "Sohbet", icon: "bubble.left.and.bubble.right.fill", action: { showFriendsShortcut = true })
+            secondaryCTA: HeroCTA(title: tr("crew_chat"), icon: "bubble.left.and.bubble.right.fill", action: { showFriendsShortcut = true })
         )
     }
 
@@ -811,7 +811,7 @@ extension HomeDashboardView {
             primaryCTA: tr("hd_go_insights"),
             primaryIcon: "chart.bar.fill",
             primaryAction: { onOpenInsights() },
-            secondaryCTA: HeroCTA(title: "Hafta", icon: "calendar", action: { onOpenWeek() })
+            secondaryCTA: HeroCTA(title: tr("tab_week"), icon: "calendar", action: { onOpenWeek() })
         )
     }
 
@@ -982,7 +982,7 @@ extension HomeDashboardView {
             primaryCTA: tr("hd_start_btn"),
             primaryIcon: "play.fill",
             primaryAction: { startInlineFocus() },
-            secondaryCTA: HeroCTA(title: "Planla", icon: "calendar.badge.plus", action: { onOpenWeek() })
+            secondaryCTA: HeroCTA(title: tr("tv_plan"), icon: "calendar.badge.plus", action: { onOpenWeek() })
         )
     }
 

@@ -425,9 +425,9 @@ private struct PremiumStudentLaunchView: View {
 
             LinearGradient(
                 colors: [
-                    Color(rootHex: "#01020A"),
-                    Color(rootHex: "#050713"),
-                    Color(rootHex: "#02030A")
+                    Color(arenaHex: "#01020A"),
+                    Color(arenaHex: "#050713"),
+                    Color(arenaHex: "#02030A")
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -435,13 +435,13 @@ private struct PremiumStudentLaunchView: View {
             .ignoresSafeArea()
 
             Circle()
-                .fill(Color(rootHex: "#0B3B8F").opacity(0.11))
+                .fill(Color(arenaHex: "#0B3B8F").opacity(0.11))
                 .frame(width: 340, height: 340)
                 .blur(radius: 110)
                 .offset(x: 185, y: -295)
 
             Circle()
-                .fill(Color(rootHex: "#28135F").opacity(0.13))
+                .fill(Color(arenaHex: "#28135F").opacity(0.13))
                 .frame(width: 410, height: 410)
                 .blur(radius: 128)
                 .offset(x: -235, y: 420)
@@ -486,54 +486,6 @@ private struct PremiumStudentLaunchView: View {
 }
 
 // MARK: - Local Hex Color
-
-private extension Color {
-    init(rootHex hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let a: UInt64
-        let r: UInt64
-        let g: UInt64
-        let b: UInt64
-
-        switch cleaned.count {
-        case 3:
-            a = 255
-            r = ((int >> 8) & 0xF) * 17
-            g = ((int >> 4) & 0xF) * 17
-            b = (int & 0xF) * 17
-
-        case 6:
-            a = 255
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        case 8:
-            a = (int >> 24) & 0xFF
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        default:
-            a = 255
-            r = 255
-            g = 255
-            b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-}
 
 // MARK: - Shared Updo logo mark (single source for icon + launch animation)
 
@@ -642,18 +594,18 @@ enum UpdoIconTheme {
     /// word = a brighter 2-stop gradient for the "Updo" wordmark (legible on dark)
     static func current() -> (fg: AnyShapeStyle, glow: Color, word: AnyShapeStyle) {
         func grad(_ hexes: [String]) -> AnyShapeStyle {
-            AnyShapeStyle(LinearGradient(colors: hexes.map { Color(rootHex: $0) }, startPoint: .topLeading, endPoint: .bottomTrailing))
+            AnyShapeStyle(LinearGradient(colors: hexes.map { Color(arenaHex: $0) }, startPoint: .topLeading, endPoint: .bottomTrailing))
         }
         switch UIApplication.shared.alternateIconName {
-        case "AppIcon-Gold":    return (grad(["#FCD34D", "#FBBF24", "#D97706"]), Color(rootHex: "#F59E0B"), grad(["#FFE9A8", "#FBBF24"]))
-        case "AppIcon-Chrome":  return (grad(["#EEF3F7", "#9AA7B0", "#5B6770"]), Color(rootHex: "#AEB9C2"), grad(["#FFFFFF", "#9AA7B0"]))
-        case "AppIcon-Aurora":  return (grad(["#22D3EE", "#7C3AED", "#EC4899"]), Color(rootHex: "#7C3AED"), grad(["#67E8F9", "#C084FC"]))
-        case "AppIcon-Sunset":  return (grad(["#FBBF24", "#FB7185", "#F472B6"]), Color(rootHex: "#FB7185"), grad(["#FDE68A", "#FB7185"]))
-        case "AppIcon-Emerald": return (grad(["#6EE7B7", "#10B981", "#047857"]), Color(rootHex: "#10B981"), grad(["#A7F3D0", "#34D399"]))
-        case "AppIcon-Noir":    return (AnyShapeStyle(Color(rootHex: "#F2F4F7")), Color(rootHex: "#FFFFFF"), grad(["#FFFFFF", "#D1D5DB"]))
-        case "AppIcon-Carbon":  return (grad(["#A8B0BA", "#4B5563", "#1F2937"]), Color(rootHex: "#6B7280"), grad(["#E5E7EB", "#9CA3AF"]))
-        case "AppIcon-Ice":     return (grad(["#EAF7FF", "#7DD3FC", "#38BDF8"]), Color(rootHex: "#7DD3FC"), grad(["#F0FBFF", "#7DD3FC"]))
-        default:                return (grad(["#7FCBDD", "#5AB6CC", "#2E7C92"]), Color(rootHex: "#3C8FA6"), grad(["#BDEAF4", "#5AB6CC"])) // Steel
+        case "AppIcon-Gold":    return (grad(["#FCD34D", "#FBBF24", "#D97706"]), Color(arenaHex: "#F59E0B"), grad(["#FFE9A8", "#FBBF24"]))
+        case "AppIcon-Chrome":  return (grad(["#EEF3F7", "#9AA7B0", "#5B6770"]), Color(arenaHex: "#AEB9C2"), grad(["#FFFFFF", "#9AA7B0"]))
+        case "AppIcon-Aurora":  return (grad(["#22D3EE", "#7C3AED", "#EC4899"]), Color(arenaHex: "#7C3AED"), grad(["#67E8F9", "#C084FC"]))
+        case "AppIcon-Sunset":  return (grad(["#FBBF24", "#FB7185", "#F472B6"]), Color(arenaHex: "#FB7185"), grad(["#FDE68A", "#FB7185"]))
+        case "AppIcon-Emerald": return (grad(["#6EE7B7", "#10B981", "#047857"]), Color(arenaHex: "#10B981"), grad(["#A7F3D0", "#34D399"]))
+        case "AppIcon-Noir":    return (AnyShapeStyle(Color(arenaHex: "#F2F4F7")), Color(arenaHex: "#FFFFFF"), grad(["#FFFFFF", "#D1D5DB"]))
+        case "AppIcon-Carbon":  return (grad(["#A8B0BA", "#4B5563", "#1F2937"]), Color(arenaHex: "#6B7280"), grad(["#E5E7EB", "#9CA3AF"]))
+        case "AppIcon-Ice":     return (grad(["#EAF7FF", "#7DD3FC", "#38BDF8"]), Color(arenaHex: "#7DD3FC"), grad(["#F0FBFF", "#7DD3FC"]))
+        default:                return (grad(["#7FCBDD", "#5AB6CC", "#2E7C92"]), Color(arenaHex: "#3C8FA6"), grad(["#BDEAF4", "#5AB6CC"])) // Steel
         }
     }
 }

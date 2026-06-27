@@ -67,7 +67,7 @@ struct InsightsStudyWindowDetailView: View {
                         .fill(accent)
                         .frame(width: 20, height: 1)
 
-                    Text("STUDY WINDOW")
+                    Text(tr("iswd_caps"))
                         .font(.system(size: 11, weight: .black, design: .monospaced))
                         .tracking(2.3)
                         .foregroundStyle(accent)
@@ -75,11 +75,11 @@ struct InsightsStudyWindowDetailView: View {
                 }
 
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    Text("Study")
+                    Text(tr("iswd_study"))
                         .font(.system(size: 38, weight: .black))
                         .foregroundStyle(.white)
 
-                    Text("window")
+                    Text(tr("iswd_window"))
                         .font(.system(size: 35, weight: .regular, design: .serif))
                         .italic()
                         .foregroundStyle(
@@ -96,7 +96,7 @@ struct InsightsStudyWindowDetailView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
 
-                Text("Premium course-level focus insight.")
+                Text(tr("iswd_sub"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.48))
             }
@@ -106,7 +106,7 @@ struct InsightsStudyWindowDetailView: View {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 15, weight: .black))
                     .foregroundStyle(.white)
                     .frame(width: 44, height: 44)
@@ -142,7 +142,7 @@ struct InsightsStudyWindowDetailView: View {
                             .fill(accent)
                             .frame(width: 18, height: 1)
 
-                        Text("BEST WINDOW")
+                        Text(tr("iswd_best_caps"))
                             .font(.system(size: 10, weight: .black, design: .monospaced))
                             .tracking(1.7)
                             .foregroundStyle(accent)
@@ -213,8 +213,8 @@ struct InsightsStudyWindowDetailView: View {
         premiumSurface(tint: Color(arenaHex: AppArenaPalette.blue)) {
             VStack(alignment: .leading, spacing: 14) {
                 sectionHeader(
-                    eyebrow: "COURSE CHART",
-                    title: "Course Breakdown",
+                    eyebrow: tr("iswd_chart_caps"),
+                    title: tr("iswd_breakdown"),
                     icon: "chart.bar.xaxis",
                     tint: Color(arenaHex: AppArenaPalette.blue)
                 )
@@ -272,8 +272,8 @@ struct InsightsStudyWindowDetailView: View {
             .frame(height: 148)
 
             HStack(spacing: 8) {
-                visualTag(title: "Top", value: data.strongestCourse, tint: Color(arenaHex: AppArenaPalette.green))
-                visualTag(title: "Low", value: data.neglectedCourse, tint: Color(arenaHex: AppArenaPalette.gold))
+                visualTag(title: tr("iswd_top"), value: data.strongestCourse, tint: Color(arenaHex: AppArenaPalette.green))
+                visualTag(title: tr("iswd_low"), value: data.neglectedCourse, tint: Color(arenaHex: AppArenaPalette.gold))
             }
         }
     }
@@ -296,7 +296,7 @@ struct InsightsStudyWindowDetailView: View {
             }
             .frame(height: 120)
 
-            Text("Add course tags to tasks to unlock this graph.")
+            Text(tr("iswd_empty"))
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.50))
         }
@@ -306,8 +306,8 @@ struct InsightsStudyWindowDetailView: View {
         premiumSurface(tint: Color(arenaHex: AppArenaPalette.gold)) {
             VStack(alignment: .leading, spacing: 14) {
                 sectionHeader(
-                    eyebrow: "SMART READING",
-                    title: "Smart Reading",
+                    eyebrow: tr("iswd_smart_caps"),
+                    title: tr("iswd_smart"),
                     icon: "sparkles",
                     tint: Color(arenaHex: AppArenaPalette.gold)
                 )
@@ -345,8 +345,8 @@ struct InsightsStudyWindowDetailView: View {
         premiumSurface(tint: Color(arenaHex: AppArenaPalette.coral)) {
             VStack(alignment: .leading, spacing: 14) {
                 sectionHeader(
-                    eyebrow: "NEXT MOVE",
-                    title: "Next Move",
+                    eyebrow: tr("ins_next_move_caps"),
+                    title: tr("ins_next_move"),
                     icon: "arrow.up.forward",
                     tint: Color(arenaHex: AppArenaPalette.coral)
                 )

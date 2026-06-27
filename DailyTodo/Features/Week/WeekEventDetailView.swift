@@ -64,7 +64,7 @@ private extension WeekEventDetailView {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "chevron.left")
+                Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(palette.primaryText)
                     .frame(width: 44, height: 44)
@@ -406,7 +406,7 @@ private extension WeekEventDetailView {
     }
 
     func dayText(for weekday: Int) -> String {
-        let isTR = locale.language.languageCode?.identifier == "tr"
+        let isTR = !appLanguageIsEnglish()
 
         if isTR {
             let days = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
@@ -420,7 +420,7 @@ private extension WeekEventDetailView {
     }
 
     func localizedMinuteValue(_ value: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
+        if !appLanguageIsEnglish() {
             return "\(value) dk"
         } else {
             return "\(value) min"
@@ -428,7 +428,7 @@ private extension WeekEventDetailView {
     }
 
     func localizedSetText(_ value: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
+        if !appLanguageIsEnglish() {
             return "\(value) set"
         } else {
             return "\(value) set"
@@ -436,7 +436,7 @@ private extension WeekEventDetailView {
     }
 
     func localizedRepText(_ value: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
+        if !appLanguageIsEnglish() {
             return "\(value) tekrar"
         } else {
             return "\(value) rep"
@@ -444,7 +444,7 @@ private extension WeekEventDetailView {
     }
 
     func localizedSecondText(_ value: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
+        if !appLanguageIsEnglish() {
             return "\(value) sn"
         } else {
             return "\(value) sec"
@@ -452,7 +452,7 @@ private extension WeekEventDetailView {
     }
 
     func localizedRestText(_ value: Int) -> String {
-        if locale.language.languageCode?.identifier == "tr" {
+        if !appLanguageIsEnglish() {
             return "\(value) dinlenme"
         } else {
             return "\(value) rest"

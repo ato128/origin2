@@ -8,23 +8,23 @@
 import SwiftUI
 
 private enum AddFriendArenaPalette {
-    static let backgroundTop = Color(addFriendHex: "#05060D")
-    static let backgroundMid = Color(addFriendHex: "#070713")
-    static let backgroundBottom = Color(addFriendHex: "#07040C")
+    static let backgroundTop = Color(arenaHex: "#05060D")
+    static let backgroundMid = Color(arenaHex: "#070713")
+    static let backgroundBottom = Color(arenaHex: "#07040C")
 
-    static let blue = Color(addFriendHex: "#1593FF")
-    static let cyan = Color(addFriendHex: "#2DD4FF")
-    static let purple = Color(addFriendHex: "#7C3AED")
-    static let coral = Color(addFriendHex: "#FF5A44")
-    static let gold = Color(addFriendHex: "#FBBF24")
-    static let green = Color(addFriendHex: "#A3E635")
-    static let surface = Color(addFriendHex: "#101118")
+    static let blue = Color(arenaHex: "#1593FF")
+    static let cyan = Color(arenaHex: "#2DD4FF")
+    static let purple = Color(arenaHex: "#7C3AED")
+    static let coral = Color(arenaHex: "#FF5A44")
+    static let gold = Color(arenaHex: "#FBBF24")
+    static let green = Color(arenaHex: "#A3E635")
+    static let surface = Color(arenaHex: "#101118")
 
     static var appGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(addFriendHex: "#1E6BFF"),
-                Color(addFriendHex: "#7C3AED")
+                Color(arenaHex: "#1E6BFF"),
+                Color(arenaHex: "#7C3AED")
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -148,7 +148,7 @@ private extension AddFriendSheetView {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 17, weight: .black))
                     .foregroundStyle(.white)
                     .frame(width: 46, height: 46)
@@ -172,7 +172,7 @@ private extension AddFriendSheetView {
                     .tracking(2.2)
                     .foregroundStyle(AddFriendArenaPalette.cyan)
 
-                Text(locale.language.languageCode?.identifier == "tr" ? tr("af_add_friend") : "Add Friend")
+                Text(!appLanguageIsEnglish() ? tr("af_add_friend") : "Add Friend")
                     .font(.system(size: 21, weight: .black))
                     .foregroundStyle(.white)
             }
@@ -229,17 +229,17 @@ private extension AddFriendSheetView {
                         .foregroundStyle(AddFriendArenaPalette.cyan)
 
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text(locale.language.languageCode?.identifier == "tr" ? "Yeni" : "New")
+                        Text(!appLanguageIsEnglish() ? "Yeni" : "New")
                             .font(.system(size: 30, weight: .black))
                             .foregroundStyle(.white)
 
-                        Text(locale.language.languageCode?.identifier == "tr" ? tr("ch_friend_word") : "friend")
+                        Text(!appLanguageIsEnglish() ? tr("ch_friend_word") : "friend")
                             .font(.system(size: 25, weight: .regular, design: .serif))
                             .italic()
                             .foregroundStyle(AddFriendArenaPalette.cyan)
                     }
 
-                    Text(locale.language.languageCode?.identifier == "tr"
+                    Text(!appLanguageIsEnglish()
                          ? tr("af_subtitle")
                          : "Send a friend request by username and grow your study circle.")
                         .font(.system(size: 13, weight: .semibold))
@@ -284,8 +284,8 @@ private extension AddFriendSheetView {
         VStack(alignment: .leading, spacing: 14) {
             sectionTitle(
                 eyebrow: "USER LOOKUP",
-                title: locale.language.languageCode?.identifier == "tr" ? tr("uname_w1") : "Username",
-                italic: locale.language.languageCode?.identifier == "tr" ? tr("uname_w2") : "search"
+                title: !appLanguageIsEnglish() ? tr("uname_w1") : "Username",
+                italic: !appLanguageIsEnglish() ? tr("uname_w2") : "search"
             )
 
             fieldBox(
@@ -316,7 +316,7 @@ private extension AddFriendSheetView {
                         }
                     }
 
-                Text(locale.language.languageCode?.identifier == "tr"
+                Text(!appLanguageIsEnglish()
                      ? tr("uname_hint")
                      : "You can type it without @.")
                     .font(.system(size: 12, weight: .semibold))
@@ -331,8 +331,8 @@ private extension AddFriendSheetView {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle(
                 eyebrow: "HOW IT WORKS",
-                title: locale.language.languageCode?.identifier == "tr" ? tr("how_w1") : "How it",
-                italic: locale.language.languageCode?.identifier == "tr" ? tr("how_w2") : "works"
+                title: !appLanguageIsEnglish() ? tr("how_w1") : "How it",
+                italic: !appLanguageIsEnglish() ? tr("how_w2") : "works"
             )
 
             HStack(alignment: .top, spacing: 13) {
@@ -346,13 +346,13 @@ private extension AddFriendSheetView {
                     )
 
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(locale.language.languageCode?.identifier == "tr"
+                    Text(!appLanguageIsEnglish()
                          ? tr("af_step1")
                          : "A request is sent.")
                         .font(.system(size: 15, weight: .black))
                         .foregroundStyle(.white)
 
-                    Text(locale.language.languageCode?.identifier == "tr"
+                    Text(!appLanguageIsEnglish()
                          ? tr("af_step2")
                          : "Once accepted, they appear in your friends list and social study features unlock.")
                         .font(.system(size: 13, weight: .semibold))
@@ -616,7 +616,7 @@ private extension AddFriendSheetView {
             await friendStore.loadPresence(for: otherUserIDs)
             friendStore.markFriendsCacheRefreshed()
 
-            if locale.language.languageCode?.identifier == "tr" {
+            if !appLanguageIsEnglish() {
                 successMessage = tr("af_request_sent", cleanUsername)
             } else {
                 successMessage = "Friend request sent to @\(cleanUsername)"
@@ -635,51 +635,3 @@ private extension AddFriendSheetView {
 }
 
 // MARK: - Color Hex
-
-private extension Color {
-    init(addFriendHex hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let a: UInt64
-        let r: UInt64
-        let g: UInt64
-        let b: UInt64
-
-        switch cleaned.count {
-        case 3:
-            a = 255
-            r = (int >> 8) * 17
-            g = ((int >> 4) & 0xF) * 17
-            b = (int & 0xF) * 17
-
-        case 6:
-            a = 255
-            r = int >> 16
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        case 8:
-            a = int >> 24
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        default:
-            a = 255
-            r = 255
-            g = 255
-            b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-}

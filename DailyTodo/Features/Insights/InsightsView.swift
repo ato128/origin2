@@ -198,7 +198,7 @@ struct InsightsView: View {
     }
 
     private var isTurkish: Bool {
-        locale.identifier.hasPrefix("tr")
+        !appLanguageIsEnglish()
     }
 
     // MARK: - Body
@@ -369,13 +369,6 @@ struct InsightsView: View {
                 }
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
-
-                Text(isStudyMode
-                     ? tr("ins_sub1")
-                     : tr("ins_sub2"))
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
-                    .lineLimit(2)
             }
 
             Spacer(minLength: 8)
@@ -442,7 +435,7 @@ struct InsightsView: View {
     @ViewBuilder
     private var contentSection: some View {
         VStack(spacing: 14) {
-            // 1. IDENTITY (F1 Driver Profile)
+            // Identity (driver profile) — fed by real tasks / focus / streak.
             InsightsIdentityCardV3(
                 snapshot: identitySnapshot,
                 userName: resolvedUserName,
@@ -454,19 +447,14 @@ struct InsightsView: View {
                 streakBreakBand
             }
 
-            // 2. JOURNEY (4 haftalık telemetri)
-            InsightsJourneyCard(
+            // Clean, data-first focus + tasks (tap focus for full history).
+            InsightsDataDashboard(
                 focusSessions: filteredFocusSessions,
-                isTurkish: isTurkish
+                tasks: filteredTasks,
+                accent: insightsAccent
             )
 
-            // 3. ACHIEVEMENT (tek kart, sol/sağ + locked strip)
-            InsightsAchievementCardV3(
-                badges: vm.allAchievementBadges,
-                onTap: { showAchievements = true }
-            )
-
-            // 4. PREMIUM LAB (exam planner)
+            // Exam planner.
             InsightsPremiumLabCard(
                 isPremium: premiumState != .free,
                 onExamPlanner: { showExamPlannerSheet = true },
@@ -492,11 +480,11 @@ struct InsightsView: View {
                     .foregroundStyle(coral)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Seri kırıldı")
+                    Text(tr("ins_streak_broken_title"))
                         .font(.system(size: 15, weight: .black))
                         .foregroundStyle(.white)
 
-                    Text("\(progression.brokenStreakValue) günlük serini kaybettin · seviye 1 düştü")
+                    Text(tr("ins_streak_broken_sub", progression.brokenStreakValue))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.6))
                         .fixedSize(horizontal: false, vertical: true)
@@ -547,12 +535,12 @@ struct InsightsView: View {
 
     private func restoreButtonTitle(canRestore: Bool, restoresLeft: Int) -> String {
         if !subscription.isPro {
-            return "Updo Pro ile geri getir"
+            return tr("ins_restore_with_pro")
         }
         if restoresLeft > 0 {
-            return "Seri'yi geri getir (bu ay \(restoresLeft)/\(ProgressionManager.monthlyRestoreLimit))"
+            return tr("ins_restore_with_count", restoresLeft, ProgressionManager.monthlyRestoreLimit)
         }
-        return "Bu ayki kurtarma hakkın bitti"
+        return tr("ins_restore_exhausted")
     }
 
     // MARK: - Identity tap

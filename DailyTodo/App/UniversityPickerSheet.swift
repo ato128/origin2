@@ -44,7 +44,7 @@ struct UniversityPickerSheet: View {
                                         Text(section.key)
                                             .font(.system(size: 11, weight: .black, design: .monospaced))
                                             .tracking(2.0)
-                                            .foregroundStyle(Color(universityPickerHex: UniversityPickerPalette.appCyan))
+                                            .foregroundStyle(Color(arenaHex: UniversityPickerPalette.appCyan))
                                             .padding(.horizontal, 22)
 
                                         VStack(spacing: 10) {
@@ -75,10 +75,10 @@ struct UniversityPickerSheet: View {
                         closeSheet()
                     } label: {
                         HStack(spacing: 7) {
-                            Image(systemName: "xmark")
+                            Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                                 .font(.system(size: 12, weight: .black))
 
-                            Text("Close")
+                            Text(tr("event_close"))
                                 .font(.system(size: 13, weight: .black, design: .rounded))
                         }
                         .foregroundStyle(.white.opacity(0.82))
@@ -133,21 +133,21 @@ struct UniversityPickerSheet: View {
             Text("— UNIVERSITY SETUP —")
                 .font(.system(size: 10, weight: .semibold, design: .monospaced))
                 .tracking(2.5)
-                .foregroundStyle(Color(universityPickerHex: UniversityPickerPalette.appCyan))
+                .foregroundStyle(Color(arenaHex: UniversityPickerPalette.appCyan))
 
             HStack(alignment: .firstTextBaseline, spacing: 7) {
-                Text("Choose")
+                Text(tr("ups_choose"))
                     .font(.system(size: 35, weight: .black))
                     .foregroundStyle(.white)
 
-                Text("university")
+                Text(tr("ups_university_lc"))
                     .font(.system(size: 33, weight: .regular, design: .serif))
                     .italic()
                     .foregroundStyle(
                         LinearGradient(
                             colors: [
-                                Color(universityPickerHex: UniversityPickerPalette.appCyan),
-                                Color(universityPickerHex: UniversityPickerPalette.appPurple)
+                                Color(arenaHex: UniversityPickerPalette.appCyan),
+                                Color(arenaHex: UniversityPickerPalette.appPurple)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -155,7 +155,7 @@ struct UniversityPickerSheet: View {
                     )
             }
 
-            Text("Search your university and continue with the matching department and course catalog.")
+            Text(tr("ups_sub"))
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.56))
                 .lineSpacing(2)
@@ -177,12 +177,12 @@ struct UniversityPickerSheet: View {
             HStack(spacing: 11) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(Color(universityPickerHex: UniversityPickerPalette.appCyan))
+                    .foregroundStyle(Color(arenaHex: UniversityPickerPalette.appCyan))
 
                 TextField(
                     "",
                     text: $searchText,
-                    prompt: Text("Search university").foregroundStyle(.white.opacity(0.32))
+                    prompt: Text(tr("ups_search")).foregroundStyle(.white.opacity(0.32))
                 )
                 .textInputAutocapitalization(.words)
                 .font(.system(size: 16, weight: .bold))
@@ -283,8 +283,8 @@ struct UniversityPickerSheet: View {
                         ? UniversityPickerPalette.appGradient
                         : LinearGradient(
                             colors: [
-                                Color(universityPickerHex: UniversityPickerPalette.appBlue).opacity(0.12),
-                                Color(universityPickerHex: UniversityPickerPalette.appPurple).opacity(0.08)
+                                Color(arenaHex: UniversityPickerPalette.appBlue).opacity(0.12),
+                                Color(arenaHex: UniversityPickerPalette.appPurple).opacity(0.08)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -297,7 +297,7 @@ struct UniversityPickerSheet: View {
                             .foregroundStyle(
                                 isSelected
                                 ? .black.opacity(0.76)
-                                : Color(universityPickerHex: UniversityPickerPalette.appCyan)
+                                : Color(arenaHex: UniversityPickerPalette.appCyan)
                             )
                     )
 
@@ -313,15 +313,15 @@ struct UniversityPickerSheet: View {
                             .tracking(1.0)
                             .foregroundStyle(
                                 university.country_code == "tr"
-                                ? Color(universityPickerHex: UniversityPickerPalette.appCyan)
-                                : Color(universityPickerHex: UniversityPickerPalette.gold)
+                                ? Color(arenaHex: UniversityPickerPalette.appCyan)
+                                : Color(arenaHex: UniversityPickerPalette.gold)
                             )
 
                         Text("·")
                             .font(.system(size: 11, weight: .black))
                             .foregroundStyle(.white.opacity(0.26))
 
-                        Text("Catalog ready")
+                        Text(tr("ups_catalog_ready"))
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(.white.opacity(0.42))
                     }
@@ -333,7 +333,7 @@ struct UniversityPickerSheet: View {
                     .font(.system(size: isSelected ? 20 : 13, weight: .black))
                     .foregroundStyle(
                         isSelected
-                        ? Color(universityPickerHex: UniversityPickerPalette.appCyan)
+                        ? Color(arenaHex: UniversityPickerPalette.appCyan)
                         : .white.opacity(0.28)
                     )
             }
@@ -344,8 +344,8 @@ struct UniversityPickerSheet: View {
                         isSelected
                         ? LinearGradient(
                             colors: [
-                                Color(universityPickerHex: UniversityPickerPalette.appBlue).opacity(0.15),
-                                Color(universityPickerHex: UniversityPickerPalette.appPurple).opacity(0.11),
+                                Color(arenaHex: UniversityPickerPalette.appBlue).opacity(0.15),
+                                Color(arenaHex: UniversityPickerPalette.appPurple).opacity(0.11),
                                 Color.white.opacity(0.045)
                             ],
                             startPoint: .topLeading,
@@ -357,7 +357,7 @@ struct UniversityPickerSheet: View {
                         RoundedRectangle(cornerRadius: 23, style: .continuous)
                             .stroke(
                                 isSelected
-                                ? Color(universityPickerHex: UniversityPickerPalette.appBlue).opacity(0.26)
+                                ? Color(arenaHex: UniversityPickerPalette.appBlue).opacity(0.26)
                                 : Color.white.opacity(0.070),
                                 lineWidth: 1
                             )
@@ -375,11 +375,11 @@ struct UniversityPickerSheet: View {
                 .tint(.white)
                 .scaleEffect(1.05)
 
-            Text("Loading universities...")
+            Text(tr("ups_loading"))
                 .font(.system(size: 15, weight: .black, design: .rounded))
                 .foregroundStyle(.white.opacity(0.90))
 
-            Text("Preparing the catalog list for your selected country.")
+            Text(tr("ups_preparing"))
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.46))
                 .multilineTextAlignment(.center)
@@ -392,15 +392,15 @@ struct UniversityPickerSheet: View {
     private func errorState(_ text: String) -> some View {
         VStack(spacing: 12) {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color(universityPickerHex: UniversityPickerPalette.coral).opacity(0.13))
+                .fill(Color(arenaHex: UniversityPickerPalette.coral).opacity(0.13))
                 .frame(width: 66, height: 66)
                 .overlay(
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.system(size: 27, weight: .black))
-                        .foregroundStyle(Color(universityPickerHex: UniversityPickerPalette.coral))
+                        .foregroundStyle(Color(arenaHex: UniversityPickerPalette.coral))
                 )
 
-            Text("Could not load universities")
+            Text(tr("ups_could_not_load"))
                 .font(.system(size: 19, weight: .black))
                 .foregroundStyle(.white)
 
@@ -413,7 +413,7 @@ struct UniversityPickerSheet: View {
             Button {
                 scheduleUniversityLoad(debounceNanoseconds: 0)
             } label: {
-                Text("Retry")
+                Text(tr("common_retry"))
                     .font(.system(size: 13, weight: .black, design: .rounded))
                     .foregroundStyle(.black)
                     .padding(.horizontal, 18)
@@ -441,11 +441,11 @@ struct UniversityPickerSheet: View {
                         .foregroundStyle(.white.opacity(0.52))
                 )
 
-            Text("No university found")
+            Text(tr("ups_no_university"))
                 .font(.system(size: 19, weight: .black))
                 .foregroundStyle(.white)
 
-            Text("Try a different search or switch country.")
+            Text(tr("ups_try_different"))
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.54))
         }
@@ -528,8 +528,8 @@ private enum UniversityPickerPalette {
     static var appGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(universityPickerHex: appBlueSoft),
-                Color(universityPickerHex: appPurple)
+                Color(arenaHex: appBlueSoft),
+                Color(arenaHex: appPurple)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -539,8 +539,8 @@ private enum UniversityPickerPalette {
     static var cardGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(universityPickerHex: appBlue).opacity(0.045),
-                Color(universityPickerHex: appPurple).opacity(0.055),
+                Color(arenaHex: appBlue).opacity(0.045),
+                Color(arenaHex: appPurple).opacity(0.055),
                 Color.white.opacity(0.040)
             ],
             startPoint: .topLeading,
@@ -558,9 +558,9 @@ private struct UniversityPickerArenaBackground: View {
 
             LinearGradient(
                 colors: [
-                    Color(universityPickerHex: UniversityPickerPalette.backgroundTop),
-                    Color(universityPickerHex: UniversityPickerPalette.backgroundMid),
-                    Color(universityPickerHex: UniversityPickerPalette.backgroundBottom)
+                    Color(arenaHex: UniversityPickerPalette.backgroundTop),
+                    Color(arenaHex: UniversityPickerPalette.backgroundMid),
+                    Color(arenaHex: UniversityPickerPalette.backgroundBottom)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -568,19 +568,19 @@ private struct UniversityPickerArenaBackground: View {
             .ignoresSafeArea()
 
             Circle()
-                .fill(Color(universityPickerHex: UniversityPickerPalette.appBlue).opacity(0.12))
+                .fill(Color(arenaHex: UniversityPickerPalette.appBlue).opacity(0.12))
                 .frame(width: 270, height: 270)
                 .blur(radius: 98)
                 .offset(x: 165, y: -220)
 
             Circle()
-                .fill(Color(universityPickerHex: UniversityPickerPalette.appPurple).opacity(0.16))
+                .fill(Color(arenaHex: UniversityPickerPalette.appPurple).opacity(0.16))
                 .frame(width: 330, height: 330)
                 .blur(radius: 115)
                 .offset(x: -180, y: 500)
 
             Circle()
-                .fill(Color(universityPickerHex: UniversityPickerPalette.coral).opacity(0.070))
+                .fill(Color(arenaHex: UniversityPickerPalette.coral).opacity(0.070))
                 .frame(width: 280, height: 280)
                 .blur(radius: 105)
                 .offset(x: 170, y: 285)
@@ -600,51 +600,3 @@ private struct UniversityPickerArenaBackground: View {
 }
 
 // MARK: - Color Hex
-
-private extension Color {
-    init(universityPickerHex hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let a: UInt64
-        let r: UInt64
-        let g: UInt64
-        let b: UInt64
-
-        switch cleaned.count {
-        case 3:
-            a = 255
-            r = (int >> 8) * 17
-            g = ((int >> 4) & 0xF) * 17
-            b = (int & 0xF) * 17
-
-        case 6:
-            a = 255
-            r = int >> 16
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        case 8:
-            a = int >> 24
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        default:
-            a = 255
-            r = 21
-            g = 147
-            b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-}

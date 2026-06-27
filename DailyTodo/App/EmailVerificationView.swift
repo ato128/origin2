@@ -107,7 +107,7 @@ struct EmailVerificationView: View {
     private var iconSection: some View {
         ZStack {
             Circle()
-                .fill(Color(evHex: "#1593FF").opacity(0.16))
+                .fill(Color(arenaHex: "#1593FF").opacity(0.16))
                 .frame(width: 160, height: 160)
                 .blur(radius: 8)
 
@@ -115,8 +115,8 @@ struct EmailVerificationView: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color(evHex: "#1593FF").opacity(0.30),
-                            Color(evHex: "#7C3AED").opacity(0.24),
+                            Color(arenaHex: "#1593FF").opacity(0.30),
+                            Color(arenaHex: "#7C3AED").opacity(0.24),
                             Color.white.opacity(0.06)
                         ],
                         startPoint: .topLeading,
@@ -128,15 +128,15 @@ struct EmailVerificationView: View {
                     Circle()
                         .stroke(Color.white.opacity(0.12), lineWidth: 1)
                 )
-                .shadow(color: Color(evHex: "#7C3AED").opacity(0.24), radius: 24, y: 12)
+                .shadow(color: Color(arenaHex: "#7C3AED").opacity(0.24), radius: 24, y: 12)
 
             Image(systemName: "envelope.badge.shield.half.filled")
                 .font(.system(size: 46, weight: .black))
                 .foregroundStyle(
                     LinearGradient(
                         colors: [
-                            Color(evHex: "#2DD4FF"),
-                            Color(evHex: "#7C3AED")
+                            Color(arenaHex: "#2DD4FF"),
+                            Color(arenaHex: "#7C3AED")
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -149,7 +149,7 @@ struct EmailVerificationView: View {
         HStack(spacing: 13) {
             Image(systemName: "envelope.fill")
                 .font(.system(size: 17, weight: .black))
-                .foregroundStyle(Color(evHex: "#2DD4FF"))
+                .foregroundStyle(Color(arenaHex: "#2DD4FF"))
                 .frame(width: 42, height: 42)
                 .background(
                     RoundedRectangle(cornerRadius: 15, style: .continuous)
@@ -187,7 +187,7 @@ struct EmailVerificationView: View {
         HStack(spacing: 10) {
             Image(systemName: "info.circle.fill")
                 .font(.system(size: 15, weight: .black))
-                .foregroundStyle(Color(evHex: "#FBBF24"))
+                .foregroundStyle(Color(arenaHex: "#FBBF24"))
 
             Text(text)
                 .font(.system(size: 13, weight: .bold, design: .rounded))
@@ -199,10 +199,10 @@ struct EmailVerificationView: View {
         .padding(13)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color(evHex: "#FBBF24").opacity(0.10))
+                .fill(Color(arenaHex: "#FBBF24").opacity(0.10))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color(evHex: "#FBBF24").opacity(0.18), lineWidth: 1)
+                        .stroke(Color(arenaHex: "#FBBF24").opacity(0.18), lineWidth: 1)
                 )
         )
         .padding(.horizontal, 24)
@@ -233,9 +233,9 @@ struct EmailVerificationView: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color(evHex: "#1593FF"),
-                            Color(evHex: "#7C3AED"),
-                            Color(evHex: "#FF5A44")
+                            Color(arenaHex: "#1593FF"),
+                            Color(arenaHex: "#7C3AED"),
+                            Color(arenaHex: "#FF5A44")
                         ],
                         startPoint: .leading,
                         endPoint: .trailing
@@ -246,7 +246,7 @@ struct EmailVerificationView: View {
             Capsule()
                 .stroke(Color.white.opacity(0.14), lineWidth: 1)
         )
-        .shadow(color: Color(evHex: "#7C3AED").opacity(0.26), radius: 18, y: 9)
+        .shadow(color: Color(arenaHex: "#7C3AED").opacity(0.26), radius: 18, y: 9)
     }
 
     private func secondaryButtonContent(
@@ -257,7 +257,7 @@ struct EmailVerificationView: View {
         HStack(spacing: 10) {
             if isLoading {
                 ProgressView()
-                    .tint(Color(evHex: "#2DD4FF"))
+                    .tint(Color(arenaHex: "#2DD4FF"))
             } else {
                 Image(systemName: systemImage)
                     .font(.system(size: 15, weight: .black))
@@ -266,7 +266,7 @@ struct EmailVerificationView: View {
             Text(title)
                 .font(.system(size: 15, weight: .black, design: .rounded))
         }
-        .foregroundStyle(Color(evHex: "#2DD4FF"))
+        .foregroundStyle(Color(arenaHex: "#2DD4FF"))
         .frame(maxWidth: .infinity)
         .frame(height: 54)
         .background(
@@ -285,9 +285,9 @@ struct EmailVerificationView: View {
 
             LinearGradient(
                 colors: [
-                    Color(evHex: "#05060D"),
-                    Color(evHex: "#070713"),
-                    Color(evHex: "#07040C")
+                    Color(arenaHex: "#05060D"),
+                    Color(arenaHex: "#070713"),
+                    Color(arenaHex: "#07040C")
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -295,19 +295,19 @@ struct EmailVerificationView: View {
             .ignoresSafeArea()
 
             Circle()
-                .fill(Color(evHex: "#1593FF").opacity(0.12))
+                .fill(Color(arenaHex: "#1593FF").opacity(0.12))
                 .frame(width: 300, height: 300)
                 .blur(radius: 110)
                 .offset(x: 170, y: -250)
 
             Circle()
-                .fill(Color(evHex: "#7C3AED").opacity(0.18))
+                .fill(Color(arenaHex: "#7C3AED").opacity(0.18))
                 .frame(width: 340, height: 340)
                 .blur(radius: 120)
                 .offset(x: -185, y: 480)
 
             Circle()
-                .fill(Color(evHex: "#FF5A44").opacity(0.075))
+                .fill(Color(arenaHex: "#FF5A44").opacity(0.075))
                 .frame(width: 270, height: 270)
                 .blur(radius: 100)
                 .offset(x: 175, y: 260)
@@ -323,53 +323,5 @@ struct EmailVerificationView: View {
             )
             .ignoresSafeArea()
         }
-    }
-}
-
-private extension Color {
-    init(evHex hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let a: UInt64
-        let r: UInt64
-        let g: UInt64
-        let b: UInt64
-
-        switch cleaned.count {
-        case 3:
-            a = 255
-            r = (int >> 8) * 17
-            g = ((int >> 4) & 0xF) * 17
-            b = (int & 0xF) * 17
-
-        case 6:
-            a = 255
-            r = int >> 16
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        case 8:
-            a = int >> 24
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        default:
-            a = 255
-            r = 21
-            g = 147
-            b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
     }
 }

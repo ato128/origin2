@@ -11,6 +11,17 @@
 import SwiftUI
 import Combine
 
+/// A course the user picks (or that is suggested) during onboarding, before it
+/// is persisted as a real course. Shared by `StudentStore`, `CurriculumCatalog`
+/// and the onboarding stores. (Previously lived in the now-removed
+/// `StudentOnboardingFlowView`.)
+struct OnboardingCourseDraft: Identifiable, Hashable {
+    let id = UUID()
+    var code: String
+    var name: String
+    var isSuggested: Bool = false
+}
+
 @MainActor
 final class AIOnboardingStore: ObservableObject {
 

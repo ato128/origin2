@@ -39,13 +39,13 @@ struct EdgeGlowBorder: View {
         // diffuse spectrum than a hard 3-color edge.
         AngularGradient(
             gradient: Gradient(colors: [
-                Color(updoHex: "#F97316"),   // orange  (warm)
-                Color(updoHex: "#EC4899"),   // pink
-                Color(updoHex: "#7C3AED"),   // purple
-                Color(updoHex: "#2DD4FF"),   // cyan    (cool)
-                Color(updoHex: "#7C3AED"),   // purple
-                Color(updoHex: "#EC4899"),   // pink
-                Color(updoHex: "#F97316")    // loop back to orange
+                Color(arenaHex: "#F97316"),   // orange  (warm)
+                Color(arenaHex: "#EC4899"),   // pink
+                Color(arenaHex: "#7C3AED"),   // purple
+                Color(arenaHex: "#2DD4FF"),   // cyan    (cool)
+                Color(arenaHex: "#7C3AED"),   // purple
+                Color(arenaHex: "#EC4899"),   // pink
+                Color(arenaHex: "#F97316")    // loop back to orange
             ]),
             center: .center,
             angle: .degrees(angle)
@@ -96,12 +96,12 @@ struct EdgeGlowBorder: View {
 
 #Preview {
     ZStack {
-        Color(updoHex: "#080C18").ignoresSafeArea()
+        Color(arenaHex: "#080C18").ignoresSafeArea()
         VStack(spacing: 12) {
             Image(systemName: "sparkles")
                 .font(.system(size: 44, weight: .semibold))
                 .foregroundStyle(
-                    LinearGradient(colors: [Color(updoHex: "#2DD4FF"), Color(updoHex: "#7C3AED")],
+                    LinearGradient(colors: [Color(arenaHex: "#2DD4FF"), Color(arenaHex: "#7C3AED")],
                                    startPoint: .topLeading, endPoint: .bottomTrailing)
                 )
             Text("EdgeGlowBorder")

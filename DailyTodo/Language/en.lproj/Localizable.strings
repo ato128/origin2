@@ -660,6 +660,8 @@
 "task_detail_duration" = "Duration";
 "task_detail_history_last" = "Last";
 "task_detail_history_best" = "Best";
+"task_detail_identity" = "Identity";
+"task_detail_seconds" = "Seconds";
 
 "task_detail_sets" = "Sets";
 "task_detail_reps" = "Reps";
@@ -835,8 +837,6 @@
 
 "smart_suggestion_default_title" = "You can keep the rhythm";
 "smart_suggestion_default_message" = "Completing one small task could help you build momentum today.";
-
-"todo_minutes_format" = "%d min";
 
 "chat_today" = "Today";
 "chat_yesterday" = "Yesterday";
@@ -1021,6 +1021,437 @@
 "ph_w_account" = "Account";
 "ph_w_actions" = "actions";
 "ph_w_notifications_lc" = "notifications";
+
+/* Profile Hub — eyebrows (caps) & header strays */
+"ph_profile_hub_caps" = "PROFILE HUB";
+"ph_header_title" = "Profile";
+"ph_header_italic" = "hub";
+"ph_account_caps" = "ACCOUNT";
+"ph_w_account_italic" = "profile";
+"ph_smart_system_caps" = "SMART SYSTEM";
+"ph_focus_prefs" = "Focus Preferences";
+"ph_language_caps" = "LANGUAGE";
+"ph_updo_caps" = "UPDO";
+"ph_account_actions_caps" = "ACCOUNT ACTIONS";
+"ph_appearance_caps" = "APPEARANCE";
+"ph_w_appearance_app" = "App";
+"ph_w_appearance_icon" = "icon";
+"ph_appearance_sub" = "Change your home screen icon. Gold & Chrome are Updo Pro exclusive.";
+"ph_app_icon_title" = "App Icon";
+"ph_app_icon_variants" = "Steel · Gold · Chrome";
+
+/* Profile Hub — sheets (notifications, about, made-with-care, icons) */
+"ph_smart_notifs_caps" = "SMART NOTIFICATIONS";
+"ph_streak_protect_title" = "Streak Protection";
+"ph_quiet_hours_title" = "Quiet Hours";
+"ph_about_updo_caps" = "ABOUT UPDO";
+"ph_about_title" = "Student";
+"ph_about_title_italic" = "operating system";
+"ph_about_why" = "Why it exists";
+"ph_feat_week" = "Week";
+"ph_feat_focus" = "Focus";
+"ph_feat_crew" = "Crew";
+"ph_about_version" = "Version 1.0 • Built for students";
+"ph_protect_focus_rhythm" = "Protecting your focus rhythm";
+"ph_icon_steel" = "Steel";
+"ph_icon_default" = "Default";
+
+/* Crew Home — zone header, stats sharing, challenges, leaderboard */
+"crew_active_zone_live" = "ACTIVE ZONE · %d LIVE";
+"crew_see_friends_close" = "See your friends up close";
+"crew_friends_locked_sub" = "Who's focusing, their streak & level — unlock with Updo Pro";
+"crew_share_my_stats" = "Share my stats";
+"crew_stats_shared_on" = "Friends can see your streak, level and focus status";
+"crew_stats_shared_off" = "Your stats are hidden from everyone";
+"crew_stats_pro_caps" = "STATS · PRO";
+"crew_weekly_challenge_prep" = "Weekly challenge is being prepared";
+"crew_weekly_challenge_prep_sub" = "Arena backend is connected. Real challenge data will appear here once available.";
+"crew_top_crews_soon" = "Top crews coming soon";
+"crew_top_crews_soon_sub" = "Department, campus and country crew rankings will be listed here as they arrive from the backend.";
+"crew_week_challenge_title" = "Challenge of the week";
+"crew_reward" = "Reward";
+"crew_your_rank" = "Your rank";
+"crew_be_first" = "Claim the top spot";
+"crew_be_first_sub" = "Complete a focus session to appear in department, campus and country rankings.";
+
+/* Insights — streak broken & restore */
+"ins_streak_broken_title" = "Streak broken";
+"ins_streak_broken_sub" = "You lost your %d-day streak · dropped 1 level";
+"ins_restore_with_pro" = "Restore with Updo Pro";
+"ins_restore_with_count" = "Restore streak (%d/%d this month)";
+"ins_restore_exhausted" = "No restores left this month";
+
+/* Home — streak badge & coaching bubble */
+"home_streak_ax" = "Streak: %d days";
+"home_streak_up_title" = "Streak up! 🔥";
+"home_streak_count_title" = "%d-day streak 🔥";
+"home_streak_start_title" = "Start your streak 🔥";
+"home_streak_up_body" = "You're doing great — for %d days you've finished a task and focused. Repeat tomorrow and let it grow.";
+"home_streak_info_body_active" = "Complete a task AND a focus every day to keep your streak. Miss either and it resets, dropping you a level.";
+"home_streak_info_body_start" = "Start your streak: complete a task and a focus today. Keep both up daily and the flame grows.";
+
+/* Week — task section headers */
+"wv_tasks_caps" = "TASKS";
+"wv_month_tasks_caps" = "THIS MONTH'S TASKS";
+"wv_no_month_tasks" = "No tasks planned this month.";
+
+/* Focus — hero labels */
+"focus_countdown_caps" = "COUNTDOWN";
+"focus_minutes_caps" = "MINUTES";
+"focus_finish_prefix" = "ends %@";
+
+/* Onboarding showcase mocks */
+"ob_mk_now_live" = "NOW · LIVE";
+"ob_mk_personal" = "Personal";
+"ob_mk_custom" = "Custom";
+"ob_mk_friend" = "friend";
+"ob_mk_friends" = "Friends";
+
+/* TasksView — eyebrows & exam prep */
+"tv_task_flow_caps" = "TASK FLOW";
+"tv_academic_flow_caps" = "ACADEMIC FLOW";
+"tv_exam_schedule_caps" = "EXAM SCHEDULE";
+"tv_prep_caps" = "PREP";
+"tv_upcoming_caps" = "UPCOMING";
+"tv_min_progress" = "%d/%d min";
+
+/* MessagesView — hub header & section eyebrows */
+"mv_social_hub_caps" = "SOCIAL HUB";
+"mv_title" = "Messages";
+"mv_title_italic" = "hub";
+"mv_sub" = "Friend & Crew chats in one place.";
+"mv_chats_caps" = "CHATS";
+"mv_online_caps" = "ONLINE";
+"mv_live_now_caps" = "LIVE NOW";
+"mv_all_chats_caps" = "ALL CHATS";
+
+/* App onboarding showcase carousel (Focus/Crew/Community/Ready pages) */
+"ob_sc_focus_title" = "Focus";
+"ob_sc_focus_accent" = "Go deep";
+"ob_sc_focus_sub" = "Timer. Goal. Live Activity.";
+"ob_sc_focus_keywords" = "DEEP WORK  •  TIMER  •  LIVE";
+"ob_sc_crew_title" = "Crew";
+"ob_sc_crew_accent" = "Study together";
+"ob_sc_crew_sub" = "Friends. Rooms. Shared progress.";
+"ob_sc_crew_keywords" = "FRIENDS  •  ROOMS  •  SHARED TASKS";
+"ob_sc_comm_title" = "Community";
+"ob_sc_comm_accent" = "Stay in motion";
+"ob_sc_comm_sub" = "Arena. Rankings. Momentum.";
+"ob_sc_comm_keywords" = "ARENA  •  DISCOVER  •  COMPETE";
+"ob_sc_ready_title" = "You're in";
+"ob_sc_ready_accent" = "System ready";
+"ob_sc_ready_sub" = "Your study space is built.";
+"ob_sc_ready_keywords" = "HOME  •  WEEK  •  FOCUS  •  CREW";
+"ob_sc_continue" = "Continue";
+"ob_sc_preparing" = "Preparing...";
+"ob_sc_enter_updo" = "Enter Updo";
+"ob_sc_study_focus" = "Study Focus";
+"ob_sc_live_on_lock" = "Live on Lock Screen";
+
+/* Crew Arena (CrewHomeModels) — scope, range, join, eyebrows, fallback summary */
+"ch_scope_department" = "Department";
+"ch_scope_university" = "Uni";
+"ch_range_week" = "Week";
+"ch_range_month" = "Month";
+"ch_range_all" = "All";
+"ch_join_caps" = "JOIN";
+"ch_full_caps" = "FULL";
+"ch_eyebrow_dept_courses" = "%@ · %d COURSES · LIVE";
+"ch_eyebrow_dept_arena" = "%@ · ACADEMIC ARENA";
+"ch_eyebrow_campus" = "CAMPUS · LIVE";
+"ch_eyebrow_campus_named" = "%@ · CAMPUS · LIVE";
+"ch_eyebrow_country" = "%@ · LIVE";
+"ch_eyebrow_global" = "GLOBAL · STUDY ARENA";
+"ch_metric_live" = "LIVE";
+"ch_metric_today" = "TODAY";
+"ch_metric_uni" = "UNI";
+"ch_metric_hours" = "HOURS";
+"ch_focusing_now" = "%@ focusing now";
+"ch_active_courses" = "%d active courses";
+"ch_nationwide" = "nationwide";
+"ch_students_lc" = "students";
+"ch_sum_dept_label" = "YOUR DEPARTMENT";
+"ch_sum_dept_sub" = "Live academic competition in your department";
+"ch_sum_uni_label" = "YOUR UNIVERSITY";
+"ch_sum_uni_sub" = "Campus-wide focus and crew league";
+"ch_sum_country_label" = "COUNTRY ARENA";
+"ch_sum_league" = "League";
+"ch_sum_country_sub" = "Academic race between universities";
+"ch_sum_global_sub" = "The world's live academic arena";
+
+/* BackendCrewDetailView */
+"bcd_invite_code" = "Invite Code";
+"bcd_rhythm_caps" = "CREW RHYTHM";
+"bcd_performance" = "Performance";
+"bcd_next_badge_label" = "Next badge";
+"bcd_streak" = "Streak %@";
+"bcd_min_focus" = "%d min focus";
+"bcd_live_activity_caps" = "LIVE ACTIVITY";
+"bcd_activity" = "Activity";
+"bcd_crew_space_caps" = "CREW SPACE";
+"bcd_active_crew_caps" = "ACTIVE CREW";
+"bcd_invite" = "Invite";
+"bcd_members_caps" = "CREW MEMBERS";
+"bcd_focusing_caps" = "FOCUSING";
+"bcd_shared_tasks_caps" = "SHARED TASKS";
+"bcd_shared" = "Shared";
+"bcd_new" = "New";
+"bcd_focus_together" = "Focus Together";
+
+/* FriendDetailView */
+"fd_friend_space_caps" = "FRIEND SPACE";
+"fd_today_plan_caps" = "TODAY PLAN";
+"fd_study_profile_caps" = "STUDY PROFILE";
+"fd_social_actions_caps" = "SOCIAL ACTIONS";
+
+/* AddEventView */
+"ae_week_event_caps" = "WEEK EVENT";
+"ae_lesson_lc" = "lesson";
+"ae_preview_caps" = "PREVIEW";
+"ae_my_lessons" = "My Lessons";
+"ae_courses_caps" = "COURSES";
+"ae_extra_lesson" = "Extra lesson";
+"ae_no_lessons" = "No lessons";
+"ae_every_week" = "Every week";
+
+/* ExamPlannerSheet */
+"eps_planner_caps" = "EXAM PLANNER";
+"eps_flow_caps" = "EXAM FLOW";
+"eps_topics_caps" = "TOPICS";
+"eps_date" = "Date";
+
+/* HomeDashboard quick actions */
+"hda_add_new" = "Add new";
+"hda_view_detail" = "View details";
+"hda_dont_forget" = "Don't forget to add";
+"hdh_today_flow_caps" = "TODAY FLOW";
+"hdh_shared_focus_active" = "Shared focus active";
+"hdh_session_with" = "Session in progress with %@.";
+"hdh_crew_waiting" = "Crew is waiting for you";
+"hdt_today_board_caps" = "TODAY BOARD";
+"hdt_completed" = "Completed";
+"hdt_remaining" = "Remaining";
+"hdt_streak" = "Streak";
+
+/* Insights detail views (study window / weekly signal / achievements) */
+"ins_next_move_caps" = "NEXT MOVE";
+"ins_next_move" = "Next Move";
+"iswd_caps" = "STUDY WINDOW";
+"iswd_study" = "Study";
+"iswd_window" = "window";
+"iswd_sub" = "Premium course-level focus insight.";
+"iswd_best_caps" = "BEST WINDOW";
+"iswd_chart_caps" = "COURSE CHART";
+"iswd_breakdown" = "Course Breakdown";
+"iswd_top" = "Top";
+"iswd_low" = "Low";
+"iswd_empty" = "Add course tags to tasks to unlock this graph.";
+"iswd_smart_caps" = "SMART READING";
+"iswd_smart" = "Smart Reading";
+"iwsd_caps" = "WEEKLY SIGNAL";
+"iwsd_weekly" = "Weekly";
+"iwsd_signal" = "signal";
+"iwsd_sub" = "Premium weekly rhythm analysis.";
+"iwsd_overview_caps" = "SIGNAL OVERVIEW";
+"iwsd_7day_caps" = "7-DAY CHART";
+"iwsd_7day" = "7-Day Rhythm";
+"iwsd_daily_caps" = "DAILY DETAILS";
+"iwsd_breakdown" = "Daily Breakdown";
+"iwsd_tip" = "Use your strongest day as a template and reinforce your weakest one with a short block.";
+"iav_paths_caps" = "ACHIEVEMENT PATHS";
+"iav_achievements" = "Achievements";
+"iav_map" = "map";
+"iav_progress_caps" = "PROGRESS";
+"iav_path_caps" = "PATH";
+"iav_focus_path" = "Focus Path";
+"iav_streak_path" = "Streak Path";
+"iav_task_path" = "Task Path";
+"iav_exam_path" = "Exam Path";
+"iav_special_path" = "Special Path";
+"iav_earned_caps" = "EARNED";
+"iav_achievement_caps" = "ACHIEVEMENT";
+"iav_path_detail_caps" = "PATH DETAIL";
+
+/* CrewFocusRoomView (extra; base cfr_ keys live below) */
+"cfr_host_label" = "Host: %@";
+"cfr_no_participants" = "No participants yet";
+"cfr_host" = "Host";
+"cfr_crew_streak" = "Crew Streak";
+"cfr_leave" = "Leave Session";
+"cfr_end" = "End Session";
+
+/* BackendCrewTaskDetailView */
+"bctd_delete" = "Delete";
+"bctd_task_detail_caps" = "TASK DETAIL";
+"bctd_task_lc" = "task";
+"bctd_status" = "Status";
+"bctd_quick_actions_caps" = "QUICK ACTIONS";
+"bctd_assignment_caps" = "ASSIGNMENT";
+"bctd_assignment" = "Assignment";
+"bctd_task_meta_caps" = "TASK META";
+
+/* CrewChatInfoView */
+"cci_info" = "Crew Info";
+"cci_workspace" = "Crew workspace";
+"cci_members" = "Members";
+"cci_tasks" = "Tasks";
+"cci_no_members" = "No members yet";
+"cci_mute" = "Mute Crew Notifications";
+"cci_mute_sub" = "Stop alerts from this crew";
+"cci_open_later" = "Open Crew Later";
+
+/* Tail batch: chat, AI, auth, university picker, edit task, identity */
+"fcv_camera" = "Camera";
+"fcv_file" = "File";
+"ai_clear" = "Clear";
+"ai_no_focus_session" = "No focus session";
+"auth_welcome_back_caps" = "WELCOME BACK";
+"auth_login" = "Login";
+"auth_new_account_caps" = "NEW ACCOUNT";
+"auth_signup" = "Sign Up";
+"ups_choose" = "Choose";
+"ups_university_lc" = "university";
+"ups_sub" = "Search your university and continue with the matching department and course catalog.";
+"ups_search" = "Search university";
+"ups_catalog_ready" = "Catalog ready";
+"ups_loading" = "Loading universities...";
+"ups_preparing" = "Preparing the catalog list for your selected country.";
+"ups_could_not_load" = "Could not load universities";
+"ups_no_university" = "No university found";
+"ups_try_different" = "Try a different search or switch country.";
+"etv_details" = "Details";
+"etv_planning" = "Planning";
+"etv_date_time" = "Date and time";
+"etv_next_week" = "Next week";
+"etv_in_2_hours" = "In 2 hours";
+"etv_this_weekend" = "This weekend";
+"iic_identity_caps" = "IDENTITY";
+
+/* Final cluster: create crew, auth form, schedule sheet, join crew, focus room backend, create crew task */
+"ccb_new_crew_caps" = "NEW CREW";
+"ccb_preview_caps" = "CREW PREVIEW";
+"ccb_info_caps" = "CREW INFO";
+"afs_name" = "Name";
+"afs_name_ph" = "Your name";
+"afs_email" = "Email";
+"afs_password" = "Password";
+"tss_title" = "Schedule Task";
+"tss_task" = "Task";
+"tss_datetime" = "Date & Time";
+"tss_duration" = "Duration: %d min";
+"tss_save" = "Save Schedule";
+"jcs_join_crew_caps" = "JOIN CREW";
+"jcs_invite_code_caps" = "INVITE CODE";
+"jcs_crew_code_caps" = "CREW CODE";
+"jcs_invite" = "Invite";
+"cfrb_done" = "Done";
+"cfrb_waiting" = "Waiting";
+"cfrb_required" = "Required";
+"bcts_new_task_caps" = "NEW CREW TASK";
+"bcts_flow_caps" = "CREW FLOW";
+"bcts_detail" = "Detail";
+"bcts_week_title" = "Add to";
+"bcts_week_italic" = "week";
+
+/* Straggler batch: create crew symbol/accent, momentum/focus chips, deep insights, crew badge, identity level */
+"ccb_symbol_caps" = "CREW SYMBOL";
+"ccb_accent_caps" = "CREW ACCENT";
+"ccb_color" = "Color";
+"hdf_focusing" = "Focusing";
+"hdf_shared_focus" = "Shared Focus";
+"hdf_multiple_active" = "Multiple Active Crew Focuses";
+"di_title" = "Deep Insights";
+"di_sub" = "Your premium performance view";
+"di_best_window" = "Best Study Window";
+"di_weekly_review" = "Weekly Deep Review";
+"di_strongest" = "Strongest: %@";
+"di_weakest" = "Weakest: %@";
+"di_identity_evo" = "Identity Evolution";
+"di_next" = "Next: %@";
+"di_exam_readiness" = "Exam Readiness Pro";
+"di_pattern_alerts" = "Pattern Alerts";
+"cbc_title" = "Crew Badge";
+"cbc_unlocked_by" = "Unlocked by total focus time";
+"cbc_unlocked" = "Unlocked!";
+"cbc_streak" = "Streak: %d";
+"iils_caps" = "IDENTITY LEVEL";
+"iils_identity" = "Identity";
+"iils_level" = "level";
+"iils_current_caps" = "CURRENT STATUS";
+"iils_requirements_caps" = "REQUIREMENTS";
+"iils_focus_session" = "Focus session";
+
+/* Accessibility (VoiceOver) labels */
+"a11y_back" = "Back";
+"a11y_more" = "More";
+"a11y_send" = "Send";
+
+/* StudentAcademicSettingsView */
+"sas_setup_caps" = "ACADEMIC SETUP";
+"sas_student" = "Student";
+"sas_academic_profile" = "Academic profile.";
+"sas_header_body" = "Update your university, major, year and courses. Updo uses this setup across Home, Focus, Week and Insights.";
+"sas_school_caps" = "SCHOOL";
+"sas_university" = "University";
+"sas_university_caps" = "UNIVERSITY";
+"sas_year_caps" = "YEAR";
+"sas_major_caps" = "MAJOR";
+"sas_department" = "Department";
+"sas_choose_uni_first" = "Choose university first";
+"sas_major_after_uni" = "Major catalog will load after university selection.";
+"sas_loading_majors" = "Loading majors";
+"sas_finding_departments" = "Finding departments for your university.";
+"sas_major_catalog_unavail" = "Major catalog unavailable";
+"sas_department_caps" = "DEPARTMENT";
+"sas_manual_entry_available" = "Manual entry available";
+"sas_custom_major_caps" = "CUSTOM MAJOR";
+"sas_type_department" = "Type your department";
+"sas_catalog_caps" = "CATALOG";
+"sas_recommended_courses" = "Recommended courses";
+"sas_loading_courses" = "Loading courses";
+"sas_preparing_suggestions" = "Preparing suggestions for %@.";
+"sas_course_catalog_unavail" = "Course catalog unavailable";
+"sas_no_catalog_courses" = "No catalog courses";
+"sas_elective_caps" = "ELECTIVE";
+"sas_active_caps" = "ACTIVE";
+"sas_my_courses" = "My courses";
+"sas_no_active_courses" = "No active courses";
+"sas_add_catalog_or_manual" = "Add catalog or manual courses.";
+"sas_custom_course_caps" = "CUSTOM COURSE";
+"sas_add_manually" = "Add manually";
+"sas_code" = "Code";
+"sas_choose_major" = "Choose major";
+"sas_search_or_type" = "Search your department or type it manually.";
+"sas_search_major" = "Search major";
+"sas_preparing_dept_catalog" = "Preparing department catalog.";
+"sas_could_not_load_majors" = "Could not load majors";
+"sas_retry_caps" = "RETRY";
+"sas_no_matching_major" = "No matching major";
+"sas_try_another" = "Try another search or type your department manually.";
+"sas_type_manually_caps" = "TYPE MANUALLY";
+"sas_use_manual_caps" = "USE MANUAL MAJOR";
+
+/* CourseSetupSheet */
+"css_setup_caps" = "COURSE SETUP";
+"css_courses" = "Courses";
+"css_build_semester" = "Build your semester.";
+"css_header_body" = "Choose catalog courses or add your own. Updo uses these for Home, Focus, Week and Insights.";
+"css_student_profile_caps" = "STUDENT PROFILE";
+"css_setup_source" = "Setup source";
+"css_major" = "Major";
+"css_year" = "Year";
+"css_country" = "Country";
+"css_recommended" = "Recommended";
+"css_add_selected_caps" = "ADD SELECTED COURSES";
+"css_loading_catalog" = "Loading catalog";
+"css_finding_courses" = "Finding courses for your major.";
+"css_no_catalog_yet" = "No catalog courses yet";
+"css_add_manual_for_now" = "You can add courses manually for now.";
+"css_retry_catalog_caps" = "RETRY CATALOG";
+"css_catalog_unavailable" = "Catalog unavailable";
+"css_try_again_caps" = "TRY AGAIN";
+"css_add_course_caps" = "ADD COURSE";
+"css_current_courses" = "Current courses";
 
 /* TasksView */
 "tv_all" = "All";
@@ -2314,3 +2745,120 @@
 "ob_mk_crews" = "Crews";
 "ob_sc_see_pro" = "See Updo Pro";
 "ob_sc_more_prompt" = "Want access to even more?";
+
+/* Home — Getting Started / activation card */
+"starter_caps" = "GETTING STARTED";
+"starter_title" = "Make Updo yours";
+"starter_sub" = "Set your rhythm in a few steps — the app fills in as you move.";
+"starter_progress" = "%d/%d done";
+"starter_step_task" = "Add your first task";
+"starter_step_task_sub" = "Clarify today's first step";
+"starter_step_schedule" = "Set up your schedule";
+"starter_step_schedule_sub" = "Add your classes, let Updo shape your day";
+"starter_step_focus" = "Try your first focus session";
+"starter_step_focus_sub" = "A 25-minute deep work block";
+"starter_step_social" = "Add a friend or crew";
+"starter_step_social_sub" = "Work together, stay motivated";
+"starter_hide" = "Hide for now";
+"starter_done_caps" = "YOU'RE ALL SET";
+"starter_done_title" = "Updo now works alongside you";
+"starter_done_sub" = "You've laid the foundation. From here the app gets smarter as you move.";
+"starter_done_cta" = "Finish";
+
+/* Home — Updo AI rule-based suggestion card (no LLM) */
+"ai_sg_eyebrow" = "UPDO AI";
+"ai_sg_collapsed" = "Updo AI prepared a suggestion for you";
+"ai_sg_intro" = "Updo AI suggests";
+"ai_sg_exam_head" = "Open a study block for %@ today";
+"ai_sg_exam_reason" = "%@ until your exam — %d min today keeps you ahead.";
+"ai_sg_exam_cta" = "Start studying";
+"ai_sg_class_head" = "Make the time before class count";
+"ai_sg_class_reason" = "%@ in %d min. A short prep sets your rhythm.";
+"ai_sg_class_cta" = "Open schedule";
+"ai_sg_streak_head" = "Protect your streak today";
+"ai_sg_streak_reason" = "You have a %d-day streak and nothing done yet today. One small task is enough.";
+"ai_sg_streak_cta" = "Add a quick task";
+"ai_sg_focus_head" = "A focus session fits right now";
+"ai_sg_focus_reason" = "You usually focus, but not yet today. 25 min of deep work helps.";
+"ai_sg_focus_cta" = "Start focus";
+"ai_sg_morning_head" = "Start the day with one small step";
+"ai_sg_morning_reason" = "No plan yet today. The first task sets your rhythm.";
+"ai_sg_morning_cta" = "Add a task";
+"ai_sg_evening_head" = "Lighten tomorrow now";
+"ai_sg_evening_reason" = "You're closing the day. A step or two for tomorrow eases your morning.";
+"ai_sg_evening_cta" = "Plan tomorrow";
+"ai_sg_default_head" = "Keep going with one small step";
+"ai_sg_default_reason" = "I don't see a clear priority for today. Add a task and Updo handles the rest.";
+"ai_sg_default_cta" = "Add a task";
+
+/* Home — Updo AI social challenge mode (rule-based, no LLM) */
+"ai_sg_challenge_chip" = "CHALLENGE";
+"ai_sg_ch_collapsed_crew" = "Updo AI has a challenge for your crew";
+"ai_sg_ch_collapsed_friend" = "Updo AI has a challenge for you";
+"ai_sg_ch_intro_crew" = "Updo AI's challenge for your crew";
+"ai_sg_ch_intro_friend" = "Updo AI's challenge for you";
+"ai_sg_ch_crew_1_head" = "Crew focus race";
+"ai_sg_ch_crew_1_reason" = "Focus for 1 hour total as a crew today — you start the first 25 min.";
+"ai_sg_ch_crew_1_cta" = "Start focus";
+"ai_sg_ch_crew_2_head" = "Task marathon";
+"ai_sg_ch_crew_2_reason" = "Everyone in the crew finishes 3 tasks by tonight. Lead the way.";
+"ai_sg_ch_crew_2_cta" = "Open crew";
+"ai_sg_ch_crew_3_head" = "Be the first to finish";
+"ai_sg_ch_crew_3_reason" = "Add a task and be the first in your crew to finish today.";
+"ai_sg_ch_crew_3_cta" = "Add a task";
+"ai_sg_ch_friend_1_head" = "Focus duel with %@";
+"ai_sg_ch_friend_1_reason" = "Who focuses 25 min first today? Make the first move.";
+"ai_sg_ch_friend_1_cta" = "Start focus";
+"ai_sg_ch_friend_2_head" = "Challenge %@";
+"ai_sg_ch_friend_2_reason" = "Both finish one task today — call it out in chat.";
+"ai_sg_ch_friend_2_cta" = "Open chat";
+"ai_sg_ch_friend_3_head" = "Close the day together";
+"ai_sg_ch_friend_3_reason" = "Finish your plans with %@ today. Start by adding a task.";
+"ai_sg_ch_friend_3_cta" = "Add a task";
+"ai_sg_ch_accepted" = "Challenge accepted";
+"ai_sg_ch_accepted_caps" = "ACCEPTED";
+"ai_sg_ch_continue" = "Continue";
+
+/* ProfileHub — Updo AI challenge streak badge */
+"ph_ch_streak_caps" = "CHALLENGE STREAK";
+"ph_ch_streak_title" = "streak";
+"ph_ch_streak_total" = "%d challenges accepted in total";
+
+/* Smart notifications — Updo AI empty-plan suggestion (adaptive, no LLM) */
+"snb_ai_title" = "Updo AI · Your plan looks empty";
+"snb_ai_new" = "Updo is ready for you — start by adding your first task.";
+"snb_ai_morning" = "Start the day with one small step. Add a task and Updo shapes the rest.";
+"snb_ai_focus" = "Your plan is empty today. Set your rhythm with a 25-minute focus block.";
+"snb_ai_evening" = "Lighten tomorrow — plan a step or two so your morning is clear.";
+"ph_ai_suggestions" = "Updo AI Suggestions";
+"ph_ai_suggestions_sub" = "Let Updo AI nudge you when your plan is empty";
+"ai_exam_days_n" = "%d days";
+"ai_sg_tasks_head" = "Keep going on your tasks";
+"ai_sg_tasks_reason" = "Your steps for today are ready. Finish one to keep your rhythm.";
+"ai_sg_tasks_cta" = "Open tasks";
+"ai_sg_open_chat" = "Chat with Updo AI";
+"ai_sg_ch_done" = "Challenge complete";
+"ai_sg_ch_progress_tasks" = "%d / %d tasks";
+"ai_sg_ch_progress_focus" = "%d / %d minutes";
+
+/* Insights — clean data dashboard */
+"insd_focus_week_caps" = "FOCUS · THIS WEEK";
+"insd_today" = "Today";
+"insd_sessions_label" = "Sessions";
+"insd_total" = "Total";
+"insd_streak_label" = "Streak";
+"insd_tasks_label" = "Tasks this week";
+"insd_recent_caps" = "RECENT SESSIONS";
+"insd_empty" = "No focus sessions yet. Start your first one.";
+"insd_h" = "h";
+"insd_min" = "m";
+"insd_yesterday" = "Yesterday";
+"insd_days_ago" = "%d days ago";
+"insd_day_unit" = "days";
+"insd_focus_untitled" = "Focus";
+"insd_tasks_caps" = "TASKS · THIS WEEK";
+"insd_completed_label" = "completed";
+"insd_focus_detail_title" = "Focus History";
+"insd_avg" = "Avg session";
+"insd_all_sessions_caps" = "ALL SESSIONS";
+"insd_tap_hint" = "Tap for details";

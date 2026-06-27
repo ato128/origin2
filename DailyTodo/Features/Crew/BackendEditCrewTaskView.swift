@@ -8,23 +8,23 @@
 import SwiftUI
 
 private enum BackendEditTaskArenaPalette {
-    static let backgroundTop = Color(editTaskHex: "#05060D")
-    static let backgroundMid = Color(editTaskHex: "#070713")
-    static let backgroundBottom = Color(editTaskHex: "#07040C")
+    static let backgroundTop = Color(arenaHex: "#05060D")
+    static let backgroundMid = Color(arenaHex: "#070713")
+    static let backgroundBottom = Color(arenaHex: "#07040C")
 
-    static let blue = Color(editTaskHex: "#1593FF")
-    static let cyan = Color(editTaskHex: "#2DD4FF")
-    static let purple = Color(editTaskHex: "#7C3AED")
-    static let coral = Color(editTaskHex: "#FF5A44")
-    static let gold = Color(editTaskHex: "#FBBF24")
-    static let green = Color(editTaskHex: "#A3E635")
-    static let surface = Color(editTaskHex: "#101118")
+    static let blue = Color(arenaHex: "#1593FF")
+    static let cyan = Color(arenaHex: "#2DD4FF")
+    static let purple = Color(arenaHex: "#7C3AED")
+    static let coral = Color(arenaHex: "#FF5A44")
+    static let gold = Color(arenaHex: "#FBBF24")
+    static let green = Color(arenaHex: "#A3E635")
+    static let surface = Color(arenaHex: "#101118")
 
     static var appGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(editTaskHex: "#1E6BFF"),
-                Color(editTaskHex: "#7C3AED")
+                Color(arenaHex: "#1E6BFF"),
+                Color(arenaHex: "#7C3AED")
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -199,7 +199,7 @@ private extension BackendEditCrewTaskView {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 17, weight: .black))
                     .foregroundStyle(.white)
                     .frame(width: 46, height: 46)
@@ -897,7 +897,7 @@ private extension BackendEditCrewTaskView {
     }
 
     func priorityLabel(_ raw: String) -> String {
-        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+        let isTurkish = !appLanguageIsEnglish()
 
         switch raw {
         case "low": return isTurkish ? tr("prio_low") : "Low"
@@ -909,7 +909,7 @@ private extension BackendEditCrewTaskView {
     }
 
     func statusLabel(_ raw: String) -> String {
-        let isTurkish = Locale.current.language.languageCode?.identifier == "tr"
+        let isTurkish = !appLanguageIsEnglish()
 
         switch raw {
         case "todo": return isTurkish ? tr("status_todo") : "Todo"
@@ -922,51 +922,3 @@ private extension BackendEditCrewTaskView {
 }
 
 // MARK: - Color Hex
-
-private extension Color {
-    init(editTaskHex hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-
-        let a: UInt64
-        let r: UInt64
-        let g: UInt64
-        let b: UInt64
-
-        switch cleaned.count {
-        case 3:
-            a = 255
-            r = (int >> 8) * 17
-            g = ((int >> 4) & 0xF) * 17
-            b = (int & 0xF) * 17
-
-        case 6:
-            a = 255
-            r = int >> 16
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        case 8:
-            a = int >> 24
-            r = (int >> 16) & 0xFF
-            g = (int >> 8) & 0xFF
-            b = int & 0xFF
-
-        default:
-            a = 255
-            r = 255
-            g = 255
-            b = 255
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-}

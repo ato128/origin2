@@ -49,11 +49,11 @@ struct CrewBadgeCard: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Crew Badge")
+                    Text(tr("cbc_title"))
                         .font(.headline)
                         .foregroundStyle(palette.primaryText)
 
-                    Text("Unlocked by total focus time")
+                    Text(tr("cbc_unlocked_by"))
                         .font(.caption)
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -61,7 +61,7 @@ struct CrewBadgeCard: View {
                 Spacer()
 
                 if showBadgeUnlocked {
-                    Text("Unlocked!")
+                    Text(tr("cbc_unlocked"))
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 10)
@@ -152,7 +152,7 @@ struct CrewBadgeCard: View {
             if let nextTarget {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text("Next badge")
+                        Text(tr("bcd_next_badge_label"))
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(palette.secondaryText)
 
@@ -173,7 +173,7 @@ struct CrewBadgeCard: View {
                 Image(systemName: "flame.fill")
                     .foregroundStyle(.orange)
 
-                Text("Streak: \(crew.currentStreak)")
+                Text(tr("cbc_streak", crew.currentStreak))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(palette.primaryText)
             }

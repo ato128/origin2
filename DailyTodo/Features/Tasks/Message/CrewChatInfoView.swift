@@ -130,7 +130,7 @@ private extension CrewChatInfoView {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "chevron.left")
+                Image(systemName: "chevron.left").accessibilityLabel(tr("a11y_back"))
                     .font(.system(size: 19, weight: .bold))
                     .foregroundStyle(palette.primaryText)
                     .frame(width: 44, height: 44)
@@ -147,7 +147,7 @@ private extension CrewChatInfoView {
 
             Spacer()
 
-            Text("Crew Info")
+            Text(tr("cci_info"))
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
@@ -175,7 +175,7 @@ private extension CrewChatInfoView {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(palette.primaryText)
 
-                Text("Crew workspace")
+                Text(tr("cci_workspace"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(palette.secondaryText)
             }
@@ -187,9 +187,9 @@ private extension CrewChatInfoView {
 
     var statsCard: some View {
         HStack(spacing: 12) {
-            statItem(value: "\(crewMembers.count)", title: "Members")
-            statItem(value: "\(crewTasks.count)", title: "Tasks")
-            statItem(value: "\(completedCount)", title: "Done")
+            statItem(value: "\(crewMembers.count)", title: tr("cci_members"))
+            statItem(value: "\(crewTasks.count)", title: tr("cci_tasks"))
+            statItem(value: "\(completedCount)", title: tr("tasks_summary_done"))
         }
         .padding(18)
         .background(cardBackground)
@@ -197,12 +197,12 @@ private extension CrewChatInfoView {
 
     var membersCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Members")
+            Text(tr("cci_members"))
                 .font(.headline)
                 .foregroundStyle(palette.primaryText)
 
             if crewMembers.isEmpty {
-                Text("No members yet")
+                Text(tr("cci_no_members"))
                     .font(.subheadline)
                     .foregroundStyle(palette.secondaryText)
             } else {
@@ -240,11 +240,11 @@ private extension CrewChatInfoView {
         VStack(spacing: 0) {
             Toggle(isOn: $crew.isMuted) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Mute Crew Notifications")
+                    Text(tr("cci_mute"))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(palette.primaryText)
 
-                    Text("Stop alerts from this crew")
+                    Text(tr("cci_mute_sub"))
                         .font(.caption)
                         .foregroundStyle(palette.secondaryText)
                 }
@@ -259,7 +259,7 @@ private extension CrewChatInfoView {
             } label: {
                 HStack {
                     Image(systemName: "person.3.fill")
-                    Text("Open Crew Later")
+                    Text(tr("cci_open_later"))
                     Spacer()
                     Image(systemName: "chevron.right")
                         .foregroundStyle(palette.secondaryText)

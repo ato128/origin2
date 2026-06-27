@@ -18,6 +18,10 @@ struct ProfileHubView: View {
     @AppStorage("smartEngineEnabled") private var smartEngineEnabled = true
     @AppStorage("showOnlyToday") private var showOnlyToday = false
 
+    // Updo AI challenge streak (written from Home when a challenge is accepted).
+    @AppStorage("challengeStreakCountV1") private var challengeStreakCount = 0
+    @AppStorage("challengeAcceptedTotalV1") private var challengeAcceptedTotal = 0
+
     @State private var showEditProfile = false
     @State private var showAuthSheet = false
     @State private var showStudentAcademicSettings = false
@@ -50,8 +54,13 @@ struct ProfileHubView: View {
             ScrollView(showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 16) {
                     headerSection
+                    if challengeAcceptedTotal > 0 {
+                        challengeStreakBadge
+                    }
                     accountSection
+                    #if DEBUG
                     proTestSection
+                    #endif
                     productivitySection
                     appearanceSection
                     languageSection
@@ -94,7 +103,9 @@ struct ProfileHubView: View {
         }
     }
 
-    // TEMP: test toggle to preview Pro features without a purchase.
+    #if DEBUG
+    // Debug-only toggle to preview Pro features without a purchase.
+    // Compiled out of Release/App Store builds.
     var proTestSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
@@ -128,14 +139,15 @@ struct ProfileHubView: View {
             )
         }
     }
+    #endif
 
     var appearanceSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
-                eyebrow: "APPEARANCE",
-                title: "Uygulama",
-                italic: "ikonu",
-                subtitle: "Ana ekran ikonunu değiştir. Gold & Chrome Updo Pro'ya özel.",
+                eyebrow: tr("ph_appearance_caps"),
+                title: tr("ph_w_appearance_app"),
+                italic: tr("ph_w_appearance_icon"),
+                subtitle: tr("ph_appearance_sub"),
                 icon: "app.badge.fill",
                 tint: Color(arenaHex: AppArenaPalette.gold)
             )
@@ -146,8 +158,8 @@ struct ProfileHubView: View {
                 profileRow(
                     icon: "app.dashed",
                     iconColor: Color(arenaHex: AppArenaPalette.gold),
-                    title: "Uygulama İkonu",
-                    subtitle: "Çelik · Gold · Chrome"
+                    title: tr("ph_app_icon_title"),
+                    subtitle: tr("ph_app_icon_variants")
                 )
             }
             .buttonStyle(.plain)
@@ -172,7 +184,7 @@ private extension ProfileHubView {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                     .font(.system(size: 16, weight: .black))
                     .foregroundStyle(.white)
                     .frame(width: 46, height: 46)
@@ -181,24 +193,12 @@ private extension ProfileHubView {
             .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 7) {
-                HStack(spacing: 8) {
-                    Rectangle()
-                        .fill(pageAccent)
-                        .frame(width: 20, height: 1)
-
-                    Text("PROFILE HUB")
-                        .font(.system(size: 11, weight: .black, design: .monospaced))
-                        .tracking(2.3)
-                        .foregroundStyle(pageAccent)
-                        .lineLimit(1)
-                }
-
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    Text("Profil")
+                    Text(tr("ph_header_title"))
                         .font(.system(size: 38, weight: .black))
                         .foregroundStyle(.white)
 
-                    Text("merkezi")
+                    Text(tr("ph_header_italic"))
                         .font(.system(size: 35, weight: .regular, design: .serif))
                         .italic()
                         .foregroundStyle(
@@ -214,11 +214,6 @@ private extension ProfileHubView {
                 }
                 .lineLimit(1)
                 .minimumScaleFactor(0.70)
-
-                Text(tr("ph_header_sub"))
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
-                    .lineLimit(2)
             }
 
             Spacer(minLength: 8)
@@ -257,12 +252,61 @@ private extension ProfileHubView {
         }
     }
 
+    var challengeStreakBadge: some View {
+        let fire = Color(arenaHex: "#F97316")
+
+        return HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [fire, Color(arenaHex: "#EF4444")],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(width: 50, height: 50)
+                    .shadow(color: fire.opacity(0.4), radius: 10, y: 4)
+
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 22, weight: .black))
+                    .foregroundStyle(.white)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(tr("ph_ch_streak_caps"))
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(1.6)
+                    .foregroundStyle(Color(arenaHex: AppArenaPalette.gold))
+
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("\(challengeStreakCount)")
+                        .font(.system(size: 28, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+                        .monospacedDigit()
+
+                    Text(tr("ph_ch_streak_title"))
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.78))
+                }
+
+                Text(tr("ph_ch_streak_total", challengeAcceptedTotal))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .background(arenaCardBackground(tint: fire, radius: 30, strength: 0.5))
+    }
+
     var accountSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
-                eyebrow: "ACCOUNT",
+                eyebrow: tr("ph_account_caps"),
                 title: tr("ph_w_account"),
-                italic: "profili",
+                italic: tr("ph_w_account_italic"),
                 subtitle: tr("ph_account_sub"),
                 icon: "person.crop.circle.fill",
                 tint: pageAccent
@@ -344,7 +388,7 @@ private extension ProfileHubView {
     var productivitySection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
-                eyebrow: "SMART SYSTEM",
+                eyebrow: tr("ph_smart_system_caps"),
                 title: tr("ph_w_smart"),
                 italic: tr("ph_w_flow"),
                 subtitle: tr("ph_smart_sub"),
@@ -393,7 +437,7 @@ private extension ProfileHubView {
                 profileRow(
                     icon: "timer",
                     iconColor: Color(arenaHex: AppArenaPalette.green),
-                    title: "Focus Tercihleri",
+                    title: tr("ph_focus_prefs"),
                     subtitle: tr("ph_focus_soon")
                 )
                 .opacity(0.72)
@@ -412,7 +456,7 @@ private extension ProfileHubView {
     var languageSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
-                eyebrow: "LANGUAGE",
+                eyebrow: tr("ph_language_caps"),
                 title: tr("ph_w_language"),
                 italic: tr("ph_w_selection"),
                 subtitle: tr("ph_lang_sub"),
@@ -424,7 +468,7 @@ private extension ProfileHubView {
                 iconBox(icon: "character.bubble.fill", tint: Color(arenaHex: AppArenaPalette.blue))
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Uygulama Dili")
+                    Text(tr("settings_app_language_title"))
                         .font(.system(size: 16, weight: .black))
                         .foregroundStyle(.white)
 
@@ -436,7 +480,7 @@ private extension ProfileHubView {
                 Spacer()
 
                 Picker(
-                    "Uygulama Dili",
+                    tr("settings_app_language_title"),
                     selection: Binding(
                         get: { languageManager.selectedLanguage },
                         set: { languageManager.setLanguage($0) }
@@ -460,7 +504,7 @@ private extension ProfileHubView {
     var supportSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
-                eyebrow: "UPDO",
+                eyebrow: tr("ph_updo_caps"),
                 title: tr("ph_w_app"),
                 italic: tr("ph_w_about_updo"),
                 subtitle: tr("ph_about_sub"),
@@ -512,7 +556,7 @@ private extension ProfileHubView {
             if session.currentUser != nil {
                 VStack(alignment: .leading, spacing: 14) {
                     sectionHeader(
-                        eyebrow: "ACCOUNT ACTIONS",
+                        eyebrow: tr("ph_account_actions_caps"),
                         title: tr("ph_w_account"),
                         italic: tr("ph_w_actions"),
                         subtitle: tr("ph_actions_sub"),
@@ -685,17 +729,6 @@ private extension ProfileHubView {
     ) -> some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 8) {
-                    Rectangle()
-                        .fill(tint)
-                        .frame(width: 18, height: 1)
-
-                    Text(eyebrow)
-                        .font(.system(size: 10, weight: .black, design: .monospaced))
-                        .tracking(1.7)
-                        .foregroundStyle(tint)
-                }
-
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(title)
                         .font(.system(size: 24, weight: .black))
@@ -706,11 +739,6 @@ private extension ProfileHubView {
                         .italic()
                         .foregroundStyle(tint)
                 }
-
-                Text(subtitle)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
-                    .lineLimit(2)
             }
 
             Spacer()
@@ -743,11 +771,6 @@ private extension ProfileHubView {
                 Text(title)
                     .font(.system(size: 16, weight: .black))
                     .foregroundStyle(.white)
-
-                Text(subtitle)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
-                    .lineLimit(2)
             }
 
             Spacer()
@@ -772,11 +795,6 @@ private extension ProfileHubView {
                 Text(title)
                     .font(.system(size: 16, weight: .black))
                     .foregroundStyle(.white)
-
-                Text(subtitle)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
-                    .lineLimit(2)
             }
 
             Spacer()
@@ -948,6 +966,7 @@ private struct SmartNotificationSettingsView: View {
     @AppStorage("smartStreakNotificationsEnabled") private var smartStreakNotificationsEnabled = true
     @AppStorage("smartDailyFocusNotificationsEnabled") private var smartDailyFocusNotificationsEnabled = true
     @AppStorage("smartTaskNotificationsEnabled") private var smartTaskNotificationsEnabled = true
+    @AppStorage("smartAiSuggestionNotificationsEnabled") private var smartAiSuggestionNotificationsEnabled = true
 
     private var cyan: Color { Color(arenaHex: AppArenaPalette.cyan) }
     private var gold: Color { Color(arenaHex: AppArenaPalette.gold) }
@@ -1002,7 +1021,7 @@ private struct SmartNotificationSettingsView: View {
                 Button {
                     dismiss()
                 } label: {
-                    Image(systemName: "xmark")
+                    Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                         .font(.system(size: 15, weight: .black))
                         .foregroundStyle(.white)
                         .frame(width: 44, height: 44)
@@ -1020,7 +1039,7 @@ private struct SmartNotificationSettingsView: View {
             }
 
             VStack(alignment: .leading, spacing: 7) {
-                Text("SMART NOTIFICATIONS")
+                Text(tr("ph_smart_notifs_caps"))
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(2.2)
                     .foregroundStyle(coral)
@@ -1035,11 +1054,6 @@ private struct SmartNotificationSettingsView: View {
                         .italic()
                         .foregroundStyle(coral)
                 }
-
-                Text(tr("ph_notif_intro"))
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.52))
-                    .lineSpacing(3)
             }
         }
         .padding(18)
@@ -1073,7 +1087,7 @@ private struct SmartNotificationSettingsView: View {
             toggleRow(
                 icon: "flame.fill",
                 tint: coral,
-                title: "Seri Koruma",
+                title: tr("ph_streak_protect_title"),
                 subtitle: tr("ph_focus_sug_hint"),
                 isOn: $smartStreakNotificationsEnabled
             )
@@ -1103,6 +1117,18 @@ private struct SmartNotificationSettingsView: View {
             )
             .disabled(!smartNotificationsEnabled)
             .opacity(smartNotificationsEnabled ? 1 : 0.45)
+
+            Divider().overlay(Color.white.opacity(0.075))
+
+            toggleRow(
+                icon: "sparkles",
+                tint: cyan,
+                title: tr("ph_ai_suggestions"),
+                subtitle: tr("ph_ai_suggestions_sub"),
+                isOn: $smartAiSuggestionNotificationsEnabled
+            )
+            .disabled(!smartNotificationsEnabled)
+            .opacity(smartNotificationsEnabled ? 1 : 0.45)
         }
         .padding(18)
         .background(cardBackground(cyan, strength: 0.46))
@@ -1113,7 +1139,7 @@ private struct SmartNotificationSettingsView: View {
             iconBox("moon.zzz.fill", tint: .white.opacity(0.70))
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Sessiz Saatler")
+                Text(tr("ph_quiet_hours_title"))
                     .font(.system(size: 17, weight: .black))
                     .foregroundStyle(.white)
 
@@ -1168,11 +1194,6 @@ private struct SmartNotificationSettingsView: View {
                 Text(title)
                     .font(.system(size: 16, weight: .black))
                     .foregroundStyle(.white)
-
-                Text(subtitle)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
-                    .lineLimit(2)
             }
 
             Spacer()
@@ -1282,7 +1303,7 @@ private struct AboutUpdoView: View {
                 Button {
                     dismiss()
                 } label: {
-                    Image(systemName: "xmark")
+                    Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                         .font(.system(size: 15, weight: .black))
                         .foregroundStyle(.white)
                         .frame(width: 44, height: 44)
@@ -1296,17 +1317,17 @@ private struct AboutUpdoView: View {
             }
 
             VStack(alignment: .leading, spacing: 7) {
-                Text("ABOUT UPDO")
+                Text(tr("ph_about_updo_caps"))
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(2.2)
                     .foregroundStyle(cyan)
 
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    Text("Student")
+                    Text(tr("ph_about_title"))
                         .font(.system(size: 38, weight: .black))
                         .foregroundStyle(.white)
 
-                    Text("operating system")
+                    Text(tr("ph_about_title_italic"))
                         .font(.system(size: 31, weight: .regular, design: .serif))
                         .italic()
                         .foregroundStyle(cyan)
@@ -1349,7 +1370,7 @@ private struct AboutUpdoView: View {
 
     private var missionCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Neden var?")
+            Text(tr("ph_about_why"))
                 .font(.system(size: 22, weight: .black))
                 .foregroundStyle(.white)
 
@@ -1365,9 +1386,9 @@ private struct AboutUpdoView: View {
     private var featureGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
             miniFeature(tr("ph_tasks_word"), "checklist", cyan)
-            miniFeature("Hafta", "calendar", blue)
-            miniFeature("Focus", "timer", gold)
-            miniFeature("Crew", "person.3.fill", purple)
+            miniFeature(tr("ph_feat_week"), "calendar", blue)
+            miniFeature(tr("ph_feat_focus"), "timer", gold)
+            miniFeature(tr("ph_feat_crew"), "person.3.fill", purple)
         }
     }
 
@@ -1402,7 +1423,7 @@ private struct AboutUpdoView: View {
                     .font(.system(size: 17, weight: .black))
                     .foregroundStyle(.white)
 
-                Text("Version 1.0 • Built for students")
+                Text(tr("ph_about_version"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.48))
             }
@@ -1458,7 +1479,7 @@ private struct MadeWithCareView: View {
                         Button {
                             dismiss()
                         } label: {
-                            Image(systemName: "xmark")
+                            Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
                                 .font(.system(size: 15, weight: .black))
                                 .foregroundStyle(.white)
                                 .frame(width: 44, height: 44)
@@ -1528,7 +1549,7 @@ private struct MadeWithCareView: View {
 
                         VStack(spacing: 12) {
                             careLine(tr("ph_reduce_clutter"), "sparkles", cyan)
-                            careLine("Odak ritmini korumak", "timer", gold)
+                            careLine(tr("ph_protect_focus_rhythm"), "timer", gold)
                             careLine(tr("ph_reduce_clutter_sub"), "scope", coral)
                         }
                         .padding(18)
@@ -1595,7 +1616,7 @@ struct AppIconPickerView: View {
 
     private var options: [Option] {
         [
-            Option(id: nil, name: "Çelik", pro: false,
+            Option(id: nil, name: tr("ph_icon_steel"), pro: false,
                    fg: AnyShapeStyle(Color(arenaHex: "#5AB6CC")), bg: Color(arenaHex: "#06070E")),
             Option(id: "AppIcon-Gold", name: "Gold", pro: true,
                    fg: AnyShapeStyle(LinearGradient(colors: [Color(arenaHex: "#FCD34D"), Color(arenaHex: "#D97706")], startPoint: .topLeading, endPoint: .bottomTrailing)),
@@ -1640,7 +1661,7 @@ struct AppIconPickerView: View {
                     .padding(20)
                 }
             }
-            .navigationTitle("Uygulama İkonu")
+            .navigationTitle(tr("ph_app_icon_title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -1704,6 +1725,10 @@ struct AppIconPickerView: View {
             DispatchQueue.main.async { current = UIApplication.shared.alternateIconName }
         }
         current = id
+        // Mirror the chosen icon into widgets / live activities.
+        WidgetAppSync.updateIcon(id)
+        // Next notification should render with the newly chosen icon.
+        NotificationIconRenderer.invalidateCache()
     }
 }
 
