@@ -599,7 +599,7 @@ struct InsightsView: View {
     // MARK: - Identity flow (level-up)
 
     private func handleFocusRecordSaved(_ record: FocusSessionRecord) {
-        guard record.isCompleted else { return }
+        guard record.countsTowardStats else { return }
 
         syncIdentityProgressState()
 

@@ -52,7 +52,7 @@ struct FocusIdentityView: View {
         Group {
             if isSmall { smallCard } else { mediumCard }
         }
-        .padding(isSmall ? 15 : 17)
+        .padding(isSmall ? 16 : 18)
         .widgetUpdoBackground(accent: theme.accent)
     }
 
@@ -60,56 +60,54 @@ struct FocusIdentityView: View {
 
     private var smallCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            header(title: "ODAK")
+            header(title: widgetLocalized("ODAK", "FOCUS"))
 
-            Spacer(minLength: 6)
+            Spacer(minLength: 8)
 
-            heroLevel(size: 44)
+            heroLevel
 
-            Spacer(minLength: 6)
+            Spacer(minLength: 10)
 
             HStack(spacing: 0) {
-                miniStat(icon: "flame.fill", value: "\(state.streak)", label: "SERİ", tint: gold)
+                miniStat(icon: "flame", value: "\(state.streak)",
+                         label: widgetLocalized("Seri", "Streak"), tint: gold)
                 Spacer(minLength: 8)
-                miniStat(icon: "scope", value: "\(state.todayFocusMinutes)dk", label: "BUGÜN", tint: theme.accent)
+                miniStat(icon: "scope", value: "\(state.todayFocusMinutes)\(widgetLocalized("dk", "m"))",
+                         label: widgetLocalized("Bugün", "Today"), tint: theme.accent)
             }
-        }
-        .background(alignment: .topTrailing) {
-            UpdoWidgetLogo(size: 78, tint: AnyShapeStyle(theme.accent.opacity(0.07)))
-                .offset(x: 18, y: -8)
         }
     }
 
     // MARK: Medium
 
     private var mediumCard: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 0) {
-                header(title: "ODAK KİMLİĞİ")
-
-                Spacer(minLength: 8)
-
-                HStack(alignment: .firstTextBaseline, spacing: 20) {
-                    bigStat(value: "\(state.level)", label: "SEVİYE", color: .white)
-                    bigStat(value: "\(state.streak)", label: "GÜN SERİ", color: gold)
-                }
+                header(title: widgetLocalized("ODAK KİMLİĞİ", "FOCUS IDENTITY"))
 
                 Spacer(minLength: 10)
 
+                HStack(alignment: .firstTextBaseline, spacing: 22) {
+                    bigStat(value: "\(state.level)", label: widgetLocalized("Seviye", "Level"), color: .white)
+                    bigStat(value: "\(state.streak)", label: widgetLocalized("Gün seri", "Day streak"), color: gold)
+                }
+
+                Spacer(minLength: 12)
+
                 HStack(spacing: 0) {
-                    miniStat(icon: "scope", value: "\(state.todayFocusMinutes)dk", label: "BUGÜN", tint: theme.accent)
+                    miniStat(icon: "scope", value: "\(state.todayFocusMinutes)\(widgetLocalized("dk", "m"))",
+                             label: widgetLocalized("Bugün", "Today"), tint: theme.accent)
                     Spacer(minLength: 8)
-                    miniStat(icon: "crown.fill", value: "\(max(state.streak, state.longestStreak))g", label: "EN UZUN", tint: .white.opacity(0.75))
+                    miniStat(icon: "crown", value: "\(max(state.streak, state.longestStreak))\(widgetLocalized("g", "d"))",
+                             label: widgetLocalized("En uzun", "Longest"), tint: UpdoWidgetPalette.textSecondary)
                     Spacer(minLength: 0)
                 }
             }
 
-            // Crosshair artwork bleeding off the right (like the card's hero art).
-            UpdoWidgetLogo(size: 116, tint: theme.mark)
-                .opacity(0.92)
-                .shadow(color: theme.glow.opacity(0.4), radius: 10)
-                .frame(width: 96)
-                .offset(x: 14)
+            // A subtle, single brand mark — quiet identity, not a loud watermark.
+            UpdoWidgetLogo(size: 86, tint: theme.mark)
+                .opacity(0.5)
+                .frame(width: 78)
         }
     }
 
@@ -117,84 +115,63 @@ struct FocusIdentityView: View {
 
     private func header(title: String) -> some View {
         HStack(spacing: 7) {
-            Rectangle()
-                .fill(theme.accent)
-                .frame(width: 13, height: 2.5)
-                .clipShape(Capsule())
-
             Text(title)
-                .font(.system(size: 11, weight: .black, design: .rounded))
-                .tracking(1.6)
-                .foregroundStyle(theme.accent)
+                .font(WidgetFont.eyebrow(11))
+                .tracking(0.8)
+                .foregroundStyle(UpdoWidgetPalette.textSecondary)
 
             if state.isPro {
                 Text("PRO")
-                    .font(.system(size: 8, weight: .black, design: .rounded))
-                    .tracking(0.6)
-                    .foregroundStyle(.black)
+                    .font(.system(size: 8, weight: .bold))
+                    .tracking(0.5)
+                    .foregroundStyle(gold)
                     .padding(.horizontal, 5)
                     .padding(.vertical, 1.5)
-                    .background(Capsule().fill(gold))
+                    .background(Capsule().fill(gold.opacity(0.16)))
             }
 
             Spacer(minLength: 4)
-
-            if isSmall {
-                UpdoWidgetLogo(size: 19)
-            }
         }
     }
 
-    private func heroLevel(size: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: -2) {
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text("LV")
-                    .font(.system(size: size * 0.36, weight: .black, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.55))
-                Text("\(state.level)")
-                    .font(.system(size: size, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-            }
-            Text("SEVİYE")
-                .font(.system(size: 9, weight: .black, design: .rounded))
-                .tracking(1.4)
-                .foregroundStyle(.white.opacity(0.4))
+    private var heroLevel: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text("\(state.level)")
+                .focusHeroNumber(size: 46, accent: theme.accent)
+            Text(widgetLocalized("Seviye", "Level"))
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(UpdoWidgetPalette.textTertiary)
         }
     }
 
     private func bigStat(value: String, label: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: -1) {
+        VStack(alignment: .leading, spacing: 1) {
             Text(value)
-                .font(.system(size: 40, weight: .heavy, design: .rounded))
-                .foregroundStyle(color)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
+                .focusHeroNumber(size: 38, accent: color)
             Text(label)
-                .font(.system(size: 9, weight: .black, design: .rounded))
-                .tracking(1.2)
-                .foregroundStyle(.white.opacity(0.4))
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(UpdoWidgetPalette.textTertiary)
         }
     }
 
     private func miniStat(icon: String, value: String, label: String, tint: Color) -> some View {
         HStack(spacing: 7) {
             Image(systemName: icon)
-                .font(.system(size: 12, weight: .black))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(tint)
+                .frame(width: 14)
 
-            VStack(alignment: .leading, spacing: -1) {
+            VStack(alignment: .leading, spacing: 0) {
                 Text(value)
-                    .font(.system(size: 14, weight: .heavy, design: .rounded))
+                    .font(.system(size: 14, weight: .semibold))
                     .monospacedDigit()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(UpdoWidgetPalette.textPrimary)
+                    .contentTransition(.numericText(countsDown: true))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 Text(label)
-                    .font(.system(size: 8, weight: .black, design: .rounded))
-                    .tracking(0.8)
-                    .foregroundStyle(.white.opacity(0.38))
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(UpdoWidgetPalette.textTertiary)
             }
         }
     }

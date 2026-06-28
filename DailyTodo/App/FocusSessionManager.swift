@@ -152,16 +152,9 @@ final class FocusSessionManager: ObservableObject {
             return
         }
 
-        // Failed completion recorder (totalSeconds dolmadı)
-        FocusCompletionRecorder.shared.saveCompletedSession(
-            ownerUserID: currentUserID?.uuidString,
-            title: activeSessionDisplayTitle,
-            startedAt: session.startDate,
-            endedAt: Date(),
-            totalSeconds: session.durationMinutes * 60,
-            completedSeconds: elapsedSeconds,
-            isCompleted: false
-        )
+        // NOTE: We do NOT record here. `completeAndPersist` (called below for every
+        // path) is the single place that persists the session — recording twice
+        // produced duplicate rows for a manual stop.
 
         // Crew akışı
         if session.mode == .crew,

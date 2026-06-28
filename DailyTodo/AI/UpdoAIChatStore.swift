@@ -108,6 +108,16 @@ final class UpdoAIChatStore: ObservableObject {
         isSending = false
     }
 
+    /// Appends a user message + an assistant confirmation locally, without any
+    /// network call or credit spend. Used by the token-free command interpreter.
+    func appendLocalExchange(userText: String, assistantText: String) {
+        messages.append(AIMessage(role: "user", text: userText, timestamp: .now))
+        messages.append(AIMessage(role: "assistant", text: assistantText, timestamp: .now))
+        lastPreviewText = assistantText
+        UserDefaults.standard.set(assistantText, forKey: previewKey)
+        persist()
+    }
+
     // MARK: - Persistence
 
     func load() {

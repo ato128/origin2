@@ -34,7 +34,7 @@ struct InsightsDataDashboard: View {
     // MARK: - Derived focus data
 
     private var completedSessions: [FocusSessionRecord] {
-        focusSessions.filter { $0.isCompleted && $0.completedSeconds >= 60 }
+        focusSessions.filter { $0.countsTowardStats }
     }
 
     private func focusMinutes(on day: Date) -> Int {
@@ -213,7 +213,7 @@ struct InsightsFocusHistorySheet: View {
 
     private var completed: [FocusSessionRecord] {
         sessions
-            .filter { $0.isCompleted && $0.completedSeconds >= 60 }
+            .filter { $0.countsTowardStats }
             .sorted { $0.endedAt > $1.endedAt }
     }
 

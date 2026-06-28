@@ -27,11 +27,11 @@ struct ScheduleLiveActivityWidget: Widget {
                         ScheduleIconBubble(accent: accent, now: now, start: start, end: end, size: 34)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(context.state.title)
-                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .font(.system(size: 15, weight: .semibold))
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.7)
                             Text(scheduleStatus(now: now, start: start, end: end))
-                                .font(.system(size: 11, weight: .medium, design: .rounded))
+                                .font(.system(size: 11, weight: .medium))
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
                         }
@@ -41,8 +41,8 @@ struct ScheduleLiveActivityWidget: Widget {
                 DynamicIslandExpandedRegion(.trailing) {
                     Link(destination: URL(string: "dailytodo://live/stop")!) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(.white)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.secondary)
                             .frame(width: 28, height: 28)
                             .background(Circle().fill(Color.white.opacity(0.10)))
                     }
@@ -52,14 +52,10 @@ struct ScheduleLiveActivityWidget: Widget {
                     VStack(alignment: .leading, spacing: 9) {
                         HStack(alignment: .firstTextBaseline) {
                             scheduleTimer(now: now, start: start, end: end)
-                                .font(.system(size: 26, weight: .heavy, design: .rounded))
-                                .monospacedDigit()
-                                .foregroundStyle(.white)
+                                .focusHeroNumber(size: 26, accent: accent, live: true)
                             Spacer()
                             Text("\(hmDate(start))–\(hmDate(end))")
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.secondary)
-                                .monospacedDigit()
+                                .focusHeroNumber(size: 12, accent: accent)
                         }
                         UpdoLiveProgressBar(
                             running: scheduleRunningRange(now: now, start: start, end: end),
@@ -74,9 +70,7 @@ struct ScheduleLiveActivityWidget: Widget {
                 ScheduleIconBubble(accent: accent, now: now, start: start, end: end, size: 22)
             } compactTrailing: {
                 scheduleCompactTimer(now: now, start: start, end: end)
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(.white)
+                    .focusHeroNumber(size: 14, accent: accent, live: true)
             } minimal: {
                 ScheduleIconBubble(accent: accent, now: now, start: start, end: end, size: 22)
             }
@@ -96,125 +90,70 @@ private struct ScheduleLockScreenView: View {
         let start = context.state.startDate
         let end = context.state.endDate
 
-        VStack(spacing: 0) {
-            headerBand(accent: accent, now: now, start: start, end: end)
-            bodyBlock(accent: accent, now: now, start: start, end: end)
-        }
-        .background(
-            ZStack {
-                LinearGradient(
-                    colors: [UpdoWidgetPalette.bgMid, UpdoWidgetPalette.bgBottom],
-                    startPoint: .top, endPoint: .bottom
-                )
-                RadialGradient(colors: [accent.opacity(0.14), .clear], center: .bottomTrailing, startRadius: 8, endRadius: 240)
-            }
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(accent.opacity(0.18), lineWidth: 1)
-        )
-    }
-
-    private func headerBand(accent: Color, now: Date, start: Date, end: Date) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("BUGÜN")
-                    .font(.system(size: 11, weight: .black, design: .rounded))
-                    .tracking(1.6)
-                    .foregroundStyle(.white.opacity(0.95))
-
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    scheduleTimer(now: now, start: start, end: end)
-                        .font(.system(size: 40, weight: .heavy, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-
-                    Text(now < start ? "kala" : (now < end ? "kaldı" : ""))
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.6))
-                }
-            }
-
-            Spacer(minLength: 6)
-
-            HStack(spacing: 9) {
-                UpdoWidgetLogo(size: 24)
-                    .shadow(color: .black.opacity(0.4), radius: 4, y: 1)
-
-                Link(destination: URL(string: "dailytodo://live/stop")!) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 28, height: 28)
-                        .background(Circle().fill(Color.white.opacity(0.12)))
-                }
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 13)
-        .padding(.bottom, 12)
-        .background(
-            LinearGradient(
-                colors: [accent.opacity(0.42), accent.opacity(0.10), .clear],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            )
-        )
-    }
-
-    private func bodyBlock(accent: Color, now: Date, start: Date, end: Date) -> some View {
-        VStack(alignment: .leading, spacing: 11) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 11) {
                 ScheduleIconBubble(accent: accent, now: now, start: start, end: end, size: 36)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(context.state.title)
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .font(WidgetFont.title(16))
+                        .foregroundStyle(UpdoWidgetPalette.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
 
-                    Text("\(hmDate(start))–\(hmDate(end))")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.55))
-                        .monospacedDigit()
+                    Text(scheduleStatus(now: now, start: start, end: end))
+                        .font(WidgetFont.caption())
+                        .foregroundStyle(UpdoWidgetPalette.textSecondary)
                         .lineLimit(1)
                 }
 
-                Spacer(minLength: 4)
+                Spacer(minLength: 6)
+
+                Link(destination: URL(string: "dailytodo://live/stop")!) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(UpdoWidgetPalette.textSecondary)
+                        .frame(width: 28, height: 28)
+                        .background(Circle().fill(UpdoWidgetPalette.fillSoft))
+                }
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                scheduleTimer(now: now, start: start, end: end)
+                    .focusHeroNumber(size: 40, accent: accent, live: true)
+
+                Text(now < start ? widgetLocalized("kala", "to go") : (now < end ? widgetLocalized("kaldı", "left") : ""))
+                    .font(WidgetFont.caption())
+                    .foregroundStyle(UpdoWidgetPalette.textTertiary)
+
+                Spacer(minLength: 6)
+
+                Text("\(hmDate(start))–\(hmDate(end))")
+                    .focusHeroNumber(size: 12, accent: accent)
             }
 
             UpdoLiveProgressBar(
                 running: scheduleRunningRange(now: now, start: start, end: end),
                 staticProgress: scheduleProgress(now: now, start: start, end: end),
                 accent: accent,
-                height: 8
+                height: 6
             )
-
-            HStack(spacing: 6) {
-                Image(systemName: scheduleIcon(now: now, start: start, end: end))
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(accent)
-
-                Text(scheduleStatus(now: now, start: start, end: end))
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-
-                Spacer(minLength: 4)
-
-                Text("\(Int(scheduleProgress(now: now, start: start, end: end) * 100))%")
-                    .font(.system(size: 12, weight: .black, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(accent)
-            }
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 12)
-        .padding(.bottom, 14)
+        .padding(16)
+        .background(
+            ZStack {
+                LinearGradient(
+                    colors: [UpdoWidgetPalette.surfaceTop, UpdoWidgetPalette.surfaceBottom],
+                    startPoint: .top, endPoint: .bottom
+                )
+                RadialGradient(colors: [accent.opacity(0.10), .clear], center: .bottomTrailing, startRadius: 8, endRadius: 240)
+            }
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(UpdoWidgetPalette.hairline, lineWidth: 1)
+        )
     }
 }
 
@@ -226,11 +165,10 @@ private struct ScheduleIconBubble: View {
     let size: CGFloat
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
-                .fill(accent.opacity(0.2))
-                .shadow(color: accent.opacity(0.3), radius: 5)
+            RoundedRectangle(cornerRadius: size * 0.30, style: .continuous)
+                .fill(accent.opacity(0.16))
             Image(systemName: scheduleIcon(now: now, start: start, end: end))
-                .font(.system(size: size * 0.42, weight: .semibold))
+                .font(.system(size: size * 0.42, weight: .medium))
                 .foregroundStyle(accent)
         }
         .frame(width: size, height: size)

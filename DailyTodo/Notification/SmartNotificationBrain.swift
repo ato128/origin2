@@ -154,7 +154,7 @@ struct SmartNotificationBrain {
         guard !hasPendingTask, !hasUpcomingExam else { return [] }
 
         let hour = calendar.component(.hour, from: now)
-        let hasEverFocused = focusRecords.contains { $0.isCompleted }
+        let hasEverFocused = focusRecords.contains { $0.countsTowardStats }
         let hasSchedule = !events.isEmpty
 
         // Pick the trigger window + adaptive body for who/when this is.
@@ -414,7 +414,6 @@ struct SmartNotificationBrain {
         let calendar = Calendar.current
 
         return records.contains { record in
-            record.isCompleted &&
             record.completedSeconds >= 10 * 60 &&
             calendar.isDate(record.endedAt, inSameDayAs: now)
         }
@@ -427,7 +426,7 @@ struct SmartNotificationBrain {
         let calendar = Calendar.current
 
         let completedDays = records
-            .filter { $0.isCompleted && $0.completedSeconds >= 10 * 60 }
+            .filter { $0.completedSeconds >= 10 * 60 }
             .map { calendar.startOfDay(for: $0.endedAt) }
 
         let uniqueDays = Set(completedDays).sorted(by: >)

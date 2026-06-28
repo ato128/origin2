@@ -1722,13 +1722,17 @@ struct AppIconPickerView: View {
     private func apply(_ id: String?) {
         guard UIApplication.shared.supportsAlternateIcons else { return }
         UIApplication.shared.setAlternateIconName(id) { _ in
-            DispatchQueue.main.async { current = UIApplication.shared.alternateIconName }
+            DispatchQueue.main.async {
+                current = UIApplication.shared.alternateIconName
+                // Icon is now actually applied — refresh the cached render and
+                // reschedule notifications so their attachment matches.
+                NotificationIconRenderer.invalidateCache()
+                NotificationCenter.default.post(name: .appIconDidChange, object: nil)
+            }
         }
         current = id
         // Mirror the chosen icon into widgets / live activities.
         WidgetAppSync.updateIcon(id)
-        // Next notification should render with the newly chosen icon.
-        NotificationIconRenderer.invalidateCache()
     }
 }
 

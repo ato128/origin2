@@ -33,6 +33,8 @@ struct UpdoAISuggestion {
     /// For challenges: what to measure and the goal (e.g. 3 tasks, 25 focus min).
     let challengeKind: ChallengeKind
     let challengeTarget: Int
+    /// Urgent suggestions (imminent exam) bypass the frequency throttle.
+    let isUrgentExam: Bool
     let action: () -> Void
 
     init(
@@ -46,6 +48,7 @@ struct UpdoAISuggestion {
         introText: String = tr("ai_sg_intro"),
         challengeKind: ChallengeKind = .tasks,
         challengeTarget: Int = 0,
+        isUrgentExam: Bool = false,
         action: @escaping () -> Void
     ) {
         self.headline = headline
@@ -58,6 +61,7 @@ struct UpdoAISuggestion {
         self.introText = introText
         self.challengeKind = challengeKind
         self.challengeTarget = challengeTarget
+        self.isUrgentExam = isUrgentExam
         self.action = action
     }
 }
@@ -78,7 +82,7 @@ extension HomeDashboardView {
 
     var hasFocusedToday: Bool {
         let cal = Calendar.current
-        return allFocusRecords.contains { $0.isCompleted && cal.isDateInToday($0.startedAt) }
+        return allFocusRecords.contains { $0.countsTowardStats && cal.isDateInToday($0.startedAt) }
     }
 
     private func examDisplayName(_ exam: ExamItem) -> String {

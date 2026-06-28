@@ -9,10 +9,12 @@ import Combine
 import Supabase
 
 struct UpdoAIView: View {
+    var seedPrompt: String? = nil
     let onDismissAndOpenWeek: () -> Void
     let onDismissAndAddTask: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var session: SessionStore
     @EnvironmentObject private var store: TodoStore
     @EnvironmentObject private var studentStore: StudentStore
@@ -49,7 +51,7 @@ struct UpdoAIView: View {
     private var last7DaysFocus: [FocusSessionRecord] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
         return allFocus.filter {
-            $0.ownerUserID == currentUserID && $0.startedAt >= cutoff && $0.isCompleted
+            $0.ownerUserID == currentUserID && $0.startedAt >= cutoff && $0.countsTowardStats
         }
     }
 
@@ -89,9 +91,10 @@ struct UpdoAIView: View {
     private var showSmartChips: Bool { chatStore.messages.isEmpty && inputText.isEmpty }
 
     private var canSend: Bool {
+        // Credits are checked in `routeUserInput` for the LLM path only — local
+        // add/remove commands are free, so the button stays usable at 0 credits.
         !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !chatStore.isSending
-            && credits.canAfford(AITokenCost.chatMessage)
     }
 
     // MARK: - Body
@@ -158,6 +161,22 @@ struct UpdoAIView: View {
                     credits.load(isPro: isPro, userID: uid)
                 }
             }
+            sendSeedIfNeeded()
+        }
+    }
+
+    @State private var didSendSeed = false
+
+    /// When the chat is opened from the Home "what do you want to do today?" bar,
+    /// auto-send the user's typed intention as the first message.
+    private func sendSeedIfNeeded() {
+        guard !didSendSeed,
+              let seed = seedPrompt?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !seed.isEmpty else { return }
+        didSendSeed = true
+        // Slight delay so the view is settled and credits had a tick to load.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            sendQuickMessage(seed)
         }
     }
 
@@ -697,20 +716,41 @@ struct UpdoAIView: View {
     // MARK: - Helpers
 
     private func sendMessage() {
-        guard canSend, let uid = currentUserID else { return }
+        let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, !chatStore.isSending, currentUserID != nil else { return }
         hapticSend.impactOccurred()
-        let text = inputText
         inputText = ""
-        Task {
-            await chatStore.send(text: text, contextPrompt: contextSystemPrompt, credits: credits, userID: uid)
-        }
+        routeUserInput(text)
     }
 
     private func sendQuickMessage(_ prompt: String) {
-        guard !chatStore.isSending, credits.canAfford(AITokenCost.chatMessage), let uid = currentUserID else { return }
+        let text = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, !chatStore.isSending, currentUserID != nil else { return }
         hapticSend.impactOccurred()
+        routeUserInput(text)
+    }
+
+    /// Tries the token-free local command interpreter first (add / remove /
+    /// complete task). Only falls through to the paid LLM for real conversation.
+    private func routeUserInput(_ text: String) {
+        guard let uid = currentUserID else { return }
+
+        if let result = UpdoAICommandInterpreter.interpret(
+            text, store: store, context: modelContext, ownerUserID: uid
+        ) {
+            result.apply()
+            chatStore.appendLocalExchange(userText: text, assistantText: result.reply)
+            hapticResponse.notificationOccurred(.success)
+            return
+        }
+
+        guard credits.canAfford(AITokenCost.chatMessage) else {
+            chatStore.error = tr("ais_daily_limit")
+            return
+        }
+
         Task {
-            await chatStore.send(text: prompt, contextPrompt: contextSystemPrompt, credits: credits, userID: uid)
+            await chatStore.send(text: text, contextPrompt: contextSystemPrompt, credits: credits, userID: uid)
         }
     }
 

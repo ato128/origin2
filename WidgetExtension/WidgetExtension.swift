@@ -48,7 +48,11 @@ struct ScheduleWidgetView: View {
     let entry: ScheduleProvider.Entry
     @Environment(\.widgetFamily) private var family
 
-    private let dayTitles = ["PZT", "SAL", "ÇAR", "PER", "CUM", "CMT", "PAZ"]
+    private var dayTitles: [String] {
+        widgetLocalized("tr", "en") == "tr"
+            ? ["PZT", "SAL", "ÇAR", "PER", "CUM", "CMT", "PAZ"]
+            : ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+    }
 
     private var isSmall: Bool { family == .systemSmall }
 
@@ -82,7 +86,7 @@ struct ScheduleWidgetView: View {
     private var brandAccent: Color { UpdoWidgetIconTheme.current().accent }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: isSmall ? 9 : 11) {
+        VStack(alignment: .leading, spacing: isSmall ? 10 : 12) {
             headerRow
 
             if let liveEvent {
@@ -93,69 +97,40 @@ struct ScheduleWidgetView: View {
                 emptySection
             }
 
-            if !isSmall || liveEvent == nil {
-                Spacer(minLength: 0)
-            }
+            Spacer(minLength: 0)
 
             lessonRows
         }
-        .padding(isSmall ? 14 : 16)
-        // Faint crosshair watermark (art/depth), bleeding off the bottom-right.
-        .background(alignment: .bottomTrailing) {
-            UpdoWidgetLogo(size: isSmall ? 96 : 124, tint: AnyShapeStyle(brandAccent.opacity(0.06)))
-                .offset(x: 26, y: 22)
-        }
+        .padding(isSmall ? 15 : 17)
         .widgetUpdoBackground(accent: brandAccent)
     }
 
     // MARK: - Header
 
     private var headerRow: some View {
-        HStack(spacing: 7) {
-            // Section-label imzası ("— BUGÜN"), brand-accent renkli
-            Rectangle()
-                .fill(brandAccent)
-                .frame(width: 14, height: 2.5)
-                .clipShape(Capsule())
-
-            Text("BUGÜN")
-                .font(.system(size: 11, weight: .black, design: .rounded))
-                .tracking(1.5)
-                .foregroundStyle(brandAccent)
+        HStack(spacing: 6) {
+            Text(widgetLocalized("BUGÜN", "TODAY"))
+                .font(WidgetFont.eyebrow(11))
+                .tracking(0.8)
+                .foregroundStyle(UpdoWidgetPalette.textSecondary)
 
             if !todayEvents.isEmpty {
                 Text("\(todayEvents.count)")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.8))
-                    .frame(width: 17, height: 17)
-                    .background(Circle().fill(brandAccent.opacity(0.20)))
+                    .font(.system(size: 10, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(UpdoWidgetPalette.textSecondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 1.5)
+                    .background(Capsule().fill(UpdoWidgetPalette.fillSoft))
             }
-
-            Text("· \(dayTitles[safeIndex(todayWeekday)])")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .tracking(1)
-                .foregroundStyle(.white.opacity(0.45))
 
             Spacer()
 
-            // Updo imza markası (seçili icon renginde)
-            UpdoWidgetCornerMark(size: 19)
+            Text(dayTitles[safeIndex(todayWeekday)])
+                .font(.system(size: 11, weight: .medium))
+                .tracking(0.6)
+                .foregroundStyle(UpdoWidgetPalette.textTertiary)
         }
-        .padding(.horizontal, 11)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [brandAccent.opacity(0.22), brandAccent.opacity(0.06)],
-                        startPoint: .leading, endPoint: .trailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(brandAccent.opacity(0.22), lineWidth: 1)
-                )
-        )
     }
 
     // MARK: - Live
@@ -166,74 +141,35 @@ struct ScheduleWidgetView: View {
         let tint = hexColor(event.colorHex)
 
         return VStack(alignment: .leading, spacing: 9) {
-            HStack(spacing: 7) {
-                // Nabız atan canlı nokta
-                PulseDot(color: UpdoWidgetPalette.green)
+            HStack(spacing: 8) {
+                PulseDot(color: tint)
 
                 Text(event.title)
-                    .font(.system(size: isSmall ? 15 : 17, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(WidgetFont.title(isSmall ? 16 : 18))
+                    .foregroundStyle(UpdoWidgetPalette.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
 
                 Spacer(minLength: 4)
 
-                Text("\(left) dk")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                Text("\(left) \(widgetLocalized("dk", "min"))")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(tint)
                     .monospacedDigit()
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(
-                        Capsule().fill(tint.opacity(0.18))
-                    )
-                    .overlay(
-                        Capsule().stroke(tint.opacity(0.35), lineWidth: 0.8)
-                    )
+                    .contentTransition(.numericText(countsDown: true))
             }
 
-            // Glow'lu progress bar
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.white.opacity(0.10))
-                        .frame(height: 7)
-
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [tint, tint.opacity(0.7)],
-                                startPoint: .leading, endPoint: .trailing
-                            )
-                        )
-                        .frame(width: max(14, geo.size.width * progress), height: 7)
-                        .shadow(color: tint.opacity(0.6), radius: 4, y: 0)
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.white.opacity(0.10)).frame(height: 5)
+                GeometryReader { geo in
+                    Capsule().fill(tint)
+                        .frame(width: max(8, geo.size.width * progress), height: 5)
                 }
+                .frame(height: 5)
             }
-            .frame(height: 7)
+            .frame(height: 5)
 
-            HStack(spacing: 6) {
-                Image(systemName: "clock.fill")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.4))
-
-                Text("\(hm(event.startMinute))–\(hm(event.startMinute + event.durationMinute))")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.6))
-                    .monospacedDigit()
-
-                if let loc = event.location, !loc.isEmpty, !isSmall {
-                    Text("·")
-                        .foregroundStyle(.white.opacity(0.3))
-                    Image(systemName: "mappin")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.4))
-                    Text(loc)
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.6))
-                        .lineLimit(1)
-                }
-            }
+            metaRow(event: event, showLocation: !isSmall, tint: UpdoWidgetPalette.textTertiary)
         }
     }
 
@@ -243,39 +179,50 @@ struct ScheduleWidgetView: View {
         let mins = max(0, event.startMinute - nowMinute)
         let tint = hexColor(event.colorHex)
 
-        return VStack(alignment: .leading, spacing: 9) {
-            HStack(spacing: 7) {
-                Image(systemName: "arrow.right.circle.fill")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(tint)
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Capsule().fill(tint).frame(width: 3, height: isSmall ? 17 : 19)
 
                 Text(event.title)
-                    .font(.system(size: isSmall ? 15 : 17, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(WidgetFont.title(isSmall ? 16 : 18))
+                    .foregroundStyle(UpdoWidgetPalette.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
 
                 Spacer(minLength: 4)
 
-                Text("\(mins) dk")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(tint)
+                Text("\(mins) \(widgetLocalized("dk", "min"))")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(UpdoWidgetPalette.textSecondary)
                     .monospacedDigit()
+                    .contentTransition(.numericText(countsDown: true))
             }
 
-            HStack(spacing: 6) {
-                Image(systemName: "clock")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.4))
-
+            HStack(spacing: 5) {
                 Text("\(hm(event.startMinute))–\(hm(event.startMinute + event.durationMinute))")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.6))
-                    .monospacedDigit()
+                    .focusHeroNumber(size: 12, accent: tint)
+                Text("·").foregroundStyle(UpdoWidgetPalette.textTertiary)
+                Text(widgetLocalized("Sıradaki", "Next"))
+                    .font(WidgetFont.caption(11))
+                    .foregroundStyle(UpdoWidgetPalette.textTertiary)
+            }
+        }
+    }
 
-                Text("· Sıradaki")
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.4))
+    private func metaRow(event: WidgetEvent, showLocation: Bool, tint: Color) -> some View {
+        HStack(spacing: 5) {
+            Text("\(hm(event.startMinute))–\(hm(event.startMinute + event.durationMinute))")
+                .focusHeroNumber(size: 12, accent: hexColor(event.colorHex))
+
+            if let loc = event.location, !loc.isEmpty, showLocation {
+                Text("·").foregroundStyle(UpdoWidgetPalette.textTertiary)
+                Image(systemName: "mappin")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(tint)
+                Text(loc)
+                    .font(WidgetFont.caption())
+                    .foregroundStyle(UpdoWidgetPalette.textSecondary)
+                    .lineLimit(1)
             }
         }
     }
@@ -283,26 +230,24 @@ struct ScheduleWidgetView: View {
     // MARK: - Empty
 
     private var emptySection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .fill(UpdoWidgetPalette.signatureGradient.opacity(0.22))
-                        .frame(width: 34, height: 34)
-                    Image(systemName: "moon.stars.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(UpdoWidgetPalette.cyan)
-                }
+        HStack(spacing: 11) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(UpdoWidgetPalette.fillSoft)
+                    .frame(width: 36, height: 36)
+                Image(systemName: "moon.stars")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(brandAccent)
+            }
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Bugün sakin")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(widgetLocalized("Bugün sakin", "Clear day"))
+                    .font(WidgetFont.title(15))
+                    .foregroundStyle(UpdoWidgetPalette.textPrimary)
 
-                    Text("Planlanmış ders yok")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.5))
-                }
+                Text(widgetLocalized("Planlanmış ders yok", "No classes scheduled"))
+                    .font(WidgetFont.caption())
+                    .foregroundStyle(UpdoWidgetPalette.textSecondary)
             }
         }
     }
@@ -319,37 +264,36 @@ struct ScheduleWidgetView: View {
             rows = []
         }
 
-        return VStack(alignment: .leading, spacing: 7) {
+        return VStack(alignment: .leading, spacing: 0) {
             if !rows.isEmpty {
-                Divider()
-                    .overlay(Color.white.opacity(0.06))
-                    .padding(.vertical, 1)
+                Rectangle()
+                    .fill(UpdoWidgetPalette.hairline)
+                    .frame(height: 1)
+                    .padding(.bottom, isSmall ? 7 : 9)
             }
-            ForEach(rows, id: \.id) { lessonRow(for: $0) }
+            VStack(alignment: .leading, spacing: isSmall ? 7 : 9) {
+                ForEach(rows, id: \.id) { lessonRow(for: $0) }
+            }
         }
     }
 
     private func lessonRow(for event: WidgetEvent) -> some View {
         let tint = hexColor(event.colorHex)
         return HStack(spacing: 9) {
-            // Renkli sol şerit
             Capsule()
-                .fill(tint)
-                .frame(width: 3, height: 14)
+                .fill(tint.opacity(0.9))
+                .frame(width: 3, height: 13)
 
             Text(event.title)
-                .font(.system(size: isSmall ? 12 : 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.85))
+                .font(WidgetFont.body(isSmall ? 12 : 13))
+                .foregroundStyle(UpdoWidgetPalette.textSecondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
             Spacer(minLength: 6)
 
-            Text("\(hm(event.startMinute))–\(hm(event.startMinute + event.durationMinute))")
-                .font(.system(size: isSmall ? 11 : 12, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.5))
-                .monospacedDigit()
-                .lineLimit(1)
+            Text(hm(event.startMinute))
+                .focusHeroNumber(size: isSmall ? 11 : 12, accent: tint)
         }
     }
 
@@ -390,13 +334,8 @@ private struct PulseDot: View {
     let color: Color
     var body: some View {
         ZStack {
-            Circle()
-                .fill(color.opacity(0.30))
-                .frame(width: 14, height: 14)
-            Circle()
-                .fill(color)
-                .frame(width: 7, height: 7)
-                .shadow(color: color.opacity(0.8), radius: 3)
+            Circle().fill(color.opacity(0.22)).frame(width: 12, height: 12)
+            Circle().fill(color).frame(width: 6, height: 6)
         }
     }
 }
@@ -404,52 +343,27 @@ private struct PulseDot: View {
 // MARK: - Updo Background
 
 extension View {
+    /// Calm, single-surface widget background: a deep vertical gradient with one
+    /// restrained accent glow in the lower-right and a hairline edge. No rainbow,
+    /// no heavy halos — the Apple/Updo look.
     @ViewBuilder
     func widgetUpdoBackground(accent: Color) -> some View {
         if #available(iOSApplicationExtension 17.0, *) {
-            self.containerBackground(for: .widget) {
-                ZStack {
-                    LinearGradient(
-                        colors: [
-                            UpdoWidgetPalette.bgTop,
-                            UpdoWidgetPalette.bgMid,
-                            UpdoWidgetPalette.bgBottom
-                        ],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    )
-                    RadialGradient(
-                        colors: [UpdoWidgetPalette.purple.opacity(0.18), .clear],
-                        center: .topLeading, startRadius: 8, endRadius: 200
-                    )
-                    RadialGradient(
-                        colors: [accent.opacity(0.14), .clear],
-                        center: .bottomTrailing, startRadius: 8, endRadius: 230
-                    )
-                    RoundedRectangle(cornerRadius: 30, style: .continuous)
-                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
-                        .padding(0.5)
-                }
-            }
+            self.containerBackground(for: .widget) { widgetSurface(accent: accent) }
         } else {
-            self.background(
-                ZStack {
-                    LinearGradient(
-                        colors: [
-                            UpdoWidgetPalette.bgTop,
-                            UpdoWidgetPalette.bgMid,
-                            UpdoWidgetPalette.bgBottom
-                        ],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    )
-                    RadialGradient(
-                        colors: [UpdoWidgetPalette.purple.opacity(0.20), .clear],
-                        center: .topLeading, startRadius: 8, endRadius: 200
-                    )
-                    RadialGradient(
-                        colors: [accent.opacity(0.14), .clear],
-                        center: .bottomTrailing, startRadius: 8, endRadius: 230
-                    )
-                }
+            self.background(widgetSurface(accent: accent))
+        }
+    }
+
+    private func widgetSurface(accent: Color) -> some View {
+        ZStack {
+            LinearGradient(
+                colors: [UpdoWidgetPalette.surfaceTop, UpdoWidgetPalette.surfaceBottom],
+                startPoint: .top, endPoint: .bottom
+            )
+            RadialGradient(
+                colors: [accent.opacity(0.10), .clear],
+                center: .bottomTrailing, startRadius: 10, endRadius: 220
             )
         }
     }

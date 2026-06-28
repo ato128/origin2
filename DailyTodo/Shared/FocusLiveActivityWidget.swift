@@ -25,12 +25,12 @@ struct FocusLiveActivityWidget: Widget {
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(context.state.title)
-                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .font(.system(size: 15, weight: .semibold))
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.7)
 
                             Text(context.state.subtitle)
-                                .font(.system(size: 11, weight: .medium, design: .rounded))
+                                .font(.system(size: 11, weight: .medium))
                                 .foregroundStyle(context.state.isCompleted ? accent.opacity(0.95) : .secondary)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.7)
@@ -41,12 +41,11 @@ struct FocusLiveActivityWidget: Widget {
 
                 DynamicIslandExpandedRegion(.trailing) {
                     Text(focusModeLabel(for: context.state))
-                        .font(.system(size: 10, weight: .heavy, design: .rounded))
-                        .tracking(0.5)
+                        .font(.system(size: 10, weight: .semibold))
+                        .tracking(0.4)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 5)
-                        .background(Capsule().fill(accent.opacity(0.18)))
-                        .overlay(Capsule().stroke(accent.opacity(0.35), lineWidth: 0.8))
+                        .background(Capsule().fill(accent.opacity(0.16)))
                         .foregroundStyle(accent)
                 }
 
@@ -54,18 +53,14 @@ struct FocusLiveActivityWidget: Widget {
                     VStack(alignment: .leading, spacing: 9) {
                         HStack(alignment: .firstTextBaseline) {
                             Text(focusStatusText(for: context.state))
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(context.state.isCompleted ? accent : .secondary)
                                 .lineLimit(1)
 
                             Spacer(minLength: 12)
 
                             focusTimerText(for: context.state)
-                                .font(.system(size: context.state.isCompleted ? 22 : 26, weight: .heavy, design: .rounded))
-                                .monospacedDigit()
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
+                                .focusHeroNumber(size: context.state.isCompleted ? 22 : 26, accent: accent, live: true)
                         }
 
                         UpdoLiveProgressBar(
@@ -104,18 +99,68 @@ private struct FocusLockScreenView: View {
     var body: some View {
         let accent = focusAccent(for: state)
 
-        VStack(spacing: 0) {
-            headerBand(accent: accent)
-            bodyBlock(accent: accent)
+        VStack(alignment: .leading, spacing: 12) {
+            // Identity row
+            HStack(spacing: 11) {
+                FocusIconBubble(state: state, accent: accent, size: 36)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(state.title)
+                        .font(WidgetFont.title(16))
+                        .foregroundStyle(UpdoWidgetPalette.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+
+                    Text(state.subtitle)
+                        .font(WidgetFont.caption())
+                        .foregroundStyle(UpdoWidgetPalette.textSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+
+                Spacer(minLength: 6)
+
+                VStack(alignment: .trailing, spacing: 4) {
+                    modeChip(accent: accent)
+                    ProStreakChip()
+                }
+            }
+
+            // Hero timer + percent
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                focusTimerText(for: state)
+                    .focusHeroNumber(size: state.isCompleted ? 26 : 40, accent: accent, live: true)
+
+                if !isFocusFinished(state) && !state.isPaused {
+                    Text("/ \(totalMinutes) \(widgetLocalized("dk", "min"))")
+                        .font(WidgetFont.caption())
+                        .foregroundStyle(UpdoWidgetPalette.textTertiary)
+                }
+
+                Spacer(minLength: 6)
+
+                Text("\(Int(focusProgress(for: state) * 100))%")
+                    .font(.system(size: 13, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(accent)
+            }
+
+            UpdoLiveProgressBar(
+                running: focusRunningRange(for: state),
+                staticProgress: focusProgress(for: state),
+                accent: accent,
+                height: 6
+            )
         }
+        .padding(16)
         .background(
             ZStack {
                 LinearGradient(
-                    colors: [UpdoWidgetPalette.bgMid, UpdoWidgetPalette.bgBottom],
+                    colors: [UpdoWidgetPalette.surfaceTop, UpdoWidgetPalette.surfaceBottom],
                     startPoint: .top, endPoint: .bottom
                 )
                 RadialGradient(
-                    colors: [accent.opacity(state.isCompleted ? 0.20 : 0.14), .clear],
+                    colors: [accent.opacity(state.isCompleted ? 0.16 : 0.10), .clear],
                     center: .bottomTrailing, startRadius: 8, endRadius: 240
                 )
             }
@@ -123,109 +168,18 @@ private struct FocusLockScreenView: View {
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(accent.opacity(state.isCompleted ? 0.30 : 0.18), lineWidth: 1)
+                .stroke(UpdoWidgetPalette.hairline, lineWidth: 1)
         )
     }
 
-    // MARK: Header band — hero timer + mode + brand logo
-
-    private func headerBand(accent: Color) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 7) {
-                    Text(focusModeLabel(for: state))
-                        .font(.system(size: 11, weight: .black, design: .rounded))
-                        .tracking(1.6)
-                        .foregroundStyle(.white.opacity(0.95))
-                    ProStreakChip()
-                }
-
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    focusTimerText(for: state)
-                        .font(.system(size: state.isCompleted ? 30 : 42, weight: .heavy, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-
-                    if !isFocusFinished(state) && !state.isPaused {
-                        Text("/ \(totalMinutes) dk")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.6))
-                            .lineLimit(1)
-                    }
-                }
-            }
-
-            Spacer(minLength: 6)
-
-            UpdoWidgetLogo(size: 26)
-                .shadow(color: .black.opacity(0.4), radius: 4, y: 1)
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 13)
-        .padding(.bottom, 12)
-        .background(
-            LinearGradient(
-                colors: [accent.opacity(0.42), accent.opacity(0.10), .clear],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            )
-        )
-    }
-
-    // MARK: Body — identity row, progress, status line
-
-    private func bodyBlock(accent: Color) -> some View {
-        VStack(alignment: .leading, spacing: 11) {
-            HStack(spacing: 11) {
-                FocusIconBubble(state: state, accent: accent, size: 36)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(state.title)
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-
-                    Text(state.subtitle)
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.55))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                }
-
-                Spacer(minLength: 4)
-            }
-
-            UpdoLiveProgressBar(
-                running: focusRunningRange(for: state),
-                staticProgress: focusProgress(for: state),
-                accent: accent,
-                height: 8
-            )
-
-            HStack(spacing: 6) {
-                Image(systemName: focusStatusIcon(for: state))
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(accent)
-
-                Text(focusStatusText(for: state))
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-
-                Spacer(minLength: 4)
-
-                Text("\(Int(focusProgress(for: state) * 100))%")
-                    .font(.system(size: 12, weight: .black, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(accent)
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 12)
-        .padding(.bottom, 14)
+    private func modeChip(accent: Color) -> some View {
+        Text(focusModeLabel(for: state))
+            .font(.system(size: 10, weight: .semibold))
+            .tracking(0.4)
+            .foregroundStyle(accent)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Capsule().fill(accent.opacity(0.14)))
     }
 }
 
@@ -239,15 +193,15 @@ struct ProStreakChip: View {
         if state.isPro && state.streak > 0 {
             HStack(spacing: 3) {
                 Image(systemName: "flame.fill")
-                    .font(.system(size: 9, weight: .black))
+                    .font(.system(size: 9, weight: .semibold))
                 Text("\(state.streak)")
-                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .font(.system(size: 10, weight: .semibold))
                     .monospacedDigit()
             }
             .foregroundStyle(hexColor("#FBBF24"))
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(Capsule().fill(hexColor("#FBBF24").opacity(0.15)))
+            .background(Capsule().fill(hexColor("#FBBF24").opacity(0.14)))
         }
     }
 }
@@ -261,12 +215,11 @@ private struct FocusIconBubble: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
-                .fill(accent.opacity(state.isCompleted ? 0.24 : 0.20))
-                .shadow(color: accent.opacity(state.isCompleted ? 0.38 : 0.30), radius: 5)
+            RoundedRectangle(cornerRadius: size * 0.30, style: .continuous)
+                .fill(accent.opacity(0.16))
 
             Image(systemName: focusIconName(for: state))
-                .font(.system(size: size * 0.42, weight: .semibold))
+                .font(.system(size: size * 0.42, weight: .medium))
                 .foregroundStyle(accent)
         }
         .frame(width: size, height: size)
@@ -279,19 +232,17 @@ private struct CompactFocusTimeView: View {
     var body: some View {
         Group {
             if isFocusFinished(state) {
-                Text("Done")
+                Text("✓")
             } else if state.isPaused {
                 let seconds = max(0, state.pausedRemainingSeconds ?? 0)
-                Text("\(seconds / 60)d")
+                Text("\(seconds / 60)")
             } else {
                 Text(timerInterval: Date()...state.endDate, countsDown: true)
             }
         }
-        .font(.system(size: state.isCompleted ? 11 : 13, weight: .bold, design: .rounded))
-        .monospacedDigit()
-        .foregroundStyle(.white)
-        .lineLimit(1)
-        .minimumScaleFactor(0.72)
+        // Focus serif identity; `live` keeps the timer ticking (no contentTransition).
+        .focusHeroNumber(size: state.isCompleted ? 12 : 14, accent: focusAccent(for: state), live: true)
+        .minimumScaleFactor(0.6)
     }
 }
 

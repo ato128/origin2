@@ -40,3 +40,26 @@ final class FocusSessionRecord {
         self.isCompleted = isCompleted
     }
 }
+
+extension FocusSessionRecord {
+    /// Minimum meaningful focus duration (seconds) for a session to count toward stats.
+    static let minimumMeaningfulSeconds = 60
+
+    /// Single source of truth: a session counts toward focus stats/history when the
+    /// user actually focused for at least a minute — regardless of whether the full
+    /// planned duration was reached. Early-stopped sessions still count.
+    var countsTowardStats: Bool {
+        completedSeconds >= FocusSessionRecord.minimumMeaningfulSeconds
+    }
+
+    /// Whole minutes actually focused.
+    var focusMinutes: Int {
+        completedSeconds / 60
+    }
+
+    /// True only when the user reached (almost) the full planned duration.
+    /// Used for the "completed" badge, not for counting.
+    var reachedGoal: Bool {
+        isCompleted
+    }
+}

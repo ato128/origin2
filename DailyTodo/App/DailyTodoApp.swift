@@ -177,6 +177,9 @@ struct DailyTodoApp: App {
         .onReceive(NotificationCenter.default.publisher(for: .didReceiveAPNSToken)) { _ in
             handleAPNSTokenNotification()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .appIconDidChange)) { _ in
+            rescheduleLocalNotificationsAndRegisterPush(reason: "app icon changed")
+        }
         .onReceive(NotificationCenter.default.publisher(for: .focusSessionRecordSaved)) { _ in
             let context = ModelContext(container)
             let currentUserID = session.currentUser?.id.uuidString

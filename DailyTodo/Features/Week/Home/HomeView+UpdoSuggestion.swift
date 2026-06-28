@@ -34,7 +34,7 @@ extension HomeView {
     }
 
     private var hasEverFocused: Bool {
-        allFocusRecords.contains { $0.isCompleted }
+        allFocusRecords.contains { $0.countsTowardStats }
     }
 
     // Locally-computed equivalents (HomeView's own props are fileprivate / in
@@ -51,7 +51,7 @@ extension HomeView {
         let cal = Calendar.current
         let uid = session.currentUser?.id.uuidString
         return allFocusRecords.contains {
-            $0.isCompleted && cal.isDateInToday($0.endedAt) && (uid == nil || $0.ownerUserID == uid)
+            $0.countsTowardStats && cal.isDateInToday($0.endedAt) && (uid == nil || $0.ownerUserID == uid)
         }
     }
 
@@ -136,7 +136,7 @@ extension HomeView {
     /// Most recent completed task or focus session — nil if never active.
     private var lastActivityDate: Date? {
         let taskDates = store.items.compactMap { $0.isDone ? $0.completedAt : nil }
-        let focusDates = allFocusRecords.filter { $0.isCompleted }.map { $0.endedAt }
+        let focusDates = allFocusRecords.filter { $0.countsTowardStats }.map { $0.endedAt }
         return (taskDates + focusDates).max()
     }
 
@@ -154,13 +154,45 @@ extension HomeView {
 
     // MARK: - Resolver (rule-based, no LLM)
 
-    /// `nil` → the user is on track; the card falls back to the calm "Updo AI"
-    /// chat-entry state. Otherwise a concrete, *still-relevant* nudge that
-    /// disappears the moment the user acts on it.
+    /// How many days Updo AI stays quiet after surfacing a non-urgent nudge.
+    private var suggestionCooldownDays: Int { 2 }
+
+    /// `nil` → the user is on track (or Updo AI is in its quiet window); the card
+    /// falls back to the calm "Updo AI" chat-entry state. Otherwise a concrete,
+    /// *still-relevant* nudge that disappears the moment the user acts on it.
+    ///
+    /// Frequency rule: an urgent exam (≤3 days) always shows. Everything else is
+    /// rate-limited — once surfaced it persists for the rest of that day, then
+    /// Updo AI stays quiet for `suggestionCooldownDays` so it never feels naggy.
     var updoSuggestion: UpdoAISuggestion? {
+        guard let raw = rawSuggestion else { return nil }
+
+        if raw.isUrgentExam { return raw }
+
+        // Already surfaced today → keep it visible through the day.
+        if aiSuggestionLastShownDay == dayOfYear { return raw }
+
+        // Still inside the quiet window since the last nudge → stay neutral.
+        let elapsed = dayOfYear - aiSuggestionLastShownDay
+        if elapsed >= 0 && elapsed < suggestionCooldownDays { return nil }
+
+        return raw
+    }
+
+    /// Stamps the throttle once a non-urgent suggestion is actually shown.
+    /// Called from the card's `onAppear` (a getter must stay side-effect free).
+    func markSuggestionSurfacedIfNeeded() {
+        guard let raw = rawSuggestion, !raw.isUrgentExam else { return }
+        if aiSuggestionLastShownDay != dayOfYear {
+            aiSuggestionLastShownDay = dayOfYear
+        }
+    }
+
+    /// Raw rule-based resolver (no throttle).
+    private var rawSuggestion: UpdoAISuggestion? {
         // 1 — Urgent exam (≤3 days).
         if let exam = nearestRelevantExam, examDays(exam) <= 3 {
-            return examSuggestion(exam)
+            return examSuggestion(exam, urgent: true)
         }
 
         // 2 — Re-engagement challenge: idle 1+ day and has a crew/friend.
@@ -225,7 +257,7 @@ extension HomeView {
         return nil
     }
 
-    private func examSuggestion(_ exam: ExamItem) -> UpdoAISuggestion {
+    private func examSuggestion(_ exam: ExamItem, urgent: Bool = false) -> UpdoAISuggestion {
         let course = exam.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
         let name = course.isEmpty ? exam.title : course
         return UpdoAISuggestion(
@@ -234,6 +266,7 @@ extension HomeView {
             ctaTitle: tr("ai_sg_exam_cta"),
             ctaIcon: "play.fill",
             accent: Color(arenaHex: AppArenaPalette.coral),
+            isUrgentExam: urgent,
             action: { onOpenFocus() }
         )
     }
@@ -329,7 +362,7 @@ extension HomeView {
         let cal = Calendar.current
         if challengeKindRaw == ChallengeKind.focus.rawValue {
             let secs = allFocusRecords
-                .filter { $0.isCompleted && cal.isDateInToday($0.endedAt) }
+                .filter { $0.countsTowardStats && cal.isDateInToday($0.endedAt) }
                 .reduce(0) { $0 + $1.completedSeconds }
             return secs / 60
         }
@@ -400,6 +433,7 @@ extension HomeView {
             suggestionCard(challenge)
         } else if let suggestion = updoSuggestion {
             suggestionCard(suggestion)
+                .onAppear { markSuggestionSurfacedIfNeeded() }
         } else {
             neutralCard
         }
@@ -599,59 +633,108 @@ extension HomeView {
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(tint.opacity(0.25), lineWidth: 1))
     }
 
-    // Neutral state — the calm "Updo AI" chat entry when the user is on track.
+    // Neutral state — Updo AI asks "what do you want to do today?" with an inline
+    // chat bar so the user can decide right on the card without opening chat first.
     private var neutralCard: some View {
-        Button {
-            HapticManager.shared.navigation()
-            showUpdoAI = true
-        } label: {
+        VStack(alignment: .leading, spacing: 13) {
+            // Header: orb + eyebrow + credits (tappable → opens full chat)
             HStack(spacing: 12) {
                 suggestionOrb(isChallenge: false, onFire: false)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 6) {
-                        Text(tr("ai_sg_eyebrow"))
-                            .font(.system(size: 9.5, weight: .bold, design: .monospaced))
-                            .tracking(1.6)
-                            .foregroundStyle(UpdoTheme.cyan.opacity(0.9))
+                    Text(tr("ai_sg_eyebrow"))
+                        .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                        .tracking(1.6)
+                        .foregroundStyle(UpdoTheme.cyan.opacity(0.9))
 
-                        Spacer(minLength: 6)
-
-                        if credits.isLoaded {
-                            let remaining = credits.tokensRemaining
-                            let pillTint: Color = remaining > 50 ? UpdoTheme.cyan : Color(arenaHex: "#FF5A44")
-                            Text("\(remaining) kredi")
-                                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                .foregroundStyle(pillTint)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(
-                                    Capsule().fill(pillTint.opacity(0.14))
-                                        .overlay(Capsule().stroke(pillTint.opacity(0.28), lineWidth: 1))
-                                )
-                        }
-                    }
-
-                    Text(tr("hv_ai_prompt"))
-                        .font(.system(size: 14, weight: .regular))
-                        .foregroundStyle(.white.opacity(0.5))
+                    Text(tr("hv_ai_today_ask"))
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.white)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
 
                 Spacer(minLength: 6)
 
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.35))
+                if credits.isLoaded {
+                    let remaining = credits.tokensRemaining
+                    let pillTint: Color = remaining > 50 ? UpdoTheme.cyan : Color(arenaHex: "#FF5A44")
+                    Text(tr("hv_ai_credit_n", remaining))
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(pillTint)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(
+                            Capsule().fill(pillTint.opacity(0.14))
+                                .overlay(Capsule().stroke(pillTint.opacity(0.28), lineWidth: 1))
+                        )
+                }
             }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(suggestionBackground(onFire: false))
+            .contentShape(Rectangle())
+            .onTapGesture { openAIChat(seed: nil) }
+
+            // Inline chat bar
+            HStack(spacing: 9) {
+                TextField(tr("hv_ai_bar_placeholder"), text: $aiQuickInput, axis: .vertical)
+                    .font(.system(size: 14))
+                    .foregroundStyle(.white)
+                    .tint(UpdoTheme.cyan)
+                    .lineLimit(1...3)
+                    .focused($aiQuickFocused)
+                    .submitLabel(.send)
+                    .onSubmit { submitQuickInput() }
+
+                Button {
+                    submitQuickInput()
+                } label: {
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(quickInputReady ? Color.white : .white.opacity(0.4))
+                        .frame(width: 30, height: 30)
+                        .background(
+                            Circle().fill(quickInputReady
+                                          ? AnyShapeStyle(UpdoTheme.cyan)
+                                          : AnyShapeStyle(Color.white.opacity(0.08)))
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(!quickInputReady)
+            }
+            .padding(.leading, 14)
+            .padding(.trailing, 6)
+            .padding(.vertical, 6)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.white.opacity(0.06))
+                    .overlay(Capsule(style: .continuous).stroke(UpdoTheme.border, lineWidth: 1))
+            )
         }
-        .buttonStyle(.plain)
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(suggestionBackground(onFire: false))
         .opacity(pageAppeared ? 1 : 0)
         .offset(y: pageAppeared ? 0 : 12)
         .animation(.spring(response: 0.6, dampingFraction: 0.86).delay(0.08), value: pageAppeared)
+    }
+
+    private var quickInputReady: Bool {
+        !aiQuickInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func submitQuickInput() {
+        let text = aiQuickInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        HapticManager.shared.navigation()
+        openAIChat(seed: text)
+    }
+
+    /// Opens the full Updo AI chat, optionally seeding it with the user's intention.
+    func openAIChat(seed: String?) {
+        let trimmed = seed?.trimmingCharacters(in: .whitespacesAndNewlines)
+        aiSeedPrompt = (trimmed?.isEmpty == false) ? trimmed : nil
+        aiQuickInput = ""
+        aiQuickFocused = false
+        showUpdoAI = true
     }
 
     private func headerLine(suggestion: UpdoAISuggestion, onFire: Bool) -> String {

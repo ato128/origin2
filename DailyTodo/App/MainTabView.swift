@@ -236,7 +236,7 @@ private extension MainTabView {
     }
 
     var completedFocusCount: Int {
-        allFocusRecords.filter { $0.isCompleted && $0.completedSeconds >= 60 }.count
+        allFocusRecords.filter { $0.countsTowardStats }.count
     }
 
     func runProgressionEvaluate() {

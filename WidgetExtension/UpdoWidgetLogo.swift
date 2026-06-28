@@ -113,17 +113,10 @@ struct UpdoLiveProgressBar: View {
         } else {
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.12))
+                    Capsule().fill(Color.white.opacity(0.10))
                     Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [accent, accent.opacity(0.65)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: max(8, proxy.size.width * max(0, min(1, staticProgress))))
-                        .shadow(color: accent.opacity(0.6), radius: 4)
+                        .fill(accent)
+                        .frame(width: max(6, proxy.size.width * max(0, min(1, staticProgress))))
                 }
             }
             .frame(height: height)

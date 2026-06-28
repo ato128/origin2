@@ -60,6 +60,10 @@ struct HomeView: View {
     // Updo AI rule-based suggestion / challenge card
     @State var aiSuggestionExpanded = false
     @State var didAutoOpenSuggestion = false
+    // Inline "what do you want to do today?" chat bar on the neutral card.
+    @State var aiQuickInput = ""
+    @State var aiSeedPrompt: String? = nil
+    @FocusState var aiQuickFocused: Bool
     @AppStorage("updoChallengeAcceptedDayV1") var challengeAcceptedDay: Int = -1
     @AppStorage("challengeStreakCountV1") var challengeStreakCount: Int = 0
     @AppStorage("challengeAcceptedTotalV1") var challengeAcceptedTotal: Int = 0
@@ -69,6 +73,9 @@ struct HomeView: View {
     @AppStorage("challengeTargetV1") var challengeTarget: Int = 0
     @AppStorage("challengeBaselineV1") var challengeBaseline: Int = 0
     @AppStorage("challengeCompletedDayV1") var challengeCompletedDay: Int = -1
+    // Throttle: day-of-year a non-urgent suggestion was last surfaced, so Updo AI
+    // doesn't nag every time the user opens Home.
+    @AppStorage("aiSuggestionLastShownDayV1") var aiSuggestionLastShownDay: Int = -100
 
     @ObservedObject var credits = DailyCreditsManager.shared
     @ObservedObject private var progression = ProgressionManager.shared
@@ -146,8 +153,9 @@ struct HomeView: View {
                 MessagesView()
             }
         }
-        .fullScreenCover(isPresented: $showUpdoAI) {
+        .fullScreenCover(isPresented: $showUpdoAI, onDismiss: { aiSeedPrompt = nil }) {
             UpdoAIView(
+                seedPrompt: aiSeedPrompt,
                 onDismissAndOpenWeek: {
                     showUpdoAI = false
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { onOpenWeek() }
@@ -1132,17 +1140,22 @@ private extension HomeView {
         let cal = Calendar.current
         let weekStart = cal.dateInterval(of: .weekOfYear, for: now)?.start ?? now
 
-        let totalSeconds = allFocusRecords
-            .filter { record in
-                guard let userID = currentUserID,
-                      record.ownerUserID == userID else { return false }
-
-                return record.endedAt >= weekStart && record.isCompleted
-            }
+        let totalSeconds = ownedFocusRecords
+            .filter { $0.endedAt >= weekStart && $0.countsTowardStats }
             .map(\.completedSeconds)
             .reduce(0, +)
 
         return totalSeconds / 60
+    }
+
+    /// Focus records belonging to the current user. Falls back to records with no
+    /// owner stamped (saved while the session store was briefly unavailable) so a
+    /// finished session is never silently dropped.
+    var ownedFocusRecords: [FocusSessionRecord] {
+        guard let uid = currentUserID else { return [] }
+        let owned = allFocusRecords.filter { $0.ownerUserID == uid }
+        if !owned.isEmpty { return owned + allFocusRecords.filter { $0.ownerUserID == nil } }
+        return allFocusRecords.filter { $0.ownerUserID == nil }
     }
 
     var activeTaskCount: Int {
@@ -1161,11 +1174,8 @@ private extension HomeView {
     var hasFocusToday: Bool {
         let cal = Calendar.current
 
-        guard let uid = currentUserID else { return false }
-
-        return allFocusRecords.contains { record in
-            record.ownerUserID == uid &&
-            record.isCompleted &&
+        return ownedFocusRecords.contains { record in
+            record.countsTowardStats &&
             cal.isDate(record.endedAt, inSameDayAs: now)
         }
     }
@@ -1173,11 +1183,7 @@ private extension HomeView {
     var streakDays: Int {
         let cal = Calendar.current
 
-        guard let uid = currentUserID else { return 0 }
-
-        let userRecords = allFocusRecords.filter {
-            $0.ownerUserID == uid && $0.isCompleted
-        }
+        let userRecords = ownedFocusRecords.filter { $0.countsTowardStats }
 
         guard !userRecords.isEmpty else { return 0 }
 
