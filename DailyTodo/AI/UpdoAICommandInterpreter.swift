@@ -46,12 +46,17 @@ enum UpdoAICommandInterpreter {
 
     // Words that mean "this is a question / negation / statement", never a command.
     private static let stopWords: Set<String> = [
-        "mi", "mu", "misin", "misiniz", "misind", "mıyım",
+        "mi", "mu", "misin", "misiniz", "misind", "miyim",
         "nereye", "nerede", "nereden", "nasil", "neden", "niye", "nicin", "hangi",
         "kim", "kac", "yapma", "etme", "yapmasana", "olmaz",
-        "gozukmuyor", "gorunmuyor", "goremiyorum", "gozukmedi", "gelmedi",
+        "gozukmuyor", "gorunmuyor", "goremiyorum", "gozukmedi", "gelmedi", "gozukmuyo",
+        "diyorum", "diyor", "dedim", "dedin", "dedi", "demistim", "sanirim", "galiba", "herhalde",
         "how", "why", "where", "which", "dont", "don't", "not"
     ]
+
+    // Time-of-day hints (ignored in the title; "akşam/gece" push a <12 hour to PM).
+    private static let pmHints: Set<String> = ["aksam", "gece", "evening", "night", "pm"]
+    private static let dayPartWords: Set<String> = ["aksam", "gece", "sabah", "ogle", "ogleden", "evening", "night", "morning", "noon"]
 
     // MARK: - Vocabularies
 
@@ -110,27 +115,22 @@ enum UpdoAICommandInterpreter {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !text.hasSuffix("?") else { return nil }
 
-        let tokens = fold(text)
-            .split(whereSeparator: { $0 == " " || $0 == "," || $0 == "." || $0 == "!" })
-            .map(String.init)
-            .filter { !$0.isEmpty }
+        // Split on whitespace/commas only — keep internal "." and ":" so "10.30"
+        // and "10:30" survive as one time token. Trim edge punctuation per word.
+        let tokens = tokenize(fold(text))
+        let originalWords = tokenize(text)
 
         // Commands are short imperatives. One word is too ambiguous; long sentences
         // are conversation.
         guard tokens.count >= 2, tokens.count <= 9 else { return nil }
 
-        // Any question/negation marker → not a command.
+        // Any question/negation/statement marker → not a command.
         if tokens.contains(where: { stopWords.contains($0) }) { return nil }
 
-        // A command must contain exactly the intent verb in the right position and
-        // no OTHER verb floating around (guards "ekle diyorum sil" type noise).
+        // Exactly one intent verb anywhere → action. (Exact match already rejects
+        // "ekledim"/"ekleme"; stop-words reject questions/statements. Position is
+        // NOT required, so "Fizik dersi koy 21 ile 22.30" works.)
         guard let action = detectAction(tokens) else { return nil }
-
-        // Map folded → original-cased words for nicer titles.
-        let originalWords = text
-            .split(whereSeparator: { $0 == " " || $0 == "," || $0 == "." || $0 == "!" })
-            .map(String.init)
-            .filter { !$0.isEmpty }
 
         switch action {
         case .add:
@@ -143,26 +143,23 @@ enum UpdoAICommandInterpreter {
         }
     }
 
-    /// Strict: Turkish imperative ⇒ verb is the LAST token; English ⇒ FIRST token.
-    /// Rejects anything where a verb sits mid-sentence (statements/complaints).
+    /// Exactly one intent verb in the message decides the action. Multiple verbs
+    /// (e.g. "ekle … sil") are ambiguous → bail to the LLM.
     private static func detectAction(_ tokens: [String]) -> Action? {
-        guard let first = tokens.first, let last = tokens.last else { return nil }
+        let verbs = tokens.filter { allVerbs.contains($0) }
+        guard verbs.count == 1, let v = verbs.first else { return nil }
+        if trAdd.contains(v)  || enAdd.contains(v)  { return .add }
+        if trDel.contains(v)  || enDel.contains(v)  { return .delete }
+        if trDone.contains(v) || enDone.contains(v) { return .done }
+        return nil
+    }
 
-        let action: Action?
-        let verb: String
-        if trAdd.contains(last)  { action = .add; verb = last }
-        else if trDel.contains(last)  { action = .delete; verb = last }
-        else if trDone.contains(last) { action = .done; verb = last }
-        else if enAdd.contains(first)  { action = .add; verb = first }
-        else if enDel.contains(first)  { action = .delete; verb = first }
-        else if enDone.contains(first) { action = .done; verb = first }
-        else { return nil }
-
-        // No second verb anywhere else (e.g. "ekle ... sil") — keeps it a clean command.
-        let otherVerbs = tokens.filter { allVerbs.contains($0) && $0 != verb }
-        if !otherVerbs.isEmpty { return nil }
-
-        return action
+    /// Split on whitespace/commas; trim edge punctuation but keep internal "." / ":".
+    private static func tokenize(_ s: String) -> [String] {
+        let edges = CharacterSet(charactersIn: ".,!?;:'\"’")
+        return s.split(whereSeparator: { $0 == " " || $0 == "," || $0 == "\n" || $0 == "\t" })
+            .map { $0.trimmingCharacters(in: edges) }
+            .filter { !$0.isEmpty }
     }
 
     // MARK: - Add (routes to exam / event / task)
@@ -175,20 +172,27 @@ enum UpdoAICommandInterpreter {
         ownerUserID: String?
     ) -> Result? {
         var day: DayParse? = nil
-        var minute: Int? = nil
+        var startMin: Int? = nil
+        var endMin: Int? = nil
         var duration: Int? = nil
         var examDate: Date? = nil
         var sawExamWord = false
         var sawEventWord = false
-        var rangeStart: Int? = nil
         var titleWords: [String] = []
+
+        let pmHint = tokens.contains { pmHints.contains($0) }
+        // Strong "this is about a time" signal — lets a lone bare hour ("pazartesi
+        // 9 ders ekle") read as 09:00 without misreading "Fizik 2" as 02:00.
+        let timeContext = tokens.contains { isEventWord($0) }
+            || tokens.contains { dayParse($0) != nil }
+            || tokens.contains("saat")
 
         var i = 0
         while i < tokens.count {
             let tok = tokens[i]
 
             if isVerb(tok) { i += 1; continue }
-            if fillers.contains(tok) || rangeConnectors.contains(tok) { i += 1; continue }
+            if fillers.contains(tok) || rangeConnectors.contains(tok) || dayPartWords.contains(tok) { i += 1; continue }
             if isExamWord(tok) { sawExamWord = true; i += 1; continue }
             if isEventWord(tok) { sawEventWord = true; i += 1; continue }
 
@@ -198,37 +202,7 @@ enum UpdoAICommandInterpreter {
                 i += 1; continue
             }
 
-            // Hour RANGE: "5 ile 8", "17 ila 20", "5 - 8"
-            if let a = bareHour(tok),
-               i + 2 < tokens.count,
-               rangeConnectors.contains(tokens[i + 1]),
-               let b = bareHour(tokens[i + 2]) {
-                rangeStart = a * 60
-                let span = (b > a ? b - a : 1)
-                duration = span * 60
-                minute = a * 60
-                i += 3; continue
-            }
-            // Compact range "5-8"
-            if let (a, b) = compactHourRange(tok) {
-                rangeStart = a * 60
-                duration = (b > a ? b - a : 1) * 60
-                minute = a * 60
-                i += 1; continue
-            }
-
-            // "saat 15" → 15:00  ("saat" is a filler, so the number lands here)
-            if let h = bareHour(tok), i > 0, tokens[i - 1] == "saat", minute == nil {
-                minute = h * 60; i += 1; continue
-            }
-            if let m = clockTime(tok) { minute = m; i += 1; continue }
-
-            if let n = pureInt(tok), i + 1 < tokens.count, durationUnits.contains(tokens[i + 1]) {
-                duration = isHourUnit(tokens[i + 1]) ? n * 60 : n
-                i += 2; continue
-            }
-            if durationUnits.contains(tok) { i += 1; continue }
-
+            // Exam date "12 mayıs" → consume the day-number + month.
             if let n = pureInt(tok), n >= 1, n <= 31,
                i + 1 < tokens.count, let mo = monthNames[tokens[i + 1]] {
                 examDate = dateFrom(day: n, month: mo)
@@ -236,9 +210,46 @@ enum UpdoAICommandInterpreter {
             }
             if let dm = numericDate(tok) { examDate = dm; i += 1; continue }
 
+            // Duration "<n> saat/dk"
+            if let n = pureInt(tok), i + 1 < tokens.count, durationUnits.contains(tokens[i + 1]) {
+                duration = isHourUnit(tokens[i + 1]) ? n * 60 : n
+                i += 2; continue
+            }
+            if durationUnits.contains(tok) { i += 1; continue }
+
+            // Compact range "5-8"
+            if let (a, b) = compactHourRange(tok) {
+                startMin = applyPM(a * 60, pm: pmHint); endMin = applyPM(b * 60, pm: pmHint); i += 1; continue
+            }
+
+            // A time-ish token (bare hour or clock). In a RANGE, a bare hour is
+            // unambiguous; as a LONE value a bare number is only a time after
+            // "saat" or when written as a clock (9:30 / 10.30).
+            if let a = timeValue(tok) {
+                // range: "21 ile 22.30" / "9 10.30"
+                if i + 2 < tokens.count, rangeConnectors.contains(tokens[i + 1]), let b = timeValue(tokens[i + 2]) {
+                    startMin = applyPM(a, pm: pmHint); endMin = applyPM(b, pm: pmHint); i += 3; continue
+                }
+                if i + 1 < tokens.count, let b = timeValue(tokens[i + 1]) {
+                    startMin = applyPM(a, pm: pmHint); endMin = applyPM(b, pm: pmHint); i += 2; continue
+                }
+                let isClock = clockTime(tok) != nil
+                let afterSaat = i > 0 && tokens[i - 1] == "saat"
+                let plausibleHour = timeContext && a % 60 == 0 && (7 * 60 ... 23 * 60).contains(a)
+                if isClock || afterSaat || plausibleHour {
+                    let m = applyPM(a, pm: pmHint)
+                    if startMin == nil { startMin = m } else if endMin == nil { endMin = m }
+                    i += 1; continue
+                }
+                // lone bare number with no time context → title text (e.g. "Fizik 2")
+            }
+
             titleWords.append(i < originalWords.count ? originalWords[i] : tok)
             i += 1
         }
+
+        // Derive duration from an explicit end time.
+        if let s = startMin, let e = endMin, e > s, duration == nil { duration = e - s }
 
         let title = titleWords.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -247,9 +258,9 @@ enum UpdoAICommandInterpreter {
             return makeAddExam(title: title, date: date, store: store, context: context, ownerUserID: ownerUserID)
         }
 
-        // 2 — Event: a clock time (or hour range) is present, plus a day OR an event
-        //     word OR an explicit range. A bare range strongly implies a calendar slot.
-        if let start = minute, (day != nil || sawEventWord || rangeStart != nil) {
+        // 2 — Event: a start time is present, plus a day OR an event word OR an
+        //     explicit end time. A time range strongly implies a calendar slot.
+        if let start = startMin, (day != nil || sawEventWord || endMin != nil) {
             let resolvedDay = day ?? todayDayParse()
             let evTitle = title.isEmpty ? widgetEventDefault() : title
             return makeAddEvent(
@@ -462,6 +473,20 @@ enum UpdoAICommandInterpreter {
             if let h = Int(digits), h < 24 { return h * 60 }
         }
         return nil
+    }
+
+    /// Minutes-of-day for a clock ("9:30", "10.30") or a bare hour ("9"). The
+    /// caller decides whether a bare value is allowed to stand alone as a time.
+    private static func timeValue(_ tok: String) -> Int? {
+        if let m = clockTime(tok) { return m }
+        if let h = bareHour(tok) { return h * 60 }
+        return nil
+    }
+
+    /// Push a pre-noon hour into the evening when an "akşam/gece" hint is present.
+    private static func applyPM(_ minutes: Int, pm: Bool) -> Int {
+        guard pm, minutes < 12 * 60 else { return minutes }
+        return minutes + 12 * 60
     }
 
     private static func compactHourRange(_ tok: String) -> (Int, Int)? {
