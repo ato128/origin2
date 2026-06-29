@@ -8,10 +8,12 @@
 //  never reach the LLM (zero tokens, zero credits). Anything it can't *confidently*
 //  parse returns nil → normal Haiku chat.
 //
-//  Design principle: be conservative. An event is only created when BOTH a day and
-//  a clock time are unambiguously present; an exam only when a real date is present.
-//  When in doubt we fall back to a plain task (or to the LLM), never to a garbage
-//  calendar entry.
+//  Design principle: PRECISION over recall. A statement, question or negation must
+//  NEVER be mistaken for a command. We only fire on a clean imperative:
+//    • Turkish: the bare verb is the LAST word  ("matematik ekle", "5-8 ders koy")
+//    • English: the bare verb is the FIRST word ("add math", "delete math")
+//  Verbs are matched EXACTLY (so "ekledim", "ekleme", "ekliyorum" never match), and
+//  any question/negation marker bails to the LLM.
 //
 
 import Foundation
@@ -27,30 +29,49 @@ enum UpdoAICommandInterpreter {
         let apply: () -> Void
     }
 
-    // MARK: - Vocabularies (diacritic-folded, lowercased)
+    private enum Action { case add, delete, done }
 
-    private static let addVerbs    = ["ekle", "olustur", "yaz", "koy", "ayarla", "kur", "add", "create", "new", "schedule", "set"]
-    private static let deleteVerbs = ["sil", "kaldir", "cikar", "cikart", "delete", "remove", "drop"]
-    private static let doneVerbs   = ["tamamla", "bitir", "yaptim", "tamamladim", "bitirdim",
-                                      "complete", "done", "finish", "isaretle", "check"]
+    // MARK: - Exact imperative forms (diacritic-folded, lowercased)
 
-    private static let examWords  = ["sinav", "vize", "vizem", "final", "finalim", "quiz", "exam", "midterm", "butunleme"]
-    private static let eventWords = ["ders", "dersi", "dersim", "etkinlik", "class", "lecture",
-                                     "toplanti", "meeting", "randevu", "seans", "appointment", "event"]
+    private static let trAdd: Set<String>  = ["ekle", "ekleyin", "koy", "koyun", "olustur", "olusturun", "yaz", "yazin"]
+    private static let trDel: Set<String>  = ["sil", "silin", "kaldir", "kaldirin", "cikar", "cikarin", "cikart", "cikartin"]
+    private static let trDone: Set<String> = ["tamamla", "tamamlayin", "bitir", "bitirin", "isaretle"]
+    private static let enAdd: Set<String>  = ["add", "create"]
+    private static let enDel: Set<String>  = ["delete", "remove"]
+    private static let enDone: Set<String> = ["complete", "finish", "done", "check"]
 
+    private static var allVerbs: Set<String> {
+        trAdd.union(trDel).union(trDone).union(enAdd).union(enDel).union(enDone)
+    }
+
+    // Words that mean "this is a question / negation / statement", never a command.
+    private static let stopWords: Set<String> = [
+        "mi", "mu", "misin", "misiniz", "misind", "mıyım",
+        "nereye", "nerede", "nereden", "nasil", "neden", "niye", "nicin", "hangi",
+        "kim", "kac", "yapma", "etme", "yapmasana", "olmaz",
+        "gozukmuyor", "gorunmuyor", "goremiyorum", "gozukmedi", "gelmedi",
+        "how", "why", "where", "which", "dont", "don't", "not"
+    ]
+
+    // MARK: - Vocabularies
+
+    // Stem-based so suffixed forms match too ("sınavı", "dersi", "etkinliğe"…).
+    private static let examStems  = ["sinav", "vize", "final", "quiz", "exam", "midterm", "butunleme"]
+    private static let eventStems = ["ders", "etkinlik", "class", "lecture", "toplanti",
+                                     "meeting", "randevu", "seans", "appointment", "event"]
+
+    private static func isExamWord(_ tok: String) -> Bool { examStems.contains { tok.hasPrefix($0) } }
+    private static func isEventWord(_ tok: String) -> Bool { eventStems.contains { tok.hasPrefix($0) } }
+    private static let rangeConnectors: Set<String> = ["ile", "ila", "-", "–", "to", "ve"]
     private static let durationUnits: Set<String> = ["saat", "saatlik", "hour", "hours", "hr",
-                                                      "dk", "dakika", "dakikalik", "min", "mins", "minute", "minutes"]
-
+                                                     "dk", "dakika", "dakikalik", "min", "mins", "minute", "minutes"]
     private static let fillers: Set<String> = [
         "gorev", "gorevi", "gorevini", "gorevler", "gorevleri", "task", "tasks",
         "bir", "bana", "benim", "liste", "listeme", "listemden", "listeden", "listene",
         "to", "my", "the", "a", "an", "lutfen", "please", "updo", "ai",
         "sunu", "su", "bunu", "bu", "olarak", "diye", "adli", "adinda", "isimli",
-        "icin", "for", "off", "as", "at", "on", "var", "ekleyebilir", "misin", "misiniz"
+        "icin", "for", "off", "as", "at", "on", "arasi", "arasina", "arasinda", "arasını", "saat"
     ]
-
-    private static let questionWords = ["nasil", "neden", "nicin", "kim", "nerede",
-                                        "how", "why", "what", "which", "where", "who", "when"]
 
     // weekday name (folded) → model index (0=Mon … 6=Sun)
     private static let weekdayNames: [String: Int] = [
@@ -72,12 +93,10 @@ enum UpdoAICommandInterpreter {
         "sep": 9, "sept": 9, "oct": 10, "nov": 11, "dec": 12
     ]
 
-    // MARK: - Parsed pieces
-
     private struct DayParse {
-        let weekday: Int       // model index 0=Mon … 6=Sun
-        let date: Date?        // concrete date for one-offs (bugün/yarın); nil = recurring weekly
-        let label: String      // user-facing ("bugün", "yarın", "Salı"…)
+        let weekday: Int
+        let date: Date?
+        let label: String
     }
 
     // MARK: - Entry point
@@ -89,31 +108,61 @@ enum UpdoAICommandInterpreter {
         ownerUserID: String?
     ) -> Result? {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return nil }
+        guard !text.isEmpty, !text.hasSuffix("?") else { return nil }
 
-        let foldedFull = fold(text)
+        let tokens = fold(text)
+            .split(whereSeparator: { $0 == " " || $0 == "," || $0 == "." || $0 == "!" })
+            .map(String.init)
+            .filter { !$0.isEmpty }
 
-        // Questions and long conversational sentences are never commands.
-        if text.hasSuffix("?") { return nil }
-        let foldedTokens = foldedFull.split(whereSeparator: { $0 == " " || $0 == "," }).map(String.init)
-        if foldedTokens.count > 12 { return nil }
-        if let first = foldedTokens.first, questionWords.contains(first) { return nil }
-        guard !foldedTokens.isEmpty else { return nil }
+        // Commands are short imperatives. One word is too ambiguous; long sentences
+        // are conversation.
+        guard tokens.count >= 2, tokens.count <= 9 else { return nil }
 
-        let originalWords = text.split(whereSeparator: { $0 == " " || $0 == "," }).map(String.init)
+        // Any question/negation marker → not a command.
+        if tokens.contains(where: { stopWords.contains($0) }) { return nil }
 
-        // Delete / complete reference something that already exists → highest priority.
-        if hasVerb(foldedTokens, deleteVerbs) {
-            return makeRemove(tokens: foldedTokens, store: store, context: context, ownerUserID: ownerUserID)
-        }
-        if hasVerb(foldedTokens, doneVerbs) {
-            return makeComplete(tokens: foldedTokens, store: store)
-        }
-        if hasVerb(foldedTokens, addVerbs) {
-            return makeAdd(tokens: foldedTokens, originalWords: originalWords,
+        // A command must contain exactly the intent verb in the right position and
+        // no OTHER verb floating around (guards "ekle diyorum sil" type noise).
+        guard let action = detectAction(tokens) else { return nil }
+
+        // Map folded → original-cased words for nicer titles.
+        let originalWords = text
+            .split(whereSeparator: { $0 == " " || $0 == "," || $0 == "." || $0 == "!" })
+            .map(String.init)
+            .filter { !$0.isEmpty }
+
+        switch action {
+        case .add:
+            return makeAdd(tokens: tokens, originalWords: originalWords,
                            store: store, context: context, ownerUserID: ownerUserID)
+        case .delete:
+            return makeRemove(tokens: tokens, store: store, context: context, ownerUserID: ownerUserID)
+        case .done:
+            return makeComplete(tokens: tokens, store: store)
         }
-        return nil
+    }
+
+    /// Strict: Turkish imperative ⇒ verb is the LAST token; English ⇒ FIRST token.
+    /// Rejects anything where a verb sits mid-sentence (statements/complaints).
+    private static func detectAction(_ tokens: [String]) -> Action? {
+        guard let first = tokens.first, let last = tokens.last else { return nil }
+
+        let action: Action?
+        let verb: String
+        if trAdd.contains(last)  { action = .add; verb = last }
+        else if trDel.contains(last)  { action = .delete; verb = last }
+        else if trDone.contains(last) { action = .done; verb = last }
+        else if enAdd.contains(first)  { action = .add; verb = first }
+        else if enDel.contains(first)  { action = .delete; verb = first }
+        else if enDone.contains(first) { action = .done; verb = first }
+        else { return nil }
+
+        // No second verb anywhere else (e.g. "ekle ... sil") — keeps it a clean command.
+        let otherVerbs = tokens.filter { allVerbs.contains($0) && $0 != verb }
+        if !otherVerbs.isEmpty { return nil }
+
+        return action
     }
 
     // MARK: - Add (routes to exam / event / task)
@@ -131,72 +180,85 @@ enum UpdoAICommandInterpreter {
         var examDate: Date? = nil
         var sawExamWord = false
         var sawEventWord = false
+        var rangeStart: Int? = nil
         var titleWords: [String] = []
 
         var i = 0
         while i < tokens.count {
             let tok = tokens[i]
 
-            if addVerbs.contains(where: { tok.hasPrefix($0) }) { i += 1; continue }
-            if fillers.contains(tok) { i += 1; continue }
+            if isVerb(tok) { i += 1; continue }
+            if fillers.contains(tok) || rangeConnectors.contains(tok) { i += 1; continue }
+            if isExamWord(tok) { sawExamWord = true; i += 1; continue }
+            if isEventWord(tok) { sawEventWord = true; i += 1; continue }
 
-            if examWords.contains(tok) { sawExamWord = true; i += 1; continue }
-            if eventWords.contains(tok) { sawEventWord = true; i += 1; continue }
-
-            // Day words
             if let d = dayParse(tok) {
                 day = d
                 if examDate == nil, let dt = d.date { examDate = dt }
                 i += 1; continue
             }
 
-            // "saat 15" → 15:00
-            if tok == "saat", i + 1 < tokens.count, let h = bareHour(tokens[i + 1]) {
-                minute = h * 60; i += 2; continue
+            // Hour RANGE: "5 ile 8", "17 ila 20", "5 - 8"
+            if let a = bareHour(tok),
+               i + 2 < tokens.count,
+               rangeConnectors.contains(tokens[i + 1]),
+               let b = bareHour(tokens[i + 2]) {
+                rangeStart = a * 60
+                let span = (b > a ? b - a : 1)
+                duration = span * 60
+                minute = a * 60
+                i += 3; continue
             }
-            // Clock times: 15:00 / 15.30 / 3pm / 15te
+            // Compact range "5-8"
+            if let (a, b) = compactHourRange(tok) {
+                rangeStart = a * 60
+                duration = (b > a ? b - a : 1) * 60
+                minute = a * 60
+                i += 1; continue
+            }
+
+            // "saat 15" → 15:00  ("saat" is a filler, so the number lands here)
+            if let h = bareHour(tok), i > 0, tokens[i - 1] == "saat", minute == nil {
+                minute = h * 60; i += 1; continue
+            }
             if let m = clockTime(tok) { minute = m; i += 1; continue }
 
-            // Duration: "<n> saat/dk"
             if let n = pureInt(tok), i + 1 < tokens.count, durationUnits.contains(tokens[i + 1]) {
                 duration = isHourUnit(tokens[i + 1]) ? n * 60 : n
                 i += 2; continue
             }
             if durationUnits.contains(tok) { i += 1; continue }
 
-            // Numeric day-of-month followed/preceded by a month name → exam date
             if let n = pureInt(tok), n >= 1, n <= 31,
                i + 1 < tokens.count, let mo = monthNames[tokens[i + 1]] {
                 examDate = dateFrom(day: n, month: mo)
                 i += 2; continue
             }
-            // "DD.MM" / "DD/MM"
             if let dm = numericDate(tok) { examDate = dm; i += 1; continue }
 
-            // Leftover → part of the title (keep original casing where possible)
             titleWords.append(i < originalWords.count ? originalWords[i] : tok)
             i += 1
         }
 
         let title = titleWords.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
 
-        // 1 — Exam: an exam word + a concrete date.
+        // 1 — Exam: exam word + a concrete date.
         if sawExamWord, let date = examDate {
             return makeAddExam(title: title, date: date, store: store, context: context, ownerUserID: ownerUserID)
         }
 
-        // 2 — Event: a clock time AND (a day OR an event word). Day defaults to today
-        //     only when an explicit event word is present.
-        if let minute, (day != nil || sawEventWord) {
+        // 2 — Event: a clock time (or hour range) is present, plus a day OR an event
+        //     word OR an explicit range. A bare range strongly implies a calendar slot.
+        if let start = minute, (day != nil || sawEventWord || rangeStart != nil) {
             let resolvedDay = day ?? todayDayParse()
+            let evTitle = title.isEmpty ? widgetEventDefault() : title
             return makeAddEvent(
-                title: title.isEmpty ? defaultEventTitle(sawEventWord: sawEventWord) : title,
-                day: resolvedDay, startMinute: minute, duration: duration ?? 60,
-                context: context, ownerUserID: ownerUserID
+                title: evTitle, day: resolvedDay, startMinute: start,
+                duration: duration ?? 60, context: context, ownerUserID: ownerUserID
             )
         }
 
-        // 3 — Plain task (optionally due bugün/yarın).
+        // 3 — Plain task.
         guard title.count >= 2 else { return nil }
         let displayTitle = capitalizeFirst(title)
         let due = day?.date
@@ -207,30 +269,23 @@ enum UpdoAICommandInterpreter {
         )
     }
 
+    private static func widgetEventDefault() -> String { tr("ai_cmd_event_default") }
+
     // MARK: - Event
 
     private static func makeAddEvent(
-        title: String,
-        day: DayParse,
-        startMinute: Int,
-        duration: Int,
-        context: ModelContext,
-        ownerUserID: String?
+        title: String, day: DayParse, startMinute: Int, duration: Int,
+        context: ModelContext, ownerUserID: String?
     ) -> Result {
         let displayTitle = capitalizeFirst(title)
-        let whenText = "\(day.label) \(clockString(startMinute))"
-
+        let whenText = "\(day.label) \(clockString(startMinute))–\(clockString(min(1439, startMinute + duration)))"
         return Result(
             reply: tr("ai_cmd_event_added", displayTitle, whenText),
             apply: {
                 let ev = EventItem(
-                    ownerUserID: ownerUserID,
-                    title: displayTitle,
-                    weekday: day.weekday,
-                    startMinute: startMinute,
-                    durationMinute: max(15, duration),
-                    scheduledDate: day.date,
-                    colorHex: "#3B82F6"
+                    ownerUserID: ownerUserID, title: displayTitle,
+                    weekday: day.weekday, startMinute: startMinute,
+                    durationMinute: max(15, duration), scheduledDate: day.date, colorHex: "#3B82F6"
                 )
                 context.insert(ev)
                 try? context.save()
@@ -246,26 +301,16 @@ enum UpdoAICommandInterpreter {
     // MARK: - Exam
 
     private static func makeAddExam(
-        title: String,
-        date: Date,
-        store: TodoStore,
-        context: ModelContext,
-        ownerUserID: String?
+        title: String, date: Date, store: TodoStore,
+        context: ModelContext, ownerUserID: String?
     ) -> Result {
         let name = capitalizeFirst(title.isEmpty ? tr("ai_cmd_exam_default") : title)
         let dateText = examDateText(date)
-
         return Result(
             reply: tr("ai_cmd_exam_added", name, dateText),
             apply: {
-                let exam = ExamItem(
-                    title: name,
-                    courseName: name,
-                    examDate: date,
-                    ownerUserID: ownerUserID
-                )
+                let exam = ExamItem(title: name, courseName: name, examDate: date, ownerUserID: ownerUserID)
                 context.insert(exam)
-                // Companion study task, linked by exam id so deletion can cascade.
                 store.addExamStudyTask(exam: exam, title: name, dueDate: date)
                 try? context.save()
                 WidgetAppSync.refreshFromSwiftData(context: context)
@@ -273,19 +318,16 @@ enum UpdoAICommandInterpreter {
         )
     }
 
-    // MARK: - Remove (tasks AND calendar events)
+    // MARK: - Remove (tasks + events + exams)
 
     private static func makeRemove(
-        tokens: [String],
-        store: TodoStore,
-        context: ModelContext,
-        ownerUserID: String?
+        tokens: [String], store: TodoStore, context: ModelContext, ownerUserID: String?
     ) -> Result? {
-        let query = targetQuery(tokens: tokens, verbs: deleteVerbs)
+        let query = targetQuery(tokens)
         guard !query.isEmpty else { return nil }
 
-        let sawExam = tokens.contains { examWords.contains($0) }
-        let sawEvent = tokens.contains { eventWords.contains($0) }
+        let sawExam = tokens.contains { isExamWord($0) }
+        let sawEvent = tokens.contains { isEventWord($0) }
 
         let taskHit = bestMatch(query, in: store.items, title: { $0.title })
         let events = ownedEvents(context: context, ownerUserID: ownerUserID)
@@ -293,20 +335,16 @@ enum UpdoAICommandInterpreter {
         let exams = ownedExams(context: context, ownerUserID: ownerUserID)
         let examHit = bestMatch(query, in: exams, title: { $0.title.isEmpty ? $0.courseName : $0.title })
 
-        // An explicit "sınav/vize" or "ders/etkinlik" word forces that kind.
         if sawExam, let ex = examHit?.item { return removeExamResult(ex, store: store, context: context) }
         if sawEvent, let ev = eventHit?.item { return removeEventResult(ev, context: context) }
 
-        // Otherwise pick the highest-confidence match across all three kinds.
         let candidates: [(score: Int, make: () -> Result)] = [
             taskHit.map  { hit in (hit.score, { Result(reply: tr("ai_cmd_deleted", hit.item.title), apply: { store.delete(hit.item) }) }) },
             eventHit.map { hit in (hit.score, { removeEventResult(hit.item, context: context) }) },
             examHit.map  { hit in (hit.score, { removeExamResult(hit.item, store: store, context: context) }) }
         ].compactMap { $0 }
 
-        if let best = candidates.max(by: { $0.score < $1.score }) {
-            return best.make()
-        }
+        if let best = candidates.max(by: { $0.score < $1.score }) { return best.make() }
         return Result(reply: tr("ai_cmd_not_found", query), apply: {})
     }
 
@@ -323,10 +361,7 @@ enum UpdoAICommandInterpreter {
         let name = ex.title.isEmpty ? ex.courseName : ex.title
         let examID = ex.id
         return Result(reply: tr("ai_cmd_exam_deleted", name), apply: {
-            // Cascade: delete the companion study tasks linked to this exam.
-            for task in store.items where task.linkedExamID == examID {
-                store.delete(task)
-            }
+            for task in store.items where task.linkedExamID == examID { store.delete(task) }
             context.delete(ex)
             try? context.save()
             WidgetAppSync.refreshFromSwiftData(context: context)
@@ -340,12 +375,18 @@ enum UpdoAICommandInterpreter {
         return owned.isEmpty ? all.filter { $0.ownerUserID == nil } : owned
     }
 
+    private static func ownedEvents(context: ModelContext, ownerUserID: String?) -> [EventItem] {
+        let all = (try? context.fetch(FetchDescriptor<EventItem>())) ?? []
+        guard let uid = ownerUserID else { return all }
+        let owned = all.filter { $0.ownerUserID == uid }
+        return owned.isEmpty ? all.filter { $0.ownerUserID == nil } : owned
+    }
+
     // MARK: - Complete (tasks)
 
     private static func makeComplete(tokens: [String], store: TodoStore) -> Result? {
-        let query = targetQuery(tokens: tokens, verbs: doneVerbs)
+        let query = targetQuery(tokens)
         guard !query.isEmpty else { return nil }
-
         let pending = store.items.filter { !$0.isDone }
         let pool = pending.isEmpty ? store.items : pending
         guard let match = bestMatch(query, in: pool, title: { $0.title })?.item else {
@@ -356,46 +397,29 @@ enum UpdoAICommandInterpreter {
         })
     }
 
-    private static func targetQuery(tokens: [String], verbs: [String]) -> String {
+    private static func targetQuery(_ tokens: [String]) -> String {
         tokens.filter { tok in
-            !verbs.contains(where: { tok.hasPrefix($0) })
-                && !fillers.contains(tok)
-                && !eventWords.contains(tok)
-                && !examWords.contains(tok)
+            !isVerb(tok) && !fillers.contains(tok) && !isEventWord(tok) && !isExamWord(tok)
         }
         .joined(separator: " ")
         .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private static func ownedEvents(context: ModelContext, ownerUserID: String?) -> [EventItem] {
-        let all = (try? context.fetch(FetchDescriptor<EventItem>())) ?? []
-        guard let uid = ownerUserID else { return all }
-        let owned = all.filter { $0.ownerUserID == uid }
-        return owned.isEmpty ? all.filter { $0.ownerUserID == nil } : owned
-    }
-
-    /// Generic fuzzy matcher over any item's title. Returns the best item with its
-    /// confidence score (≥25), or nil.
     private static func bestMatch<T>(_ query: String, in items: [T], title: (T) -> String) -> (item: T, score: Int)? {
         let q = fold(query)
         guard !q.isEmpty else { return nil }
         let qTokens = Set(q.split(separator: " ").map(String.init))
-
         var best: (item: T, score: Int)? = nil
         for item in items {
             let t = fold(title(item))
             var score = 0
-            if t == q {
-                score = 100
-            } else if t.contains(q) || q.contains(t) {
-                score = 60 + min(q.count, t.count)
-            } else {
+            if t == q { score = 100 }
+            else if t.contains(q) || q.contains(t) { score = 60 + min(q.count, t.count) }
+            else {
                 let overlap = qTokens.intersection(Set(t.split(separator: " ").map(String.init))).count
                 score = overlap * 25
             }
-            if score > 0, best == nil || score > best!.score {
-                best = (item, score)
-            }
+            if score > 0, best == nil || score > best!.score { best = (item, score) }
         }
         if let b = best, b.score >= 25 { return b }
         return nil
@@ -412,7 +436,6 @@ enum UpdoAICommandInterpreter {
             let d = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: Date())) ?? Date()
             return DayParse(weekday: modelWeekday(d), date: d, label: tr("ai_cmd_tomorrow"))
         }
-        // Named weekday → recurring slot (date nil), label = the weekday word.
         for (name, idx) in weekdayNames where tok == name || (name.count > 3 && tok.hasPrefix(name)) {
             return DayParse(weekday: idx, date: nextDate(forModelWeekday: idx), label: weekdayLabel(idx))
         }
@@ -420,36 +443,32 @@ enum UpdoAICommandInterpreter {
     }
 
     private static func todayDayParse() -> DayParse {
-        DayParse(weekday: modelWeekday(Date()),
-                 date: Calendar.current.startOfDay(for: Date()),
-                 label: tr("ai_cmd_today"))
+        DayParse(weekday: modelWeekday(Date()), date: Calendar.current.startOfDay(for: Date()), label: tr("ai_cmd_today"))
     }
 
-    /// Parses a single token into minutes-of-day, only when a time indicator is
-    /// present (":", ".", am/pm, or a Turkish locative suffix) — never a bare number.
     private static func clockTime(_ tok: String) -> Int? {
         let t = tok.replacingOccurrences(of: "'", with: "").replacingOccurrences(of: "’", with: "")
-
-        // HH:MM or HH.MM
         if let r = t.range(of: #"^(\d{1,2})[:\.](\d{2})$"#, options: .regularExpression) {
             let parts = t[r].split(whereSeparator: { $0 == ":" || $0 == "." })
             if let h = Int(parts[0]), let m = Int(parts[1]), h < 24, m < 60 { return h * 60 + m }
         }
-        // HHam / HHpm
-        if let m = t.range(of: #"^(\d{1,2})(am|pm)$"#, options: .regularExpression) {
-            let s = String(t[m])
-            let pm = s.hasSuffix("pm")
-            let h = Int(s.dropLast(2)) ?? 0
-            let hour = pm ? (h % 12) + 12 : (h % 12)
-            return hour * 60
+        if t.range(of: #"^(\d{1,2})(am|pm)$"#, options: .regularExpression) != nil {
+            let pm = t.hasSuffix("pm")
+            let h = Int(t.dropLast(2)) ?? 0
+            return ((pm ? (h % 12) + 12 : (h % 12)) * 60)
         }
-        // Turkish locative on an hour: 15te, 3te, 9da, 15de
         if let r = t.range(of: #"^(\d{1,2})(te|ta|de|da)$"#, options: .regularExpression) {
-            let s = String(t[r])
-            let digits = s.prefix { $0.isNumber }
+            let digits = t[r].prefix { $0.isNumber }
             if let h = Int(digits), h < 24 { return h * 60 }
         }
         return nil
+    }
+
+    private static func compactHourRange(_ tok: String) -> (Int, Int)? {
+        guard tok.range(of: #"^\d{1,2}[-–]\d{1,2}$"#, options: .regularExpression) != nil else { return nil }
+        let parts = tok.split(whereSeparator: { $0 == "-" || $0 == "–" })
+        guard parts.count == 2, let a = Int(parts[0]), let b = Int(parts[1]), a < 24, b < 24 else { return nil }
+        return (a, b)
     }
 
     private static func bareHour(_ tok: String) -> Int? {
@@ -466,7 +485,6 @@ enum UpdoAICommandInterpreter {
         ["saat", "saatlik", "hour", "hours", "hr"].contains(unit)
     }
 
-    /// "12.05" / "12/05" → a date this year (or next year if already passed).
     private static func numericDate(_ tok: String) -> Date? {
         guard tok.range(of: #"^\d{1,2}[\./]\d{1,2}$"#, options: .regularExpression) != nil else { return nil }
         let parts = tok.split(whereSeparator: { $0 == "." || $0 == "/" })
@@ -493,9 +511,7 @@ enum UpdoAICommandInterpreter {
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
         for offset in 1...7 {
-            if let d = cal.date(byAdding: .day, value: offset, to: today), modelWeekday(d) == w {
-                return d
-            }
+            if let d = cal.date(byAdding: .day, value: offset, to: today), modelWeekday(d) == w { return d }
         }
         return today
     }
@@ -510,19 +526,11 @@ enum UpdoAICommandInterpreter {
         String(format: "%02d:%02d", minute / 60, minute % 60)
     }
 
-    private static func weekdayLabel(_ idx: Int) -> String {
-        localizedWeekdayFull(idx)
-    }
+    private static func weekdayLabel(_ idx: Int) -> String { localizedWeekdayFull(idx) }
 
     private static func examDateText(_ date: Date) -> String {
         let cal = Calendar.current
-        let day = cal.component(.day, from: date)
-        let month = cal.component(.month, from: date)
-        return "\(day) \(localizedMonthShort(month - 1))"
-    }
-
-    private static func defaultEventTitle(sawEventWord: Bool) -> String {
-        tr("ai_cmd_event_default")
+        return "\(cal.component(.day, from: date)) \(localizedMonthShort(cal.component(.month, from: date) - 1))"
     }
 
     private static func capitalizeFirst(_ s: String) -> String {
@@ -532,13 +540,10 @@ enum UpdoAICommandInterpreter {
 
     // MARK: - Generic helpers
 
-    private static func fold(_ s: String) -> String {
-        s.folding(options: [.caseInsensitive, .diacriticInsensitive],
-                  locale: Locale(identifier: "tr"))
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-    }
+    private static func isVerb(_ tok: String) -> Bool { allVerbs.contains(tok) }
 
-    private static func hasVerb(_ tokens: [String], _ verbs: [String]) -> Bool {
-        tokens.contains { tok in verbs.contains { tok.hasPrefix($0) } }
+    private static func fold(_ s: String) -> String {
+        s.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "tr"))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

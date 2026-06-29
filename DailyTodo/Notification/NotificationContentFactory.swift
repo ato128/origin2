@@ -4,13 +4,14 @@
 //
 //  Single source of truth for locally-scheduled notification content. Every Updo
 //  notification built here gets consistent, professional treatment:
-//    • the live app-icon attachment (rich media)
 //    • a thread identifier (so iOS groups related notifications)
 //    • a relevance score (ordering in the stack / summary)
 //    • an interruption level
 //
-//  Centralizing this keeps the schedulers focused on *when* and *why*, while the
-//  factory owns *how a notification looks*.
+//  NOTE: we intentionally do NOT attach a custom app-icon image. iOS already shows
+//  the app icon on the leading edge; a second rendered icon as a trailing
+//  attachment looked doubled-up and could lag the chosen icon. The standard system
+//  icon is the clean, native look.
 //
 
 import UserNotifications
@@ -26,7 +27,7 @@ enum NotificationContentFactory {
         userInfo: [String: Any] = [:],
         relevance: Double = 0.5,
         interruption: UNNotificationInterruptionLevel = .active,
-        attachIcon: Bool = true,
+        attachIcon: Bool = false,
         sound: UNNotificationSound = .default
     ) -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
@@ -38,11 +39,9 @@ enum NotificationContentFactory {
         content.userInfo = userInfo
         content.relevanceScore = relevance
         content.interruptionLevel = interruption
-
-        if attachIcon, let icon = NotificationIconRenderer.makeIconAttachment() {
-            content.attachments = [icon]
-        }
-
+        // Custom icon attachment intentionally omitted — the system app icon is the
+        // single, native notification icon. (`attachIcon` kept for source compat.)
+        _ = attachIcon
         return content
     }
 }

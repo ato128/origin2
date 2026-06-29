@@ -254,7 +254,7 @@ private extension MainTabView {
             isPro: SubscriptionManager.shared.isPro,
             streak: ProgressionManager.shared.currentStreak,
             level: ProgressionManager.shared.level,
-            todayFocusMinutes: FocusSessionManager.shared.todayFocusMinutes,
+            todayFocusMinutes: FocusStats.todayMinutes(allFocusRecords, for: session.currentUser?.id.uuidString),
             statsShared: ProgressionManager.shared.statsSharingEnabled,
             longestStreak: ProgressionManager.shared.longestStreak
         )

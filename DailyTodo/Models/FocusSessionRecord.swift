@@ -63,3 +63,57 @@ extension FocusSessionRecord {
         isCompleted
     }
 }
+
+/// THE single source of truth for focus statistics across the whole app — Home,
+/// Insights, the widget/Live-Activity sync and notifications all read through here
+/// so a finished session is counted identically everywhere.
+enum FocusStats {
+
+    /// Records belonging to the current user, with a fallback to un-owned records
+    /// (saved before the session store was ready) so nothing is silently dropped.
+    static func owned(_ records: [FocusSessionRecord], for ownerUserID: String?) -> [FocusSessionRecord] {
+        let qualifying = records.filter { $0.countsTowardStats }
+        guard let uid = ownerUserID else { return qualifying.filter { $0.ownerUserID == nil } }
+        let mine = qualifying.filter { $0.ownerUserID == uid }
+        let orphan = qualifying.filter { $0.ownerUserID == nil }
+        return mine + orphan
+    }
+
+    static func todayMinutes(_ records: [FocusSessionRecord], for ownerUserID: String?, now: Date = Date()) -> Int {
+        let cal = Calendar.current
+        return owned(records, for: ownerUserID)
+            .filter { cal.isDate($0.endedAt, inSameDayAs: now) }
+            .reduce(0) { $0 + $1.completedSeconds } / 60
+    }
+
+    static func weekMinutes(_ records: [FocusSessionRecord], for ownerUserID: String?, now: Date = Date()) -> Int {
+        let cal = Calendar.current
+        let weekStart = cal.dateInterval(of: .weekOfYear, for: now)?.start ?? now
+        return owned(records, for: ownerUserID)
+            .filter { $0.endedAt >= weekStart }
+            .reduce(0) { $0 + $1.completedSeconds } / 60
+    }
+
+    static func sessionCount(_ records: [FocusSessionRecord], for ownerUserID: String?) -> Int {
+        owned(records, for: ownerUserID).count
+    }
+
+    static func hasToday(_ records: [FocusSessionRecord], for ownerUserID: String?, now: Date = Date()) -> Bool {
+        let cal = Calendar.current
+        return owned(records, for: ownerUserID).contains { cal.isDate($0.endedAt, inSameDayAs: now) }
+    }
+
+    static func currentStreak(_ records: [FocusSessionRecord], for ownerUserID: String?, now: Date = Date()) -> Int {
+        let cal = Calendar.current
+        let days = Set(owned(records, for: ownerUserID).map { cal.startOfDay(for: $0.endedAt) })
+        guard !days.isEmpty else { return 0 }
+        var streak = 0
+        var cursor = cal.startOfDay(for: now)
+        while days.contains(cursor) {
+            streak += 1
+            guard let prev = cal.date(byAdding: .day, value: -1, to: cursor) else { break }
+            cursor = prev
+        }
+        return streak
+    }
+}
