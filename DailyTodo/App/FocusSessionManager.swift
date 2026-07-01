@@ -717,7 +717,7 @@ final class FocusSessionManager: ObservableObject {
         let completedSeconds = max(1, elapsedSeconds)
 
         FocusCompletionRecorder.shared.saveCompletedSession(
-            ownerUserID: currentUserID?.uuidString,
+            ownerUserID: resolvedOwnerID,
             title: activeSessionDisplayTitle,
             startedAt: session.startDate,
             endedAt: ended,
@@ -1315,6 +1315,13 @@ final class FocusSessionManager: ObservableObject {
 
     var currentUserID: UUID? {
         sessionStore?.currentUser?.id
+    }
+
+    /// Owner id for a saved focus record. Falls back to the app-wide persisted user
+    /// id ("current_user_id") so a session that finishes before the session store
+    /// is wired up (e.g. a restored session on cold start) is never orphaned.
+    var resolvedOwnerID: String? {
+        currentUserID?.uuidString ?? UserDefaults.standard.string(forKey: "current_user_id")
     }
 
     var currentUserDisplayName: String {

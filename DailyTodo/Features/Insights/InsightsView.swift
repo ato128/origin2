@@ -108,18 +108,15 @@ struct InsightsView: View {
     }
 
     private var filteredFocusSessions: [FocusSessionRecord] {
-        guard let currentUserIDString else { return [] }
-
-        let scoped = focusSessions.filter {
-            $0.ownerUserID == currentUserIDString
+        // Match FocusStats everywhere: the current user's records PLUS any un-owned
+        // records (saved before the session store was ready). Using an either/or
+        // filter here previously dropped those orphans, so Insights under-counted
+        // vs the widget. Now they always agree.
+        guard let currentUserIDString else {
+            return focusSessions.filter { $0.ownerUserID == nil }
         }
-
-        if !scoped.isEmpty {
-            return scoped
-        }
-
         return focusSessions.filter {
-            $0.ownerUserID == nil
+            $0.ownerUserID == currentUserIDString || $0.ownerUserID == nil
         }
     }
 
