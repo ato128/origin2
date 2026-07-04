@@ -145,7 +145,9 @@ enum StreakProgressEngine {
         guard hasTask else { return false }
 
         let hasFocus = focusRecords.contains { rec in
-            guard rec.isCompleted, rec.completedSeconds >= 60 else { return false }
+            // countsTowardStats: an early-stopped session of ≥1 real minute keeps
+            // the streak alive, consistent with focus stats everywhere else.
+            guard rec.countsTowardStats else { return false }
             return cal.isDate(rec.endedAt, inSameDayAs: day)
         }
         return hasFocus

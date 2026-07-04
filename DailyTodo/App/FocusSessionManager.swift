@@ -10,6 +10,7 @@ import Foundation
 import Combine
 import AVFoundation
 import UserNotifications
+import SwiftData
 
 @MainActor
 final class FocusSessionManager: ObservableObject {
@@ -764,14 +765,18 @@ final class FocusSessionManager: ObservableObject {
             return value > 0 ? value : nil
         }()
 
+        // Real numbers on the celebration screen (the record above was saved
+        // synchronously, so today's totals already include this session).
+        let todayTotals = todayFocusTotalsFromStore()
+
         let summary = FocusCompletionSummary(
             id: UUID(),
             mode: session.mode,
             durationMinutes: completedMinutes,
             completedAt: ended,
-            totalTodayMinutes: todayFocusMinutes + completedMinutes,
-            streakDays: streakDays + 1,
-            completedSessionsToday: max(1, weekFocusSessions - 2),
+            totalTodayMinutes: max(todayTotals.minutes, completedMinutes),
+            streakDays: ProgressionManager.shared.currentStreak,
+            completedSessionsToday: max(1, todayTotals.sessions),
             goal: session.goal,
             style: session.style,
             participantCount: session.participants.count,
@@ -1489,88 +1494,17 @@ final class FocusSessionManager: ObservableObject {
         !hasBlockingActiveSession
     }
 
-    // MARK: - Summary Values
-
-    var todayFocusMinutes: Int {
-        if isSessionActive && selectedMode == .personal {
-            return 72 + (elapsedSeconds / 60)
-        }
-        return 72
-    }
-
-    var weekFocusSessions: Int {
-        if isSessionActive && selectedMode == .personal {
-            return 5
-        }
-        return 4
-    }
-
-    var streakDays: Int {
-        switch selectedMode {
-        case .personal: return 6
-        case .crew: return 5
-        case .friend: return 3
-        }
-    }
-
-    var lastSessionText: String {
-        switch selectedMode {
-        case .personal: return tr("fsm_last_2h")
-        case .crew: return tr("fsm_last_crew_yesterday")
-        case .friend: return tr("fsm_last_shared_today")
-        }
-    }
-
-    var personalMetricOneTitle: String { tr("common_today") }
-    var personalMetricOneValue: String { "\(todayFocusMinutes) dk" }
-
-    var personalMetricTwoTitle: String { "Seri" }
-    var personalMetricTwoValue: String { tr("ch_streak_days_n", streakDays) }
-
-    var personalMetricThreeTitle: String { "Hafta" }
-    var personalMetricThreeValue: String { "\(weekFocusSessions) session" }
-
-    var crewMetricOneTitle: String { "Host" }
-    var crewMetricOneValue: String { hostName ?? "Atakan" }
-
-    var crewMetricTwoTitle: String { tr("fsm_participant") }
-    var crewMetricTwoValue: String { tr("fsm_people", max(participantCount, 3)) }
-
-    var crewMetricThreeTitle: String { tr("hf_ready") }
-    var crewMetricThreeValue: String { "\(max(readyCount, 2))/\(max(participantCount, 3))" }
-
-    var friendMetricOneTitle: String { tr("fsm_match") }
-    var friendMetricOneValue: String {
-        currentSession?.participants.first(where: { !$0.isHost })?.name ?? "Ece"
-    }
-
-    var friendMetricTwoTitle: String { tr("hf_ready") }
-    var friendMetricTwoValue: String { "\(max(readyCount, 2))/\(max(participantCount, 2))" }
-
-    var friendMetricThreeTitle: String { "Seri" }
-    var friendMetricThreeValue: String { tr("ch_streak_days_n", streakDays) }
-
-    func heroMetricItems(for mode: FocusMode) -> [(String, String)] {
-        switch mode {
-        case .personal:
-            return [
-                (personalMetricOneTitle, personalMetricOneValue),
-                (personalMetricTwoTitle, personalMetricTwoValue),
-                (personalMetricThreeTitle, personalMetricThreeValue)
-            ]
-        case .crew:
-            return [
-                (crewMetricOneTitle, crewMetricOneValue),
-                (crewMetricTwoTitle, crewMetricTwoValue),
-                (crewMetricThreeTitle, crewMetricThreeValue)
-            ]
-        case .friend:
-            return [
-                (friendMetricOneTitle, friendMetricOneValue),
-                (friendMetricTwoTitle, friendMetricTwoValue),
-                (friendMetricThreeTitle, friendMetricThreeValue)
-            ]
-        }
+    /// Real focus totals for today, read straight from the saved records (single
+    /// source of truth via FocusStats).
+    private func todayFocusTotalsFromStore() -> (minutes: Int, sessions: Int) {
+        guard let container = FocusCompletionRecorder.shared.container else { return (0, 0) }
+        let context = ModelContext(container)
+        let records = (try? context.fetch(FetchDescriptor<FocusSessionRecord>())) ?? []
+        let owner = resolvedOwnerID
+        let cal = Calendar.current
+        let todaySessions = FocusStats.owned(records, for: owner)
+            .filter { cal.isDateInToday($0.endedAt) }
+        return (FocusStats.todayMinutes(records, for: owner), todaySessions.count)
     }
 
     var selectedGoal: FocusGoal {

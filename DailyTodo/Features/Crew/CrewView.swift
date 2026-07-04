@@ -339,7 +339,7 @@ private extension CrewView {
                 return lhsDate > rhsDate
             }
 
-        return visibleCrews.enumerated().map { index, crew in
+        return visibleCrews.enumerated().map { _, crew in
             let memberCount = crewStore.memberCountByCrew[crew.id] ?? 0
             let taskCount = crewStore.taskCountByCrew[crew.id] ?? 0
             let completedTaskCount = crewStore.completedTaskCountByCrew[crew.id] ?? 0
@@ -352,21 +352,10 @@ private extension CrewView {
                 .map(\.minutes)
                 .reduce(0, +)
 
-            let fallbackFocusMinutes = CrewHomeFormatters.pseudoFocusMinutes(
-                memberCount: memberCount,
-                completedTaskCount: completedTaskCount,
-                taskCount: taskCount,
-                isLive: isLive
-            )
-
-            let weeklyFocusMinutes = realFocusMinutes > 0
-                ? realFocusMinutes
-                : fallbackFocusMinutes
-
-            let streakDays = CrewHomeFormatters.pseudoStreakDays(
-                memberCount: memberCount,
-                completedTaskCount: completedTaskCount,
-                isLive: isLive
+            // Real numbers only — an honest 0 beats an invented streak/minute.
+            let streakDays = CrewHomeFormatters.crewStreakDays(
+                records: crewStore.crewFocusRecords,
+                crewID: crew.id
             )
 
             let myMemberState = userID.flatMap { resolvedUserID in
@@ -384,8 +373,8 @@ private extension CrewView {
                 taskCount: taskCount,
                 completedTaskCount: completedTaskCount,
                 isLive: isLive,
-                weeklyFocusMinutes: weeklyFocusMinutes,
-                rankText: CrewHomeFormatters.pseudoRankText(index: index),
+                weeklyFocusMinutes: realFocusMinutes,
+                rankText: nil,
                 streakDays: streakDays,
                 lastMessageText: crew.last_message_text,
                 unreadCount: myMemberState?.unread_count ?? 0,

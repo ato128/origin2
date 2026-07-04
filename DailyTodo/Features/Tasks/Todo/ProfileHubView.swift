@@ -1724,9 +1724,6 @@ struct AppIconPickerView: View {
         UIApplication.shared.setAlternateIconName(id) { _ in
             DispatchQueue.main.async {
                 current = UIApplication.shared.alternateIconName
-                // Icon is now actually applied — refresh the cached render and
-                // reschedule notifications so their attachment matches.
-                NotificationIconRenderer.invalidateCache()
                 NotificationCenter.default.post(name: .appIconDidChange, object: nil)
             }
         }

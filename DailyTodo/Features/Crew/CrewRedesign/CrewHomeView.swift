@@ -1188,15 +1188,17 @@ private struct CrewSocialCrewCard: View {
                     }
 
                     HStack(spacing: 8) {
-                        Text(crew.rankText)
-                            .font(.system(size: 10, weight: .black, design: .monospaced))
-                            .foregroundStyle(Color(arenaHex: CrewArenaPalette.appCyan))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill(Color(arenaHex: CrewArenaPalette.appCyan).opacity(0.12))
-                            )
+                        if let rank = crew.rankText {
+                            Text(rank)
+                                .font(.system(size: 10, weight: .black, design: .monospaced))
+                                .foregroundStyle(Color(arenaHex: CrewArenaPalette.appCyan))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(Color(arenaHex: CrewArenaPalette.appCyan).opacity(0.12))
+                                )
+                        }
 
                         Text(crew.memberText)
                             .font(.system(size: 11, weight: .bold, design: .monospaced))
@@ -1243,17 +1245,19 @@ private struct CrewSocialCrewCard: View {
                         .tracking(1.4)
                         .foregroundStyle(.white.opacity(0.34))
 
-                    Text("·")
-                        .foregroundStyle(.white.opacity(0.22))
+                    if crew.streakDays > 0 {
+                        Text("·")
+                            .foregroundStyle(.white.opacity(0.22))
 
-                    HStack(spacing: 3) {
-                        Image(systemName: "flame.fill")
-                            .font(.system(size: 9, weight: .bold))
+                        HStack(spacing: 3) {
+                            Image(systemName: "flame.fill")
+                                .font(.system(size: 9, weight: .bold))
 
-                        Text(tr("ch_streak_days_n", crew.streakDays))
-                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            Text(tr("ch_streak_days_n", crew.streakDays))
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        }
+                        .foregroundStyle(Color(arenaHex: CrewArenaPalette.gold))
                     }
-                    .foregroundStyle(Color(arenaHex: CrewArenaPalette.gold))
 
                     Text("·")
                         .foregroundStyle(.white.opacity(0.22))

@@ -14,6 +14,61 @@
 
 import SwiftUI
 
+// MARK: - Shared suggestion model (moved from the retired HomeDashboardView)
+
+enum ChallengeKind: String {
+    case tasks   // tasks completed today
+    case focus   // focus minutes today
+}
+
+struct UpdoAISuggestion {
+    let headline: String
+    let reason: String
+    let ctaTitle: String
+    let ctaIcon: String
+    let accent: Color
+    let isChallenge: Bool
+    /// Pill text shown when the card is collapsed.
+    let collapsedText: String
+    /// Small label shown above the headline when expanded.
+    let introText: String
+    /// For challenges: what to measure and the goal (e.g. 3 tasks, 25 focus min).
+    let challengeKind: ChallengeKind
+    let challengeTarget: Int
+    /// Urgent suggestions (imminent exam) bypass the frequency throttle.
+    let isUrgentExam: Bool
+    let action: () -> Void
+
+    init(
+        headline: String,
+        reason: String,
+        ctaTitle: String,
+        ctaIcon: String,
+        accent: Color,
+        isChallenge: Bool = false,
+        collapsedText: String = tr("ai_sg_collapsed"),
+        introText: String = tr("ai_sg_intro"),
+        challengeKind: ChallengeKind = .tasks,
+        challengeTarget: Int = 0,
+        isUrgentExam: Bool = false,
+        action: @escaping () -> Void
+    ) {
+        self.headline = headline
+        self.reason = reason
+        self.ctaTitle = ctaTitle
+        self.ctaIcon = ctaIcon
+        self.accent = accent
+        self.isChallenge = isChallenge
+        self.collapsedText = collapsedText
+        self.introText = introText
+        self.challengeKind = challengeKind
+        self.challengeTarget = challengeTarget
+        self.isUrgentExam = isUrgentExam
+        self.action = action
+    }
+}
+
+
 extension HomeView {
 
     private enum AiPhase { case morning, afternoon, evening, night }

@@ -297,15 +297,15 @@ struct SmartNotificationBrain {
         focusRecords: [FocusSessionRecord],
         now: Date
     ) -> [SmartNotificationCandidate] {
-        let taskStreak = StreakEngine.currentStreak(tasks: tasks)
-        let focusStreak = focusCurrentStreak(records: focusRecords, now: now)
-        let hasFocusToday = didCompleteFocusToday(records: focusRecords, now: now)
+        // Unified app-wide streak rule (task AND focus per day) — the same number
+        // the Home hero, widget and Insights identity card show.
+        let streak = StreakProgressEngine.currentStreak(asOf: now, tasks: tasks, focusRecords: focusRecords)
+        let todayQualified = StreakProgressEngine.dayQualifies(
+            Calendar.current.startOfDay(for: now), tasks: tasks, focusRecords: focusRecords
+        )
 
-        guard !hasFocusToday else { return [] }
-
-        let strongestStreak = max(taskStreak, focusStreak)
-
-        guard strongestStreak >= 2 else { return [] }
+        guard !todayQualified else { return [] }
+        guard streak >= 2 else { return [] }
 
         guard let trigger = triggerDateToday(hour: 20, minute: 45, now: now) else {
             return []
@@ -405,8 +405,10 @@ struct SmartNotificationBrain {
         ]
     }
 
-    // MARK: - Focus Streak Helpers
+    // MARK: - Focus Helpers
 
+    /// "Did the user really focus today" — same countsTowardStats rule as the
+    /// rest of the app, so nudges never contradict the visible stats.
     private static func didCompleteFocusToday(
         records: [FocusSessionRecord],
         now: Date
@@ -414,36 +416,9 @@ struct SmartNotificationBrain {
         let calendar = Calendar.current
 
         return records.contains { record in
-            record.completedSeconds >= 10 * 60 &&
+            record.countsTowardStats &&
             calendar.isDate(record.endedAt, inSameDayAs: now)
         }
-    }
-
-    private static func focusCurrentStreak(
-        records: [FocusSessionRecord],
-        now: Date
-    ) -> Int {
-        let calendar = Calendar.current
-
-        let completedDays = records
-            .filter { $0.completedSeconds >= 10 * 60 }
-            .map { calendar.startOfDay(for: $0.endedAt) }
-
-        let uniqueDays = Set(completedDays).sorted(by: >)
-
-        var streak = 0
-        var current = calendar.startOfDay(for: now)
-
-        for day in uniqueDays {
-            if day == current {
-                streak += 1
-                current = calendar.date(byAdding: .day, value: -1, to: current) ?? current
-            } else {
-                break
-            }
-        }
-
-        return streak
     }
 
     // MARK: - Time Helpers

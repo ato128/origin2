@@ -343,10 +343,11 @@ struct CrewSocialCrewCardData: Identifiable, Equatable {
     let completedTaskCount: Int
     let isLive: Bool
 
-    // İlk MVP’de gerçek weekly focus backend yok.
-    // Şimdilik task/member verisinden türetilmiş premium display hissi veriyoruz.
+    // Real data only. `rankText` is nil (no real ranking system yet) and
+    // `streakDays` 0 means "no streak" — the UI hides those badges instead of
+    // showing invented numbers.
     let weeklyFocusMinutes: Int
-    let rankText: String
+    let rankText: String?
     let streakDays: Int
     
     let lastMessageText: String?
@@ -652,33 +653,34 @@ enum CrewHomeFormatters {
         return "\(value)"
     }
 
-    static func pseudoFocusMinutes(
-        memberCount: Int,
-        completedTaskCount: Int,
-        taskCount: Int,
-        isLive: Bool
+    /// REAL crew streak: consecutive days (counting back from today) on which the
+    /// crew logged at least one focus session. Today not having one yet doesn't
+    /// break the streak — counting simply starts from yesterday.
+    static func crewStreakDays(
+        records: [CrewFocusRecordDTO],
+        crewID: UUID,
+        now: Date = Date()
     ) -> Int {
-        let base = max(1, memberCount) * 180
-        let taskBonus = completedTaskCount * 45
-        let liveBonus = isLive ? 212 : 0
-        let totalBonus = taskCount * 18
+        let cal = Calendar.current
+        let days = Set(
+            records
+                .filter { $0.crew_id == crewID }
+                .compactMap { $0.created_at.flatMap { CrewDateParser.parse($0) } }
+                .map { cal.startOfDay(for: $0) }
+        )
+        guard !days.isEmpty else { return 0 }
 
-        return base + taskBonus + liveBonus + totalBonus
-    }
+        var streak = 0
+        var cursor = cal.startOfDay(for: now)
+        if days.contains(cursor) { streak += 1 }
+        guard let yesterday = cal.date(byAdding: .day, value: -1, to: cursor) else { return streak }
+        cursor = yesterday
 
-    static func pseudoStreakDays(
-        memberCount: Int,
-        completedTaskCount: Int,
-        isLive: Bool
-    ) -> Int {
-        let base = max(1, memberCount) * 7
-        let completionBonus = completedTaskCount * 3
-        let liveBonus = isLive ? 12 : 0
-
-        return min(99, base + completionBonus + liveBonus)
-    }
-
-    static func pseudoRankText(index: Int) -> String {
-        "CMSE #\(max(1, index + 6))"
+        while days.contains(cursor) {
+            streak += 1
+            guard let prev = cal.date(byAdding: .day, value: -1, to: cursor) else { break }
+            cursor = prev
+        }
+        return streak
     }
 }

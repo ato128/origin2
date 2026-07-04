@@ -103,17 +103,7 @@ enum FocusStats {
         return owned(records, for: ownerUserID).contains { cal.isDate($0.endedAt, inSameDayAs: now) }
     }
 
-    static func currentStreak(_ records: [FocusSessionRecord], for ownerUserID: String?, now: Date = Date()) -> Int {
-        let cal = Calendar.current
-        let days = Set(owned(records, for: ownerUserID).map { cal.startOfDay(for: $0.endedAt) })
-        guard !days.isEmpty else { return 0 }
-        var streak = 0
-        var cursor = cal.startOfDay(for: now)
-        while days.contains(cursor) {
-            streak += 1
-            guard let prev = cal.date(byAdding: .day, value: -1, to: cursor) else { break }
-            cursor = prev
-        }
-        return streak
-    }
+    // NOTE: no streak helper here on purpose — the ONE app-wide streak rule
+    // (a day needs BOTH a completed task and a focus) lives in
+    // StreakProgressEngine / ProgressionManager.
 }

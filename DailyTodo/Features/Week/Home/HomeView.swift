@@ -1181,28 +1181,9 @@ private extension HomeView {
     }
 
     var streakDays: Int {
-        let cal = Calendar.current
-
-        let userRecords = ownedFocusRecords.filter { $0.countsTowardStats }
-
-        guard !userRecords.isEmpty else { return 0 }
-
-        let focusDates = Set(userRecords.map { cal.startOfDay(for: $0.endedAt) })
-
-        var streak = 0
-        var cursor = cal.startOfDay(for: now)
-
-        while focusDates.contains(cursor) {
-            streak += 1
-
-            guard let prev = cal.date(byAdding: .day, value: -1, to: cursor) else {
-                break
-            }
-
-            cursor = prev
-        }
-
-        return streak
+        // Single app-wide streak rule (task AND focus per day) — same number the
+        // widget, Insights identity card and notifications show.
+        return progression.currentStreak
     }
 }
 

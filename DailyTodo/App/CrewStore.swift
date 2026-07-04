@@ -3336,7 +3336,7 @@ extension CrewStore {
                 completedTaskCount: completedTaskCount,
                 isLive: hasActiveSession,
                 weeklyFocusMinutes: max(realFocusMinutes, 0),
-                rankText: CrewHomeFormatters.pseudoRankText(index: index),
+                rankText: nil,
                 streakDays: 0,
                 lastMessageText: crew.last_message_text,
                 unreadCount: unreadCount,

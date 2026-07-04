@@ -25,9 +25,7 @@ struct InsightsView: View {
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
 
     @State private var scrollOffset: CGFloat = 0
-    @State private var insightSelectedTab: AppTab = .tasks
 
-    @State private var goTasks = false
     @State private var goWeek = false
     @State private var goFocus = false
 
@@ -309,10 +307,6 @@ struct InsightsView: View {
 
     private var hiddenNavigationLinks: some View {
         Group {
-            NavigationLink("", isActive: $goTasks) {
-                TodoListView(selectedTab: $insightSelectedTab)
-            }
-
             NavigationLink("", isActive: $goWeek) {
                 WeekView()
             }
