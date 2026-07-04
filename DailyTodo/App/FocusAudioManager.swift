@@ -12,11 +12,17 @@ final class FocusAudioManager {
     static let shared = FocusAudioManager()
 
     private var player: AVAudioPlayer?
+    private var currentStyle: FocusStyle?
 
     private init() {}
 
     func play(style: FocusStyle) {
+        // Already looping this style → leave it running. Restarting from zero on
+        // every crew realtime update made the ambience stutter.
+        if currentStyle == style, player?.isPlaying == true { return }
+
         stop()
+        currentStyle = style
 
         guard let fileName = fileName(for: style) else { return }
 
@@ -51,6 +57,7 @@ final class FocusAudioManager {
     func stop() {
         player?.stop()
         player = nil
+        currentStyle = nil
     }
 
     private func fileName(for style: FocusStyle) -> String? {

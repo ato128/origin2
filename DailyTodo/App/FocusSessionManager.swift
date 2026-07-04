@@ -83,7 +83,8 @@ final class FocusSessionManager: ObservableObject {
         mode: FocusMode,
         durationMinutes: Int,
         goal: FocusGoal,
-        style: FocusStyle
+        style: FocusStyle,
+        preferredCrewID: UUID? = nil
     ) async -> Bool {
         guard !hasBlockingActiveSession else {
             Log.debug("FOCUS START BLOCKED: another session is already active")
@@ -105,7 +106,8 @@ final class FocusSessionManager: ObservableObject {
             return await startCrewSession(
                 durationMinutes: durationMinutes,
                 goal: goal,
-                style: style
+                style: style,
+                preferredCrewID: preferredCrewID
             )
 
         case .friend:
@@ -363,6 +365,12 @@ final class FocusSessionManager: ObservableObject {
             hostUserID: dto.host_user_id
         )
 
+        // A realtime refresh of the session we're already in (someone joined,
+        // ready-state changed…) must not disturb the user's UI or audio — only
+        // structural changes (pause/resume) do.
+        let isSameLiveSession = currentCrewBackendSessionID == dto.id && isSessionActive
+        let pauseStateChanged = currentSession?.isPaused != dto.is_paused
+
         let session = FocusSessionState(
             id: dto.id,
             mode: .crew,
@@ -381,19 +389,25 @@ final class FocusSessionManager: ObservableObject {
         currentCrewBackendSessionID = dto.id
         currentCrewHostUserID = dto.host_user_id
         isSessionActive = dto.is_active
-        isExpanded = false
-        isMinimized = dto.is_active
+
+        if !isSameLiveSession {
+            isExpanded = false
+            isMinimized = dto.is_active
+        }
 
         save()
         startLifecycleTimer()
-        syncAudioForCurrentState()
 
-        if dto.is_active && !dto.is_paused {
-            scheduleFocusEndBackupNotification(for: session)
-        }
+        if !isSameLiveSession || pauseStateChanged {
+            syncAudioForCurrentState()
 
-        Task {
-            await syncLiveActivityIfNeeded()
+            if dto.is_active && !dto.is_paused {
+                scheduleFocusEndBackupNotification(for: session)
+            }
+
+            Task {
+                await syncLiveActivityIfNeeded()
+            }
         }
     }
 
@@ -406,7 +420,7 @@ final class FocusSessionManager: ObservableObject {
     ) {
         guard currentCrewID == crewID || selectedMode == .crew || currentSession?.mode == .crew else { return }
 
-        if let activeSession {
+        if let activeSession, activeSession.is_active {
             hydrateFromCrewSessionDTO(
                 activeSession,
                 crewID: crewID,
@@ -415,8 +429,23 @@ final class FocusSessionManager: ObservableObject {
                 preferredStyle: preferredStyle
             )
         } else if currentSession?.mode == .crew {
-            clearSessionLocally()
+            // The host ended (or the backend deactivated) the session remotely.
+            finalizeRemotelyEndedCrewSession()
         }
+    }
+
+    /// Called on a member's device when the crew session ends remotely (the host
+    /// stopped it). The member's own focus time must be RECORDED and celebrated —
+    /// silently clearing the session used to throw their minutes away.
+    private func finalizeRemotelyEndedCrewSession() {
+        guard let session = currentSession, session.mode == .crew, isSessionActive else {
+            clearSessionLocally()
+            return
+        }
+        // completeAndPersist records the member's elapsed time locally and shows
+        // the completion summary; the host already persisted the crew backend and
+        // sent the pushes, so we skip both here.
+        completeAndPersist(session, shouldPersistCrewBackend: false)
     }
 
     // MARK: - Internal Start Methods
@@ -466,14 +495,18 @@ final class FocusSessionManager: ObservableObject {
     private func startCrewSession(
         durationMinutes: Int,
         goal: FocusGoal,
-        style: FocusStyle
+        style: FocusStyle,
+        preferredCrewID: UUID? = nil
     ) async -> Bool {
         guard let crewStore else {
             Log.debug("START CREW SESSION ERROR: CrewStore not configured")
             return false
         }
 
-        guard let crew = crewStore.crews.first else {
+        // Start in the crew the user actually selected; only fall back to the
+        // first crew when nothing is selected (single-crew users).
+        guard let crew = crewStore.crews.first(where: { $0.id == preferredCrewID })
+                ?? crewStore.crews.first else {
             Log.debug("START CREW SESSION ERROR: No crew found")
             return false
         }

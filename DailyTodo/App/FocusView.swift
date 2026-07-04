@@ -878,7 +878,8 @@ private extension FocusView {
                 mode: selectedMode,
                 durationMinutes: resolvedMinutes,
                 goal: selectedGoal,
-                style: selectedStyle
+                style: selectedStyle,
+                preferredCrewID: selectedCrewID
             )
 
             if !started {
