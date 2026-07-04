@@ -296,7 +296,7 @@ struct UpdoAIView: View {
             )
 
         if msg.role == "assistant" {
-            let items = parseListItems(msg.text)
+            let items = UpdoAIPlanParser.parse(msg.text)
             if items.count >= 2
                 && !executedActionIDs.contains(msg.id)
                 && !dismissedActionIDs.contains(msg.id)
@@ -322,7 +322,7 @@ struct UpdoAIView: View {
                 aiAvatar
             }
 
-            Text(msg.text)
+            richText(msg.text)
                 .font(.body)
                 .lineSpacing(2)
                 .foregroundStyle(isUser ? Color.white : UpdoTheme.textPrimary)
@@ -391,7 +391,7 @@ struct UpdoAIView: View {
             if chatStore.streamingText.isEmpty {
                 TypingIndicatorBubble()
             } else {
-                Text(chatStore.streamingText)
+                richText(chatStore.streamingText)
                     .font(.body)
                     .lineSpacing(2)
                     .foregroundStyle(.primary)
@@ -613,30 +613,8 @@ struct UpdoAIView: View {
 
     // MARK: - Action Card
 
-    private func parseListItems(_ text: String) -> [String] {
-        var seen: Set<String> = []
-        var items: [String] = []
-        for line in text.components(separatedBy: "\n") {
-            let t = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            var candidate: String?
-            for prefix in ["• ", "- ", "* ", "– ", "→ "] {
-                if t.hasPrefix(prefix) {
-                    candidate = String(t.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
-                    break
-                }
-            }
-            if candidate == nil, let r = t.range(of: #"^\d+[.)]\s+"#, options: .regularExpression) {
-                candidate = String(t[r.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
-            }
-            if let item = candidate, item.count > 3, item.count < 120, seen.insert(item).inserted {
-                items.append(item)
-            }
-        }
-        return Array(items.prefix(10))
-    }
-
     @ViewBuilder
-    private func actionCard(items: [String], msgID: UUID) -> some View {
+    private func actionCard(items: [UpdoAIPlanItem], msgID: UUID) -> some View {
         HStack(spacing: 12) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 20))
@@ -664,7 +642,14 @@ struct UpdoAIView: View {
                 .buttonStyle(.plain)
 
                 Button {
-                    for item in items { store.add(title: item, dueDate: nil) }
+                    for item in items {
+                        store.add(
+                            title: item.title,
+                            dueDate: item.dueDate,
+                            scheduledWeekDate: item.dueDate,
+                            scheduledWeekDurationMinutes: item.durationMinutes
+                        )
+                    }
                     withAnimation(.easeInOut(duration: 0.18)) { _ = executedActionIDs.insert(msgID) }
                     triggerToast(tr("ai_tasks_added"))
                 } label: {
@@ -714,6 +699,18 @@ struct UpdoAIView: View {
     }
 
     // MARK: - Helpers
+
+    /// Renders `**bold**` / `*italic*` inline markdown instead of showing the raw
+    /// asterisks; falls back to plain text when parsing fails. Newlines preserved.
+    private func richText(_ s: String) -> Text {
+        if let attr = try? AttributedString(
+            markdown: s,
+            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        ) {
+            return Text(attr)
+        }
+        return Text(s)
+    }
 
     private func sendMessage() {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -16,6 +16,7 @@
 		550B7C9143A542ABA7577C03 /* CreditManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4F5BE0D180E4B65A9906EA6 /* CreditManager.swift */; };
 		6374030C3A314EE5A3B8EB6E /* UpdoAIChatStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB219E8E9A15445994A4EE17 /* UpdoAIChatStore.swift */; };
 		AC110001000000000000C0DE /* UpdoAICommandInterpreter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC110002000000000000C0DE /* UpdoAICommandInterpreter.swift */; };
+		AC110003000000000000C0DE /* UpdoAIPlanParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC110004000000000000C0DE /* UpdoAIPlanParser.swift */; };
 		64B1EAE52BFA4709BF7A513C /* DailyCreditsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 554557AFE9EB4CB9ADA26234 /* DailyCreditsManager.swift */; };
 		6D02C9D12F5B4718008193F3 /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D02C9CF2F5B4402008193F3 /* InsightsView.swift */; };
 		6D02C9D32F5B4D1F008193F3 /* StreakEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D02C9D22F5B4D1F008193F3 /* StreakEngine.swift */; };
@@ -644,6 +645,7 @@
 		E4F5BE0D180E4B65A9906EA6 /* CreditManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditManager.swift; sourceTree = "<group>"; };
 		EB219E8E9A15445994A4EE17 /* UpdoAIChatStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoAIChatStore.swift; sourceTree = "<group>"; };
 		AC110002000000000000C0DE /* UpdoAICommandInterpreter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoAICommandInterpreter.swift; sourceTree = "<group>"; };
+		AC110004000000000000C0DE /* UpdoAIPlanParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoAIPlanParser.swift; sourceTree = "<group>"; };
 		EE300001EE300001EE300001 /* UpdoTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoTheme.swift; sourceTree = "<group>"; };
 		EE310001EE310001EE310001 /* EdgeGlowBorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeGlowBorder.swift; sourceTree = "<group>"; };
 		EE320001EE320001EE320001 /* UpdoMascotView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoMascotView.swift; sourceTree = "<group>"; };
@@ -912,6 +914,7 @@
 				554557AFE9EB4CB9ADA26234 /* DailyCreditsManager.swift */,
 				EB219E8E9A15445994A4EE17 /* UpdoAIChatStore.swift */,
 				AC110002000000000000C0DE /* UpdoAICommandInterpreter.swift */,
+				AC110004000000000000C0DE /* UpdoAIPlanParser.swift */,
 				8AB70EC277DD4C2493233DB3 /* UpdoAIView.swift */,
 				1CD11D78273C4CA79673E23B /* StudyCoachSheet.swift */,
 			);
@@ -1540,6 +1543,7 @@
 				64B1EAE52BFA4709BF7A513C /* DailyCreditsManager.swift in Sources */,
 				6374030C3A314EE5A3B8EB6E /* UpdoAIChatStore.swift in Sources */,
 				AC110001000000000000C0DE /* UpdoAICommandInterpreter.swift in Sources */,
+				AC110003000000000000C0DE /* UpdoAIPlanParser.swift in Sources */,
 				AC735DB7876D4C6C8991F932 /* UpdoAIView.swift in Sources */,
 				2FAA43887A2F4AB69DF32DDF /* AISmartInsightsStore.swift in Sources */,
 				4E9BED9E6848477A9EAF58A3 /* AIInsightCard.swift in Sources */,

@@ -127,6 +127,13 @@ enum UpdoAICommandInterpreter {
         // Any question/negation/statement marker → not a command.
         if tokens.contains(where: { stopWords.contains($0) }) { return nil }
 
+        // References to prior conversation content ("bu dediklerini ekle", "planı
+        // ekle", "bunları haftaya koy") aren't literal add-commands — the user
+        // means the AI's proposal, which the plan card handles. Send to the LLM.
+        let referenceStems = ["dedik", "dedig", "soyled", "bunlar", "sunlar", "onlar",
+                              "yukar", "seklinde", "onerd", "hepsi", "plani", "planlari", "program"]
+        if tokens.contains(where: { tok in referenceStems.contains { tok.hasPrefix($0) } }) { return nil }
+
         // Exactly one intent verb anywhere → action. (Exact match already rejects
         // "ekledim"/"ekleme"; stop-words reject questions/statements. Position is
         // NOT required, so "Fizik dersi koy 21 ile 22.30" works.)
