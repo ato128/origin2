@@ -11,6 +11,8 @@ struct FocusCelebrationView: View {
     let summary: FocusCompletionSummary
     let onClose: () -> Void
 
+    @EnvironmentObject private var store: TodoStore
+
     @State private var pulse = false
     @State private var iconBounce = false
     @State private var showStats = false
@@ -99,6 +101,7 @@ struct FocusCelebrationView: View {
                     }
 
                     statsGrid
+                    streakGuardSection
                     encouragementCard
 
                     Color.clear.frame(height: 12)
@@ -369,6 +372,128 @@ struct FocusCelebrationView: View {
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .stroke(Color.white.opacity(0.08), lineWidth: 1)
                 )
+        )
+    }
+
+    // MARK: - Streak guard (today's task ✓ · focus ✓ + one-tap task complete)
+    //
+    // Focus is done — the session we're celebrating counts. If the TASK half of
+    // the daily streak rule is still missing, offer the best pending task with
+    // a one-tap complete so the user leaves this screen with the day secured.
+
+    private var todayTaskDone: Bool {
+        let cal = Calendar.current
+        return store.items.contains { task in
+            guard task.isDone, let done = task.completedAt else { return false }
+            return cal.isDateInToday(done)
+        }
+    }
+
+    private var suggestedTask: DTTaskItem? {
+        let cal = Calendar.current
+        let pending = store.items.filter { !$0.isDone }
+        let dueToday = pending.first { $0.dueDate.map { cal.isDateInToday($0) } == true }
+        return dueToday ?? pending.first
+    }
+
+    @ViewBuilder
+    private var streakGuardSection: some View {
+        let taskDone = todayTaskDone
+        let green = Color(arenaHex: AppArenaPalette.green)
+
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Text(tr("fcv_streak_guard_caps"))
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .tracking(1.2)
+                    .foregroundStyle(modeAccent)
+
+                Spacer()
+
+                streakChip(done: taskDone, label: tr("home_streak_chip_task"))
+                streakChip(done: true, label: tr("home_streak_chip_focus"))
+            }
+
+            if taskDone {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 13, weight: .black))
+                        .foregroundStyle(green)
+
+                    Text(tr("fcv_streak_safe"))
+                        .font(.system(size: 13.5, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.9))
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            } else if let task = suggestedTask {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(task.title)
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+
+                        Text(tr("fcv_task_missing"))
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.5))
+                            .lineLimit(2)
+                    }
+
+                    Spacer(minLength: 6)
+
+                    Button {
+                        HapticManager.shared.success()
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            store.toggleDone(task)
+                        }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 11, weight: .black))
+                            Text(tr("fcv_complete_cta"))
+                                .font(.system(size: 13, weight: .black, design: .rounded))
+                        }
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 14)
+                        .frame(height: 36)
+                        .background(Capsule().fill(green))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(
+                    taskDone
+                    ? AnyShapeStyle(green.opacity(0.07))
+                    : AnyShapeStyle(Color.white.opacity(0.04))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(taskDone ? green.opacity(0.22) : Color.white.opacity(0.07), lineWidth: 1)
+                )
+        )
+        .opacity(showStats ? 1.0 : 0.0)
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: todayTaskDone)
+    }
+
+    private func streakChip(done: Bool, label: String) -> some View {
+        let green = Color(arenaHex: AppArenaPalette.green)
+        return HStack(spacing: 4) {
+            Image(systemName: done ? "checkmark.circle.fill" : "circle.dashed")
+                .font(.system(size: 11, weight: .black))
+                .foregroundStyle(done ? green : .white.opacity(0.38))
+
+            Text(label)
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundStyle(done ? .white.opacity(0.88) : .white.opacity(0.5))
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+            Capsule().fill(done ? green.opacity(0.12) : Color.white.opacity(0.05))
         )
     }
 

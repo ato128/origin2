@@ -544,6 +544,29 @@
 
 "ai_cmd_moved" = "📅 Moved: %@ → %@";
 
+/* Home — exam day hero */
+"hv_exam_day_caps" = "EXAM DAY";
+"hv_exam_good_luck" = "good luck!";
+
+/* Notification settings — personal rhythm */
+"ph_rhythm_title" = "Tuned to your rhythm";
+"ph_rhythm_line" = "You usually focus around %@, so reminders are timed to match.";
+
+/* Friend detail — comparison */
+"fd_compare_caps" = "HEAD TO HEAD";
+"fd_compare_title" = "You &";
+"fd_compare_locked" = "Compare streak, level and focus with your friend — with Updo Pro";
+"fd_compare_empty" = "Your friend isn't sharing their stats.";
+"fd_cmp_streak" = "STREAK";
+"fd_cmp_level" = "LEVEL";
+"fd_cmp_focus" = "FOCUS";
+
+/* Focus celebration — streak guard */
+"fcv_streak_guard_caps" = "TODAY'S STREAK";
+"fcv_streak_safe" = "Today's streak is safe — task and focus done.";
+"fcv_task_missing" = "Complete one task to make today count.";
+"fcv_complete_cta" = "Done";
+
 /* Insights — redesign */
 "ins_hdr_eyebrow" = "YOUR PROGRESS";
 "insd_hours_caps" = "YOUR PEAK HOURS";

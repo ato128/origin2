@@ -48,6 +48,12 @@ struct FriendDetailView: View {
     @Query(sort: \FriendFocusSession.startedAt, order: .reverse)
     private var allFocusSessions: [FriendFocusSession]
 
+    @Query private var allMyFocusRecords: [FocusSessionRecord]
+    @ObservedObject private var socialStats = SocialStatsStore.shared
+    @ObservedObject private var progression = ProgressionManager.shared
+    @ObservedObject private var subscription = SubscriptionManager.shared
+    @State private var showComparePaywall = false
+
     @State private var showHero = false
     @State private var showSchedule = false
     @State private var showInsights = false
@@ -195,6 +201,13 @@ struct FriendDetailView: View {
                         .opacity(showInsights ? 1 : 0)
                         .scaleEffect(showInsights ? 1 : 0.985)
 
+                    if isBackendFriend {
+                        comparisonCard
+                            .offset(y: showInsights ? 0 : 18)
+                            .opacity(showInsights ? 1 : 0)
+                            .scaleEffect(showInsights ? 1 : 0.985)
+                    }
+
                     actionsCard
                         .offset(y: showActions ? 0 : 18)
                         .opacity(showActions ? 1 : 0)
@@ -211,6 +224,10 @@ struct FriendDetailView: View {
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
             playEntrance()
+
+            if let friendUserID = friend.backendUserID {
+                socialStats.refresh(userIDs: [friendUserID], isPro: subscription.isPro)
+            }
         }
         .task {
             guard let friendshipID else { return }
@@ -614,6 +631,142 @@ private extension FriendDetailView {
         }
         .padding(18)
         .background(cardBackground)
+    }
+
+    // MARK: - Comparison (shared real stats, Pro)
+
+    private var myTotalFocusMinutes: Int {
+        let uid = session.currentUser?.id.uuidString
+        return allMyFocusRecords
+            .filter { ($0.ownerUserID == uid || $0.ownerUserID == nil) && $0.countsTowardStats }
+            .reduce(0) { $0 + $1.completedSeconds } / 60
+    }
+
+    private var friendSharedStat: UserStatsDTO? {
+        guard let stat = socialStats.stat(for: friend.backendUserID),
+              stat.sharingEnabled else { return nil }
+        return stat
+    }
+
+    /// Head-to-head from the honestly shared numbers: streak, level, total focus.
+    @ViewBuilder
+    var comparisonCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionTitle(
+                eyebrow: tr("fd_compare_caps"),
+                title: tr("fd_compare_title"),
+                italic: friend.name
+            )
+
+            if !subscription.isPro {
+                Button {
+                    showComparePaywall = true
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 14, weight: .black))
+                            .foregroundStyle(FriendDetailArenaPalette.gold)
+
+                        Text(tr("fd_compare_locked"))
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.75))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.35))
+                    }
+                    .padding(14)
+                    .background(detailSurface(cornerRadius: 18, tint: FriendDetailArenaPalette.gold))
+                }
+                .buttonStyle(.plain)
+            } else if let stat = friendSharedStat {
+                VStack(spacing: 10) {
+                    comparisonRow(
+                        icon: "flame.fill",
+                        label: tr("fd_cmp_streak"),
+                        mine: progression.currentStreak,
+                        theirs: stat.currentStreak,
+                        format: { "\($0)" }
+                    )
+                    comparisonRow(
+                        icon: "bolt.fill",
+                        label: tr("fd_cmp_level"),
+                        mine: progression.level,
+                        theirs: stat.level,
+                        format: { "\($0)" }
+                    )
+                    comparisonRow(
+                        icon: "scope",
+                        label: tr("fd_cmp_focus"),
+                        mine: myTotalFocusMinutes,
+                        theirs: stat.totalFocusMinutes,
+                        format: { formatFocusHours($0) }
+                    )
+                }
+            } else {
+                emptyMiniState(
+                    icon: "person.2",
+                    text: tr("fd_compare_empty"),
+                    tint: FriendDetailArenaPalette.blue
+                )
+            }
+        }
+        .padding(18)
+        .background(cardBackground)
+        .sheet(isPresented: $showComparePaywall) {
+            PaywallView(context: "friend_compare")
+        }
+    }
+
+    private func comparisonRow(
+        icon: String,
+        label: String,
+        mine: Int,
+        theirs: Int,
+        format: (Int) -> String
+    ) -> some View {
+        let iLead = mine > theirs
+        let theyLead = theirs > mine
+        let gold = FriendDetailArenaPalette.gold
+
+        return HStack(spacing: 10) {
+            Text(format(mine))
+                .font(.system(size: 16, weight: .black, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(iLead ? gold : .white.opacity(0.85))
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 10, weight: .black))
+                Text(label)
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(0.8)
+            }
+            .foregroundStyle(.white.opacity(0.40))
+            .frame(minWidth: 84)
+
+            Text(format(theirs))
+                .font(.system(size: 16, weight: .black, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(theyLead ? gold : .white.opacity(0.85))
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .background(
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .fill(Color.white.opacity(0.045))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                )
+        )
+    }
+
+    private func formatFocusHours(_ minutes: Int) -> String {
+        minutes < 60 ? "\(minutes)dk" : "\(minutes / 60)s"
     }
 
     var actionsCard: some View {

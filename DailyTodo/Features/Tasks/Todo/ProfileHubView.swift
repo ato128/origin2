@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct ProfileHubView: View {
     @Environment(\.dismiss) private var dismiss
@@ -961,6 +962,8 @@ private extension ProfileHubView {
 private struct SmartNotificationSettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
+    @Query private var allFocusRecords: [FocusSessionRecord]
+
     @AppStorage("smartNotificationsEnabled") private var smartNotificationsEnabled = true
     @AppStorage("smartExamNotificationsEnabled") private var smartExamNotificationsEnabled = true
     @AppStorage("smartStreakNotificationsEnabled") private var smartStreakNotificationsEnabled = true
@@ -989,6 +992,10 @@ private struct SmartNotificationSettingsView: View {
                         heroCard
 
                         settingsCard
+
+                        if let rhythm = personalRhythmText {
+                            rhythmCard(rhythm)
+                        }
 
                         quietCard
 
@@ -1132,6 +1139,38 @@ private struct SmartNotificationSettingsView: View {
         }
         .padding(18)
         .background(cardBackground(cyan, strength: 0.46))
+    }
+
+    /// "Hatırlatmalar ritmine göre ~21:00'e ayarlı" — makes the adaptive
+    /// timing visible so it feels intentional, not random. Hidden until there
+    /// is enough real session data to personalize.
+    private var personalRhythmText: String? {
+        guard smartNotificationsEnabled else { return nil }
+        guard let typical = SmartNotificationBrain.typicalFocusMinute(records: allFocusRecords) else {
+            return nil
+        }
+        return tr("ph_rhythm_line", String(format: "%02d:%02d", typical / 60, typical % 60))
+    }
+
+    private func rhythmCard(_ text: String) -> some View {
+        HStack(spacing: 13) {
+            iconBox("waveform.path.ecg", tint: green)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(tr("ph_rhythm_title"))
+                    .font(.system(size: 17, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text(text)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.50))
+                    .lineLimit(2)
+            }
+
+            Spacer()
+        }
+        .padding(18)
+        .background(cardBackground(green, strength: 0.32))
     }
 
     private var quietCard: some View {

@@ -1166,6 +1166,35 @@ private extension HomeView {
             )
         }
 
+        // Exam day: the day's defining fact — only an actively running focus
+        // session outranks it.
+        if let exam = todaysExam {
+            let name = exam.title.isEmpty ? exam.courseName : exam.title
+            var meta: [MetaItem] = []
+
+            let cal = Calendar.current
+            let hour = cal.component(.hour, from: exam.examDate)
+            let minute = cal.component(.minute, from: exam.examDate)
+            if hour > 0 || minute > 0 {
+                meta.append(MetaItem(icon: "clock.fill",
+                                     text: String(format: "%02d:%02d", hour, minute)))
+            }
+
+            if !exam.courseName.isEmpty, exam.courseName != name {
+                meta.append(MetaItem(icon: "graduationcap.fill", text: exam.courseName))
+            }
+
+            return HeroState(
+                eyebrow: tr("hv_exam_day_caps"),
+                title: name,
+                italicLine: tr("hv_exam_good_luck"),
+                metaItems: meta,
+                showLiveDot: true,
+                accent: accentGold,
+                liveAccent: accentWarm
+            )
+        }
+
         if let active = activeNowEvent {
             let endMin = active.startMinute + active.durationMinute
             let remaining = max(0, endMin - currentMinuteOfDay)
@@ -1489,6 +1518,17 @@ private extension HomeView {
         // Single app-wide streak rule (task AND focus per day) — same number the
         // widget, Insights identity card and notifications show.
         return progression.currentStreak
+    }
+
+    /// Today's earliest exam (owned records; nil-owner fallback like elsewhere).
+    var todaysExam: ExamItem? {
+        let cal = Calendar.current
+        return allExams
+            .filter { exam in
+                (exam.ownerUserID == currentUserID || exam.ownerUserID == nil)
+                && cal.isDateInToday(exam.examDate)
+            }
+            .min(by: { $0.examDate < $1.examDate })
     }
 }
 

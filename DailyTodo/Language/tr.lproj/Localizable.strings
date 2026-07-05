@@ -546,6 +546,29 @@
 
 "ai_cmd_moved" = "📅 Taşındı: %@ → %@";
 
+/* Home — exam day hero */
+"hv_exam_day_caps" = "BUGÜN SINAV GÜNÜ";
+"hv_exam_good_luck" = "başarılar!";
+
+/* Notification settings — personal rhythm */
+"ph_rhythm_title" = "Ritmine ayarlı";
+"ph_rhythm_line" = "Genelde %@ civarı odaklandığın için hatırlatmalar buna göre zamanlanıyor.";
+
+/* Friend detail — comparison */
+"fd_compare_caps" = "KIYAS";
+"fd_compare_title" = "Sen &";
+"fd_compare_locked" = "Arkadaşınla seri, seviye ve focus kıyası — Updo Pro ile";
+"fd_compare_empty" = "Arkadaşın istatistiklerini paylaşmıyor.";
+"fd_cmp_streak" = "SERİ";
+"fd_cmp_level" = "SEVİYE";
+"fd_cmp_focus" = "FOCUS";
+
+/* Focus celebration — streak guard */
+"fcv_streak_guard_caps" = "BUGÜNÜN SERİSİ";
+"fcv_streak_safe" = "Bugünün serisi güvende — görev ve focus tamam.";
+"fcv_task_missing" = "Bir görev tamamla, bugün seriden sayılsın.";
+"fcv_complete_cta" = "Tamamla";
+
 /* Insights — redesign */
 "ins_hdr_eyebrow" = "GELİŞİMİN";
 "insd_hours_caps" = "EN VERİMLİ SAATLERİN";
