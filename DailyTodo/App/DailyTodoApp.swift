@@ -155,9 +155,12 @@ struct DailyTodoApp: App {
             InAppBannerOverlay()
         }
         .sheet(item: $focusSession.completionSummary) { summary in
+            // Sheets presented from this level sit OUTSIDE the environmentObject
+            // chain above — inject explicitly or the celebration crashes.
             FocusCelebrationView(summary: summary) {
                 focusSession.dismissCompletionSummary()
             }
+            .environmentObject(todoStore)
         }
         .sheet(item: $crewFocusInvitePayload) { payload in
             CrewFocusInviteSheet(
