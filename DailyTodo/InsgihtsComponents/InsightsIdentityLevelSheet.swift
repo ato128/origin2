@@ -181,7 +181,7 @@ struct InsightsIdentityLevelSheet: View {
                         .fill(snapshot.isReadyForLevelUp ? Color(arenaHex: AppArenaPalette.green) : .white.opacity(0.34))
                         .frame(width: 7, height: 7)
 
-                    Text(snapshot.isReadyForLevelUp ? "LEVEL READY" : snapshot.statusText.uppercased())
+                    Text(snapshot.isReadyForLevelUp ? tr("iils_level_ready_caps") : snapshot.statusText.uppercased())
                         .font(.system(size: 9, weight: .black, design: .monospaced))
                         .tracking(0.7)
                         .foregroundStyle(snapshot.isReadyForLevelUp ? Color(arenaHex: AppArenaPalette.green) : .white.opacity(0.42))
@@ -273,13 +273,13 @@ struct InsightsIdentityLevelSheet: View {
                         .fill(secondaryAccent)
                         .frame(width: 16, height: 1)
 
-                    Text(snapshot.isMaxLevel ? "FINAL STATUS" : "NEXT STATUS")
+                    Text(snapshot.isMaxLevel ? tr("iils_final_status_caps") : tr("iils_next_status_caps"))
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .tracking(1.4)
                         .foregroundStyle(secondaryAccent)
                 }
 
-                Text("Lv.\(nextLevel.level) • \(nextLevel.title)")
+                Text("\(tr("iid_level_caps").capitalized) \(nextLevel.level) • \(nextLevel.title)")
                     .font(.system(size: 20, weight: .black))
                     .foregroundStyle(.white)
                     .lineLimit(2)
@@ -408,7 +408,7 @@ struct InsightsIdentityLevelSheet: View {
 
     private func levelBadge(level: Int, tint: Color) -> some View {
         VStack(spacing: 0) {
-            Text("LV")
+            Text(tr("iils_lv_short"))
                 .font(.system(size: 9, weight: .black, design: .monospaced))
                 .tracking(0.8)
                 .foregroundStyle(.white.opacity(0.52))

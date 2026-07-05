@@ -581,6 +581,24 @@
 "fcv_task_missing" = "Bir görev tamamla, bugün seriden sayılsın.";
 "fcv_complete_cta" = "Tamamla";
 
+/* Insights — identity card (TR pass) */
+"iid_fallback_name" = "Kaptan";
+"iid_level_caps" = "SEVİYE";
+"iid_lbl_focus" = "ODAK";
+"iid_unit_sessions" = "SEANS";
+"iid_lbl_streak" = "SERİ";
+"iid_lbl_tasks" = "GÖREV";
+"iid_unit_done" = "TAMAM";
+"iid_next_level_fmt" = "SEVİYE %d YOLUNDA";
+"iid_ready_chip" = "HAZIR";
+"iils_level_ready_caps" = "SEVİYE HAZIR";
+"iils_final_status_caps" = "SON UNVAN";
+"iils_next_status_caps" = "SIRADAKİ UNVAN";
+"iils_lv_short" = "SV";
+"iluc_level_up_caps" = "SEVİYE ATLADIN";
+"iluc_evolved_caps" = "KİMLİĞİN GELİŞTİ";
+"ixp_max_level" = "Maksimum seviye";
+
 /* Insights — redesign */
 "ins_hdr_eyebrow" = "GELİŞİMİN";
 "insd_hours_caps" = "EN VERİMLİ SAATLERİN";

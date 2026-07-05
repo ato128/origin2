@@ -35,11 +35,12 @@ struct IdentityLevelSnapshot {
     }
 
     var levelRangeText: String {
-        isMaxLevel ? "Lv.\(level)" : "Lv.\(level) → Lv.\(nextRequirement.level)"
+        let lv = tr("iils_lv_short").capitalized
+        return isMaxLevel ? "\(lv).\(level)" : "\(lv).\(level) → \(lv).\(nextRequirement.level)"
     }
 
     var statusText: String {
-        if isMaxLevel { return "Maksimum seviye" }
+        if isMaxLevel { return tr("ixp_max_level") }
         return isReadyForLevelUp ? tr("ixp_new_level_ready") : tr("ixp_progress_active")
     }
 }

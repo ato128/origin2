@@ -58,60 +58,37 @@ enum InsightsIdentityLevelSystem {
         )
     }
 
+    // Level titles follow the app language (TR/EN) — index 0 = level 1.
+    private static let titlesEN: [String] = [
+        "Momentum Starter", "Momentum Builder", "Momentum Runner", "Momentum Keeper", "Momentum Locked",
+        "Habit Starter", "Habit Builder", "Habit Charger", "Habit Driver", "Habit Engine",
+        "Discipline Seed", "Discipline Core", "Discipline Guard", "Discipline Flame", "Discipline Elite",
+        "Consistency Mind", "Consistency Force", "Consistency Wall", "Consistency Prime", "Routine Weapon",
+        "Deep Worker", "Focus Hunter", "Focus Machine", "Flow Operator", "Time Operator",
+        "Precision Mind", "Precision Builder", "Sharp Executor", "Silent Achiever", "Peak Performer",
+        "Scholar Prime", "Master Learner", "Exam Crusher", "Quiz Survivor", "Final Hunter",
+        "Dean Candidate", "Dean's List", "GPA Monster", "Academic Weapon", "Knowledge Titan",
+        "Limitless", "Apex Human", "Iron Identity", "Ultra Driven", "Elite Entity",
+        "System Master", "Productivity God", "Time Emperor", "Reality Shifter", "Identity Legend"
+    ]
+
+    private static let titlesTR: [String] = [
+        "İvme Başlangıcı", "İvme Kurucusu", "İvme Koşucusu", "İvme Bekçisi", "İvme Kilidi",
+        "Alışkanlık Çırağı", "Alışkanlık Kurucusu", "Alışkanlık Motoru", "Alışkanlık Sürücüsü", "Alışkanlık Makinesi",
+        "Disiplin Tohumu", "Disiplin Çekirdeği", "Disiplin Muhafızı", "Disiplin Alevi", "Elit Disiplin",
+        "İstikrar Zihni", "İstikrar Gücü", "İstikrar Duvarı", "Saf İstikrar", "Rutin Silahı",
+        "Derin Çalışan", "Odak Avcısı", "Odak Makinesi", "Akış Operatörü", "Zaman Operatörü",
+        "Hassas Zihin", "Hassas Kurucu", "Keskin İcracı", "Sessiz Başaran", "Zirve Performansı",
+        "Baş Bilgin", "Usta Öğrenen", "Sınav Ezici", "Quiz Gazisi", "Final Avcısı",
+        "Dekan Adayı", "Dekan Listesi", "Ortalama Canavarı", "Akademik Silah", "Bilgi Titanı",
+        "Limitsiz", "Zirve İnsan", "Demir Kimlik", "Ultra Azim", "Elit Varlık",
+        "Sistem Ustası", "Verimlilik Tanrısı", "Zaman İmparatoru", "Gerçeklik Bükücü", "Kimlik Efsanesi"
+    ]
+
     private static func title(for level: Int) -> String {
-        switch level {
-        case 1: return "Momentum Starter"
-        case 2: return "Momentum Builder"
-        case 3: return "Momentum Runner"
-        case 4: return "Momentum Keeper"
-        case 5: return "Momentum Locked"
-        case 6: return "Habit Starter"
-        case 7: return "Habit Builder"
-        case 8: return "Habit Charger"
-        case 9: return "Habit Driver"
-        case 10: return "Habit Engine"
-        case 11: return "Discipline Seed"
-        case 12: return "Discipline Core"
-        case 13: return "Discipline Guard"
-        case 14: return "Discipline Flame"
-        case 15: return "Discipline Elite"
-        case 16: return "Consistency Mind"
-        case 17: return "Consistency Force"
-        case 18: return "Consistency Wall"
-        case 19: return "Consistency Prime"
-        case 20: return "Routine Weapon"
-        case 21: return "Deep Worker"
-        case 22: return "Focus Hunter"
-        case 23: return "Focus Machine"
-        case 24: return "Flow Operator"
-        case 25: return "Time Operator"
-        case 26: return "Precision Mind"
-        case 27: return "Precision Builder"
-        case 28: return "Sharp Executor"
-        case 29: return "Silent Achiever"
-        case 30: return "Peak Performer"
-        case 31: return "Scholar Prime"
-        case 32: return "Master Learner"
-        case 33: return "Exam Crusher"
-        case 34: return "Quiz Survivor"
-        case 35: return "Final Hunter"
-        case 36: return "Dean Candidate"
-        case 37: return "Dean's List"
-        case 38: return "GPA Monster"
-        case 39: return "Academic Weapon"
-        case 40: return "Knowledge Titan"
-        case 41: return "Limitless"
-        case 42: return "Apex Human"
-        case 43: return "Iron Identity"
-        case 44: return "Ultra Driven"
-        case 45: return "Elite Entity"
-        case 46: return "System Master"
-        case 47: return "Productivity God"
-        case 48: return "Time Emperor"
-        case 49: return "Reality Shifter"
-        case 50: return "Identity Legend"
-        default: return "Momentum Starter"
-        }
+        let titles = appLanguageIsEnglish() ? titlesEN : titlesTR
+        let index = min(max(level, 1), maxLevel) - 1
+        return index < titles.count ? titles[index] : titles[0]
     }
 
     private static func accent(for level: Int) -> Color {

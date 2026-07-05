@@ -29,17 +29,11 @@ struct InsightsIdentityCardV3: View {
 
     private var nameParts: (first: String, rest: String) {
         let trimmed = userName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return ("Driver", "") }
+        guard !trimmed.isEmpty else { return (tr("iid_fallback_name"), "") }
 
         let parts = trimmed.split(separator: " ", maxSplits: 1).map(String.init)
         if parts.count == 1 { return (parts[0], "") }
         return (parts[0], parts[1])
-    }
-
-    /// Snapshot.title'dan tier harfi türet ("Momentum Starter" → "S", "Deep Worker" → "D")
-    private var tierLetter: String {
-        let trimmed = snapshot.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        return String(trimmed.prefix(1)).uppercased()
     }
 
     var body: some View {
@@ -66,7 +60,7 @@ struct InsightsIdentityCardV3: View {
                         .fill(primaryAccent)
                         .frame(width: 20, height: 1)
 
-                    Text("DRIVER · LV \(snapshot.level) · \(snapshot.title.uppercased())")
+                    Text("\(tr("iid_level_caps")) \(snapshot.level) · \(snapshot.title.uppercased())")
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .tracking(1.6)
                         .foregroundStyle(primaryAccent)
@@ -111,14 +105,16 @@ struct InsightsIdentityCardV3: View {
         }
     }
 
+    // The old "TIER C" letter came from the ENGLISH title's first character —
+    // meaningless. The badge now simply carries the level number.
     private var tierBox: some View {
         VStack(spacing: 2) {
-            Text("TIER")
+            Text(tr("iid_level_caps"))
                 .font(.system(size: 8, weight: .black, design: .monospaced))
                 .tracking(0.8)
                 .foregroundStyle(.white.opacity(0.72))
 
-            Text(tierLetter)
+            Text("\(snapshot.level)")
                 .font(.system(size: 26, weight: .black))
                 .foregroundStyle(.white)
                 .monospacedDigit()
@@ -141,19 +137,20 @@ struct InsightsIdentityCardV3: View {
 
     // MARK: Stats grid
 
+    // Level lives in the badge now — three real progress numbers are enough.
     private var statsGrid: some View {
         HStack(spacing: 6) {
             statColumn(
-                label: "FOCUS",
+                label: tr("iid_lbl_focus"),
                 value: snapshot.focusSessions,
-                unit: "OTURUM",
+                unit: tr("iid_unit_sessions"),
                 tint: Color(arenaHex: AppArenaPalette.cyan)
             )
 
             divider
 
             statColumn(
-                label: "STREAK",
+                label: tr("iid_lbl_streak"),
                 value: snapshot.streakDays,
                 unit: tr("iid_day_caps"),
                 tint: Color(arenaHex: AppArenaPalette.gold)
@@ -162,19 +159,10 @@ struct InsightsIdentityCardV3: View {
             divider
 
             statColumn(
-                label: "TAMAM",
+                label: tr("iid_lbl_tasks"),
                 value: snapshot.completedTasks,
-                unit: tr("ct_task_caps"),
+                unit: tr("iid_unit_done"),
                 tint: Color(arenaHex: AppArenaPalette.green)
-            )
-
-            divider
-
-            statColumn(
-                label: "LEVEL",
-                value: snapshot.level,
-                unit: tr("iid_stage_caps"),
-                tint: Color(arenaHex: AppArenaPalette.purple)
             )
         }
         .padding(.vertical, 12)
@@ -224,19 +212,10 @@ struct InsightsIdentityCardV3: View {
     private var progressBar: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .center, spacing: 6) {
-                HStack(spacing: 4) {
-                    Text("LV \(snapshot.level)")
-                        .font(.system(size: 10, weight: .black, design: .monospaced))
-                        .foregroundStyle(primaryAccent)
-
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 8, weight: .black))
-                        .foregroundStyle(.white.opacity(0.35))
-
-                    Text("LV \(snapshot.level + 1)")
-                        .font(.system(size: 10, weight: .black, design: .monospaced))
-                        .foregroundStyle(.white)
-                }
+                Text(tr("iid_next_level_fmt", snapshot.level + 1))
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(0.6)
+                    .foregroundStyle(primaryAccent)
 
                 Spacer()
 
@@ -249,7 +228,7 @@ struct InsightsIdentityCardV3: View {
                         Image(systemName: "arrow.up.forward.circle.fill")
                             .font(.system(size: 9, weight: .black))
 
-                        Text("HAZIR")
+                        Text(tr("iid_ready_chip"))
                             .font(.system(size: 8, weight: .black, design: .monospaced))
                             .tracking(0.6)
                     }

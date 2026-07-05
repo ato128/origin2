@@ -122,7 +122,7 @@ struct IdentityLevelUpCelebrationView: View {
                     .fill(goldAccent)
                     .frame(width: 22, height: 1)
 
-                Text("LEVEL UP")
+                Text(tr("iluc_level_up_caps"))
                     .font(.system(size: 11, weight: .black, design: .monospaced))
                     .tracking(3.2)
                     .foregroundStyle(goldAccent)
@@ -132,7 +132,7 @@ struct IdentityLevelUpCelebrationView: View {
                     .frame(width: 22, height: 1)
             }
 
-            Text("IDENTITY EVOLVED")
+            Text(tr("iluc_evolved_caps"))
                 .font(.system(size: 10, weight: .black, design: .monospaced))
                 .tracking(2.4)
                 .foregroundStyle(.white.opacity(0.42))
@@ -144,7 +144,7 @@ struct IdentityLevelUpCelebrationView: View {
     private var titleBlock: some View {
         VStack(spacing: 12) {
             HStack(spacing: 8) {
-                Text("LV \(oldLevel)")
+                Text("\(tr("iils_lv_short")) \(oldLevel)")
                     .font(.system(size: 11, weight: .black, design: .monospaced))
                     .tracking(1.0)
                     .foregroundStyle(.white.opacity(0.46))
@@ -163,7 +163,7 @@ struct IdentityLevelUpCelebrationView: View {
                     .font(.system(size: 12, weight: .black))
                     .foregroundStyle(goldAccent)
 
-                Text("LV \(newLevel)")
+                Text("\(tr("iils_lv_short")) \(newLevel)")
                     .font(.system(size: 11, weight: .black, design: .monospaced))
                     .tracking(1.0)
                     .foregroundStyle(.black)
@@ -361,7 +361,7 @@ struct IdentityLevelUpCelebrationView: View {
                 )
 
             VStack(spacing: 0) {
-                Text("LV")
+                Text(tr("iils_lv_short"))
                     .font(.system(size: 15, weight: .black, design: .monospaced))
                     .tracking(1.2)
                     .foregroundStyle(.white.opacity(0.52))
