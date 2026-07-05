@@ -599,6 +599,7 @@
 
 /* Insights — redesign */
 "ins_hdr_eyebrow" = "YOUR PROGRESS";
+"ins_hero_scroll_cue" = "Your analytics";
 "insd_hours_caps" = "YOUR PEAK HOURS";
 "insd_hours_peak" = "You usually focus around %02d:00.";
 

@@ -601,6 +601,7 @@
 
 /* Insights — redesign */
 "ins_hdr_eyebrow" = "GELİŞİMİN";
+"ins_hero_scroll_cue" = "Analizlerin";
 "insd_hours_caps" = "EN VERİMLİ SAATLERİN";
 "insd_hours_peak" = "Genelde %02d:00 civarı odaklanıyorsun.";
 

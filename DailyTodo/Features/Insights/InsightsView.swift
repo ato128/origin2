@@ -200,6 +200,7 @@ struct InsightsView: View {
 
                 LazyVStack(spacing: 14) {
                     headerSection
+                    identityHeroSection
                     contentSection
                     Spacer(minLength: 110)
                 }
@@ -372,19 +373,147 @@ struct InsightsView: View {
         .padding(.bottom, 6)
     }
 
+    // MARK: - Identity hero (fills the first screen; analytics live below)
+    //
+    // The page opens as pure identity — a large level ring, the name and the
+    // earned title. Scrolling reveals the data cards.
+
+    @State private var heroRingFilled = false
+    @State private var heroCueBounce = false
+
+    private var identityHeroSection: some View {
+        let snapshot = identitySnapshot
+        let hasPending = pendingLevelUp != nil || snapshot.isReadyForLevelUp
+        let accent = hasPending ? Color(arenaHex: AppArenaPalette.gold) : snapshot.accent
+        let secondary = hasPending ? Color(arenaHex: AppArenaPalette.coral) : Color(arenaHex: AppArenaPalette.blue)
+        let progress = min(max(snapshot.progress, 0), 1)
+
+        return Button(action: handleIdentityTap) {
+            VStack(spacing: 0) {
+                Spacer(minLength: 12)
+
+                // Big ring — level number + percent at its heart.
+                ZStack {
+                    Circle()
+                        .fill(accent.opacity(0.10))
+                        .frame(width: 240, height: 240)
+                        .blur(radius: 50)
+
+                    Circle()
+                        .stroke(Color.white.opacity(0.07), lineWidth: 9)
+                        .frame(width: 168, height: 168)
+
+                    Circle()
+                        .trim(from: 0, to: heroRingFilled ? progress : 0.02)
+                        .stroke(
+                            AngularGradient(
+                                colors: [accent, secondary, accent],
+                                center: .center
+                            ),
+                            style: StrokeStyle(lineWidth: 9, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: 168, height: 168)
+                        .shadow(color: accent.opacity(0.40), radius: 12)
+
+                    VStack(spacing: 1) {
+                        Text(tr("iid_level_caps"))
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .tracking(2.0)
+                            .foregroundStyle(.white.opacity(0.40))
+
+                        Text("\(snapshot.level)")
+                            .font(.system(size: 58, weight: .black))
+                            .foregroundStyle(.white)
+                            .monospacedDigit()
+
+                        Text(snapshot.percentText)
+                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            .foregroundStyle(accent.opacity(0.9))
+                    }
+                }
+                .padding(.bottom, 22)
+
+                // Name + earned title.
+                Text(resolvedUserName)
+                    .font(.system(size: 28, weight: .black))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+
+                Text(snapshot.title)
+                    .font(.system(size: 30, weight: .regular, design: .serif))
+                    .italic()
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [accent, secondary],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .padding(.top, 2)
+
+                // One quiet progress line.
+                HStack(spacing: 7) {
+                    Text(tr("iid_next_level_fmt", snapshot.level + 1))
+                        .font(.system(size: 10.5, weight: .black, design: .monospaced))
+                        .tracking(1.0)
+                        .foregroundStyle(.white.opacity(0.42))
+
+                    if hasPending {
+                        HStack(spacing: 3) {
+                            Image(systemName: "arrow.up.forward.circle.fill")
+                                .font(.system(size: 9, weight: .black))
+                            Text(tr("iid_ready_chip"))
+                                .font(.system(size: 8, weight: .black, design: .monospaced))
+                                .tracking(0.6)
+                        }
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 7)
+                        .frame(height: 18)
+                        .background(Capsule().fill(Color(arenaHex: AppArenaPalette.gold)))
+                    }
+                }
+                .padding(.top, 12)
+
+                Spacer(minLength: 12)
+
+                // Scroll cue — analytics wait below the fold.
+                VStack(spacing: 3) {
+                    Text(tr("ins_hero_scroll_cue"))
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.35))
+
+                    Image(systemName: "chevron.compact.down")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.35))
+                        .offset(y: heroCueBounce ? 3 : -1)
+                }
+                .padding(.bottom, 6)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: max(420, UIScreen.main.bounds.height - 330))
+        }
+        .buttonStyle(.plain)
+        .onAppear {
+            if !heroRingFilled {
+                withAnimation(.spring(response: 1.0, dampingFraction: 0.74).delay(0.25)) {
+                    heroRingFilled = true
+                }
+            }
+            withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) {
+                heroCueBounce = true
+            }
+        }
+    }
+
     // MARK: - Content Section (yeni 4 component)
 
     @ViewBuilder
     private var contentSection: some View {
         VStack(spacing: 14) {
-            // Identity (driver profile) — fed by real tasks / focus / streak.
-            InsightsIdentityCardV3(
-                snapshot: identitySnapshot,
-                userName: resolvedUserName,
-                hasPendingLevelUp: pendingLevelUp != nil || identitySnapshot.isReadyForLevelUp,
-                onTap: handleIdentityTap
-            )
-
             if progression.pendingStreakBreak {
                 streakBreakBand
             }
