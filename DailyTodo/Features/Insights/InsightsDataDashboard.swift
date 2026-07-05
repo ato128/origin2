@@ -24,12 +24,15 @@ struct InsightsDataDashboard: View {
     var body: some View {
         VStack(spacing: 14) {
             focusHeroCard
+                .insightsCardReveal()
 
             if let hours = productiveHours {
                 productiveHoursCard(hours)
+                    .insightsCardReveal()
             }
 
             tasksCard
+                .insightsCardReveal()
         }
         .sheet(isPresented: $showFocusDetail) {
             InsightsFocusHistorySheet(sessions: focusSessions, accent: accent)

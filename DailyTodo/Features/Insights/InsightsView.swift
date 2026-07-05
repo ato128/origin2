@@ -202,13 +202,10 @@ struct InsightsView: View {
                     headerSection
                     identityHeroSection
 
-                    // Analytics stay hidden under the hero and glide in as the
-                    // scroll commits — opacity/offset track the finger, so the
-                    // reveal is fully scrubbable in both directions.
+                    // Each analytics card animates itself in as it enters the
+                    // viewport (scrollTransition inside) — no offset math, no
+                    // fragile preference plumbing.
                     contentSection
-                        .opacity(Double(analyticsReveal))
-                        .offset(y: (1 - analyticsReveal) * 44)
-                        .allowsHitTesting(analyticsReveal > 0.4)
 
                     Spacer(minLength: 110)
                 }
@@ -219,6 +216,7 @@ struct InsightsView: View {
             .onPreferenceChange(ScrollOffsetPreference.self) { value in
                 scrollOffset = value
             }
+            .modifier(InsightsScrollOffsetBridge(offset: $scrollOffset))
             .scrollIndicators(.hidden)
 
             collapsedTopTitle
@@ -397,10 +395,6 @@ struct InsightsView: View {
         min(max((-scrollOffset) / 320, 0), 1)
     }
 
-    /// Analytics entrance: starts a beat into the scroll, fully in by ~60%.
-    private var analyticsReveal: CGFloat {
-        min(max((heroCollapse - 0.10) / 0.50, 0), 1)
-    }
 
     private var identityHeroSection: some View {
         let snapshot = identitySnapshot
@@ -664,6 +658,7 @@ struct InsightsView: View {
         VStack(spacing: 14) {
             if progression.pendingStreakBreak {
                 streakBreakBand
+                    .insightsCardReveal()
             }
 
             // Clean, data-first focus + tasks (tap focus for full history).
@@ -681,6 +676,7 @@ struct InsightsView: View {
                 onSmartInsights: { },
                 onUpgrade: { showPremium = true }
             )
+            .insightsCardReveal()
         }
     }
 
@@ -999,6 +995,40 @@ extension PremiumLabTool: Identifiable {
         case .examPlanner: return "examPlanner"
         case .aiCoach: return "aiCoach"
         case .smartInsights: return "smartInsights"
+        }
+    }
+}
+
+// MARK: - Card reveal + scroll offset bridge
+
+extension View {
+    /// Analytics cards rise 44pt and fade in as they enter the viewport —
+    /// native scrollTransition, fully interactive in both directions.
+    func insightsCardReveal() -> some View {
+        scrollTransition(.interactive(timingCurve: .easeOut)) { content, phase in
+            content
+                .opacity(phase.isIdentity ? 1 : 0)
+                .offset(y: phase.isIdentity ? 0 : (phase.value > 0 ? 44 : -16))
+                .scaleEffect(phase.isIdentity ? 1 : 0.98)
+        }
+    }
+}
+
+/// Feeds the hero's collapse choreography from the modern scroll-geometry API
+/// on iOS 18+ (the GeometryReader/preference path can go quiet on newer OSes);
+/// older systems keep the preference-based value.
+private struct InsightsScrollOffsetBridge: ViewModifier {
+    @Binding var offset: CGFloat
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.onScrollGeometryChange(for: CGFloat.self) { geometry in
+                geometry.contentOffset.y + geometry.contentInsets.top
+            } action: { _, newValue in
+                offset = -newValue
+            }
+        } else {
+            content
         }
     }
 }
