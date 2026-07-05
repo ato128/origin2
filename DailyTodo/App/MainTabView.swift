@@ -41,6 +41,7 @@ enum AppTab: Hashable, CaseIterable {
 
 extension Notification.Name {
     static let openFocusTabFromHome = Notification.Name("openFocusTabFromHome")
+    static let startFocusFromWidget = Notification.Name("startFocusFromWidget")
 }
 
 private enum PendingChatRoute: Identifiable, Equatable {

@@ -104,7 +104,8 @@ struct FocusView: View {
         .onAppear {
             pageAppeared = true
             focusSession.configure(sessionStore: session, crewStore: crewStore)
-            
+            consumeWidgetAutostartIfNeeded()
+
             Task {
                 await crewStore.loadCrews()
                 
@@ -171,6 +172,9 @@ struct FocusView: View {
                 preferredGoal: selectedGoal,
                 preferredStyle: selectedStyle
             )
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .startFocusFromWidget)) { _ in
+            consumeWidgetAutostartIfNeeded()
         }
         .onReceive(NotificationCenter.default.publisher(for: .presentActiveCrewFocusFromNotification)) { output in
             guard let crewIDString = output.object as? String,
@@ -849,6 +853,26 @@ private extension FocusView {
         }
     }
     
+    /// Widget "start" button. The URL handler sets a one-shot flag (the widget
+    /// may cold-launch the app before this view exists); reading it clears it,
+    /// so onAppear + notification can't double-start.
+    func consumeWidgetAutostartIfNeeded() {
+        let defaults = UserDefaults.standard
+        guard defaults.bool(forKey: "focus.pendingWidgetAutostart") else { return }
+        defaults.removeObject(forKey: "focus.pendingWidgetAutostart")
+
+        guard !focusSession.isSessionActive else {
+            focusSession.expandSession()
+            return
+        }
+
+        // Small beat so the tab switch settles before the launch animation.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            guard !focusSession.isSessionActive else { return }
+            triggerFocusLaunch()
+        }
+    }
+
     func triggerFocusLaunch() {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 

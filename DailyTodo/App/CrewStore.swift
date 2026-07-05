@@ -3338,6 +3338,11 @@ extension CrewStore {
                 weeklyFocusMinutes: max(realFocusMinutes, 0),
                 rankText: nil,
                 streakDays: 0,
+                thisWeekFocusMinutes: CrewHomeFormatters.weeklyFocusMinutes(
+                    records: crewFocusRecords,
+                    crewID: crew.id
+                ),
+                weeklyGoalMinutes: CrewWeeklyGoalStore.goalMinutes(for: crew.id),
                 lastMessageText: crew.last_message_text,
                 unreadCount: unreadCount,
                 isPinned: isPinned,

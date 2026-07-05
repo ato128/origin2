@@ -80,6 +80,7 @@ struct BackendCrewDetailView: View {
     @State private var showDeleteCrewConfirm = false
     @State private var isDeletingCrew = false
     @State private var taskFilter: CrewTaskFilter = .open
+    @State private var weeklyGoalMinutes = 0
     
     enum CrewTaskFilter: String, CaseIterable, Identifiable {
             case open
@@ -123,6 +124,8 @@ struct BackendCrewDetailView: View {
 
                     performanceCard
 
+                    weeklyGoalCard
+
                     membersSection(crewMembers)
 
                     tasksSection(filteredCrewTasks)
@@ -152,6 +155,7 @@ struct BackendCrewDetailView: View {
         }
         .onAppear {
             crewStore.subscribeToCrewRealtime(crewID: crew.id)
+            weeklyGoalMinutes = CrewWeeklyGoalStore.goalMinutes(for: crew.id)
 
             Task {
                 await loadCrewDetail()
@@ -428,6 +432,114 @@ extension BackendCrewDetailView {
         .padding(.horizontal, 4)
     }
     
+    /// Weekly focus goal for this crew: pick a target, the bar tracks the
+    /// crew's REAL focus minutes this week. Goal is stored on this device.
+    var weeklyGoalCard: some View {
+        let thisWeek = CrewHomeFormatters.weeklyFocusMinutes(
+            records: crewStore.crewFocusRecords,
+            crewID: crew.id
+        )
+        let progress = weeklyGoalMinutes > 0
+            ? min(max(Double(thisWeek) / Double(weeklyGoalMinutes), 0), 1)
+            : 0
+        let reached = weeklyGoalMinutes > 0 && progress >= 1
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                miniIcon(systemName: "target", tint: BackendCrewArenaPalette.gold)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(tr("crew_goal_title"))
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text(tr("crew_goal_desc"))
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.42))
+                }
+
+                Spacer()
+
+                Menu {
+                    ForEach(CrewWeeklyGoalStore.presetsMinutes, id: \.self) { minutes in
+                        Button {
+                            weeklyGoalMinutes = minutes
+                            CrewWeeklyGoalStore.setGoalMinutes(minutes, for: crew.id)
+                        } label: {
+                            if weeklyGoalMinutes == minutes {
+                                Label(tr("crew_goal_hours_n", minutes / 60), systemImage: "checkmark")
+                            } else {
+                                Text(tr("crew_goal_hours_n", minutes / 60))
+                            }
+                        }
+                    }
+
+                    Divider()
+
+                    Button(role: .destructive) {
+                        weeklyGoalMinutes = 0
+                        CrewWeeklyGoalStore.setGoalMinutes(0, for: crew.id)
+                    } label: {
+                        Text(tr("crew_goal_off"))
+                    }
+                } label: {
+                    HStack(spacing: 5) {
+                        Text(
+                            weeklyGoalMinutes > 0
+                            ? tr("crew_goal_hours_n", weeklyGoalMinutes / 60)
+                            : tr("crew_goal_set")
+                        )
+                        .font(.system(size: 12, weight: .black, design: .monospaced))
+
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 9, weight: .black))
+                    }
+                    .foregroundStyle(BackendCrewArenaPalette.gold)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 7)
+                    .background(
+                        Capsule()
+                            .fill(BackendCrewArenaPalette.gold.opacity(0.12))
+                            .overlay(
+                                Capsule()
+                                    .stroke(BackendCrewArenaPalette.gold.opacity(0.30), lineWidth: 1)
+                            )
+                    )
+                }
+            }
+
+            if weeklyGoalMinutes > 0 {
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack {
+                        Text(
+                            reached
+                            ? tr("crew_goal_reached")
+                            : "\(focusTimeText(thisWeek)) / \(focusTimeText(weeklyGoalMinutes))"
+                        )
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .foregroundStyle(
+                            reached
+                            ? BackendCrewArenaPalette.green
+                            : .white.opacity(0.52)
+                        )
+
+                        Spacer()
+
+                        Text("\(Int(progress * 100))%")
+                            .font(.system(size: 11, weight: .black, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.42))
+                    }
+
+                    ProgressView(value: progress)
+                        .tint(reached ? BackendCrewArenaPalette.green : BackendCrewArenaPalette.gold)
+                        .scaleEffect(y: 1.15)
+                }
+            }
+        }
+        .padding(16)
+        .background(detailSurface(cornerRadius: 24, tint: BackendCrewArenaPalette.gold))
+    }
+
     var performanceCard: some View {
         let minutes = totalFocusMinutes
         let badgeTitle = CrewBadgeHelper.title(for: minutes)

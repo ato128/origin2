@@ -311,14 +311,37 @@ struct SmartNotificationBrain {
             return []
         }
 
+        // Name the missing half of the daily rule (task AND focus) so the user
+        // knows exactly what saves the streak tonight.
+        let calendar = Calendar.current
+        let hasTaskToday = tasks.contains { task in
+            guard task.isDone, let done = task.completedAt else { return false }
+            return calendar.isDate(done, inSameDayAs: now)
+        }
+        let hasFocusToday = didCompleteFocusToday(records: focusRecords, now: now)
+
+        let body: String
+        let deepLink: String
+        switch (hasTaskToday, hasFocusToday) {
+        case (true, false):
+            body = tr("snb_streak_risk_focus", streak)
+            deepLink = "dailytodo://focus"
+        case (false, true):
+            body = tr("snb_streak_risk_task", streak)
+            deepLink = "dailytodo://week"
+        default:
+            body = tr("snb_streak_risk_both", streak)
+            deepLink = "dailytodo://focus"
+        }
+
         return [
             SmartNotificationCandidate(
                 id: "smart.streak.protect.\(dayKey(now))",
                 category: .streakProtection,
                 title: tr("snb_streak_end"),
-                body: tr("snb_keep_rhythm"),
+                body: body,
                 triggerDate: trigger,
-                deepLink: "dailytodo://focus",
+                deepLink: deepLink,
                 priority: 92
             )
         ]

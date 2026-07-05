@@ -7,200 +7,24 @@
 */
 "settings_title" = "Settings";
 
-"settings_section_account" = "Account";
-"settings_section_appearance" = "Appearance";
-"settings_section_productivity" = "Productivity";
-"settings_section_language" = "Language";
-"settings_section_app" = "App";
-"settings_section_support" = "Support";
-
-"settings_theme_title" = "Theme";
 "settings_app_language_title" = "App Language";
-
-"settings_edit_profile_title" = "Edit Profile";
-"settings_edit_profile_subtitle" = "Change your name and username";
-
-"settings_sign_out_title" = "Sign Out";
-"settings_sign_out_subtitle" = "Sign out from your account";
-
-"settings_sign_in_title" = "Sign In / Create Account";
-"settings_sign_in_subtitle" = "Prepare your account for sync, friends and crews";
-
-"settings_show_only_today_title" = "Show Only Today";
-"settings_show_only_today_subtitle" = "Focus on today’s tasks";
-
-"settings_smart_engine_title" = "Smart Task Engine";
-"settings_smart_engine_subtitle" = "AI suggestions and smart planning";
-
-"settings_notifications_title" = "Notifications";
-"settings_notifications_subtitle" = "Master switch for all reminders";
-
-"settings_focus_preferences_title" = "Focus Preferences";
-"settings_focus_preferences_subtitle" = "Manage your focus experience";
-
-"settings_show_onboarding_again_title" = "Show Onboarding Again";
-"settings_show_onboarding_again_subtitle" = "Replay the welcome screens";
-
-"settings_show_permission_screen_title" = "Show Permission Screen";
-"settings_show_permission_screen_subtitle" = "Replay notification intro";
-
-"settings_about_title" = "About DailyTodoo";
-"settings_about_subtitle" = "Version 1.0";
-
-"settings_made_with_care_title" = "Made with care";
-"settings_made_with_care_subtitle" = "Built for focus, planning and crews";
 
 "language_option_system" = "System Default";
 "language_option_turkish" = "Türkçe";
 "language_option_english" = "English";
 
-"home_focus_workout" = "Workout";
-"home_focus_default" = "Focus";
-
-"home_no_focus_task_today" = "No focus task for today";
-"home_focus_status_overdue" = "⚠️ Overdue task";
-"home_focus_status_complete_today" = "🔥 Complete today";
-"home_focus_status_priority" = "🎯 Priority task";
-
-"home_no_more_classes_today" = "No more classes today";
-
-"home_shared_focus" = "Shared Focus";
-"home_focus_now" = "Focus Now";
-"home_shared_session_active" = "🟢 Shared session active";
-
-"home_greeting_morning" = "Good morning";
-"home_greeting_afternoon" = "Good afternoon";
-"home_greeting_evening" = "Good evening";
-
-"home_header_stay_productive" = "Stay productive today 🚀";
-"home_friends" = "Friends";
-"home_this_week" = "This Week";
-"home_focus_short" = "Focus";
-
-"home_today_progress" = "Today Progress";
-"home_today_tasks" = "Today Tasks";
-"home_no_tasks_today" = "No tasks for today.";
-
-"home_rest" = "Rest";
-"home_workout_rest_active" = "Rest active";
-"home_workout_ready" = "Workout ready";
-"home_start_workout" = "Start Workout";
-"home_start_focus" = "Start Focus";
-
-"home_shared_focus_running" = "Shared Focus Running";
-"home_workout_rest_running" = "Workout Rest Running";
-"home_workout_running" = "Workout Running";
-"home_focus_running" = "Focus Running";
-"home_with_focus_suffix" = "in focus";
-"home_deep_work_session" = "Deep Work Session";
-
-"home_last_30_seconds" = "Last 30 sec";
-"home_workout_active" = "Workout active";
-"home_focus_active" = "Focus active";
-"home_resting" = "Resting";
-"home_set_in_progress" = "Set in progress";
-"home_continue" = "Continue";
-"home_continue_after_rest" = "Continue After Rest";
-"home_next_set" = "Next Set";
-"home_focus_active_button" = "Focus Active";
-"home_stop" = "Stop";
-
-"home_focus_completed" = "Focus Completed";
-"home_focus_paused" = "Focus Paused";
-"home_done" = "Done";
-"home_completed" = "Completed";
-"home_paused" = "Paused";
-"home_waiting" = "Waiting";
-"home_open_focus" = "Open Focus";
-"home_resume" = "Resume";
-"home_pause" = "Pause";
-"home_session_completed" = "Session Completed";
-
-"home_next_class" = "Next Class";
-"home_live" = "LIVE";
-"home_quick_actions" = "Quick Actions";
-"home_add_task" = "Add Task";
-"home_week" = "Week";
-"home_insights" = "Insights";
-
-"week_share_today_crew_tasks" = "Share today's crew tasks";
-"week_share_crew" = "Share crew";
-"week_copy" = "Copy";
-"week_share_this_day" = "Share this day";
-"week_share_full_week" = "Share full week";
-"week_copied" = "Copied";
-
-"week_choose_crew" = "Choose Crew";
 "week_cancel" = "Cancel";
-"week_no_crew_selected" = "No crew selected";
-"week_task_not_found" = "Task not found";
-
-"week_crew_fallback" = "Crew";
-"week_share_crew_plan_title" = "Crew Plan";
-"week_share_my_schedule" = "My Schedule";
-
-"week_team_flow_today" = "Team flow for today";
-"week_live" = "Live";
-"week_recent_activity" = "Recent Activity";
-"week_no_crew_activity_yet" = "No crew activity yet";
-
-"week_no_tasks_today" = "No tasks for today";
-"week_tasks_will_appear_here" = "Tasks will appear here when added for the selected day and crew.";
-
-"week_now" = "Now";
-"week_up_next" = "Up Next";
-"week_late" = "Late";
-"week_later_today" = "Later Today";
-"week_completed" = "Completed";
-"week_crew_tasks" = "Crew Tasks";
-
-"week_select_a_crew" = "Select a Crew";
-
-"week_edit" = "Edit";
-"week_mark_as_done" = "Mark as Done";
-"week_mark_as_undone" = "Mark as Undone";
-"week_delete_task" = "Delete Task";
-
-"week_completed_tasks" = "Completed tasks";
-"week_show_completed" = "Show completed";
-
-"week_day_picker" = "Day";
-"week_empty_day_description" = "No classes have been added for this day yet. You can use the + button at the top right to add a new class.";
-"week_add_class_top_right" = "Add a class with the + button";
-"week_schedule" = "Schedule";
-
-"week_today" = "Today";
-"week_lessons" = "Classes";
-"week_first" = "First";
-"week_last" = "Last";
-
-"week_no_saved_classes_for_day" = "No saved classes for this day";
-"week_class_active_now" = "Class is active now";
-
-"plan_date_section" = "Date";
-"plan_choose_date" = "Choose Date";
-"plan_selected" = "Selected";
-
-"plan_type_section" = "Type";
-"plan_mode" = "Mode";
-"plan_mode_personal" = "Personal";
-"plan_mode_crew" = "Crew";
-
-"plan_continue" = "Continue";
-"plan_ahead_title" = "Plan Ahead";
 
 "event_section_class_or_event" = "Class / Event";
 "event_title_placeholder" = "Title";
 "event_location_optional" = "Location (optional)";
 
 "event_section_day_time" = "Day & Time";
-"event_day" = "Day";
 "event_start" = "Start";
 "event_end" = "End";
 "event_duration" = "Duration";
 
 "event_section_color" = "Color";
-"event_color" = "Color";
 "event_color_blue" = "Blue";
 "event_color_purple" = "Purple";
 "event_color_pink" = "Pink";
@@ -212,7 +36,6 @@
 "event_section_note" = "Note";
 "event_note_optional" = "Note (optional)";
 
-"event_add_title" = "Add";
 "event_save" = "Save";
 
 "event_conflict_title" = "Conflict found";
@@ -269,9 +92,7 @@
 "chat_direct_chat" = "Direct Chat";
 "chat_online" = "Online";
 "chat_no_messages_yet" = "No messages yet";
-"chat_sending" = "Sending";
 "chat_sent" = "Sent";
-"chat_seen" = "Seen";
 "chat_message_placeholder" = "Message...";
 
 "friend_info_alert_title" = "Info";
@@ -301,51 +122,11 @@
 "shared_week_no_shared_events" = "No shared events";
 "shared_week_live" = "LIVE";
 
-"crew_title" = "Crew";
-"crew_your_space" = "Your Crew Space";
-"crew_header_subtitle" = "Build together, focus together, finish together.";
-
-"crew_tab_crews" = "Crews";
-"crew_tab_friends" = "Friends";
-
-"crew_overview" = "Overview";
-"crew_overview_subtitle" = "Your team productivity at a glance";
 "crew_members" = "Members";
 "crew_tasks" = "Tasks";
-"crew_completed" = "completed";
-"crew_progress" = "Progress";
-"crew_no_members" = "No members";
-"crew_shared_tasks_active" = "Shared crew tasks are active";
-"crew_ready_for_shared_tasks" = "Backend crew is ready for shared tasks";
-"crew_your_crews" = "Your Crews";
 
-"crew_your_friends" = "Your Friends";
 "crew_unknown_user" = "Unknown user";
 "crew_unknown_username" = "unknown";
-
-"crew_incoming_requests" = "Incoming Requests";
-"crew_sent_requests" = "Sent Requests";
-"crew_accept" = "Accept";
-"crew_decline" = "Decline";
-
-"crew_focus_activity" = "Focus Activity";
-"crew_focus_activity_subtitle" = "Friends currently studying together";
-"crew_join_focus" = "Join Focus";
-
-"crew_friends_overview_subtitle" = "Shared schedules and direct collaboration";
-"crew_requests" = "Requests";
-"crew_in_focus" = "In Focus";
-
-"crew_no_friends_yet" = "No friends yet";
-"crew_no_friends_subtitle" = "Add your first friend to start sharing schedules and chatting.";
-"crew_add_first_friend" = "Add Your First Friend";
-
-"crew_no_crew_yet" = "No crew yet";
-"crew_no_crew_subtitle" = "Create your first crew and start managing shared tasks, members, and activity together.";
-"crew_create_first_crew" = "Create Your First Crew";
-
-"crew_friends_chat_schedule" = "Friends chat & schedule sharing";
-"crew_friends_next_step" = "Next step: open a friend profile, view today's schedule, and start messaging.";
 
 "crew_chat" = "Chat";
 "crew_remove_friend" = "Remove Friend";
@@ -353,46 +134,14 @@
 "crew_remove_friend_confirm_title" = "Remove this friend?";
 "crew_keep_friend" = "Keep";
 "crew_remove" = "Remove";
-"crew_remove_friend_confirm_message" = "This person will be removed from your friends list.";
 
 "friend_detail_remove_message" = "This person will be removed from your friends list and the shared message/data connection will be deleted.";
 
-"friend_detail_connected_server" = "Connected via server";
-"friend_detail_today_schedule" = "Today Schedule";
 "friend_detail_no_schedule_today" = "No shared schedule for today.";
-"friend_detail_recent_messages" = "Recent Messages";
-"friend_detail_no_backend_messages" = "No backend messages yet.";
-"friend_detail_actions" = "Actions";
-"friend_detail_message" = "Message";
 
-"create_crew_title" = "Create Crew";
-"create_crew_your_crew" = "Your Crew";
-"create_crew_preview_subtitle" = "Build together, focus together, finish together.";
-"create_crew_preview" = "Preview";
-
-"create_crew_info" = "Crew Info";
-"create_crew_name_label" = "Crew name";
-"create_crew_name_placeholder" = "Enter crew name";
-"create_crew_selected_icon" = "Selected icon";
-"create_crew_selected_color" = "Selected color";
-
-"create_crew_choose_icon" = "Choose Icon";
-"create_crew_choose_color" = "Choose Color";
-"join_crew_title" = "Join Crew";
-"join_crew_join" = "Join";
-"join_crew_join_a_crew" = "Join a Crew";
-"join_crew_enter_invite_subtitle" = "Enter the invite code shared by your team.";
-"join_crew_invite_code" = "Invite Code";
-"join_crew_enter_code" = "Enter code";
 "join_crew_code_placeholder" = "ABC123";
-"join_crew_paste" = "Paste";
-"join_crew_how_it_works" = "How it works";
-"join_crew_help_text" = "Ask a crew member for their invite code, paste it here, then tap Join.";
 "join_crew_user_session_not_found" = "User session not found.";
 
-"add_friend_title" = "Add Friend";
-"add_friend_subtitle" = "Enter a username and send a friend request.";
-"add_friend_username" = "Username";
 "add_friend_username_placeholder" = "exampleusername";
 "add_friend_sending" = "Sending...";
 "add_friend_send_request" = "Send Request";
@@ -410,30 +159,12 @@
 "join_focus_start_together" = "Start Focus Together";
 "join_focus_not_now" = "Not now";
 "join_focus_shared_focus" = "Shared Focus";
-"insights_title" = "Insights";
-
-"insights_overview_streak" = "Streak";
-"insights_overview_getting_started" = "Getting Started";
-"insights_overview_keep_fire_alive" = "Keep the fire alive";
-"insights_overview_start_streak" = "Start your streak";
-"insights_overview_fallback_message" = "Your streak will start when you complete your first task. One small step is enough.";
-"insights_overview_completion" = "completed";
-"insights_overview_start_streak_hint" = "You can start a streak by adding a task";
-
-"insights_weekly_progress_title" = "Weekly Progress";
-"insights_weekly_progress_subtitle_active" = "Your productivity rhythm over the last 7 days";
-"insights_weekly_progress_subtitle_empty" = "Your weekly rhythm will appear here";
-
-"insights_focus_title" = "Focus Insights";
-"insights_focus_today_focus" = "Today Focus";
 
 "crew_chat_loading_crew_info" = "Loading crew info...";
-"crew_chat_header_subtitle" = "Crew chat";
 "crew_chat_empty_title" = "No messages yet";
 "crew_chat_empty_subtitle" = "Start chatting with your crew.";
 
 "crew_chat_reply_yourself" = "yourself";
-"crew_chat_replying_to %@" = "Replying to %@";
 "crew_chat_message_placeholder" = "Message %@...";
 
 "crew_chat_unknown_user" = "User";
@@ -443,44 +174,10 @@
 "crew_chat_today" = "Today";
 "crew_chat_yesterday" = "Yesterday";
 
-"crew_chat_focus_start_title" = "Start Shared Focus";
-"crew_chat_focus_quick" = "Quick focus";
-"crew_chat_focus_deep_work" = "Deep work";
-"crew_chat_focus_custom_stepper" = "Custom: %d min";
-"crew_chat_continue" = "Continue";
-"crew_chat_focus_nav_title" = "Focus";
-
-"crew_chat_focus_choose_task" = "Choose a task";
-"crew_chat_focus_shared_minutes" = "%d min shared focus";
-"crew_chat_focus_without_task" = "Start without task";
-"crew_chat_focus_general_session" = "General focus session";
-"crew_chat_focus_no_active_tasks" = "No active crew tasks";
-"crew_chat_focus_still_general" = "You can still start a general focus session.";
-"crew_chat_focus_task_nav_title" = "Focus Task";
-
 "crew_chat_focus_paused" = "Focus paused";
 "crew_chat_focus_running" = "Focus is running";
-"crew_chat_focus_default_title_suffix" = "Focus";
 
 "crew_focus_room_you" = "You";
-"crew_focus_room_title" = "Focus Room";
-"crew_focus_room_session_completed" = "Session completed";
-"crew_focus_room_paused" = "Paused";
-"crew_focus_room_stay_locked_in" = "Stay locked in";
-"crew_focus_room_done" = "Done";
-"crew_focus_room_host" = "Host: %@";
-
-"crew_focus_room_participants" = "Participants";
-"crew_focus_room_no_participants" = "No participants yet";
-"crew_focus_room_host_badge" = "Host";
-
-"crew_focus_room_joining" = "Joining...";
-"crew_focus_room_join_session" = "Join Session";
-"crew_focus_room_leaving" = "Leaving...";
-"crew_focus_room_leave_session" = "Leave Session";
-"crew_focus_room_resume_session" = "Resume Session";
-"crew_focus_room_pause_session" = "Pause Session";
-"crew_focus_room_end_session" = "End Session";
 
 "common_error" = "Error";
 "common_ok" = "OK";
@@ -493,7 +190,6 @@
 "common_new" = "New";
 
 "backend_crew_share_text" = "Join my crew on DailyTodo 🚀\nOpen the app and enter this code: %@";
-"backend_crew_invite_code" = "Invite Code";
 "backend_crew_code_copied_success" = "Code copied successfully";
 
 "backend_crew_remove_member_title" = "Remove Member";
@@ -514,150 +210,48 @@
 "backend_crew_time_left" = "%@ left";
 "backend_crew_streak" = "Streak: %@";
 
-"backend_crew_activity" = "Activity";
-"backend_crew_activity_subtitle" = "Recent team updates";
 "backend_crew_no_activity" = "No activity yet";
 
-"backend_crew_invite" = "Invite";
-"backend_crew_hero_subtitle" = "Manage members, shared tasks, and project activity in one place.";
-"backend_crew_members_count" = "%d members";
-"backend_crew_tasks_count" = "%d tasks";
-"backend_crew_progress" = "Crew Progress";
-
-"backend_crew_done" = "Done";
-"backend_crew_pending" = "Pending";
-"backend_crew_members" = "Members";
-
 "backend_crew_no_members" = "No members yet • Tap + to add one";
-"backend_crew_shared_tasks" = "Shared Tasks";
 "backend_crew_no_shared_tasks" = "No shared tasks yet";
 "backend_crew_reopen_task" = "Reopen Task";
 "backend_crew_mark_done" = "Mark as Done";
 "backend_crew_delete_task" = "Delete Task";
 "backend_crew_unassigned" = "Unassigned";
 
-"backend_crew_focus_together" = "Focus Together";
-"backend_crew_focus_subtitle" = "Shared focus sessions will be enabled after backend integration.";
-"backend_crew_soon" = "Soon";
-"backend_crew_coming_soon" = "Coming Soon";
-
 "backend_crew_unknown_user" = "Unknown user";
 "backend_crew_unknown" = "unknown";
 
-"backend_crew_task_detail_title" = "Task Detail";
-"backend_crew_quick_actions" = "Quick Actions";
 "backend_crew_edit_task" = "Edit Task";
-"backend_crew_assignment" = "Assignment";
 "backend_crew_assigned_to" = "Assigned To";
 "backend_crew_created_by" = "Created By";
 
-"backend_edit_task_title" = "Edit Task";
-
-"backend_edit_task_section_task" = "Task";
 "backend_edit_task_title_placeholder" = "Task title";
 "backend_edit_task_details_placeholder" = "Details";
 
-"backend_edit_task_section_assignment" = "Assignment";
 "backend_edit_task_assigned_member" = "Assigned member";
 
-"backend_edit_task_section_priority_status" = "Priority & Status";
 "backend_edit_task_priority" = "Priority";
 "backend_edit_task_status" = "Status";
 "backend_edit_task_completed" = "Completed";
 
-"backend_edit_task_section_week_planning" = "Week Planning";
-"backend_edit_task_show_on_week" = "Show on Week page";
 "backend_edit_task_date_time" = "Date & Time";
 "backend_edit_task_duration_format" = "Duration: %d min";
 
-"backend_create_task_title" = "New Task";
-
-"backend_create_task_section_task" = "Task";
-"backend_create_task_title_placeholder" = "Task title";
-"backend_create_task_details_placeholder" = "Details";
-
-"backend_create_task_section_assignment" = "Assignment";
-"backend_create_task_member" = "Member";
-
-"backend_create_task_section_priority_status" = "Priority & Status";
-"backend_create_task_priority" = "Priority";
-"backend_create_task_status" = "Status";
-
-"backend_create_task_section_week_planning" = "Week Planning";
-"backend_create_task_show_on_week" = "Show on Week page";
-"backend_create_task_date_time" = "Date & Time";
-"backend_create_task_duration_format" = "Duration: %d min";
-
 "backend_create_task_user_session_not_found" = "User session not found.";
-"todo_home_title" = "Home";
-"todo_live_badge_live" = "LIVE";
-"todo_live_badge_next" = "NEXT";
-
-"add_task_title" = "Add Task";
-"add_task_section_task" = "Task";
-"add_task_title_placeholder" = "Title";
-"add_task_section_date" = "Date";
-"add_task_add_date" = "Add date";
-"add_task_date_picker" = "Date";
-"add_task_add_button" = "Add";
 
 "edit_task_title" = "Edit";
-"edit_task_section_task" = "Task";
-"edit_task_title_placeholder" = "Title";
-"edit_task_section_date" = "Date";
-"edit_task_toggle_date" = "Date";
-"edit_task_date_picker" = "Date";
-"edit_task_delete_button" = "Delete Task";
 
-"tasks_title" = "Tasks";
-
-"tasks_filter_today" = "Today";
-"tasks_filter_all" = "All";
-"tasks_filter_done" = "Done";
-
-"tasks_summary_open" = "Open";
 "tasks_summary_done" = "Done";
-"tasks_summary_today" = "Today";
-
-"tasks_no_due_date" = "No due date";
-
-"tasks_mark_as_done" = "Mark as Done";
-"tasks_mark_as_undone" = "Mark as Undone";
-"tasks_schedule" = "Schedule";
-
-"tasks_empty_today_title" = "No tasks for today";
-"tasks_empty_today_subtitle" = "Enjoy the day or add a new task.";
-
-"tasks_empty_all_title" = "No open tasks";
-"tasks_empty_all_subtitle" = "Your inbox is clear for now.";
-
-"tasks_empty_done_title" = "No completed tasks yet";
-"tasks_empty_done_subtitle" = "Complete a task to see it here.";
 
 "common_delete" = "Delete";
 
-"task_detail_title" = "Task Detail";
-"task_detail_section_title" = "Title";
-"task_detail_task_title_placeholder" = "Task title";
-"task_detail_due_prefix" = "Due";
-
 "task_detail_notes" = "Notes";
 
-"task_detail_task_type" = "Task Type";
-"task_type_standard" = "Standard";
-"task_type_study" = "Study";
 "task_type_workout" = "Workout";
 
-"task_detail_workout_plan" = "Workout Plan";
-"task_detail_templates" = "Templates";
 "task_detail_workout_day" = "Workout Day";
 
-"task_detail_most_recommended" = "Most Recommended";
-"task_detail_other_exercises" = "Other Exercises";
-"task_detail_selected_exercises" = "Selected Exercises";
-"task_detail_no_exercises" = "No exercises added yet";
-
-"task_detail_duration" = "Duration";
 "task_detail_history_last" = "Last";
 "task_detail_history_best" = "Best";
 "task_detail_identity" = "Identity";
@@ -667,24 +261,9 @@
 "task_detail_reps" = "Reps";
 "task_detail_kg" = "KG";
 "task_detail_superset" = "Superset";
-"task_detail_seconds_short" = "Sec";
 "task_detail_rest" = "Rest";
-"task_detail_notes_optional" = "Notes (optional)";
 
-"task_detail_schedule_on_week" = "Schedule on Week";
-"task_detail_week_date" = "Week Date";
 "task_detail_add_to_week" = "Add to Week";
-"task_detail_added_to_week" = "Added to Week";
-
-"task_detail_finish_workout" = "Finish Workout";
-"task_detail_reopen_workout" = "Reopen Workout";
-"task_detail_mark_done" = "Mark as Done";
-"task_detail_mark_undone" = "Mark as Undone";
-"task_detail_workout_finished" = "Workout finished";
-
-"task_detail_workout_templates" = "Workout Templates";
-
-"todo_minutes_format" = "%d min";
 
 "week_event_detail_title" = "Event Detail";
 "week_event_workout_summary" = "Workout Summary";
@@ -700,131 +279,7 @@
 "week_event_edit" = "Edit Event";
 "week_event_delete" = "Delete Event";
 
-
-
-
-
-"weekday_mon_short" = "Mon";
-"weekday_tue_short" = "Tue";
-"weekday_wed_short" = "Wed";
-"weekday_thu_short" = "Thu";
-"weekday_fri_short" = "Fri";
-"weekday_sat_short" = "Sat";
-"weekday_sun_short" = "Sun";
-
-"insights_minutes_format" = "%d min";
-"insights_hours_minutes_format" = "%1$dh %2$dm";
-
-"insights_daily_boost_title" = "⚡ Daily Boost";
-"insights_daily_boost_tasks_message" = "You can finish today strong by completing just one more task.";
-"insights_daily_boost_great_job" = "🔥 Great Job";
-"insights_daily_boost_focus_message" = "Your main goals are done. You could keep the rhythm with one short extra focus session.";
-"insights_daily_boost_nice_flow" = "✨ Nice Flow";
-"insights_daily_boost_nice_flow_message" = "You are doing well today. Keep going at the same pace.";
-
-"insights_action_open_tasks" = "Open Tasks";
-"insights_action_new_focus" = "New Focus";
-"insights_action_start_focus" = "Start Focus";
-"insights_action_view_week" = "View Week";
-
-"insights_overview_status_start" = "Start your momentum";
-"insights_overview_status_momentum" = "Getting momentum";
-"insights_overview_status_solid" = "Solid progress";
-"insights_overview_status_great" = "Great progress";
-"insights_overview_streak_format" = "%d-day streak";
-"insights_overview_completed_format" = "%d completed";
-"insights_overview_subtitle" = "Task completion rate and overall progress";
-
-"insights_weekly_best_day_format" = "Your most productive day: %@";
-"insights_no_data_yet" = "No data yet";
-
-"insights_heatmap_title" = "Last 4 Weeks";
-"insights_heatmap_subtitle" = "28 days";
-"insights_heatmap_selected_day" = "13 Mar, Fri • no completed tasks";
-
-"insights_focus_streak_format" = "%d-Day Focus Streak";
-"insights_focus_streak_subtitle_active" = "You're building momentum";
-"insights_focus_streak_subtitle_inactive" = "You can start the rhythm";
-"insights_focus_sessions_format" = "%d sessions";
-"insights_focus_longest_format" = "Longest session: %@";
-
-"insights_productivity_title" = "Productivity Score";
-"insights_productivity_subtitle_low" = "You're just getting started";
-"insights_productivity_subtitle_mid" = "Could be better";
-"insights_productivity_subtitle_good" = "You're doing well";
-"insights_productivity_subtitle_great" = "Great performance";
-
-"insights_consistency_title" = "Consistency Score";
-"insights_consistency_subtitle_low" = "You need a bit more consistency";
-"insights_consistency_subtitle_good" = "You're getting more consistent";
-
-"insights_busy_day_title" = "Most Busy Day";
-"insights_busy_day_subtitle" = "The busiest day of this week";
-
-"insights_this_week" = "this week";
-
-"insights_suggestion_task_title" = "Task Insight";
-"insights_suggestion_task_message" = "Your active tasks seem to be piling up. Finishing the smallest task first may help you build momentum.";
-
-"insights_suggestion_focus_title" = "Focus Suggestion";
-"insights_suggestion_focus_message" = "You haven’t started a focus session today yet. A short 25-minute session could help.";
-
-"insights_suggestion_momentum_title" = "Momentum Insight";
-"insights_suggestion_momentum_message" = "You seem to have built momentum today. This might be a good time to finish a difficult task.";
-
-"insights_suggestion_pattern_title" = "Pattern Insight";
-"insights_suggestion_pattern_message" = "Your most productive day this week is %@. Scheduling important work on that day may help.";
-
-"insights_suggestion_focus_pattern_title" = "Focus Pattern";
-"insights_suggestion_focus_pattern_message" = "You seem to focus better in the evening. You could try planning deep work after 18:00.";
-
-"insights_suggestion_deep_work_title" = "Deep Work Insight";
-"insights_suggestion_deep_work_message" = "Long focus sessions seem to work well for you. Putting hard tasks after focus blocks may boost productivity.";
-
-"insights_suggestion_daily_title" = "Daily Suggestion";
-"insights_suggestion_daily_message" = "Completing one small but clear task can make the rest of your day more productive.";
-
-"insights_suggestion_fallback_title" = "Suggestion";
-"insights_suggestion_fallback_message" = "Completing a small task today could be a good start.";
-
-"insights_ai_coach_title" = "AI Productivity Coach";
-"insights_ai_coach_focus_message" = "You seem to complete tasks faster after focus sessions. A short focus first, then a hard task, may work well.";
-"insights_ai_coach_best_day_message" = "You seem more productive on %@. You could try scheduling important work on that day.";
-"insights_ai_coach_default_message" = "Quickly finishing small tasks and doing hard tasks after focus sessions may improve your productivity.";
-
-"insights_weekly_progress_days_label" = "7 days";
-"insights_weekly_progress_total_format " = "Total %lld";
-"insights_weekly_progress_best_day_format " = "%@ • %lld";
-"insights_weekly_progress_repeat_hint" = "You can schedule tasks at similar times to repeat your best day";
-"insights_weekly_progress_first_tasks_hint" = "Your first completed tasks will start appearing here as a weekly chart";
-
-"insights_focus_minute_unit" = "min";
-"insights_focus_session_unit" = "sessions";
-
 "insights_quick_focus_title" = "Quick Focus";
-
-"insights_most_busy_day_has_day" = "Your busiest day";
-"insights_most_busy_day_no_day" = "No busy day yet";
-"insights_most_busy_day_empty_hint" = "This area will become clearer as you complete events and tasks";
-
-"insights_suggestion_today" = "Insight for today";
-
-"insights_heatmap_fallback_text" = "No completed tasks yet. Your first completed tasks will appear here as a 4-week rhythm.";
-"insights_heatmap_subtitle_active" = "Completion intensity over the last 28 days";
-"insights_heatmap_subtitle_empty" = "Your last 28 days of activity will appear here";
-"insights_heatmap_low" = "Low";
-"insights_heatmap_high" = "High";
-"insights_heatmap_density_info" = "This view shows your completed-task density over the last 4 weeks";
-"insights_heatmap_fill_hint" = "This area will fill up as you complete tasks";
-
-"home_active_now_minutes_left" = "Active now • %d min left";
-"home_starts_in_minutes" = "In %d min";
-
-"home_completed_today_format" = "%d completed today";
-"home_showing_count_format" = "Showing %d";
-
-"home_workout_set_format" = "Set %d/%d";
-"home_shared_focus_with_friend" = "%@ in focus";
 
 "smart_suggestion_overdue_title" = "You have overdue tasks";
 "smart_suggestion_overdue_message" = "Closing one overdue task first might be the best move.";
@@ -966,7 +421,6 @@
 "ct_assignment_caps" = "ASSIGNMENT";
 
 /* ProfileHubView */
-"ph_header_sub" = "Your account, student profile, appearance and app settings.";
 "ph_account_sub" = "Identity, academic info and profile edits";
 "ph_edit_profile" = "Edit Profile";
 "ph_edit_profile_sub" = "Update your name and username";
@@ -993,7 +447,6 @@
 "ph_sign_out" = "Sign Out";
 "ph_sign_out_sub" = "Securely sign out of your account";
 "ph_user" = "User";
-"ph_notif_intro" = "Updo only reminds you when it's truly valuable. The goal isn't to disturb you, but to protect your rhythm.";
 "ph_notif_master_sub" = "Turn all smart reminders on or off";
 "ph_exam_reminders" = "Exam Reminders";
 "ph_exam_reminders_sub" = "Plan and review suggestions as an exam approaches";
@@ -1023,7 +476,6 @@
 "ph_w_notifications_lc" = "notifications";
 
 /* Profile Hub — eyebrows (caps) & header strays */
-"ph_profile_hub_caps" = "PROFILE HUB";
 "ph_header_title" = "Profile";
 "ph_header_italic" = "hub";
 "ph_account_caps" = "ACCOUNT";
@@ -1054,7 +506,6 @@
 "ph_about_version" = "Version 1.0 • Built for students";
 "ph_protect_focus_rhythm" = "Protecting your focus rhythm";
 "ph_icon_steel" = "Steel";
-"ph_icon_default" = "Default";
 
 /* Crew Home — zone header, stats sharing, challenges, leaderboard */
 "crew_active_zone_live" = "ACTIVE ZONE · %d LIVE";
@@ -1089,6 +540,30 @@
 "home_streak_up_body" = "You're doing great — for %d days you've finished a task and focused. Repeat tomorrow and let it grow.";
 "home_streak_info_body_active" = "Complete a task AND a focus every day to keep your streak. Miss either and it resets, dropping you a level.";
 "home_streak_info_body_start" = "Start your streak: complete a task and a focus today. Keep both up daily and the flame grows.";
+"home_streak_today_label" = "Today:";
+
+/* Home — weekly summary card (Sundays) */
+"hv_weekly_caps" = "WEEKLY RECAP";
+"hv_weekly_title" = "Your week,";
+"hv_weekly_title_italic" = "recapped";
+"hv_weekly_focus_label" = "Focus";
+"hv_weekly_tasks_label" = "Tasks done";
+"hv_weekly_best_label" = "Best day";
+"hv_weekly_streak_line" = "Closing the week on a %d-day streak — keep it going tomorrow.";
+"hv_weekly_min_fmt" = "%dm";
+"hv_weekly_hour_fmt" = "%dh";
+"hv_weekly_hour_min_fmt" = "%dh %dm";
+
+/* Crew — weekly focus goal */
+"crew_goal_caps" = "WEEKLY GOAL";
+"crew_goal_title" = "Weekly focus goal";
+"crew_goal_desc" = "Progress is computed from the crew's real focus minutes.";
+"crew_goal_set" = "Set goal";
+"crew_goal_off" = "Remove goal";
+"crew_goal_hours_n" = "%d hours";
+"crew_goal_reached" = "Goal reached!";
+"home_streak_chip_task" = "Task";
+"home_streak_chip_focus" = "Focus";
 
 /* Week — task section headers */
 "wv_tasks_caps" = "TASKS";
@@ -1221,43 +696,8 @@
 "eps_date" = "Date";
 
 /* HomeDashboard quick actions */
-"hda_add_new" = "Add new";
-"hda_view_detail" = "View details";
-"hda_dont_forget" = "Don't forget to add";
-"hdh_today_flow_caps" = "TODAY FLOW";
-"hdh_shared_focus_active" = "Shared focus active";
-"hdh_session_with" = "Session in progress with %@.";
-"hdh_crew_waiting" = "Crew is waiting for you";
-"hdt_today_board_caps" = "TODAY BOARD";
-"hdt_completed" = "Completed";
-"hdt_remaining" = "Remaining";
-"hdt_streak" = "Streak";
 
 /* Insights detail views (study window / weekly signal / achievements) */
-"ins_next_move_caps" = "NEXT MOVE";
-"ins_next_move" = "Next Move";
-"iswd_caps" = "STUDY WINDOW";
-"iswd_study" = "Study";
-"iswd_window" = "window";
-"iswd_sub" = "Premium course-level focus insight.";
-"iswd_best_caps" = "BEST WINDOW";
-"iswd_chart_caps" = "COURSE CHART";
-"iswd_breakdown" = "Course Breakdown";
-"iswd_top" = "Top";
-"iswd_low" = "Low";
-"iswd_empty" = "Add course tags to tasks to unlock this graph.";
-"iswd_smart_caps" = "SMART READING";
-"iswd_smart" = "Smart Reading";
-"iwsd_caps" = "WEEKLY SIGNAL";
-"iwsd_weekly" = "Weekly";
-"iwsd_signal" = "signal";
-"iwsd_sub" = "Premium weekly rhythm analysis.";
-"iwsd_overview_caps" = "SIGNAL OVERVIEW";
-"iwsd_7day_caps" = "7-DAY CHART";
-"iwsd_7day" = "7-Day Rhythm";
-"iwsd_daily_caps" = "DAILY DETAILS";
-"iwsd_breakdown" = "Daily Breakdown";
-"iwsd_tip" = "Use your strongest day as a template and reinforce your weakest one with a short block.";
 "iav_paths_caps" = "ACHIEVEMENT PATHS";
 "iav_achievements" = "Achievements";
 "iav_map" = "map";
@@ -1325,7 +765,6 @@
 "etv_next_week" = "Next week";
 "etv_in_2_hours" = "In 2 hours";
 "etv_this_weekend" = "This weekend";
-"iic_identity_caps" = "IDENTITY";
 
 /* Final cluster: create crew, auth form, schedule sheet, join crew, focus room backend, create crew task */
 "ccb_new_crew_caps" = "NEW CREW";
@@ -1357,19 +796,6 @@
 "ccb_symbol_caps" = "CREW SYMBOL";
 "ccb_accent_caps" = "CREW ACCENT";
 "ccb_color" = "Color";
-"hdf_focusing" = "Focusing";
-"hdf_shared_focus" = "Shared Focus";
-"hdf_multiple_active" = "Multiple Active Crew Focuses";
-"di_title" = "Deep Insights";
-"di_sub" = "Your premium performance view";
-"di_best_window" = "Best Study Window";
-"di_weekly_review" = "Weekly Deep Review";
-"di_strongest" = "Strongest: %@";
-"di_weakest" = "Weakest: %@";
-"di_identity_evo" = "Identity Evolution";
-"di_next" = "Next: %@";
-"di_exam_readiness" = "Exam Readiness Pro";
-"di_pattern_alerts" = "Pattern Alerts";
 "cbc_title" = "Crew Badge";
 "cbc_unlocked_by" = "Unlocked by total focus time";
 "cbc_unlocked" = "Unlocked!";
@@ -1544,7 +970,6 @@
 "hv_ending_soon_caps" = "ENDING SOON";
 "hv_active_focus_caps" = "ACTIVE FOCUS";
 "hv_paused" = "Paused";
-"hv_ai_prompt" = "How can I help?";
 "hv_ai_today_ask" = "What do you want to do today?";
 "hv_ai_bar_placeholder" = "Message Updo AI…";
 "hv_ai_credit_n" = "%d credits";
@@ -1554,16 +979,6 @@
 "hv_add_task" = "Add task";
 "hv_streak_caps" = "STREAK";
 "hv_day_word" = "days";
-"hv_strong_week" = "strong week";
-"hv_rhythm_started" = "rhythm started";
-"hv_ready_to_start" = "ready to start";
-"hv_tasks_done" = "tasks done";
-"hv_flow_ready" = "flow ready";
-"hv_add_first_task" = "add your first task";
-"hv_on_fire" = "on fire";
-"hv_building_rhythm" = "building rhythm";
-"hv_streak_started" = "streak started";
-"hv_start_today" = "start today";
 "hv_now_focusing" = "NOW · FOCUSING";
 "hv_now_live" = "NOW · LIVE";
 "hv_next_class_soon" = "NEXT CLASS · SOON";
@@ -1634,123 +1049,22 @@
 "wv_free_time" = "Free time";
 
 /* Hero */
-"hd_today_caps" = "TODAY";
 "hd_days_streak" = "days in a row";
-"hd_today_done" = "Today's done";
-"hd_today_empty" = "Today is empty";
-"hd_whats_today" = "What's on today?";
-"hd_active_class" = "Class in session";
-"hd_next_class" = "Today's next class";
-"hd_clean_day" = "You closed the day clean";
-"hd_small_start_opt" = "Make a small start if you like";
 "hd_make_small_start" = "Make a small start";
-"hd_get_day_moving" = "Get the day moving";
-"hd_dont_leave_tomorrow" = "Don't leave tomorrow empty";
-"hd_lets_start" = "Let's begin!";
-"hd_today_check_caps" = "✅ TODAY";
-"hd_active_now" = "Active now";
-"hd_check_social" = "Check your social flow";
-"hd_clean_start" = "Clean start";
-"hd_clarify_today" = "Clarify your day";
-"hd_no_tasks_yet" = "No tasks yet. A small start is enough.";
-"hd_empty_flow" = "Empty flow";
-"hd_first_task_sets" = "Setting your first task gives the day direction.";
 "common_add_task" = "Add Task";
-"hd_no_plan" = "No plan yet";
-"hd_one_task_rhythm" = "Even one small task can start the rhythm.";
-"hd_noon" = "Noon";
-"hd_short_task_tidies" = "Adding a short, clear task tidies the day.";
 "hd_evening_close" = "Evening wrap-up";
-"hd_tomorrow_steps" = "Setting 1–2 small steps for tomorrow could help.";
 "hd_evening" = "Evening";
-"hd_small_plan_morning" = "A small plan now makes the morning easier.";
 "hd_plan_tomorrow" = "Plan Tomorrow";
-"hd_session_paused" = "Session paused.";
-"hd_crew_focus_active" = "Crew focus is active now.";
-"hd_open_room" = "Open Room";
-"hd_flow_going" = "Flow continues";
-"hd_keep_rhythm" = "Keep your rhythm for now.";
-"hd_focus_on" = "Focus on";
-"hd_open_tasks_week" = "You can quickly open tasks or the week if you like.";
 "hd_open_week" = "Open Week";
-"hd_pre_class" = "Clearing your mind before class could help.";
 "hd_active_now_label" = "Active now";
-"hd_next_class_label" = "Next class";
-"hd_resume" = "Pick up where you left off if you like.";
-"hd_stay_connected" = "Stay connected with your friends.";
-"hd_social_flow" = "Social flow";
 "hd_friends" = "Friends";
-"hd_short_msg" = "Even a short message can pull you back into the flow.";
-"hd_open_chat" = "Open Chat";
-"hd_nice_progress" = "You're making nice progress";
-"hd_took_step" = "You took a step today.";
-"hd_go_remaining" = "Move on to remaining tasks or insights if you like.";
-"hd_go_insights" = "Go to Insights";
-"hd_close_day" = "Close the day";
 "hd_lighten_tomorrow" = "Lighten tomorrow";
-"hd_small_plan_adds" = "A small plan adds a lot to tomorrow.";
-"hd_today_clean" = "Today is clean";
-"hd_clear_steps_morning" = "Setting 1–2 clear steps makes the morning easier.";
-"hd_insights" = "Insights";
-"hd_small_start" = "A small start";
-"hd_get_today_moving" = "Get today moving";
-"hd_one_task_flow" = "Even one small task can start the flow.";
-"hd_need_start" = "Needs a start";
-"hd_not_perfect" = "It doesn't have to be perfect.";
 "hd_open_tasks" = "Open Tasks";
-"hd_start_focus" = "Start Focus";
-"hd_next_area" = "Next area";
-"hd_personal_done" = "You finished the personal side.";
-"hd_close_crew" = "You can wrap up the crew flow too.";
-"hd_today_finished" = "Today is finished";
-"hd_check_flow" = "Check your flow";
-"hd_see_progress" = "You can see today's progress and rhythm.";
-"hd_helps_tomorrow" = "Helps you set up tomorrow better.";
-"hd_day_complete" = "Day complete";
-"hd_prepare_tomorrow" = "You can prepare tomorrow";
-"hd_calm_close" = "Today closed calmly.";
-"hd_short_plan_friction" = "A short plan reduces morning friction.";
-"hd_clear_first" = "Clear this first";
-"hd_task_overdue" = "This task is overdue.";
 "hd_start" = "Start";
-"hd_all_tasks" = "All Tasks";
-"hd_today_priority2" = "Today's priority";
-"hd_start_clearing" = "Starting the day by clearing this is good.";
-"hd_finish_relax" = "Finishing this eases the day.";
-"hd_clear_before_evening" = "Clearing this before evening is good.";
-"hd_close_lighter" = "Close this to end the day lighter.";
-"hd_early_momentum" = "Starting early builds momentum.";
-"hd_now_momentum" = "Starting now builds momentum.";
-"hd_finish_evening" = "Finishing today eases your evening.";
-"hd_short_start_tomorrow" = "Even a short start makes tomorrow easier.";
-"hd_exam_block_sub" = "A small but clear study block as the exam nears reduces stress.";
-"hd_start_btn" = "Start";
-"hd_starts_in_min" = "starts in %d min";
-"hd_tasks_finished" = "%d tasks done";
-"hd_x_done" = "%@ done";
-"hd_open_work" = "%d open tasks";
 "rel_open_count" = "%d open";
-"hd_in_class_now" = "You're in %@ now.";
-"hd_class_starts_in" = "%2$@ starts in %1$d min.";
-"hd_exam_study_block" = "%1$d min of %2$@ today could help.";
 
 /* Home dashboard parts */
-"oc_todays_plan_caps" = "TODAY'S PLAN";
 "oc_start" = "Start";
-"oc_todays_plan" = "Today's Plan";
-"oc_today_done" = "Today Done";
-"oc_todays_progress" = "Today's Progress";
-"oc_pick_class_study" = "Pick a class and study";
-"oc_plan_smartens" = "Your plan gets smarter from this";
-"oc_lets_make_plan" = "Let's build you a study plan";
-"oc_clean_close" = "You closed today clean";
-"oc_fire_caps" = "🔥 FIRE";
-"oc_burning" = "On fire";
-"oc_focused_today" = "focused today";
-"oc_start_first_session" = "start your first session";
-"oc_next_caps" = "✨ NEXT";
-"oc_pick_classes_week" = "Pick your classes, let's build your week around them";
-"oc_about_to_start" = "About to start";
 "sn_priority_step" = "Priority step";
 "sn_quick_start" = "Quick start";
 "sn_focus_suggestion" = "Focus suggestion";
@@ -1777,116 +1091,14 @@
 "df_open_focus" = "Open Focus";
 "df_keep_simple" = "Keep today simple";
 "df_pick_small" = "There are open tasks, but picking a small one first eases the flow.";
-"hh_start_lc" = "start";
-"hh_in_flow" = "You're in the flow";
-"hh_doing_well" = "You're doing well";
-"hh_closing_well" = "You're closing the day well";
-"hh_good_morning" = "Good morning";
-"hh_going_well" = "Going well";
-"hh_good_evening" = "Good evening";
-"hh_good_day" = "Good day";
-"hh_crew_open" = "There are open tasks on the crew side";
-"hh_check_crew" = "Check the crew flow";
-"hh_see_rhythm" = "You can see today's rhythm";
-"hh_check_today" = "Check today's flow";
-"hh_close_calm" = "You can close the day calmly";
-"hh_progress_today" = "You're making good progress today";
-"hh_clear_overdue" = "Clear the overdue task first";
-"hh_today_calm" = "Today looks calm";
-"hm_1" = "Today's calm. Make a small start if you like.";
-"hm_2" = "You closed today clean. Great.";
-"hm_3" = "You're doing well. One more step.";
-"hm_4" = "You've started. A few more tasks strengthen the day.";
-"hm_5" = "Even a small step creates momentum.";
-"hm_6" = "Today's still open. A small plan makes a strong start.";
-"hm_7" = "No tasks yet. Even one small task can get the day moving.";
-"hm_8" = "Even if today was empty, you can prep a little for tomorrow.";
-"hm_9" = "The tasks you set for today are done.";
-"hm_10" = "You've found a rhythm. A few more steps close the day strong.";
-"hm_11" = "You've made a start. Keep going and the day gets much clearer.";
-"hm_12" = "Keeping your rhythm is the most important thing right now.";
-"hm_13" = "You can tidy the personal side first, then move to the crew flow.";
-"hm_14" = "Here's a short summary of today's flow.";
-"hm_15" = "See the day's closing view at a glance.";
-"hm_16" = "See the day's status at a glance.";
-"oc_tasks_left" = "%d tasks left";
 "oc_day_streak" = "%d-day streak";
-"hd_tasks_done_of" = "%d/%d tasks done";
-"hh_in_focus" = "Focused on %@";
-"hh_now_active" = "%@ is active now";
-"hh_today_first" = "Today first: %@";
-"hm_exam_approaching" = "As %@ approaches, keep an eye on today's rhythm.";
 
 /* Home dashboard parts 2 */
-"ha_to_start" = "To Start";
-"ha_for_exam" = "For the Exam";
-"ha_quick_switch" = "Quick Switch";
-"ha_next_steps" = "Next Steps";
-"ha_closing_moves" = "Closing Moves";
-"ha_quick_actions" = "Quick Actions";
-"ha_fill_empty" = "Fill the empty screen with a small step";
-"ha_exam_shortcuts" = "The most sensible shortcuts for your upcoming exam";
-"ha_keep_focus" = "Move forward without breaking your focus flow";
-"ha_switch_flows" = "Switch between team and personal flow";
-"ha_by_rhythm" = "Continue based on today's rhythm";
-"ha_closing_logical" = "Sensible moves to close the day";
-"ha_student_shortcuts" = "Shortcuts for your student flow";
-"ha_add_first_step" = "Add the first step";
-"ha_plan_ahead" = "Plan ahead";
 "ha_add_new_exam" = "Add a new exam";
-"ha_place_in_week" = "Place in Week";
-"ha_see_prep" = "See prep";
-"ha_see_remaining" = "See what's left";
-"ha_open_schedule" = "Open schedule";
-"ha_see_rhythm" = "See the rhythm";
-"ha_back_to_crew" = "Back to crew";
-"ha_open_plan" = "Open plan";
-"ha_add_personal" = "Add personal";
-"ha_open_flow" = "Open flow";
-"ha_build_plan" = "Build the plan";
-"ha_see_day" = "See the day";
-"ha_add_small" = "Add small";
-"ha_arrange_day" = "Arrange the day";
-"ha_start_25" = "Start 25 min";
-"ha_start_now" = "Start now";
-"ha_quick_add" = "Quick add";
 "ha_progress" = "Progress";
-"hdt_today_clean" = "Today looks clean";
-"hdt_no_remaining" = "No remaining tasks for today.";
-"hdt_calm_add" = "Calm for now. You can add a small task if you like.";
-"hdt_all_done" = "All of today's tasks are done";
-"hdt_remaining_tasks" = "Remaining tasks";
-"hdt_personal_side" = "Personal side";
-"hdt_open_ones" = "What's still open";
-"hdt_next_tasks" = "Next up";
-"hdt_exam_passed" = "Exam passed";
-"hf_start_25" = "Start 25 min";
 "hf_join" = "Join";
-"hf_open" = "Open";
-"hf_open_first" = "Open First Session";
-"hf_see_all" = "See All";
-"hf_manage" = "Manage";
-"hf_session_waiting" = "Session is on hold";
-"hf_personal_active" = "Personal focus flow is active";
-"hf_live" = "Live";
-"hf_ending_soon" = "Ending soon";
-"hf_no_suggestion" = "No suggestion for today";
-"hf_next_focus" = "Next focus";
 "hf_ready" = "Ready";
-"hf_priority_focus" = "Priority Focus";
-"hf_today_focus_point" = "Today's Focus Point";
-"hf_study_session" = "Study Session";
-"hf_overdue" = "This task is overdue. Clearing it first is good.";
-"hf_due_soon" = "Due soon. A short focus gets a lot done.";
-"hf_finish_today" = "It's good to finish this today.";
-"hf_good_to_start" = "A good task to start now.";
-"hdb_skip" = "Skip";
 "hdb_ai_coach" = "AI Study Coach";
-"hdb_create_routine" = "Build a personal daily routine";
-"hdt_tasks_left" = "%d tasks left";
-"hdt_personal_left" = "%d personal tasks left";
-"hdt_focus_going" = "focus ongoing";
-"ha_study_course" = "Study %@";
 "hf_started_by" = "%@ started";
 "hf_ready_count" = "%d/%d ready";
 
@@ -2103,21 +1315,7 @@
 "ai_no_sessions" = "No completed sessions in the last 7 days. They'll appear here once you start your first session.";
 "ai_focus_history" = "My Focus History";
 "ai_active_tasks" = "Active tasks";
-"cs_finish_strong" = "Finish the week strong";
-"cs_afternoon" = "afternoon";
-"cs_evening" = "evening";
-"cs_discover_hours" = "Discover your study hours";
-"cs_discover_sub" = "Log regular focus sessions — let's find your most productive hours together.";
-"cs_course_tracking" = "Course-based tracking";
-"cs_course_sub" = "Pick a topic in your sessions — let's see where you spend the most time.";
-"cs_study_coach" = "Study Coach";
-"cs_daily_minutes_caps" = "DAILY MINUTES";
 "cs_day" = "Day";
-"cs_coach_tips_caps" = "COACH'S TIPS";
-"cs_ask_coach" = "Ask the Coach";
-"cs_spend_credit" = "You'll Spend a Credit";
-"cs_ask_placeholder" = "Ask something…";
-"cs_from_cache" = "From cache";
 "af_personal_focus" = "Personal Focus";
 "af_friend_focus" = "Friend Focus";
 "af_flow_waiting" = "Focus flow on hold";
@@ -2134,14 +1332,6 @@
 "ai_focus_summary" = "Last 7 days focus: %1$d min, %2$d sessions";
 "ai_limit_full" = "Limit reached";
 "ai_go_pro_lc" = "go Pro";
-"cs_strong_week" = "You studied %d min this week. Strong rhythm, keep going!";
-"cs_goal_left" = "%d min to your goal";
-"cs_progress" = "You've completed %1$d/%2$d min this week. You can add a few more 25-min sessions.";
-"cs_low" = "You've studied %d min so far. Adding 30 min a day makes a big difference.";
-"cs_best_hours" = "Over the last 7 days you focus better in the %@ hours. Prioritize these hours.";
-"cs_top_area" = "The area you spend most time on is %@. Check the balance of your other topics too.";
-"cs_send_credits" = "Send (%1$d → %2$d)";
-"cs_credit_info" = "This message will use 1 credit. You have %d credits.";
 "af_host_running" = "%@ is running the session as host";
 
 /* Focus screens */
@@ -2206,7 +1396,6 @@
 "fds_45_deep" = "45 min deep flow together";
 "fds_custom_shared" = "Shared focus, custom duration";
 "fqc_quick_settings" = "Quick Settings";
-"ffp_personal" = "Personal";
 "fsm_x_left" = "X left";
 "fsm_x_did" = "You did X min";
 "fsm_personal_done" = "Personal focus completed";
@@ -2218,17 +1407,11 @@
 "fsm_personal_active" = "Personal focus active";
 "fsm_focus_paused" = "Focus paused";
 "fsm_now_focusing" = "You're focusing now";
-"fsm_last_2h" = "Last session 2 hours ago";
-"fsm_last_crew_yesterday" = "Last crew session yesterday";
-"fsm_last_shared_today" = "Last shared session today";
-"fsm_participant" = "Participant";
-"fsm_match" = "Match";
 "fsm_done_1" = "You completed %d minutes of focus. Nice start 🎯";
 "fsm_done_2" = "You completed %1$d minutes · %2$d min more than last time. You're improving 🚀";
 "fsm_done_3" = "You completed %1$d minutes · %2$d min better than last time 👏";
 "fsm_done_4" = "You completed %d minutes · you kept your rhythm 🔥";
 "fsm_done_5" = "You completed %d minutes · short today but you kept the flow ✅";
-"fsm_people" = "%d people";
 
 /* InsightsViewModel */
 "iv_not_clear" = "Not clear yet";
@@ -2404,13 +1587,13 @@
 "snb_last_review" = "You can start a short focus session for your final review.";
 "snb_stay_calm" = "Stay calm. A short review and steady pace are enough.";
 "snb_streak_end" = "Your streak could end today";
-"snb_keep_rhythm" = "A short 25-minute focus can keep your rhythm.";
+"snb_streak_risk_focus" = "Task done ✓ — one focus left to keep your %d-day streak. A short session is enough.";
+"snb_streak_risk_task" = "Focus done ✓ — finish one task to keep your %d-day streak.";
+"snb_streak_risk_both" = "Your %d-day streak needs a task + a focus today. There's still time.";
 "snb_one_left" = "1 task left for today";
 "snb_recover_flow" = "You can pull the day's flow together with a short focus if you like.";
 "snb_recover_today" = "Pull today together with a small focus";
 "snb_one_session" = "Even one 25-minute session brings your rhythm back.";
-"ins_sub1" = "Read your course, exam and focus rhythm in one place.";
-"ins_sub2" = "Track your task, focus and identity growth.";
 "ins_open_caps" = "OPEN";
 "iid_ready_level" = "You're ready for the next level";
 "iid_day_caps" = "DAY";
@@ -2444,9 +1627,6 @@
 "fcv_last_time_caps" = "LAST TIME";
 "fcv_person_caps" = "PEOPLE";
 "fcv_participant_lc" = "participants";
-"tlh_class_active" = "CLASS IN SESSION";
-"tlh_next_class" = "NEXT CLASS READY";
-"tlh_today_calm" = "TODAY LOOKS CALM";
 "cfi_not_now" = "Not now";
 "cfi_focus_invite_caps" = "FOCUS INVITE";
 "cfi_total_time_caps" = "TOTAL TIME";
@@ -2464,62 +1644,23 @@
 "cs_no_permission" = "You don't have permission for this action.";
 "cs_session_ended" = "This focus session has ended.";
 "fcv_better" = "%d minutes better than last time 🚀";
-"tlh_tasks_waiting" = "%d TASKS WAITING";
 "cfi_percent_done" = "%d%% done";
 
 /* Tail batch 2 */
 "ob_demo_msg" = "I'm at the library for the Algorithm final";
-"iac_all_arrow" = "all ↗";
-"iac_n_locked_caps" = "+N LOCKED";
-"iac_all" = "all";
-"unlocked_lc" = "unlocked";
-"iac_first_goal_caps" = "YOUR FIRST GOAL";
-"iac_not_unlocked" = "Not unlocked yet";
-"iac_next_caps" = "NEXT";
-"iac_all_done_caps" = "ALL DONE";
 "ils_requirements" = "What you need for the next status.";
 "ils_level_reqs" = "Level requirements";
 "ils_complete_task" = "Complete tasks";
 "ils_streak_day" = "Streak day";
 "ils_level_up_caps" = "LEVEL UP";
-"ihc_of_week" = "of the Week";
-"ihc_active_days" = "active days";
-"ihc_tip1" = "Strengthen your exam rhythm with short blocks.";
-"ihc_tip2" = "As you keep course balance, your week gets clearer.";
-"ihc_tip3" = "You're catching a good rhythm.";
-"ihc_tip4" = "Start small — the rhythm builds itself.";
-"ias_next" = "Next";
-"ias_rewards" = "Rewards";
-"ias_reward_earned" = "reward earned";
-"ias_unlock_first" = "Unlock your first goal";
-"ijc_focus_min_caps" = "FOCUS MINUTES";
-"ijc_monday_best" = "Monday is your most productive day";
-"ijc_vs_last_week" = "vs last week";
-"ijc_best_week_caps" = "BEST WEEK";
-"ijc_no_data" = "No journey data yet";
 "iplc_header_caps" = "PREMIUM LAB · AI TOOLS";
 "iplc_exam_planner" = "AI Exam Planner";
 "iplc_exam_sub" = "Enter your final date — let AI build your topic plan";
 "iplc_all_free" = "All tools — 3 days free";
 "iplc_already_active" = "This feature is already active!";
-"hdw_week_flow" = "The Week's Flow";
-"hdw_tomorrow_week" = "Tomorrow and Week";
-"hdw_pick_tomorrow" = "Quickly pick a suitable day for tomorrow.";
-"hdw_balance_exam" = "Keep your week balanced as the exam approaches.";
-"hdw_free_spaces" = "You have free spaces in the week.";
-"hdw_see_flow" = "See the week's flow at a glance.";
-"iac_locked_n" = "+%d LOCKED";
 "ils_progressing_lv" = "Progressing toward Lv.%d";
-"ias_targets_active" = "%d targets active";
-"ijc_best_day" = "%1$@ is your most productive day — avg %2$@";
-"hdw_busy_days" = "%d days look busy.";
 
 /* Tail batch 3 */
-"scs_your_coach" = "Your AI Study Coach";
-"scs_share_goals" = "Share your goals and I'll build you a personalized\ndaily study routine.";
-"scs_create_routine" = "Build My Routine";
-"scs_type_message" = "Type your message...";
-"scs_daily_routine_caps" = "DAILY ROUTINE";
 "nm_class_started" = "Class has started.";
 "nm_focus_done" = "Focus completed";
 "ss_not_confirmed" = "Your email doesn't seem confirmed yet.";
@@ -2566,7 +1707,6 @@
 "ais_too_many" = "⚠️ Too many requests. Please wait.";
 "ais_conn" = "⚠️ A connection problem occurred. Check your internet and try again.";
 "ais_generic" = "⚠️ Something went wrong. Please try again.";
-"hde_standard_study" = "Standard study";
 "cm_daily_limit" = "Daily limit: 3 messages (Pro).";
 "cm_weekly_limit" = "Weekly limit: 5 messages (Free).";
 "up_turkey" = "Turkey";
@@ -2574,10 +1714,6 @@
 /* Tail batch 5 */
 "mt_chat_preparing" = "Preparing the chat...";
 "mt_crew_chat_preparing" = "Preparing crew chat...";
-"iws_start_focus_caps" = "START FOCUS";
-"iws_open_week_caps" = "OPEN WEEK";
-"aic_analyzing" = "Analyzing your habits...";
-"aic_no_data" = "No analysis data yet.";
 "scat_no_token" = "Session token not found.";
 "scat_invalid_response" = "Invalid catalog response.";
 "ps_new_crew_msg" = "New crew message";
@@ -2599,7 +1735,6 @@
 "grade_hs_10" = "Grade 10";
 "grade_hs_11" = "Grade 11";
 "grade_hs_12" = "Grade 12";
-"grade_year_fmt" = "Year %@";
 "track_sayisal" = "Science";
 "track_sozel" = "Humanities";
 "track_esit_agirlik" = "Equal Weight";
@@ -2613,14 +1748,12 @@
 "as_summary_failed" = "Couldn't load arena summary.";
 
 /* AI Onboarding + Tour */
-"aio_subtitle" = "Getting to know you";
 "aio_greet_1" = "Hey! I'm Updo AI";
 "aio_greet_2" = "I'll set up your system in about a minute.";
 "aio_q_education" = "First — are you in university or high school?";
 "aio_a_university" = "University";
 "aio_a_highschool" = "High school";
 "aio_q_university" = "Great! Which university? Find it below";
-"aio_q_school" = "Nice! Which school? Find it below";
 "aio_find_university" = "Find your university";
 "aio_uni_confirm" = "%@ — great choice!";
 "aio_q_year" = "Which year are you in?";
@@ -2635,27 +1768,13 @@
 "aio_courses_found" = "Here's what I found — remove any you don't want:";
 "aio_no_courses" = "No ready courses found — you can add your own later.";
 "aio_courses_error" = "I couldn't fetch the courses, but we can continue.";
-"aio_courses_picked" = "Picked %d courses";
 "aio_q_goal" = "Last one — how much do you want to study a day?";
 "aio_goal_value" = "%d min / day";
-"aio_goal_picked" = "%d minutes a day";
 "aio_im_ready" = "I'm ready!";
 "aio_saving" = "Awesome — setting up your system…";
 "aio_done" = "All set! Now let me show you around";
 "aio_save_error" = "I couldn't finish the setup. Try again?";
 "aio_save_error_title" = "Something went wrong";
-"tour_home_sub" = "Your whole day at a glance: tasks, classes and smart suggestions.";
-"tour_home_say" = "This is your command center — start here every morning.";
-"tour_week_sub" = "Your class schedule and weekly plan, always at hand.";
-"tour_week_say" = "Plan your week here so you never miss a class.";
-"tour_focus_sub" = "One-tap focus sessions — solo or with your crew.";
-"tour_focus_say" = "When it's time to focus, one tap is all it takes.";
-"tour_crew_sub" = "Connect with friends, study together, stay motivated.";
-"tour_crew_say" = "You're not alone — rise together with friends.";
-"tour_insights_sub" = "See your rhythm, find your strong days, track your growth.";
-"tour_insights_say" = "Over time, personal insights build up here.";
-"tour_start_app" = "Let's go!";
-"tour_unlock" = "Discover Updo Pro";
 
 /* Spotlight tour */
 "spot_step_of" = "STEP %1$d / %2$d";
@@ -2689,8 +1808,6 @@
 
 /* ── Onboarding Showcase ── */
 "ob_sc_welcome_eyebrow" = "STUDENT OPERATING SYSTEM";
-"ob_sc_welcome_title" = "Updo";
-"ob_sc_welcome_accent" = "with";
 "ob_sc_welcome_sub" = "Tasks, timetable, focus and your friends — in one system.";
 "ob_sc_welcome_cta" = "Let's begin";
 
@@ -2719,18 +1836,6 @@
 "ob_ins_accent" = "insights";
 "ob_ins_benefit" = "AI finds your peak hours and shows your trajectory in clear numbers.";
 
-"ob_mk_next_class" = "NEXT CLASS";
-"ob_mk_streak_unit" = "DAY STREAK";
-"ob_mk_today_progress" = "TODAY";
-"ob_mk_focus_session" = "FOCUS SESSION";
-"ob_mk_room_live" = "LIVE ROOM";
-"ob_mk_studying_now" = "studying";
-"ob_mk_peak_hours" = "PEAK HOURS";
-"ob_mk_this_week" = "THIS WEEK";
-"ob_mk_calculus" = "Calculus";
-"ob_mk_physics" = "Physics";
-"ob_mk_exam" = "Midterm";
-
 /* ── Showcase mocks v2 (faithful) ── */
 "ob_mk_remaining" = "70 min left";
 "ob_mk_remaining_caps" = "70 MIN LEFT";
@@ -2738,14 +1843,11 @@
 "ob_mk_events" = "events";
 "ob_mk_today_flow" = "TODAY'S FLOW";
 "ob_mk_detail" = "DETAIL";
-"ob_mk_focus_sub" = "today";
 "ob_mk_task_sub" = "active";
 "ob_mk_streak_sub" = "days";
 "ob_mk_ready" = "Ready";
-"ob_mk_team_ready" = "Team ready";
 "ob_mk_free_time" = "Free time";
 "ob_mk_in_focus" = "3 in focus";
-"ob_mk_chat_ready" = "Crew chat ready";
 "ob_mk_day_summary" = "2 classes · 3h";
 "ob_mk_progress_active" = "Progress active";
 "ob_mk_days" = "DAYS";
@@ -2753,7 +1855,6 @@
 "ob_mk_level_unit" = "LEVEL";
 "ob_mk_done" = "DONE";
 "ob_mk_focus_sessions" = "SESSIONS";
-"ob_mk_settings" = "SETTINGS";
 "ob_mk_goal" = "GOAL";
 "ob_mk_sound" = "SOUND";
 "ob_mk_workspace" = "YOUR WORKSPACE";
@@ -2763,23 +1864,6 @@
 "ob_sc_more_prompt" = "Want access to even more?";
 
 /* Home — Getting Started / activation card */
-"starter_caps" = "GETTING STARTED";
-"starter_title" = "Make Updo yours";
-"starter_sub" = "Set your rhythm in a few steps — the app fills in as you move.";
-"starter_progress" = "%d/%d done";
-"starter_step_task" = "Add your first task";
-"starter_step_task_sub" = "Clarify today's first step";
-"starter_step_schedule" = "Set up your schedule";
-"starter_step_schedule_sub" = "Add your classes, let Updo shape your day";
-"starter_step_focus" = "Try your first focus session";
-"starter_step_focus_sub" = "A 25-minute deep work block";
-"starter_step_social" = "Add a friend or crew";
-"starter_step_social_sub" = "Work together, stay motivated";
-"starter_hide" = "Hide for now";
-"starter_done_caps" = "YOU'RE ALL SET";
-"starter_done_title" = "Updo now works alongside you";
-"starter_done_sub" = "You've laid the foundation. From here the app gets smarter as you move.";
-"starter_done_cta" = "Finish";
 
 /* Home — Updo AI rule-based suggestion card (no LLM) */
 "ai_sg_eyebrow" = "UPDO AI";
@@ -2788,9 +1872,6 @@
 "ai_sg_exam_head" = "Open a study block for %@ today";
 "ai_sg_exam_reason" = "%@ until your exam — %d min today keeps you ahead.";
 "ai_sg_exam_cta" = "Start studying";
-"ai_sg_class_head" = "Make the time before class count";
-"ai_sg_class_reason" = "%@ in %d min. A short prep sets your rhythm.";
-"ai_sg_class_cta" = "Open schedule";
 "ai_sg_streak_head" = "Protect your streak today";
 "ai_sg_streak_reason" = "You have a %d-day streak and nothing done yet today. One small task is enough.";
 "ai_sg_streak_cta" = "Add a quick task";
@@ -2803,9 +1884,6 @@
 "ai_sg_evening_head" = "Lighten tomorrow now";
 "ai_sg_evening_reason" = "You're closing the day. A step or two for tomorrow eases your morning.";
 "ai_sg_evening_cta" = "Plan tomorrow";
-"ai_sg_default_head" = "Keep going with one small step";
-"ai_sg_default_reason" = "I don't see a clear priority for today. Add a task and Updo handles the rest.";
-"ai_sg_default_cta" = "Add a task";
 
 /* Home — Updo AI social challenge mode (rule-based, no LLM) */
 "ai_sg_challenge_chip" = "CHALLENGE";
@@ -2849,9 +1927,6 @@
 "ph_ai_suggestions" = "Updo AI Suggestions";
 "ph_ai_suggestions_sub" = "Let Updo AI nudge you when your plan is empty";
 "ai_exam_days_n" = "%d days";
-"ai_sg_tasks_head" = "Keep going on your tasks";
-"ai_sg_tasks_reason" = "Your steps for today are ready. Finish one to keep your rhythm.";
-"ai_sg_tasks_cta" = "Open tasks";
 "ai_sg_open_chat" = "Chat with Updo AI";
 "ai_sg_ch_done" = "Challenge complete";
 "ai_sg_ch_progress_tasks" = "%d / %d tasks";
@@ -2862,19 +1937,12 @@
 "insd_today" = "Today";
 "insd_sessions_label" = "Sessions";
 "insd_total" = "Total";
-"insd_streak_label" = "Streak";
-"insd_tasks_label" = "Tasks this week";
-"insd_recent_caps" = "RECENT SESSIONS";
 "insd_empty" = "No focus sessions yet. Start your first one.";
 "insd_h" = "h";
 "insd_min" = "m";
-"insd_yesterday" = "Yesterday";
-"insd_days_ago" = "%d days ago";
-"insd_day_unit" = "days";
 "insd_focus_untitled" = "Focus";
 "insd_tasks_caps" = "TASKS · THIS WEEK";
 "insd_completed_label" = "completed";
 "insd_focus_detail_title" = "Focus History";
 "insd_avg" = "Avg session";
 "insd_all_sessions_caps" = "ALL SESSIONS";
-"insd_tap_hint" = "Tap for details";

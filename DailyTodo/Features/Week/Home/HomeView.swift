@@ -47,6 +47,7 @@ struct HomeView: View {
     @State private var showStreakBubble = false
     @State private var streakBubbleMode: StreakBubbleMode = .info
     @State private var bubbleStreakValue = 0
+    @AppStorage("home.weeklySummaryDismissedWeek") private var weeklySummaryDismissedWeek = ""
     @Environment(\.scenePhase) private var scenePhase
 
     private let lastSeenStreakKey = "home.lastSeenStreak"
@@ -120,6 +121,11 @@ struct HomeView: View {
                     topBar
                     heroSection
                     focusCard
+
+                    if showWeeklySummaryCard {
+                        weeklySummaryCard
+                    }
+
                     timelineSection
 
                     Color.clear.frame(height: focusSession.isSessionActive ? 168 : 96)
@@ -133,6 +139,8 @@ struct HomeView: View {
                 StreakBubble(
                     streak: bubbleStreakValue,
                     mode: streakBubbleMode,
+                    todayTaskDone: completedTodayCount > 0,
+                    todayFocusDone: hasFocusToday,
                     onClose: { showStreakBubble = false }
                 )
                 .padding(.leading, 14)
@@ -452,6 +460,203 @@ private extension HomeView {
         .offset(y: pageAppeared ? 0 : 16)
         .scaleEffect(pageAppeared ? 1.0 : 0.985, anchor: .topLeading)
         .animation(.spring(response: 0.68, dampingFraction: 0.84).delay(0.05), value: pageAppeared)
+    }
+}
+
+// MARK: - Weekly summary card (Sundays)
+//
+// A Sunday-only recap built from the same real data Insights shows: total
+// focus, completed tasks, the strongest day and the streak. Dismissing it
+// hides it for the rest of that week.
+
+private extension HomeView {
+
+    var currentWeekKey: String {
+        let comps = Calendar.current.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)
+        return String(format: "%04d-W%02d", comps.yearForWeekOfYear ?? 0, comps.weekOfYear ?? 0)
+    }
+
+    var showWeeklySummaryCard: Bool {
+        guard Calendar.current.component(.weekday, from: now) == 1 else { return false }
+        guard weeklySummaryDismissedWeek != currentWeekKey else { return false }
+        // Only recap a week that actually has something honest to show.
+        return weeklyFocusMinutes > 0 || weeklyCompletedTaskCount > 0
+    }
+
+    var weeklyCompletedTaskCount: Int {
+        let cal = Calendar.current
+        guard let weekStart = cal.dateInterval(of: .weekOfYear, for: now)?.start else { return 0 }
+
+        return store.items.filter { task in
+            guard task.isDone, let done = task.completedAt else { return false }
+            return done >= weekStart
+        }.count
+    }
+
+    /// (localized weekday name, minutes) of the week's strongest focus day.
+    var weeklyBestFocusDay: (name: String, minutes: Int)? {
+        let cal = Calendar.current
+        guard let weekStart = cal.dateInterval(of: .weekOfYear, for: now)?.start else { return nil }
+
+        var minutesByDay: [Date: Int] = [:]
+        for record in ownedFocusRecords where record.countsTowardStats && record.endedAt >= weekStart {
+            let day = cal.startOfDay(for: record.endedAt)
+            minutesByDay[day, default: 0] += record.completedSeconds / 60
+        }
+
+        guard let best = minutesByDay.max(by: { $0.value < $1.value }), best.value > 0 else { return nil }
+
+        // Calendar weekday is 1 = Sunday; the localized helper wants 0 = Monday.
+        let mondayBased = (cal.component(.weekday, from: best.key) + 5) % 7
+        return (localizedWeekdayFull(mondayBased), best.value)
+    }
+
+    var weeklySummaryCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 9) {
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [accentGold, accentSecondary],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: 22, height: 1)
+
+                Text(tr("hv_weekly_caps"))
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(2.2)
+                    .foregroundStyle(accentGold)
+
+                Spacer()
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.22)) {
+                        weeklySummaryDismissedWeek = currentWeekKey
+                    }
+                } label: {
+                    Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
+                        .font(.system(size: 10, weight: .black))
+                        .foregroundStyle(.white.opacity(0.45))
+                        .frame(width: 24, height: 24)
+                        .background(Circle().fill(Color.white.opacity(0.07)))
+                }
+                .buttonStyle(.plain)
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 7) {
+                Text(tr("hv_weekly_title"))
+                    .font(.system(size: 21, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text(tr("hv_weekly_title_italic"))
+                    .font(.system(size: 19, weight: .regular, design: .serif))
+                    .italic()
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [accentGold, accentSecondary],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+            }
+
+            HStack(spacing: 10) {
+                weeklyStat(
+                    icon: "scope",
+                    value: formatFocusDuration(weeklyFocusMinutes),
+                    label: tr("hv_weekly_focus_label"),
+                    tint: accentCyan
+                )
+
+                weeklyStat(
+                    icon: "checkmark.circle.fill",
+                    value: "\(weeklyCompletedTaskCount)",
+                    label: tr("hv_weekly_tasks_label"),
+                    tint: accentGreen
+                )
+
+                if let best = weeklyBestFocusDay {
+                    weeklyStat(
+                        icon: "trophy.fill",
+                        value: best.name,
+                        label: tr("hv_weekly_best_label"),
+                        tint: accentGold
+                    )
+                }
+            }
+
+            if progression.currentStreak > 0 {
+                HStack(spacing: 6) {
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 12, weight: .black))
+                        .foregroundStyle(accentWarm)
+
+                    Text(tr("hv_weekly_streak_line", progression.currentStreak))
+                        .font(.system(size: 12.5, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.66))
+                }
+            }
+        }
+        .padding(17)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            accentGold.opacity(0.075),
+                            Color.white.opacity(0.035)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(accentGold.opacity(0.16), lineWidth: 1)
+                )
+        )
+        .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
+    }
+
+    func weeklyStat(icon: String, value: String, label: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .black))
+                    .foregroundStyle(tint)
+
+                Text(value)
+                    .font(.system(size: 15, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+
+            Text(label)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(.white.opacity(0.44))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 11)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.white.opacity(0.045))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                )
+        )
+    }
+
+    func formatFocusDuration(_ minutes: Int) -> String {
+        let h = minutes / 60
+        let m = minutes % 60
+        if h <= 0 { return tr("hv_weekly_min_fmt", m) }
+        if m == 0 { return tr("hv_weekly_hour_fmt", h) }
+        return tr("hv_weekly_hour_min_fmt", h, m)
     }
 }
 
@@ -2346,6 +2551,10 @@ struct StreakBubble: View {
 
     let streak: Int
     let mode: StreakBubbleMode
+    /// Today's two streak requirements — teaches the "task AND focus" rule at
+    /// a glance and shows which half is still missing before midnight.
+    var todayTaskDone: Bool = false
+    var todayFocusDone: Bool = false
     var onClose: () -> Void = {}
 
     @State private var shown = false
@@ -2413,6 +2622,9 @@ struct StreakBubble: View {
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.white.opacity(0.72))
                     .fixedSize(horizontal: false, vertical: true)
+
+                todayStatusRow
+                    .padding(.top, 4)
             }
             .padding(14)
             .background(
@@ -2433,6 +2645,43 @@ struct StreakBubble: View {
                 shown = true
             }
         }
+    }
+
+    /// "Bugün: Görev ✓ · Focus ✗" — the two halves of the daily streak rule.
+    private var todayStatusRow: some View {
+        HStack(spacing: 8) {
+            Text(tr("home_streak_today_label"))
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(.white.opacity(0.45))
+
+            statusChip(done: todayTaskDone, label: tr("home_streak_chip_task"))
+            statusChip(done: todayFocusDone, label: tr("home_streak_chip_focus"))
+
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func statusChip(done: Bool, label: String) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: done ? "checkmark.circle.fill" : "circle.dashed")
+                .font(.system(size: 12, weight: .black))
+                .foregroundStyle(done ? Color(arenaHex: "#34D399") : .white.opacity(0.38))
+
+            Text(label)
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundStyle(done ? .white.opacity(0.9) : .white.opacity(0.5))
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background(
+            Capsule()
+                .fill(done ? Color(arenaHex: "#34D399").opacity(0.13) : Color.white.opacity(0.05))
+                .overlay(
+                    Capsule()
+                        .stroke(done ? Color(arenaHex: "#34D399").opacity(0.32) : Color.white.opacity(0.10),
+                                lineWidth: 1)
+                )
+        )
     }
 
     private var bubbleFill: LinearGradient {

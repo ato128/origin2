@@ -105,10 +105,32 @@ struct FocusIdentityView: View {
             }
 
             // A subtle, single brand mark — quiet identity, not a loud watermark.
-            UpdoWidgetLogo(size: 86, tint: theme.mark)
-                .opacity(0.5)
-                .frame(width: 78)
+            VStack(spacing: 12) {
+                UpdoWidgetLogo(size: 62, tint: theme.mark)
+                    .opacity(0.5)
+
+                Link(destination: URL(string: "dailytodo://focus?autostart=1")!) {
+                    startPill
+                }
+            }
+            .frame(width: 84)
         }
+    }
+
+    /// One-tap session start — opens the app and launches focus with the
+    /// user's last settings.
+    private var startPill: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "play.fill")
+                .font(.system(size: 9, weight: .bold))
+
+            Text(widgetLocalized("Başlat", "Start"))
+                .font(.system(size: 12, weight: .semibold))
+        }
+        .foregroundStyle(Color.black.opacity(0.85))
+        .padding(.horizontal, 13)
+        .padding(.vertical, 7)
+        .background(Capsule().fill(theme.accent))
     }
 
     // MARK: Pieces

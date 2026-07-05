@@ -376,6 +376,11 @@ private extension CrewView {
                 weeklyFocusMinutes: realFocusMinutes,
                 rankText: nil,
                 streakDays: streakDays,
+                thisWeekFocusMinutes: CrewHomeFormatters.weeklyFocusMinutes(
+                    records: crewStore.crewFocusRecords,
+                    crewID: crew.id
+                ),
+                weeklyGoalMinutes: CrewWeeklyGoalStore.goalMinutes(for: crew.id),
                 lastMessageText: crew.last_message_text,
                 unreadCount: myMemberState?.unread_count ?? 0,
                 isPinned: myMemberState?.is_pinned ?? false,

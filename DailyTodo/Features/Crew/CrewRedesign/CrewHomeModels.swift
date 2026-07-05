@@ -349,6 +349,11 @@ struct CrewSocialCrewCardData: Identifiable, Equatable {
     let weeklyFocusMinutes: Int
     let rankText: String?
     let streakDays: Int
+
+    // Weekly focus goal. `weeklyGoalMinutes` 0 = no goal set (row hidden);
+    // `thisWeekFocusMinutes` is the crew's real focus total for the current week.
+    let thisWeekFocusMinutes: Int
+    let weeklyGoalMinutes: Int
     
     let lastMessageText: String?
     let unreadCount: Int
@@ -367,6 +372,15 @@ struct CrewSocialCrewCardData: Identifiable, Equatable {
 
     var focusTimeText: String {
         CrewHomeFormatters.focusTime(weeklyFocusMinutes)
+    }
+
+    var goalProgress: Double {
+        guard weeklyGoalMinutes > 0 else { return 0 }
+        return min(max(Double(thisWeekFocusMinutes) / Double(weeklyGoalMinutes), 0), 1)
+    }
+
+    var goalProgressText: String {
+        "\(CrewHomeFormatters.focusTime(thisWeekFocusMinutes)) / \(CrewHomeFormatters.focusTime(weeklyGoalMinutes))"
     }
 
     var memberText: String {
@@ -618,6 +632,33 @@ enum CrewCommunityMockFactory {
 
 }
 
+// MARK: - Weekly focus goal (device-local)
+//
+// The goal lives on this device only (no backend column yet) — but progress
+// against it is always the crew's REAL weekly focus minutes.
+
+enum CrewWeeklyGoalStore {
+
+    static let presetsMinutes = [120, 300, 600, 1200]  // 2h, 5h, 10h, 20h
+
+    private static func key(_ crewID: UUID) -> String {
+        "crew.weeklyGoalMinutes.\(crewID.uuidString)"
+    }
+
+    /// 0 = no goal set.
+    static func goalMinutes(for crewID: UUID) -> Int {
+        max(0, UserDefaults.standard.integer(forKey: key(crewID)))
+    }
+
+    static func setGoalMinutes(_ minutes: Int, for crewID: UUID) {
+        if minutes <= 0 {
+            UserDefaults.standard.removeObject(forKey: key(crewID))
+        } else {
+            UserDefaults.standard.set(minutes, forKey: key(crewID))
+        }
+    }
+}
+
 // MARK: - Formatters
 
 enum CrewHomeFormatters {
@@ -651,6 +692,25 @@ enum CrewHomeFormatters {
         }
 
         return "\(value)"
+    }
+
+    /// The crew's real focus total (minutes) for the current calendar week.
+    static func weeklyFocusMinutes(
+        records: [CrewFocusRecordDTO],
+        crewID: UUID,
+        now: Date = Date()
+    ) -> Int {
+        let cal = Calendar.current
+        guard let weekStart = cal.dateInterval(of: .weekOfYear, for: now)?.start else { return 0 }
+
+        return records
+            .filter { $0.crew_id == crewID }
+            .compactMap { record -> Int? in
+                guard let created = record.created_at.flatMap({ CrewDateParser.parse($0) }),
+                      created >= weekStart else { return nil }
+                return record.minutes
+            }
+            .reduce(0, +)
     }
 
     /// REAL crew streak: consecutive days (counting back from today) on which the

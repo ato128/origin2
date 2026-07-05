@@ -1301,6 +1301,10 @@ private struct CrewSocialCrewCard: View {
                 }
             }
 
+            if crew.weeklyGoalMinutes > 0 {
+                weeklyGoalRow
+            }
+
             HStack(spacing: 10) {
                 CrewMiniAvatarStack(count: crew.memberCount, accentHex: crew.colorHex)
 
@@ -1350,6 +1354,68 @@ private struct CrewSocialCrewCard: View {
                         .stroke(.white.opacity(0.070), lineWidth: 1)
                 )
         )
+    }
+
+    /// Weekly focus goal: real this-week minutes vs the crew's target.
+    private var weeklyGoalRow: some View {
+        let reached = crew.goalProgress >= 1
+
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text(tr("crew_goal_caps"))
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(1.4)
+                    .foregroundStyle(.white.opacity(0.34))
+
+                Spacer()
+
+                if reached {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 10, weight: .black))
+                        Text(tr("crew_goal_reached"))
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                    }
+                    .foregroundStyle(Color(arenaHex: CrewArenaPalette.liveGreen))
+                } else {
+                    Text(crew.goalProgressText)
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.52))
+                }
+            }
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(.white.opacity(0.075))
+                        .frame(height: 5)
+
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: reached
+                                ? [
+                                    Color(arenaHex: CrewArenaPalette.liveGreen),
+                                    Color(arenaHex: CrewArenaPalette.gold)
+                                ]
+                                : [
+                                    Color(arenaHex: CrewArenaPalette.gold),
+                                    Color(arenaHex: crew.colorHex)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(
+                            width: barFilled
+                            ? max(10, geo.size.width * crew.goalProgress)
+                            : 10,
+                            height: 5
+                        )
+                }
+            }
+            .frame(height: 5)
+        }
     }
 }
 

@@ -876,6 +876,15 @@ struct DailyTodoApp: App {
     private func handleFocusInviteURL(_ url: URL) {
         NotificationCenter.default.post(name: .openFocusTabFromHome, object: nil)
 
+        // Widget "start" button: flag a pending autostart; FocusView consumes it
+        // once it is on screen (works from cold launch too).
+        if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+           components.queryItems?.contains(where: { $0.name == "autostart" && $0.value == "1" }) == true {
+            UserDefaults.standard.set(true, forKey: "focus.pendingWidgetAutostart")
+            NotificationCenter.default.post(name: .startFocusFromWidget, object: nil)
+            return
+        }
+
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let crewIDString = components.queryItems?.first(where: { $0.name == "crew_id" })?.value,
               let sessionIDString = components.queryItems?.first(where: { $0.name == "session_id" })?.value,
