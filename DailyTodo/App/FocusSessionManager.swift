@@ -648,12 +648,12 @@ final class FocusSessionManager: ObservableObject {
     }
     
     private func canFinalizeSession(_ session: FocusSessionState) -> Bool {
-        guard currentUserID != nil else {
-            return false
-        }
-
         switch session.mode {
         case .personal, .friend:
+            // No hard dependency: the record's owner falls back to the persisted
+            // "current_user_id" (resolvedOwnerID), and orphan records are still
+            // counted by FocusStats. Blocking here used to silently swallow the
+            // celebration screen when the app was opened on a non-focus tab.
             return true
 
         case .crew:
@@ -1325,12 +1325,6 @@ final class FocusSessionManager: ObservableObject {
                 guard !session.isPaused else { return }
                 guard session.endDate <= Date() else { return }
 
-                // If userID is still absent, keep waiting (don't recurse)
-                guard self.currentUserID != nil else {
-                    Log.debug("⏳ EXPIRED FOCUS still waiting for userID (\(reason))")
-                    continue
-                }
-
                 if self.canFinalizeSession(session) {
                     Log.debug("✅ RECONCILE EXPIRED FOCUS (retry):", reason)
                     self.finishSession(session)
@@ -1338,7 +1332,15 @@ final class FocusSessionManager: ObservableObject {
                 }
             }
 
-            Log.debug("⛔ EXPIRED FOCUS: dependencies never ready after retries, giving up (\(reason))")
+            // Last resort (crew deps never became ready): finalize locally
+            // without the backend write — the user still gets the record and
+            // the celebration; a stuck "active" session helps no one.
+            if let session = self.currentSession,
+               !session.isPaused,
+               session.endDate <= Date() {
+                Log.debug("⚠️ EXPIRED FOCUS: finalizing WITHOUT backend after retries (\(reason))")
+                self.completeAndPersist(session, shouldPersistCrewBackend: false)
+            }
         }
     }
 

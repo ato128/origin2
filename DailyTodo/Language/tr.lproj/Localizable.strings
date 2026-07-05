@@ -563,6 +563,18 @@
 "fd_cmp_level" = "SEVİYE";
 "fd_cmp_focus" = "FOCUS";
 
+/* Focus celebration — redesign */
+"fcv_eyebrow_personal" = "FOCUS · TAMAMLANDI";
+"fcv_eyebrow_crew" = "CREW FOCUS · TAMAMLANDI";
+"fcv_eyebrow_friend" = "FRIEND FOCUS · TAMAMLANDI";
+"fcv_congrats" = "Tebrikler,";
+"fcv_last_time_line" = "Geçen sefer %d dk";
+"fcv_row_today" = "bugün";
+"fcv_row_streak" = "seri";
+"fcv_row_sessions" = "seans";
+"fcv_done_cta" = "Tamam";
+"fcv_shorter" = "Bir sonraki seferde daha uzun odaklanabilirsin 💪";
+
 /* Focus celebration — streak guard */
 "fcv_streak_guard_caps" = "BUGÜNÜN SERİSİ";
 "fcv_streak_safe" = "Bugünün serisi güvende — görev ve focus tamam.";

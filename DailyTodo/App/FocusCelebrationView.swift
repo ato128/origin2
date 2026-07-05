@@ -16,7 +16,6 @@ struct FocusCelebrationView: View {
     @State private var pulse = false
     @State private var iconBounce = false
     @State private var showStats = false
-    @State private var burstProgress: CGFloat = 0
 
     private var modeAccent: Color {
         switch summary.mode {
@@ -36,17 +35,9 @@ struct FocusCelebrationView: View {
 
     private var headerEyebrow: String {
         switch summary.mode {
-        case .personal: return "PERSONAL FOCUS · TAMAMLANDI"
-        case .crew:     return "CREW FOCUS · TAMAMLANDI"
-        case .friend:   return "FRIEND FOCUS · TAMAMLANDI"
-        }
-    }
-
-    private var modeIcon: String {
-        switch summary.mode {
-        case .personal: return "person.fill"
-        case .crew:     return "person.3.fill"
-        case .friend:   return "person.2.fill"
+        case .personal: return tr("fcv_eyebrow_personal")
+        case .crew:     return tr("fcv_eyebrow_crew")
+        case .friend:   return tr("fcv_eyebrow_friend")
         }
     }
 
@@ -78,7 +69,7 @@ struct FocusCelebrationView: View {
         }
 
         if delta < 0 {
-            return "Bir sonraki seferde daha uzun odaklanabilirsin 💪"
+            return tr("fcv_shorter")
         }
 
         return tr("fcv_matched_time")
@@ -89,22 +80,21 @@ struct FocusCelebrationView: View {
             backgroundLayer.ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
-                    Color.clear.frame(height: 12)
+                VStack(spacing: 26) {
+                    Color.clear.frame(height: 16)
 
                     headerSection
-                    medalSection
-                    durationSection
+                    heroDurationSection
 
                     if summary.previousMinutes != nil {
-                        comparisonSection
+                        comparisonLine
                     }
 
-                    statsGrid
+                    statsRow
                     streakGuardSection
-                    encouragementCard
+                    encouragementLine
 
-                    Color.clear.frame(height: 12)
+                    Color.clear.frame(height: 8)
 
                     closeButton
                 }
@@ -124,35 +114,45 @@ struct FocusCelebrationView: View {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.84).delay(0.35)) {
                 showStats = true
             }
-            withAnimation(.easeOut(duration: 1.1).delay(0.15)) {
-                burstProgress = 1
-            }
         }
         .onDisappear { pulse = false }
     }
 
+    private var heroItalicWord: String {
+        switch summary.mode {
+        case .personal: return summary.goal.title.lowercased()
+        case .crew:     return "crew"
+        case .friend:   return "friend"
+        }
+    }
+
     private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(spacing: 10) {
             HStack(spacing: 8) {
                 Rectangle()
-                    .fill(modeAccent)
+                    .fill(modeAccent.opacity(0.7))
                     .frame(width: 22, height: 1)
 
                 Text(headerEyebrow)
-                    .font(.system(size: 11, weight: .black, design: .monospaced))
-                    .tracking(2.2)
+                    .font(.system(size: 10.5, weight: .black, design: .monospaced))
+                    .tracking(2.4)
                     .foregroundStyle(modeAccent)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
+
+                Rectangle()
+                    .fill(modeAccent.opacity(0.7))
+                    .frame(width: 22, height: 1)
             }
 
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text("Tebrikler")
-                    .font(.system(size: 42, weight: .black))
+            HStack(alignment: .firstTextBaseline, spacing: 9) {
+                Text(tr("fcv_congrats"))
+                    .font(.system(size: 38, weight: .black))
                     .foregroundStyle(.white)
 
-                Image(systemName: "party.popper.fill")
-                    .font(.system(size: 32, weight: .bold))
+                Text(heroItalicWord)
+                    .font(.system(size: 32, weight: .regular, design: .serif))
+                    .italic()
                     .foregroundStyle(
                         LinearGradient(
                             colors: [modeAccent, modeSecondaryAccent],
@@ -160,219 +160,158 @@ struct FocusCelebrationView: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .scaleEffect(iconBounce ? 1.0 : 0.6)
-                    .rotationEffect(.degrees(iconBounce ? 0 : -20))
             }
             .lineLimit(1)
             .minimumScaleFactor(0.7)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity)
+        .opacity(iconBounce ? 1 : 0)
+        .offset(y: iconBounce ? 0 : 10)
     }
 
-    private var medalSection: some View {
+    /// The hero: the minutes in the app's focus-timer typography (serif italic),
+    /// breathing quietly on a soft glow — no medals, no confetti noise.
+    private var heroDurationSection: some View {
         ZStack {
-            // One-shot radial burst: 10 rays expand outward and fade, runs once.
-            ForEach(0..<10, id: \.self) { i in
-                Capsule()
-                    .fill((i % 2 == 0 ? modeAccent : modeSecondaryAccent).opacity(0.9))
-                    .frame(width: 4, height: 18)
-                    .offset(y: -(46 + burstProgress * 78))
-                    .rotationEffect(.degrees(Double(i) / 10 * 360))
-                    .opacity(burstProgress < 0.05 ? 0 : (1 - Double(burstProgress)))
+            Circle()
+                .fill(modeAccent.opacity(pulse ? 0.16 : 0.08))
+                .frame(width: 260, height: 260)
+                .blur(radius: 60)
+
+            VStack(spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("\(summary.durationMinutes)")
+                        .font(.system(size: 108, weight: .regular, design: .serif))
+                        .italic()
+                        .monospacedDigit()
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.white, .white.opacity(0.72)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .contentTransition(.numericText())
+
+                    Text("dk")
+                        .font(.system(size: 30, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(.white.opacity(0.55))
+                }
+
+                Text(tr("fcv_min_completed"))
+                    .font(.system(size: 14.5, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.55))
             }
-
-            Circle()
-                .fill(modeAccent.opacity(pulse ? 0.22 : 0.10))
-                .frame(width: 200, height: 200)
-                .blur(radius: 40)
-
-            Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            modeAccent.opacity(0.95),
-                            modeSecondaryAccent.opacity(0.85)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 130, height: 130)
-                .overlay(
-                    Circle()
-                        .stroke(Color.white.opacity(0.25), lineWidth: 3)
-                )
-                .shadow(color: modeAccent.opacity(0.5), radius: 24, y: 12)
-
-            Image(systemName: "trophy.fill")
-                .font(.system(size: 50, weight: .black))
-                .foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.3), radius: 6, y: 3)
-                .scaleEffect(iconBounce ? 1.0 : 0.5)
-                .opacity(iconBounce ? 1.0 : 0.0)
+            .scaleEffect(iconBounce ? 1.0 : 0.92)
+            .opacity(iconBounce ? 1.0 : 0.0)
         }
-        .frame(height: 200)
+        .frame(height: 210)
     }
 
-    private var durationSection: some View {
-        VStack(spacing: 8) {
-            Text("\(summary.durationMinutes)")
-                .font(.system(size: 96, weight: .black, design: .rounded))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [.white, .white.opacity(0.85)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .contentTransition(.numericText())
-
-            Text(tr("fcv_min_completed"))
-                .font(.system(size: 16, weight: .heavy, design: .rounded))
-                .foregroundStyle(.white.opacity(0.65))
-        }
-        .opacity(showStats ? 1.0 : 0.0)
-        .offset(y: showStats ? 0 : 8)
-    }
-
-    private var comparisonSection: some View {
-        HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(tr("fcv_last_time_caps"))
-                    .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .tracking(1.4)
-                    .foregroundStyle(.white.opacity(0.42))
-
-                Text("\(summary.previousMinutes ?? 0) dk")
-                    .font(.system(size: 22, weight: .black, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.85))
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+    /// One quiet line: "Geçen sefer 20 dk" + delta pill. The old full-width
+    /// card said the same thing with three labels and a border.
+    @ViewBuilder
+    private var comparisonLine: some View {
+        HStack(spacing: 10) {
+            Text(tr("fcv_last_time_line", summary.previousMinutes ?? 0))
+                .font(.system(size: 13.5, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.52))
 
             if let delta = deltaInfo {
-                HStack(spacing: 6) {
+                HStack(spacing: 5) {
                     Image(systemName: delta.icon)
-                        .font(.system(size: 14, weight: .black))
+                        .font(.system(size: 10, weight: .black))
 
                     Text(delta.text)
-                        .font(.system(size: 14, weight: .black, design: .monospaced))
+                        .font(.system(size: 12, weight: .bold))
+                        .monospacedDigit()
                 }
                 .foregroundStyle(delta.color)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(
-                    Capsule()
-                        .fill(delta.color.opacity(0.14))
-                        .overlay(
-                            Capsule()
-                                .stroke(delta.color.opacity(0.28), lineWidth: 1)
-                        )
-                )
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(delta.color.opacity(0.13)))
             }
-
-            VStack(alignment: .trailing, spacing: 6) {
-                Text("BU SEFER")
-                    .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .tracking(1.4)
-                    .foregroundStyle(modeAccent.opacity(0.85))
-
-                Text("\(summary.durationMinutes) dk")
-                    .font(.system(size: 22, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-            }
-            .frame(maxWidth: .infinity, alignment: .trailing)
         }
-        .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            modeAccent.opacity(0.07),
-                            Color.white.opacity(0.04)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(modeAccent.opacity(0.15), lineWidth: 1)
-                )
-        )
+        .frame(maxWidth: .infinity)
         .opacity(showStats ? 1.0 : 0.0)
-        .offset(y: showStats ? 0 : 12)
     }
 
-    private var statsGrid: some View {
-        HStack(spacing: 10) {
-            statCard(
-                title: tr("wv_today_caps"),
-                value: "\(summary.totalTodayMinutes)",
-                subtitle: "dk toplam",
-                icon: "calendar"
+    /// One hairline-divided row instead of three bordered boxes.
+    private var statsRow: some View {
+        HStack(spacing: 0) {
+            statCell(
+                value: "\(summary.totalTodayMinutes) dk",
+                label: tr("fcv_row_today")
             )
 
-            statCard(
-                title: tr("hv_streak_caps"),
+            statHairline
+
+            statCell(
                 value: "\(summary.streakDays)",
-                subtitle: tr("hd_days_streak"),
-                icon: "flame.fill"
+                label: tr("fcv_row_streak"),
+                icon: "flame.fill",
+                iconTint: Color(arenaHex: AppArenaPalette.gold)
             )
 
-            statCard(
-                title: summary.mode == .personal ? "MOD" : tr("fcv_person_caps"),
-                value: summary.mode == .personal ? summary.goal.title : "\(summary.participantCount)",
-                subtitle: summary.mode == .personal ? summary.goal.subtitle : tr("fcv_participant_lc"),
-                icon: modeIcon
+            statHairline
+
+            statCell(
+                value: summary.mode == .personal
+                    ? "\(summary.completedSessionsToday)"
+                    : "\(summary.participantCount)",
+                label: summary.mode == .personal
+                    ? tr("fcv_row_sessions")
+                    : tr("fcv_participant_lc")
             )
         }
+        .padding(.vertical, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color.white.opacity(0.035))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                )
+        )
         .opacity(showStats ? 1.0 : 0.0)
         .offset(y: showStats ? 0 : 14)
     }
 
-    private func statCard(
-        title: String,
-        value: String,
-        subtitle: String,
-        icon: String
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.system(size: 11, weight: .black))
-                    .foregroundStyle(modeAccent)
+    private var statHairline: some View {
+        Rectangle()
+            .fill(Color.white.opacity(0.08))
+            .frame(width: 1, height: 30)
+    }
 
-                Text(title)
-                    .font(.system(size: 9, weight: .black, design: .monospaced))
-                    .tracking(1.2)
-                    .foregroundStyle(modeAccent)
+    private func statCell(
+        value: String,
+        label: String,
+        icon: String? = nil,
+        iconTint: Color = .white
+    ) -> some View {
+        VStack(spacing: 4) {
+            HStack(spacing: 4) {
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(iconTint)
+                }
+
+                Text(value)
+                    .font(.system(size: 17, weight: .bold))
+                    .monospacedDigit()
+                    .foregroundStyle(.white)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
 
-            Text(value)
-                .font(.system(size: 18, weight: .black, design: .rounded))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-
-            Text(subtitle)
-                .font(.system(size: 10, weight: .heavy, design: .rounded))
+            Text(label)
+                .font(.system(size: 10.5, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.45))
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .frame(height: 100)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.045))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                )
-        )
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Streak guard (today's task ✓ · focus ✓ + one-tap task complete)
@@ -497,57 +436,40 @@ struct FocusCelebrationView: View {
         )
     }
 
-    private var encouragementCard: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 18, weight: .black))
-                .foregroundStyle(modeAccent)
-                .frame(width: 40, height: 40)
-                .background(
-                    Circle()
-                        .fill(modeAccent.opacity(0.14))
-                )
-
-            Text(encouragementText)
-                .font(.system(size: 14, weight: .heavy, design: .rounded))
-                .foregroundStyle(.white.opacity(0.92))
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.04))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
-                )
-        )
-        .opacity(showStats ? 1.0 : 0.0)
+    /// A quiet serif-italic line — the voice of the app, not another box.
+    private var encouragementLine: some View {
+        Text(encouragementText)
+            .font(.system(size: 15.5, weight: .regular, design: .serif))
+            .italic()
+            .foregroundStyle(.white.opacity(0.62))
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 12)
+            .opacity(showStats ? 1.0 : 0.0)
     }
 
     private var closeButton: some View {
         Button(action: onClose) {
             HStack(spacing: 8) {
-                Text("Tamam")
-                    .font(.system(size: 17, weight: .black, design: .rounded))
+                Text(tr("fcv_done_cta"))
+                    .font(.system(size: 16.5, weight: .black, design: .rounded))
 
                 Image(systemName: "arrow.right")
-                    .font(.system(size: 14, weight: .black))
+                    .font(.system(size: 13, weight: .black))
             }
             .foregroundStyle(.black)
             .frame(maxWidth: .infinity)
-            .frame(height: 60)
+            .frame(height: 54)
             .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [modeAccent, modeSecondaryAccent],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
+                Capsule().fill(
+                    LinearGradient(
+                        colors: [modeAccent, modeSecondaryAccent],
+                        startPoint: .leading,
+                        endPoint: .trailing
                     )
+                )
             )
-            .shadow(color: modeAccent.opacity(0.4), radius: 18, y: 10)
+            .shadow(color: modeAccent.opacity(0.32), radius: 16, y: 8)
         }
         .buttonStyle(.plain)
     }

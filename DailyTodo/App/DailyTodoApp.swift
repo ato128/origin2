@@ -240,6 +240,10 @@ struct DailyTodoApp: App {
         Analytics.shared.configure()
         Analytics.shared.track("app_opened")
 
+        // Wire focus dependencies at launch — an expired background session must
+        // finalize (and show its celebration) no matter which tab opens first.
+        focusSession.configure(sessionStore: session, crewStore: crewStore)
+
         observeAPNSTokenNotificationIfNeeded()
 
         Task {
@@ -455,20 +459,25 @@ struct DailyTodoApp: App {
             return nil
         }()
      
+        // Real numbers — a push-built summary must not invent a streak.
+        let context = ModelContext(container)
+        let records = (try? context.fetch(FetchDescriptor<FocusSessionRecord>())) ?? []
+        let todayMinutes = FocusStats.todayMinutes(records, for: session.currentUser?.id.uuidString)
+
         let summary = FocusCompletionSummary(
             id: UUID(),
             mode: .crew,
             durationMinutes: durationMinutes,
             completedAt: Date(),
-            totalTodayMinutes: durationMinutes,
-            streakDays: 1,
+            totalTodayMinutes: max(todayMinutes, durationMinutes),
+            streakDays: ProgressionManager.shared.currentStreak,
             completedSessionsToday: 1,
             goal: .study,
             style: .silent,
             participantCount: 1,
             previousMinutes: previousMinutes
         )
-     
+
         focusSession.completionSummary = summary
     }
 

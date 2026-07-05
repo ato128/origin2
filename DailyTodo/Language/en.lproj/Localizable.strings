@@ -561,6 +561,18 @@
 "fd_cmp_level" = "LEVEL";
 "fd_cmp_focus" = "FOCUS";
 
+/* Focus celebration — redesign */
+"fcv_eyebrow_personal" = "FOCUS · COMPLETE";
+"fcv_eyebrow_crew" = "CREW FOCUS · COMPLETE";
+"fcv_eyebrow_friend" = "FRIEND FOCUS · COMPLETE";
+"fcv_congrats" = "Well done,";
+"fcv_last_time_line" = "Last time %d min";
+"fcv_row_today" = "today";
+"fcv_row_streak" = "streak";
+"fcv_row_sessions" = "sessions";
+"fcv_done_cta" = "Done";
+"fcv_shorter" = "You can go longer next time 💪";
+
 /* Focus celebration — streak guard */
 "fcv_streak_guard_caps" = "TODAY'S STREAK";
 "fcv_streak_safe" = "Today's streak is safe — task and focus done.";
