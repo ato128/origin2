@@ -42,6 +42,7 @@ enum AppTab: Hashable, CaseIterable {
 extension Notification.Name {
     static let openFocusTabFromHome = Notification.Name("openFocusTabFromHome")
     static let startFocusFromWidget = Notification.Name("startFocusFromWidget")
+    static let openInsightsTab = Notification.Name("openInsightsTab")
 }
 
 private enum PendingChatRoute: Identifiable, Equatable {
@@ -137,6 +138,9 @@ struct MainTabView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .openFocusTabFromHome)) { _ in
             tab = .focus
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openInsightsTab)) { _ in
+            tab = .insights
         }
         .onReceive(NotificationCenter.default.publisher(for: .openFriendChatFromNotification)) { output in
             guard let rawID = output.object as? String,
@@ -261,6 +265,16 @@ private extension MainTabView {
             && $0.countsTowardStats && cal.isDateInToday($0.endedAt)
         }
 
+        // Same ring the Insights hero shows — progress toward the next level.
+        let scopedTasks = allTasks.filter { $0.ownerUserID == uid || $0.ownerUserID == nil }
+        let scopedFocus = allFocusRecords.filter { $0.ownerUserID == uid || $0.ownerUserID == nil }
+        let levelProgress = IdentityXPLevelEngine.snapshot(
+            currentLevel: ProgressionManager.shared.level,
+            tasks: scopedTasks,
+            focusSessions: scopedFocus,
+            streakDays: ProgressionManager.shared.currentStreak
+        ).progress
+
         WidgetAppSync.writeUserState(
             iconName: UIApplication.shared.alternateIconName,
             isPro: SubscriptionManager.shared.isPro,
@@ -270,7 +284,8 @@ private extension MainTabView {
             statsShared: ProgressionManager.shared.statsSharingEnabled,
             longestStreak: ProgressionManager.shared.longestStreak,
             todayTaskDone: taskDoneToday,
-            todayFocusDone: focusDoneToday
+            todayFocusDone: focusDoneToday,
+            levelProgress: levelProgress
         )
     }
 }

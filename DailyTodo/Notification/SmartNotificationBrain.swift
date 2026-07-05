@@ -13,6 +13,7 @@ enum SmartNotificationCategory: String, Codable {
     case dailyFocus
     case todayTasks
     case aiSuggestion
+    case weeklyRecap
 }
 
 struct SmartNotificationPreferences {
@@ -114,6 +115,14 @@ struct SmartNotificationBrain {
                 )
             )
         }
+
+        candidates.append(
+            contentsOf: weeklyRecapCandidates(
+                tasks: tasks,
+                focusRecords: focusRecords,
+                now: now
+            )
+        )
 
         return candidates
             .filter { $0.triggerDate > now.addingTimeInterval(60) }
@@ -443,6 +452,53 @@ struct SmartNotificationBrain {
                 triggerDate: trigger,
                 deepLink: "dailytodo://focus",
                 priority: 58
+            )
+        ]
+    }
+
+    // MARK: - Weekly recap (Sunday evening)
+
+    /// One notification per Sunday evening, only when the week actually has
+    /// something to recap. Mirrors the Home weekly-summary card and deep-links
+    /// into Insights.
+    private static func weeklyRecapCandidates(
+        tasks: [DTTaskItem],
+        focusRecords: [FocusSessionRecord],
+        now: Date
+    ) -> [SmartNotificationCandidate] {
+        let calendar = Calendar.current
+        guard calendar.component(.weekday, from: now) == 1 else { return [] }
+        guard let weekStart = calendar.dateInterval(of: .weekOfYear, for: now)?.start else { return [] }
+
+        let weekMinutes = focusRecords
+            .filter { $0.countsTowardStats && $0.endedAt >= weekStart }
+            .reduce(0) { $0 + $1.completedSeconds } / 60
+
+        let weekTasks = tasks.filter { task in
+            guard task.isDone, let done = task.completedAt else { return false }
+            return done >= weekStart
+        }.count
+
+        guard weekMinutes > 0 || weekTasks > 0 else { return [] }
+
+        guard let trigger = triggerDateToday(hour: 19, minute: 30, now: now) else {
+            return []
+        }
+
+        let hours = weekMinutes / 60
+        let focusText = hours > 0
+            ? tr("snb_recap_focus_h", hours, weekMinutes % 60)
+            : tr("snb_recap_focus_m", weekMinutes)
+
+        return [
+            SmartNotificationCandidate(
+                id: "smart.weekly.recap.\(dayKey(now))",
+                category: .weeklyRecap,
+                title: tr("snb_recap_title"),
+                body: tr("snb_recap_body", focusText, weekTasks),
+                triggerDate: trigger,
+                deepLink: "dailytodo://insights",
+                priority: 40
             )
         ]
     }

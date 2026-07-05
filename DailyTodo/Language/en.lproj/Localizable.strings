@@ -607,6 +607,9 @@
 "iid_need_tasks_n" = "%d tasks";
 "iid_need_streak_n" = "%d-day streak";
 "insd_hours_caps" = "YOUR PEAK HOURS";
+"insd_streak_cal_caps" = "STREAK CALENDAR";
+"insd_cal_full" = "task + focus";
+"insd_cal_half" = "half";
 "insd_hours_peak" = "You usually focus around %02d:00.";
 
 /* AI — personal context block (system prompt) */
@@ -642,6 +645,7 @@
 "crew_goal_off" = "Remove goal";
 "crew_goal_hours_n" = "%d hours";
 "crew_goal_reached" = "Goal reached!";
+"crew_goal_contrib_caps" = "WHO PUT IN WHAT THIS WEEK";
 "home_streak_chip_task" = "Task";
 "home_streak_chip_focus" = "Focus";
 
@@ -1670,6 +1674,10 @@
 "snb_streak_risk_focus" = "Task done ✓ — one focus left to keep your %d-day streak. A short session is enough.";
 "snb_streak_risk_task" = "Focus done ✓ — finish one task to keep your %d-day streak.";
 "snb_streak_risk_both" = "Your %d-day streak needs a task + a focus today. There's still time.";
+"snb_recap_title" = "Your weekly recap is ready 📊";
+"snb_recap_body" = "This week: %@ of focus, %d tasks done. Details in Insights.";
+"snb_recap_focus_h" = "%dh %dm";
+"snb_recap_focus_m" = "%dm";
 "snb_one_left" = "1 task left for today";
 "snb_recover_flow" = "You can pull the day's flow together with a short focus if you like.";
 "snb_recover_today" = "Pull today together with a small focus";

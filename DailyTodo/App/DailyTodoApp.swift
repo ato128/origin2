@@ -828,6 +828,11 @@ struct DailyTodoApp: App {
             NotificationCenter.default.post(name: .openWeekFromWidget, object: nil)
             return
         }
+
+        if url.host == "insights" {
+            NotificationCenter.default.post(name: .openInsightsTab, object: nil)
+            return
+        }
         
         if url.host == "focus" {
             handleFocusInviteURL(url)

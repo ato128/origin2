@@ -672,6 +672,14 @@ struct InsightsView: View {
                 accent: insightsAccent
             )
 
+            // Which days actually fed the streak (task AND focus), this month.
+            InsightsStreakCalendarCard(
+                tasks: filteredTasks,
+                focusSessions: filteredFocusSessions,
+                accent: insightsAccent
+            )
+            .insightsCardReveal()
+
             // Exam planner.
             InsightsPremiumLabCard(
                 isPremium: premiumState != .free,

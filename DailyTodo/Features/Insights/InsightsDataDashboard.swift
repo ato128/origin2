@@ -469,3 +469,166 @@ struct InsightsFocusHistorySheet: View {
         return f.string(from: date)
     }
 }
+
+// MARK: - Streak calendar (current month, real days only)
+//
+// One cell per day: filled = the day fed the streak (task AND focus),
+// half ring = only one half done, hairline = nothing. Future days stay
+// almost invisible. Same rule as StreakProgressEngine — no invented data.
+
+struct InsightsStreakCalendarCard: View {
+    let tasks: [DTTaskItem]
+    let focusSessions: [FocusSessionRecord]
+    var accent: Color = Color(arenaHex: AppArenaPalette.cyan)
+
+    private let gold = Color(arenaHex: AppArenaPalette.gold)
+
+    private var cal: Calendar { Calendar.current }
+    private var today: Date { cal.startOfDay(for: Date()) }
+
+    private var monthStart: Date {
+        cal.date(from: cal.dateComponents([.year, .month], from: today)) ?? today
+    }
+
+    private var daysInMonth: Int {
+        cal.range(of: .day, in: .month, for: monthStart)?.count ?? 30
+    }
+
+    /// Empty cells before day 1 (Monday-based grid).
+    private var leadingBlanks: Int {
+        (cal.component(.weekday, from: monthStart) + 5) % 7
+    }
+
+    private enum DayState { case full, half, empty, future }
+
+    private var dayStates: [DayState] {
+        // Precompute day buckets once — the grid just looks them up.
+        var taskDays = Set<Date>()
+        for task in tasks {
+            guard task.isDone, let done = task.completedAt else { continue }
+            taskDays.insert(cal.startOfDay(for: done))
+        }
+        var focusDays = Set<Date>()
+        for rec in focusSessions where rec.countsTowardStats {
+            focusDays.insert(cal.startOfDay(for: rec.endedAt))
+        }
+
+        return (0..<daysInMonth).map { offset in
+            guard let day = cal.date(byAdding: .day, value: offset, to: monthStart) else { return .empty }
+            if day > today { return .future }
+            let hasTask = taskDays.contains(day)
+            let hasFocus = focusDays.contains(day)
+            if hasTask && hasFocus { return .full }
+            if hasTask || hasFocus { return .half }
+            return .empty
+        }
+    }
+
+    private var monthTitle: String {
+        localizedMonthShort(cal.component(.month, from: today) - 1)
+    }
+
+    var body: some View {
+        InsightsGlassCard(tint: gold) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Text(tr("insd_streak_cal_caps"))
+                        .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                        .tracking(1.6)
+                        .foregroundStyle(gold.opacity(0.92))
+
+                    Spacer()
+
+                    Text(monthTitle)
+                        .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                        .tracking(1.2)
+                        .foregroundStyle(.white.opacity(0.4))
+                }
+
+                // Weekday letters (Monday-based).
+                HStack(spacing: 0) {
+                    ForEach(0..<7, id: \.self) { idx in
+                        Text(localizedWeekdayLetter(idx))
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.32))
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+
+                let states = dayStates
+                let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
+
+                LazyVGrid(columns: columns, spacing: 6) {
+                    ForEach(0..<leadingBlanks, id: \.self) { _ in
+                        Color.clear.frame(height: 30)
+                    }
+
+                    ForEach(0..<daysInMonth, id: \.self) { offset in
+                        dayCell(number: offset + 1, state: states[offset],
+                                isToday: offset + 1 == cal.component(.day, from: today))
+                    }
+                }
+
+                // Legend — one quiet line.
+                HStack(spacing: 14) {
+                    legendItem(fill: true, text: tr("insd_cal_full"))
+                    legendItem(fill: false, text: tr("insd_cal_half"))
+                    Spacer()
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func dayCell(number: Int, state: DayState, isToday: Bool) -> some View {
+        ZStack {
+            switch state {
+            case .full:
+                Circle().fill(
+                    LinearGradient(colors: [gold, accent],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+            case .half:
+                Circle().strokeBorder(gold.opacity(0.55), lineWidth: 1.5)
+            case .empty:
+                Circle().strokeBorder(Color.white.opacity(0.09), lineWidth: 1)
+            case .future:
+                Circle().fill(Color.white.opacity(0.025))
+            }
+
+            Text("\(number)")
+                .font(.system(size: 11, weight: state == .full ? .bold : .medium))
+                .monospacedDigit()
+                .foregroundStyle(
+                    state == .full ? Color.black.opacity(0.85)
+                    : state == .future ? Color.white.opacity(0.18)
+                    : Color.white.opacity(0.6)
+                )
+        }
+        .frame(height: 30)
+        .overlay {
+            if isToday {
+                Circle().strokeBorder(Color.white.opacity(0.55), lineWidth: 1.5)
+            }
+        }
+    }
+
+    private func legendItem(fill: Bool, text: String) -> some View {
+        HStack(spacing: 5) {
+            if fill {
+                Circle()
+                    .fill(LinearGradient(colors: [gold, accent],
+                                         startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: 9, height: 9)
+            } else {
+                Circle()
+                    .strokeBorder(gold.opacity(0.55), lineWidth: 1.5)
+                    .frame(width: 9, height: 9)
+            }
+
+            Text(text)
+                .font(.system(size: 10.5, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.42))
+        }
+    }
+}

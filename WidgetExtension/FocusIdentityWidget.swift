@@ -105,7 +105,8 @@ struct FocusIdentityView: View {
                 Spacer(minLength: 10)
 
                 HStack(alignment: .firstTextBaseline, spacing: 22) {
-                    bigStat(value: "\(state.level)", label: widgetLocalized("Seviye", "Level"), color: .white)
+                    bigStat(value: "\(state.level)", label: widgetLocalized("Seviye", "Level"), color: .white,
+                            ringProgress: state.levelProgress)
                     bigStat(value: "\(state.streak)", label: widgetLocalized("Gün seri", "Day streak"), color: gold)
 
                     if streakAtRisk {
@@ -195,23 +196,49 @@ struct FocusIdentityView: View {
     }
 
     private var heroLevel: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text("\(state.level)")
-                .focusHeroNumber(size: 46, accent: theme.accent)
-            Text(widgetLocalized("Seviye", "Level"))
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(UpdoWidgetPalette.textTertiary)
+        HStack(alignment: .center, spacing: 10) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text("\(state.level)")
+                    .focusHeroNumber(size: 46, accent: theme.accent)
+                Text(widgetLocalized("Seviye", "Level"))
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(UpdoWidgetPalette.textTertiary)
+            }
+
+            if let progress = state.levelProgress {
+                levelMiniRing(progress: progress, size: 30, lineWidth: 3.5)
+            }
         }
     }
 
-    private func bigStat(value: String, label: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text(value)
-                .focusHeroNumber(size: 38, accent: color)
-            Text(label)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(UpdoWidgetPalette.textTertiary)
+    private func bigStat(value: String, label: String, color: Color, ringProgress: Double? = nil) -> some View {
+        HStack(alignment: .center, spacing: 8) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(value)
+                    .focusHeroNumber(size: 38, accent: color)
+                Text(label)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(UpdoWidgetPalette.textTertiary)
+            }
+
+            if let ringProgress {
+                levelMiniRing(progress: ringProgress, size: 26, lineWidth: 3)
+            }
         }
+    }
+
+    /// Miniature of the Insights hero ring — progress toward the next level.
+    private func levelMiniRing(progress: Double, size: CGFloat, lineWidth: CGFloat) -> some View {
+        ZStack {
+            Circle()
+                .stroke(Color.white.opacity(0.10), lineWidth: lineWidth)
+
+            Circle()
+                .trim(from: 0, to: min(max(progress, 0.02), 1))
+                .stroke(theme.accent, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+        }
+        .frame(width: size, height: size)
     }
 
     private func miniStat(

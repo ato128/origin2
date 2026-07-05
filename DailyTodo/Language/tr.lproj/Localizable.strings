@@ -609,6 +609,9 @@
 "iid_need_tasks_n" = "%d görev";
 "iid_need_streak_n" = "%d gün seri";
 "insd_hours_caps" = "EN VERİMLİ SAATLERİN";
+"insd_streak_cal_caps" = "SERİ TAKVİMİ";
+"insd_cal_full" = "görev + focus";
+"insd_cal_half" = "yarım";
 "insd_hours_peak" = "Genelde %02d:00 civarı odaklanıyorsun.";
 
 /* AI — personal context block (system prompt) */
@@ -644,6 +647,7 @@
 "crew_goal_off" = "Hedefi kaldır";
 "crew_goal_hours_n" = "%d saat";
 "crew_goal_reached" = "Hedef tamamlandı!";
+"crew_goal_contrib_caps" = "BU HAFTA KİM NE KATTI";
 "home_streak_chip_task" = "Görev";
 "home_streak_chip_focus" = "Focus";
 
@@ -1672,6 +1676,10 @@
 "snb_streak_risk_focus" = "Görev tamam ✓ — %d günlük seri için bir focus kaldı. Kısa bir seans yeter.";
 "snb_streak_risk_task" = "Focus tamam ✓ — %d günlük seri için bir görev bitirmen kaldı.";
 "snb_streak_risk_both" = "%d günlük seri için bugün bir görev + bir focus gerekiyor. Hâlâ vakit var.";
+"snb_recap_title" = "Haftalık özetin hazır 📊";
+"snb_recap_body" = "Bu hafta %@ focus, %d görev tamamladın. Detaylar Insights'ta.";
+"snb_recap_focus_h" = "%d sa %d dk";
+"snb_recap_focus_m" = "%d dk";
 "snb_one_left" = "Bugün için 1 görev kaldı";
 "snb_recover_flow" = "İstersen kısa bir focus ile günün akışını toparlayabilirsin.";
 "snb_recover_today" = "Bugünü küçük bir focus ile toparla";

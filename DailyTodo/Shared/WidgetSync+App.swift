@@ -23,7 +23,8 @@ enum WidgetAppSync {
         statsShared: Bool,
         longestStreak: Int = 0,
         todayTaskDone: Bool? = nil,
-        todayFocusDone: Bool? = nil
+        todayFocusDone: Bool? = nil,
+        levelProgress: Double? = nil
     ) {
         var new = WidgetUserState(
             iconName: iconName,
@@ -37,6 +38,7 @@ enum WidgetAppSync {
         new.todayTaskDone = todayTaskDone
         new.todayFocusDone = todayFocusDone
         new.statusDayKey = WidgetUserState.dayKey()
+        new.levelProgress = levelProgress
 
         // Only reload timelines when something actually changed (cheap dedupe).
         let old = WidgetShared.readUserState()
@@ -47,7 +49,8 @@ enum WidgetAppSync {
             old.longestStreak != new.longestStreak ||
             old.todayTaskDone != new.todayTaskDone ||
             old.todayFocusDone != new.todayFocusDone ||
-            old.statusDayKey != new.statusDayKey {
+            old.statusDayKey != new.statusDayKey ||
+            old.levelProgress != new.levelProgress {
             WidgetCenter.shared.reloadAllTimelines()
         }
     }

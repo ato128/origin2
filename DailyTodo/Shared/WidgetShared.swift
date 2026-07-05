@@ -77,6 +77,9 @@ struct WidgetUserState: Codable {
     var todayFocusDone: Bool?
     var statusDayKey: String?
 
+    /// 0…1 progress toward the next identity level (mirrors the Insights ring).
+    var levelProgress: Double?
+
     static let placeholder = WidgetUserState(
         iconName: nil,
         isPro: false,

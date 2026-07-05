@@ -532,6 +532,8 @@ extension BackendCrewDetailView {
                         .tint(reached ? BackendCrewArenaPalette.green : BackendCrewArenaPalette.gold)
                         .scaleEffect(y: 1.15)
                 }
+
+                weeklyGoalContributions
             }
         }
         .padding(16)
@@ -540,6 +542,72 @@ extension BackendCrewDetailView {
             if let shared = byCrew[crew.id], shared != weeklyGoalMinutes {
                 weeklyGoalMinutes = shared
             }
+        }
+    }
+
+    /// Who put in what this calendar week — from the crew's real focus records.
+    private var weeklyContributions: [(name: String, minutes: Int)] {
+        let cal = Calendar.current
+        guard let weekStart = cal.dateInterval(of: .weekOfYear, for: Date())?.start else { return [] }
+
+        var byName: [String: Int] = [:]
+        for record in crewStore.crewFocusRecords where record.crew_id == crew.id {
+            guard let created = record.created_at.flatMap({ CrewDateParser.parse($0) }),
+                  created >= weekStart else { continue }
+            byName[record.member_name, default: 0] += record.minutes
+        }
+
+        return byName
+            .map { (name: $0.key, minutes: $0.value) }
+            .sorted { $0.minutes > $1.minutes }
+    }
+
+    @ViewBuilder
+    private var weeklyGoalContributions: some View {
+        let contributions = Array(weeklyContributions.prefix(4))
+        let maxMinutes = max(contributions.first?.minutes ?? 0, 1)
+
+        if !contributions.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(tr("crew_goal_contrib_caps"))
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .tracking(1.4)
+                    .foregroundStyle(.white.opacity(0.38))
+
+                ForEach(contributions, id: \.name) { entry in
+                    HStack(spacing: 10) {
+                        Text(entry.name)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.82))
+                            .lineLimit(1)
+                            .frame(width: 92, alignment: .leading)
+
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Capsule()
+                                    .fill(Color.white.opacity(0.06))
+                                    .frame(height: 4)
+
+                                Capsule()
+                                    .fill(BackendCrewArenaPalette.gold.opacity(0.85))
+                                    .frame(
+                                        width: max(6, geo.size.width * CGFloat(entry.minutes) / CGFloat(maxMinutes)),
+                                        height: 4
+                                    )
+                            }
+                            .frame(maxHeight: .infinity)
+                        }
+
+                        Text(focusTimeText(entry.minutes))
+                            .font(.system(size: 11, weight: .black, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.55))
+                            .lineLimit(1)
+                            .fixedSize()
+                    }
+                    .frame(height: 16)
+                }
+            }
+            .padding(.top, 4)
         }
     }
 
