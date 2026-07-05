@@ -375,11 +375,19 @@ struct InsightsView: View {
 
     // MARK: - Identity hero (fills the first screen; analytics live below)
     //
-    // The page opens as pure identity — a large level ring, the name and the
-    // earned title. Scrolling reveals the data cards.
+    // The page opens as pure identity. Scrolling doesn't just push it away:
+    // the ring parallaxes slower, everything scales down toward the top and
+    // dissolves in stages — Apple-style collapse choreography driven by the
+    // live scroll offset.
 
     @State private var heroRingFilled = false
     @State private var heroCueBounce = false
+    @State private var heroEntered = false
+
+    /// 0 = hero fully on screen, 1 = scrolled past. Drives the collapse.
+    private var heroCollapse: CGFloat {
+        min(max((-scrollOffset) / 320, 0), 1)
+    }
 
     private var identityHeroSection: some View {
         let snapshot = identitySnapshot
@@ -387,100 +395,58 @@ struct InsightsView: View {
         let accent = hasPending ? Color(arenaHex: AppArenaPalette.gold) : snapshot.accent
         let secondary = hasPending ? Color(arenaHex: AppArenaPalette.coral) : Color(arenaHex: AppArenaPalette.blue)
         let progress = min(max(snapshot.progress, 0), 1)
+        let collapse = heroCollapse
 
         return Button(action: handleIdentityTap) {
             VStack(spacing: 0) {
                 Spacer(minLength: 12)
 
-                // Big ring — level number + percent at its heart.
-                ZStack {
-                    Circle()
-                        .fill(accent.opacity(0.10))
-                        .frame(width: 240, height: 240)
-                        .blur(radius: 50)
+                heroRing(accent: accent, secondary: secondary, progress: progress)
+                    // Parallax: the ring trails the scroll and gently shrinks.
+                    .offset(y: -scrollOffset * 0.22)
+                    .scaleEffect(1 - 0.16 * collapse)
+                    .opacity(1 - Double(collapse) * 1.15)
+                    .padding(.bottom, 22)
 
-                    Circle()
-                        .stroke(Color.white.opacity(0.07), lineWidth: 9)
-                        .frame(width: 168, height: 168)
+                Group {
+                    Text(resolvedUserName)
+                        .font(.system(size: 28, weight: .black))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .opacity(heroEntered ? 1 : 0)
+                        .offset(y: heroEntered ? 0 : 10)
+                        .animation(.spring(response: 0.6, dampingFraction: 0.85).delay(0.30), value: heroEntered)
 
-                    Circle()
-                        .trim(from: 0, to: heroRingFilled ? progress : 0.02)
-                        .stroke(
-                            AngularGradient(
-                                colors: [accent, secondary, accent],
-                                center: .center
-                            ),
-                            style: StrokeStyle(lineWidth: 9, lineCap: .round)
+                    Text(snapshot.title)
+                        .font(.system(size: 30, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [accent, secondary],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
-                        .rotationEffect(.degrees(-90))
-                        .frame(width: 168, height: 168)
-                        .shadow(color: accent.opacity(0.40), radius: 12)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .padding(.top, 2)
+                        .opacity(heroEntered ? 1 : 0)
+                        .offset(y: heroEntered ? 0 : 12)
+                        .animation(.spring(response: 0.6, dampingFraction: 0.85).delay(0.42), value: heroEntered)
 
-                    VStack(spacing: 1) {
-                        Text(tr("iid_level_caps"))
-                            .font(.system(size: 10, weight: .black, design: .monospaced))
-                            .tracking(2.0)
-                            .foregroundStyle(.white.opacity(0.40))
-
-                        Text("\(snapshot.level)")
-                            .font(.system(size: 58, weight: .black))
-                            .foregroundStyle(.white)
-                            .monospacedDigit()
-
-                        Text(snapshot.percentText)
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
-                            .foregroundStyle(accent.opacity(0.9))
-                    }
+                    heroMetaRow(snapshot: snapshot, hasPending: hasPending)
+                        .padding(.top, 12)
+                        .opacity(heroEntered ? 1 : 0)
+                        .animation(.easeOut(duration: 0.5).delay(0.55), value: heroEntered)
                 }
-                .padding(.bottom, 22)
-
-                // Name + earned title.
-                Text(resolvedUserName)
-                    .font(.system(size: 28, weight: .black))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-
-                Text(snapshot.title)
-                    .font(.system(size: 30, weight: .regular, design: .serif))
-                    .italic()
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [accent, secondary],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .padding(.top, 2)
-
-                // One quiet progress line.
-                HStack(spacing: 7) {
-                    Text(tr("iid_next_level_fmt", snapshot.level + 1))
-                        .font(.system(size: 10.5, weight: .black, design: .monospaced))
-                        .tracking(1.0)
-                        .foregroundStyle(.white.opacity(0.42))
-
-                    if hasPending {
-                        HStack(spacing: 3) {
-                            Image(systemName: "arrow.up.forward.circle.fill")
-                                .font(.system(size: 9, weight: .black))
-                            Text(tr("iid_ready_chip"))
-                                .font(.system(size: 8, weight: .black, design: .monospaced))
-                                .tracking(0.6)
-                        }
-                        .foregroundStyle(.black)
-                        .padding(.horizontal, 7)
-                        .frame(height: 18)
-                        .background(Capsule().fill(Color(arenaHex: AppArenaPalette.gold)))
-                    }
-                }
-                .padding(.top, 12)
+                // Text block dissolves a beat after the ring while sliding up.
+                .offset(y: -scrollOffset * 0.10)
+                .opacity(1 - Double(min(max((collapse - 0.12) / 0.55, 0), 1)))
 
                 Spacer(minLength: 12)
 
-                // Scroll cue — analytics wait below the fold.
+                // Scroll cue — first thing to melt away on scroll.
                 VStack(spacing: 3) {
                     Text(tr("ins_hero_scroll_cue"))
                         .font(.system(size: 11, weight: .bold))
@@ -492,19 +458,122 @@ struct InsightsView: View {
                         .offset(y: heroCueBounce ? 3 : -1)
                 }
                 .padding(.bottom, 6)
+                .opacity((1 - Double(collapse) * 3.2))
             }
             .frame(maxWidth: .infinity)
             .frame(minHeight: max(420, UIScreen.main.bounds.height - 330))
+            .scaleEffect(1 - 0.05 * collapse, anchor: .top)
         }
         .buttonStyle(.plain)
         .onAppear {
+            heroEntered = true
             if !heroRingFilled {
-                withAnimation(.spring(response: 1.0, dampingFraction: 0.74).delay(0.25)) {
+                withAnimation(.spring(response: 1.1, dampingFraction: 0.76).delay(0.20)) {
                     heroRingFilled = true
                 }
             }
             withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) {
                 heroCueBounce = true
+            }
+        }
+    }
+
+    /// The ring: hairline track, angular-gradient progress with a glowing knob
+    /// at its tip, level number at the heart, breathing glow behind.
+    private func heroRing(accent: Color, secondary: Color, progress: CGFloat) -> some View {
+        ZStack {
+            // Breathing background glow (slow, subtle — no layout churn).
+            TimelineView(.animation(minimumInterval: 1.0 / 20.0)) { timeline in
+                let t = timeline.date.timeIntervalSinceReferenceDate
+                let breathe = 0.10 + 0.035 * sin(t * 0.9)
+
+                Circle()
+                    .fill(accent.opacity(breathe))
+                    .frame(width: 250, height: 250)
+                    .blur(radius: 54)
+            }
+
+            Circle()
+                .stroke(Color.white.opacity(0.07), lineWidth: 9)
+                .frame(width: 168, height: 168)
+
+            // Progress arc + tip knob share one -90° container so the knob
+            // always rides exactly on the arc's end.
+            ZStack {
+                Circle()
+                    .trim(from: 0, to: heroRingFilled ? progress : 0.02)
+                    .stroke(
+                        AngularGradient(
+                            colors: [accent.opacity(0.55), secondary, accent],
+                            center: .center
+                        ),
+                        style: StrokeStyle(lineWidth: 9, lineCap: .round)
+                    )
+                    .shadow(color: accent.opacity(0.38), radius: 12)
+
+                Circle()
+                    .fill(.white)
+                    .frame(width: 7, height: 7)
+                    .shadow(color: accent.opacity(0.9), radius: 5)
+                    .offset(x: 84)
+                    .rotationEffect(.degrees(Double(heroRingFilled ? progress : 0.02) * 360))
+            }
+            .rotationEffect(.degrees(-90))
+            .frame(width: 168, height: 168)
+
+            VStack(spacing: 1) {
+                Text(tr("iid_level_caps"))
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(2.0)
+                    .foregroundStyle(.white.opacity(0.40))
+
+                Text("\(identitySnapshot.level)")
+                    .font(.system(size: 58, weight: .black))
+                    .foregroundStyle(.white)
+                    .monospacedDigit()
+
+                Text(identitySnapshot.percentText)
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .foregroundStyle(accent.opacity(0.9))
+            }
+        }
+    }
+
+    /// Progress line + honest streak chip (hidden at 0) + READY chip.
+    private func heroMetaRow(snapshot: IdentityLevelSnapshot, hasPending: Bool) -> some View {
+        HStack(spacing: 8) {
+            Text(tr("iid_next_level_fmt", snapshot.level + 1))
+                .font(.system(size: 10.5, weight: .black, design: .monospaced))
+                .tracking(1.0)
+                .foregroundStyle(.white.opacity(0.42))
+
+            if progression.currentStreak > 0 {
+                Text("·")
+                    .foregroundStyle(.white.opacity(0.25))
+
+                HStack(spacing: 4) {
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 10, weight: .black))
+                        .foregroundStyle(Color(arenaHex: AppArenaPalette.gold))
+
+                    Text(tr("iid_streak_days_n", progression.currentStreak))
+                        .font(.system(size: 10.5, weight: .black, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.55))
+                }
+            }
+
+            if hasPending {
+                HStack(spacing: 3) {
+                    Image(systemName: "arrow.up.forward.circle.fill")
+                        .font(.system(size: 9, weight: .black))
+                    Text(tr("iid_ready_chip"))
+                        .font(.system(size: 8, weight: .black, design: .monospaced))
+                        .tracking(0.6)
+                }
+                .foregroundStyle(.black)
+                .padding(.horizontal, 7)
+                .frame(height: 18)
+                .background(Capsule().fill(Color(arenaHex: AppArenaPalette.gold)))
             }
         }
     }
