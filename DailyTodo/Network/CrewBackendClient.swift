@@ -138,6 +138,13 @@ struct CrewBackendOKResponse: Decodable {
     let error: String?
 }
 
+struct CrewBackendWeeklyGoalResponse: Decodable {
+    let ok: Bool
+    let userId: UUID?
+    let weeklyGoalMinutes: Int?
+    let error: String?
+}
+
 struct CrewHomeSnapshotResponse: Decodable {
     let ok: Bool
     let userId: UUID?
@@ -166,6 +173,8 @@ struct CrewHomeSnapshotCrewDTO: Decodable, Identifiable {
     let completed_task_count: Int
     let total_focus_minutes: Int
     let weekly_focus_minutes: Int
+    // Optional: older backend deploys don't send it yet.
+    let weekly_goal_minutes: Int?
 
     let active_session: CrewFocusSessionDTO?
     let active_participant_count: Int
@@ -591,6 +600,35 @@ final class CrewBackendClient {
         }
     }
  
+    /// Crew'un paylaşımlı haftalık focus hedefini günceller (0 = hedef yok).
+    /// Dönen değer backend'in clamp'lediği dakika; hata olursa nil.
+    func setCrewWeeklyGoal(crewID: UUID, minutes: Int) async -> Int? {
+        do {
+            let request = try await makeRequest(
+                path: "/v1/crews/\(crewID.uuidString)/weekly-goal",
+                method: "PUT",
+                body: ["minutes": minutes],
+                timeout: 20
+            )
+
+            let decoded = try await perform(
+                request,
+                responseType: CrewBackendWeeklyGoalResponse.self,
+                debugName: "setCrewWeeklyGoal"
+            )
+
+            guard decoded.ok else {
+                ChatBackendLogger.error("❌ CREW BACKEND setCrewWeeklyGoal API ERROR:", decoded.error ?? "unknown")
+                return nil
+            }
+
+            return decoded.weeklyGoalMinutes
+        } catch {
+            ChatBackendLogger.error("❌ CREW BACKEND setCrewWeeklyGoal ERROR:", error.localizedDescription)
+            return nil
+        }
+    }
+
     // ═════════════════════════════════════════════════════════════════
     // INVITES
     // ═════════════════════════════════════════════════════════════════

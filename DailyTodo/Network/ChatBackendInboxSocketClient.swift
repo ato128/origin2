@@ -288,6 +288,9 @@ final class ChatBackendInboxSocketClient: NSObject, ObservableObject {
                             case "crew_focus_record_created":
                                 postCrewFocusRecordEvent(payload: event.payload)
 
+                            case "crew_weekly_goal_updated":
+                                postCrewWeeklyGoalEvent(payload: event.payload)
+
             default:
                 break
             }
@@ -389,6 +392,25 @@ final class ChatBackendInboxSocketClient: NSObject, ObservableObject {
                     "memberID": memberID,
                     "crewID": crewID,
                     "userID": payload?.userID as Any
+                ]
+            )
+        }
+
+        private func postCrewWeeklyGoalEvent(payload: ChatBackendSocketPayload?) {
+            guard
+                let crewID = payload?.crewID,
+                let minutes = payload?.weeklyGoalMinutes
+            else {
+                ChatBackendLogger.error("❌ INBOX WS: weekly_goal_updated missing payload")
+                return
+            }
+
+            NotificationCenter.default.post(
+                name: .crewWeeklyGoalUpdated,
+                object: crewID,
+                userInfo: [
+                    "crewID": crewID,
+                    "weeklyGoalMinutes": minutes
                 ]
             )
         }

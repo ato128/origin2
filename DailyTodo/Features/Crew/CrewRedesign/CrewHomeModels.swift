@@ -632,10 +632,11 @@ enum CrewCommunityMockFactory {
 
 }
 
-// MARK: - Weekly focus goal (device-local)
+// MARK: - Weekly focus goal (offline cache)
 //
-// The goal lives on this device only (no backend column yet) — but progress
-// against it is always the crew's REAL weekly focus minutes.
+// The shared goal lives on the backend (crews.weekly_goal_minutes) and syncs
+// through CrewStore; this UserDefaults copy is only the offline/last-known
+// cache so the card renders instantly before the snapshot arrives.
 
 enum CrewWeeklyGoalStore {
 

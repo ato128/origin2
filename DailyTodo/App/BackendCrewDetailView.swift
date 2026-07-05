@@ -155,7 +155,7 @@ struct BackendCrewDetailView: View {
         }
         .onAppear {
             crewStore.subscribeToCrewRealtime(crewID: crew.id)
-            weeklyGoalMinutes = CrewWeeklyGoalStore.goalMinutes(for: crew.id)
+            weeklyGoalMinutes = crewStore.weeklyGoalMinutes(for: crew.id)
 
             Task {
                 await loadCrewDetail()
@@ -463,8 +463,7 @@ extension BackendCrewDetailView {
                 Menu {
                     ForEach(CrewWeeklyGoalStore.presetsMinutes, id: \.self) { minutes in
                         Button {
-                            weeklyGoalMinutes = minutes
-                            CrewWeeklyGoalStore.setGoalMinutes(minutes, for: crew.id)
+                            applyWeeklyGoal(minutes)
                         } label: {
                             if weeklyGoalMinutes == minutes {
                                 Label(tr("crew_goal_hours_n", minutes / 60), systemImage: "checkmark")
@@ -477,8 +476,7 @@ extension BackendCrewDetailView {
                     Divider()
 
                     Button(role: .destructive) {
-                        weeklyGoalMinutes = 0
-                        CrewWeeklyGoalStore.setGoalMinutes(0, for: crew.id)
+                        applyWeeklyGoal(0)
                     } label: {
                         Text(tr("crew_goal_off"))
                     }
@@ -538,6 +536,19 @@ extension BackendCrewDetailView {
         }
         .padding(16)
         .background(detailSurface(cornerRadius: 24, tint: BackendCrewArenaPalette.gold))
+        .onReceive(crewStore.$weeklyGoalMinutesByCrew) { byCrew in
+            if let shared = byCrew[crew.id], shared != weeklyGoalMinutes {
+                weeklyGoalMinutes = shared
+            }
+        }
+    }
+
+    /// Optimistic local update + shared persistence through the backend.
+    private func applyWeeklyGoal(_ minutes: Int) {
+        weeklyGoalMinutes = minutes
+        Task {
+            await crewStore.setWeeklyGoal(crewID: crew.id, minutes: minutes)
+        }
     }
 
     var performanceCard: some View {

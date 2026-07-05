@@ -467,6 +467,7 @@ struct ChatBackendSocketPayload: Decodable {
         let taskID: UUID?
         let memberID: UUID?
         let crewID: UUID?
+        let weeklyGoalMinutes: Int?
 
 
     var asSeenPayload: ChatBackendMessageSeenPayload? {
@@ -544,4 +545,5 @@ extension Notification.Name {
         static let crewMemberRemoved = Notification.Name("crewMemberRemoved")
         static let crewMemberUpdated = Notification.Name("crewMemberUpdated")
         static let crewFocusRecordCreated = Notification.Name("crewFocusRecordCreated")
+        static let crewWeeklyGoalUpdated = Notification.Name("crewWeeklyGoalUpdated")
 }

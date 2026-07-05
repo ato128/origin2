@@ -30,6 +30,7 @@ final class CrewStore: ObservableObject {
     @Published var crewHomeSnapshotByCrew: [UUID: CrewHomeSnapshotCrewDTO] = [:]
     @Published var totalFocusMinutesByCrew: [UUID: Int] = [:]
     @Published var weeklyFocusMinutesByCrew: [UUID: Int] = [:]
+    @Published var weeklyGoalMinutesByCrew: [UUID: Int] = [:]
     @Published var activeParticipantCountByCrew: [UUID: Int] = [:]
     @Published var isLoadingCrewHomeSnapshot: Bool = false
     @Published var focusParticipantsBySession: [UUID: [CrewFocusParticipantDTO]] = [:]
@@ -1530,6 +1531,13 @@ final class CrewStore: ObservableObject {
             nextWeeklyFocus[crewID] = max(item.weekly_focus_minutes, 0)
             nextActiveParticipantCount[crewID] = max(item.active_participant_count, 0)
 
+            // Shared weekly goal (backend is the source of truth; the local
+            // store is only an offline cache).
+            if let goal = item.weekly_goal_minutes {
+                weeklyGoalMinutesByCrew[crewID] = max(goal, 0)
+                CrewWeeklyGoalStore.setGoalMinutes(max(goal, 0), for: crewID)
+            }
+
             if let activeSession = item.active_session {
                 activeFocusSessionByCrew[crewID] = activeSession
             } else {
@@ -1556,8 +1564,36 @@ final class CrewStore: ObservableObject {
         weeklyFocusMinutesByCrew = nextWeeklyFocus
         activeParticipantCountByCrew = nextActiveParticipantCount
     }
+    // MARK: - Weekly focus goal (shared via backend)
+
+    /// Effective goal: live backend value, else the offline cache.
+    func weeklyGoalMinutes(for crewID: UUID) -> Int {
+        weeklyGoalMinutesByCrew[crewID] ?? CrewWeeklyGoalStore.goalMinutes(for: crewID)
+    }
+
+    /// Optimistically applies the goal, then persists on the backend so every
+    /// member sees it. Reverts by re-syncing the snapshot on failure.
+    func setWeeklyGoal(crewID: UUID, minutes: Int) async {
+        let clamped = max(0, minutes)
+
+        weeklyGoalMinutesByCrew[crewID] = clamped
+        CrewWeeklyGoalStore.setGoalMinutes(clamped, for: crewID)
+
+        let confirmed = await CrewBackendClient.shared.setCrewWeeklyGoal(
+            crewID: crewID,
+            minutes: clamped
+        )
+
+        if let confirmed {
+            weeklyGoalMinutesByCrew[crewID] = confirmed
+            CrewWeeklyGoalStore.setGoalMinutes(confirmed, for: crewID)
+        } else {
+            await loadCrewHomeSnapshot()
+        }
+    }
+
     // MARK: - Existing Loads / Actions
-    
+
     func loadCrews(force: Bool = false) async {
         guard let currentUserID else {
             crews = []
@@ -2832,6 +2868,27 @@ final class CrewStore: ObservableObject {
                    self?.handleFocusRecordCreatedEvent(notification: notification)
                }
            }
+
+           nc.addObserver(
+               forName: .crewWeeklyGoalUpdated,
+               object: nil,
+               queue: .main
+           ) { [weak self] notification in
+               Task { @MainActor in
+                   self?.handleWeeklyGoalUpdatedEvent(notification: notification)
+               }
+           }
+    }
+
+    @MainActor
+    private func handleWeeklyGoalUpdatedEvent(notification: Notification) {
+        guard
+            let crewID = notification.userInfo?["crewID"] as? UUID,
+            let minutes = notification.userInfo?["weeklyGoalMinutes"] as? Int
+        else { return }
+
+        weeklyGoalMinutesByCrew[crewID] = max(minutes, 0)
+        CrewWeeklyGoalStore.setGoalMinutes(max(minutes, 0), for: crewID)
     }
      
     // MARK: - Event Handlers
@@ -3342,7 +3399,7 @@ extension CrewStore {
                     records: crewFocusRecords,
                     crewID: crew.id
                 ),
-                weeklyGoalMinutes: CrewWeeklyGoalStore.goalMinutes(for: crew.id),
+                weeklyGoalMinutes: snapshot?.weekly_goal_minutes ?? weeklyGoalMinutes(for: crew.id),
                 lastMessageText: crew.last_message_text,
                 unreadCount: unreadCount,
                 isPinned: isPinned,

@@ -380,7 +380,7 @@ private extension CrewView {
                     records: crewStore.crewFocusRecords,
                     crewID: crew.id
                 ),
-                weeklyGoalMinutes: CrewWeeklyGoalStore.goalMinutes(for: crew.id),
+                weeklyGoalMinutes: crewStore.weeklyGoalMinutes(for: crew.id),
                 lastMessageText: crew.last_message_text,
                 unreadCount: myMemberState?.unread_count ?? 0,
                 isPinned: myMemberState?.is_pinned ?? false,
