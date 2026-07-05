@@ -603,6 +603,11 @@
 "ins_hdr_eyebrow" = "GELİŞİMİN";
 "ins_hero_scroll_cue" = "Analizlerin";
 "iid_streak_days_n" = "%d GÜN SERİ";
+"iid_step_prefix" = "Sonraki seviye için:";
+"iid_step_ready" = "Seviye atlamaya hazırsın — dokun";
+"iid_need_focus_n" = "%d focus";
+"iid_need_tasks_n" = "%d görev";
+"iid_need_streak_n" = "%d gün seri";
 "insd_hours_caps" = "EN VERİMLİ SAATLERİN";
 "insd_hours_peak" = "Genelde %02d:00 civarı odaklanıyorsun.";
 

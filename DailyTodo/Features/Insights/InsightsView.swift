@@ -201,7 +201,15 @@ struct InsightsView: View {
                 LazyVStack(spacing: 14) {
                     headerSection
                     identityHeroSection
+
+                    // Analytics stay hidden under the hero and glide in as the
+                    // scroll commits — opacity/offset track the finger, so the
+                    // reveal is fully scrubbable in both directions.
                     contentSection
+                        .opacity(Double(analyticsReveal))
+                        .offset(y: (1 - analyticsReveal) * 44)
+                        .allowsHitTesting(analyticsReveal > 0.4)
+
                     Spacer(minLength: 110)
                 }
                 .padding(.horizontal, 16)
@@ -389,6 +397,11 @@ struct InsightsView: View {
         min(max((-scrollOffset) / 320, 0), 1)
     }
 
+    /// Analytics entrance: starts a beat into the scroll, fully in by ~60%.
+    private var analyticsReveal: CGFloat {
+        min(max((heroCollapse - 0.10) / 0.50, 0), 1)
+    }
+
     private var identityHeroSection: some View {
         let snapshot = identitySnapshot
         let hasPending = pendingLevelUp != nil || snapshot.isReadyForLevelUp
@@ -439,6 +452,12 @@ struct InsightsView: View {
                         .padding(.top, 12)
                         .opacity(heroEntered ? 1 : 0)
                         .animation(.easeOut(duration: 0.5).delay(0.55), value: heroEntered)
+
+                    nextStepCapsule(snapshot: snapshot, hasPending: hasPending, accent: accent)
+                        .padding(.top, 14)
+                        .opacity(heroEntered ? 1 : 0)
+                        .offset(y: heroEntered ? 0 : 8)
+                        .animation(.spring(response: 0.6, dampingFraction: 0.85).delay(0.68), value: heroEntered)
                 }
                 // Text block dissolves a beat after the ring while sliding up.
                 .offset(y: -scrollOffset * 0.10)
@@ -521,22 +540,95 @@ struct InsightsView: View {
             .rotationEffect(.degrees(-90))
             .frame(width: 168, height: 168)
 
-            VStack(spacing: 1) {
+            VStack(spacing: 0) {
                 Text(tr("iid_level_caps"))
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .tracking(2.0)
                     .foregroundStyle(.white.opacity(0.40))
 
+                // Focus-timer typography: serif italic, tinted by the level.
                 Text("\(identitySnapshot.level)")
-                    .font(.system(size: 58, weight: .black))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 62, weight: .regular, design: .serif))
+                    .italic()
                     .monospacedDigit()
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [accent, secondary],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
 
                 Text(identitySnapshot.percentText)
                     .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .foregroundStyle(accent.opacity(0.9))
+                    .foregroundStyle(.white.opacity(0.5))
             }
         }
+    }
+
+    /// What still stands between the user and the next level, as a quiet
+    /// tappable capsule — nobody should have to guess that tapping opens the
+    /// requirements. Ready state flips it into a golden call-to-action.
+    @ViewBuilder
+    private func nextStepCapsule(snapshot: IdentityLevelSnapshot, hasPending: Bool, accent: Color) -> some View {
+        let gold = Color(arenaHex: AppArenaPalette.gold)
+
+        if hasPending {
+            HStack(spacing: 7) {
+                Image(systemName: "arrow.up.forward.circle.fill")
+                    .font(.system(size: 12, weight: .black))
+
+                Text(tr("iid_step_ready"))
+                    .font(.system(size: 12.5, weight: .black, design: .rounded))
+            }
+            .foregroundStyle(.black)
+            .padding(.horizontal, 15)
+            .frame(height: 34)
+            .background(Capsule().fill(gold))
+            .shadow(color: gold.opacity(0.35), radius: 10, y: 4)
+        } else if !snapshot.isMaxLevel, !missingRequirementsText(snapshot).isEmpty {
+            HStack(spacing: 7) {
+                Text(tr("iid_step_prefix"))
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.42))
+
+                Text(missingRequirementsText(snapshot))
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.82))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .black))
+                    .foregroundStyle(accent.opacity(0.8))
+            }
+            .padding(.horizontal, 14)
+            .frame(height: 34)
+            .background(
+                Capsule()
+                    .fill(Color.white.opacity(0.05))
+                    .overlay(
+                        Capsule().strokeBorder(accent.opacity(0.22), lineWidth: 1)
+                    )
+            )
+        }
+    }
+
+    /// "2 focus · 5 görev · 1 gün seri" — only the parts that are still short.
+    private func missingRequirementsText(_ snapshot: IdentityLevelSnapshot) -> String {
+        let next = snapshot.nextRequirement
+        var parts: [String] = []
+
+        let focusLeft = max(0, next.requiredFocusSessions - snapshot.focusSessions)
+        if focusLeft > 0 { parts.append(tr("iid_need_focus_n", focusLeft)) }
+
+        let tasksLeft = max(0, next.requiredCompletedTasks - snapshot.completedTasks)
+        if tasksLeft > 0 { parts.append(tr("iid_need_tasks_n", tasksLeft)) }
+
+        let streakLeft = max(0, next.requiredStreakDays - snapshot.streakDays)
+        if streakLeft > 0 { parts.append(tr("iid_need_streak_n", streakLeft)) }
+
+        return parts.prefix(2).joined(separator: " · ")
     }
 
     /// Progress line + honest streak chip (hidden at 0) + READY chip.
@@ -561,20 +653,7 @@ struct InsightsView: View {
                         .foregroundStyle(.white.opacity(0.55))
                 }
             }
-
-            if hasPending {
-                HStack(spacing: 3) {
-                    Image(systemName: "arrow.up.forward.circle.fill")
-                        .font(.system(size: 9, weight: .black))
-                    Text(tr("iid_ready_chip"))
-                        .font(.system(size: 8, weight: .black, design: .monospaced))
-                        .tracking(0.6)
-                }
-                .foregroundStyle(.black)
-                .padding(.horizontal, 7)
-                .frame(height: 18)
-                .background(Capsule().fill(Color(arenaHex: AppArenaPalette.gold)))
-            }
+            // Ready state lives in the golden next-step capsule below.
         }
     }
 
