@@ -1870,7 +1870,29 @@ final class CrewStore: ObservableObject {
         await refreshCrewStats(for: crewID)
     }
     
+    // MARK: - Crew tab hydrate throttle
+    //
+    // Tab switches re-create CrewView, and each visit used to re-fire the full
+    // hydrate burst (members, task counts, focus records, snapshot… per crew).
+    // Realtime keeps the data fresh between visits — one full hydrate per TTL
+    // window is enough. Pull-to-refresh and user switches bypass with `force`.
+
+    private var lastCrewTabHydrateAt: Date?
+
+    func shouldRunCrewTabHydrate(ttl: TimeInterval = 25, force: Bool = false) -> Bool {
+        if force {
+            lastCrewTabHydrateAt = Date()
+            return true
+        }
+        if let last = lastCrewTabHydrateAt, Date().timeIntervalSince(last) < ttl {
+            return false
+        }
+        lastCrewTabHydrateAt = Date()
+        return true
+    }
+
     func resetForUserChange() {
+        lastCrewTabHydrateAt = nil
         crews = []
         crewMembers = []
         memberProfiles = []

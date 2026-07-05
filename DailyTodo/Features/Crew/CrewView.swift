@@ -145,11 +145,15 @@ struct CrewView: View {
                 guard let userID = session.currentUser?.id else { return }
 
                 didLoad = true
-                
-                await initialLoadIfNeeded()
 
-                await crewStore.loadCrews()
-                await crewStore.loadCrewHomeSnapshot()
+                // Heavy hydrate at most once per TTL window — realtime covers
+                // the gaps, so tab-hopping doesn't spam the backend.
+                if crewStore.shouldRunCrewTabHydrate() {
+                    await initialLoadIfNeeded()
+                    await crewStore.loadCrews()
+                    await crewStore.loadCrewHomeSnapshot()
+                }
+
                 crewStore.subscribeToGlobalFocusRealtime()
                 crewStore.startObservingFocusSocketEvents()
 

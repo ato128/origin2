@@ -495,15 +495,19 @@ struct InsightsView: View {
     /// at its tip, level number at the heart, breathing glow behind.
     private func heroRing(accent: Color, secondary: Color, progress: CGFloat) -> some View {
         ZStack {
-            // Breathing background glow (slow, subtle — no layout churn).
-            TimelineView(.animation(minimumInterval: 1.0 / 20.0)) { timeline in
+            // Breathing background glow. The blur input is CONSTANT (opacity is
+            // applied after the blur), so Core Animation caches the blurred
+            // texture and each 12fps frame only recomposites alpha — near-zero
+            // GPU cost instead of re-blurring a 250pt circle every frame.
+            TimelineView(.animation(minimumInterval: 1.0 / 12.0)) { timeline in
                 let t = timeline.date.timeIntervalSinceReferenceDate
                 let breathe = 0.10 + 0.035 * sin(t * 0.9)
 
                 Circle()
-                    .fill(accent.opacity(breathe))
+                    .fill(accent)
                     .frame(width: 250, height: 250)
                     .blur(radius: 54)
+                    .opacity(breathe)
             }
 
             Circle()
