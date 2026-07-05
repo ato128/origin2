@@ -437,6 +437,11 @@ struct DailyTodoApp: App {
     
     private func handleFocusCompletionPush(_ userInfo: [AnyHashable: Any]?) {
         guard let userInfo else { return }
+
+        // Fallback only: if this device ran the session, reconcile already built
+        // the real summary (right mode, goal, participants) — never overwrite it
+        // with this degraded push-based one.
+        guard focusSession.completionSummary == nil else { return }
      
         let durationMinutes: Int = {
             if let intValue = userInfo["duration_minutes"] as? Int {

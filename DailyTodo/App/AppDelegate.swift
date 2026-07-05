@@ -247,13 +247,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 
         case "focus_ended_local":
             Task { @MainActor in
+                // A local (personal) session finalizes on-device with the real
+                // summary — do NOT post presentFocusCompletionFromPush here, that
+                // fallback builds a crew-flavored summary and used to hijack the
+                // personal celebration.
                 FocusSessionManager.shared.reconcileExpiredSessionIfNeeded(
                     reason: "notification_tap_focus_ended_local"
-                )
-
-                NotificationCenter.default.post(
-                    name: .presentFocusCompletionFromPush,
-                    object: userInfo
                 )
 
                 NotificationCenter.default.post(
