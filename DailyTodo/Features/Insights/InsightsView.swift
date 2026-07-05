@@ -29,7 +29,6 @@ struct InsightsView: View {
     @State private var goWeek = false
     @State private var goFocus = false
 
-    @State private var isStudyMode = false
     @State private var showAchievements = false
 
     // Premium
@@ -155,10 +154,6 @@ struct InsightsView: View {
     }
 
     private var insightsAccent: Color {
-        if isStudyMode {
-            return Color(arenaHex: AppArenaPalette.gold)
-        }
-
         if pendingLevelUp != nil || identitySnapshot.isReadyForLevelUp {
             return Color(arenaHex: AppArenaPalette.gold)
         }
@@ -167,10 +162,6 @@ struct InsightsView: View {
     }
 
     private var insightsSecondaryAccent: Color {
-        if isStudyMode {
-            return Color(arenaHex: AppArenaPalette.coral)
-        }
-
         if pendingLevelUp != nil || identitySnapshot.isReadyForLevelUp {
             return Color(arenaHex: AppArenaPalette.coral)
         }
@@ -190,10 +181,6 @@ struct InsightsView: View {
         }
 
         return "Driver"
-    }
-
-    private var isTurkish: Bool {
-        !appLanguageIsEnglish()
     }
 
     // MARK: - Body
@@ -334,7 +321,7 @@ struct InsightsView: View {
                         .fill(insightsAccent)
                         .frame(width: 20, height: 1)
 
-                    Text(isStudyMode ? "STUDY SIGNAL" : "PERFORMANCE CENTER")
+                    Text(tr("ins_hdr_eyebrow"))
                         .font(.system(size: 11, weight: .black, design: .monospaced))
                         .tracking(2.4)
                         .foregroundStyle(insightsAccent)
@@ -342,78 +329,42 @@ struct InsightsView: View {
                         .minimumScaleFactor(0.72)
                 }
 
-                HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    Text("Insights")
-                        .font(.system(size: 39, weight: .black))
-                        .foregroundStyle(.white)
-
-                    Text(isStudyMode ? "study" : "arena")
-                        .font(.system(size: 36, weight: .regular, design: .serif))
-                        .italic()
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [insightsAccent, insightsSecondaryAccent],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                }
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
+                Text("Insights")
+                    .font(.system(size: 39, weight: .black))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
             }
 
             Spacer(minLength: 8)
 
+            // Achievements (badges) — the trophy is the only chrome up here.
             Button {
-                withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-                    isStudyMode.toggle()
-                }
+                HapticManager.shared.navigation()
+                showAchievements = true
             } label: {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: isStudyMode ? "chart.bar.fill" : "graduationcap.fill")
-                        .font(.system(size: 17, weight: .black))
-                        .foregroundStyle(isStudyMode ? .black : insightsAccent)
-                        .frame(width: 46, height: 46)
-                        .background(
-                            RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                .fill(
-                                    isStudyMode
-                                    ? AnyShapeStyle(
-                                        LinearGradient(
-                                            colors: [insightsAccent, insightsSecondaryAccent],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                    : AnyShapeStyle(
-                                        LinearGradient(
-                                            colors: [
-                                                Color.white.opacity(0.090),
-                                                Color.white.opacity(0.050)
-                                            ],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
+                Image(systemName: "trophy.fill")
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundStyle(Color(arenaHex: AppArenaPalette.gold))
+                    .frame(width: 46, height: 46)
+                    .background(
+                        RoundedRectangle(cornerRadius: 17, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.090),
+                                        Color.white.opacity(0.050)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
                                 )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                        .stroke(Color.white.opacity(0.11), lineWidth: 1)
-                                )
-                                .shadow(color: Color.black.opacity(0.22), radius: 12, y: 6)
-                        )
-
-                    if pendingLevelUp != nil || identitySnapshot.isReadyForLevelUp {
-                        Circle()
-                            .fill(Color(arenaHex: AppArenaPalette.gold))
-                            .frame(width: 11, height: 11)
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.black.opacity(0.80), lineWidth: 2)
                             )
-                            .offset(x: 3, y: -3)
-                    }
-                }
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                    .stroke(Color.white.opacity(0.11), lineWidth: 1)
+                            )
+                            .shadow(color: Color.black.opacity(0.22), radius: 12, y: 6)
+                    )
             }
             .buttonStyle(.plain)
         }
@@ -560,20 +511,12 @@ struct InsightsView: View {
                     .tracking(1.6)
                     .foregroundStyle(.white)
                     .opacity(smallTitleOpacity)
-
-                if isStudyMode {
-                    Image(systemName: "graduationcap.fill")
-                        .font(.system(size: 11, weight: .black))
-                        .foregroundStyle(insightsAccent)
-                        .opacity(smallTitleOpacity)
-                }
             }
             .padding(.top, 12)
 
             Spacer()
         }
         .animation(.spring(response: 0.28, dampingFraction: 0.86), value: collapseProgress)
-        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: isStudyMode)
     }
 
     // MARK: - Background

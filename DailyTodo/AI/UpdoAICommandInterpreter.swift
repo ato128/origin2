@@ -29,7 +29,7 @@ enum UpdoAICommandInterpreter {
         let apply: () -> Void
     }
 
-    private enum Action { case add, delete, done }
+    private enum Action { case add, delete, done, move }
 
     // MARK: - Exact imperative forms (diacritic-folded, lowercased)
 
@@ -39,9 +39,13 @@ enum UpdoAICommandInterpreter {
     private static let enAdd: Set<String>  = ["add", "create"]
     private static let enDel: Set<String>  = ["delete", "remove"]
     private static let enDone: Set<String> = ["complete", "finish", "done", "check"]
+    // "al"/"alalim" only count as move with a dative day ("yarına al") — see makeMove.
+    private static let trMove: Set<String> = ["tasi", "tasiyin", "ertele", "erteleyin", "al", "alalim"]
+    private static let enMove: Set<String> = ["move", "postpone", "reschedule"]
 
     private static var allVerbs: Set<String> {
         trAdd.union(trDel).union(trDone).union(enAdd).union(enDel).union(enDone)
+            .union(trMove).union(enMove)
     }
 
     // Words that mean "this is a question / negation / statement", never a command.
@@ -147,6 +151,8 @@ enum UpdoAICommandInterpreter {
             return makeRemove(tokens: tokens, store: store, context: context, ownerUserID: ownerUserID)
         case .done:
             return makeComplete(tokens: tokens, store: store)
+        case .move:
+            return makeMove(tokens: tokens, store: store)
         }
     }
 
@@ -158,7 +164,23 @@ enum UpdoAICommandInterpreter {
         if trAdd.contains(v)  || enAdd.contains(v)  { return .add }
         if trDel.contains(v)  || enDel.contains(v)  { return .delete }
         if trDone.contains(v) || enDone.contains(v) { return .done }
+        if trMove.contains(v) || enMove.contains(v) {
+            // A move needs a day target; "al" additionally needs the dative form
+            // ("yarına al", "pazartesiye al") because bare "al" usually means "buy".
+            guard let dayTok = tokens.first(where: { dayParse($0) != nil }) else { return nil }
+            if (v == "al" || v == "alalim") && !isDativeDay(dayTok) { return nil }
+            return .move
+        }
         return nil
+    }
+
+    /// "yarına", "pazartesiye", "cumaya", "bugüne" — day word carrying a dative
+    /// suffix (folded). The bare form ("yarin") is NOT dative.
+    private static func isDativeDay(_ tok: String) -> Bool {
+        guard dayParse(tok) != nil else { return false }
+        let bases = ["bugun", "yarin", "today", "tomorrow"] + Array(weekdayNames.keys)
+        guard !bases.contains(tok) else { return false }
+        return tok.hasSuffix("a") || tok.hasSuffix("e")
     }
 
     /// Split on whitespace/commas; trim edge punctuation but keep internal "." / ":".
@@ -400,6 +422,29 @@ enum UpdoAICommandInterpreter {
         return owned.isEmpty ? all.filter { $0.ownerUserID == nil } : owned
     }
 
+    // MARK: - Move / postpone (tasks)
+
+    private static func makeMove(tokens: [String], store: TodoStore) -> Result? {
+        // detectAction already guaranteed a day token exists.
+        guard let dayTok = tokens.first(where: { dayParse($0) != nil }),
+              let day = dayParse(dayTok),
+              let date = day.date
+        else { return nil }
+
+        let query = targetQuery(tokens.filter { dayParse($0) == nil })
+        guard !query.isEmpty else { return nil }
+
+        let pending = store.items.filter { !$0.isDone }
+        let pool = pending.isEmpty ? store.items : pending
+        guard let match = bestMatch(query, in: pool, title: { $0.title })?.item else {
+            return Result(reply: tr("ai_cmd_not_found", query), apply: {})
+        }
+
+        return Result(reply: tr("ai_cmd_moved", match.title, day.label), apply: {
+            store.reschedule(match, to: date)
+        })
+    }
+
     // MARK: - Complete (tasks)
 
     private static func makeComplete(tokens: [String], store: TodoStore) -> Result? {
@@ -434,8 +479,18 @@ enum UpdoAICommandInterpreter {
             if t == q { score = 100 }
             else if t.contains(q) || q.contains(t) { score = 60 + min(q.count, t.count) }
             else {
-                let overlap = qTokens.intersection(Set(t.split(separator: " ").map(String.init))).count
-                score = overlap * 25
+                let tTokens = Set(t.split(separator: " ").map(String.init))
+                let overlap = qTokens.intersection(tTokens).count
+                // Turkish case suffixes: "matematiği" should still hit "matematik".
+                // A shared ≥4-char stem counts as a token match.
+                var stemHits = 0
+                for qt in qTokens where qt.count >= 4 {
+                    if tTokens.contains(where: { tt in
+                        tt.count >= 4 && (tt.hasPrefix(qt) || qt.hasPrefix(tt)
+                                          || tt.commonPrefix(with: qt).count >= 4)
+                    }) { stemHits += 1 }
+                }
+                score = max(overlap, stemHits) * 25
             }
             if score > 0, best == nil || score > best!.score { best = (item, score) }
         }
@@ -454,7 +509,9 @@ enum UpdoAICommandInterpreter {
             let d = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: Date())) ?? Date()
             return DayParse(weekday: modelWeekday(d), date: d, label: tr("ai_cmd_tomorrow"))
         }
-        for (name, idx) in weekdayNames where tok == name || (name.count > 3 && tok.hasPrefix(name)) {
+        // Longest name first so "pazartesiye" resolves to pazartesi, not pazar.
+        for (name, idx) in weekdayNames.sorted(by: { $0.key.count > $1.key.count })
+        where tok == name || (name.count > 3 && tok.hasPrefix(name)) {
             return DayParse(weekday: idx, date: nextDate(forModelWeekday: idx), label: weekdayLabel(idx))
         }
         return nil

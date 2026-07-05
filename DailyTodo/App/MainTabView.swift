@@ -250,6 +250,17 @@ private extension MainTabView {
         )
 
         // Mirror unified stats into widgets / live activities (icon, Pro, streak…).
+        let cal = Calendar.current
+        let uid = session.currentUser?.id.uuidString
+        let taskDoneToday = allTasks.contains {
+            ($0.ownerUserID == uid || $0.ownerUserID == nil) && $0.isDone
+            && $0.completedAt.map { cal.isDateInToday($0) } == true
+        }
+        let focusDoneToday = allFocusRecords.contains {
+            ($0.ownerUserID == uid || $0.ownerUserID == nil)
+            && $0.countsTowardStats && cal.isDateInToday($0.endedAt)
+        }
+
         WidgetAppSync.writeUserState(
             iconName: UIApplication.shared.alternateIconName,
             isPro: SubscriptionManager.shared.isPro,
@@ -257,7 +268,9 @@ private extension MainTabView {
             level: ProgressionManager.shared.level,
             todayFocusMinutes: FocusStats.todayMinutes(allFocusRecords, for: session.currentUser?.id.uuidString),
             statsShared: ProgressionManager.shared.statsSharingEnabled,
-            longestStreak: ProgressionManager.shared.longestStreak
+            longestStreak: ProgressionManager.shared.longestStreak,
+            todayTaskDone: taskDoneToday,
+            todayFocusDone: focusDoneToday
         )
     }
 }

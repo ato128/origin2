@@ -207,4 +207,32 @@ final class TodoStore: ObservableObject {
         context.delete(item)
         saveAndReload()
     }
+
+    /// Moves a task to another day, keeping every other field (used by the
+    /// token-free AI command interpreter: "matematiği yarına taşı").
+    func reschedule(_ item: DTTaskItem, to day: Date) {
+        guard item.ownerUserID == currentUserID else { return }
+
+        let cal = Calendar.current
+        let startOfDay = cal.startOfDay(for: day)
+
+        if let due = item.dueDate {
+            // Keep the original time-of-day on the new date.
+            let comps = cal.dateComponents([.hour, .minute], from: due)
+            item.dueDate = cal.date(
+                bySettingHour: comps.hour ?? 9,
+                minute: comps.minute ?? 0,
+                second: 0,
+                of: startOfDay
+            ) ?? startOfDay
+        } else {
+            item.dueDate = startOfDay
+        }
+
+        if item.scheduledWeekDate != nil {
+            item.scheduledWeekDate = startOfDay
+        }
+
+        saveAndReload()
+    }
 }

@@ -542,6 +542,26 @@
 "home_streak_info_body_start" = "Start your streak: complete a task and a focus today. Keep both up daily and the flame grows.";
 "home_streak_today_label" = "Today:";
 
+"ai_cmd_moved" = "📅 Moved: %@ → %@";
+
+/* Insights — redesign */
+"ins_hdr_eyebrow" = "YOUR PROGRESS";
+"insd_hours_caps" = "YOUR PEAK HOURS";
+"insd_hours_peak" = "You usually focus around %02d:00.";
+
+/* AI — personal context block (system prompt) */
+"ai_ctx_header" = "User's current status";
+"ai_ctx_today" = "Today is %2$@ %1$d, %3$@";
+"ai_ctx_tasks_today" = "%d tasks done today, %d pending";
+"ai_ctx_streak" = "Streak: %d days (today task %@ · focus %@)";
+"ai_ctx_exam" = "Next exam: %@ — %d days left";
+
+/* Home — streak restore card */
+"hv_streak_broken_title" = "Your %d-day streak broke";
+"hv_streak_broken_sub_pro" = "%d restores left this month — your level comes back too.";
+"hv_streak_broken_sub_free" = "Updo Pro can restore your streak 3× a month.";
+"hv_streak_restore_cta" = "Restore";
+
 /* Home — weekly summary card (Sundays) */
 "hv_weekly_caps" = "WEEKLY RECAP";
 "hv_weekly_title" = "Your week,";

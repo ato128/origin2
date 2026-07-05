@@ -71,6 +71,12 @@ struct WidgetUserState: Codable {
     var statsShared: Bool
     var longestStreak: Int = 0
 
+    // Today's two streak requirements (optional so old snapshots still decode).
+    // `statusDayKey` ("yyyy-MM-dd") lets widgets ignore yesterday's stale flags.
+    var todayTaskDone: Bool?
+    var todayFocusDone: Bool?
+    var statusDayKey: String?
+
     static let placeholder = WidgetUserState(
         iconName: nil,
         isPro: false,
@@ -80,4 +86,14 @@ struct WidgetUserState: Codable {
         statsShared: true,
         longestStreak: 0
     )
+
+    static func dayKey(_ date: Date = Date()) -> String {
+        let c = Calendar.current.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
+    }
+
+    /// True only if the day-status flags were written today.
+    var statusIsFresh: Bool {
+        statusDayKey == WidgetUserState.dayKey()
+    }
 }

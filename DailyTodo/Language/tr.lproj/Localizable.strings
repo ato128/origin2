@@ -544,6 +544,26 @@
 "home_streak_info_body_start" = "Serini başlatmak için bugün bir görev tamamla ve bir odak (focus) yap. İkisini her gün sürdürdükçe alev büyür.";
 "home_streak_today_label" = "Bugün:";
 
+"ai_cmd_moved" = "📅 Taşındı: %@ → %@";
+
+/* Insights — redesign */
+"ins_hdr_eyebrow" = "GELİŞİMİN";
+"insd_hours_caps" = "EN VERİMLİ SAATLERİN";
+"insd_hours_peak" = "Genelde %02d:00 civarı odaklanıyorsun.";
+
+/* AI — personal context block (system prompt) */
+"ai_ctx_header" = "Kullanıcının güncel durumu";
+"ai_ctx_today" = "Bugün %d %@ %@";
+"ai_ctx_tasks_today" = "Bugün %d görev tamamlandı, %d görev bekliyor";
+"ai_ctx_streak" = "Seri: %d gün (bugün görev %@ · focus %@)";
+"ai_ctx_exam" = "En yakın sınav: %@ — %d gün kaldı";
+
+/* Home — streak restore card */
+"hv_streak_broken_title" = "%d günlük serin yandı";
+"hv_streak_broken_sub_pro" = "Bu ay %d kurtarma hakkın kaldı — seviyen de geri gelir.";
+"hv_streak_broken_sub_free" = "Updo Pro seriyi ayda 3 kez geri getirebilir.";
+"hv_streak_restore_cta" = "Kurtar";
+
 /* Home — weekly summary card (Sundays) */
 "hv_weekly_caps" = "HAFTALIK ÖZET";
 "hv_weekly_title" = "Bu hafta";

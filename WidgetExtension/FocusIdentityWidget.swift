@@ -48,6 +48,21 @@ struct FocusIdentityView: View {
     private var theme: UpdoWidgetIconTheme.Theme { UpdoWidgetIconTheme.current() }
     private let gold = hexColor("#FBBF24")
 
+    // Streak-risk: only meaningful with a fresh (written today) status and a
+    // live streak; when both halves are done there is nothing to warn about.
+    private var todayTask: Bool { state.todayTaskDone ?? false }
+    private var todayFocus: Bool { state.todayFocusDone ?? false }
+    private var streakAtRisk: Bool {
+        state.statusIsFresh && state.streak > 0 && !(todayTask && todayFocus)
+    }
+
+    /// Short label naming the missing half ("Focus ✗", "Görev ✗", "Bugün ✗").
+    private var riskLabel: String {
+        if !todayTask && !todayFocus { return widgetLocalized("Bugün ✗", "Today ✗") }
+        if !todayFocus { return widgetLocalized("Focus ✗", "Focus ✗") }
+        return widgetLocalized("Görev ✗", "Task ✗")
+    }
+
     var body: some View {
         Group {
             if isSmall { smallCard } else { mediumCard }
@@ -70,7 +85,9 @@ struct FocusIdentityView: View {
 
             HStack(spacing: 0) {
                 miniStat(icon: "flame", value: "\(state.streak)",
-                         label: widgetLocalized("Seri", "Streak"), tint: gold)
+                         label: streakAtRisk ? riskLabel : widgetLocalized("Seri", "Streak"),
+                         tint: gold,
+                         labelTint: streakAtRisk ? hexColor("#FF8A5C") : nil)
                 Spacer(minLength: 8)
                 miniStat(icon: "scope", value: "\(state.todayFocusMinutes)\(widgetLocalized("dk", "m"))",
                          label: widgetLocalized("Bugün", "Today"), tint: theme.accent)
@@ -90,6 +107,10 @@ struct FocusIdentityView: View {
                 HStack(alignment: .firstTextBaseline, spacing: 22) {
                     bigStat(value: "\(state.level)", label: widgetLocalized("Seviye", "Level"), color: .white)
                     bigStat(value: "\(state.streak)", label: widgetLocalized("Gün seri", "Day streak"), color: gold)
+
+                    if streakAtRisk {
+                        riskChip
+                    }
                 }
 
                 Spacer(minLength: 12)
@@ -135,6 +156,23 @@ struct FocusIdentityView: View {
 
     // MARK: Pieces
 
+    /// "Focus ✗" — quiet amber chip telling which half of today's streak rule
+    /// is still missing. Hidden once the day is safe.
+    private var riskChip: some View {
+        Text(riskLabel)
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(hexColor("#FF8A5C"))
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(
+                Capsule()
+                    .fill(hexColor("#FF8A5C").opacity(0.13))
+                    .overlay(
+                        Capsule().strokeBorder(hexColor("#FF8A5C").opacity(0.30), lineWidth: 0.5)
+                    )
+            )
+    }
+
     private func header(title: String) -> some View {
         HStack(spacing: 7) {
             Text(title)
@@ -176,7 +214,10 @@ struct FocusIdentityView: View {
         }
     }
 
-    private func miniStat(icon: String, value: String, label: String, tint: Color) -> some View {
+    private func miniStat(
+        icon: String, value: String, label: String, tint: Color,
+        labelTint: Color? = nil
+    ) -> some View {
         HStack(spacing: 7) {
             Image(systemName: icon)
                 .font(.system(size: 12, weight: .medium))
@@ -192,8 +233,8 @@ struct FocusIdentityView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 Text(label)
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(UpdoWidgetPalette.textTertiary)
+                    .font(.system(size: 9, weight: labelTint == nil ? .medium : .semibold))
+                    .foregroundStyle(labelTint ?? UpdoWidgetPalette.textTertiary)
             }
         }
     }

@@ -57,10 +57,11 @@ struct UpdoAIView: View {
 
     private var contextSystemPrompt: String {
         var parts = [
-            tr("ai_system_prompt")
+            tr("ai_system_prompt"),
+            personalContextBlock
         ]
         if !recentTasks.isEmpty {
-            let taskList = recentTasks.prefix(5).map { "• \($0.title)" }.joined(separator: "\n")
+            let taskList = recentTasks.prefix(5).map { taskContextLine($0) }.joined(separator: "\n")
             parts.append("\(tr("ai_active_tasks")):\n\(taskList)")
         }
         let totalFocusMins = last7DaysFocus.map { $0.completedSeconds / 60 }.reduce(0, +)
@@ -68,6 +69,69 @@ struct UpdoAIView: View {
             parts.append(tr("ai_focus_summary", totalFocusMins, last7DaysFocus.count))
         }
         return parts.joined(separator: "\n\n")
+    }
+
+    /// A compact, real snapshot of the user's day so the coach answers
+    /// personally instead of generically. ~10 short lines, cheap on Haiku.
+    private var personalContextBlock: String {
+        let cal = Calendar.current
+        let now = Date()
+        var lines: [String] = []
+
+        // The model has no clock — give it today's date so "yarın"/"pazartesi" land right.
+        let weekdayIdx = (cal.component(.weekday, from: now) + 5) % 7
+        lines.append(tr("ai_ctx_today", cal.component(.day, from: now),
+                        localizedMonthShort(cal.component(.month, from: now) - 1),
+                        localizedWeekdayFull(weekdayIdx)))
+
+        // Today's task state.
+        let doneToday = allTasks.filter {
+            $0.ownerUserID == currentUserID && $0.isDone
+            && $0.completedAt.map { cal.isDateInToday($0) } == true
+        }.count
+        let dueToday = allTasks.filter {
+            $0.ownerUserID == currentUserID && !$0.isDone
+            && $0.dueDate.map { cal.isDateInToday($0) } == true
+        }.count
+        lines.append(tr("ai_ctx_tasks_today", doneToday, dueToday))
+
+        // Streak + today's two requirements (task AND focus).
+        let streak = ProgressionManager.shared.currentStreak
+        if streak > 0 {
+            let hasFocusToday = allFocus.contains {
+                $0.ownerUserID == currentUserID && $0.countsTowardStats && cal.isDateInToday($0.endedAt)
+            }
+            lines.append(tr("ai_ctx_streak", streak,
+                            doneToday > 0 ? "✓" : "✗",
+                            hasFocusToday ? "✓" : "✗"))
+        }
+
+        // Nearest upcoming exam.
+        let exams = (try? modelContext.fetch(FetchDescriptor<ExamItem>())) ?? []
+        let upcoming = exams
+            .filter { ($0.ownerUserID == currentUserID || $0.ownerUserID == nil) && $0.examDate >= cal.startOfDay(for: now) }
+            .min(by: { $0.examDate < $1.examDate })
+        if let exam = upcoming {
+            let days = cal.dateComponents([.day], from: cal.startOfDay(for: now),
+                                          to: cal.startOfDay(for: exam.examDate)).day ?? 0
+            let name = exam.title.isEmpty ? exam.courseName : exam.title
+            lines.append(tr("ai_ctx_exam", name, days))
+        }
+
+        return "\(tr("ai_ctx_header")):\n" + lines.map { "• \($0)" }.joined(separator: "\n")
+    }
+
+    /// "• Matematik çalış (yarın)" — a due date makes the plan advice concrete.
+    private func taskContextLine(_ task: DTTaskItem) -> String {
+        guard let due = task.dueDate else { return "• \(task.title)" }
+        let cal = Calendar.current
+        let dayText: String
+        if cal.isDateInToday(due) { dayText = tr("ai_cmd_today") }
+        else if cal.isDateInTomorrow(due) { dayText = tr("ai_cmd_tomorrow") }
+        else {
+            dayText = "\(cal.component(.day, from: due)) \(localizedMonthShort(cal.component(.month, from: due) - 1))"
+        }
+        return "• \(task.title) (\(dayText))"
     }
 
     // MARK: - Suggestions

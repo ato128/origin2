@@ -80,6 +80,9 @@ struct HomeView: View {
 
     @ObservedObject var credits = DailyCreditsManager.shared
     @ObservedObject private var progression = ProgressionManager.shared
+    @ObservedObject private var subscription = SubscriptionManager.shared
+    @Environment(\.modelContext) private var modelContext
+    @State private var showStreakRestorePaywall = false
 
     // `now` is only read at minute granularity (timeline position, day checks) —
     // 15 s keeps it fresh without re-rendering the whole view every second.
@@ -120,6 +123,11 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: focusSession.isSessionActive ? 18 : 22) {
                     topBar
                     heroSection
+
+                    if progression.pendingStreakBreak {
+                        streakRestoreCard
+                    }
+
                     focusCard
 
                     if showWeeklySummaryCard {
@@ -151,6 +159,9 @@ struct HomeView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .sheet(isPresented: $showStreakRestorePaywall) {
+            PaywallView(context: "streak_restore")
+        }
         .sheet(isPresented: $showProfileHub) {
             NavigationStack {
                 ProfileHubView()
@@ -460,6 +471,95 @@ private extension HomeView {
         .offset(y: pageAppeared ? 0 : 16)
         .scaleEffect(pageAppeared ? 1.0 : 0.985, anchor: .topLeading)
         .animation(.spring(response: 0.68, dampingFraction: 0.84).delay(0.05), value: pageAppeared)
+    }
+}
+
+// MARK: - Streak restore card
+//
+// Surfaces the (already existing) restore engine where the loss is actually
+// felt: on Home, right under the hero. Pro restores in one tap (3×/month);
+// free users get the paywall.
+
+private extension HomeView {
+
+    var streakRestoreCard: some View {
+        let coral = accentWarm
+        let restoresLeft = progression.restoresLeftThisMonth
+        let canRestore = subscription.isPro && restoresLeft > 0
+
+        return HStack(spacing: 12) {
+            Image(systemName: "flame.slash.fill")
+                .font(.system(size: 20, weight: .black))
+                .foregroundStyle(coral)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(tr("hv_streak_broken_title", progression.brokenStreakValue))
+                    .font(.system(size: 14.5, weight: .black))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
+                Text(
+                    canRestore
+                    ? tr("hv_streak_broken_sub_pro", restoresLeft)
+                    : (subscription.isPro ? tr("ins_restore_exhausted") : tr("hv_streak_broken_sub_free"))
+                )
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.58))
+                .lineLimit(2)
+            }
+
+            Spacer(minLength: 6)
+
+            Button {
+                if canRestore {
+                    HapticManager.shared.success()
+                    _ = progression.restoreStreak(context: modelContext)
+                } else if !subscription.isPro {
+                    showStreakRestorePaywall = true
+                }
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: canRestore ? "arrow.uturn.backward" : "lock.fill")
+                        .font(.system(size: 11, weight: .black))
+
+                    Text(tr("hv_streak_restore_cta"))
+                        .font(.system(size: 13, weight: .black))
+                }
+                .foregroundStyle(.black)
+                .padding(.horizontal, 14)
+                .frame(height: 38)
+                .background(
+                    Capsule().fill(
+                        LinearGradient(
+                            colors: [accentGold, coral],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(subscription.isPro && restoresLeft == 0)
+            .opacity(subscription.isPro && restoresLeft == 0 ? 0.5 : 1)
+        }
+        .padding(.horizontal, 15)
+        .padding(.vertical, 13)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [coral.opacity(0.10), Color.white.opacity(0.035)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(coral.opacity(0.28), lineWidth: 1)
+                )
+        )
+        .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .top)))
     }
 }
 

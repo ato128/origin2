@@ -24,6 +24,11 @@ struct InsightsDataDashboard: View {
     var body: some View {
         VStack(spacing: 14) {
             focusHeroCard
+
+            if let hours = productiveHours {
+                productiveHoursCard(hours)
+            }
+
             tasksCard
         }
         .sheet(isPresented: $showFocusDetail) {
@@ -55,6 +60,46 @@ struct InsightsDataDashboard: View {
     private var totalMinutes: Int { completedSessions.reduce(0) { $0 + $1.completedSeconds } / 60 }
     private var totalSessions: Int { completedSessions.count }
 
+    /// Minutes in the 7 days before the current 7-day window (for the delta).
+    private var prevWeekMinutes: Int {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        guard let windowEnd = cal.date(byAdding: .day, value: -6, to: today),
+              let windowStart = cal.date(byAdding: .day, value: -13, to: today)
+        else { return 0 }
+
+        return completedSessions
+            .filter { $0.endedAt >= windowStart && $0.endedAt < windowEnd }
+            .reduce(0) { $0 + $1.completedSeconds } / 60
+    }
+
+    /// "+42%" vs last week — nil when there is no previous week to compare.
+    private var weekDelta: (text: String, isUp: Bool)? {
+        guard prevWeekMinutes > 0, weekMinutes != prevWeekMinutes else { return nil }
+        let pct = Int((Double(weekMinutes - prevWeekMinutes) / Double(prevWeekMinutes) * 100).rounded())
+        guard pct != 0 else { return nil }
+        return (String(format: "%+d%%", pct), pct > 0)
+    }
+
+    /// Hour-of-day focus distribution over the last 30 days. Nil until there
+    /// are ≥ 5 sessions — an honest hide beats a noisy guess.
+    private var productiveHours: (byHour: [Int], peakHour: Int)? {
+        let cal = Calendar.current
+        guard let cutoff = cal.date(byAdding: .day, value: -30, to: Date()) else { return nil }
+
+        let recent = completedSessions.filter { $0.startedAt >= cutoff }
+        guard recent.count >= 5 else { return nil }
+
+        var byHour = Array(repeating: 0, count: 24)
+        for session in recent {
+            byHour[cal.component(.hour, from: session.startedAt)] += session.completedSeconds / 60
+        }
+
+        guard let peak = byHour.enumerated().max(by: { $0.element < $1.element }),
+              peak.element > 0 else { return nil }
+        return (byHour, peak.offset)
+    }
+
     // MARK: - Derived task data
 
     private func tasksCompleted(on day: Date) -> Int {
@@ -82,10 +127,17 @@ struct InsightsDataDashboard: View {
                                 .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                                 .tracking(1.6)
                                 .foregroundStyle(accent.opacity(0.92))
-                            Text(durationText(weekMinutes))
-                                .font(.system(size: 30, weight: .bold))
-                                .foregroundStyle(.white)
-                                .monospacedDigit()
+
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Text(durationText(weekMinutes))
+                                    .font(.system(size: 30, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .monospacedDigit()
+
+                                if let delta = weekDelta {
+                                    weekDeltaPill(delta)
+                                }
+                            }
                         }
                         Spacer()
                         Image(systemName: "chevron.right")
@@ -106,6 +158,75 @@ struct InsightsDataDashboard: View {
             }
         }
         .buttonStyle(.plain)
+    }
+
+    /// "+42%" — how this 7-day window compares to the previous one.
+    private func weekDeltaPill(_ delta: (text: String, isUp: Bool)) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: delta.isUp ? "arrow.up.right" : "arrow.down.right")
+                .font(.system(size: 9, weight: .black))
+            Text(delta.text)
+                .font(.system(size: 11, weight: .bold))
+                .monospacedDigit()
+        }
+        .foregroundStyle(delta.isUp ? green : Color.white.opacity(0.5))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+            Capsule()
+                .fill(delta.isUp ? green.opacity(0.13) : Color.white.opacity(0.06))
+        )
+    }
+
+    // MARK: - Productive hours (last 30 days, real sessions only)
+
+    private func productiveHoursCard(_ hours: (byHour: [Int], peakHour: Int)) -> some View {
+        let maxValue = max(hours.byHour.max() ?? 0, 1)
+
+        return InsightsGlassCard(tint: accent) {
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(tr("insd_hours_caps"))
+                        .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                        .tracking(1.6)
+                        .foregroundStyle(accent.opacity(0.92))
+
+                    Text(tr("insd_hours_peak", hours.peakHour))
+                        .font(.system(size: 14.5, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+
+                VStack(spacing: 6) {
+                    HStack(alignment: .bottom, spacing: 3) {
+                        ForEach(0..<24, id: \.self) { hour in
+                            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                .fill(
+                                    hour == hours.peakHour
+                                    ? AnyShapeStyle(accent)
+                                    : AnyShapeStyle(accent.opacity(hours.byHour[hour] == 0 ? 0.10 : 0.45))
+                                )
+                                .frame(height: max(4, 42 * CGFloat(hours.byHour[hour]) / CGFloat(maxValue)))
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .frame(height: 42, alignment: .bottom)
+
+                    HStack {
+                        Text("00")
+                        Spacer()
+                        Text("06")
+                        Spacer()
+                        Text("12")
+                        Spacer()
+                        Text("18")
+                        Spacer()
+                        Text("24")
+                    }
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.35))
+                }
+            }
+        }
     }
 
     // MARK: - Tasks card

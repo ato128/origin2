@@ -307,7 +307,17 @@ struct SmartNotificationBrain {
         guard !todayQualified else { return [] }
         guard streak >= 2 else { return [] }
 
-        guard let trigger = triggerDateToday(hour: 20, minute: 45, now: now) else {
+        // Land ~30 min before the user's usual session so there is still time
+        // to act; never earlier than 19:00 or later than 22:30.
+        let minuteOfDay = personalizedMinute(
+            defaultMinute: 20 * 60 + 45,
+            records: focusRecords,
+            offset: -30,
+            clampedTo: (19 * 60)...(22 * 60 + 30),
+            now: now
+        )
+
+        guard let trigger = triggerDateToday(hour: minuteOfDay / 60, minute: minuteOfDay % 60, now: now) else {
             return []
         }
 
@@ -411,7 +421,16 @@ struct SmartNotificationBrain {
 
         guard !activeTasks.isEmpty else { return [] }
 
-        guard let trigger = triggerDateToday(hour: 17, minute: 30, now: now) else {
+        // Nudge ~an hour before the user's usual focus time (12:00–20:30 window).
+        let minuteOfDay = personalizedMinute(
+            defaultMinute: 17 * 60 + 30,
+            records: focusRecords,
+            offset: -60,
+            clampedTo: (12 * 60)...(20 * 60 + 30),
+            now: now
+        )
+
+        guard let trigger = triggerDateToday(hour: minuteOfDay / 60, minute: minuteOfDay % 60, now: now) else {
             return []
         }
 
@@ -426,6 +445,47 @@ struct SmartNotificationBrain {
                 priority: 58
             )
         ]
+    }
+
+    // MARK: - Personalized timing
+    //
+    // A 17:30 "focus now" nudge is noise for someone who always studies at 22:00.
+    // The median start time of the user's recent real sessions anchors the
+    // triggers instead; with too little data we keep the fixed defaults.
+
+    /// Median start minute-of-day of countsTowardStats sessions in the last 30
+    /// days. Needs ≥ 3 sessions, otherwise nil (defaults apply).
+    static func typicalFocusMinute(
+        records: [FocusSessionRecord],
+        now: Date = Date()
+    ) -> Int? {
+        let calendar = Calendar.current
+        guard let cutoff = calendar.date(byAdding: .day, value: -30, to: now) else { return nil }
+
+        let minutes = records
+            .filter { $0.countsTowardStats && $0.startedAt >= cutoff }
+            .map { calendar.component(.hour, from: $0.startedAt) * 60
+                 + calendar.component(.minute, from: $0.startedAt) }
+            .sorted()
+
+        guard minutes.count >= 3 else { return nil }
+        return minutes[minutes.count / 2]
+    }
+
+    /// Shifts a default trigger toward the user's typical focus time.
+    /// `offset` is applied to the typical minute (e.g. -60 = one hour before);
+    /// the result is clamped so notifications stay in a sane window.
+    private static func personalizedMinute(
+        defaultMinute: Int,
+        records: [FocusSessionRecord],
+        offset: Int,
+        clampedTo range: ClosedRange<Int>,
+        now: Date
+    ) -> Int {
+        guard let typical = typicalFocusMinute(records: records, now: now) else {
+            return defaultMinute
+        }
+        return min(max(typical + offset, range.lowerBound), range.upperBound)
     }
 
     // MARK: - Focus Helpers
