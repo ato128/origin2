@@ -33,6 +33,12 @@ struct FocusView: View {
     @State private var selectedCrewID: UUID?
     @State private var selectedCrewTaskID: UUID?
     @State private var selectedParticipantIDs: Set<UUID> = []
+
+    // Friend (duo) focus
+    @State private var showFriendPickerSheet = false
+
+    @Query(sort: \Friend.createdAt, order: .reverse)
+    private var localFriends: [Friend]
     
     var body: some View {
         ZStack {
@@ -96,6 +102,9 @@ struct FocusView: View {
         }
         .sheet(isPresented: $showCrewStartSheet) {
             crewStartSheet
+        }
+        .sheet(isPresented: $showFriendPickerSheet) {
+            friendPickerSheet
         }
         .fullScreenCover(isPresented: $focusSession.isExpanded) {
             ActiveFocusView()
@@ -888,6 +897,12 @@ private extension FocusView {
 
         if selectedMode == .crew {
             showCrewStartSheet = true
+            return
+        }
+
+        if selectedMode == .friend {
+            // Duo needs a real friend — pick who to invite, then start.
+            showFriendPickerSheet = true
             return
         }
 
@@ -1695,6 +1710,132 @@ private extension FocusView {
         case .personal: return tr("fv_start_personal")
         case .crew: return tr("fv_start_crew")
         case .friend: return tr("fv_start_friend")
+        }
+    }
+
+    // MARK: - Friend picker (duo focus)
+
+    private var invitableFriends: [Friend] {
+        let uid = session.currentUser?.id.uuidString
+        return localFriends.filter {
+            $0.backendUserID != nil && ($0.ownerUserID == nil || $0.ownerUserID == uid)
+        }
+    }
+
+    var friendPickerSheet: some View {
+        NavigationStack {
+            ZStack {
+                Color(arenaHex: "#07090F").ignoresSafeArea()
+
+                if invitableFriends.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "person.2")
+                            .font(.system(size: 34, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.3))
+                        Text(tr("fv_no_friends"))
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.55))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                    }
+                } else {
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 8) {
+                            ForEach(invitableFriends) { friend in
+                                Button {
+                                    guard let backendID = friend.backendUserID else { return }
+                                    HapticManager.shared.action()
+                                    startFriendDuoSession(friendID: backendID, friendName: friend.name)
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        ZStack {
+                                            Circle()
+                                                .fill(Color(arenaHex: friend.colorHex).opacity(0.25))
+                                                .frame(width: 42, height: 42)
+                                            Text(String(friend.name.prefix(1)).uppercased())
+                                                .font(.system(size: 16, weight: .black, design: .rounded))
+                                                .foregroundStyle(.white)
+                                        }
+
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(friend.name)
+                                                .font(.system(size: 15.5, weight: .bold))
+                                                .foregroundStyle(.white)
+                                            Text(tr("fv_friend_invite_sub", resolvedMinutes))
+                                                .font(.system(size: 12, weight: .semibold))
+                                                .foregroundStyle(.white.opacity(0.45))
+                                        }
+
+                                        Spacer(minLength: 8)
+
+                                        Image(systemName: "paperplane.fill")
+                                            .font(.system(size: 13, weight: .bold))
+                                            .foregroundStyle(Color(arenaHex: AppArenaPalette.purple))
+                                    }
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 11)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                            .fill(Color.white.opacity(0.05))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                                    .strokeBorder(Color.white.opacity(0.09), lineWidth: 1)
+                                            )
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(16)
+                    }
+                }
+            }
+            .preferredColorScheme(.dark)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(tr("fv_pick_friend_title"))
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(tr("common_cancel")) { showFriendPickerSheet = false }
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func startFriendDuoSession(friendID: UUID, friendName: String) {
+        showFriendPickerSheet = false
+
+        withAnimation(.easeInOut(duration: 0.24)) {
+            isLaunchingFocus = true
+        }
+
+        Task {
+            try? await Task.sleep(nanoseconds: 320_000_000)
+
+            let started = await focusSession.startRequestedSession(
+                mode: .friend,
+                durationMinutes: resolvedMinutes,
+                goal: selectedGoal,
+                style: selectedStyle,
+                friendUserID: friendID,
+                friendName: friendName
+            )
+
+            if !started {
+                Log.debug("FRIEND FOCUS START FAILED")
+            }
+
+            try? await Task.sleep(nanoseconds: 280_000_000)
+
+            await MainActor.run {
+                isLaunchingFocus = false
+            }
         }
     }
 

@@ -286,18 +286,10 @@ private extension AppOnboardingFlowView {
             VStack(spacing: 0) {
                 Spacer()
 
-                // App mark — directional brand glyph on the app gradient.
-                ZStack {
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .fill(AppArenaPalette.appGradient)
-                        .frame(width: 98, height: 98)
-                        .shadow(color: Color(arenaHex: AppArenaPalette.purple).opacity(0.5), radius: 28, y: 14)
-                    Image(systemName: "location.north.fill")
-                        .font(.system(size: 44, weight: .black))
-                        .foregroundStyle(.white)
-                }
-                .scaleEffect(welcomeAppeared ? 1 : 0.82)
-                .opacity(welcomeAppeared ? 1 : 0)
+                // App mark — the living Updo orb, same identity as the AI.
+                UpdoAIOrb(mode: .idle, size: 108)
+                    .scaleEffect(welcomeAppeared ? 1 : 0.82)
+                    .opacity(welcomeAppeared ? 1 : 0)
 
                 // Monospaced tracked eyebrow with rule lines.
                 HStack(spacing: 8) {

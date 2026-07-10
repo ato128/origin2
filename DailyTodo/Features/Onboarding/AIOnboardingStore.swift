@@ -4,17 +4,20 @@
 //
 //  Drives the mascot-led onboarding conversation. The dialogue is SCRIPTED
 //  (0 tokens) and USER-PACED — the mascot says one line at a time and waits
-//  for the user to tap "Devam" before the next line. Course data comes from
-//  the existing backend catalog; saving reuses StudentStore untouched.
+//  for the user to tap "Devam" before the next line.
+//
+//  Flow: education → university (single global search, no country split) →
+//  grade → (track for HS / free-text major for uni) → courses (type or paste,
+//  parsed by OnboardingCourseParser) → schedule fill for courses missing a
+//  day/time → daily goal → save (profile + courses + weekly EventItems).
 //
 
 import SwiftUI
 import Combine
 
 /// A course the user picks (or that is suggested) during onboarding, before it
-/// is persisted as a real course. Shared by `StudentStore`, `CurriculumCatalog`
-/// and the onboarding stores. (Previously lived in the now-removed
-/// `StudentOnboardingFlowView`.)
+/// is persisted as a real course. Shared by `StudentStore` and the onboarding
+/// stores.
 struct OnboardingCourseDraft: Identifiable, Hashable {
     let id = UUID()
     var code: String
@@ -26,7 +29,7 @@ struct OnboardingCourseDraft: Identifiable, Hashable {
 final class AIOnboardingStore: ObservableObject {
 
     enum Phase: Equatable {
-        case greeting, education, university, grade, track, major, courses, goal, saving, finished
+        case greeting, education, university, grade, track, major, courses, schedule, goal, saving, finished
     }
 
     // MARK: - Conversation (user-paced)
@@ -39,7 +42,7 @@ final class AIOnboardingStore: ObservableObject {
     @Published private(set) var inputVisible = false
     /// Brief flag so the mascot animates its mouth when a new line appears.
     @Published private(set) var isSpeaking = false
-    /// Network work in progress (majors/courses/saving) — show a spinner.
+    /// Network work in progress (saving) — show a spinner.
     @Published private(set) var isWorking = false
 
     @Published private(set) var phase: Phase = .greeting
@@ -57,15 +60,28 @@ final class AIOnboardingStore: ObservableObject {
     @Published var institutionName: String = ""
     @Published var institutionCountry: String = "tr"
 
-    @Published var remoteMajors: [CatalogMajor] = []
-    @Published var majorSearchText: String = ""
-    @Published var selectedMajorID: UUID?
     @Published var majorName: String = ""
 
-    @Published var suggestedCourses: [CatalogCurriculumCourse] = []
-    @Published var selectedCourseIDs: Set<UUID> = []
-
     @Published var dailyStudyGoalMinutes: Double = 120
+
+    // MARK: - University search (single global list)
+
+    @Published var universityQuery: String = ""
+    @Published private(set) var universityMatches: [CatalogUniversity] = []
+    @Published private(set) var isSearchingUniversities = false
+
+    private var universitySearchTask: Task<Void, Never>?
+
+    // MARK: - Courses (typed or pasted)
+
+    @Published var courseInputText: String = ""
+    @Published private(set) var parsedCourses: [ParsedCourse] = []
+    /// false → the free-text editor is showing; true → the parsed list.
+    @Published private(set) var coursesParsed = false
+
+    /// Day/time picks for courses the parser couldn't schedule.
+    @Published var scheduleDayByCourse: [UUID: Int] = [:]
+    @Published var scheduleMinuteByCourse: [UUID: Int] = [:]
 
     private weak var studentStore: StudentStore?
     private var didStart = false
@@ -74,16 +90,13 @@ final class AIOnboardingStore: ObservableObject {
 
     var isUniversity: Bool { educationLevel == "university" }
 
-    var filteredMajors: [CatalogMajor] {
-        let q = majorSearchText.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !q.isEmpty else { return remoteMajors }
-        return remoteMajors.filter { $0.name.lowercased().contains(q) }
+    var courseDrafts: [OnboardingCourseDraft] {
+        parsedCourses.map { OnboardingCourseDraft(code: $0.code, name: $0.name) }
     }
 
-    var selectedCourseDrafts: [OnboardingCourseDraft] {
-        suggestedCourses
-            .filter { selectedCourseIDs.contains($0.id) }
-            .map { OnboardingCourseDraft(code: $0.course_code, name: $0.course_name, isSuggested: true) }
+    /// Courses that still need a day/time in the schedule phase.
+    var unscheduledCourses: [ParsedCourse] {
+        parsedCourses.filter { !$0.hasSchedule }
     }
 
     var gradeOptions: [String] {
@@ -135,7 +148,7 @@ final class AIOnboardingStore: ObservableObject {
         }
     }
 
-    // MARK: - User answers
+    // MARK: - Education
 
     func chooseEducation(_ level: String) {
         educationLevel = level
@@ -143,22 +156,56 @@ final class AIOnboardingStore: ObservableObject {
         if level == "university" {
             present([tr("aio_q_university")], phase: .university)
         } else {
-            // High school: no university catalog — skip institution and go to class.
             present([tr("aio_q_class")], phase: .grade)
         }
     }
 
-    func universitySelected() {
-        guard !institutionName.isEmpty else { return }
-        HapticManager.shared.success()
-        present([trArg("aio_uni_confirm", institutionName),
-                 isUniversity ? tr("aio_q_year") : tr("aio_q_class")], phase: .grade)
+    // MARK: - University (global alphabetical autocomplete)
+
+    func universityQueryChanged(_ text: String) {
+        universityQuery = text
+        universitySearchTask?.cancel()
+
+        let query = text.trimmingCharacters(in: .whitespaces)
+        guard query.count >= 2 else {
+            universityMatches = []
+            isSearchingUniversities = false
+            return
+        }
+
+        isSearchingUniversities = true
+        universitySearchTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            guard !Task.isCancelled else { return }
+
+            do {
+                let results = try await StudentCatalogService.fetchUniversities(query: query)
+                guard !Task.isCancelled else { return }
+                self?.universityMatches = Array(results.prefix(30))
+            } catch {
+                // Silent — the list simply stays as-is; typing again retries.
+            }
+            self?.isSearchingUniversities = false
+        }
     }
+
+    func selectUniversity(_ university: CatalogUniversity) {
+        selectedUniversityID = university.id
+        institutionName = university.name
+        institutionCountry = university.country_code
+        universityQuery = university.name
+        universityMatches = []
+        HapticManager.shared.success()
+
+        present([trArg("aio_uni_confirm", institutionName), tr("aio_q_year")], phase: .grade)
+    }
+
+    // MARK: - Grade & track
 
     func chooseGrade(_ value: String) {
         gradeLevel = value
         if isUniversity {
-            beginMajorPhase()
+            present([tr("aio_q_major_free")], phase: .major)
         } else {
             present([tr("aio_q_track")], phase: .track)
         }
@@ -166,88 +213,111 @@ final class AIOnboardingStore: ObservableObject {
 
     func chooseTrack(_ value: String) {
         highSchoolTrack = value
+        beginCoursesPhase()
+    }
+
+    // MARK: - Major (free text)
+
+    func confirmMajor(_ text: String) {
+        majorName = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        HapticManager.shared.selection()
+        beginCoursesPhase()
+    }
+
+    // MARK: - Courses (type or paste → parser)
+
+    private func beginCoursesPhase() {
+        coursesParsed = false
+        present([tr("aio_q_courses_1"), tr("aio_q_courses_2")], phase: .courses)
+    }
+
+    func parseCourseInput() {
+        let parsed = OnboardingCourseParser.parse(courseInputText)
+
+        guard !parsed.isEmpty else {
+            HapticManager.shared.error()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
+                currentLine = tr("aio_courses_parse_empty")
+            }
+            speak()
+            return
+        }
+
+        parsedCourses = parsed
+        HapticManager.shared.success()
+
+        let scheduledCount = parsed.filter(\.hasSchedule).count
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
+            coursesParsed = true
+            currentLine = scheduledCount > 0
+                ? trArg2("aio_courses_parsed_with_time", parsed.count, scheduledCount)
+                : trArg("aio_courses_parsed", parsed.count)
+        }
+        speak()
+    }
+
+    func removeParsedCourse(_ id: UUID) {
+        parsedCourses.removeAll { $0.id == id }
+        HapticManager.shared.selection()
+        if parsedCourses.isEmpty { editCoursesAgain() }
+    }
+
+    func editCoursesAgain() {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
+            coursesParsed = false
+            currentLine = tr("aio_q_courses_2")
+        }
+    }
+
+    func confirmParsedCourses() {
+        if unscheduledCourses.isEmpty {
+            present([tr("aio_q_goal")], phase: .goal)
+        } else {
+            present([tr("aio_q_schedule")], phase: .schedule)
+        }
+    }
+
+    func skipCourses() {
+        parsedCourses = []
         present([tr("aio_q_goal")], phase: .goal)
     }
 
-    func selectMajor(_ major: CatalogMajor) {
-        selectedMajorID = major.id
-        majorName = major.name
-        HapticManager.shared.selection()
-        beginCoursesPhase(majorID: major.id)
-    }
+    // MARK: - Schedule fill (courses without a parsed day/time)
 
-    func toggleCourse(_ id: UUID) {
-        if selectedCourseIDs.contains(id) { selectedCourseIDs.remove(id) } else { selectedCourseIDs.insert(id) }
+    func setScheduleDay(_ courseID: UUID, weekday: Int) {
+        scheduleDayByCourse[courseID] = weekday
         HapticManager.shared.selection()
     }
 
-    func confirmCourses() {
+    func setScheduleMinute(_ courseID: UUID, minute: Int) {
+        scheduleMinuteByCourse[courseID] = minute
+        HapticManager.shared.selection()
+    }
+
+    func confirmSchedule() {
+        // Fold the picks back into the parsed courses; anything still missing
+        // a day or time simply gets no weekly event (addable later in Week).
+        for index in parsedCourses.indices where !parsedCourses[index].hasSchedule {
+            let id = parsedCourses[index].id
+            guard let day = scheduleDayByCourse[id], let minute = scheduleMinuteByCourse[id] else { continue }
+
+            parsedCourses[index].slots = [
+                ParsedCourseSlot(
+                    weekday: day,
+                    startMinute: minute,
+                    durationMinute: OnboardingCourseParser.defaultDurationMinutes
+                )
+            ]
+        }
+
         present([tr("aio_q_goal")], phase: .goal)
     }
+
+    // MARK: - Goal & save
 
     func confirmGoal() {
         Task { await finish() }
     }
-
-    // MARK: - Catalog phases
-
-    private func beginMajorPhase() {
-        guard let uniID = selectedUniversityID else {
-            present([tr("aio_q_major")], phase: .major); return
-        }
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
-            phase = .major
-            currentLine = tr("aio_loading_majors")
-            pendingLines = []
-            inputVisible = false
-            isWorking = true
-        }
-        speak()
-        Task {
-            do {
-                let majors = try await StudentCatalogService.fetchMajors(universityID: uniID)
-                remoteMajors = majors
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
-                    isWorking = false
-                    currentLine = majors.isEmpty ? tr("aio_no_majors") : tr("aio_q_major")
-                    inputVisible = true
-                }
-                speak()
-            } catch {
-                withAnimation { isWorking = false; currentLine = tr("aio_majors_error"); inputVisible = false }
-                speak()
-            }
-        }
-    }
-
-    private func beginCoursesPhase(majorID: UUID) {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
-            phase = .courses
-            currentLine = tr("aio_loading_courses")
-            pendingLines = []
-            inputVisible = false
-            isWorking = true
-        }
-        speak()
-        Task {
-            do {
-                let courses = try await StudentCatalogService.fetchCurriculumCourses(majorID: majorID, gradeLevel: gradeLevel)
-                suggestedCourses = courses
-                selectedCourseIDs = Set(courses.map { $0.id })
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
-                    isWorking = false
-                    currentLine = courses.isEmpty ? tr("aio_no_courses") : trArg("aio_courses_found", courses.count)
-                    inputVisible = true
-                }
-                speak()
-            } catch {
-                withAnimation { isWorking = false; currentLine = tr("aio_courses_error"); inputVisible = true }
-                speak()
-            }
-        }
-    }
-
-    // MARK: - Save
 
     private func finish() async {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
@@ -270,11 +340,15 @@ final class AIOnboardingStore: ObservableObject {
                 majorName: majorName.isEmpty ? nil : majorName,
                 dailyStudyGoalMinutes: Int(dailyStudyGoalMinutes),
                 weeklyStudyGoalMinutes: Int(dailyStudyGoalMinutes) * 7,
-                courseDrafts: selectedCourseDrafts
+                courseDrafts: courseDrafts
             )
-            if !selectedCourseDrafts.isEmpty {
-                studentStore.forceRestoreCoursesFromOnboardingDrafts(selectedCourseDrafts)
+            if !courseDrafts.isEmpty {
+                studentStore.forceRestoreCoursesFromOnboardingDrafts(courseDrafts)
             }
+
+            // Weekly schedule: every parsed/picked slot becomes a real event.
+            studentStore.createScheduleEvents(from: parsedCourses)
+
             withAnimation { isWorking = false; phase = .finished; currentLine = tr("aio_done") }
             speak()
             HapticManager.shared.success()
@@ -311,6 +385,17 @@ final class AIOnboardingStore: ObservableObject {
         default: return value
         }
     }
+
+    static var weekdayShortNames: [String] {
+        appLanguageIsEnglish()
+            ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+            : ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
+    }
+
+    static func minuteText(_ minute: Int) -> String {
+        String(format: "%02d.%02d", minute / 60, minute % 60)
+    }
 }
 
 private func trArg(_ key: String, _ arg: CVarArg) -> String { tr(key, arg) }
+private func trArg2(_ key: String, _ a: CVarArg, _ b: CVarArg) -> String { tr(key, a, b) }

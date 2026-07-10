@@ -213,6 +213,112 @@ final class SessionStore: ObservableObject {
         }
     }
 
+    // MARK: - Social sign-in (Apple / Google)
+    //
+    // OAuth identities arrive with a provider-verified email, so there is no
+    // mail-confirmation loop: sign in, make sure a profiles row exists, done.
+    // The backend treats "apple"/"google" JWTs as verified as well.
+
+    func signInWithApple(idToken: String, nonce: String, fullName: String?) async throws {
+        isLoading = true
+        didResolveInitialSession = true
+        verificationMessage = nil
+        defer { isLoading = false }
+
+        let session = try await SupabaseManager.shared.client.auth.signInWithIdToken(
+            credentials: .init(provider: .apple, idToken: idToken, nonce: nonce)
+        )
+
+        try await completeSocialSignIn(user: session.user, suggestedFullName: fullName)
+    }
+
+    func signInWithGoogle() async throws {
+        isLoading = true
+        didResolveInitialSession = true
+        verificationMessage = nil
+        defer { isLoading = false }
+
+        // Must match the redirect URL allow-listed in the Supabase dashboard.
+        let session = try await SupabaseManager.shared.client.auth.signInWithOAuth(
+            provider: .google,
+            redirectTo: URL(string: "dailytodo://auth/callback")
+        )
+
+        try await completeSocialSignIn(user: session.user, suggestedFullName: nil)
+    }
+
+    private func completeSocialSignIn(
+        user: Auth.User,
+        suggestedFullName: String?
+    ) async throws {
+        try await ensureProfileRow(for: user, suggestedFullName: suggestedFullName)
+        try await loadProfileAndSetCurrentUser(userID: user.id)
+
+        isEmailVerified = true
+        saveCachedEmailVerified(true)
+        pendingVerificationEmail = nil
+        removePendingVerificationEmail()
+        verificationMessage = nil
+    }
+
+    /// First social sign-in has no profiles row (email signup creates it via
+    /// metadata) — create one from the OAuth identity.
+    private func ensureProfileRow(
+        for user: Auth.User,
+        suggestedFullName: String?
+    ) async throws {
+        struct ProfileIDRow: Decodable { let id: UUID }
+
+        let existing = try await SupabaseManager.shared.client
+            .from("profiles")
+            .select("id")
+            .eq("id", value: user.id.uuidString)
+            .limit(1)
+            .execute()
+
+        if let rows = try? JSONDecoder().decode([ProfileIDRow].self, from: existing.data),
+           !rows.isEmpty {
+            return
+        }
+
+        let email = user.email ?? ""
+
+        var metaName: String?
+        if case let .string(value)? = user.userMetadata["full_name"] {
+            metaName = value
+        } else if case let .string(value)? = user.userMetadata["name"] {
+            metaName = value
+        }
+
+        let fallbackName = email.components(separatedBy: "@").first ?? "Student"
+        let fullName = [suggestedFullName, metaName]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty } ?? fallbackName
+
+        // Unique-enough handle from the email prefix.
+        let base = fallbackName
+            .lowercased()
+            .replacingOccurrences(of: #"[^a-z0-9]"#, with: "", options: .regularExpression)
+        let username = "\(base.isEmpty ? "student" : base)\(Int.random(in: 100...999))"
+
+        struct NewProfile: Encodable {
+            let id: String
+            let email: String
+            let full_name: String
+            let username: String
+        }
+
+        try await SupabaseManager.shared.client
+            .from("profiles")
+            .insert(NewProfile(
+                id: user.id.uuidString,
+                email: email,
+                full_name: fullName,
+                username: username
+            ))
+            .execute()
+    }
+
     func signOut() {
         didResolveInitialSession = true
         didStartInitialSessionResolve = true

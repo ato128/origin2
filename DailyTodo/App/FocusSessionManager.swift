@@ -36,13 +36,22 @@ final class FocusSessionManager: ObservableObject {
     @Published var currentCrewID: UUID?
     @Published var currentCrewBackendSessionID: UUID?
     @Published var currentCrewHostUserID: UUID?
-    
+
+    // Friend (duo) session — backed by /v1/friend-focus on our backend.
+    @Published var currentFriendSessionID: UUID?
+    @Published var currentFriendUserID: UUID?
+    @Published var currentFriendName: String?
+
     private struct StoredFocusSessionSnapshot: Codable {
         let session: FocusSessionState
         let crewID: UUID?
         let crewBackendSessionID: UUID?
         let crewHostUserID: UUID?
         let savedAt: Date
+        // Optional so pre-friend-focus snapshots keep decoding.
+        var friendSessionID: UUID?
+        var friendUserID: UUID?
+        var friendName: String?
     }
 
     private let storageKey = "active_focus_session_state_v1"
@@ -85,7 +94,9 @@ final class FocusSessionManager: ObservableObject {
         durationMinutes: Int,
         goal: FocusGoal,
         style: FocusStyle,
-        preferredCrewID: UUID? = nil
+        preferredCrewID: UUID? = nil,
+        friendUserID: UUID? = nil,
+        friendName: String? = nil
     ) async -> Bool {
         guard !hasBlockingActiveSession else {
             Log.debug("FOCUS START BLOCKED: another session is already active")
@@ -112,7 +123,8 @@ final class FocusSessionManager: ObservableObject {
             )
 
         case .friend:
-            // Host starts alone; friends appear as they actually join.
+            // Host starts alone; the friend appears when they really join
+            // (backend session + push invite; join/leave arrive as pushes).
             let host = FocusParticipant(
                 id: currentUserID ?? UUID(),
                 name: currentUserDisplayName,
@@ -127,8 +139,142 @@ final class FocusSessionManager: ObservableObject {
                 style: style,
                 participants: [host]
             )
+
+            currentFriendUserID = friendUserID
+            currentFriendName = friendName
+            currentFriendSessionID = nil
+
+            if let friendUserID {
+                let hostName = currentUserDisplayName
+                let goalTitle = goal.title
+
+                Task { [weak self] in
+                    let dto = await FriendFocusBackendClient.shared.create(
+                        friendID: friendUserID,
+                        friendName: friendName ?? "",
+                        hostName: hostName,
+                        goal: goalTitle,
+                        durationMinutes: durationMinutes
+                    )
+                    guard let self else { return }
+                    self.currentFriendSessionID = dto?.id
+                    self.save()
+                }
+            }
             return true
         }
+    }
+
+    /// Invited side: joins the host's running duo session. The countdown is
+    /// anchored to the HOST's start time so both rings agree.
+    @discardableResult
+    func startFriendSessionAsGuest(
+        sessionID: UUID,
+        hostUserID: UUID?,
+        hostName: String,
+        durationMinutes: Int,
+        startedAt: Date?
+    ) -> Bool {
+        guard !hasBlockingActiveSession else {
+            Log.debug("FRIEND JOIN BLOCKED: another session is already active")
+            return false
+        }
+
+        let start = startedAt ?? Date()
+        let end = start.addingTimeInterval(Double(durationMinutes * 60))
+        guard end.timeIntervalSinceNow > 30 else {
+            Log.debug("FRIEND JOIN BLOCKED: session already over")
+            return false
+        }
+
+        let host = FocusParticipant(
+            id: hostUserID ?? UUID(),
+            name: hostName,
+            isHost: true,
+            isReady: true,
+            isActive: true
+        )
+        let me = FocusParticipant(
+            id: currentUserID ?? UUID(),
+            name: currentUserDisplayName,
+            isHost: false,
+            isReady: true,
+            isActive: true
+        )
+
+        let session = FocusSessionState(
+            id: UUID(),
+            mode: .friend,
+            durationMinutes: durationMinutes,
+            startDate: start,
+            endDate: end,
+            isPaused: false,
+            pausedRemainingSeconds: nil,
+            participants: [host, me],
+            goal: .study,
+            style: .silent
+        )
+
+        currentCrewID = nil
+        currentCrewBackendSessionID = nil
+        currentFriendSessionID = sessionID
+        currentFriendUserID = hostUserID
+        currentFriendName = hostName
+
+        currentSession = session
+        isSessionActive = true
+        isExpanded = true
+        isMinimized = false
+
+        save()
+        startLifecycleTimer()
+        scheduleFocusEndBackupNotification(for: session)
+
+        Task { await syncLiveActivityIfNeeded() }
+        return true
+    }
+
+    // MARK: - Friend session live updates (from pushes)
+
+    func handleFriendFocusJoined(name: String, friendUserID: UUID?) {
+        guard var session = currentSession, session.mode == .friend else { return }
+        guard !session.participants.contains(where: { !$0.isHost && $0.name == name }) else { return }
+
+        session.participants.append(
+            FocusParticipant(
+                id: friendUserID ?? currentFriendUserID ?? UUID(),
+                name: name,
+                isHost: false,
+                isReady: true,
+                isActive: true
+            )
+        )
+        currentSession = session
+        save()
+        HapticManager.shared.success()
+    }
+
+    func handleFriendFocusPeerLeft() {
+        guard var session = currentSession, session.mode == .friend else { return }
+
+        let myID = currentUserID
+        session.participants.removeAll { participant in
+            participant.id != myID && participant.name != currentUserDisplayName
+        }
+        // Never drop yourself even if IDs were unknown at insert time.
+        if session.participants.isEmpty {
+            session.participants = [
+                FocusParticipant(
+                    id: myID ?? UUID(),
+                    name: currentUserDisplayName,
+                    isHost: true,
+                    isReady: true,
+                    isActive: true
+                )
+            ]
+        }
+        currentSession = session
+        save()
     }
 
     func expandSession() {
@@ -569,6 +715,9 @@ final class FocusSessionManager: ObservableObject {
             restoredCrewID = snapshot.crewID
             restoredCrewBackendSessionID = snapshot.crewBackendSessionID
             restoredCrewHostUserID = snapshot.crewHostUserID
+            currentFriendSessionID = snapshot.friendSessionID
+            currentFriendUserID = snapshot.friendUserID
+            currentFriendName = snapshot.friendName
         } else if let legacySession = try? JSONDecoder().decode(FocusSessionState.self, from: data) {
             restoredSession = legacySession
             restoredCrewID = nil
@@ -675,7 +824,10 @@ final class FocusSessionManager: ObservableObject {
             crewID: currentCrewID,
             crewBackendSessionID: currentCrewBackendSessionID,
             crewHostUserID: currentCrewHostUserID,
-            savedAt: Date()
+            savedAt: Date(),
+            friendSessionID: currentFriendSessionID,
+            friendUserID: currentFriendUserID,
+            friendName: currentFriendName
         )
 
         if let encoded = try? JSONEncoder().encode(snapshot) {
@@ -759,6 +911,24 @@ final class FocusSessionManager: ObservableObject {
             completedSeconds: completedSeconds,
             isCompleted: completedSeconds >= totalSeconds - 5
         )
+
+        // Friend duo: tell the other side we're done and store the shared
+        // session locally so the friend detail's "together" stats are real.
+        if session.mode == .friend {
+            if let friendSessionID = currentFriendSessionID {
+                Task { await FriendFocusBackendClient.shared.end(sessionID: friendSessionID) }
+            }
+            if let friendUserID = currentFriendUserID, session.participants.count >= 2 {
+                FocusCompletionRecorder.shared.saveFriendDuoRecord(
+                    ownerUserID: resolvedOwnerID,
+                    friendBackendUserID: friendUserID,
+                    title: session.goal.title,
+                    startedAt: session.startDate,
+                    durationMinutes: max(1, completedSeconds / 60)
+                )
+            }
+            currentFriendSessionID = nil
+        }
 
         let previousMinutes: Int? = {
             let value = UserDefaults.standard.integer(forKey: lastFocusMinutesKey)
@@ -900,6 +1070,9 @@ final class FocusSessionManager: ObservableObject {
         currentCrewID = nil
         currentCrewBackendSessionID = nil
         currentCrewHostUserID = nil
+        currentFriendSessionID = nil
+        currentFriendUserID = nil
+        currentFriendName = nil
         isCompletingSession = false
 
         UserDefaults.standard.removeObject(forKey: storageKey)

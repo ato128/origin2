@@ -147,7 +147,7 @@ struct UpdoAIView: View {
     private let suggestions = [
         Suggestion(icon: "calendar.badge.clock", title: tr("ai_exam_plan"), subtitle: tr("ai_exam_plan_sub"), prompt: tr("ai_create_exam_plan")),
         Suggestion(icon: "checklist", title: tr("ai_plan_week"), subtitle: tr("ai_task_focus_sug"), prompt: tr("ai_plan_week")),
-        Suggestion(icon: "chart.bar.fill", title: "Focus analizi", subtitle: tr("ai_review_7days"), prompt: tr("ai_show_analysis"))
+        Suggestion(icon: "chart.bar.fill", title: tr("ai_focus_analysis"), subtitle: tr("ai_review_7days"), prompt: tr("ai_show_analysis"))
     ]
 
     // MARK: - Computed
@@ -192,7 +192,7 @@ struct UpdoAIView: View {
             .toolbarBackground(.hidden, for: .navigationBar)
         }
         .preferredColorScheme(.dark)
-        .alert("Sohbeti Temizle", isPresented: $showClearAlert) {
+        .alert(tr("ai_clear_title"), isPresented: $showClearAlert) {
             Button(tr("ai_clear"), role: .destructive) {
                 chatStore.clearHistory()
                 executedActionIDs.removeAll()
@@ -268,20 +268,23 @@ struct UpdoAIView: View {
         }
     }
 
-    /// Floating title pill — content scrolls behind it, like iMessage.
+    /// Floating title pill — content scrolls behind it, like iMessage. The orb
+    /// is alive: it talks while the AI is thinking/streaming.
     private var navTitle: some View {
-        HStack(spacing: 5) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 10, weight: .black))
+        HStack(spacing: 7) {
+            UpdoAIOrb(mode: chatStore.isSending ? .speaking : .idle, size: 17)
+
+            Text("Updo")
+                .font(.system(size: 14, weight: .black))
+                .foregroundStyle(.white)
+            +
+            Text(" AI")
+                .font(.system(size: 14, weight: .semibold, design: .serif))
+                .italic()
                 .foregroundStyle(UpdoTheme.cyan)
 
-            Text("UPDO AI")
-                .font(.system(size: 12, weight: .black, design: .monospaced))
-                .tracking(2)
-                .foregroundStyle(.white)
-
             if credits.isLoaded {
-                Text("· \(credits.tokensRemaining) kredi")
+                Text("· \(tr("hv_ai_credit_n", credits.tokensRemaining))")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .contentTransition(.numericText(countsDown: true))
@@ -430,19 +433,7 @@ struct UpdoAIView: View {
     }
 
     private var aiAvatar: some View {
-        ZStack {
-            Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [Color(arenaHex: "#7C3AED"), Color(arenaHex: "#2DD4FF")],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 26, height: 26)
-            Image(systemName: "sparkles")
-                .font(.system(size: 9, weight: .black))
-                .foregroundStyle(.white)
-        }
+        UpdoAIOrb(mode: .idle, size: 24)
     }
 
     // MARK: - Typing / Streaming
@@ -450,7 +441,7 @@ struct UpdoAIView: View {
     @ViewBuilder
     private var typingOrStreamingRow: some View {
         HStack(alignment: .bottom, spacing: 6) {
-            aiAvatar
+            UpdoAIOrb(mode: .speaking, size: 24)
 
             if chatStore.streamingText.isEmpty {
                 TypingIndicatorBubble()
@@ -479,23 +470,28 @@ struct UpdoAIView: View {
     // MARK: - Empty State
 
     private var emptyStateView: some View {
-        VStack(spacing: 28) {
-            VStack(spacing: 10) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 54, weight: .regular))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [Color(arenaHex: "#2DD4FF"), Color(arenaHex: "#7C3AED")],
-                            startPoint: .topLeading, endPoint: .bottomTrailing
-                        )
-                    )
-                    .scaleEffect(emptyStateAppeared ? 1 : 0.65)
+        VStack(spacing: 30) {
+            VStack(spacing: 16) {
+                UpdoAIOrb(mode: .idle, size: 92)
+                    .scaleEffect(emptyStateAppeared ? 1 : 0.7)
                     .opacity(emptyStateAppeared ? 1 : 0)
 
-                VStack(spacing: 5) {
-                    Text("Updo AI")
-                        .font(.system(size: 26, weight: .black))
-                        .foregroundStyle(.white)
+                VStack(spacing: 6) {
+                    HStack(spacing: 0) {
+                        Text("Updo")
+                            .font(.system(size: 27, weight: .black))
+                            .foregroundStyle(.white)
+
+                        Text(" AI")
+                            .font(.system(size: 26, weight: .regular, design: .serif))
+                            .italic()
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [UpdoTheme.cyan, UpdoTheme.purple],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                )
+                            )
+                    }
 
                     Text(tr("ai_empty_sub"))
                         .font(.subheadline)
@@ -511,9 +507,14 @@ struct UpdoAIView: View {
                     Button { sendQuickMessage(s.prompt) } label: {
                         HStack(spacing: 13) {
                             Image(systemName: s.icon)
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundStyle(Color(arenaHex: "#2DD4FF"))
-                                .frame(width: 28, alignment: .center)
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(UpdoTheme.cyan)
+                                .frame(width: 32, height: 32)
+                                .background(
+                                    Circle()
+                                        .fill(UpdoTheme.cyan.opacity(0.12))
+                                        .overlay(Circle().strokeBorder(UpdoTheme.cyan.opacity(0.2), lineWidth: 1))
+                                )
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(s.title)
@@ -531,10 +532,11 @@ struct UpdoAIView: View {
                                 .foregroundStyle(.tertiary)
                         }
                         .padding(.horizontal, 14)
-                        .padding(.vertical, 13)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(UpdoTheme.surfaceHigh)
+                        .padding(.vertical, 12)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .strokeBorder(UpdoTheme.border, lineWidth: 1)
                         )
                     }
                     .buttonStyle(.plain)
@@ -631,7 +633,7 @@ struct UpdoAIView: View {
                 } else {
                     // iMessage-style capsule: field with send button inside, trailing
                     HStack(alignment: .bottom, spacing: 4) {
-                        TextField("Updo AI'ya sor...", text: $inputText, axis: .vertical)
+                        TextField(tr("ai_input_placeholder"), text: $inputText, axis: .vertical)
                             .font(.body)
                             .lineLimit(1...5)
                             .padding(.leading, 14)

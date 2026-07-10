@@ -141,17 +141,22 @@ enum StudentCatalogService {
     }
 
     static func fetchUniversities(
-        countryCode: String,
+        countryCode: String? = nil,
         query: String = ""
     ) async throws -> [CatalogUniversity] {
         var components = URLComponents(string: "\(baseURL)/v1/catalog/universities")!
 
-        components.queryItems = [
-            URLQueryItem(name: "countryCode", value: countryCode),
-            URLQueryItem(name: "country_code", value: countryCode),
+        // No countryCode → global alphabetical search across the whole catalog
+        // (TR + KKTC + world) — the single unified list the onboarding uses.
+        var items: [URLQueryItem] = [
             URLQueryItem(name: "query", value: query),
             URLQueryItem(name: "limit", value: "300")
         ]
+        if let countryCode {
+            items.append(URLQueryItem(name: "countryCode", value: countryCode))
+            items.append(URLQueryItem(name: "country_code", value: countryCode))
+        }
+        components.queryItems = items
 
         guard let url = components.url else {
             throw CatalogServiceError.invalidResponse

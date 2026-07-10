@@ -501,7 +501,42 @@ final class StudentStore: ObservableObject {
         courses = []
         didResolveRemoteProfile = false
     }
-    
+
+    /// Onboarding schedule → real weekly EventItems (one per parsed slot).
+    /// Courses without a day/time are skipped; the Week tab adds them later.
+    func createScheduleEvents(from parsedCourses: [ParsedCourse]) {
+        guard let currentUserID else { return }
+
+        let palette = ["#22D3EE", "#8B5CF6", "#F59E0B", "#34D399", "#F472B6", "#60A5FA", "#F97316"]
+        var colorIndex = 0
+
+        for course in parsedCourses where course.hasSchedule {
+            let color = palette[colorIndex % palette.count]
+            colorIndex += 1
+
+            for slot in course.slots {
+                let event = EventItem(
+                    ownerUserID: currentUserID,
+                    title: course.name,
+                    weekday: min(max(slot.weekday, 0), 6),
+                    startMinute: min(max(slot.startMinute, 0), 1439),
+                    durationMinute: max(slot.durationMinute, 15),
+                    scheduledDate: nil,
+                    location: nil,
+                    notes: nil,
+                    colorHex: color
+                )
+                context.insert(event)
+            }
+        }
+
+        do {
+            try context.save()
+        } catch {
+            Log.debug("❌ createScheduleEvents save error:", error.localizedDescription)
+        }
+    }
+
     func forceRestoreCoursesFromOnboardingDrafts(_ drafts: [OnboardingCourseDraft]) {
         guard let currentUserID else {
             Log.debug("❌ forceRestoreCourses failed: currentUserID nil")

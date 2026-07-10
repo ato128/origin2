@@ -23,9 +23,7 @@ struct ProfileHubView: View {
     @AppStorage("challengeStreakCountV1") private var challengeStreakCount = 0
     @AppStorage("challengeAcceptedTotalV1") private var challengeAcceptedTotal = 0
 
-    @State private var showEditProfile = false
     @State private var showAuthSheet = false
-    @State private var showStudentAcademicSettings = false
     @State private var showNotificationSettings = false
     @State private var showAboutApp = false
     @State private var showMadeWithCare = false
@@ -58,7 +56,11 @@ struct ProfileHubView: View {
                     if challengeAcceptedTotal > 0 {
                         challengeStreakBadge
                     }
-                    accountSection
+                    // Account/profile editing lives on the Profile tab now —
+                    // settings only offers sign-in when logged out.
+                    if session.currentUser == nil {
+                        accountSection
+                    }
                     #if DEBUG
                     proTestSection
                     #endif
@@ -78,17 +80,9 @@ struct ProfileHubView: View {
         .preferredColorScheme(.dark)
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
-        .sheet(isPresented: $showEditProfile) {
-            EditProfileView()
-                .environmentObject(session)
-        }
         .sheet(isPresented: $showAuthSheet) {
             AuthView()
                 .environmentObject(session)
-        }
-        .sheet(isPresented: $showStudentAcademicSettings) {
-            StudentAcademicSettingsView()
-                .environmentObject(studentStore)
         }
         .sheet(isPresented: $showNotificationSettings) {
             SmartNotificationSettingsView()
@@ -194,47 +188,16 @@ private extension ProfileHubView {
             .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 7) {
-                HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    Text(tr("ph_header_title"))
-                        .font(.system(size: 38, weight: .black))
-                        .foregroundStyle(.white)
-
-                    Text(tr("ph_header_italic"))
-                        .font(.system(size: 35, weight: .regular, design: .serif))
-                        .italic()
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [
-                                    pageAccent,
-                                    secondaryAccent
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                }
-                .lineLimit(1)
-                .minimumScaleFactor(0.70)
+                Text(tr("ph_header_title"))
+                    .font(.system(size: 38, weight: .black))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.70)
             }
 
             Spacer(minLength: 8)
 
-            if session.currentUser != nil {
-                Button {
-                    showEditProfile = true
-                } label: {
-                    Image(systemName: "pencil")
-                        .font(.system(size: 17, weight: .black))
-                        .foregroundStyle(.black)
-                        .frame(width: 48, height: 48)
-                        .background(
-                            Circle()
-                                .fill(pageAccent)
-                                .shadow(color: pageAccent.opacity(0.22), radius: 12, y: 6)
-                        )
-                }
-                .buttonStyle(.plain)
-            } else {
+            if session.currentUser == nil {
                 Button {
                     showAuthSheet = true
                 } label: {
@@ -314,70 +277,17 @@ private extension ProfileHubView {
             )
 
             VStack(alignment: .leading, spacing: 16) {
-                if let user = session.currentUser {
-                    accountIdentityCard(user: user)
-
-                    if hasAcademicProfile {
-                        HStack(spacing: 10) {
-                            miniStatChip(
-                                icon: "graduationcap.fill",
-                                title: gradeChipText,
-                                tint: pageAccent
-                            )
-
-                            if let institutionChipText {
-                                miniStatChip(
-                                    icon: "building.columns.fill",
-                                    title: institutionChipText,
-                                    tint: warmAccent
-                                )
-                            }
-                        }
-                    }
-
-                    Divider()
-                        .overlay(Color.white.opacity(0.075))
-
-                    Button {
-                        showEditProfile = true
-                    } label: {
-                        profileRow(
-                            icon: "pencil",
-                            iconColor: pageAccent,
-                            title: tr("ph_edit_profile"),
-                            subtitle: tr("ph_edit_profile_sub")
-                        )
-                    }
-                    .buttonStyle(.plain)
-
-                    Divider()
-                        .overlay(Color.white.opacity(0.075))
-
-                    Button {
-                        showStudentAcademicSettings = true
-                    } label: {
-                        profileRow(
-                            icon: "graduationcap.fill",
-                            iconColor: warmAccent,
-                            title: tr("ph_student_info"),
-                            subtitle: tr("ph_student_info_sub")
-                        )
-                    }
-                    .buttonStyle(.plain)
-
-                } else {
-                    Button {
-                        showAuthSheet = true
-                    } label: {
-                        profileRow(
-                            icon: "person.crop.circle.badge.plus",
-                            iconColor: pageAccent,
-                            title: tr("ph_sign_in"),
-                            subtitle: tr("ph_sign_in_sub")
-                        )
-                    }
-                    .buttonStyle(.plain)
+                Button {
+                    showAuthSheet = true
+                } label: {
+                    profileRow(
+                        icon: "person.crop.circle.badge.plus",
+                        iconColor: pageAccent,
+                        title: tr("ph_sign_in"),
+                        subtitle: tr("ph_sign_in_sub")
+                    )
                 }
+                .buttonStyle(.plain)
             }
             .padding(18)
             .background(arenaCardBackground(tint: pageAccent, radius: 30, strength: 0.70))

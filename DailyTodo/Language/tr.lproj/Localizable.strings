@@ -306,7 +306,7 @@
 "tab_week" = "Hafta";
 "tab_crew" = "Takım";
 "tab_focus" = "Odak";
-"tab_insights" = "Analiz";
+"tab_insights" = "Profil";
 
 /* AddTaskView */
 "at_header_task" = "Ne eklemek istiyorsun?";
@@ -478,8 +478,8 @@
 "ph_w_notifications_lc" = "bildirimler";
 
 /* Profile Hub — eyebrows (caps) & header strays */
-"ph_header_title" = "Profil";
-"ph_header_italic" = "merkezi";
+"ph_header_title" = "Ayarlar";
+"ph_header_italic" = "";
 "ph_account_caps" = "HESAP";
 "ph_w_account_italic" = "profili";
 "ph_smart_system_caps" = "AKILLI SİSTEM";
@@ -601,6 +601,8 @@
 
 /* Insights — redesign */
 "ins_hdr_eyebrow" = "GELİŞİMİN";
+"ins_title" = "Profil";
+"ins_title_caps" = "PROFİL";
 "ins_hero_scroll_cue" = "Analizlerin";
 "iid_streak_days_n" = "%d GÜN SERİ";
 "iid_step_prefix" = "Sonraki seviye için:";
@@ -608,6 +610,30 @@
 "iid_need_focus_n" = "%d focus";
 "iid_need_tasks_n" = "%d görev";
 "iid_need_streak_n" = "%d gün seri";
+
+/* Insights — profile hero (Instagram-style identity) */
+"iid_stat_friends_caps" = "ARKADAŞ";
+"iid_stat_crews_caps" = "CREW";
+"iid_stat_streak_caps" = "GÜN SERİ";
+"iid_edit_profile" = "Düzenle";
+"iid_share_profile" = "Paylaş";
+
+/* Profile edit sheet */
+"pe_title" = "Profili Düzenle";
+"pe_name_caps" = "AD SOYAD";
+"pe_username_caps" = "KULLANICI ADI";
+"pe_save" = "Kaydet";
+"pe_photo_hint" = "Fotoğraf eklemek için dokun";
+"pe_photo_remove" = "Fotoğrafı kaldır";
+"pe_school_caps" = "OKUL";
+"pe_school_empty" = "Okulunu ekle";
+"pe_school_university" = "Üniversite";
+"pe_school_high" = "Lise";
+"pe_grade_fmt" = "%d. Sınıf";
+"pe_share_title_caps" = "PROFİL KARTIN";
+"pe_share_caption" = "Kimliğin, story boyutunda bir kart olarak paylaşılır.";
+"pe_share_cta" = "Paylaş";
+
 "insd_hours_caps" = "EN VERİMLİ SAATLERİN";
 "insd_streak_cal_caps" = "SERİ TAKVİMİ";
 "insd_cal_full" = "görev + focus";
@@ -830,6 +856,9 @@
 "fcv_camera" = "Kamera";
 "fcv_file" = "Dosya";
 "ai_clear" = "Temizle";
+"ai_clear_title" = "Sohbeti Temizle";
+"ai_input_placeholder" = "Updo AI'ya sor…";
+"ai_focus_analysis" = "Focus analizi";
 "ai_no_focus_session" = "Focus oturumu yok";
 "auth_welcome_back_caps" = "TEKRAR HOŞ GELDİN";
 "auth_login" = "Giriş";
@@ -1778,6 +1807,25 @@
 "av_continue_account" = "Hesabınla devam et";
 "av_create_system" = "Yeni öğrenci sistemini oluştur";
 "av_terms_note" = "Devam ederek Updo deneyimi ve hesap akışını kullanmayı kabul edersin.";
+"av_eyebrow_caps" = "ÖĞRENCİ İŞLETİM SİSTEMİ";
+
+/* Friend (duo) focus */
+"fv_pick_friend_title" = "Kiminle odaklanacaksın?";
+"fv_friend_invite_sub" = "%d dk duo focus daveti gönder";
+"fv_no_friends" = "Henüz arkadaşın yok. Crew sekmesinden arkadaş ekleyince buradan davet edebilirsin.";
+"ffi_eyebrow_caps" = "DUO FOCUS";
+"ffi_invite_line" = "%@ seninle odaklanmak istiyor";
+"ffi_duration_caps" = "SÜRE";
+"ffi_remaining_caps" = "KALAN";
+"ffi_done_caps" = "TAMAMLANDI";
+"ffi_done" = "Bitti";
+"ffi_join_cta" = "Katıl ve odaklan";
+"av_continue_google" = "Google ile devam et";
+"av_continue_email" = "E-posta ile devam et";
+"av_no_account" = "Hesabın yok mu?";
+"av_or_caps" = "VEYA";
+"av_social_error_title" = "Giriş yapılamadı";
+"av_social_error" = "Giriş tamamlanamadı. Tekrar dener misin?";
 "si_email_empty" = "Email boş olamaz.";
 "si_pw_short" = "Şifre en az 4 karakter olsun.";
 "si_signin_failed" = "Giriş yapılamadı.";
@@ -1843,21 +1891,24 @@
 "aio_q_education" = "Önce — üniversite mi okuyorsun, lise mi?";
 "aio_a_university" = "Üniversite";
 "aio_a_highschool" = "Lise";
-"aio_q_university" = "Harika! Hangi üniversitedesin? Aşağıdan bul";
-"aio_find_university" = "Üniversiteni bul";
+"aio_q_university" = "Harika! Hangi üniversitedesin? Yazmaya başla, ben bulayım";
+"aio_uni_placeholder" = "Üniversitenin adını yaz…";
 "aio_uni_confirm" = "%@ — harika bir seçim!";
 "aio_q_year" = "Kaçıncı sınıftasın?";
 "aio_q_class" = "Kaçıncı sınıftasın?";
 "aio_q_track" = "Hangi alandasın?";
-"aio_q_major" = "Bölümünü yazar mısın?";
-"aio_search_major" = "Bölüm ara…";
-"aio_loading_majors" = "Bölümlerini getiriyorum…";
-"aio_no_majors" = "Bu üniversite için bölüm bulamadım, ama merak etme — sonra elle ekleyebilirsin.";
-"aio_majors_error" = "Bölümleri getiremedim. İnternetini kontrol edip tekrar dener misin?";
-"aio_loading_courses" = "Senin sınıfının derslerini buluyorum…";
-"aio_courses_found" = "Şunları buldum — istemediklerini kaldırabilirsin:";
-"aio_no_courses" = "Hazır ders bulamadım — istersen sonra kendin ekleyebilirsin.";
-"aio_courses_error" = "Dersleri getiremedim, ama devam edebiliriz.";
+"aio_q_major_free" = "Bölümün ne?";
+"aio_major_placeholder" = "örn. Bilgisayar Mühendisliği";
+"aio_skip" = "Geç";
+"aio_q_courses_1" = "Şimdi derslerine gelelim.";
+"aio_q_courses_2" = "Derslerini yaz ya da programını olduğu gibi yapıştır — her satıra bir ders. Gün ve saat yazarsan onları da anlarım.";
+"aio_courses_placeholder" = "Matematik Pzt 10.30\nFizik II Salı 14.00-15.50\nVeri Yapıları…";
+"aio_parse_courses" = "Yerleştir";
+"aio_courses_parse_empty" = "Buradan ders çıkaramadım — her satıra bir ders yazar mısın?";
+"aio_courses_parsed" = "%d ders ekledim! Kontrol et, yanlış olanı kaldırabilirsin.";
+"aio_courses_parsed_with_time" = "%d ders ekledim, %d tanesinin gün ve saatini de yakaladım!";
+"aio_edit_again" = "Düzenle";
+"aio_q_schedule" = "Şu derslerin gün ve saatini de alayım — programına işleyeceğim. İstemediğini boş bırakabilirsin.";
 "aio_q_goal" = "Son soru — günde ne kadar çalışmak istersin?";
 "aio_goal_value" = "Günde %d dk";
 "aio_im_ready" = "Hazırım!";
@@ -1970,6 +2021,9 @@
 "ai_sg_morning_head" = "Güne küçük bir adımla başla";
 "ai_sg_morning_reason" = "Bugün için henüz bir plan yok. İlk görev günün ritmini kurar.";
 "ai_sg_morning_cta" = "Görev ekle";
+"ai_sg_event_head" = "Sırada: %@";
+"ai_sg_event_reason" = "Programında bugün saat %@ için görünüyor. Öncesinde 25 dakikalık bir odak iyi gider.";
+"ai_sg_event_cta" = "Odak başlat";
 "ai_sg_evening_head" = "Yarını şimdiden hafiflet";
 "ai_sg_evening_reason" = "Günü kapatıyorsun. Yarına 1-2 adım koymak sabahı kolaylaştırır.";
 "ai_sg_evening_cta" = "Yarını planla";

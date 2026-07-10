@@ -5,10 +5,15 @@
 //  Created by Atakan Ortaç on 18.03.2026.
 //
 import SwiftUI
+import AuthenticationServices
+import CryptoKit
 
 struct AuthView: View {
     @EnvironmentObject var session: SessionStore
     @State private var activeSheet: AuthSheet?
+    @State private var appleNonce: String?
+    @State private var isSocialWorking = false
+    @State private var authError: String?
 
     var body: some View {
         ZStack {
@@ -23,10 +28,10 @@ struct AuthView: View {
 
                 actionSection
 
-                Spacer(minLength: 34)
+                Spacer(minLength: 30)
             }
             .padding(.horizontal, 24)
-            .padding(.bottom, 24)
+            .padding(.bottom, 20)
         }
         .preferredColorScheme(.dark)
         .sheet(item: $activeSheet) { sheet in
@@ -45,6 +50,89 @@ struct AuthView: View {
             .presentationDragIndicator(.visible)
             .presentationCornerRadius(30)
         }
+        .alert(tr("av_social_error_title"), isPresented: Binding(
+            get: { authError != nil },
+            set: { if !$0 { authError = nil } }
+        )) {
+            Button(tr("common_ok"), role: .cancel) { authError = nil }
+        } message: {
+            Text(authError ?? "")
+        }
+    }
+
+    // MARK: - Social sign-in
+
+    private func handleAppleCompletion(_ result: Result<ASAuthorization, Error>) {
+        switch result {
+        case .success(let authorization):
+            guard
+                let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                let tokenData = credential.identityToken,
+                let idToken = String(data: tokenData, encoding: .utf8),
+                let nonce = appleNonce
+            else {
+                authError = tr("av_social_error")
+                return
+            }
+
+            let fullName = [credential.fullName?.givenName, credential.fullName?.familyName]
+                .compactMap { $0 }
+                .joined(separator: " ")
+
+            isSocialWorking = true
+            Task {
+                do {
+                    try await session.signInWithApple(
+                        idToken: idToken,
+                        nonce: nonce,
+                        fullName: fullName.isEmpty ? nil : fullName
+                    )
+                    HapticManager.shared.success()
+                } catch {
+                    authError = error.localizedDescription
+                }
+                isSocialWorking = false
+            }
+
+        case .failure(let error):
+            // User-cancelled taps are not errors worth surfacing.
+            if (error as? ASAuthorizationError)?.code != .canceled {
+                authError = error.localizedDescription
+            }
+        }
+    }
+
+    private func startGoogleSignIn() {
+        HapticManager.shared.action()
+        isSocialWorking = true
+
+        Task {
+            do {
+                try await session.signInWithGoogle()
+                HapticManager.shared.success()
+            } catch {
+                let text = error.localizedDescription.lowercased()
+                // ASWebAuthenticationSession cancel → quiet.
+                if !text.contains("cancel") {
+                    authError = error.localizedDescription
+                }
+            }
+            isSocialWorking = false
+        }
+    }
+
+    // MARK: - Apple nonce
+
+    private func makeNonce() -> String {
+        let charset = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._")
+        let randoms = (0..<32).map { _ in charset[Int.random(in: 0..<charset.count)] }
+        return String(randoms)
+    }
+
+    private func sha256(_ input: String) -> String {
+        SHA256.hash(data: Data(input.utf8))
+            .map { String(format: "%02x", $0) }
+            .joined()
     }
 }
 
@@ -52,51 +140,24 @@ struct AuthView: View {
 
 private extension AuthView {
     var heroSection: some View {
-        VStack(spacing: 22) {
-            ZStack {
-                Circle()
-                    .fill(Color(arenaHex: AuthArenaPalette.appBlue).opacity(0.16))
-                    .frame(width: 150, height: 150)
-                    .blur(radius: 2)
-
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(arenaHex: AuthArenaPalette.appBlue).opacity(0.26),
-                                Color(arenaHex: AuthArenaPalette.appPurple).opacity(0.20),
-                                Color.white.opacity(0.055)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 118, height: 118)
-                    .overlay(
-                        Circle()
-                            .stroke(Color.white.opacity(0.10), lineWidth: 1)
-                    )
-                    .shadow(color: Color(arenaHex: AuthArenaPalette.appPurple).opacity(0.22), radius: 22, y: 12)
-
-                Image(systemName: "checklist.checked")
-                    .font(.system(size: 46, weight: .black))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [
-                                Color(arenaHex: AuthArenaPalette.appCyan),
-                                Color(arenaHex: AuthArenaPalette.appPurple)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
+        VStack(spacing: 20) {
+            UpdoAIOrb(mode: .idle, size: 96)
 
             VStack(spacing: 12) {
-                Text("— STUDENT OS —")
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                    .tracking(2.8)
-                    .foregroundStyle(Color(arenaHex: AuthArenaPalette.appCyan))
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(Color(arenaHex: AuthArenaPalette.appCyan).opacity(0.7))
+                        .frame(width: 18, height: 1)
+
+                    Text(tr("av_eyebrow_caps"))
+                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .tracking(2.8)
+                        .foregroundStyle(Color(arenaHex: AuthArenaPalette.appCyan))
+
+                    Rectangle()
+                        .fill(Color(arenaHex: AuthArenaPalette.appCyan).opacity(0.7))
+                        .frame(width: 18, height: 1)
+                }
 
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
                     Text("Up")
@@ -120,155 +181,113 @@ private extension AuthView {
                 .lineLimit(1)
 
                 Text(tr("av_subtitle"))
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.62))
+                    .font(.system(size: 15.5, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.6))
                     .multilineTextAlignment(.center)
                     .lineSpacing(2)
                     .padding(.horizontal, 6)
             }
-
-            HStack(spacing: 9) {
-                authFeaturePill(icon: "sparkles", text: "Premium")
-                authFeaturePill(icon: "timer", text: "Focus")
-                authFeaturePill(icon: "chart.bar.fill", text: "Insights")
-            }
-            .padding(.top, 2)
         }
     }
 
     var actionSection: some View {
-        VStack(spacing: 16) {
-            VStack(spacing: 14) {
-                premiumActionButton(
-                    eyebrow: tr("auth_welcome_back_caps"),
-                    title: tr("auth_login"),
-                    subtitle: tr("av_continue_account"),
-                    systemImage: "arrow.right.circle.fill",
-                    highlighted: true
-                ) {
-                    activeSheet = .login
-                }
-
-                premiumActionButton(
-                    eyebrow: tr("auth_new_account_caps"),
-                    title: tr("auth_signup"),
-                    subtitle: tr("av_create_system"),
-                    systemImage: "person.crop.circle.badge.plus",
-                    highlighted: false
-                ) {
-                    activeSheet = .signup
-                }
+        VStack(spacing: 12) {
+            // Apple — HIG-styled native button, capsule-clipped to match.
+            SignInWithAppleButton(.continue) { request in
+                let nonce = makeNonce()
+                appleNonce = nonce
+                request.requestedScopes = [.fullName, .email]
+                request.nonce = sha256(nonce)
+            } onCompletion: { result in
+                handleAppleCompletion(result)
             }
+            .signInWithAppleButtonStyle(.white)
+            .frame(height: 52)
+            .clipShape(Capsule())
+
+            // Google — same weight, white capsule with the brand "G".
+            Button(action: startGoogleSignIn) {
+                HStack(spacing: 8) {
+                    Text("G")
+                        .font(.system(size: 19, weight: .black, design: .rounded))
+                        .foregroundStyle(Color(arenaHex: "#4285F4"))
+
+                    Text(tr("av_continue_google"))
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(.black)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(Capsule().fill(.white))
+            }
+            .buttonStyle(AuthPressButtonStyle())
+
+            // Divider
+            HStack(spacing: 12) {
+                Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
+                Text(tr("av_or_caps"))
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(1.6)
+                    .foregroundStyle(.white.opacity(0.35))
+                Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
+            }
+            .padding(.vertical, 4)
+
+            // Email path — quiet hairline capsule + signup text link.
+            Button {
+                HapticManager.shared.navigation()
+                activeSheet = .login
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "envelope.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text(tr("av_continue_email"))
+                        .font(.system(size: 16, weight: .bold))
+                }
+                .foregroundStyle(.white.opacity(0.9))
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(
+                    Capsule()
+                        .fill(Color.white.opacity(0.055))
+                        .overlay(Capsule().strokeBorder(Color.white.opacity(0.13), lineWidth: 1))
+                )
+            }
+            .buttonStyle(AuthPressButtonStyle())
+
+            Button {
+                HapticManager.shared.navigation()
+                activeSheet = .signup
+            } label: {
+                HStack(spacing: 5) {
+                    Text(tr("av_no_account"))
+                        .foregroundStyle(.white.opacity(0.5))
+                    Text(tr("auth_signup"))
+                        .foregroundStyle(Color(arenaHex: AuthArenaPalette.appCyan))
+                }
+                .font(.system(size: 13.5, weight: .semibold))
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 4)
 
             Text(tr("av_terms_note"))
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Color.white.opacity(0.38))
+                .font(.system(size: 11.5, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.32))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 14)
+                .padding(.top, 8)
         }
-    }
-
-    func authFeaturePill(icon: String, text: String) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 11, weight: .black))
-
-            Text(text)
-                .font(.system(size: 12, weight: .black, design: .rounded))
-        }
-        .foregroundStyle(Color.white.opacity(0.90))
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(
-            Capsule()
-                .fill(Color.white.opacity(0.070))
-                .overlay(
-                    Capsule()
-                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
-                )
-        )
-    }
-
-    func premiumActionButton(
-        eyebrow: String,
-        title: String,
-        subtitle: String,
-        systemImage: String,
-        highlighted: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 14) {
+        .overlay {
+            if isSocialWorking || session.isLoading {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(
-                            highlighted
-                            ? AnyShapeStyle(AuthArenaPalette.appGradient)
-                            : AnyShapeStyle(Color.white.opacity(0.075))
-                        )
-                        .frame(width: 56, height: 56)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(Color.white.opacity(0.10), lineWidth: 1)
-                        )
-
-                    Image(systemName: systemImage)
-                        .font(.system(size: 21, weight: .black))
-                        .foregroundStyle(.white)
+                    Color.black.opacity(0.45)
+                    ProgressView().tint(Color(arenaHex: AuthArenaPalette.appCyan))
                 }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(eyebrow)
-                        .font(.system(size: 9, weight: .black, design: .monospaced))
-                        .tracking(1.5)
-                        .foregroundStyle(
-                            highlighted
-                            ? Color(arenaHex: AuthArenaPalette.appCyan)
-                            : Color.white.opacity(0.38)
-                        )
-
-                    Text(title)
-                        .font(.system(size: 23, weight: .black))
-                        .foregroundStyle(.white)
-
-                    Text(subtitle)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color.white.opacity(0.54))
-                        .lineLimit(1)
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .black))
-                    .foregroundStyle(highlighted ? Color(arenaHex: AuthArenaPalette.appCyan) : Color.white.opacity(0.38))
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .transition(.opacity)
             }
-            .padding(16)
-            .frame(maxWidth: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: 27, style: .continuous)
-                    .fill(
-                        highlighted
-                        ? AuthArenaPalette.highlightedCardGradient
-                        : AuthArenaPalette.surfaceGradient
-                    )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 27, style: .continuous)
-                    .stroke(
-                        highlighted
-                        ? Color(arenaHex: AuthArenaPalette.appBlue).opacity(0.20)
-                        : Color.white.opacity(0.075),
-                        lineWidth: 1
-                    )
-            )
-            .shadow(
-                color: highlighted ? Color(arenaHex: AuthArenaPalette.appPurple).opacity(0.20) : Color.black.opacity(0.20),
-                radius: highlighted ? 18 : 12,
-                y: highlighted ? 10 : 7
-            )
         }
-        .buttonStyle(AuthPressButtonStyle())
+        .animation(.easeInOut(duration: 0.2), value: isSocialWorking)
     }
 }
 

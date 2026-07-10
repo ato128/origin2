@@ -32,6 +32,7 @@ struct DailyTodoApp: App {
 
     @State private var openFocusFromNotification: Bool = false
     @State private var crewFocusInvitePayload: CrewFocusInvitePayload?
+    @State private var friendFocusInvitePayload: FriendFocusInvitePayload?
 
     init() {
         do {
@@ -174,6 +175,19 @@ struct DailyTodoApp: App {
             )
             .interactiveDismissDisabled(false)
         }
+        .sheet(item: $friendFocusInvitePayload) { payload in
+            FriendFocusInviteSheet(
+                payload: payload,
+                onJoin: {
+                    handleFriendFocusInviteJoin(payload)
+                },
+                onDecline: {
+                    friendFocusInvitePayload = nil
+                    Task { await FriendFocusBackendClient.shared.decline(sessionID: payload.sessionID) }
+                }
+            )
+            .interactiveDismissDisabled(false)
+        }
         .onAppear {
             handleAppAppear()
         }
@@ -214,6 +228,14 @@ struct DailyTodoApp: App {
         .onReceive(NotificationCenter.default.publisher(for: .presentCrewFocusInviteSheet)) { output in
             guard let userInfo = output.object as? [AnyHashable: Any] else { return }
             handleCrewFocusInviteReceived(userInfo)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .presentFriendFocusInviteSheet)) { output in
+            guard let userInfo = output.object as? [AnyHashable: Any] else { return }
+            handleFriendFocusInviteReceived(userInfo)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .friendFocusPeerEvent)) { output in
+            guard let userInfo = output.object as? [AnyHashable: Any] else { return }
+            handleFriendFocusPeerEvent(userInfo)
         }
         .onReceive(NotificationCenter.default.publisher(for: .presentFocusCompletionFromPush)) { output in
             handleFocusCompletionPush(output.object as? [AnyHashable: Any])
@@ -288,6 +310,67 @@ struct DailyTodoApp: App {
         }
     }
     
+    // MARK: - Friend focus (duo) invite handling
+
+    private func handleFriendFocusInviteReceived(_ userInfo: [AnyHashable: Any]) {
+        guard let payload = FriendFocusInvitePayload.from(userInfo: userInfo) else {
+            Log.debug("⚠️ FriendFocusInvitePayload parse FAILED")
+            return
+        }
+
+        if focusSession.isSessionActive,
+           focusSession.currentFriendSessionID == payload.sessionID {
+            Log.debug("⚪️ FRIEND INVITE SKIPPED: already in this session")
+            return
+        }
+
+        friendFocusInvitePayload = nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            friendFocusInvitePayload = payload
+        }
+    }
+
+    private func handleFriendFocusInviteJoin(_ payload: FriendFocusInvitePayload) {
+        Task {
+            guard let dto = await FriendFocusBackendClient.shared.join(sessionID: payload.sessionID) else {
+                await MainActor.run { friendFocusInvitePayload = nil }
+                return
+            }
+
+            await MainActor.run {
+                let started = focusSession.startFriendSessionAsGuest(
+                    sessionID: dto.id,
+                    hostUserID: dto.host_id,
+                    hostName: dto.host_name.isEmpty ? payload.hostName : dto.host_name,
+                    durationMinutes: dto.duration_minutes,
+                    startedAt: dto.startedAtDate ?? payload.startedAt
+                )
+                friendFocusInvitePayload = nil
+
+                if !started {
+                    Log.debug("⚠️ FRIEND FOCUS GUEST START FAILED")
+                }
+            }
+        }
+    }
+
+    /// Live duo updates (joined / left / declined / ended) arriving as pushes.
+    private func handleFriendFocusPeerEvent(_ userInfo: [AnyHashable: Any]) {
+        guard let type = userInfo["type"] as? String else { return }
+
+        switch type {
+        case "friend_focus_joined":
+            let name = (userInfo["joined_name"] as? String) ?? "Arkadaşın"
+            focusSession.handleFriendFocusJoined(name: name, friendUserID: nil)
+
+        case "friend_focus_left", "friend_focus_declined", "friend_focus_ended":
+            focusSession.handleFriendFocusPeerLeft()
+
+        default:
+            break
+        }
+    }
+
     private func handleCrewFocusInviteReceived(_ userInfo: [AnyHashable: Any]) {
         Log.debug("📨 RECEIVED INVITE NOTIFICATION:", userInfo)
         
@@ -514,6 +597,7 @@ struct DailyTodoApp: App {
                 )
             }
             startInboxSocket()
+            rescheduleSmartNotifications(reason: "scene active")
 
         case .inactive:
             friendStore.setAppActive(false)
@@ -525,11 +609,28 @@ struct DailyTodoApp: App {
             LiveActivityScheduler.shared.stopForegroundLoop()
             LiveActivityScheduler.shared.rescheduleBackgroundTask(container: container)
 
+            // Last look before the app sleeps: cancels pending nudges whose
+            // condition the user just satisfied (e.g. streak saved via a task).
+            rescheduleSmartNotifications(reason: "scene background")
+
         @unknown default:
             break
         }
     }
     
+    private func rescheduleSmartNotifications(reason: String) {
+        let context = ModelContext(container)
+        let currentUserID = session.currentUser?.id.uuidString
+
+        Task {
+            await SmartNotificationScheduler.shared.reschedule(
+                context: context,
+                currentUserID: currentUserID,
+                reason: reason
+            )
+        }
+    }
+
     private func startInboxSocket() {
         Task { @MainActor in
             await ChatBackendInboxSocketClient.shared.connect(

@@ -181,8 +181,10 @@ struct SmartNotificationBrain {
             body = tr("snb_ai_focus")
             triggerHour = 17
         } else {
+            // "Plan tomorrow" is an end-of-day message — don't fire it while
+            // the evening is still in progress.
             body = tr("snb_ai_evening")
-            triggerHour = 20
+            triggerHour = 21
         }
 
         guard let trigger = triggerDateToday(hour: triggerHour, minute: 15, now: now) else {

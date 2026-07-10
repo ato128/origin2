@@ -36,7 +36,6 @@ struct HomeView: View {
 
     // MARK: - Local UI State
 
-    @State private var showProfileHub = false
     @State private var showMessages = false
     @State private var showTimelineDetail = false
     @State var showUpdoAI = false
@@ -162,11 +161,6 @@ struct HomeView: View {
         .sheet(isPresented: $showStreakRestorePaywall) {
             PaywallView(context: "streak_restore")
         }
-        .sheet(isPresented: $showProfileHub) {
-            NavigationStack {
-                ProfileHubView()
-            }
-        }
         .sheet(isPresented: $showMessages) {
             NavigationStack {
                 MessagesView()
@@ -282,32 +276,8 @@ struct HomeView: View {
 private extension HomeView {
     var topBar: some View {
         HStack(alignment: .center, spacing: 12) {
-            Button {
-                showProfileHub = true
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(homePrimaryGradient)
-                        .frame(width: 48, height: 48)
-                        .shadow(color: accentCyan.opacity(0.20), radius: 13, y: 7)
-
-                    Circle()
-                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
-                        .frame(width: 48, height: 48)
-
-                    if let initial = userInitial {
-                        Text(initial)
-                            .font(.system(size: 18, weight: .black))
-                            .foregroundStyle(.white)
-                    } else {
-                        Image(systemName: "person.fill")
-                            .font(.system(size: 16, weight: .black))
-                            .foregroundStyle(.white)
-                    }
-                }
-            }
-            .buttonStyle(.plain)
-
+            // Profile/settings moved to the Profile tab (Insights) — the
+            // streak flame leads the bar now.
             StreakFlameBadge(streak: progression.currentStreak) {
                 toggleStreakInfo()
             }
@@ -1330,22 +1300,6 @@ private extension HomeView {
         }
 
         return ""
-    }
-
-    var userInitial: String? {
-        guard let user = session.currentUser else { return nil }
-
-        let name = user.fullName.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        if let first = name.first {
-            return String(first).uppercased()
-        }
-
-        if let first = user.username.first {
-            return String(first).uppercased()
-        }
-
-        return nil
     }
 
     var greetingPrefix: String {

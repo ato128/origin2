@@ -304,7 +304,7 @@
 "tab_week" = "Week";
 "tab_crew" = "Crew";
 "tab_focus" = "Focus";
-"tab_insights" = "Insights";
+"tab_insights" = "Profile";
 
 /* AddTaskView */
 "at_header_task" = "What would you like to add?";
@@ -476,8 +476,8 @@
 "ph_w_notifications_lc" = "notifications";
 
 /* Profile Hub — eyebrows (caps) & header strays */
-"ph_header_title" = "Profile";
-"ph_header_italic" = "hub";
+"ph_header_title" = "Settings";
+"ph_header_italic" = "";
 "ph_account_caps" = "ACCOUNT";
 "ph_w_account_italic" = "profile";
 "ph_smart_system_caps" = "SMART SYSTEM";
@@ -599,6 +599,8 @@
 
 /* Insights — redesign */
 "ins_hdr_eyebrow" = "YOUR PROGRESS";
+"ins_title" = "Profile";
+"ins_title_caps" = "PROFILE";
 "ins_hero_scroll_cue" = "Your analytics";
 "iid_streak_days_n" = "%d-DAY STREAK";
 "iid_step_prefix" = "For the next level:";
@@ -606,6 +608,30 @@
 "iid_need_focus_n" = "%d focus";
 "iid_need_tasks_n" = "%d tasks";
 "iid_need_streak_n" = "%d-day streak";
+
+/* Insights — profile hero (Instagram-style identity) */
+"iid_stat_friends_caps" = "FRIENDS";
+"iid_stat_crews_caps" = "CREWS";
+"iid_stat_streak_caps" = "DAY STREAK";
+"iid_edit_profile" = "Edit";
+"iid_share_profile" = "Share";
+
+/* Profile edit sheet */
+"pe_title" = "Edit Profile";
+"pe_name_caps" = "FULL NAME";
+"pe_username_caps" = "USERNAME";
+"pe_save" = "Save";
+"pe_photo_hint" = "Tap to add a photo";
+"pe_photo_remove" = "Remove photo";
+"pe_school_caps" = "SCHOOL";
+"pe_school_empty" = "Add your school";
+"pe_school_university" = "University";
+"pe_school_high" = "High school";
+"pe_grade_fmt" = "Grade %d";
+"pe_share_title_caps" = "YOUR PROFILE CARD";
+"pe_share_caption" = "Your identity, shared as a story-sized card.";
+"pe_share_cta" = "Share";
+
 "insd_hours_caps" = "YOUR PEAK HOURS";
 "insd_streak_cal_caps" = "STREAK CALENDAR";
 "insd_cal_full" = "task + focus";
@@ -828,6 +854,9 @@
 "fcv_camera" = "Camera";
 "fcv_file" = "File";
 "ai_clear" = "Clear";
+"ai_clear_title" = "Clear Chat";
+"ai_input_placeholder" = "Ask Updo AI…";
+"ai_focus_analysis" = "Focus analysis";
 "ai_no_focus_session" = "No focus session";
 "auth_welcome_back_caps" = "WELCOME BACK";
 "auth_login" = "Login";
@@ -1776,6 +1805,25 @@
 "av_continue_account" = "Continue with your account";
 "av_create_system" = "Create your new student system";
 "av_terms_note" = "By continuing, you agree to use the Updo experience and account flow.";
+"av_eyebrow_caps" = "STUDENT OS";
+
+/* Friend (duo) focus */
+"fv_pick_friend_title" = "Who are you focusing with?";
+"fv_friend_invite_sub" = "Send a %d-min duo focus invite";
+"fv_no_friends" = "No friends yet. Add friends from the Crew tab to invite them here.";
+"ffi_eyebrow_caps" = "DUO FOCUS";
+"ffi_invite_line" = "%@ wants to focus with you";
+"ffi_duration_caps" = "DURATION";
+"ffi_remaining_caps" = "LEFT";
+"ffi_done_caps" = "COMPLETED";
+"ffi_done" = "Done";
+"ffi_join_cta" = "Join & focus";
+"av_continue_google" = "Continue with Google";
+"av_continue_email" = "Continue with email";
+"av_no_account" = "No account yet?";
+"av_or_caps" = "OR";
+"av_social_error_title" = "Sign-in failed";
+"av_social_error" = "Couldn't complete sign-in. Try again?";
 "si_email_empty" = "Email can't be empty.";
 "si_pw_short" = "Password should be at least 4 characters.";
 "si_signin_failed" = "Couldn't sign in.";
@@ -1841,21 +1889,24 @@
 "aio_q_education" = "First — are you in university or high school?";
 "aio_a_university" = "University";
 "aio_a_highschool" = "High school";
-"aio_q_university" = "Great! Which university? Find it below";
-"aio_find_university" = "Find your university";
+"aio_q_university" = "Great! Which university? Start typing and I'll find it";
+"aio_uni_placeholder" = "Type your university's name…";
 "aio_uni_confirm" = "%@ — great choice!";
 "aio_q_year" = "Which year are you in?";
 "aio_q_class" = "Which grade are you in?";
 "aio_q_track" = "Which track are you in?";
-"aio_q_major" = "What's your major?";
-"aio_search_major" = "Search major…";
-"aio_loading_majors" = "Fetching your majors…";
-"aio_no_majors" = "I couldn't find majors for this university, but no worries — you can add them later.";
-"aio_majors_error" = "I couldn't fetch the majors. Check your connection and try again?";
-"aio_loading_courses" = "Finding the courses for your year…";
-"aio_courses_found" = "Here's what I found — remove any you don't want:";
-"aio_no_courses" = "No ready courses found — you can add your own later.";
-"aio_courses_error" = "I couldn't fetch the courses, but we can continue.";
+"aio_q_major_free" = "What's your major?";
+"aio_major_placeholder" = "e.g. Computer Engineering";
+"aio_skip" = "Skip";
+"aio_q_courses_1" = "Now, your courses.";
+"aio_q_courses_2" = "Type your courses or paste your timetable as-is — one course per line. If you include days and times, I'll catch those too.";
+"aio_courses_placeholder" = "Calculus Mon 10.30\nPhysics II Tuesday 14.00-15.50\nData Structures…";
+"aio_parse_courses" = "Place them";
+"aio_courses_parse_empty" = "I couldn't find any courses in that — one course per line, please?";
+"aio_courses_parsed" = "Added %d courses! Check the list — remove anything that's off.";
+"aio_courses_parsed_with_time" = "Added %d courses and caught the day & time for %d of them!";
+"aio_edit_again" = "Edit";
+"aio_q_schedule" = "Let me grab the day & time for these — I'll put them on your schedule. Leave any blank if you want.";
 "aio_q_goal" = "Last one — how much do you want to study a day?";
 "aio_goal_value" = "%d min / day";
 "aio_im_ready" = "I'm ready!";
@@ -1969,6 +2020,9 @@
 "ai_sg_morning_head" = "Start the day with one small step";
 "ai_sg_morning_reason" = "No plan yet today. The first task sets your rhythm.";
 "ai_sg_morning_cta" = "Add a task";
+"ai_sg_event_head" = "Up next: %@";
+"ai_sg_event_reason" = "It's on your schedule today at %@. A 25-minute focus before it fits nicely.";
+"ai_sg_event_cta" = "Start a focus";
 "ai_sg_evening_head" = "Lighten tomorrow now";
 "ai_sg_evening_reason" = "You're closing the day. A step or two for tomorrow eases your morning.";
 "ai_sg_evening_cta" = "Plan tomorrow";

@@ -188,6 +188,34 @@ extension HomeView {
         return hasPlan(on: tomorrow)
     }
 
+    private var hourNow: Int {
+        Calendar.current.component(.hour, from: Date())
+    }
+
+    /// Next class/event on today's program, if it's still at least 20 minutes
+    /// away — close enough to matter, far enough to fit a focus before it.
+    private var nextEventToday: EventItem? {
+        let cal = Calendar.current
+        let now = Date()
+        let weekdayIndex = (cal.component(.weekday, from: now) + 5) % 7
+        let currentMinute = cal.component(.hour, from: now) * 60 + cal.component(.minute, from: now)
+
+        return allEvents
+            .filter { ev in
+                if let scheduled = ev.scheduledDate {
+                    guard cal.isDateInToday(scheduled) else { return false }
+                } else {
+                    guard ev.weekday == weekdayIndex else { return false }
+                }
+                return ev.startMinute >= currentMinute + 20
+            }
+            .min { $0.startMinute < $1.startMinute }
+    }
+
+    private func minuteText(_ minuteOfDay: Int) -> String {
+        String(format: "%02d.%02d", minuteOfDay / 60, minuteOfDay % 60)
+    }
+
     /// Most recent completed task or focus session — nil if never active.
     private var lastActivityDate: Date? {
         let taskDates = store.items.compactMap { $0.isDone ? $0.completedAt : nil }
@@ -296,8 +324,22 @@ extension HomeView {
             )
         }
 
-        // 7 — Evening/night and nothing (task or class) is planned for tomorrow.
-        if (aiPhase == .evening || aiPhase == .night), !tomorrowHasPlan {
+        // 6.5 — Day still running: anchor the nudge to today's own program.
+        // A class/event coming up (≥20 min away) beats a generic message.
+        if hourNow < 21, let next = nextEventToday {
+            return UpdoAISuggestion(
+                headline: tr("ai_sg_event_head", next.title),
+                reason: tr("ai_sg_event_reason", minuteText(next.startMinute)),
+                ctaTitle: tr("ai_sg_event_cta"),
+                ctaIcon: "scope",
+                accent: Color(arenaHex: AppArenaPalette.cyan),
+                action: { onOpenFocus() }
+            )
+        }
+
+        // 7 — The day is truly winding down (21:00+) and tomorrow is empty.
+        // Earlier evenings stay on today's program instead of "plan tomorrow".
+        if hourNow >= 21 || aiPhase == .night, !tomorrowHasPlan {
             return UpdoAISuggestion(
                 headline: tr("ai_sg_evening_head"),
                 reason: tr("ai_sg_evening_reason"),

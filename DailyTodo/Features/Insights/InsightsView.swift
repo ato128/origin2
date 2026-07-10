@@ -16,10 +16,17 @@ struct InsightsView: View {
     @Environment(\.modelContext) private var modelContext
 
     @EnvironmentObject var studentStore: StudentStore
+    @EnvironmentObject var crewStore: CrewStore
+    @EnvironmentObject var friendStore: FriendStore
 
     @ObservedObject private var progression = ProgressionManager.shared
     @ObservedObject private var subscription = SubscriptionManager.shared
+    @ObservedObject private var avatarStore = ProfileAvatarStore.shared
     @State private var showStreakRestorePaywall = false
+
+    // Profile (Instagram-style identity page)
+    @State private var showProfileEdit = false
+    @State private var showProfileShare = false
 
     @AppStorage("smartEngineEnabled") private var smartEngineEnabled: Bool = true
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
@@ -29,7 +36,7 @@ struct InsightsView: View {
     @State private var goWeek = false
     @State private var goFocus = false
 
-    @State private var showAchievements = false
+    @State private var showSettingsHub = false
 
     // Premium
     @State private var premiumState: PremiumState = .free
@@ -61,6 +68,9 @@ struct InsightsView: View {
 
     @Query(sort: \IdentityLevelUpState.createdAt, order: .reverse)
     private var identityLevelUpStates: [IdentityLevelUpState]
+
+    @Query(sort: \Friend.createdAt, order: .reverse)
+    private var localFriends: [Friend]
 
     // MARK: - Identity helpers
 
@@ -224,8 +234,16 @@ struct InsightsView: View {
             hiddenNavigationLinks
                 .hidden()
         }
-        .sheet(isPresented: $showAchievements) {
-            InsightsAchievementsView(badges: vm.allAchievementBadges)
+        .sheet(isPresented: $showSettingsHub) {
+            NavigationStack {
+                ProfileHubView()
+            }
+        }
+        .sheet(isPresented: $showProfileEdit) {
+            UpdoProfileEditSheet()
+        }
+        .sheet(isPresented: $showProfileShare) {
+            UpdoProfileShareSheet(data: profileShareCardData)
         }
         .sheet(isPresented: $showStreakRestorePaywall) {
             PaywallView(context: "streak_restore")
@@ -336,7 +354,7 @@ struct InsightsView: View {
                         .minimumScaleFactor(0.72)
                 }
 
-                Text("Insights")
+                Text(tr("ins_title"))
                     .font(.system(size: 39, weight: .black))
                     .foregroundStyle(.white)
                     .lineLimit(1)
@@ -345,14 +363,14 @@ struct InsightsView: View {
 
             Spacer(minLength: 8)
 
-            // Achievements (badges) — the trophy is the only chrome up here.
+            // Settings (the old Home profile hub) — the only chrome up here.
             Button {
                 HapticManager.shared.navigation()
-                showAchievements = true
+                showSettingsHub = true
             } label: {
-                Image(systemName: "trophy.fill")
+                Image(systemName: "gearshape.fill")
                     .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(Color(arenaHex: AppArenaPalette.gold))
+                    .foregroundStyle(.white.opacity(0.85))
                     .frame(width: 46, height: 46)
                     .background(
                         RoundedRectangle(cornerRadius: 17, style: .continuous)
@@ -404,82 +422,126 @@ struct InsightsView: View {
         let progress = min(max(snapshot.progress, 0), 1)
         let collapse = heroCollapse
 
-        return Button(action: handleIdentityTap) {
-            VStack(spacing: 0) {
-                Spacer(minLength: 12)
+        return VStack(spacing: 0) {
+            Spacer(minLength: 12)
 
-                heroRing(accent: accent, secondary: secondary, progress: progress)
-                    // Parallax: the ring trails the scroll and gently shrinks.
-                    .offset(y: -scrollOffset * 0.22)
-                    .scaleEffect(1 - 0.16 * collapse)
-                    .opacity(1 - Double(collapse) * 1.15)
-                    .padding(.bottom, 22)
+            // Ring + avatar + name + title open the level sheet — the profile
+            // actions below are their own buttons.
+            Button(action: handleIdentityTap) {
+                VStack(spacing: 0) {
+                    heroRing(accent: accent, secondary: secondary, progress: progress)
+                        // Parallax: the ring trails the scroll and gently shrinks.
+                        .offset(y: -scrollOffset * 0.22)
+                        .scaleEffect(1 - 0.16 * collapse)
+                        .opacity(1 - Double(collapse) * 1.15)
+                        .padding(.bottom, 26)
 
-                Group {
-                    Text(resolvedUserName)
-                        .font(.system(size: 28, weight: .black))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                        .opacity(heroEntered ? 1 : 0)
-                        .offset(y: heroEntered ? 0 : 10)
-                        .animation(.spring(response: 0.6, dampingFraction: 0.85).delay(0.30), value: heroEntered)
+                    Group {
+                        Text(resolvedUserName)
+                            .font(.system(size: 28, weight: .black))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                            .opacity(heroEntered ? 1 : 0)
+                            .offset(y: heroEntered ? 0 : 10)
+                            .animation(.spring(response: 0.6, dampingFraction: 0.85).delay(0.30), value: heroEntered)
 
-                    Text(snapshot.title)
-                        .font(.system(size: 30, weight: .regular, design: .serif))
-                        .italic()
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [accent, secondary],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+                        Text(snapshot.title)
+                            .font(.system(size: 27, weight: .regular, design: .serif))
+                            .italic()
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [accent, secondary],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
-                        )
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                        .padding(.top, 2)
-                        .opacity(heroEntered ? 1 : 0)
-                        .offset(y: heroEntered ? 0 : 12)
-                        .animation(.spring(response: 0.6, dampingFraction: 0.85).delay(0.42), value: heroEntered)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                            .padding(.top, 2)
+                            .opacity(heroEntered ? 1 : 0)
+                            .offset(y: heroEntered ? 0 : 12)
+                            .animation(.spring(response: 0.6, dampingFraction: 0.85).delay(0.42), value: heroEntered)
 
-                    heroMetaRow(snapshot: snapshot, hasPending: hasPending)
-                        .padding(.top, 12)
-                        .opacity(heroEntered ? 1 : 0)
-                        .animation(.easeOut(duration: 0.5).delay(0.55), value: heroEntered)
+                        if let school = ProfileSchoolLine.text(for: studentStore.profile) {
+                            Text(school.uppercased())
+                                .font(.system(size: 10, weight: .black, design: .monospaced))
+                                .tracking(1.4)
+                                .foregroundStyle(.white.opacity(0.42))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.6)
+                                .padding(.top, 7)
+                                .opacity(heroEntered ? 1 : 0)
+                                .animation(.easeOut(duration: 0.5).delay(0.50), value: heroEntered)
+                        }
 
-                    nextStepCapsule(snapshot: snapshot, hasPending: hasPending, accent: accent)
-                        .padding(.top, 14)
-                        .opacity(heroEntered ? 1 : 0)
-                        .offset(y: heroEntered ? 0 : 8)
-                        .animation(.spring(response: 0.6, dampingFraction: 0.85).delay(0.68), value: heroEntered)
+                        heroMetaRow(snapshot: snapshot, hasPending: hasPending)
+                            .padding(.top, 10)
+                            .opacity(heroEntered ? 1 : 0)
+                            .animation(.easeOut(duration: 0.5).delay(0.55), value: heroEntered)
+                    }
                 }
-                // Text block dissolves a beat after the ring while sliding up.
-                .offset(y: -scrollOffset * 0.10)
-                .opacity(1 - Double(min(max((collapse - 0.12) / 0.55, 0), 1)))
-
-                Spacer(minLength: 12)
-
-                // Scroll cue — first thing to melt away on scroll.
-                VStack(spacing: 3) {
-                    Text(tr("ins_hero_scroll_cue"))
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.35))
-
-                    Image(systemName: "chevron.compact.down")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.35))
-                        .offset(y: heroCueBounce ? 3 : -1)
-                }
-                .padding(.bottom, 6)
-                .opacity((1 - Double(collapse) * 3.2))
             }
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: max(420, UIScreen.main.bounds.height - 330))
-            .scaleEffect(1 - 0.05 * collapse, anchor: .top)
+            .buttonStyle(.plain)
+
+            Group {
+                heroStatsRow
+                    .padding(.top, 18)
+                    .opacity(heroEntered ? 1 : 0)
+                    .offset(y: heroEntered ? 0 : 8)
+                    .animation(.spring(response: 0.6, dampingFraction: 0.85).delay(0.62), value: heroEntered)
+
+                Button(action: handleIdentityTap) {
+                    nextStepCapsule(snapshot: snapshot, hasPending: hasPending, accent: accent)
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 14)
+                .opacity(heroEntered ? 1 : 0)
+                .offset(y: heroEntered ? 0 : 8)
+                .animation(.spring(response: 0.6, dampingFraction: 0.85).delay(0.70), value: heroEntered)
+
+                heroActionButtons
+                    .padding(.top, 14)
+                    .opacity(heroEntered ? 1 : 0)
+                    .offset(y: heroEntered ? 0 : 8)
+                    .animation(.spring(response: 0.6, dampingFraction: 0.85).delay(0.78), value: heroEntered)
+            }
+
+            Spacer(minLength: 12)
+
+            // Scroll cue — first thing to melt away on scroll.
+            VStack(spacing: 3) {
+                Text(tr("ins_hero_scroll_cue"))
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.35))
+
+                Image(systemName: "chevron.compact.down")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.35))
+                    .offset(y: heroCueBounce ? 3 : -1)
+            }
+            .padding(.bottom, 6)
+            .opacity((1 - Double(collapse) * 3.2))
         }
-        .buttonStyle(.plain)
+        // Text/action block dissolves a beat after the ring while sliding up.
+        .offset(y: -scrollOffset * 0.10)
+        .opacity(1 - Double(min(max((collapse - 0.12) / 0.55, 0), 1)))
+        .frame(maxWidth: .infinity)
+        .frame(minHeight: max(440, UIScreen.main.bounds.height - 320))
+        .scaleEffect(1 - 0.05 * collapse, anchor: .top)
         .onAppear {
             heroEntered = true
+            avatarStore.load(for: currentUserIDString)
+
+            // Real counts even when the crew tab was never opened this
+            // session — both loads are internally cached/cheap.
+            Task {
+                await crewStore.loadCrews()
+                if friendStore.friendships.isEmpty, let uid = session.currentUser?.id {
+                    await friendStore.loadAllFriendships(currentUserID: uid)
+                }
+            }
+
             if !heroRingFilled {
                 withAnimation(.spring(response: 1.1, dampingFraction: 0.76).delay(0.20)) {
                     heroRingFilled = true
@@ -491,8 +553,142 @@ struct InsightsView: View {
         }
     }
 
+    // MARK: - Profile pieces (friends · crews · streak, edit/share)
+
+    private var heroFriendCount: Int {
+        // Backend data loaded → honest live count (loads on hero appear).
+        if !friendStore.friendships.isEmpty {
+            return friendStore.friendships.filter { $0.status == "accepted" }.count
+        }
+
+        // Offline fallback: the locally synced friend list from the last visit.
+        return localFriends.filter {
+            $0.ownerUserID == nil || $0.ownerUserID == currentUserIDString
+        }.count
+    }
+
+    /// Instagram-style counts, Updo-style chrome: three hairline-divided cells.
+    private var heroStatsRow: some View {
+        HStack(spacing: 0) {
+            heroStatCell(value: "\(heroFriendCount)", label: tr("iid_stat_friends_caps"))
+
+            heroStatDivider
+
+            heroStatCell(value: "\(crewStore.crews.count)", label: tr("iid_stat_crews_caps"))
+
+            heroStatDivider
+
+            heroStatCell(
+                value: "\(progression.currentStreak)",
+                label: tr("iid_stat_streak_caps"),
+                icon: progression.currentStreak > 0 ? "flame.fill" : nil,
+                iconTint: Color(arenaHex: AppArenaPalette.gold)
+            )
+        }
+        .frame(maxWidth: 320)
+    }
+
+    private var heroStatDivider: some View {
+        Rectangle()
+            .fill(Color.white.opacity(0.10))
+            .frame(width: 1, height: 26)
+    }
+
+    private func heroStatCell(
+        value: String,
+        label: String,
+        icon: String? = nil,
+        iconTint: Color = .white
+    ) -> some View {
+        VStack(spacing: 3) {
+            HStack(spacing: 4) {
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.system(size: 12, weight: .black))
+                        .foregroundStyle(iconTint)
+                }
+
+                Text(value)
+                    .font(.system(size: 19, weight: .black))
+                    .monospacedDigit()
+                    .foregroundStyle(.white)
+            }
+
+            Text(label)
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .tracking(1.3)
+                .foregroundStyle(.white.opacity(0.40))
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var heroActionButtons: some View {
+        HStack(spacing: 10) {
+            heroActionButton(icon: "pencil", title: tr("iid_edit_profile")) {
+                HapticManager.shared.navigation()
+                showProfileEdit = true
+            }
+
+            heroActionButton(icon: "square.and.arrow.up", title: tr("iid_share_profile")) {
+                shareProfile()
+            }
+        }
+        .frame(maxWidth: 320)
+    }
+
+    private func heroActionButton(
+        icon: String,
+        title: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 7) {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .bold))
+
+                Text(title)
+                    .font(.system(size: 13.5, weight: .bold))
+            }
+            .foregroundStyle(.white.opacity(0.85))
+            .frame(maxWidth: .infinity)
+            .frame(height: 40)
+            .background(
+                Capsule()
+                    .fill(Color.white.opacity(0.05))
+                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.11), lineWidth: 1))
+            )
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func shareProfile() {
+        HapticManager.shared.action()
+        showProfileShare = true
+    }
+
+    /// Live data snapshot for the staged share card.
+    private var profileShareCardData: ProfileShareCardData {
+        let snapshot = identitySnapshot
+
+        return ProfileShareCardData(
+            name: resolvedUserName,
+            title: snapshot.title,
+            school: ProfileSchoolLine.text(for: studentStore.profile),
+            level: snapshot.level,
+            progress: min(max(snapshot.progress, 0), 1),
+            accent: snapshot.accent,
+            secondary: Color(arenaHex: AppArenaPalette.blue),
+            friendCount: heroFriendCount,
+            crewCount: crewStore.crews.count,
+            streak: progression.currentStreak,
+            avatar: avatarStore.image
+        )
+    }
+
     /// The ring: hairline track, angular-gradient progress with a glowing knob
-    /// at its tip, level number at the heart, breathing glow behind.
+    /// at its tip, the user's photo (or serif monogram) at the heart, the level
+    /// riding the bottom of the ring as a badge, breathing glow behind.
     private func heroRing(accent: Color, secondary: Color, progress: CGFloat) -> some View {
         ZStack {
             // Breathing background glow. The blur input is CONSTANT (opacity is
@@ -538,29 +734,44 @@ struct InsightsView: View {
             .rotationEffect(.degrees(-90))
             .frame(width: 168, height: 168)
 
-            VStack(spacing: 0) {
-                Text(tr("iid_level_caps"))
-                    .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .tracking(2.0)
-                    .foregroundStyle(.white.opacity(0.40))
+            // The person at the heart of the ring — photo, or a serif monogram
+            // tinted by the level until one is set.
+            ProfileAvatarCircle(
+                image: avatarStore.image,
+                name: resolvedUserName,
+                accent: accent,
+                size: 142
+            )
 
-                // Focus-timer typography: serif italic, tinted by the level.
+            // Level badge straddling the ring's bottom edge — focus-timer
+            // serif typography, filled with the level's own gradient.
+            HStack(spacing: 6) {
+                Text(tr("iid_level_caps"))
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .tracking(1.6)
+                    .foregroundStyle(.black.opacity(0.6))
+
                 Text("\(identitySnapshot.level)")
-                    .font(.system(size: 62, weight: .regular, design: .serif))
+                    .font(.system(size: 19, weight: .semibold, design: .serif))
                     .italic()
                     .monospacedDigit()
-                    .foregroundStyle(
+                    .foregroundStyle(.black)
+            }
+            .padding(.horizontal, 13)
+            .frame(height: 30)
+            .background(
+                Capsule()
+                    .fill(
                         LinearGradient(
                             colors: [accent, secondary],
-                            startPoint: .top,
-                            endPoint: .bottom
+                            startPoint: .leading,
+                            endPoint: .trailing
                         )
                     )
-
-                Text(identitySnapshot.percentText)
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.5))
-            }
+            )
+            .overlay(Capsule().strokeBorder(Color.black.opacity(0.30), lineWidth: 1))
+            .shadow(color: accent.opacity(0.45), radius: 9, y: 3)
+            .offset(y: 84)
         }
     }
 
@@ -629,7 +840,8 @@ struct InsightsView: View {
         return parts.prefix(2).joined(separator: " · ")
     }
 
-    /// Progress line + honest streak chip (hidden at 0) + READY chip.
+    /// Progress line: level road + live percent. (Streak moved into the
+    /// profile stats row; ready state lives in the golden capsule below.)
     private func heroMetaRow(snapshot: IdentityLevelSnapshot, hasPending: Bool) -> some View {
         HStack(spacing: 8) {
             Text(tr("iid_next_level_fmt", snapshot.level + 1))
@@ -637,21 +849,14 @@ struct InsightsView: View {
                 .tracking(1.0)
                 .foregroundStyle(.white.opacity(0.42))
 
-            if progression.currentStreak > 0 {
+            if !snapshot.isMaxLevel {
                 Text("·")
                     .foregroundStyle(.white.opacity(0.25))
 
-                HStack(spacing: 4) {
-                    Image(systemName: "flame.fill")
-                        .font(.system(size: 10, weight: .black))
-                        .foregroundStyle(Color(arenaHex: AppArenaPalette.gold))
-
-                    Text(tr("iid_streak_days_n", progression.currentStreak))
-                        .font(.system(size: 10.5, weight: .black, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.55))
-                }
+                Text(snapshot.percentText)
+                    .font(.system(size: 10.5, weight: .black, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.55))
             }
-            // Ready state lives in the golden next-step capsule below.
         }
     }
 
@@ -791,7 +996,7 @@ struct InsightsView: View {
                     .frame(width: 7, height: 7)
                     .opacity(smallTitleOpacity)
 
-                Text("INSIGHTS")
+                Text(tr("ins_title_caps"))
                     .font(.system(size: 12, weight: .black, design: .monospaced))
                     .tracking(1.6)
                     .foregroundStyle(.white)

@@ -13,8 +13,6 @@
 		4B5641EA5AD74CD28D97AB50 /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C9959585CDA4F6091BAFD7E /* AIService.swift */; };
 		550B7C9143A542ABA7577C03 /* CreditManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4F5BE0D180E4B65A9906EA6 /* CreditManager.swift */; };
 		6374030C3A314EE5A3B8EB6E /* UpdoAIChatStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB219E8E9A15445994A4EE17 /* UpdoAIChatStore.swift */; };
-		AC110001000000000000C0DE /* UpdoAICommandInterpreter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC110002000000000000C0DE /* UpdoAICommandInterpreter.swift */; };
-		AC110003000000000000C0DE /* UpdoAIPlanParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC110004000000000000C0DE /* UpdoAIPlanParser.swift */; };
 		64B1EAE52BFA4709BF7A513C /* DailyCreditsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 554557AFE9EB4CB9ADA26234 /* DailyCreditsManager.swift */; };
 		6D02C9D12F5B4718008193F3 /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D02C9CF2F5B4402008193F3 /* InsightsView.swift */; };
 		6D1028712FBBC97A008D5AA9 /* ChatCachedMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D1028702FBBC97A008D5AA9 /* ChatCachedMessage.swift */; };
@@ -129,11 +127,9 @@
 		6D7207652FD0CD20001F344A /* AppBadgeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D7207642FD0CD20001F344A /* AppBadgeManager.swift */; };
 		6D7207672FD0D360001F344A /* SmartNotificationHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D7207662FD0D360001F344A /* SmartNotificationHistory.swift */; };
 		6D7207692FD0D384001F344A /* SmartNotificationBrain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D7207682FD0D384001F344A /* SmartNotificationBrain.swift */; };
-		A1170004000000000000B5FA /* NotificationContentFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170004000000000000B4FA /* NotificationContentFactory.swift */; };
 		6D72076B2FD0D39F001F344A /* SmartNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D72076A2FD0D39F001F344A /* SmartNotificationScheduler.swift */; };
 		6D7207912FD1DC0C001F344A /* EmailVerificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D7207902FD1DC0C001F344A /* EmailVerificationView.swift */; };
 		6D7207B72FD32A4F001F344A /* InsightsIdentityCardV3.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D7207B62FD32A4F001F344A /* InsightsIdentityCardV3.swift */; };
-		A1170006000000000000B5FA /* InsightsDataDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170006000000000000B4FA /* InsightsDataDashboard.swift */; };
 		6D7207BD2FD32C36001F344A /* InsightsPremiumLabCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D7207BC2FD32C36001F344A /* InsightsPremiumLabCard.swift */; };
 		6D775B852F5F81CF0009D660 /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D775B842F5F81CF0009D660 /* Color+Hex.swift */; };
 		6D775B862F5F82F60009D660 /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D775B842F5F81CF0009D660 /* Color+Hex.swift */; };
@@ -242,6 +238,7 @@
 		6DC0CAC82F5F7D0000A875ED /* LiveActivityScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAA32F5F7D0000A875ED /* LiveActivityScheduler.swift */; };
 		6DC1C0292FCEF66C00CF8D62 /* FocusCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC1C0282FCEF66B00CF8D62 /* FocusCelebrationView.swift */; };
 		6DC1C02B2FCF671E00CF8D62 /* CrewFocusInviteSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC1C02A2FCF671E00CF8D62 /* CrewFocusInviteSheet.swift */; };
+		AC120002000000000000F0CE /* FriendFocusInviteSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC120001000000000000F0CE /* FriendFocusInviteSheet.swift */; };
 		6DC1C02D2FD0274200CF8D62 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC1C02C2FD0274200CF8D62 /* HomeView.swift */; };
 		6DC8F52A2F78A42E00361A6D /* PushService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC8F5292F78A42E00361A6D /* PushService.swift */; };
 		6DD282822F68C0FA00B1281A /* DailyTodo.entitlements.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6D81C1072F59E87500B65AF8 /* DailyTodo.entitlements.plist */; };
@@ -255,7 +252,6 @@
 		6DD282932F699C2D00B1281A /* WorkoutExerciseHistoryItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD282922F699C2D00B1281A /* WorkoutExerciseHistoryItem.swift */; };
 		6DD282962F69AA5800B1281A /* Notification+Names.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD282952F69AA5800B1281A /* Notification+Names.swift */; };
 		6DD286B32F79A7FF005A73FA /* CrewChatView+Glass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD286B22F79A7FF005A73FA /* CrewChatView+Glass.swift */; };
-		A1170005000000000000B5FA /* HomeView+UpdoSuggestion.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170005000000000000B4FA /* HomeView+UpdoSuggestion.swift */; };
 		6DD286BF2F7AE88B005A73FA /* NotificationName+Focus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD286BE2F7AE88B005A73FA /* NotificationName+Focus.swift */; };
 		6DD286C22F7C750B005A73FA /* AudioRecorderManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD286C12F7C750B005A73FA /* AudioRecorderManager.swift */; };
 		6DD286E42F7EEA74005A73FA /* InAppBannerCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD286E32F7EEA74005A73FA /* InAppBannerCenter.swift */; };
@@ -267,12 +263,22 @@
 		6DF0C93D2F557DBF0043B887 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF0C93C2F557DBF0043B887 /* RootView.swift */; };
 		6DF0C9412F557F730043B887 /* AddTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF0C9402F557F730043B887 /* AddTaskView.swift */; };
 		6DF8FB932F5B6B3E00D548E4 /* EventItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D215DA62F56035A00F7B9D7 /* EventItem.swift */; };
+		A1170004000000000000B5FA /* NotificationContentFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170004000000000000B4FA /* NotificationContentFactory.swift */; };
+		A1170005000000000000B5FA /* HomeView+UpdoSuggestion.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170005000000000000B4FA /* HomeView+UpdoSuggestion.swift */; };
+		A1170006000000000000B5FA /* InsightsDataDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170006000000000000B4FA /* InsightsDataDashboard.swift */; };
+		A1170007000000000000C5FA /* UpdoProfileEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170007000000000000C4FA /* UpdoProfileEditSheet.swift */; };
+		A1170008000000000000C5FA /* ProfileAvatarStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170008000000000000C4FA /* ProfileAvatarStore.swift */; };
+		A1170009000000000000C5FA /* UpdoProfileShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170009000000000000C4FA /* UpdoProfileShareSheet.swift */; };
 		AA000003AA000003AA000003 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = AA000002AA000002AA000002 /* RevenueCat */; };
 		AA900002 /* Log.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA900001 /* Log.swift */; };
 		AB900002 /* FeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB900001 /* FeatureFlags.swift */; };
 		AC100002 /* AIOnboardingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC100001 /* AIOnboardingStore.swift */; };
 		AC100004 /* AIOnboardingFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC100003 /* AIOnboardingFlowView.swift */; };
 		AC10000A /* OnboardingSpotlightTour.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC100009 /* OnboardingSpotlightTour.swift */; };
+		AC100022 /* OnboardingCourseParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC100021 /* OnboardingCourseParser.swift */; };
+		AC110001000000000000C0DE /* UpdoAICommandInterpreter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC110002000000000000C0DE /* UpdoAICommandInterpreter.swift */; };
+		AC110003000000000000C0DE /* UpdoAIPlanParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC110004000000000000C0DE /* UpdoAIPlanParser.swift */; };
+		AC110011000000000000C0DE /* UpdoAIOrb.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC110012000000000000C0DE /* UpdoAIOrb.swift */; };
 		AC735DB7876D4C6C8991F932 /* UpdoAIView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AB70EC277DD4C2493233DB3 /* UpdoAIView.swift */; };
 		BB000003BB000003BB000003 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = BB000002BB000002BB000002 /* PostHog */; };
 		CC100002CC100002CC100002 /* SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC100001CC100001CC100001 /* SubscriptionManager.swift */; };
@@ -404,11 +410,9 @@
 		6D7207642FD0CD20001F344A /* AppBadgeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBadgeManager.swift; sourceTree = "<group>"; };
 		6D7207662FD0D360001F344A /* SmartNotificationHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartNotificationHistory.swift; sourceTree = "<group>"; };
 		6D7207682FD0D384001F344A /* SmartNotificationBrain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartNotificationBrain.swift; sourceTree = "<group>"; };
-		A1170004000000000000B4FA /* NotificationContentFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationContentFactory.swift; sourceTree = "<group>"; };
 		6D72076A2FD0D39F001F344A /* SmartNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartNotificationScheduler.swift; sourceTree = "<group>"; };
 		6D7207902FD1DC0C001F344A /* EmailVerificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailVerificationView.swift; sourceTree = "<group>"; };
 		6D7207B62FD32A4F001F344A /* InsightsIdentityCardV3.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsIdentityCardV3.swift; sourceTree = "<group>"; };
-		A1170006000000000000B4FA /* InsightsDataDashboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsDataDashboard.swift; sourceTree = "<group>"; };
 		6D7207BC2FD32C36001F344A /* InsightsPremiumLabCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsPremiumLabCard.swift; sourceTree = "<group>"; };
 		6D775B842F5F81CF0009D660 /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
 		6D81C1072F59E87500B65AF8 /* DailyTodo.entitlements.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = DailyTodo.entitlements.plist; sourceTree = "<group>"; };
@@ -513,6 +517,7 @@
 		6DC0CAAA2F5F7D0000A875ED /* TaskNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskNotifications.swift; sourceTree = "<group>"; };
 		6DC1C0282FCEF66B00CF8D62 /* FocusCelebrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusCelebrationView.swift; sourceTree = "<group>"; };
 		6DC1C02A2FCF671E00CF8D62 /* CrewFocusInviteSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewFocusInviteSheet.swift; sourceTree = "<group>"; };
+		AC120001000000000000F0CE /* FriendFocusInviteSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendFocusInviteSheet.swift; sourceTree = "<group>"; };
 		6DC1C02C2FD0274200CF8D62 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		6DC8F5292F78A42E00361A6D /* PushService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushService.swift; sourceTree = "<group>"; };
 		6DD282832F68C1FE00B1281A /* TasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TasksView.swift; sourceTree = "<group>"; };
@@ -525,7 +530,6 @@
 		6DD282922F699C2D00B1281A /* WorkoutExerciseHistoryItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutExerciseHistoryItem.swift; sourceTree = "<group>"; };
 		6DD282952F69AA5800B1281A /* Notification+Names.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Notification+Names.swift"; sourceTree = "<group>"; };
 		6DD286B22F79A7FF005A73FA /* CrewChatView+Glass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CrewChatView+Glass.swift"; sourceTree = "<group>"; };
-		A1170005000000000000B4FA /* HomeView+UpdoSuggestion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HomeView+UpdoSuggestion.swift"; sourceTree = "<group>"; };
 		6DD286BE2F7AE88B005A73FA /* NotificationName+Focus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NotificationName+Focus.swift"; sourceTree = "<group>"; };
 		6DD286C12F7C750B005A73FA /* AudioRecorderManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorderManager.swift; sourceTree = "<group>"; };
 		6DD286E32F7EEA74005A73FA /* InAppBannerCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InAppBannerCenter.swift; sourceTree = "<group>"; };
@@ -539,19 +543,27 @@
 		6DF0C9402F557F730043B887 /* AddTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddTaskView.swift; sourceTree = "<group>"; };
 		7101F5D8B1EB49B383ADE0B1 /* AISmartInsightsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISmartInsightsStore.swift; sourceTree = "<group>"; };
 		8AB70EC277DD4C2493233DB3 /* UpdoAIView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoAIView.swift; sourceTree = "<group>"; };
+		A1170004000000000000B4FA /* NotificationContentFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationContentFactory.swift; sourceTree = "<group>"; };
+		A1170005000000000000B4FA /* HomeView+UpdoSuggestion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HomeView+UpdoSuggestion.swift"; sourceTree = "<group>"; };
+		A1170006000000000000B4FA /* InsightsDataDashboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsDataDashboard.swift; sourceTree = "<group>"; };
+		A1170007000000000000C4FA /* UpdoProfileEditSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoProfileEditSheet.swift; sourceTree = "<group>"; };
+		A1170008000000000000C4FA /* ProfileAvatarStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileAvatarStore.swift; sourceTree = "<group>"; };
+		A1170009000000000000C4FA /* UpdoProfileShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoProfileShareSheet.swift; sourceTree = "<group>"; };
 		AA900001 /* Log.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Log.swift; sourceTree = "<group>"; };
 		AB900001 /* FeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureFlags.swift; sourceTree = "<group>"; };
 		AC100001 /* AIOnboardingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIOnboardingStore.swift; sourceTree = "<group>"; };
 		AC100003 /* AIOnboardingFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIOnboardingFlowView.swift; sourceTree = "<group>"; };
 		AC100009 /* OnboardingSpotlightTour.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingSpotlightTour.swift; sourceTree = "<group>"; };
+		AC100021 /* OnboardingCourseParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingCourseParser.swift; sourceTree = "<group>"; };
+		AC110002000000000000C0DE /* UpdoAICommandInterpreter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoAICommandInterpreter.swift; sourceTree = "<group>"; };
+		AC110004000000000000C0DE /* UpdoAIPlanParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoAIPlanParser.swift; sourceTree = "<group>"; };
+		AC110012000000000000C0DE /* UpdoAIOrb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoAIOrb.swift; sourceTree = "<group>"; };
 		CC100001CC100001CC100001 /* SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManager.swift; sourceTree = "<group>"; };
 		CC100003CC100003CC100003 /* Analytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Analytics.swift; sourceTree = "<group>"; };
 		CC100005CC100005CC100005 /* PaywallView.swift */ = {isa = PBXFileReference; explicitFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
 		DD200001DD200001DD200001 /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
 		E4F5BE0D180E4B65A9906EA6 /* CreditManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditManager.swift; sourceTree = "<group>"; };
 		EB219E8E9A15445994A4EE17 /* UpdoAIChatStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoAIChatStore.swift; sourceTree = "<group>"; };
-		AC110002000000000000C0DE /* UpdoAICommandInterpreter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoAICommandInterpreter.swift; sourceTree = "<group>"; };
-		AC110004000000000000C0DE /* UpdoAIPlanParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoAIPlanParser.swift; sourceTree = "<group>"; };
 		EE300001EE300001EE300001 /* UpdoTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoTheme.swift; sourceTree = "<group>"; };
 		EE310001EE310001EE310001 /* EdgeGlowBorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeGlowBorder.swift; sourceTree = "<group>"; };
 		EE320001EE320001EE320001 /* UpdoMascotView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoMascotView.swift; sourceTree = "<group>"; };
@@ -781,6 +793,7 @@
 				554557AFE9EB4CB9ADA26234 /* DailyCreditsManager.swift */,
 				EB219E8E9A15445994A4EE17 /* UpdoAIChatStore.swift */,
 				AC110002000000000000C0DE /* UpdoAICommandInterpreter.swift */,
+				AC110012000000000000C0DE /* UpdoAIOrb.swift */,
 				AC110004000000000000C0DE /* UpdoAIPlanParser.swift */,
 				8AB70EC277DD4C2493233DB3 /* UpdoAIView.swift */,
 			);
@@ -895,6 +908,8 @@
 				7101F5D8B1EB49B383ADE0B1 /* AISmartInsightsStore.swift */,
 				6D7207B62FD32A4F001F344A /* InsightsIdentityCardV3.swift */,
 				A1170006000000000000B4FA /* InsightsDataDashboard.swift */,
+				A1170007000000000000C4FA /* UpdoProfileEditSheet.swift */,
+				A1170009000000000000C4FA /* UpdoProfileShareSheet.swift */,
 				6D7207BC2FD32C36001F344A /* InsightsPremiumLabCard.swift */,
 			);
 			path = Insights;
@@ -1059,6 +1074,7 @@
 				CC100001CC100001CC100001 /* SubscriptionManager.swift */,
 				6DC1C0282FCEF66B00CF8D62 /* FocusCelebrationView.swift */,
 				6DC1C02A2FCF671E00CF8D62 /* CrewFocusInviteSheet.swift */,
+				AC120001000000000000F0CE /* FriendFocusInviteSheet.swift */,
 				6D7207902FD1DC0C001F344A /* EmailVerificationView.swift */,
 			);
 			path = App;
@@ -1075,6 +1091,7 @@
 			isa = PBXGroup;
 			children = (
 				6D215DB42F56427E00F7B9D7 /* ShareSheet.swift */,
+				A1170008000000000000C4FA /* ProfileAvatarStore.swift */,
 				6D215DD82F5645F200F7B9D7 /* WidgetShared.swift */,
 				6D215DDB2F564C4100F7B9D7 /* WidgetSync+App.swift */,
 				6DC0CA082F5F1AFA00A875ED /* ScheduleAttributes.swift */,
@@ -1127,6 +1144,7 @@
 			isa = PBXGroup;
 			children = (
 				AC100001 /* AIOnboardingStore.swift */,
+				AC100021 /* OnboardingCourseParser.swift */,
 				AC100009 /* OnboardingSpotlightTour.swift */,
 				AC100003 /* AIOnboardingFlowView.swift */,
 				EE340001EE340001EE340001 /* OnboardingShowcaseMocks.swift */,
@@ -1389,6 +1407,7 @@
 				64B1EAE52BFA4709BF7A513C /* DailyCreditsManager.swift in Sources */,
 				6374030C3A314EE5A3B8EB6E /* UpdoAIChatStore.swift in Sources */,
 				AC110001000000000000C0DE /* UpdoAICommandInterpreter.swift in Sources */,
+				AC110011000000000000C0DE /* UpdoAIOrb.swift in Sources */,
 				AC110003000000000000C0DE /* UpdoAIPlanParser.swift in Sources */,
 				AC735DB7876D4C6C8991F932 /* UpdoAIView.swift in Sources */,
 				2FAA43887A2F4AB69DF32DDF /* AISmartInsightsStore.swift in Sources */,
@@ -1480,6 +1499,7 @@
 				6D7207912FD1DC0C001F344A /* EmailVerificationView.swift in Sources */,
 				6DC0CAC02F5F7D0000A875ED /* NotificationManager.swift in Sources */,
 				AC100002 /* AIOnboardingStore.swift in Sources */,
+				AC100022 /* OnboardingCourseParser.swift in Sources */,
 				AC10000A /* OnboardingSpotlightTour.swift in Sources */,
 				AC100004 /* AIOnboardingFlowView.swift in Sources */,
 				EE340002EE340002EE340002 /* OnboardingShowcaseMocks.swift in Sources */,
@@ -1491,6 +1511,9 @@
 				6DC0CAC22F5F7D0000A875ED /* FocusSessionRecord.swift in Sources */,
 				6D2A2AFF2F8B14CC0051459D /* FocusInviteService.swift in Sources */,
 				A1170006000000000000B5FA /* InsightsDataDashboard.swift in Sources */,
+				A1170007000000000000C5FA /* UpdoProfileEditSheet.swift in Sources */,
+				A1170009000000000000C5FA /* UpdoProfileShareSheet.swift in Sources */,
+				A1170008000000000000C5FA /* ProfileAvatarStore.swift in Sources */,
 				6D7207672FD0D360001F344A /* SmartNotificationHistory.swift in Sources */,
 				6DC0CAC32F5F7D0000A875ED /* CrewMember.swift in Sources */,
 				6D2A2AC52F88452C0051459D /* FocusDetailSectionV3.swift in Sources */,
@@ -1523,6 +1546,7 @@
 				6D215DA72F56035A00F7B9D7 /* EventItem.swift in Sources */,
 				6D5FE44D2F689D74007C124D /* CrewLeaderboardRow.swift in Sources */,
 				6DC1C02B2FCF671E00CF8D62 /* CrewFocusInviteSheet.swift in Sources */,
+				AC120002000000000000F0CE /* FriendFocusInviteSheet.swift in Sources */,
 				6DBE91D92F6C79F4001DF813 /* CrewMessageReadDTO.swift in Sources */,
 				6DBE91F12F6DD54C001DF813 /* FriendRequest.swift in Sources */,
 				6D5FE4022F6788F4007C124D /* CrewChatView+Focus.swift in Sources */,

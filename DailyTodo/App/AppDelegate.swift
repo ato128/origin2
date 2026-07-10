@@ -115,6 +115,24 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             return
         }
 
+        if let type = userInfo["type"] as? String, type == "friend_focus_invite" {
+            NotificationCenter.default.post(
+                name: .presentFriendFocusInviteSheet,
+                object: userInfo
+            )
+            completionHandler([])
+            return
+        }
+
+        // Live duo updates — apply silently to the running session, banner only.
+        if let type = userInfo["type"] as? String,
+           ["friend_focus_joined", "friend_focus_left", "friend_focus_declined", "friend_focus_ended"].contains(type) {
+            NotificationCenter.default.post(
+                name: .friendFocusPeerEvent,
+                object: userInfo
+            )
+        }
+
         if shouldShowCustomInAppBanner(for: userInfo) {
             let title = notification.request.content.title.isEmpty
                 ? "Yeni bildirim"
@@ -166,7 +184,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             let activeCrewID = UserDefaults.standard.string(forKey: "active_crew_id")
             return activeCrewID == incomingCrewID
 
-        case "crew_focus_invite":
+        case "crew_focus_invite", "friend_focus_invite":
             return true
 
         case "focus_room":
@@ -241,6 +259,20 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         case "crew_focus_invite":
             NotificationCenter.default.post(
                 name: .presentCrewFocusInviteSheet,
+                object: userInfo
+            )
+            return
+
+        case "friend_focus_invite":
+            NotificationCenter.default.post(
+                name: .presentFriendFocusInviteSheet,
+                object: userInfo
+            )
+            return
+
+        case "friend_focus_joined", "friend_focus_left", "friend_focus_declined", "friend_focus_ended":
+            NotificationCenter.default.post(
+                name: .friendFocusPeerEvent,
                 object: userInfo
             )
             return
@@ -331,6 +363,8 @@ extension Notification.Name {
     static let didReceiveAPNSToken = Notification.Name("didReceiveAPNSToken")
 
     static let presentCrewFocusInviteSheet = Notification.Name("presentCrewFocusInviteSheet")
+    static let presentFriendFocusInviteSheet = Notification.Name("presentFriendFocusInviteSheet")
+    static let friendFocusPeerEvent = Notification.Name("friendFocusPeerEvent")
     static let presentActiveCrewFocusFromNotification = Notification.Name("presentActiveCrewFocusFromNotification")
     static let openCrewFocusInviteFromNotification = Notification.Name("openCrewFocusInviteFromNotification")
     static let openCrewFocusFromNotification = Notification.Name("openCrewFocusFromNotification")

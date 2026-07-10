@@ -41,19 +41,34 @@ final class SmartNotificationScheduler {
             focusRecords: focusRecords
         )
 
+        let center = UNUserNotificationCenter.current()
+        let pending = await center.pendingNotificationRequests()
+        let pendingIDs = Set(pending.map(\.identifier))
+
+        // A pending smart notification whose condition no longer holds must
+        // die here — e.g. the streak-risk nudge after the user already saved
+        // today's streak. The brain regenerates every still-valid candidate
+        // with the same day-keyed ID, so anything pending but absent is stale.
+        let validIDs = Set(candidates.map(\.id))
+        let staleIDs = pendingIDs.filter { $0.hasPrefix(smartPrefix) && !validIDs.contains($0) }
+        if !staleIDs.isEmpty {
+            center.removePendingNotificationRequests(withIdentifiers: Array(staleIDs))
+            Log.debug("SMART NOTIFICATIONS CANCELLED (stale):", staleIDs.joined(separator: ", "))
+        }
+
         guard !candidates.isEmpty else {
             Log.debug("SMART NOTIFICATIONS: no candidates - \(reason)")
             return
         }
 
-        let center = UNUserNotificationCenter.current()
-        let pending = await center.pendingNotificationRequests()
-        let pendingIDs = Set(pending.map(\.identifier))
-
         var scheduledCount = 0
 
         for candidate in candidates {
             if pendingIDs.contains(candidate.id) {
+                // Still valid — re-add with the same identifier so the body
+                // reflects the current numbers (streak days etc.), not the
+                // ones from when it was first scheduled.
+                try? await schedule(candidate)
                 continue
             }
 

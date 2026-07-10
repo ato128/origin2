@@ -11,6 +11,10 @@ import Combine
 
 @MainActor
 final class ArenaStore: ObservableObject {
+    // Tab switches re-create CrewView; a shared instance keeps the arena data
+    // alive across visits so the section doesn't refetch and dim on every tap.
+    static let shared = ArenaStore()
+
     @Published var summary: CrewCommunityScopeSummary?
     @Published var leaderboard: [CrewStudentLeaderboardEntry] = []
     @Published var topCrews: [CrewCommunityCrewEntry] = []
@@ -22,20 +26,48 @@ final class ArenaStore: ObservableObject {
 
     private var lastScope: CrewCommunityScope?
     private var lastRange: CrewLeaderboardRange?
+    private var lastLoadedAt: Date?
+    private var isFetching = false
+
+    /// Cached data younger than this is served as-is; older data is refreshed
+    /// silently (no dimmed loading state) so the user never sees a reload.
+    private let freshnessTTL: TimeInterval = 300
+
+    func resetForUserChange() {
+        summary = nil
+        leaderboard = []
+        topCrews = []
+        weeklyChallenge = nil
+        isLoading = false
+        didLoadOnce = false
+        lastError = nil
+        lastScope = nil
+        lastRange = nil
+        lastLoadedAt = nil
+    }
 
     func load(
         scope: CrewCommunityScope,
         range: CrewLeaderboardRange,
         force: Bool = false
     ) async {
-        if !force,
-           didLoadOnce,
-           lastScope == scope,
-           lastRange == range {
+        if isFetching { return }
+
+        let sameSelection = didLoadOnce && lastScope == scope && lastRange == range
+        let isFresh = lastLoadedAt.map { Date().timeIntervalSince($0) < freshnessTTL } ?? false
+
+        if !force, sameSelection, isFresh {
             return
         }
 
-        isLoading = true
+        isFetching = true
+        defer { isFetching = false }
+
+        // Only dim the section when there's nothing (or the wrong scope) on
+        // screen; a stale-data refresh happens silently behind current content.
+        if !sameSelection || !didLoadOnce {
+            isLoading = true
+        }
         lastError = nil
 
         let backendScope = ArenaBackendScope(scope)
@@ -70,6 +102,7 @@ final class ArenaStore: ObservableObject {
 
         lastScope = scope
         lastRange = range
+        lastLoadedAt = Date()
         didLoadOnce = true
         isLoading = false
     }

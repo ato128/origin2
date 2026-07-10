@@ -39,7 +39,7 @@ struct CrewView: View {
 
     @State private var selectedCrewIDForDetail: UUID?
     @State private var selectedFriendIDForDetail: UUID?
-    @StateObject private var arenaStore = ArenaStore()
+    @ObservedObject private var arenaStore = ArenaStore.shared
     @ObservedObject private var socialStats = SocialStatsStore.shared
 
     init(initialTab: CrewTabMode = .crews) {
@@ -177,6 +177,7 @@ struct CrewView: View {
                 Task {
                     if newID == nil {
                         crewStore.resetForUserChange()
+                        ArenaStore.shared.resetForUserChange()
                         friendStore.unsubscribeFriendshipsRealtime()
                         friendStore.unsubscribePresenceRealtime()
                         didLoad = false
@@ -184,6 +185,7 @@ struct CrewView: View {
                     }
 
                     crewStore.resetForUserChange()
+                    ArenaStore.shared.resetForUserChange()
                     friendStore.unsubscribeFriendshipsRealtime()
                     friendStore.unsubscribePresenceRealtime()
                     didLoad = false

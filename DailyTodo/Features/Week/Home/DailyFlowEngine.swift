@@ -62,7 +62,9 @@ enum DailyFlowEngine {
         if openTasks.isEmpty {
             let hour = Calendar.current.component(.hour, from: now)
 
-            if hour >= 19 {
+            // "Plan tomorrow" belongs to the end of the day — earlier hours
+            // should keep pushing today's own program instead.
+            if hour >= 21 {
                 return SuggestedTaskAction(
                     title: tr("hd_lighten_tomorrow"),
                     subtitle: tr("df_calm_plan"),
@@ -121,7 +123,7 @@ enum DailyFlowEngine {
         }
 
         let hour = Calendar.current.component(.hour, from: now)
-        if hour >= 20 {
+        if hour >= 21 {
             return SuggestedTaskAction(
                 title: tr("df_close_calm"),
                 subtitle: tr("df_review_plan"),

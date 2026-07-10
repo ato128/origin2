@@ -17,9 +17,10 @@ struct AIOnboardingFlowView: View {
     @EnvironmentObject var studentStore: StudentStore
     @StateObject private var store = AIOnboardingStore()
 
-    @State private var showUniversityPicker = false
     @State private var didComplete = false
     @State private var flyTrigger = 0
+    @State private var majorInput = ""
+    @FocusState private var uniFieldFocused: Bool
 
     var body: some View {
         ZStack {
@@ -44,19 +45,6 @@ struct AIOnboardingFlowView: View {
         .onAppear {
             store.configure(studentStore: studentStore)
             store.startIfNeeded()
-        }
-        .sheet(isPresented: $showUniversityPicker) {
-            UniversityPickerSheet(
-                selectedUniversityID: $store.selectedUniversityID,
-                selectedUniversityName: $store.institutionName,
-                selectedCountryCode: $store.institutionCountry
-            )
-        }
-        .onChange(of: store.institutionName) { _, name in
-            if !name.isEmpty, store.phase == .university {
-                showUniversityPicker = false
-                store.universitySelected()
-            }
         }
         .onChange(of: store.currentLine) { _, line in
             // Each new line = an advance → the mascot flies to the "next page".
@@ -177,7 +165,7 @@ struct AIOnboardingFlowView: View {
             }
 
         case .university:
-            primaryButton(tr("aio_find_university"), icon: "magnifyingglass") { showUniversityPicker = true }
+            universitySearch
 
         case .grade:
             wrapChips(store.gradeOptions, label: { store.gradeDisplay($0) }) { store.chooseGrade($0) }
@@ -186,90 +174,272 @@ struct AIOnboardingFlowView: View {
             wrapChips(store.trackOptions, label: { store.trackDisplay($0) }) { store.chooseTrack($0) }
 
         case .major:
-            majorPicker
+            majorInputField
 
         case .courses:
-            coursePicker
+            courseEntry
+
+        case .schedule:
+            scheduleFiller
 
         case .goal:
             goalPicker
         }
     }
 
-    // MARK: - Major picker
+    // MARK: - University (single global list, inline autocomplete)
 
-    private var majorPicker: some View {
-        VStack(spacing: 10) {
+    private var universitySearch: some View {
+        VStack(spacing: 8) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").font(.system(size: 13)).foregroundStyle(.white.opacity(0.5))
-                TextField(tr("aio_search_major"), text: $store.majorSearchText)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(.white)
-            }
-            .padding(.horizontal, 14).padding(.vertical, 12)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white.opacity(0.06)))
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 6) {
-                    ForEach(store.filteredMajors.prefix(40)) { major in
-                        Button { store.selectMajor(major) } label: {
-                            HStack {
-                                Text(major.name).font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(.white).multilineTextAlignment(.leading)
-                                Spacer()
-                                Image(systemName: "chevron.right").font(.system(size: 11, weight: .bold))
-                                    .foregroundStyle(.white.opacity(0.35))
-                            }
-                            .padding(.horizontal, 14).padding(.vertical, 12)
-                            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white.opacity(0.045)))
-                        }
-                        .buttonStyle(.plain)
-                    }
+                TextField(
+                    tr("aio_uni_placeholder"),
+                    text: Binding(
+                        get: { store.universityQuery },
+                        set: { store.universityQueryChanged($0) }
+                    )
+                )
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(.white)
+                .autocorrectionDisabled()
+                .focused($uniFieldFocused)
+
+                if store.isSearchingUniversities {
+                    ProgressView().tint(UpdoTheme.cyan).scaleEffect(0.75)
                 }
             }
-            .frame(maxHeight: 220)
-        }
-    }
+            .padding(.horizontal, 14).padding(.vertical, 12)
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white.opacity(0.06))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(UpdoTheme.cyan.opacity(uniFieldFocused ? 0.4 : 0.15), lineWidth: 1)))
+            .onAppear { uniFieldFocused = true }
 
-    // MARK: - Course picker
-
-    private var coursePicker: some View {
-        VStack(spacing: 10) {
-            if !store.suggestedCourses.isEmpty {
+            if !store.universityMatches.isEmpty {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 6) {
-                        ForEach(store.suggestedCourses) { course in
-                            let on = store.selectedCourseIDs.contains(course.id)
-                            Button { store.toggleCourse(course.id) } label: {
+                        ForEach(store.universityMatches) { university in
+                            Button { store.selectUniversity(university) } label: {
                                 HStack(spacing: 10) {
-                                    Image(systemName: on ? "checkmark.circle.fill" : "circle")
-                                        .font(.system(size: 18, weight: .semibold))
-                                        .foregroundStyle(on ? UpdoTheme.cyan : .white.opacity(0.3))
-                                    VStack(alignment: .leading, spacing: 1) {
-                                        Text(course.course_name).font(.system(size: 14, weight: .semibold))
-                                            .foregroundStyle(.white).multilineTextAlignment(.leading)
-                                        if !course.course_code.isEmpty {
-                                            Text(course.course_code).font(.system(size: 11, weight: .medium))
-                                                .foregroundStyle(.white.opacity(0.4))
-                                        }
-                                    }
-                                    Spacer(minLength: 0)
+                                    Text(university.name)
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(.white)
+                                        .multilineTextAlignment(.leading)
+
+                                    Spacer(minLength: 6)
+
+                                    Text(university.country_code.uppercased())
+                                        .font(.system(size: 9, weight: .black, design: .monospaced))
+                                        .foregroundStyle(.white.opacity(0.35))
                                 }
-                                .padding(.horizontal, 14).padding(.vertical, 11)
-                                .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(on ? UpdoTheme.cyan.opacity(0.10) : Color.white.opacity(0.045)))
+                                .padding(.horizontal, 14).padding(.vertical, 12)
+                                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white.opacity(0.045)))
                             }
                             .buttonStyle(.plain)
                         }
                     }
                 }
-                .frame(maxHeight: 230)
-
-                primaryButton(tr("common_continue"), icon: "arrow.right") { store.confirmCourses() }
-            } else {
-                primaryButton(tr("common_continue"), icon: "arrow.right") { store.confirmCourses() }
+                .frame(maxHeight: 210)
             }
         }
+    }
+
+    // MARK: - Major (free text)
+
+    private var majorInputField: some View {
+        VStack(spacing: 10) {
+            TextField(tr("aio_major_placeholder"), text: $majorInput)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 14).padding(.vertical, 13)
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white.opacity(0.06)))
+                .submitLabel(.done)
+                .onSubmit { store.confirmMajor(majorInput) }
+
+            HStack(spacing: 10) {
+                Button { store.confirmMajor("") } label: {
+                    Text(tr("aio_skip"))
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.5))
+                        .frame(height: 48)
+                        .padding(.horizontal, 18)
+                }
+                .buttonStyle(.plain)
+
+                primaryButton(tr("common_continue"), icon: "arrow.right") { store.confirmMajor(majorInput) }
+            }
+        }
+    }
+
+    // MARK: - Courses (type or paste → parsed list)
+
+    @ViewBuilder
+    private var courseEntry: some View {
+        if store.coursesParsed {
+            parsedCourseList
+        } else {
+            VStack(spacing: 10) {
+                TextEditor(text: $store.courseInputText)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(.white)
+                    .scrollContentBackground(.hidden)
+                    .padding(10)
+                    .frame(height: 140)
+                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white.opacity(0.06)))
+                    .overlay(alignment: .topLeading) {
+                        if store.courseInputText.isEmpty {
+                            Text(tr("aio_courses_placeholder"))
+                                .font(.system(size: 13.5, weight: .medium))
+                                .foregroundStyle(.white.opacity(0.32))
+                                .padding(.horizontal, 16).padding(.top, 18)
+                                .allowsHitTesting(false)
+                        }
+                    }
+
+                HStack(spacing: 10) {
+                    Button { store.skipCourses() } label: {
+                        Text(tr("aio_skip"))
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.5))
+                            .frame(height: 48)
+                            .padding(.horizontal, 18)
+                    }
+                    .buttonStyle(.plain)
+
+                    primaryButton(tr("aio_parse_courses"), icon: "wand.and.stars") { store.parseCourseInput() }
+                        .disabled(store.courseInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .opacity(store.courseInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
+                }
+            }
+        }
+    }
+
+    private var parsedCourseList: some View {
+        VStack(spacing: 10) {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 6) {
+                    ForEach(store.parsedCourses) { course in
+                        HStack(spacing: 10) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(course.name)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(.white)
+                                    .multilineTextAlignment(.leading)
+
+                                if course.hasSchedule || !course.code.isEmpty {
+                                    HStack(spacing: 6) {
+                                        if !course.code.isEmpty {
+                                            Text(course.code)
+                                                .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                                                .foregroundStyle(.white.opacity(0.4))
+                                        }
+                                        ForEach(course.slots, id: \.self) { slot in
+                                            Text("\(AIOnboardingStore.weekdayShortNames[slot.weekday]) \(AIOnboardingStore.minuteText(slot.startMinute))")
+                                                .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                                                .foregroundStyle(UpdoTheme.cyan.opacity(0.9))
+                                        }
+                                    }
+                                }
+                            }
+
+                            Spacer(minLength: 6)
+
+                            Button { store.removeParsedCourse(course.id) } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundStyle(.white.opacity(0.4))
+                                    .frame(width: 26, height: 26)
+                                    .background(Circle().fill(Color.white.opacity(0.06)))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 14).padding(.vertical, 10)
+                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white.opacity(0.045)))
+                    }
+                }
+            }
+            .frame(maxHeight: 210)
+
+            HStack(spacing: 10) {
+                Button { store.editCoursesAgain() } label: {
+                    Text(tr("aio_edit_again"))
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.5))
+                        .frame(height: 48)
+                        .padding(.horizontal, 14)
+                }
+                .buttonStyle(.plain)
+
+                primaryButton(tr("common_continue"), icon: "arrow.right") { store.confirmParsedCourses() }
+            }
+        }
+    }
+
+    // MARK: - Schedule fill (day + time for courses the parser couldn't place)
+
+    private var scheduleFiller: some View {
+        VStack(spacing: 10) {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 12) {
+                    ForEach(store.unscheduledCourses) { course in
+                        scheduleRow(course)
+                    }
+                }
+            }
+            .frame(maxHeight: 300)
+
+            primaryButton(tr("common_continue"), icon: "arrow.right") { store.confirmSchedule() }
+        }
+    }
+
+    private func scheduleRow(_ course: ParsedCourse) -> some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text(course.name)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(.white)
+
+            // Day chips
+            HStack(spacing: 5) {
+                ForEach(0..<7, id: \.self) { day in
+                    let on = store.scheduleDayByCourse[course.id] == day
+                    Button { store.setScheduleDay(course.id, weekday: day) } label: {
+                        Text(AIOnboardingStore.weekdayShortNames[day])
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(on ? .black : .white.opacity(0.6))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 30)
+                            .background(
+                                Capsule().fill(on ? AnyShapeStyle(UpdoTheme.cyan) : AnyShapeStyle(Color.white.opacity(0.06)))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            // Time chips
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 5) {
+                    ForEach(Array(stride(from: 8 * 60, through: 20 * 60, by: 30)), id: \.self) { minute in
+                        let on = store.scheduleMinuteByCourse[course.id] == minute
+                        Button { store.setScheduleMinute(course.id, minute: minute) } label: {
+                            Text(AIOnboardingStore.minuteText(minute))
+                                .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                                .foregroundStyle(on ? .black : .white.opacity(0.6))
+                                .padding(.horizontal, 11)
+                                .frame(height: 30)
+                                .background(
+                                    Capsule().fill(on ? AnyShapeStyle(UpdoTheme.cyan) : AnyShapeStyle(Color.white.opacity(0.06)))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white.opacity(0.045)))
     }
 
     // MARK: - Goal picker

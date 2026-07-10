@@ -1879,7 +1879,7 @@ final class CrewStore: ObservableObject {
 
     private var lastCrewTabHydrateAt: Date?
 
-    func shouldRunCrewTabHydrate(ttl: TimeInterval = 25, force: Bool = false) -> Bool {
+    func shouldRunCrewTabHydrate(ttl: TimeInterval = 300, force: Bool = false) -> Bool {
         if force {
             lastCrewTabHydrateAt = Date()
             return true

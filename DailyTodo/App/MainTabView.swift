@@ -34,7 +34,7 @@ enum AppTab: Hashable, CaseIterable {
         case .week:     return "calendar"
         case .crew:     return "person.3.fill"
         case .focus:    return "timer"
-        case .insights: return "chart.bar.fill"
+        case .insights: return "person.crop.circle.fill"
         }
     }
 }

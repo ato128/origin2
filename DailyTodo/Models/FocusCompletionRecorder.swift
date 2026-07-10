@@ -73,6 +73,45 @@ final class FocusCompletionRecorder {
         persistPendingRecordIfPossible(pending, reason: "saveCompletedSession")
     }
 
+    /// Friend duo focus → a local FriendFocusSession row, linked to the local
+    /// Friend via their backend user ID, so the friend detail's "together"
+    /// stats reflect real shared sessions.
+    func saveFriendDuoRecord(
+        ownerUserID: String?,
+        friendBackendUserID: UUID,
+        title: String,
+        startedAt: Date,
+        durationMinutes: Int
+    ) {
+        guard let container else {
+            Log.debug("⏳ FRIEND DUO RECORD SKIPPED: no container")
+            return
+        }
+
+        let context = ModelContext(container)
+
+        guard
+            let friends = try? context.fetch(FetchDescriptor<Friend>()),
+            let friend = friends.first(where: { $0.backendUserID == friendBackendUserID })
+        else {
+            Log.debug("⚪️ FRIEND DUO RECORD SKIPPED: local friend not found")
+            return
+        }
+
+        let record = FriendFocusSession(
+            ownerUserID: ownerUserID.flatMap(UUID.init(uuidString:)),
+            friendID: friend.id,
+            title: title,
+            startedAt: startedAt,
+            durationMinute: max(1, durationMinutes),
+            isActive: false
+        )
+
+        context.insert(record)
+        try? context.save()
+        Log.debug("✅ FRIEND DUO RECORD SAVED:", friend.name, durationMinutes, "dk")
+    }
+
     func retryPendingRecords(reason: String) {
         let records = loadPendingRecords()
 
