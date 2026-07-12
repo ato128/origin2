@@ -47,8 +47,8 @@ final class UpdoAIChatStore: ObservableObject {
     ) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isSending else { return }
-        guard credits.canAfford(AITokenCost.chatMessage) else {
-            error = tr("ais_daily_limit")
+        guard credits.canSendChatMessage else {
+            error = credits.limitMessage
             return
         }
 
@@ -76,8 +76,8 @@ final class UpdoAIChatStore: ObservableObject {
                 streamingText = full
             }
 
-            // Only deduct credits on success
-            credits.spend(AITokenCost.chatMessage, userID: userID)
+            // Only deduct credits on success (optimistic; backend is the source of truth)
+            credits.noteMessageSent()
 
             streamingText = ""
             let reply = AIMessage(role: "assistant", text: full, timestamp: .now)
@@ -91,7 +91,9 @@ final class UpdoAIChatStore: ObservableObject {
             let errText: String
             switch error {
             case AIServiceError.insufficientCredits:
-                errText = "⚠️ Yeterli krediniz yok."
+                errText = tr("ai_monthly_limit")
+            case AIServiceError.dailyFreeLimitReached:
+                errText = tr("ai_daily_limit")
             case AIServiceError.rateLimited:
                 errText = tr("ais_too_many")
             case is URLError:

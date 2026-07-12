@@ -170,7 +170,7 @@ struct InsightsPremiumLabCard: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.78)
 
-                    Text("sonra ₺49/ay")
+                    Text(tr("iplc_after_price"))
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(.black.opacity(0.62))
                 }

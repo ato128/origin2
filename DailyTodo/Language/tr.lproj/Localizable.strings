@@ -304,7 +304,7 @@
 /* Tab bar */
 "tab_home" = "Ana Sayfa";
 "tab_week" = "Hafta";
-"tab_crew" = "Takım";
+"tab_crew" = "Sosyal";
 "tab_focus" = "Odak";
 "tab_insights" = "Profil";
 
@@ -511,6 +511,32 @@
 
 /* Crew Home — zone header, stats sharing, challenges, leaderboard */
 "crew_active_zone_live" = "AKTİF ALAN · %d CANLI";
+"fv_eyebrow_personal" = "KİŞİSEL RİTİM";
+"fv_eyebrow_crew" = "CREW FOCUS · CANLI";
+"fv_eyebrow_friend" = "ARKADAŞ SEANSI";
+"fv_accent_zone" = "alanı";
+"fv_goal_caps" = "HEDEF";
+"fv_sound_caps" = "SES";
+"fm_mode_personal" = "Kişisel";
+"fm_mode_friend" = "Arkadaş";
+"fm_goal_study" = "Ders";
+"fm_goal_deep" = "Derin Çalışma";
+"fm_goal_reading" = "Okuma";
+"fm_goal_planning" = "Planlama";
+"fm_goal_workout" = "Antrenman";
+"fm_study_sub" = "Ders ve tekrar";
+"fm_workout_sub" = "Aktif odak modu";
+"fm_style_silent" = "Sessiz";
+"fm_style_ambient" = "Ambiyans";
+"fm_style_rain" = "Yağmur";
+"fm_style_library" = "Kütüphane";
+"fm_silent_sub" = "Sessiz mod";
+"wk_eyebrow_caps" = "HAFTA";
+"ch_live_caps" = "CANLI";
+"ch_active_caps" = "AKTİF";
+"crew_title_first" = "Sosyal";
+"crew_title_accent" = "Alan";
+"iplc_after_price" = "sonra 129,99 ₺/ay";
 "crew_see_friends_close" = "Arkadaşlarını yakından gör";
 "crew_friends_locked_sub" = "Kim odakta, serisi & seviyesi kaç — Updo Pro ile aç";
 "crew_share_my_stats" = "İstatistiğimi paylaş";
@@ -1088,6 +1114,7 @@
 "hv_ai_today_ask" = "Bugün ne yapmak istersin?";
 "hv_ai_bar_placeholder" = "Updo AI'ya yaz…";
 "hv_ai_credit_n" = "%d kredi";
+"hv_ai_msg_n" = "%d mesaj";
 "hv_todays_flow_caps" = "BUGÜNÜN AKIŞI";
 "hv_day_is_yours" = "Gün senin";
 "hv_shape_schedule" = "Programına şekil ver, akış kendiliğinden gelir.";
@@ -1392,8 +1419,8 @@
 "pw_feat_analytics" = "Gelişmiş analiz";
 "pw_feat_support" = "Öncelikli destek";
 "pw_best_value" = "EN İYİ DEĞER";
-"pw_annual" = "Yıllık · 899,99 ₺";
-"pw_monthly" = "Aylık · 129,99 ₺";
+"pw_annual" = "Yıllık";
+"pw_monthly" = "Aylık";
 "pw_restore" = "Satın alımları geri yükle";
 "pw_start_trial" = "3 Gün Ücretsiz Başla";
 "pw_go_pro" = "Pro'ya Geç";
@@ -1839,9 +1866,10 @@
 "ev_different_account" = "Farklı hesap kullan";
 "ai_invalid_response" = "Geçersiz AI yanıtı.";
 "ai_too_many" = "Çok fazla istek. Lütfen bir süre bekleyin.";
+"ai_monthly_limit" = "Bu ayki Updo AI hakkın doldu. Kredilerin yeni ayın başında yenilenecek.";
+"ai_daily_limit" = "Bugünlük Updo AI mesaj hakkın doldu. Premium ile her gün sınırsıza yakın konuşabilirsin. ✨";
 "ai_http_error" = "HTTP hatası";
 "ai_api_error" = "API hatası";
-"ais_daily_limit" = "Günlük token limitiniz doldu. Gece yarısı yenilenir.";
 "ais_too_many" = "⚠️ Çok fazla istek. Lütfen bekleyin.";
 "ais_conn" = "⚠️ Bağlantı sorunu yaşandı. İnternetini kontrol edip tekrar dene.";
 "ais_generic" = "⚠️ Bir şeyler ters gitti. Lütfen tekrar dene.";
@@ -1933,6 +1961,16 @@
 "pw_save_43" = "%43 tasarruf";
 "pw_renews_monthly" = "Her ay yenilenir";
 "pw_trust" = "3 gün ücretsiz · deneme bitmeden iptal et, ücret yok";
+"pw_ai_included_caps" = "UPDO AI DAHİL";
+"pw_tier_all_features" = "Tüm özellikler";
+"pw_tier_ai_sub" = "Her şey + Updo AI";
+"pw_feat_ai_expanded" = "Updo AI — genişletilmiş erişim";
+"pw_go_pro_ai" = "Premium AI'a Geç";
+"pw_save_40" = "%40 tasarruf";
+"pw_save_42" = "%42 tasarruf";
+"pw_per_mo" = "/ay";
+"pw_per_yr" = "/yıl";
+"pw_products_loading" = "Ürünler yükleniyor, lütfen tekrar dene.";
 
 /* Common keys (leak fix) */
 "common_add" = "Ekle";

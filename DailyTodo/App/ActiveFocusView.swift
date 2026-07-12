@@ -51,7 +51,7 @@ struct ActiveFocusView: View {
     private var titleAccent: String {
         switch mode {
         case .personal:
-            return "zone"
+            return tr("fv_accent_zone")
         case .crew:
             return "crew"
         case .friend:

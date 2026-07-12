@@ -17,11 +17,16 @@ final class SubscriptionManager: ObservableObject {
     static let shared = SubscriptionManager()
 
     @Published private(set) var isPro: Bool = false
+    /// AI'lı üst paket (RevenueCat "pro_ai" entitlement). AI ürünleri RevenueCat'te
+    /// hem "pro" hem "pro_ai" entitlement'ına bağlı olmalı — isPro her iki pakette true.
+    @Published private(set) var isProAI: Bool = false
     @Published private(set) var isLoading: Bool = false
     @Published private(set) var availablePackages: [Package] = []
 
     private let proEntitlement = "pro"
+    private let proAIEntitlement = "pro_ai"
     private let cacheKey = "subscription_is_pro"
+    private let cacheKeyAI = "subscription_is_pro_ai"
 
     /// True only after `Purchases.configure` actually ran. Guards every
     /// `Purchases.shared` access so we never touch an unconfigured SDK.
@@ -42,8 +47,10 @@ final class SubscriptionManager: ObservableObject {
 
         if enabled {
             isPro = true
+            isProAI = true
         } else {
             isPro = UserDefaults.standard.bool(forKey: cacheKey)
+            isProAI = UserDefaults.standard.bool(forKey: cacheKeyAI)
             Task { await refresh() }
         }
     }
@@ -54,8 +61,10 @@ final class SubscriptionManager: ObservableObject {
         let override = UserDefaults.standard.bool(forKey: debugOverrideKey)
         debugProEnabled = override
         isPro = override || UserDefaults.standard.bool(forKey: cacheKey)
+        isProAI = override || UserDefaults.standard.bool(forKey: cacheKeyAI)
         #else
         isPro = UserDefaults.standard.bool(forKey: cacheKey)
+        isProAI = UserDefaults.standard.bool(forKey: cacheKeyAI)
         #endif
     }
 
@@ -98,6 +107,21 @@ final class SubscriptionManager: ObservableObject {
         }
     }
 
+    /// RevenueCat kimliğini Supabase kullanıcısına bağlar. Backend, premium
+    /// doğrulamasını bu ID ile RevenueCat REST API'sinden yaptığı için ID'nin
+    /// Supabase UID'siyle birebir (küçük harf) eşleşmesi şart.
+    func syncIdentity(userID: UUID?) async {
+        guard isConfigured, let userID else { return }
+        let appUserID = userID.uuidString.lowercased()
+        guard Purchases.shared.appUserID != appUserID else { return }
+        do {
+            let (info, _) = try await Purchases.shared.logIn(appUserID)
+            updateStatus(from: info)
+        } catch {
+            // bir sonraki scene-active'de tekrar denenir
+        }
+    }
+
     func loadOfferings() async {
         guard isConfigured else { return }
         do {
@@ -128,11 +152,15 @@ final class SubscriptionManager: ObservableObject {
 
     private func updateStatus(from info: CustomerInfo) {
         let entitled = info.entitlements[proEntitlement]?.isActive == true
+        let entitledAI = info.entitlements[proAIEntitlement]?.isActive == true
         UserDefaults.standard.set(entitled, forKey: cacheKey)
+        UserDefaults.standard.set(entitledAI, forKey: cacheKeyAI)
         #if DEBUG
         isPro = debugProEnabled || entitled
+        isProAI = debugProEnabled || entitledAI
         #else
         isPro = entitled
+        isProAI = entitledAI
         #endif
     }
 }

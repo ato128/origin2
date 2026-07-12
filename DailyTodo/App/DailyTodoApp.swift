@@ -576,7 +576,10 @@ struct DailyTodoApp: App {
         switch newPhase {
         case .active:
             LiveActivityScheduler.shared.startForegroundLoop(container: container)
-            Task { await SubscriptionManager.shared.refresh() }
+            Task { [currentUserID = session.currentUser?.id] in
+                await SubscriptionManager.shared.syncIdentity(userID: currentUserID)
+                await SubscriptionManager.shared.refresh()
+            }
 
             focusSession.reconcileExpiredSessionIfNeeded(reason: "scene active")
             

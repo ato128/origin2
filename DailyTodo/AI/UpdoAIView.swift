@@ -214,17 +214,7 @@ struct UpdoAIView: View {
         .onAppear {
             hapticSend.prepare()
             hapticResponse.prepare()
-            if let uid = currentUserID {
-                Task {
-                    // RevenueCat entitlement is the primary source; Supabase flag covers
-                    // manually-granted Pro accounts.
-                    var isPro = subscriptionManager.isPro
-                    if !isPro {
-                        isPro = await loadIsProFromSupabase(userID: uid)
-                    }
-                    credits.load(isPro: isPro, userID: uid)
-                }
-            }
+            Task { await credits.refreshIfStale() }
             sendSeedIfNeeded()
         }
     }
@@ -607,7 +597,7 @@ struct UpdoAIView: View {
     private var inputBar: some View {
         VStack(spacing: 0) {
             HStack(alignment: .bottom, spacing: 10) {
-                if credits.tokensRemaining <= 0 && credits.isLoaded && !subscriptionManager.isPro {
+                if credits.isLoaded && !credits.canSendChatMessage {
                     Button {
                         Analytics.shared.track("ai_credits_exhausted")
                         Analytics.shared.track("feature_gate_triggered", properties: ["gate": "ai_exhausted"])
@@ -807,25 +797,14 @@ struct UpdoAIView: View {
             return
         }
 
-        guard credits.canAfford(AITokenCost.chatMessage) else {
-            chatStore.error = tr("ais_daily_limit")
+        guard credits.canSendChatMessage else {
+            chatStore.error = credits.limitMessage
             return
         }
 
         Task {
             await chatStore.send(text: text, contextPrompt: contextSystemPrompt, credits: credits, userID: uid)
         }
-    }
-
-    private func loadIsProFromSupabase(userID: String) async -> Bool {
-        struct ProfileRow: Decodable { let is_pro: Bool? }
-        let result = try? await SupabaseManager.shared.client
-            .from("profiles").select("is_pro").eq("id", value: userID).limit(1).execute()
-        if let data = result?.data,
-           let rows = try? JSONDecoder().decode([ProfileRow].self, from: data) {
-            return rows.first?.is_pro ?? false
-        }
-        return false
     }
 }
 

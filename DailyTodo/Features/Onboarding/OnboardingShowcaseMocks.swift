@@ -576,7 +576,7 @@ private struct CrewMock: View {
         VStack(alignment: .leading, spacing: 11) {
             // Header
             HStack {
-                MockHeader(eyebrow: tr("crew_active_zone_live", 0), title: "The", accent: "Crew", accentColor: cBlue)
+                MockHeader(eyebrow: tr("crew_active_zone_live", 0), title: tr("crew_title_first"), accent: tr("crew_title_accent"), accentColor: cBlue)
                 MockIconChip(icon: "person.badge.plus")
                 Image(systemName: "plus").accessibilityLabel(tr("common_add")).font(.system(size: 12, weight: .black)).foregroundStyle(.black)
                     .frame(width: 26, height: 26).background(Circle().fill(cBlue))

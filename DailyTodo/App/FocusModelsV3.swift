@@ -17,17 +17,17 @@ enum FocusMode: String, CaseIterable, Identifiable, Codable {
 
     var title: String {
         switch self {
-        case .personal: return "Personal"
+        case .personal: return tr("fm_mode_personal")
         case .crew: return "Crew"
-        case .friend: return "Friend"
+        case .friend: return tr("fm_mode_friend")
         }
     }
 
     var heroEyebrow: String {
         switch self {
-        case .personal: return "Personal"
+        case .personal: return tr("fm_mode_personal")
         case .crew: return "Crew"
-        case .friend: return "Friend"
+        case .friend: return tr("fm_mode_friend")
         }
     }
 
@@ -192,21 +192,21 @@ enum FocusGoal: String, CaseIterable, Identifiable, Codable {
 
     var title: String {
         switch self {
-        case .study: return "Study"
-        case .deepWork: return "Deep Work"
-        case .reading: return "Reading"
-        case .planning: return "Planning"
-        case .workout: return "Workout"
+        case .study: return tr("fm_goal_study")
+        case .deepWork: return tr("fm_goal_deep")
+        case .reading: return tr("fm_goal_reading")
+        case .planning: return tr("fm_goal_planning")
+        case .workout: return tr("fm_goal_workout")
         }
     }
 
     var subtitle: String {
         switch self {
-        case .study: return "Ders ve tekrar"
+        case .study: return tr("fm_study_sub")
         case .deepWork: return tr("fm_uninterrupted")
         case .reading: return tr("fm_reading")
         case .planning: return tr("fm_planning")
-        case .workout: return "Aktif odak modu"
+        case .workout: return tr("fm_workout_sub")
         }
     }
 
@@ -231,16 +231,16 @@ enum FocusStyle: String, CaseIterable, Identifiable, Codable {
 
     var title: String {
         switch self {
-        case .silent: return "Silent"
-        case .ambient: return "Ambient"
-        case .rain: return "Rain"
-        case .library: return "Library"
+        case .silent: return tr("fm_style_silent")
+        case .ambient: return tr("fm_style_ambient")
+        case .rain: return tr("fm_style_rain")
+        case .library: return tr("fm_style_library")
         }
     }
 
     var subtitle: String {
         switch self {
-        case .silent: return "Sessiz mod"
+        case .silent: return tr("fm_silent_sub")
         case .ambient: return tr("fm_soft_bg")
         case .rain: return tr("fm_rain")
         case .library: return tr("fm_library")

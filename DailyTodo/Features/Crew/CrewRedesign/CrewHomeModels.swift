@@ -396,7 +396,7 @@ struct CrewSocialCrewCardData: Identifiable, Equatable {
     }
 
     var statusText: String {
-        isLive ? "LIVE NOW" : "ACTIVE"
+        isLive ? tr("ch_live_caps") : tr("ch_active_caps")
     }
 }
 

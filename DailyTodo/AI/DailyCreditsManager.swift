@@ -2,85 +2,60 @@
 //  DailyCreditsManager.swift
 //  DailyTodo
 //
+//  Gerçek kaynak: backend GET /v1/ai/usage. Kredi ve limit muhasebesi tamamen
+//  sunucuda tutulur (402/429 zorlaması orada); bu sınıf yalnızca görüntülenen
+//  durumu çeker ve gönderim sonrası iyimser günceller.
 
 import Foundation
 import Combine
 import SwiftUI
 import Supabase
 
-// Token costs per feature
-enum AITokenCost {
-    static let chatMessage = 10
-    static let smartInsights = 30
-    static let examPlanner = 50
-    static let freeAction = 0  // week edit, add task, focus history
-}
-
 @MainActor
 final class DailyCreditsManager: ObservableObject {
     static let shared = DailyCreditsManager()
 
-    @Published var tokensRemaining: Int = 100
-    @Published var todayBudget: Int = 100
+    @Published var creditsRemaining: Int = 0
+    @Published var creditsTotal: Int = 0
+    /// Premium AI katmanı — backend, RevenueCat'ten sunucu tarafında doğrular.
     @Published var isPro: Bool = false
+    @Published var coachUsedToday: Int = 0
+    /// nil = günlük sınır yok (Premium AI)
+    @Published var coachDailyLimit: Int? = nil
     @Published var isLoaded: Bool = false
 
-    private let defaultsKey = "updo_daily_token_v1"
-    private let baseBudgetFree = 500
-    private let baseBudgetPro = 15000
-    private let maxRolloverBonus = 30000  // pro: 3-day rollover max = 15000 × 3 = 45000
+    private var lastFetch: Date?
+    private let baseURL = "https://updo-chat-backend-production.up.railway.app/v1/ai"
 
-    // MARK: - Load
+    /// Ana sayfa kartı eski adıyla okuyor.
+    var tokensRemaining: Int { creditsRemaining }
 
-    func load(isPro: Bool, userID: String) {
-        self.isPro = isPro
-        let saved = loadSaved()
-        let today = Calendar.current.startOfDay(for: Date())
-
-        if let saved, Calendar.current.isDate(saved.date, inSameDayAs: today) {
-            todayBudget = saved.budget
-            tokensRemaining = max(0, saved.budget - saved.used)
-        } else {
-            let base = isPro ? baseBudgetPro : baseBudgetFree
-            var newBudget = base
-
-            if isPro, let saved {
-                let remaining = max(0, saved.budget - saved.used)
-                let rollover = min(remaining, maxRolloverBonus)
-                newBudget = min(base + rollover, base + maxRolloverBonus)
-            }
-
-            todayBudget = newBudget
-            tokensRemaining = newBudget
-            persist(budget: newBudget, used: 0)
-        }
-
-        isLoaded = true
-        Task { await syncToSupabase(userID: userID) }
+    var messagesRemainingToday: Int? {
+        guard let limit = coachDailyLimit else { return nil }
+        return max(0, limit - coachUsedToday)
     }
 
-    // MARK: - Spend
-
-    func canAfford(_ cost: Int) -> Bool {
-        tokensRemaining >= cost
-    }
-
-    @discardableResult
-    func spend(_ cost: Int, userID: String) -> Bool {
-        guard cost > 0 else { return true }
-        guard tokensRemaining >= cost else { return false }
-        tokensRemaining -= cost
-        let used = todayBudget - tokensRemaining
-        persist(budget: todayBudget, used: used)
-        Task { await syncToSupabase(userID: userID) }
+    /// UX ön kontrolü — asıl zorlama backend'de. İlk yükleme gelmeden engelleme.
+    var canSendChatMessage: Bool {
+        guard isLoaded else { return true }
+        if creditsRemaining <= 0 { return false }
+        if let left = messagesRemainingToday, left <= 0 { return false }
         return true
     }
 
-    // MARK: - Reset countdown
+    /// Hangi limit dolduysa ona uygun mesaj.
+    var limitMessage: String {
+        if let left = messagesRemainingToday, left <= 0 { return tr("ai_daily_limit") }
+        return tr("ai_monthly_limit")
+    }
 
+    /// Günlük hak dolduysa bir sonraki UTC gece yarısına kalan süre
+    /// (backend günü UTC'ye göre sayar). Aylık limitte geri sayım yok.
     var timeUntilReset: String? {
-        guard tokensRemaining <= 0 else { return nil }
-        guard let midnight = Calendar.current.nextDate(
+        guard let left = messagesRemainingToday, left <= 0 else { return nil }
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC") ?? .current
+        guard let midnight = cal.nextDate(
             after: Date(),
             matching: DateComponents(hour: 0, minute: 0, second: 0),
             matchingPolicy: .nextTime
@@ -91,43 +66,51 @@ final class DailyCreditsManager: ObservableObject {
         return h > 0 ? "\(h)sa \(m)dk" : "\(m) dk"
     }
 
-    // MARK: - Persistence
+    // MARK: - Fetch
 
-    private struct DailyUsage: Codable {
-        let date: Date
-        let budget: Int
-        let used: Int
+    func refreshIfStale() async {
+        if isLoaded, let last = lastFetch, Date().timeIntervalSince(last) < 60 { return }
+        await refresh()
     }
 
-    private func loadSaved() -> DailyUsage? {
-        guard let data = UserDefaults.standard.data(forKey: defaultsKey),
-              let saved = try? JSONDecoder().decode(DailyUsage.self, from: data) else { return nil }
-        return saved
-    }
+    func refresh() async {
+        do {
+            let session = try await SupabaseManager.shared.client.auth.session
+            guard let url = URL(string: "\(baseURL)/usage") else { return }
 
-    private func persist(budget: Int, used: Int) {
-        let usage = DailyUsage(date: Calendar.current.startOfDay(for: Date()), budget: budget, used: used)
-        if let data = try? JSONEncoder().encode(usage) {
-            UserDefaults.standard.set(data, forKey: defaultsKey)
+            var req = URLRequest(url: url)
+            req.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+            req.timeoutInterval = 20
+
+            let (data, response) = try await URLSession.shared.data(for: req)
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else { return }
+
+            let summary = try JSONDecoder().decode(UsageSummary.self, from: data)
+            creditsRemaining = summary.creditsRemaining
+            creditsTotal = summary.creditsTotal
+            isPro = summary.isPremium
+            coachUsedToday = summary.coachUsedToday ?? 0
+            coachDailyLimit = summary.coachDailyLimit
+            isLoaded = true
+            lastFetch = Date()
+        } catch {
+            // Ağ hatasında son bilinen değerler kalır; backend zorlaması zaten devrede.
         }
     }
 
-    // MARK: - Supabase sync (fire-and-forget analytics)
+    /// Mesaj başarıyla gönderildiğinde iyimser düşüm + arka planda gerçek değer.
+    func noteMessageSent() {
+        coachUsedToday += 1
+        if creditsRemaining > 0 { creditsRemaining -= 1 }
+        Task { await refresh() }
+    }
 
-    private func syncToSupabase(userID: String) async {
-        let used = todayBudget - tokensRemaining
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        let dateStr = formatter.string(from: Date())
-
-        _ = try? await SupabaseManager.shared.client
-            .from("daily_token_usage")
-            .upsert([
-                "user_id": userID,
-                "date": dateStr,
-                "tokens_used": String(used),
-                "tokens_budget": String(todayBudget)
-            ], onConflict: "user_id,date")
-            .execute()
+    private struct UsageSummary: Decodable {
+        let isPremium: Bool
+        let creditsTotal: Int
+        let creditsUsed: Int
+        let creditsRemaining: Int
+        let coachUsedToday: Int?
+        let coachDailyLimit: Int?
     }
 }

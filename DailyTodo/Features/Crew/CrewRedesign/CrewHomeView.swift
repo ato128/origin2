@@ -333,7 +333,7 @@ private struct CrewArenaHeader: View {
     private var titleFirst: String {
         switch mode {
         case .social:
-            return "The"
+            return tr("crew_title_first")
         case .community:
             return scope.headerTitleFirst
         }
@@ -342,7 +342,7 @@ private struct CrewArenaHeader: View {
     private var titleAccent: String {
         switch mode {
         case .social:
-            return "Crew"
+            return tr("crew_title_accent")
         case .community:
             return scope.headerTitleAccent
         }

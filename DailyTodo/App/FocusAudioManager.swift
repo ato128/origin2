@@ -26,8 +26,10 @@ final class FocusAudioManager {
 
         guard let fileName = fileName(for: style) else { return }
 
-        guard let url = Bundle.main.url(forResource: fileName, withExtension: "mp3") else {
-            Log.debug("🔇 Audio file not found: \(fileName).mp3")
+        // CAF/IMA4: AVAudioPlayer bunu boşluksuz (gapless) döngüler; eski "mp3"
+        // dosyaları aslında yanlış uzantılı WAV'lardı ve iOS açmayı reddediyordu.
+        guard let url = Bundle.main.url(forResource: fileName, withExtension: "caf") else {
+            Log.debug("🔇 Audio file not found: \(fileName).caf")
             return
         }
 

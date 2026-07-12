@@ -156,7 +156,7 @@ struct WeekView: View {
 
                 // Sayfa kimliği — diğer tab'larla aynı dil
                 VStack(spacing: 1) {
-                    Text("WEEK")
+                    Text(tr("wk_eyebrow_caps"))
                         .font(.system(size: 9, weight: .black, design: .monospaced))
                         .tracking(2.2)
                         .foregroundStyle(

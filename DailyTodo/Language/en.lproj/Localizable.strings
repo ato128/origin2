@@ -302,7 +302,7 @@
 /* Tab bar */
 "tab_home" = "Home";
 "tab_week" = "Week";
-"tab_crew" = "Crew";
+"tab_crew" = "Social";
 "tab_focus" = "Focus";
 "tab_insights" = "Profile";
 
@@ -509,6 +509,32 @@
 
 /* Crew Home — zone header, stats sharing, challenges, leaderboard */
 "crew_active_zone_live" = "ACTIVE ZONE · %d LIVE";
+"fv_eyebrow_personal" = "PERSONAL RHYTHM";
+"fv_eyebrow_crew" = "CREW FOCUS · LIVE";
+"fv_eyebrow_friend" = "FRIEND SESSION";
+"fv_accent_zone" = "zone";
+"fv_goal_caps" = "GOAL";
+"fv_sound_caps" = "SOUND";
+"fm_mode_personal" = "Personal";
+"fm_mode_friend" = "Friend";
+"fm_goal_study" = "Study";
+"fm_goal_deep" = "Deep Work";
+"fm_goal_reading" = "Reading";
+"fm_goal_planning" = "Planning";
+"fm_goal_workout" = "Workout";
+"fm_study_sub" = "Class and review";
+"fm_workout_sub" = "Active focus mode";
+"fm_style_silent" = "Silent";
+"fm_style_ambient" = "Ambient";
+"fm_style_rain" = "Rain";
+"fm_style_library" = "Library";
+"fm_silent_sub" = "Silent mode";
+"wk_eyebrow_caps" = "WEEK";
+"ch_live_caps" = "LIVE NOW";
+"ch_active_caps" = "ACTIVE";
+"crew_title_first" = "The";
+"crew_title_accent" = "Crew";
+"iplc_after_price" = "then 129.99 ₺/mo";
 "crew_see_friends_close" = "See your friends up close";
 "crew_friends_locked_sub" = "Who's focusing, their streak & level — unlock with Updo Pro";
 "crew_share_my_stats" = "Share my stats";
@@ -1086,6 +1112,7 @@
 "hv_ai_today_ask" = "What do you want to do today?";
 "hv_ai_bar_placeholder" = "Message Updo AI…";
 "hv_ai_credit_n" = "%d credits";
+"hv_ai_msg_n" = "%d msgs";
 "hv_todays_flow_caps" = "TODAY'S FLOW";
 "hv_day_is_yours" = "The day is yours";
 "hv_shape_schedule" = "Shape your schedule and the flow follows.";
@@ -1390,8 +1417,8 @@
 "pw_feat_analytics" = "Advanced analytics";
 "pw_feat_support" = "Priority support";
 "pw_best_value" = "BEST VALUE";
-"pw_annual" = "Annual · 899.99 ₺";
-"pw_monthly" = "Monthly · 129.99 ₺";
+"pw_annual" = "Annual";
+"pw_monthly" = "Monthly";
 "pw_restore" = "Restore purchases";
 "pw_start_trial" = "Start 3 Days Free";
 "pw_go_pro" = "Go Pro";
@@ -1837,9 +1864,10 @@
 "ev_different_account" = "Use a different account";
 "ai_invalid_response" = "Invalid AI response.";
 "ai_too_many" = "Too many requests. Please wait a while.";
+"ai_monthly_limit" = "You've used this month's Updo AI allowance. Your credits renew at the start of next month.";
+"ai_daily_limit" = "You've used today's Updo AI messages. Go Premium to chat without daily limits. ✨";
 "ai_http_error" = "HTTP error";
 "ai_api_error" = "API error";
-"ais_daily_limit" = "Your daily token limit is full. It resets at midnight.";
 "ais_too_many" = "⚠️ Too many requests. Please wait.";
 "ais_conn" = "⚠️ A connection problem occurred. Check your internet and try again.";
 "ais_generic" = "⚠️ Something went wrong. Please try again.";
@@ -1929,6 +1957,16 @@
 "pw_b_best_hours" = "Best study-hour predictions";
 "pw_b_all_future" = "All future features";
 "pw_save_43" = "Save 43%";
+"pw_ai_included_caps" = "UPDO AI INCLUDED";
+"pw_tier_all_features" = "All features";
+"pw_tier_ai_sub" = "Everything + Updo AI";
+"pw_feat_ai_expanded" = "Updo AI — expanded access";
+"pw_go_pro_ai" = "Go Premium AI";
+"pw_save_40" = "Save 40%";
+"pw_save_42" = "Save 42%";
+"pw_per_mo" = "/mo";
+"pw_per_yr" = "/yr";
+"pw_products_loading" = "Products are loading, please try again.";
 "pw_renews_monthly" = "Renews monthly";
 "pw_trust" = "3 days free · cancel before it ends, no charge";
 

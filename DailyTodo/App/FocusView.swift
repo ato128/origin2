@@ -368,18 +368,18 @@ private extension FocusView {
     var focusEyebrow: String {
         switch selectedMode {
         case .personal:
-            return "PERSONAL RHYTHM"
+            return tr("fv_eyebrow_personal")
         case .crew:
-            return "CREW FOCUS · LIVE"
+            return tr("fv_eyebrow_crew")
         case .friend:
-            return "FRIEND SESSION"
+            return tr("fv_eyebrow_friend")
         }
     }
 
     var focusHeaderAccent: String {
         switch selectedMode {
         case .personal:
-            return "zone"
+            return tr("fv_accent_zone")
         case .crew:
             return "crew"
         case .friend:
@@ -457,7 +457,7 @@ private extension FocusView {
                 editorialDivider
 
                 editorialSettingRow(
-                    title: "GOAL",
+                    title: tr("fv_goal_caps"),
                     value: selectedGoal.title,
                     subtitle: selectedGoal.subtitle,
                     icon: selectedGoal.icon,
@@ -467,7 +467,7 @@ private extension FocusView {
                 editorialDivider
 
                 editorialSettingRow(
-                    title: "SOUND",
+                    title: tr("fv_sound_caps"),
                     value: selectedStyle.title,
                     subtitle: selectedStyle.subtitle,
                     icon: selectedStyle.icon,

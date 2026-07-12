@@ -754,9 +754,10 @@ extension HomeView {
                 Spacer(minLength: 6)
 
                 if credits.isLoaded {
-                    let remaining = credits.tokensRemaining
-                    let pillTint: Color = remaining > 50 ? UpdoTheme.cyan : Color(arenaHex: "#FF5A44")
-                    Text(tr("hv_ai_credit_n", remaining))
+                    // Free: bugün kalan mesaj hakkı; Premium AI: aylık kredi
+                    let remaining = credits.messagesRemainingToday ?? credits.creditsRemaining
+                    let pillTint: Color = remaining > (credits.isPro ? 50 : 0) ? UpdoTheme.cyan : Color(arenaHex: "#FF5A44")
+                    Text(credits.isPro ? tr("hv_ai_credit_n", remaining) : tr("hv_ai_msg_n", remaining))
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundStyle(pillTint)
                         .padding(.horizontal, 8)
@@ -812,6 +813,7 @@ extension HomeView {
         .opacity(pageAppeared ? 1 : 0)
         .offset(y: pageAppeared ? 0 : 12)
         .animation(.spring(response: 0.6, dampingFraction: 0.86).delay(0.08), value: pageAppeared)
+        .task { await credits.refreshIfStale() }
     }
 
     private var quickInputReady: Bool {
@@ -839,25 +841,48 @@ extension HomeView {
         return aiSuggestionExpanded ? suggestion.introText : suggestion.collapsedText
     }
 
+    @ViewBuilder
     private func suggestionOrb(isChallenge: Bool, onFire: Bool) -> some View {
-        ZStack {
-            Circle()
-                .fill(onFire ? AnyShapeStyle(fireGradient) : AnyShapeStyle(UpdoTheme.gradientAI))
-                .frame(width: 34, height: 34)
-                .shadow(color: (onFire ? Color.orange : UpdoTheme.purple).opacity(0.5),
-                        radius: onFire ? 10 : 6, y: 2)
-
-            if isChallenge {
-                Circle()
-                    .stroke(Color(arenaHex: onFire ? "#FBBF24" : AppArenaPalette.gold).opacity(0.85), lineWidth: 1.5)
-                    .frame(width: 34, height: 34)
+        if !isChallenge && !onFire {
+            // The real Updo AI orb; Premium AI subscribers get the paywall's gold ring
+            let isProAI = SubscriptionManager.shared.isProAI
+            ZStack {
+                UpdoAIOrb(size: 27)
+                if isProAI {
+                    Circle()
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [Color(arenaHex: "#FFD166"), Color(arenaHex: "#FBBF24")],
+                                startPoint: .topLeading, endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1.5
+                        )
+                        .frame(width: 38, height: 38)
+                }
             }
+            .frame(width: 38, height: 38)
+            .shadow(color: (isProAI ? Color(arenaHex: "#FBBF24") : UpdoTheme.purple).opacity(0.45),
+                    radius: 7, y: 2)
+        } else {
+            ZStack {
+                Circle()
+                    .fill(onFire ? AnyShapeStyle(fireGradient) : AnyShapeStyle(UpdoTheme.gradientAI))
+                    .frame(width: 34, height: 34)
+                    .shadow(color: (onFire ? Color.orange : UpdoTheme.purple).opacity(0.5),
+                            radius: onFire ? 10 : 6, y: 2)
 
-            Image(systemName: onFire
-                  ? (challengeIsComplete ? "checkmark" : "flame.fill")
-                  : (isChallenge ? "flag.checkered" : "sparkles"))
-                .font(.system(size: isChallenge ? 14 : 15, weight: .bold))
-                .foregroundStyle(.white)
+                if isChallenge {
+                    Circle()
+                        .stroke(Color(arenaHex: onFire ? "#FBBF24" : AppArenaPalette.gold).opacity(0.85), lineWidth: 1.5)
+                        .frame(width: 34, height: 34)
+                }
+
+                Image(systemName: onFire
+                      ? (challengeIsComplete ? "checkmark" : "flame.fill")
+                      : "flag.checkered")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.white)
+            }
         }
     }
 

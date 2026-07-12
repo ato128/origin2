@@ -55,9 +55,9 @@
 		6D2A2AC72F885F220051459D /* ActiveFocusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2A2AC62F885F220051459D /* ActiveFocusView.swift */; };
 		6D2A2AC92F88628F0051459D /* FocusSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2A2AC82F88628F0051459D /* FocusSessionManager.swift */; };
 		6D2A2ACD2F8875D00051459D /* FocusAudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2A2ACC2F8875D00051459D /* FocusAudioManager.swift */; };
-		6D2A2ACF2F887A890051459D /* ambient_loop.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 6D2A2ACE2F887A890051459D /* ambient_loop.mp3 */; };
-		6D2A2AD12F887A960051459D /* library_loop.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 6D2A2AD02F887A960051459D /* library_loop.mp3 */; };
-		6D2A2AD32F887A9F0051459D /* rain_loop.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 6D2A2AD22F887A9F0051459D /* rain_loop.mp3 */; };
+		6D2A2ACF2F887A890051459D /* ambient_loop.caf in Resources */ = {isa = PBXBuildFile; fileRef = 6D2A2ACE2F887A890051459D /* ambient_loop.caf */; };
+		6D2A2AD12F887A960051459D /* library_loop.caf in Resources */ = {isa = PBXBuildFile; fileRef = 6D2A2AD02F887A960051459D /* library_loop.caf */; };
+		6D2A2AD32F887A9F0051459D /* rain_loop.caf in Resources */ = {isa = PBXBuildFile; fileRef = 6D2A2AD22F887A9F0051459D /* rain_loop.caf */; };
 		6D2A2ADD2F89DEFC0051459D /* FocusQuickControlsV6.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2A2ADC2F89DEFC0051459D /* FocusQuickControlsV6.swift */; };
 		6D2A2AFF2F8B14CC0051459D /* FocusInviteService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2A2AFE2F8B14CC0051459D /* FocusInviteService.swift */; };
 		6D307CA62FA93E6D00DB1A59 /* ArenaUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D307CA52FA93E6D00DB1A59 /* ArenaUI.swift */; };
@@ -363,9 +363,9 @@
 		6D2A2AC62F885F220051459D /* ActiveFocusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveFocusView.swift; sourceTree = "<group>"; };
 		6D2A2AC82F88628F0051459D /* FocusSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusSessionManager.swift; sourceTree = "<group>"; };
 		6D2A2ACC2F8875D00051459D /* FocusAudioManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusAudioManager.swift; sourceTree = "<group>"; };
-		6D2A2ACE2F887A890051459D /* ambient_loop.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = ambient_loop.mp3; sourceTree = "<group>"; };
-		6D2A2AD02F887A960051459D /* library_loop.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = library_loop.mp3; sourceTree = "<group>"; };
-		6D2A2AD22F887A9F0051459D /* rain_loop.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = rain_loop.mp3; sourceTree = "<group>"; };
+		6D2A2ACE2F887A890051459D /* ambient_loop.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = ambient_loop.caf; sourceTree = "<group>"; };
+		6D2A2AD02F887A960051459D /* library_loop.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = library_loop.caf; sourceTree = "<group>"; };
+		6D2A2AD22F887A9F0051459D /* rain_loop.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = rain_loop.caf; sourceTree = "<group>"; };
 		6D2A2ADC2F89DEFC0051459D /* FocusQuickControlsV6.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusQuickControlsV6.swift; sourceTree = "<group>"; };
 		6D2A2AFE2F8B14CC0051459D /* FocusInviteService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusInviteService.swift; sourceTree = "<group>"; };
 		6D307CA52FA93E6D00DB1A59 /* ArenaUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArenaUI.swift; sourceTree = "<group>"; };
@@ -846,9 +846,9 @@
 				6D775B842F5F81CF0009D660 /* Color+Hex.swift */,
 				6D4F2C162FA8989D0056E067 /* chat_incoming.caf */,
 				6D4F2C182FA898A10056E067 /* chat_sent.caf */,
-				6D2A2ACE2F887A890051459D /* ambient_loop.mp3 */,
-				6D2A2AD02F887A960051459D /* library_loop.mp3 */,
-				6D2A2AD22F887A9F0051459D /* rain_loop.mp3 */,
+				6D2A2ACE2F887A890051459D /* ambient_loop.caf */,
+				6D2A2AD02F887A960051459D /* library_loop.caf */,
+				6D2A2AD22F887A9F0051459D /* rain_loop.caf */,
 			);
 			path = DailyTodo;
 			sourceTree = "<group>";
@@ -1298,12 +1298,12 @@
 				6DC0CAAE2F5F7D0000A875ED /* Assets.xcassets in Resources */,
 				FF400002 /* PrivacyInfo.xcprivacy in Resources */,
 				6D4F2C172FA8989D0056E067 /* chat_incoming.caf in Resources */,
-				6D2A2AD32F887A9F0051459D /* rain_loop.mp3 in Resources */,
+				6D2A2AD32F887A9F0051459D /* rain_loop.caf in Resources */,
 				6D605CF52F773E060052C76B /* GoogleService-Info.plist in Resources */,
 				6D4F2C192FA898A10056E067 /* chat_sent.caf in Resources */,
 				6DB70E8D2F73266D00F04B43 /* Localizable.strings in Resources */,
-				6D2A2ACF2F887A890051459D /* ambient_loop.mp3 in Resources */,
-				6D2A2AD12F887A960051459D /* library_loop.mp3 in Resources */,
+				6D2A2ACF2F887A890051459D /* ambient_loop.caf in Resources */,
+				6D2A2AD12F887A960051459D /* library_loop.caf in Resources */,
 				6DD282822F68C0FA00B1281A /* DailyTodo.entitlements.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

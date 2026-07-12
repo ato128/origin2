@@ -107,6 +107,11 @@ actor AIService {
         }
 
         if http.statusCode == 402 {
+            // Backend distinguishes the free daily allowance from the monthly budget
+            let code = (try? JSONDecoder().decode(BackendAIError.self, from: data))?.code
+            if code == "daily_free_limit" {
+                throw AIServiceError.dailyFreeLimitReached
+            }
             throw AIServiceError.insufficientCredits
         }
 
@@ -133,10 +138,15 @@ private struct BackendAIResponse: Decodable {
     let creditsRemaining: Int?
 }
 
+private struct BackendAIError: Decodable {
+    let code: String?
+}
+
 // MARK: - Errors
 
 enum AIServiceError: LocalizedError {
     case insufficientCredits
+    case dailyFreeLimitReached
     case invalidResponse
     case rateLimited
     case httpError(Int)
@@ -144,7 +154,8 @@ enum AIServiceError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .insufficientCredits: return "Yeterli krediniz yok."
+        case .insufficientCredits: return tr("ai_monthly_limit")
+        case .dailyFreeLimitReached: return tr("ai_daily_limit")
         case .invalidResponse:     return tr("ai_invalid_response")
         case .rateLimited:         return tr("ai_too_many")
         case .httpError(let c):    return "\(tr("ai_http_error")): \(c)"
