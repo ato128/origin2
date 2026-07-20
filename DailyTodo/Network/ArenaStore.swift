@@ -167,6 +167,7 @@ private extension ArenaMetricDTO {
 private extension ArenaLeaderboardEntryDTO {
     var asDisplayModel: CrewStudentLeaderboardEntry {
         CrewStudentLeaderboardEntry(
+            userID: id,
             rank: rank,
             displayName: displayName,
             universityShort: universityShort,

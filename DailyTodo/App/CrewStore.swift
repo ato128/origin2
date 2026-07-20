@@ -79,6 +79,7 @@ final class CrewStore: ObservableObject {
     
     func setCurrentUser(_ userID: UUID?) {
         currentUserID = userID
+        hydrateCrewListCacheIfNeeded()
     }
     private func refreshCrewStats(for crewID: UUID) async {
         await loadMemberCount(for: crewID)
@@ -1599,17 +1600,80 @@ final class CrewStore: ObservableObject {
             crews = []
             return
         }
-        
+
         if hasLoadedCrews && !force {
             return
         }
-        
-        isLoading = true
+
+        // SWR: spinner sadece gösterecek hiçbir şey yokken. Elimizde (cache'ten
+        // ya da önceki yüklemeden) crew varsa arka planda sessizce tazelenir —
+        // kartlar yeniden yüklenmez.
+        isLoading = crews.isEmpty
         defer { isLoading = false }
-        
+
         let backendCrews = await CrewBackendClient.shared.listCrews()
         crews = backendCrews
         hasLoadedCrews = true
+        persistCrewListCache()
+    }
+
+    // MARK: - Crew list disk cache (SWR)
+    //
+    // Son bilinen crew listesi + kart sayaçları diske yazılır; uygulama
+    // açılışında ağdan önce bu snapshot gösterilir, ağ cevabı sessizce üzerine
+    // yazar. "Katılınca uygulamayı yeniden açma" akışının temeli.
+
+    private struct CrewListCacheSnapshot: Codable {
+        var crews: [CrewDTO]
+        var memberCountByCrew: [UUID: Int]
+        var taskCountByCrew: [UUID: Int]
+        var completedTaskCountByCrew: [UUID: Int]
+    }
+
+    private func crewCacheURL(for userID: UUID) -> URL? {
+        guard let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+        else { return nil }
+
+        let dir = base.appendingPathComponent("CrewCache", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("crews-\(userID.uuidString.lowercased()).json")
+    }
+
+    func persistCrewListCache() {
+        guard let currentUserID, let url = crewCacheURL(for: currentUserID) else { return }
+
+        let snapshot = CrewListCacheSnapshot(
+            crews: crews,
+            memberCountByCrew: memberCountByCrew,
+            taskCountByCrew: taskCountByCrew,
+            completedTaskCountByCrew: completedTaskCountByCrew
+        )
+
+        guard let data = try? JSONEncoder().encode(snapshot) else { return }
+        try? data.write(to: url, options: .atomic)
+    }
+
+    /// Loads the cached crew list once per user — instant cards on cold start.
+    func hydrateCrewListCacheIfNeeded() {
+        guard let currentUserID,
+              crews.isEmpty,
+              let url = crewCacheURL(for: currentUserID),
+              let data = try? Data(contentsOf: url),
+              let snapshot = try? JSONDecoder().decode(CrewListCacheSnapshot.self, from: data)
+        else { return }
+
+        crews = snapshot.crews
+        for (key, value) in snapshot.memberCountByCrew where memberCountByCrew[key] == nil {
+            memberCountByCrew[key] = value
+        }
+        for (key, value) in snapshot.taskCountByCrew where taskCountByCrew[key] == nil {
+            taskCountByCrew[key] = value
+        }
+        for (key, value) in snapshot.completedTaskCountByCrew where completedTaskCountByCrew[key] == nil {
+            completedTaskCountByCrew[key] = value
+        }
+
+        Log.debug("🟢 CREW CACHE HYDRATED:", snapshot.crews.count)
     }
     
     func subscribeToCrewsListRealtime(for userID: UUID) {
@@ -2049,6 +2113,8 @@ final class CrewStore: ObservableObject {
                 }
             }
         }
+
+        persistCrewListCache()
     }
     
     

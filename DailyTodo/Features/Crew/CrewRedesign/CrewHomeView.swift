@@ -1527,24 +1527,12 @@ private struct CrewFriendRow: View {
     var body: some View {
         HStack(spacing: 13) {
             ZStack(alignment: .bottomTrailing) {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(arenaHex: friend.colorHex),
-                                Color(arenaHex: CrewArenaPalette.appPurple)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 54, height: 54)
-                    .overlay(
-                        Text(String(friend.displayName.prefix(1)))
-                            .font(.system(size: 23, weight: .regular, design: .serif))
-                            .italic()
-                            .foregroundStyle(.white.opacity(0.90))
-                    )
+                UserAvatarView(
+                    userID: friend.userID,
+                    name: friend.displayName,
+                    tint: Color(arenaHex: friend.colorHex),
+                    size: 54
+                )
 
                 CrewPresenceDot(isLive: showStats ? (friend.isOnline || friend.isFocusing) : friend.isOnline)
             }
@@ -1743,14 +1731,23 @@ private struct CrewRequestRow: View {
 
     var body: some View {
         HStack(spacing: 13) {
-            RoundedRectangle(cornerRadius: 17, style: .continuous)
-                .fill(Color(arenaHex: request.kind.accentHex).opacity(0.16))
-                .frame(width: 50, height: 50)
-                .overlay(
-                    Image(systemName: "person.fill")
-                        .font(.system(size: 19, weight: .bold))
-                        .foregroundStyle(Color(arenaHex: request.kind.accentHex))
+            if let userID = request.userID {
+                UserAvatarView(
+                    userID: userID,
+                    name: request.title,
+                    tint: Color(arenaHex: request.kind.accentHex),
+                    size: 50
                 )
+            } else {
+                RoundedRectangle(cornerRadius: 17, style: .continuous)
+                    .fill(Color(arenaHex: request.kind.accentHex).opacity(0.16))
+                    .frame(width: 50, height: 50)
+                    .overlay(
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 19, weight: .bold))
+                            .foregroundStyle(Color(arenaHex: request.kind.accentHex))
+                    )
+            }
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(request.kind.title)
@@ -2222,16 +2219,13 @@ private struct CrewPodiumPerson: View {
     var body: some View {
         VStack(spacing: 7) {
             ZStack(alignment: .bottomTrailing) {
-                Circle()
-                    .fill(Color(arenaHex: entry.colorHex))
-                    .frame(width: entry.rank == 1 ? 64 : 56, height: entry.rank == 1 ? 64 : 56)
-                    .shadow(color: Color(arenaHex: entry.colorHex).opacity(entry.rank == 1 ? 0.22 : 0.06), radius: 12, y: 6)
-                    .overlay(
-                        Text(String(entry.displayName.prefix(1)))
-                            .font(.system(size: 25, weight: .regular, design: .serif))
-                            .italic()
-                            .foregroundStyle(.black.opacity(0.85))
-                    )
+                UserAvatarView(
+                    userID: entry.userID,
+                    name: entry.displayName,
+                    tint: Color(arenaHex: entry.colorHex),
+                    size: entry.rank == 1 ? 64 : 56
+                )
+                .shadow(color: Color(arenaHex: entry.colorHex).opacity(entry.rank == 1 ? 0.22 : 0.06), radius: 12, y: 6)
 
                 Text("\(entry.rank)")
                     .font(.system(size: 10, weight: .black))

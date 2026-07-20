@@ -7,6 +7,7 @@
 
 import SwiftUI
 import UIKit
+import SwiftData
 
 private enum BackendCrewArenaPalette {
     static let backgroundTop = Color(arenaHex: "#05060D")
@@ -64,6 +65,11 @@ struct BackendCrewDetailView: View {
     @State private var selectedTask: CrewTaskDTO?
 
     @State private var inviteCode = ""
+    @State private var invitedFriendIDs: Set<UUID> = []
+    @State private var sendingInviteFriendID: UUID?
+
+    @Query(sort: \Friend.createdAt, order: .reverse)
+    private var allLocalFriends: [Friend]
     @State private var errorMessage: String?
 
     @State private var showHeroCard = false
@@ -288,69 +294,203 @@ struct BackendCrewDetailView: View {
 extension BackendCrewDetailView {
     
     var inviteSheet: some View {
-        VStack(spacing: 22) {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(BackendCrewArenaPalette.appGradient)
-                .frame(width: 74, height: 74)
-                .overlay(
-                    Image(systemName: "person.badge.plus")
-                        .font(.system(size: 30, weight: .black))
-                        .foregroundStyle(.white)
-                )
-
-            VStack(spacing: 8) {
-                Text(tr("bcd_invite_code"))
-                    .font(.system(size: 24, weight: .black))
-                    .foregroundStyle(.white)
-
-                Text(tr("bcd_share_code"))
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.52))
-                    .multilineTextAlignment(.center)
-            }
-
-            Text(inviteCode)
-                .font(.system(size: 42, weight: .black, design: .rounded))
-                .foregroundStyle(.white)
-                .textSelection(.enabled)
-                .padding(.horizontal, 24)
-                .padding(.vertical, 16)
-                .background(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(Color.white.opacity(0.075))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
-                        )
-                )
-
-            Button {
-                UIPasteboard.general.string = inviteCode
-                inviteCopied = true
-            } label: {
-                Text(inviteCopied ? String(localized: "common_copied") : String(localized: "common_copy"))
-                    .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(.black)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 52)
-                    .background(
-                        Capsule()
-                            .fill(BackendCrewArenaPalette.green)
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 22) {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(BackendCrewArenaPalette.appGradient)
+                    .frame(width: 74, height: 74)
+                    .overlay(
+                        Image(systemName: "person.badge.plus")
+                            .font(.system(size: 30, weight: .black))
+                            .foregroundStyle(.white)
                     )
-            }
-            .buttonStyle(.plain)
 
-            if inviteCopied {
-                Text(tr("backend_crew_code_copied_success"))
+                VStack(spacing: 8) {
+                    Text(tr("bcd_invite_code"))
+                        .font(.system(size: 24, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text(tr("bcd_share_code"))
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.52))
+                        .multilineTextAlignment(.center)
+                }
+
+                Text(inviteCode)
+                    .font(.system(size: 42, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .textSelection(.enabled)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(Color.white.opacity(0.075))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                            )
+                    )
+
+                Button {
+                    UIPasteboard.general.string = inviteCode
+                    inviteCopied = true
+                } label: {
+                    Text(inviteCopied ? String(localized: "common_copied") : String(localized: "common_copy"))
+                        .font(.system(size: 16, weight: .black))
+                        .foregroundStyle(.black)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(
+                            Capsule()
+                                .fill(BackendCrewArenaPalette.green)
+                        )
+                }
+                .buttonStyle(.plain)
+
+                if inviteCopied {
+                    Text(tr("backend_crew_code_copied_success"))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.52))
+                        .transition(.opacity)
+                }
+
+                inviteFriendsSection
+            }
+            .padding(24)
+        }
+        .background(Color.black)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    /// Friends not yet in this crew — one tap sends the invite into your 1:1
+    /// chat as a join card. No code copying needed on either side.
+    private var invitableFriends: [Friend] {
+        guard let currentUserID = session.currentUser?.id else { return [] }
+
+        let memberUserIDs = Set(
+            crewStore.crewMembers
+                .filter { $0.crew_id == crew.id }
+                .map(\.user_id)
+        )
+
+        return allLocalFriends.filter { friend in
+            friend.ownerUserID == currentUserID.uuidString
+            && friend.backendFriendshipID != nil
+            && friend.backendUserID.map { !memberUserIDs.contains($0) } ?? false
+        }
+    }
+
+    private var inviteFriendsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("— \(tr("bcd_invite_friends_caps")) —")
+                .font(.system(size: 10, weight: .black, design: .monospaced))
+                .tracking(2.2)
+                .foregroundStyle(.white.opacity(0.34))
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if invitableFriends.isEmpty {
+                Text(tr("bcd_invite_no_friends"))
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.52))
-                    .transition(.opacity)
+                    .foregroundStyle(.white.opacity(0.45))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(invitableFriends, id: \.id) { friend in
+                        inviteFriendRow(friend)
+                    }
+                }
             }
         }
-        .padding(24)
-        .background(Color.black)
-        .presentationDetents([.medium])
-        .presentationDragIndicator(.visible)
+        .padding(.top, 4)
+    }
+
+    private func inviteFriendRow(_ friend: Friend) -> some View {
+        let sent = invitedFriendIDs.contains(friend.id)
+        let sending = sendingInviteFriendID == friend.id
+
+        return HStack(spacing: 12) {
+            UserAvatarView(
+                userID: friend.backendUserID,
+                name: friend.name,
+                tint: BackendCrewArenaPalette.green,
+                size: 40
+            )
+
+            Text(friend.name)
+                .font(.system(size: 15, weight: .black))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+
+            Spacer(minLength: 8)
+
+            Button {
+                sendChatInvite(to: friend)
+            } label: {
+                Group {
+                    if sending {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .tint(.black)
+                    } else {
+                        Text(sent ? tr("bcd_invite_sent") : tr("bcd_invite_send"))
+                            .font(.system(size: 12, weight: .black))
+                    }
+                }
+                .foregroundStyle(sent ? BackendCrewArenaPalette.green : .black)
+                .padding(.horizontal, 14)
+                .frame(height: 34)
+                .background(
+                    Capsule().fill(
+                        sent
+                        ? BackendCrewArenaPalette.green.opacity(0.14)
+                        : BackendCrewArenaPalette.green
+                    )
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(sent || sending)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.045))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                )
+        )
+    }
+
+    private func sendChatInvite(to friend: Friend) {
+        guard let friendshipID = friend.backendFriendshipID,
+              let friendUserID = friend.backendUserID,
+              !inviteCode.isEmpty
+        else { return }
+
+        sendingInviteFriendID = friend.id
+
+        Task {
+            defer { Task { @MainActor in sendingInviteFriendID = nil } }
+
+            guard let conversation = await ChatBackendClient.shared.syncFriendship(
+                friendshipID: friendshipID,
+                friendUserID: friendUserID
+            ) else { return }
+
+            let text = CrewInviteMessage.encode(code: inviteCode, crewName: crew.name)
+            let sent = await ChatBackendClient.shared.sendMessage(
+                conversationID: conversation.id,
+                text: text
+            )
+
+            if sent != nil {
+                await MainActor.run {
+                    _ = invitedFriendIDs.insert(friend.id)
+                    HapticManager.shared.success()
+                }
+            }
+        }
     }
 
     var ambientBackground: some View {
@@ -1483,23 +1623,12 @@ extension BackendCrewDetailView {
         let tint = isOwner ? BackendCrewArenaPalette.gold : BackendCrewArenaPalette.cyan
 
         return HStack(spacing: 13) {
-            Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            tint.opacity(0.22),
-                            BackendCrewArenaPalette.purple.opacity(0.12)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 52, height: 52)
-                .overlay(
-                    Text(memberInitial(from: profile))
-                        .font(.system(size: 21, weight: .black))
-                        .foregroundStyle(tint)
-                )
+            UserAvatarView(
+                userID: member.user_id,
+                name: memberName(from: profile),
+                tint: tint,
+                size: 52
+            )
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(memberName(from: profile))

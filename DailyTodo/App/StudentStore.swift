@@ -522,7 +522,7 @@ final class StudentStore: ObservableObject {
                     startMinute: min(max(slot.startMinute, 0), 1439),
                     durationMinute: max(slot.durationMinute, 15),
                     scheduledDate: nil,
-                    location: nil,
+                    location: slot.room?.isEmpty == false ? slot.room : nil,
                     notes: nil,
                     colorHex: color
                 )

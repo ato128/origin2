@@ -955,11 +955,11 @@ private extension FocusView {
 
             switch focusSession.selectedMode {
             case .personal:
-                return "Aktif session"
+                return tr("fv_active_session")
             case .crew:
                 return tr("hf_ready_count", focusSession.readyCount, max(focusSession.participantCount, 1))
             case .friend:
-                return "Birlikte aktif"
+                return tr("fv_together_active")
             }
         }
 
@@ -981,16 +981,18 @@ private extension FocusView {
     }
 
     var crewStartSheet: some View {
-        NavigationStack {
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 18) {
-                    Text(tr("fv_start_crew"))
-                        .font(.system(size: 28, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.primary)
+        ZStack {
+            ArenaBackground(
+                primaryGlow: selectedModeAccent,
+                secondaryGlow: selectedModeSecondaryAccent,
+                warmGlow: Color(arenaHex: AppArenaPalette.purple),
+                intensity: 0.9
+            )
+            .ignoresSafeArea()
 
-                    Text(tr("fv_crew_pick_sub"))
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.secondary)
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 22) {
+                    crewStartHeader
 
                     crewPickerSection
                     crewTaskSection
@@ -1004,14 +1006,15 @@ private extension FocusView {
                     } label: {
                         HStack(spacing: 10) {
                             Image(systemName: "play.fill")
+                                .font(.system(size: 15, weight: .black))
                             Text(tr("fv_start_crew"))
-                                .font(.system(size: 17, weight: .heavy, design: .rounded))
+                                .font(.system(size: 17, weight: .black))
                         }
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
                         .background(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
                                 .fill(
                                     LinearGradient(
                                         colors: [
@@ -1022,20 +1025,83 @@ private extension FocusView {
                                         endPoint: .bottomTrailing
                                     )
                                 )
+                                .shadow(color: selectedModeAccent.opacity(0.30), radius: 16, y: 8)
                         )
                     }
                     .buttonStyle(.plain)
                 }
                 .padding(20)
+                .padding(.bottom, 26)
             }
         }
+        .preferredColorScheme(.dark)
         .presentationDetents([.large])
     }
-    
+
+    var crewStartHeader: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(selectedModeAccent)
+                        .frame(width: 20, height: 1)
+
+                    Text("CREW FOCUS")
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .tracking(2.4)
+                        .foregroundStyle(selectedModeAccent)
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Text("Crew Focus")
+                        .font(.system(size: 32, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text(tr("fvs_title_italic"))
+                        .font(.system(size: 29, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(selectedModeAccent)
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+
+                Text(tr("fv_crew_pick_sub"))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.48))
+            }
+
+            Spacer(minLength: 8)
+
+            Button {
+                showCrewStartSheet = false
+            } label: {
+                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(.white)
+                    .frame(width: 40, height: 40)
+                    .background(
+                        Circle()
+                            .fill(Color.white.opacity(0.06))
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                            )
+                    )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    func crewSheetEyebrow(_ text: String) -> some View {
+        Text("— \(text) —")
+            .font(.system(size: 10, weight: .black, design: .monospaced))
+            .tracking(2.2)
+            .foregroundStyle(.white.opacity(0.34))
+    }
+
     var crewLaunchSummaryCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(tr("fv_summary"))
-                .font(.system(size: 15, weight: .heavy, design: .rounded))
+            crewSheetEyebrow(tr("fv_summary").uppercased())
 
             HStack(spacing: 10) {
                 summaryMiniPill(
@@ -1045,7 +1111,7 @@ private extension FocusView {
 
                 summaryMiniPill(
                     title: tr("at_kind_task"),
-                    value: selectedCrewTaskID == nil ? "Yok" : tr("fv_selected")
+                    value: selectedCrewTaskID == nil ? tr("fv_none") : tr("fv_selected")
                 )
 
                 summaryMiniPill(
@@ -1059,13 +1125,16 @@ private extension FocusView {
     func summaryMiniPill(title: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title.uppercased())
-                .font(.system(size: 10, weight: .heavy, design: .rounded))
-                .foregroundStyle(Color.white.opacity(0.45))
-                .tracking(1.4)
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .foregroundStyle(Color.white.opacity(0.40))
+                .tracking(1.2)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
 
             Text(value)
-                .font(.system(size: 16, weight: .heavy, design: .rounded))
-                .foregroundStyle(.primary)
+                .font(.system(size: 17, weight: .black))
+                .foregroundStyle(.white)
+                .monospacedDigit()
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
@@ -1075,15 +1144,14 @@ private extension FocusView {
                 .fill(Color.white.opacity(0.05))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                        .stroke(Color.white.opacity(0.075), lineWidth: 1)
                 )
         )
     }
 
     var crewPickerSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Crew")
-                .font(.system(size: 15, weight: .heavy, design: .rounded))
+            crewSheetEyebrow("CREW")
 
             ForEach(crewStore.crews, id: \.id) { crew in
                 Button {
@@ -1117,11 +1185,11 @@ private extension FocusView {
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text(crew.name)
-                                .font(.system(size: 17, weight: .heavy, design: .rounded))
+                                .font(.system(size: 17, weight: .black))
                                 .foregroundStyle(.primary)
 
                             Text(tr("fv_crew_space"))
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(.secondary)
                         }
 
@@ -1155,8 +1223,7 @@ private extension FocusView {
 
     var crewTaskSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(tr("at_kind_task"))
-                .font(.system(size: 15, weight: .heavy, design: .rounded))
+            crewSheetEyebrow(tr("at_kind_task").uppercased())
 
             Button {
                 selectedCrewTaskID = nil
@@ -1185,11 +1252,11 @@ private extension FocusView {
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text(tr("fv_start_no_task"))
-                            .font(.system(size: 15, weight: .heavy, design: .rounded))
+                            .font(.system(size: 15, weight: .black))
                             .foregroundStyle(.primary)
 
-                        Text("Genel bir crew focus oturumu")
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        Text(tr("fv_no_task_sub"))
+                            .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(.secondary)
                     }
 
@@ -1247,12 +1314,12 @@ private extension FocusView {
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text(task.title)
-                                .font(.system(size: 15, weight: .heavy, design: .rounded))
+                                .font(.system(size: 15, weight: .black))
                                 .foregroundStyle(.primary)
                                 .multilineTextAlignment(.leading)
 
                             Text(task.status.capitalized)
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(.secondary)
                         }
 
@@ -1286,18 +1353,17 @@ private extension FocusView {
     var crewParticipantSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(tr("cfr_participants"))
-                    .font(.system(size: 15, weight: .heavy, design: .rounded))
+                crewSheetEyebrow(tr("cfr_participants").uppercased())
 
                 Spacer()
 
-                Button("Herkes") {
+                Button(tr("fv_everyone")) {
                     selectedParticipantIDs = Set(
                         activeCrewMembers.map(\.user_id)
                     )
                 }
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundStyle(.blue)
+                .font(.system(size: 12, weight: .black))
+                .foregroundStyle(selectedModeAccent)
             }
 
             ForEach(activeCrewMembers, id: \.id) { member in
@@ -1316,34 +1382,27 @@ private extension FocusView {
                     }
                 } label: {
                     HStack(spacing: 14) {
-                        ZStack {
+                        UserAvatarView(
+                            userID: userID,
+                            name: name,
+                            tint: selectedModeAccent,
+                            size: 42
+                        )
+                        .overlay(
                             Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            isSelected
-                                            ? selectedModeAccent.opacity(0.95)
-                                            : Color.white.opacity(0.14),
-                                            Color.white.opacity(0.06)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
+                                .strokeBorder(
+                                    isSelected ? selectedModeAccent.opacity(0.85) : Color.clear,
+                                    lineWidth: 1.6
                                 )
-
-                            Text(String(name.prefix(1)).uppercased())
-                                .font(.system(size: 16, weight: .heavy, design: .rounded))
-                                .foregroundStyle(.white)
-                        }
-                        .frame(width: 42, height: 42)
+                        )
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text(name)
-                                .font(.system(size: 15, weight: .heavy, design: .rounded))
+                                .font(.system(size: 15, weight: .black))
                                 .foregroundStyle(.primary)
 
                             Text(isLocked ? tr("fv_required_participant") : member.role.capitalized)
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(.secondary)
                         }
 
@@ -1475,6 +1534,15 @@ private extension FocusView {
                 return names
             }()
 
+            // participantNames ile aynı sırada — alıcı sheet fotoğrafları bununla çizer.
+            let liveParticipantUserIDs: [String] = {
+                var ids = participants.map { $0.user_id?.uuidString ?? "" }
+                if ids.isEmpty {
+                    ids = [focusSession.currentUserID?.uuidString ?? ""]
+                }
+                return ids
+            }()
+
             let totalCount = invitedParticipantIDs.count + 1
 
             await FocusInviteService.shared.sendInvites(
@@ -1487,6 +1555,7 @@ private extension FocusView {
                 crewName: crewName,
                 startedAt: Date(),
                 participantNames: liveParticipantNames,
+                participantUserIDs: liveParticipantUserIDs,
                 totalParticipants: totalCount
             )
         } catch {
@@ -1748,14 +1817,12 @@ private extension FocusView {
                                     startFriendDuoSession(friendID: backendID, friendName: friend.name)
                                 } label: {
                                     HStack(spacing: 12) {
-                                        ZStack {
-                                            Circle()
-                                                .fill(Color(arenaHex: friend.colorHex).opacity(0.25))
-                                                .frame(width: 42, height: 42)
-                                            Text(String(friend.name.prefix(1)).uppercased())
-                                                .font(.system(size: 16, weight: .black, design: .rounded))
-                                                .foregroundStyle(.white)
-                                        }
+                                        UserAvatarView(
+                                            userID: friend.backendUserID,
+                                            name: friend.name,
+                                            tint: Color(arenaHex: friend.colorHex),
+                                            size: 42
+                                        )
 
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(friend.name)

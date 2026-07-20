@@ -240,6 +240,15 @@ struct DailyTodoApp: App {
         .onReceive(NotificationCenter.default.publisher(for: .presentFocusCompletionFromPush)) { output in
             handleFocusCompletionPush(output.object as? [AnyHashable: Any])
         }
+        .onReceive(NotificationCenter.default.publisher(for: .crewJoinedViaInvite)) { _ in
+            // Chat'ten davet kabul edildi — crew listesi sessizce tazelenir,
+            // hiçbir ekran yeniden yüklenmez.
+            Task {
+                await crewStore.loadCrews(force: true)
+                await crewStore.loadStatsForAllCrews()
+                await crewStore.loadHomeCacheForAllCrews()
+            }
+        }
     }
     
     private var resolvedCurrentDisplayName: String {
@@ -579,6 +588,11 @@ struct DailyTodoApp: App {
             Task { [currentUserID = session.currentUser?.id] in
                 await SubscriptionManager.shared.syncIdentity(userID: currentUserID)
                 await SubscriptionManager.shared.refresh()
+            }
+
+            // ChatGPT (MCP) üzerinden eklenen görevleri içeri al.
+            Task { [ownerID = session.currentUser?.id.uuidString] in
+                await McpTaskInbox.syncIfNeeded(container: container, ownerUserID: ownerID)
             }
 
             focusSession.reconcileExpiredSessionIfNeeded(reason: "scene active")

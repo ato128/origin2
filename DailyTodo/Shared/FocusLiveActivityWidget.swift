@@ -40,13 +40,17 @@ struct FocusLiveActivityWidget: Widget {
                 }
 
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text(focusModeLabel(for: context.state))
-                        .font(.system(size: 10, weight: .semibold))
-                        .tracking(0.4)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 5)
-                        .background(Capsule().fill(accent.opacity(0.16)))
-                        .foregroundStyle(accent)
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text(focusModeLabel(for: context.state))
+                            .font(.system(size: 10, weight: .semibold))
+                            .tracking(0.4)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(accent.opacity(0.16)))
+                            .foregroundStyle(accent)
+
+                        ProStreakChip()
+                    }
                 }
 
                 DynamicIslandExpandedRegion(.bottom) {
@@ -97,89 +101,23 @@ private struct FocusLockScreenView: View {
     }
 
     var body: some View {
-        let accent = focusAccent(for: state)
+        let userState = WidgetShared.readUserState()
 
-        VStack(alignment: .leading, spacing: 12) {
-            // Identity row
-            HStack(spacing: 11) {
-                FocusIconBubble(state: state, accent: accent, size: 36)
+        // User-picked style from settings; Pro styles fall back to classic
+        // when the subscription lapses. No choice yet → Pro defaults to gold.
+        let chosen = FocusLiveStyle(rawValue: WidgetShared.readLiveActivityStyle())
+        let style: FocusLiveStyle = {
+            guard userState.isPro else { return .classic }
+            return chosen ?? .gold
+        }()
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(state.title)
-                        .font(WidgetFont.title(16))
-                        .foregroundStyle(UpdoWidgetPalette.textPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-
-                    Text(state.subtitle)
-                        .font(WidgetFont.caption())
-                        .foregroundStyle(UpdoWidgetPalette.textSecondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                }
-
-                Spacer(minLength: 6)
-
-                VStack(alignment: .trailing, spacing: 4) {
-                    modeChip(accent: accent)
-                    ProStreakChip()
-                }
-            }
-
-            // Hero timer + percent
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                focusTimerText(for: state)
-                    .focusHeroNumber(size: state.isCompleted ? 26 : 40, accent: accent, live: true)
-
-                if !isFocusFinished(state) && !state.isPaused {
-                    Text("/ \(totalMinutes) \(widgetLocalized("dk", "min"))")
-                        .font(WidgetFont.caption())
-                        .foregroundStyle(UpdoWidgetPalette.textTertiary)
-                }
-
-                Spacer(minLength: 6)
-
-                Text("\(Int(focusProgress(for: state) * 100))%")
-                    .font(.system(size: 13, weight: .semibold))
-                    .monospacedDigit()
-                    .foregroundStyle(accent)
-            }
-
-            UpdoLiveProgressBar(
-                running: focusRunningRange(for: state),
-                staticProgress: focusProgress(for: state),
-                accent: accent,
-                height: 6
-            )
-        }
-        .padding(16)
-        .background(
-            ZStack {
-                LinearGradient(
-                    colors: [UpdoWidgetPalette.surfaceTop, UpdoWidgetPalette.surfaceBottom],
-                    startPoint: .top, endPoint: .bottom
-                )
-                RadialGradient(
-                    colors: [accent.opacity(state.isCompleted ? 0.16 : 0.10), .clear],
-                    center: .bottomTrailing, startRadius: 8, endRadius: 240
-                )
-            }
+        FocusLiveStyleCard(
+            style: style,
+            state: state,
+            userState: userState,
+            totalMinutes: totalMinutes,
+            themeAccent: UpdoWidgetIconTheme.current().accent
         )
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(UpdoWidgetPalette.hairline, lineWidth: 1)
-        )
-    }
-
-    private func modeChip(accent: Color) -> some View {
-        Text(focusModeLabel(for: state))
-            .font(.system(size: 10, weight: .semibold))
-            .tracking(0.4)
-            .foregroundStyle(accent)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(Capsule().fill(accent.opacity(0.14)))
     }
 }
 

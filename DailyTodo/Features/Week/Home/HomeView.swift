@@ -345,66 +345,84 @@ private extension HomeView {
     }
 }
 
-// MARK: - Hero Section
+// MARK: - Hero Section (AI-first: orb + selamlama + komut çubuğu)
+//
+// Updo "AI destekli öğrenci işletim sistemi" — ana sayfanın yüzü artık Updo AI.
+// Orb sahnenin ortasında; selamlama, gerçek veriden kurulan tek satırlık durum
+// cümlesi, komut çubuğu ve hızlı niyet çipleri altında. Çiplerin çoğu yerel
+// niyet katmanına düştüğü için token da harcamaz.
 
 private extension HomeView {
     @ViewBuilder
     var heroSection: some View {
+        // Focus aktifken hero gizlenir — orb, focus kartının içine "dönüşür"
+        // (activeFocusCountdownCard başlığındaki canlı orb).
+        if !focusSession.isSessionActive {
+            aiHeroContent
+        }
+    }
+
+    @ViewBuilder
+    var aiHeroContent: some View {
         let state = resolveHomeState()
 
-        VStack(alignment: .leading, spacing: 11) {
-            HStack(spacing: 9) {
-                if state.showLiveDot {
+        VStack(spacing: 12) {
+            // Orb — dokununca tam sohbet açılır.
+            Button {
+                openAIChat(seed: nil)
+            } label: {
+                ZStack {
                     Circle()
-                        .fill(state.liveAccent)
-                        .frame(width: 6, height: 6)
-                        .scaleEffect(pulse ? 1.45 : 1.0)
-                        .opacity(pulse ? 0.48 : 1.0)
-                        .shadow(color: state.liveAccent.opacity(0.65), radius: 7)
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    accentCyan.opacity(breathe ? 0.30 : 0.20),
+                                    accentPrimary.opacity(0.10),
+                                    .clear
+                                ],
+                                center: .center,
+                                startRadius: 6,
+                                endRadius: 72
+                            )
+                        )
+                        .frame(width: 148, height: 148)
+
+                    UpdoAIOrb(size: 88)
+                        .overlay(
+                            Circle().strokeBorder(
+                                subscription.isProAI
+                                ? AnyShapeStyle(
+                                    LinearGradient(
+                                        colors: [accentGold, accentCyan],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                : AnyShapeStyle(Color.clear),
+                                lineWidth: 1.6
+                            )
+                        )
+                        .scaleEffect(breathe ? 1.035 : 1.0)
+                        .shadow(color: accentPrimary.opacity(0.35), radius: 22, y: 8)
                 }
-
-                Rectangle()
-                    .fill(
-                        LinearGradient(
-                            colors: [state.accent, accentSecondary],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .frame(width: 22, height: 1)
-
-                Text(state.eyebrow)
-                    .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .tracking(2.35)
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [state.accent, accentSecondary],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.64)
             }
+            .buttonStyle(.plain)
+            .frame(height: 112)
 
+            // Selamlama (marka tipografisi, ortalı)
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(state.title)
-                    .font(.system(size: 34, weight: .black))
+                    .font(.system(size: 32, weight: .black))
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.58)
-                    .layoutPriority(1)
 
                 Text(state.italicLine)
-                    .font(.system(size: 30, weight: .regular, design: .serif))
+                    .font(.system(size: 28, weight: .regular, design: .serif))
                     .italic()
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [
-                                state.accent,
-                                accentSecondary,
-                                accentPrimary
-                            ],
+                            colors: [state.accent, accentSecondary, accentPrimary],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -413,34 +431,174 @@ private extension HomeView {
                     .minimumScaleFactor(0.58)
             }
 
-            if !state.metaItems.isEmpty {
-                HStack(spacing: 13) {
-                    ForEach(Array(state.metaItems.enumerated()), id: \.offset) { idx, item in
-                        if idx > 0 {
-                            Circle()
-                                .fill(Color.white.opacity(0.28))
-                                .frame(width: 3, height: 3)
-                        }
+            // Gerçek veriden durum cümlesi
+            Text(aiHeroContextLine)
+                .font(.system(size: 13.5, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.55))
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
+                .padding(.horizontal, 10)
 
-                        HStack(spacing: 6) {
-                            Image(systemName: item.icon)
-                                .font(.system(size: 12, weight: .black))
+            // Komut çubuğu
+            HStack(spacing: 9) {
+                TextField(tr("hv_ai_bar_placeholder"), text: $aiQuickInput, axis: .vertical)
+                    .font(.system(size: 15))
+                    .foregroundStyle(.white)
+                    .tint(accentCyan)
+                    .lineLimit(1...3)
+                    .focused($aiQuickFocused)
+                    .submitLabel(.send)
+                    .onSubmit { heroSubmitInput() }
 
-                            Text(item.text)
-                                .font(.system(size: 13, weight: .black))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.72)
-                        }
-                        .foregroundStyle(.white.opacity(0.52))
+                // Kota rozeti çubuğun içinde — ayrı satırda yüzmesin.
+                if !aiQuickFocused && aiQuickInput.isEmpty {
+                    heroCreditLine
+                        .padding(.trailing, 2)
+                }
+
+                Button {
+                    heroSubmitInput()
+                } label: {
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(heroInputReady ? Color.black : .white.opacity(0.4))
+                        .frame(width: 34, height: 34)
+                        .background(
+                            Circle().fill(heroInputReady
+                                          ? AnyShapeStyle(accentCyan)
+                                          : AnyShapeStyle(Color.white.opacity(0.08)))
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(!heroInputReady)
+            }
+            .padding(.leading, 16)
+            .padding(.trailing, 7)
+            .padding(.vertical, 8)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.white.opacity(0.06))
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [accentCyan.opacity(0.35), accentPrimary.opacity(0.30)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                ),
+                                lineWidth: 1
+                            )
+                    )
+                    .shadow(color: Color.black.opacity(0.25), radius: 14, y: 7)
+            )
+            .padding(.top, 2)
+
+            // Hızlı niyet çipleri — plan/motivasyon yerel katmana düşer (0 token)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    heroChip(icon: "sparkles", title: tr("hv_chip_plan")) {
+                        openAIChat(seed: tr("hv_seed_plan"))
+                    }
+                    heroChip(icon: "plus", title: tr("hv_chip_add")) {
+                        onAddTask()
+                    }
+                    heroChip(icon: "flame", title: tr("hv_chip_motivation")) {
+                        openAIChat(seed: tr("hv_seed_motivation"))
+                    }
+                    heroChip(icon: "book.closed", title: tr("hv_chip_exam")) {
+                        openAIChat(seed: tr("hv_seed_exam"))
                     }
                 }
-                .padding(.top, 6)
+                .padding(.horizontal, 2)
+                .padding(.trailing, 28)
             }
+            // Sağ kenarda içerik solarak biter — "devamı var" hissi.
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .white, location: 0),
+                        .init(color: .white, location: 0.86),
+                        .init(color: .clear, location: 1)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
         }
+        .frame(maxWidth: .infinity)
         .opacity(pageAppeared ? 1 : 0)
         .offset(y: pageAppeared ? 0 : 16)
-        .scaleEffect(pageAppeared ? 1.0 : 0.985, anchor: .topLeading)
+        .scaleEffect(pageAppeared ? 1.0 : 0.985)
         .animation(.spring(response: 0.68, dampingFraction: 0.84).delay(0.05), value: pageAppeared)
+        .task { await credits.refreshIfStale() }
+    }
+
+    var heroInputReady: Bool {
+        !aiQuickInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    func heroSubmitInput() {
+        let text = aiQuickInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        aiQuickInput = ""
+        aiQuickFocused = false
+        openAIChat(seed: text)
+    }
+
+    /// "25 aktif görev · 3 etkinlik bugün · 13 gün seri — nereden başlayalım?"
+    var aiHeroContextLine: String {
+        var parts: [String] = []
+
+        if activeTaskCount > 0 {
+            parts.append(tr("hv_hero_p_tasks", activeTaskCount))
+        }
+        if !todayEvents.isEmpty {
+            parts.append(tr("hv_hero_p_events", todayEvents.count))
+        }
+        if progression.currentStreak > 0 {
+            parts.append(tr("hv_hero_p_streak", progression.currentStreak))
+        }
+
+        let lead = parts.isEmpty ? tr("hv_hero_p_fresh") : parts.joined(separator: " · ")
+        return "\(lead) — \(tr("hv_hero_ask"))"
+    }
+
+    func heroChip(icon: String, title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(accentCyan)
+
+                Text(title)
+                    .font(.system(size: 12.5, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.85))
+            }
+            .padding(.horizontal, 13)
+            .frame(height: 36)
+            .background(
+                Capsule()
+                    .fill(Color.white.opacity(0.055))
+                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.10), lineWidth: 1))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Küçük, ortalı kota satırı — hero'yu kalabalıklaştırmadan durum verir.
+    @ViewBuilder
+    var heroCreditLine: some View {
+        if credits.usesOwnKey {
+            Text(tr("hv_ai_own_key"))
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .foregroundStyle(Color(arenaHex: "#34D44A").opacity(0.85))
+        } else if credits.isLoaded {
+            let remaining = credits.messagesRemainingToday ?? credits.creditsRemaining
+            Text(credits.isPro ? tr("hv_ai_credit_n", remaining) : tr("hv_ai_msg_n", remaining))
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .foregroundStyle(remaining > 0 ? Color.white.opacity(0.38) : Color(arenaHex: "#FF5A44").opacity(0.8))
+        }
     }
 }
 
@@ -750,20 +908,30 @@ private extension HomeView {
         let isCritical = remaining > 0 && remaining <= 60
         let isPaused = focusSession.isPaused
 
+        // Orb kartın içine taşınır: koşarken marka renklerinde canlı,
+        // duraklatılınca kırmızı-soluk, son 60 saniyede nabız atan kırmızı.
+        let alertState = isPaused || isCritical
+        let alertColor = accentWarm
+
         return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center) {
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(isCritical ? accentGold : accentGreen)
-                        .frame(width: 7, height: 7)
-                        .scaleEffect(pulse ? 1.35 : 1.0)
-                        .opacity(pulse ? 0.48 : 1.0)
-                        .shadow(color: (isCritical ? accentGold : accentGreen).opacity(0.55), radius: 6)
+                HStack(spacing: 10) {
+                    UpdoAIOrb(size: 44)
+                        .hueRotation(.degrees(alertState ? 135 : (breathe ? 7 : -7)))
+                        .saturation(isPaused ? 0.5 : 1.0)
+                        .scaleEffect(isCritical && pulse ? 1.08 : 1.0)
+                        .shadow(
+                            color: (alertState ? alertColor : accentPrimary).opacity(alertState ? 0.55 : 0.35),
+                            radius: isCritical && pulse ? 14 : 10
+                        )
+                        .animation(.easeInOut(duration: 1.1), value: pulse)
+                        .animation(.easeInOut(duration: 2.6), value: breathe)
+                        .animation(.easeInOut(duration: 0.4), value: alertState)
 
                     Text(isCritical ? tr("hv_ending_soon_caps") : (isPaused ? "DURAKLATILDI" : tr("hv_active_focus_caps")))
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .tracking(1.9)
-                        .foregroundStyle(isCritical ? accentGold : accentCyan)
+                        .foregroundStyle(alertState ? alertColor : accentCyan)
                 }
 
                 Spacer()

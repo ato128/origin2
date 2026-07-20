@@ -410,6 +410,9 @@ struct CrewSocialFriendCardData: Identifiable, Equatable {
     let isFocusing: Bool
     let focusMinutes: Int?
 
+    /// Backend user id — real profile photo when available.
+    var userID: UUID? = nil
+
     /// Pro social-stats layer (nil when not shared / not yet loaded).
     var streak: Int? = nil
     var level: Int? = nil
@@ -436,6 +439,9 @@ struct CrewSocialRequestCardData: Identifiable, Equatable {
     let subtitle: String
     let username: String
     let kind: CrewSocialRequestKind
+
+    /// Counterpart's backend user id — real profile photo when available.
+    var userID: UUID? = nil
 }
 
 enum CrewSocialRequestKind: String, Equatable {
@@ -505,6 +511,8 @@ struct CrewWeeklyChallengeData: Identifiable, Equatable {
 
 struct CrewStudentLeaderboardEntry: Identifiable, Equatable {
     let id = UUID()
+    /// Backend user id (arena entry id) — real profile photo when available.
+    var userID: UUID? = nil
     let rank: Int
     let displayName: String
     let universityShort: String

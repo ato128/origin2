@@ -411,6 +411,7 @@ private extension CrewView {
                 isOnline: resolvedOnline,
                 isFocusing: (sharedStat?.isFocusing ?? false) || activeSession != nil,
                 focusMinutes: activeSession.map { focusMinutesLeft(for: $0) },
+                userID: friend.backendUserID,
                 streak: sharedStat?.currentStreak,
                 level: sharedStat?.level
             )
@@ -424,7 +425,8 @@ private extension CrewView {
                 title: requestDisplayName(for: request),
                 subtitle: tr("cv_friend_request"),
                 username: requestUsername(for: request),
-                kind: .incoming
+                kind: .incoming,
+                userID: request.requester_id
             )
         }
     }
@@ -436,7 +438,8 @@ private extension CrewView {
                 title: requestDisplayName(for: request),
                 subtitle: tr("cv_request_sent"),
                 username: requestUsername(for: request),
-                kind: .sent
+                kind: .sent,
+                userID: request.addressee_id
             )
         }
     }

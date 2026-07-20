@@ -29,15 +29,12 @@ struct JoinFocusSheet: View {
             VStack(spacing: 20) {
                 Spacer()
 
-                ZStack {
-                    Circle()
-                        .fill(hexColor(friend.colorHex).opacity(0.16))
-                        .frame(width: 84, height: 84)
-
-                    Image(systemName: friend.avatarSymbol)
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundStyle(hexColor(friend.colorHex))
-                }
+                UserAvatarView(
+                    userID: friend.backendUserID,
+                    name: friend.name,
+                    tint: hexColor(friend.colorHex),
+                    size: 84
+                )
 
                 VStack(spacing: 8) {
                     Text("join_focus_title")

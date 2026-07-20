@@ -40,6 +40,32 @@ enum WidgetShared {
         else { return .placeholder }
         return state
     }
+
+    // MARK: - Focus Live Activity style (user-picked in settings)
+
+    static let liveActivityStyleKey = "focus_live_style_v1"
+
+    /// Raw style: "classic" / "poster" / "minimal" / "gold". Empty = never
+    /// chosen — the renderer then defaults (Pro → gold, free → classic).
+    static func writeLiveActivityStyle(_ raw: String) {
+        UserDefaults(suiteName: appGroupID)?.set(raw, forKey: liveActivityStyleKey)
+    }
+
+    static func readLiveActivityStyle() -> String {
+        UserDefaults(suiteName: appGroupID)?.string(forKey: liveActivityStyleKey) ?? ""
+    }
+
+    // MARK: - Home-screen "Focus Card" widget style
+
+    static let widgetStyleKey = "home_widget_style_v1"
+
+    static func writeWidgetStyle(_ raw: String) {
+        UserDefaults(suiteName: appGroupID)?.set(raw, forKey: widgetStyleKey)
+    }
+
+    static func readWidgetStyle() -> String {
+        UserDefaults(suiteName: appGroupID)?.string(forKey: widgetStyleKey) ?? ""
+    }
 }
 
 // MARK: - Models written to App Group
@@ -79,6 +105,19 @@ struct WidgetUserState: Codable {
 
     /// 0…1 progress toward the next identity level (mirrors the Insights ring).
     var levelProgress: Double?
+
+    // MARK: Pro dashboard extras (all optional so old snapshots still decode)
+
+    /// Focus minutes for the last 7 days, oldest → today.
+    var weekFocusMinutes: [Int]?
+    /// Total focus minutes of the 7 days before the current window (delta).
+    var prevWeekFocusMinutes: Int?
+    /// Current-month day numbers that fed the streak fully (task AND focus).
+    var monthFullDays: [Int]?
+    /// Current-month day numbers where only one half was done.
+    var monthHalfDays: [Int]?
+    /// Most productive hour of day (last 30 days) — nil until enough sessions.
+    var peakHour: Int?
 
     static let placeholder = WidgetUserState(
         iconName: nil,

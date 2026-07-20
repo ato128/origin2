@@ -93,7 +93,7 @@ final class UpdoAIChatStore: ObservableObject {
             case AIServiceError.insufficientCredits:
                 errText = tr("ai_monthly_limit")
             case AIServiceError.dailyFreeLimitReached:
-                errText = tr("ai_daily_limit")
+                errText = tr("ai_free_over")
             case AIServiceError.rateLimited:
                 errText = tr("ais_too_many")
             case is URLError:

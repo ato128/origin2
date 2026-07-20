@@ -53,6 +53,7 @@ struct FriendDetailView: View {
     @ObservedObject private var progression = ProgressionManager.shared
     @ObservedObject private var subscription = SubscriptionManager.shared
     @State private var showComparePaywall = false
+    @State private var showAvatarZoom = false
 
     @State private var showHero = false
     @State private var showSchedule = false
@@ -390,23 +391,20 @@ private extension FriendDetailView {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .top, spacing: 14) {
                 ZStack(alignment: .bottomTrailing) {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    friendAccent.opacity(0.90),
-                                    FriendDetailArenaPalette.purple.opacity(0.82)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+                    // Gerçek profil fotoğrafı; dokununca tam ekran büyür.
+                    Button {
+                        if RemoteAvatarStore.shared.image(for: friend.backendUserID) != nil {
+                            showAvatarZoom = true
+                        }
+                    } label: {
+                        UserAvatarView(
+                            userID: friend.backendUserID,
+                            name: friend.name,
+                            tint: friendAccent,
+                            size: 74
                         )
-                        .frame(width: 74, height: 74)
-                        .overlay(
-                            Image(systemName: friend.avatarSymbol)
-                                .font(.system(size: 30, weight: .black))
-                                .foregroundStyle(.white)
-                        )
+                    }
+                    .buttonStyle(.plain)
 
                     Circle()
                         .fill(friend.isOnline ? FriendDetailArenaPalette.green : Color.gray.opacity(0.65))
@@ -415,6 +413,11 @@ private extension FriendDetailView {
                             Circle()
                                 .stroke(FriendDetailArenaPalette.surface, lineWidth: 3)
                         )
+                }
+                .fullScreenCover(isPresented: $showAvatarZoom) {
+                    if let image = RemoteAvatarStore.shared.image(for: friend.backendUserID) {
+                        AvatarZoomViewer(image: image, name: friend.name)
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 7) {

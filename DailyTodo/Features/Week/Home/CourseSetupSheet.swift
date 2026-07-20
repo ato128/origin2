@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import PhotosUI
 
 struct CourseSetupSheet: View {
 
@@ -20,6 +21,13 @@ struct CourseSetupSheet: View {
 
     @State private var isLoading = false
     @State private var catalogError: String?
+
+    // Fotoğraftan program tarama
+    @State private var scanPickerItems: [PhotosPickerItem] = []
+    @State private var isScanning = false
+    @State private var scanError: String?
+    @State private var scannedCourses: [ScannedScheduleCourse] = []
+    @State private var showScanPreview = false
 
     @FocusState private var focusedField: Field?
 
@@ -52,6 +60,7 @@ struct CourseSetupSheet: View {
                 VStack(alignment: .leading, spacing: 16) {
                     header
                     profileSection
+                    photoScanSection
                     catalogSection
                     manualSection
                     currentCoursesSection
@@ -73,6 +82,282 @@ struct CourseSetupSheet: View {
         .task {
             await loadCatalog()
         }
+        .onChange(of: scanPickerItems) { _, newItems in
+            guard !newItems.isEmpty else { return }
+            Task { await runScheduleScan(newItems) }
+        }
+        .sheet(isPresented: $showScanPreview) {
+            ScheduleScanPreviewSheet(
+                courses: scannedCourses,
+                onSave: { kept in
+                    saveScannedCourses(kept)
+                }
+            )
+        }
+    }
+}
+
+// MARK: - Photo scan (fotoğraftan program)
+
+private extension CourseSetupSheet {
+
+    var photoScanSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader(
+                eyebrow: tr("css_scan_caps"),
+                title: tr("css_scan_title"),
+                icon: "camera.viewfinder",
+                tint: gold
+            )
+
+            Text(tr("css_scan_sub"))
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.55))
+                .fixedSize(horizontal: false, vertical: true)
+
+            PhotosPicker(
+                selection: $scanPickerItems,
+                maxSelectionCount: 4,
+                matching: .images
+            ) {
+                HStack(spacing: 9) {
+                    if isScanning {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                            .tint(.black)
+                        Text(tr("css_scan_scanning"))
+                            .font(.system(size: 15, weight: .heavy))
+                    } else {
+                        Image(systemName: "photo.on.rectangle.angled")
+                            .font(.system(size: 15, weight: .black))
+                        Text(tr("css_scan_button"))
+                            .font(.system(size: 15, weight: .heavy))
+                    }
+                }
+                .foregroundStyle(.black)
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(
+                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [gold, coral],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                )
+            }
+            .disabled(isScanning)
+
+            if let scanError {
+                Text(scanError)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(coral)
+            }
+        }
+        .padding(16)
+        .background(cardSurface(tint: gold, radius: 28))
+    }
+
+    func runScheduleScan(_ items: [PhotosPickerItem]) async {
+        isScanning = true
+        scanError = nil
+
+        var images: [UIImage] = []
+        for item in items.prefix(4) {
+            if let data = try? await item.loadTransferable(type: Data.self),
+               let image = UIImage(data: data) {
+                images.append(image)
+            }
+        }
+
+        scanPickerItems = []
+
+        guard !images.isEmpty else {
+            isScanning = false
+            scanError = tr("css_scan_err_generic")
+            return
+        }
+
+        do {
+            let courses = try await ScheduleScanClient.scan(images)
+            isScanning = false
+
+            if courses.isEmpty {
+                scanError = tr("css_scan_none")
+            } else {
+                scannedCourses = courses
+                showScanPreview = true
+                HapticManager.shared.success()
+            }
+        } catch {
+            isScanning = false
+            scanError = error.localizedDescription
+        }
+    }
+
+    func saveScannedCourses(_ kept: [ScannedScheduleCourse]) {
+        guard !kept.isEmpty else { return }
+
+        let palette = ["#22D3EE", "#8B5CF6", "#F59E0B", "#34D399", "#F472B6", "#60A5FA", "#F97316"]
+
+        for (index, course) in kept.enumerated() {
+            studentStore.addCourse(
+                name: course.name,
+                code: course.code,
+                colorHex: palette[index % palette.count],
+                sourceType: "ai_scan"
+            )
+        }
+
+        // Saat bilgisi olanlar haftalık takvime EventItem olarak yerleşir.
+        let parsed = kept.map { course in
+            ParsedCourse(
+                code: course.code,
+                name: course.name,
+                slots: course.slots.map {
+                    ParsedCourseSlot(
+                        weekday: $0.weekday,
+                        startMinute: $0.startMinute,
+                        durationMinute: $0.durationMinute,
+                        room: $0.room
+                    )
+                }
+            )
+        }
+
+        studentStore.createScheduleEvents(from: parsed)
+        HapticManager.shared.success()
+    }
+}
+
+// MARK: - Scan preview sheet
+
+private struct ScheduleScanPreviewSheet: View {
+    let courses: [ScannedScheduleCourse]
+    let onSave: ([ScannedScheduleCourse]) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var removedIDs: Set<String> = []
+
+    private var kept: [ScannedScheduleCourse] {
+        courses.filter { !removedIDs.contains($0.id) }
+    }
+
+    private var gold: Color { Color(arenaHex: "#FBBF24") }
+    private var green: Color { Color(arenaHex: "#34D44A") }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color(arenaHex: "#07090F").ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(tr("css_scan_preview_sub", kept.count))
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.5))
+
+                        ForEach(courses) { course in
+                            if !removedIDs.contains(course.id) {
+                                courseRow(course)
+                            }
+                        }
+
+                        Button {
+                            onSave(kept)
+                            dismiss()
+                        } label: {
+                            Text(tr("css_scan_save"))
+                                .font(.system(size: 16, weight: .black))
+                                .foregroundStyle(.black)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 52)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                                        .fill(green)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(kept.isEmpty)
+                        .padding(.top, 8)
+                    }
+                    .padding(20)
+                }
+            }
+            .preferredColorScheme(.dark)
+            .navigationTitle(tr("css_scan_preview_title"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(tr("common_cancel")) { dismiss() }
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+            }
+        }
+    }
+
+    private func courseRow(_ course: ScannedScheduleCourse) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 7) {
+                    Text(course.name)
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
+
+                    if !course.code.isEmpty {
+                        Text(course.code.uppercased())
+                            .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                            .foregroundStyle(gold)
+                    }
+                }
+
+                if course.slots.isEmpty {
+                    Text(tr("css_scan_slot_none"))
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.38))
+                } else {
+                    ForEach(Array(course.slots.enumerated()), id: \.offset) { _, slot in
+                        Text("\(weekdayName(slot.weekday)) \(timeText(slot.startMinute))–\(timeText(slot.startMinute + slot.durationMinute))\(slot.room.map { " · \($0)" } ?? "")")
+                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.6))
+                    }
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            Button {
+                _ = removedIDs.insert(course.id)
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.35))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.045))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                )
+        )
+    }
+
+    private func weekdayName(_ index: Int) -> String {
+        let tr = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
+        let en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        let safe = min(max(index, 0), 6)
+        return appLanguageIsEnglish() ? en[safe] : tr[safe]
+    }
+
+    private func timeText(_ minutes: Int) -> String {
+        String(format: "%02d:%02d", (minutes / 60) % 24, minutes % 60)
     }
 }
 

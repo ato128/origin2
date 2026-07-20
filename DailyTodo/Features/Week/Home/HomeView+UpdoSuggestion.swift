@@ -531,9 +531,9 @@ extension HomeView {
         } else if let suggestion = updoSuggestion {
             suggestionCard(suggestion)
                 .onAppear { markSuggestionSurfacedIfNeeded() }
-        } else {
-            neutralCard
         }
+        // Nötr durum artık boş: AI hero (HomeView.heroSection) ana sayfanın
+        // yüzü — ikinci bir giriş kartı gereksiz.
     }
 
     // Suggestion state — expandable, with a concrete next step.
@@ -753,8 +753,19 @@ extension HomeView {
 
                 Spacer(minLength: 6)
 
-                if credits.isLoaded {
-                    // Free: bugün kalan mesaj hakkı; Premium AI: aylık kredi
+                if credits.usesOwnKey {
+                    // Kendi OpenAI anahtarı — bizim kotalar geçersiz.
+                    Text(tr("hv_ai_own_key"))
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(Color(arenaHex: "#34D44A"))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(
+                            Capsule().fill(Color(arenaHex: "#34D44A").opacity(0.14))
+                                .overlay(Capsule().stroke(Color(arenaHex: "#34D44A").opacity(0.28), lineWidth: 1))
+                        )
+                } else if credits.isLoaded {
+                    // Free: kalan ücretsiz havuz; Premium AI: aylık kredi
                     let remaining = credits.messagesRemainingToday ?? credits.creditsRemaining
                     let pillTint: Color = remaining > (credits.isPro ? 50 : 0) ? UpdoTheme.cyan : Color(arenaHex: "#FF5A44")
                     Text(credits.isPro ? tr("hv_ai_credit_n", remaining) : tr("hv_ai_msg_n", remaining))

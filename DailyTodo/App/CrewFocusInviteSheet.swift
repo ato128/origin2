@@ -25,8 +25,17 @@ struct CrewFocusInvitePayload: Identifiable, Equatable {
     let participantNames: [String]
     let totalParticipants: Int
 
+    /// Parallel to participantNames when the sender includes it — real photos.
+    var participantUserIDs: [UUID?] = []
+    var hostUserID: UUID? = nil
+
     static func == (lhs: CrewFocusInvitePayload, rhs: CrewFocusInvitePayload) -> Bool {
         lhs.sessionID == rhs.sessionID && lhs.crewID == rhs.crewID
+    }
+
+    func participantUserID(at index: Int) -> UUID? {
+        guard participantUserIDs.indices.contains(index) else { return nil }
+        return participantUserIDs[index]
     }
 }
 
@@ -80,6 +89,20 @@ extension CrewFocusInvitePayload {
             return max(1, participantNames.count)
         }()
 
+        let participantUserIDs: [UUID?] = {
+            if let array = userInfo["participant_user_ids"] as? [String] {
+                return array.map(UUID.init(uuidString:))
+            }
+            if let str = userInfo["participant_user_ids"] as? String,
+               let data = str.data(using: .utf8),
+               let array = try? JSONDecoder().decode([String].self, from: data) {
+                return array.map(UUID.init(uuidString:))
+            }
+            return []
+        }()
+
+        let hostUserID = (userInfo["host_user_id"] as? String).flatMap(UUID.init(uuidString:))
+
         return CrewFocusInvitePayload(
             crewID: crewID,
             sessionID: sessionID,
@@ -89,7 +112,9 @@ extension CrewFocusInvitePayload {
             taskTitle: taskTitle,
             startedAt: startedAt,
             participantNames: participantNames,
-            totalParticipants: totalParticipants
+            totalParticipants: totalParticipants,
+            participantUserIDs: participantUserIDs,
+            hostUserID: hostUserID
         )
     }
 }
@@ -500,6 +525,8 @@ struct CrewFocusInviteSheet: View {
                 ForEach(Array(payload.participantNames.enumerated()), id: \.offset) { index, name in
                     participantRow(
                         name: name,
+                        userID: payload.participantUserID(at: index)
+                            ?? (name == payload.hostName ? payload.hostUserID : nil),
                         isHost: name == payload.hostName,
                         index: index
                     )
@@ -517,30 +544,18 @@ struct CrewFocusInviteSheet: View {
         )
     }
 
-    private func participantRow(name: String, isHost: Bool, index: Int) -> some View {
+    private func participantRow(name: String, userID: UUID?, isHost: Bool, index: Int) -> some View {
         HStack(spacing: 12) {
             Circle()
                 .fill(greenAccent)
                 .frame(width: 8, height: 8)
 
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.18),
-                                Color.white.opacity(0.08)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 32, height: 32)
-
-                Text(String(name.prefix(1)).uppercased())
-                    .font(.system(size: 12, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-            }
+            UserAvatarView(
+                userID: userID,
+                name: name,
+                tint: accent,
+                size: 32
+            )
 
             Text(name)
                 .font(.system(size: 14, weight: .heavy, design: .rounded))

@@ -238,7 +238,6 @@
 		6DC0CAC82F5F7D0000A875ED /* LiveActivityScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAA32F5F7D0000A875ED /* LiveActivityScheduler.swift */; };
 		6DC1C0292FCEF66C00CF8D62 /* FocusCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC1C0282FCEF66B00CF8D62 /* FocusCelebrationView.swift */; };
 		6DC1C02B2FCF671E00CF8D62 /* CrewFocusInviteSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC1C02A2FCF671E00CF8D62 /* CrewFocusInviteSheet.swift */; };
-		AC120002000000000000F0CE /* FriendFocusInviteSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC120001000000000000F0CE /* FriendFocusInviteSheet.swift */; };
 		6DC1C02D2FD0274200CF8D62 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC1C02C2FD0274200CF8D62 /* HomeView.swift */; };
 		6DC8F52A2F78A42E00361A6D /* PushService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC8F5292F78A42E00361A6D /* PushService.swift */; };
 		6DD282822F68C0FA00B1281A /* DailyTodo.entitlements.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6D81C1072F59E87500B65AF8 /* DailyTodo.entitlements.plist */; };
@@ -268,7 +267,16 @@
 		A1170006000000000000B5FA /* InsightsDataDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170006000000000000B4FA /* InsightsDataDashboard.swift */; };
 		A1170007000000000000C5FA /* UpdoProfileEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170007000000000000C4FA /* UpdoProfileEditSheet.swift */; };
 		A1170008000000000000C5FA /* ProfileAvatarStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170008000000000000C4FA /* ProfileAvatarStore.swift */; };
+		A1170008000000000000D5FB /* UserAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170008000000000000D4FB /* UserAvatarView.swift */; };
+		A1170008000000000000E5FC /* FocusLiveStyleViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170008000000000000E4FC /* FocusLiveStyleViews.swift */; };
+		A1170008000000000000E6FC /* FocusLiveStyleViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170008000000000000E4FC /* FocusLiveStyleViews.swift */; };
+		A1170008000000000000F5FD /* FocusWidgetStyleViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170008000000000000F4FD /* FocusWidgetStyleViews.swift */; };
+		A1170008000000000000F6FD /* FocusWidgetStyleViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170008000000000000F4FD /* FocusWidgetStyleViews.swift */; };
+		A1170009000000000000A5FE /* CrewInviteMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170009000000000000A4FE /* CrewInviteMessage.swift */; };
+		A1170009000000000000B5FF /* AvatarZoomViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170009000000000000B4FF /* AvatarZoomViewer.swift */; };
+		A1170009000000000000C5AA /* BYOKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170009000000000000C4AA /* BYOKeyStore.swift */; };
 		A1170009000000000000C5FA /* UpdoProfileShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170009000000000000C4FA /* UpdoProfileShareSheet.swift */; };
+		A1170009000000000000D5AB /* UpdoAIIntentResponder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1170009000000000000D4AB /* UpdoAIIntentResponder.swift */; };
 		AA000003AA000003AA000003 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = AA000002AA000002AA000002 /* RevenueCat */; };
 		AA900002 /* Log.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA900001 /* Log.swift */; };
 		AB900002 /* FeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB900001 /* FeatureFlags.swift */; };
@@ -279,6 +287,7 @@
 		AC110001000000000000C0DE /* UpdoAICommandInterpreter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC110002000000000000C0DE /* UpdoAICommandInterpreter.swift */; };
 		AC110003000000000000C0DE /* UpdoAIPlanParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC110004000000000000C0DE /* UpdoAIPlanParser.swift */; };
 		AC110011000000000000C0DE /* UpdoAIOrb.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC110012000000000000C0DE /* UpdoAIOrb.swift */; };
+		AC120002000000000000F0CE /* FriendFocusInviteSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC120001000000000000F0CE /* FriendFocusInviteSheet.swift */; };
 		AC735DB7876D4C6C8991F932 /* UpdoAIView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AB70EC277DD4C2493233DB3 /* UpdoAIView.swift */; };
 		BB000003BB000003BB000003 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = BB000002BB000002BB000002 /* PostHog */; };
 		CC100002CC100002CC100002 /* SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC100001CC100001CC100001 /* SubscriptionManager.swift */; };
@@ -517,7 +526,6 @@
 		6DC0CAAA2F5F7D0000A875ED /* TaskNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskNotifications.swift; sourceTree = "<group>"; };
 		6DC1C0282FCEF66B00CF8D62 /* FocusCelebrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusCelebrationView.swift; sourceTree = "<group>"; };
 		6DC1C02A2FCF671E00CF8D62 /* CrewFocusInviteSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewFocusInviteSheet.swift; sourceTree = "<group>"; };
-		AC120001000000000000F0CE /* FriendFocusInviteSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendFocusInviteSheet.swift; sourceTree = "<group>"; };
 		6DC1C02C2FD0274200CF8D62 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		6DC8F5292F78A42E00361A6D /* PushService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushService.swift; sourceTree = "<group>"; };
 		6DD282832F68C1FE00B1281A /* TasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TasksView.swift; sourceTree = "<group>"; };
@@ -548,7 +556,14 @@
 		A1170006000000000000B4FA /* InsightsDataDashboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsDataDashboard.swift; sourceTree = "<group>"; };
 		A1170007000000000000C4FA /* UpdoProfileEditSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoProfileEditSheet.swift; sourceTree = "<group>"; };
 		A1170008000000000000C4FA /* ProfileAvatarStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileAvatarStore.swift; sourceTree = "<group>"; };
+		A1170008000000000000D4FB /* UserAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserAvatarView.swift; sourceTree = "<group>"; };
+		A1170008000000000000E4FC /* FocusLiveStyleViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusLiveStyleViews.swift; sourceTree = "<group>"; };
+		A1170008000000000000F4FD /* FocusWidgetStyleViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusWidgetStyleViews.swift; sourceTree = "<group>"; };
+		A1170009000000000000A4FE /* CrewInviteMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewInviteMessage.swift; sourceTree = "<group>"; };
+		A1170009000000000000B4FF /* AvatarZoomViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarZoomViewer.swift; sourceTree = "<group>"; };
+		A1170009000000000000C4AA /* BYOKeyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BYOKeyStore.swift; sourceTree = "<group>"; };
 		A1170009000000000000C4FA /* UpdoProfileShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoProfileShareSheet.swift; sourceTree = "<group>"; };
+		A1170009000000000000D4AB /* UpdoAIIntentResponder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoAIIntentResponder.swift; sourceTree = "<group>"; };
 		AA900001 /* Log.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Log.swift; sourceTree = "<group>"; };
 		AB900001 /* FeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureFlags.swift; sourceTree = "<group>"; };
 		AC100001 /* AIOnboardingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIOnboardingStore.swift; sourceTree = "<group>"; };
@@ -558,6 +573,7 @@
 		AC110002000000000000C0DE /* UpdoAICommandInterpreter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoAICommandInterpreter.swift; sourceTree = "<group>"; };
 		AC110004000000000000C0DE /* UpdoAIPlanParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoAIPlanParser.swift; sourceTree = "<group>"; };
 		AC110012000000000000C0DE /* UpdoAIOrb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoAIOrb.swift; sourceTree = "<group>"; };
+		AC120001000000000000F0CE /* FriendFocusInviteSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendFocusInviteSheet.swift; sourceTree = "<group>"; };
 		CC100001CC100001CC100001 /* SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManager.swift; sourceTree = "<group>"; };
 		CC100003CC100003CC100003 /* Analytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Analytics.swift; sourceTree = "<group>"; };
 		CC100005CC100005CC100005 /* PaywallView.swift */ = {isa = PBXFileReference; explicitFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
@@ -787,6 +803,8 @@
 			children = (
 				6D8C3D3C2F65B83A00ABF6CA /* AICoachData.swift */,
 				2C9959585CDA4F6091BAFD7E /* AIService.swift */,
+				A1170009000000000000C4AA /* BYOKeyStore.swift */,
+				A1170009000000000000D4AB /* UpdoAIIntentResponder.swift */,
 				E4F5BE0D180E4B65A9906EA6 /* CreditManager.swift */,
 				0301A1D126934B88B9AFE367 /* MessageCacheManager.swift */,
 				19ADDAC6FE8D491883FDC1DC /* PromptBuilder.swift */,
@@ -957,6 +975,7 @@
 				6D5FE4152F678D0D007C124D /* Friend */,
 				6DC0CA902F5F7D0000A875ED /* CreateCrewView.swift */,
 				6DC0CA962F5F7D0000A875ED /* CrewView.swift */,
+				A1170009000000000000A4FE /* CrewInviteMessage.swift */,
 				6DDF5B5E2F5FA38A003057C9 /* CreateCrewTaskView.swift */,
 				6D2004852F63334D0022C810 /* AddMemberView.swift */,
 				6D2004872F6336A20022C810 /* EditCrewTaskView.swift */,
@@ -1092,7 +1111,11 @@
 			children = (
 				6D215DB42F56427E00F7B9D7 /* ShareSheet.swift */,
 				A1170008000000000000C4FA /* ProfileAvatarStore.swift */,
+				A1170008000000000000D4FB /* UserAvatarView.swift */,
+				A1170009000000000000B4FF /* AvatarZoomViewer.swift */,
 				6D215DD82F5645F200F7B9D7 /* WidgetShared.swift */,
+				A1170008000000000000E4FC /* FocusLiveStyleViews.swift */,
+				A1170008000000000000F4FD /* FocusWidgetStyleViews.swift */,
 				6D215DDB2F564C4100F7B9D7 /* WidgetSync+App.swift */,
 				6DC0CA082F5F1AFA00A875ED /* ScheduleAttributes.swift */,
 				6D2004992F6388120022C810 /* SharedWeekItem.swift */,
@@ -1318,6 +1341,8 @@
 				6DC0CA0A2F5F1B0300A875ED /* ScheduleAttributes.swift in Sources */,
 				6DB70E802F72F28900F04B43 /* FocusLiveActivityWidget.swift in Sources */,
 				6D215DDA2F56477500F7B9D7 /* WidgetShared.swift in Sources */,
+				A1170008000000000000E6FC /* FocusLiveStyleViews.swift in Sources */,
+				A1170008000000000000F6FD /* FocusWidgetStyleViews.swift in Sources */,
 				6DF8FB932F5B6B3E00D548E4 /* EventItem.swift in Sources */,
 				6D775B862F5F82F60009D660 /* Color+Hex.swift in Sources */,
 				6DB70E812F72F2AD00F04B43 /* FocusAttributes.swift in Sources */,
@@ -1364,6 +1389,8 @@
 				6D5FE3D22F66DA54007C124D /* FriendChatInfoView.swift in Sources */,
 				6D215DA52F5602D100F7B9D7 /* MainTabView.swift in Sources */,
 				6D215DD92F5645F200F7B9D7 /* WidgetShared.swift in Sources */,
+				A1170008000000000000E5FC /* FocusLiveStyleViews.swift in Sources */,
+				A1170008000000000000F5FD /* FocusWidgetStyleViews.swift in Sources */,
 				6D5FE4472F687756007C124D /* CrewFocusRecord.swift in Sources */,
 				6DC1C02D2FD0274200CF8D62 /* HomeView.swift in Sources */,
 				6D2A2ADD2F89DEFC0051459D /* FocusQuickControlsV6.swift in Sources */,
@@ -1401,6 +1428,8 @@
 				6D5FE3FA2F675620007C124D /* CrewFocusRoomView.swift in Sources */,
 				6D5FE3D42F66DD72007C124D /* CrewChatInfoView.swift in Sources */,
 				4B5641EA5AD74CD28D97AB50 /* AIService.swift in Sources */,
+				A1170009000000000000C5AA /* BYOKeyStore.swift in Sources */,
+				A1170009000000000000D5AB /* UpdoAIIntentResponder.swift in Sources */,
 				550B7C9143A542ABA7577C03 /* CreditManager.swift in Sources */,
 				071C6F566A554F27B03C92A3 /* MessageCacheManager.swift in Sources */,
 				373CD0B2CABE43749E0B502A /* PromptBuilder.swift in Sources */,
@@ -1461,6 +1490,7 @@
 				6DD282912F698F6F00B1281A /* WeekEventDetailView.swift in Sources */,
 				6DBE91F92F6DEE67001DF813 /* FriendMessageDTO.swift in Sources */,
 				6DC0CAB92F5F7D0000A875ED /* CrewView.swift in Sources */,
+				A1170009000000000000A5FE /* CrewInviteMessage.swift in Sources */,
 				6DBE91C32F6B7A9C001DF813 /* CrewTaskDTO.swift in Sources */,
 				6DBE91A02F6B2F43001DF813 /* SignInView.swift in Sources */,
 				6DBE91EF2F6D91B7001DF813 /* CrewDateParser.swift in Sources */,
@@ -1514,6 +1544,8 @@
 				A1170007000000000000C5FA /* UpdoProfileEditSheet.swift in Sources */,
 				A1170009000000000000C5FA /* UpdoProfileShareSheet.swift in Sources */,
 				A1170008000000000000C5FA /* ProfileAvatarStore.swift in Sources */,
+				A1170008000000000000D5FB /* UserAvatarView.swift in Sources */,
+				A1170009000000000000B5FF /* AvatarZoomViewer.swift in Sources */,
 				6D7207672FD0D360001F344A /* SmartNotificationHistory.swift in Sources */,
 				6DC0CAC32F5F7D0000A875ED /* CrewMember.swift in Sources */,
 				6D2A2AC52F88452C0051459D /* FocusDetailSectionV3.swift in Sources */,

@@ -73,6 +73,8 @@ final class ProfileAvatarStore: ObservableObject {
             Log.debug("AVATAR SAVE ERROR:", error.localizedDescription)
         }
 
+        RemoteAvatarStore.shared.overrideLocal(resized, for: UUID(uuidString: userID))
+
         // Mirror to the backend — local copy already renders, so a failed
         // upload just retries on the next save.
         Task {
@@ -84,6 +86,8 @@ final class ProfileAvatarStore: ObservableObject {
         guard let userID, !userID.isEmpty else { return }
         try? FileManager.default.removeItem(at: fileURL(for: userID))
         if loadedUserID == userID { image = nil }
+
+        RemoteAvatarStore.shared.overrideLocal(nil, for: UUID(uuidString: userID))
 
         Task {
             await AvatarBackendClient.shared.remove()

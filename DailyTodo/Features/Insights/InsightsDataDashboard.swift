@@ -182,13 +182,21 @@ struct InsightsDataDashboard: View {
     }
 
     // MARK: - Productive hours (last 30 days, real sessions only)
+    //
+    // One sentence, one row — the 24-bar histogram said the same thing with
+    // more noise, so the peak-hour insight carries the card alone now.
 
     private func productiveHoursCard(_ hours: (byHour: [Int], peakHour: Int)) -> some View {
-        let maxValue = max(hours.byHour.max() ?? 0, 1)
+        InsightsGlassCard(tint: accent) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle().fill(accent.opacity(0.14)).frame(width: 36, height: 36)
+                    Image(systemName: "clock.fill")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(accent)
+                }
 
-        return InsightsGlassCard(tint: accent) {
-            VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(tr("insd_hours_caps"))
                         .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                         .tracking(1.6)
@@ -199,35 +207,7 @@ struct InsightsDataDashboard: View {
                         .foregroundStyle(.white.opacity(0.85))
                 }
 
-                VStack(spacing: 6) {
-                    HStack(alignment: .bottom, spacing: 3) {
-                        ForEach(0..<24, id: \.self) { hour in
-                            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                                .fill(
-                                    hour == hours.peakHour
-                                    ? AnyShapeStyle(accent)
-                                    : AnyShapeStyle(accent.opacity(hours.byHour[hour] == 0 ? 0.10 : 0.45))
-                                )
-                                .frame(height: max(4, 42 * CGFloat(hours.byHour[hour]) / CGFloat(maxValue)))
-                                .frame(maxWidth: .infinity)
-                        }
-                    }
-                    .frame(height: 42, alignment: .bottom)
-
-                    HStack {
-                        Text("00")
-                        Spacer()
-                        Text("06")
-                        Spacer()
-                        Text("12")
-                        Spacer()
-                        Text("18")
-                        Spacer()
-                        Text("24")
-                    }
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.35))
-                }
+                Spacer(minLength: 0)
             }
         }
     }
@@ -235,31 +215,54 @@ struct InsightsDataDashboard: View {
     // MARK: - Tasks card
 
     private var tasksCard: some View {
+        // Compact: the old 60pt bars were usually all-full and said nothing —
+        // one number plus a quiet day-dot strip reads in a single glance.
         InsightsGlassCard(tint: green) {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(tr("insd_tasks_caps"))
-                            .font(.system(size: 10.5, weight: .bold, design: .monospaced))
-                            .tracking(1.6)
-                            .foregroundStyle(green.opacity(0.92))
-                        HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Text("\(tasksThisWeek)")
-                                .font(.system(size: 30, weight: .bold))
-                                .foregroundStyle(.white)
-                                .monospacedDigit()
-                            Text(tr("insd_completed_label"))
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.5))
-                        }
-                    }
-                    Spacer()
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 18, weight: .bold))
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle().fill(green.opacity(0.14)).frame(width: 36, height: 36)
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(green)
                 }
 
-                barChart(values: last7Days.map { tasksCompleted(on: $0) }, tint: green)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(tr("insd_tasks_caps"))
+                        .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                        .tracking(1.6)
+                        .foregroundStyle(green.opacity(0.92))
+
+                    HStack(alignment: .firstTextBaseline, spacing: 5) {
+                        Text("\(tasksThisWeek)")
+                            .font(.system(size: 19, weight: .bold))
+                            .foregroundStyle(.white)
+                            .monospacedDigit()
+                        Text(tr("insd_completed_label"))
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.5))
+                    }
+                }
+
+                Spacer(minLength: 10)
+
+                taskDayDots
+            }
+        }
+    }
+
+    /// Seven small dots — filled when that day closed at least one task.
+    private var taskDayDots: some View {
+        HStack(spacing: 5) {
+            ForEach(Array(last7Days.enumerated()), id: \.offset) { _, day in
+                let done = tasksCompleted(on: day) > 0
+                VStack(spacing: 4) {
+                    Circle()
+                        .fill(done ? green : Color.white.opacity(0.10))
+                        .frame(width: 7, height: 7)
+                    Text(weekdayLetter(day))
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.white.opacity(isToday(day) ? 0.85 : 0.32))
+                }
             }
         }
     }

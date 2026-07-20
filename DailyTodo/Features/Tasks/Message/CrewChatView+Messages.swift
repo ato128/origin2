@@ -198,6 +198,23 @@ extension CrewChatView {
                     Spacer(minLength: 54)
                 }
 
+                if !isFromMe {
+                    // Gönderen fotoğrafı: grup içindeki son baloncuğun yanında.
+                    Group {
+                        if isLastOfSenderGroup(at: index) {
+                            UserAvatarView(
+                                userID: message.senderID,
+                                name: message.senderName,
+                                tint: senderNameTint(for: message.senderName),
+                                size: 26
+                            )
+                        } else {
+                            Color.clear.frame(width: 26, height: 26)
+                        }
+                    }
+                    .padding(.bottom, 17)
+                }
+
                 VStack(alignment: isFromMe ? .trailing : .leading, spacing: 3) {
                     if !isFromMe && showSenderName {
                         Text(message.senderName)
@@ -466,6 +483,24 @@ extension CrewChatView {
         let sameDay = Calendar.current.isDate(
             current.createdAt,
             inSameDayAs: previous.createdAt
+        )
+
+        return !(sameSender && sameDay)
+    }
+
+    func isLastOfSenderGroup(at index: Int) -> Bool {
+        guard messages.indices.contains(index) else { return true }
+
+        let nextIndex = index + 1
+        guard messages.indices.contains(nextIndex) else { return true }
+
+        let current = messages[index]
+        let next = messages[nextIndex]
+
+        let sameSender = current.senderID == next.senderID
+        let sameDay = Calendar.current.isDate(
+            current.createdAt,
+            inSameDayAs: next.createdAt
         )
 
         return !(sameSender && sameDay)

@@ -46,6 +46,7 @@ struct FriendChatInfoView: View {
     private var allEvents: [EventItem]
 
     @State private var showSharedWeek = false
+    @State private var showAvatarZoom = false
     @State private var isSavingShare = false
     @State private var shareMyWeek = false
     @State private var infoMessage: String?
@@ -261,24 +262,20 @@ private extension FriendChatInfoView {
     var profileCard: some View {
         VStack(spacing: 16) {
             ZStack(alignment: .bottomTrailing) {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                friendAccent.opacity(0.90),
-                                FriendChatInfoArenaPalette.purple.opacity(0.78)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 92, height: 92)
-                    .overlay(
-                        Image(systemName: friend.avatarSymbol)
-                            .font(.system(size: 35, weight: .black))
-                            .foregroundStyle(.white)
+                Button {
+                    if RemoteAvatarStore.shared.image(for: friend.backendUserID) != nil {
+                        showAvatarZoom = true
+                    }
+                } label: {
+                    UserAvatarView(
+                        userID: friend.backendUserID,
+                        name: friend.name,
+                        tint: friendAccent,
+                        size: 92
                     )
                     .shadow(color: friendAccent.opacity(0.20), radius: 18, y: 8)
+                }
+                .buttonStyle(.plain)
 
                 Circle()
                     .fill(isFriendReallyOnline ? FriendChatInfoArenaPalette.green : Color.gray.opacity(0.65))
@@ -288,6 +285,11 @@ private extension FriendChatInfoView {
                             .stroke(FriendChatInfoArenaPalette.surface, lineWidth: 3)
                     )
                     .offset(x: -4, y: -4)
+            }
+            .fullScreenCover(isPresented: $showAvatarZoom) {
+                if let image = RemoteAvatarStore.shared.image(for: friend.backendUserID) {
+                    AvatarZoomViewer(image: image, name: friend.name)
+                }
             }
 
             VStack(spacing: 7) {

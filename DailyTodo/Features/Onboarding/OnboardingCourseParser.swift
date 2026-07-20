@@ -21,6 +21,8 @@ struct ParsedCourseSlot: Hashable {
     var weekday: Int
     var startMinute: Int
     var durationMinute: Int
+    /// Derslik ("CL 110") — EventItem.location'a yazılır.
+    var room: String? = nil
 }
 
 struct ParsedCourse: Identifiable, Hashable {

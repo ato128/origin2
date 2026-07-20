@@ -17,6 +17,7 @@ struct FriendFocusInvitePayload: Identifiable, Equatable {
     let hostName: String
     let durationMinutes: Int
     let startedAt: Date?
+    var hostUserID: UUID? = nil
 
     static func == (lhs: FriendFocusInvitePayload, rhs: FriendFocusInvitePayload) -> Bool {
         lhs.sessionID == rhs.sessionID
@@ -45,11 +46,14 @@ struct FriendFocusInvitePayload: Identifiable, Equatable {
             return iso.date(from: str)
         }()
 
+        let hostUserID = (userInfo["host_user_id"] as? String).flatMap(UUID.init(uuidString:))
+
         return FriendFocusInvitePayload(
             sessionID: sessionID,
             hostName: hostName,
             durationMinutes: duration,
-            startedAt: startedAt
+            startedAt: startedAt,
+            hostUserID: hostUserID
         )
     }
 }
@@ -90,23 +94,14 @@ struct FriendFocusInviteSheet: View {
 
                 // Host identity
                 VStack(spacing: 16) {
-                    ZStack {
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [accent, secondary],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 84, height: 84)
-                            .overlay(Circle().stroke(Color.white.opacity(0.18), lineWidth: 2))
-                            .shadow(color: accent.opacity(0.45), radius: 20, y: 10)
-
-                        Text(String(payload.hostName.prefix(1)).uppercased())
-                            .font(.system(size: 34, weight: .black, design: .rounded))
-                            .foregroundStyle(.white)
-                    }
+                    UserAvatarView(
+                        userID: payload.hostUserID,
+                        name: payload.hostName,
+                        tint: accent,
+                        size: 84
+                    )
+                    .overlay(Circle().stroke(Color.white.opacity(0.18), lineWidth: 2))
+                    .shadow(color: accent.opacity(0.45), radius: 20, y: 10)
                     .scaleEffect(appeared ? 1 : 0.7)
 
                     VStack(spacing: 8) {

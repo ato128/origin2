@@ -28,6 +28,8 @@ struct ProfileHubView: View {
     @State private var showAboutApp = false
     @State private var showMadeWithCare = false
     @State private var showAppIconPicker = false
+    @State private var showLiveStylePicker = false
+    @State private var showWidgetStylePicker = false
 
     private var pageAccent: Color {
         Color(arenaHex: AppArenaPalette.cyan)
@@ -96,6 +98,12 @@ struct ProfileHubView: View {
         .sheet(isPresented: $showAppIconPicker) {
             AppIconPickerView()
         }
+        .sheet(isPresented: $showLiveStylePicker) {
+            LiveActivityStylePickerView()
+        }
+        .sheet(isPresented: $showWidgetStylePicker) {
+            WidgetStylePickerView()
+        }
     }
 
     #if DEBUG
@@ -147,17 +155,43 @@ struct ProfileHubView: View {
                 tint: Color(arenaHex: AppArenaPalette.gold)
             )
 
-            Button {
-                showAppIconPicker = true
-            } label: {
-                profileRow(
-                    icon: "app.dashed",
-                    iconColor: Color(arenaHex: AppArenaPalette.gold),
-                    title: tr("ph_app_icon_title"),
-                    subtitle: tr("ph_app_icon_variants")
-                )
+            VStack(spacing: 16) {
+                Button {
+                    showAppIconPicker = true
+                } label: {
+                    profileRow(
+                        icon: "app.dashed",
+                        iconColor: Color(arenaHex: AppArenaPalette.gold),
+                        title: tr("ph_app_icon_title"),
+                        subtitle: tr("ph_app_icon_variants")
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    showLiveStylePicker = true
+                } label: {
+                    profileRow(
+                        icon: "timer.circle.fill",
+                        iconColor: Color(arenaHex: AppArenaPalette.cyan),
+                        title: tr("ph_live_style_title"),
+                        subtitle: tr("ph_live_style_sub")
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    showWidgetStylePicker = true
+                } label: {
+                    profileRow(
+                        icon: "square.grid.2x2.fill",
+                        iconColor: Color(arenaHex: AppArenaPalette.purple),
+                        title: tr("ph_widget_style_title"),
+                        subtitle: tr("ph_widget_style_sub")
+                    )
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
             .padding(18)
             .background(
                 arenaCardBackground(
@@ -1679,6 +1713,433 @@ struct AppIconPickerView: View {
         current = id
         // Mirror the chosen icon into widgets / live activities.
         WidgetAppSync.updateIcon(id)
+    }
+}
+
+// MARK: - Live Activity style picker
+//
+// Same gating pattern as the app-icon picker (Klasik free, the rest Pro), but
+// with a big LIVE preview on top: the picker renders the exact same
+// FocusLiveStyleCard the widget extension uses, ticking timer included, so the
+// user sees precisely what their lock screen will look like.
+
+struct LiveActivityStylePickerView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var subscription = SubscriptionManager.shared
+
+    @State private var current: String = WidgetShared.readLiveActivityStyle()
+    @State private var previewStyle: FocusLiveStyle = .classic
+    @State private var showPaywall = false
+
+    private let gold = Color(arenaHex: AppArenaPalette.gold)
+    private let cyan = Color(arenaHex: AppArenaPalette.cyan)
+
+    /// Selection with defaults applied (never chosen → Pro sees gold, free classic).
+    private var effectiveCurrent: FocusLiveStyle {
+        if let chosen = FocusLiveStyle(rawValue: current), !current.isEmpty { return chosen }
+        return subscription.isPro ? .gold : .classic
+    }
+
+    private var previewLocked: Bool {
+        previewStyle.isProOnly && !subscription.isPro
+    }
+
+    /// A believable mid-session mock so every style previews with real content.
+    private var previewState: FocusAttributes.ContentState {
+        FocusAttributes.ContentState(
+            title: tr("las_preview_title"),
+            subtitle: tr("las_preview_sub"),
+            startDate: Date().addingTimeInterval(-11 * 60),
+            endDate: Date().addingTimeInterval(14 * 60),
+            modeRaw: "personal",
+            isPaused: false,
+            isResting: false,
+            pausedRemainingSeconds: nil,
+            pausedProgress: nil
+        )
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                ArenaBackground(primaryGlow: cyan,
+                                secondaryGlow: Color(arenaHex: AppArenaPalette.purple),
+                                warmGlow: gold, intensity: 0.9)
+                    .ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        previewSection
+                        styleGrid
+
+                        Text(tr("las_hint"))
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.40))
+                    }
+                    .padding(20)
+                }
+            }
+            .navigationTitle(tr("ph_live_style_title"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(tr("common_done")) { dismiss() }
+                        .fontWeight(.bold)
+                }
+            }
+            .preferredColorScheme(.dark)
+            .sheet(isPresented: $showPaywall) {
+                PaywallView(context: "live_activity_style")
+            }
+            .onAppear { previewStyle = effectiveCurrent }
+        }
+    }
+
+    // MARK: Preview
+
+    private var previewSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("— \(tr("las_preview_caps")) —")
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(2.2)
+                    .foregroundStyle(.white.opacity(0.34))
+
+                Spacer()
+
+                Text(previewStyle.displayName)
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundStyle(previewStyle.isProOnly ? gold : .white.opacity(0.5))
+            }
+
+            FocusLiveStyleCard(
+                style: previewStyle,
+                state: previewState,
+                userState: WidgetShared.readUserState(),
+                totalMinutes: 25,
+                themeAccent: cyan
+            )
+            .id(previewStyle)
+            .transition(.opacity.combined(with: .scale(scale: 0.98)))
+            .animation(.easeOut(duration: 0.18), value: previewStyle)
+
+            if previewLocked {
+                Button {
+                    showPaywall = true
+                } label: {
+                    HStack(spacing: 7) {
+                        Image(systemName: "lock.open.fill")
+                            .font(.system(size: 12, weight: .black))
+                        Text(tr("las_unlock"))
+                            .font(.system(size: 14, weight: .black))
+                    }
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 46)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(gold)
+                            .shadow(color: gold.opacity(0.3), radius: 12, y: 6)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    // MARK: Style grid
+
+    private var styleGrid: some View {
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
+
+        return LazyVGrid(columns: columns, spacing: 10) {
+            ForEach(FocusLiveStyle.allCases, id: \.rawValue) { style in
+                styleCell(style)
+            }
+        }
+    }
+
+    private func styleCell(_ style: FocusLiveStyle) -> some View {
+        let locked = style.isProOnly && !subscription.isPro
+        let selected = effectiveCurrent == style
+        let previewing = previewStyle == style
+
+        return Button {
+            HapticManager.shared.navigation()
+            previewStyle = style
+
+            if !locked {
+                current = style.rawValue
+                WidgetShared.writeLiveActivityStyle(style.rawValue)
+            }
+        } label: {
+            VStack(spacing: 5) {
+                Text(style.displayName)
+                    .font(.system(size: 13, weight: .black))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+
+                if locked {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 10, weight: .black))
+                        .foregroundStyle(gold)
+                } else if selected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 12, weight: .black))
+                        .foregroundStyle(Color(arenaHex: AppArenaPalette.green))
+                } else {
+                    Text(style.isProOnly ? "PRO" : tr("las_default"))
+                        .font(.system(size: 8.5, weight: .black, design: .monospaced))
+                        .tracking(0.6)
+                        .foregroundStyle(style.isProOnly ? gold.opacity(0.85) : .white.opacity(0.4))
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 58)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.white.opacity(previewing ? 0.09 : 0.04))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(
+                                previewing
+                                ? cyan.opacity(0.55)
+                                : (selected
+                                   ? Color(arenaHex: AppArenaPalette.green).opacity(0.5)
+                                   : Color.white.opacity(0.07)),
+                                lineWidth: 1
+                            )
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Widget style picker
+//
+// Home-screen twin of the Live Activity picker: same nine style identities,
+// same gating (Klasik free, rest Pro), with the REAL widget card previewed
+// on top in both sizes — the preview is the exact view the widget extension
+// renders, fed by the user's real mirrored stats.
+
+struct WidgetStylePickerView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var subscription = SubscriptionManager.shared
+
+    @State private var current: String = WidgetShared.readWidgetStyle()
+    @State private var previewStyle: FocusLiveStyle = .classic
+    @State private var previewSmall = false
+    @State private var showPaywall = false
+
+    private let gold = Color(arenaHex: AppArenaPalette.gold)
+    private let cyan = Color(arenaHex: AppArenaPalette.cyan)
+
+    private var effectiveCurrent: FocusLiveStyle {
+        if let chosen = FocusLiveStyle(rawValue: current), !current.isEmpty { return chosen }
+        return .classic
+    }
+
+    private var previewLocked: Bool {
+        previewStyle.isProOnly && !subscription.isPro
+    }
+
+    /// Real mirrored stats — with a friendly floor so an empty account still
+    /// previews something readable.
+    private var previewState: WidgetUserState {
+        var state = WidgetShared.readUserState()
+        if state.todayFocusMinutes == 0 && state.streak == 0 {
+            state.todayFocusMinutes = 45
+            state.streak = 12
+            state.level = max(state.level, 7)
+            state.levelProgress = state.levelProgress ?? 0.62
+            if state.weekFocusMinutes == nil { state.weekFocusMinutes = [25, 40, 10, 95, 70, 55, 45] }
+        }
+        return state
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                ArenaBackground(primaryGlow: Color(arenaHex: AppArenaPalette.purple),
+                                secondaryGlow: cyan,
+                                warmGlow: gold, intensity: 0.9)
+                    .ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        previewSection
+                        styleGrid
+
+                        Text(tr("ws_hint"))
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.40))
+                    }
+                    .padding(20)
+                }
+            }
+            .navigationTitle(tr("ph_widget_style_title"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(tr("common_done")) { dismiss() }
+                        .fontWeight(.bold)
+                }
+            }
+            .preferredColorScheme(.dark)
+            .sheet(isPresented: $showPaywall) {
+                PaywallView(context: "widget_style")
+            }
+            .onAppear { previewStyle = effectiveCurrent }
+        }
+    }
+
+    // MARK: Preview
+
+    private var previewSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("— \(tr("las_preview_caps")) —")
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(2.2)
+                    .foregroundStyle(.white.opacity(0.34))
+
+                Spacer()
+
+                sizeToggle
+
+                Text(previewStyle.displayName)
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundStyle(previewStyle.isProOnly ? gold : .white.opacity(0.5))
+            }
+
+            HStack {
+                Spacer(minLength: 0)
+                UpdoWidgetStylePreview(
+                    style: previewStyle,
+                    state: previewState,
+                    isSmall: previewSmall
+                )
+                .id("\(previewStyle.rawValue)-\(previewSmall)")
+                .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                Spacer(minLength: 0)
+            }
+            .animation(.easeOut(duration: 0.18), value: previewStyle)
+            .animation(.easeOut(duration: 0.18), value: previewSmall)
+
+            if previewLocked {
+                Button {
+                    showPaywall = true
+                } label: {
+                    HStack(spacing: 7) {
+                        Image(systemName: "lock.open.fill")
+                            .font(.system(size: 12, weight: .black))
+                        Text(tr("las_unlock"))
+                            .font(.system(size: 14, weight: .black))
+                    }
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 46)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(gold)
+                            .shadow(color: gold.opacity(0.3), radius: 12, y: 6)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var sizeToggle: some View {
+        HStack(spacing: 4) {
+            sizeChip("S", isOn: previewSmall) { previewSmall = true }
+            sizeChip("M", isOn: !previewSmall) { previewSmall = false }
+        }
+    }
+
+    private func sizeChip(_ label: String, isOn: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 10, weight: .black, design: .monospaced))
+                .foregroundStyle(isOn ? .black : .white.opacity(0.5))
+                .frame(width: 22, height: 20)
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(isOn ? cyan : Color.white.opacity(0.07))
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: Style grid
+
+    private var styleGrid: some View {
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
+
+        return LazyVGrid(columns: columns, spacing: 10) {
+            ForEach(FocusLiveStyle.allCases, id: \.rawValue) { style in
+                styleCell(style)
+            }
+        }
+    }
+
+    private func styleCell(_ style: FocusLiveStyle) -> some View {
+        let locked = style.isProOnly && !subscription.isPro
+        let selected = effectiveCurrent == style
+        let previewing = previewStyle == style
+
+        return Button {
+            HapticManager.shared.navigation()
+            previewStyle = style
+
+            if !locked {
+                current = style.rawValue
+                WidgetAppSync.updateWidgetStyle(style.rawValue)
+            }
+        } label: {
+            VStack(spacing: 5) {
+                Text(style.displayName)
+                    .font(.system(size: 13, weight: .black))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+
+                if locked {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 10, weight: .black))
+                        .foregroundStyle(gold)
+                } else if selected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 12, weight: .black))
+                        .foregroundStyle(Color(arenaHex: AppArenaPalette.green))
+                } else {
+                    Text(style.isProOnly ? "PRO" : tr("las_default"))
+                        .font(.system(size: 8.5, weight: .black, design: .monospaced))
+                        .tracking(0.6)
+                        .foregroundStyle(style.isProOnly ? gold.opacity(0.85) : .white.opacity(0.4))
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 58)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.white.opacity(previewing ? 0.09 : 0.04))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(
+                                previewing
+                                ? cyan.opacity(0.55)
+                                : (selected
+                                   ? Color(arenaHex: AppArenaPalette.green).opacity(0.5)
+                                   : Color.white.opacity(0.07)),
+                                lineWidth: 1
+                            )
+                    )
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 

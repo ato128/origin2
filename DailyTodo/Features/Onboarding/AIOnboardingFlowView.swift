@@ -8,6 +8,7 @@
 //
 
 import SwiftUI
+import PhotosUI
 
 struct AIOnboardingFlowView: View {
     /// Called (once) after the student profile is saved, so the parent can move
@@ -21,6 +22,12 @@ struct AIOnboardingFlowView: View {
     @State private var flyTrigger = 0
     @State private var majorInput = ""
     @FocusState private var uniFieldFocused: Bool
+
+    // Fotoğraftan program + hafta turu
+    @State private var scanItems: [PhotosPickerItem] = []
+    @State private var tourName = ""
+    @State private var tourStart = 9 * 60
+    @State private var tourDuration = 60
 
     var body: some View {
         ZStack {
@@ -50,6 +57,10 @@ struct AIOnboardingFlowView: View {
             // Each new line = an advance → the mascot flies to the "next page".
             guard !line.isEmpty else { return }
             flyTrigger += 1
+        }
+        .onChange(of: scanItems) { _, newItems in
+            guard !newItems.isEmpty else { return }
+            Task { await runOnboardingScan(newItems) }
         }
         .onChange(of: store.phase) { _, phase in
             // Saved → celebrate briefly, then hand off to the app tour.
@@ -176,11 +187,14 @@ struct AIOnboardingFlowView: View {
         case .major:
             majorInputField
 
-        case .courses:
-            courseEntry
+        case .courseMethod:
+            courseMethodInput
 
-        case .schedule:
-            scheduleFiller
+        case .coursePhotos:
+            coursePhotosInput
+
+        case .weekTour:
+            weekTourInput
 
         case .goal:
             goalPicker
@@ -273,173 +287,267 @@ struct AIOnboardingFlowView: View {
         }
     }
 
-    // MARK: - Courses (type or paste → parsed list)
+    // MARK: - Course method (fotoğraf mı, elle mi?)
+
+    private var courseMethodInput: some View {
+        VStack(spacing: 10) {
+            chip(tr("aio_m_photo"), icon: "camera.fill") { store.chooseCourseMethodPhoto() }
+            chip(tr("aio_m_manual"), icon: "square.and.pencil") { store.chooseCourseMethodManual() }
+
+            Button { store.skipCourses() } label: {
+                Text(tr("aio_skip"))
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.45))
+                    .frame(height: 36)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - Course photos (1-4 fotoğraf → tarama)
 
     @ViewBuilder
-    private var courseEntry: some View {
-        if store.coursesParsed {
-            parsedCourseList
+    private var coursePhotosInput: some View {
+        if store.isScanningPhotos {
+            loadingRow(tr("aio_scan_wait"))
         } else {
             VStack(spacing: 10) {
-                TextEditor(text: $store.courseInputText)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(.white)
-                    .scrollContentBackground(.hidden)
-                    .padding(10)
-                    .frame(height: 140)
-                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white.opacity(0.06)))
-                    .overlay(alignment: .topLeading) {
-                        if store.courseInputText.isEmpty {
-                            Text(tr("aio_courses_placeholder"))
-                                .font(.system(size: 13.5, weight: .medium))
-                                .foregroundStyle(.white.opacity(0.32))
-                                .padding(.horizontal, 16).padding(.top, 18)
-                                .allowsHitTesting(false)
-                        }
+                PhotosPicker(
+                    selection: $scanItems,
+                    maxSelectionCount: 4,
+                    matching: .images
+                ) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "photo.on.rectangle.angled")
+                            .font(.system(size: 15, weight: .black))
+                        Text(tr("css_scan_button"))
+                            .font(.system(size: 17, weight: .black))
                     }
-
-                HStack(spacing: 10) {
-                    Button { store.skipCourses() } label: {
-                        Text(tr("aio_skip"))
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.5))
-                            .frame(height: 48)
-                            .padding(.horizontal, 18)
-                    }
-                    .buttonStyle(.plain)
-
-                    primaryButton(tr("aio_parse_courses"), icon: "wand.and.stars") { store.parseCourseInput() }
-                        .disabled(store.courseInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        .opacity(store.courseInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 54)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(UpdoTheme.cyan)
+                    )
                 }
-            }
-        }
-    }
 
-    private var parsedCourseList: some View {
-        VStack(spacing: 10) {
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 6) {
-                    ForEach(store.parsedCourses) { course in
-                        HStack(spacing: 10) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(course.name)
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(.white)
-                                    .multilineTextAlignment(.leading)
-
-                                if course.hasSchedule || !course.code.isEmpty {
-                                    HStack(spacing: 6) {
-                                        if !course.code.isEmpty {
-                                            Text(course.code)
-                                                .font(.system(size: 10.5, weight: .bold, design: .monospaced))
-                                                .foregroundStyle(.white.opacity(0.4))
-                                        }
-                                        ForEach(course.slots, id: \.self) { slot in
-                                            Text("\(AIOnboardingStore.weekdayShortNames[slot.weekday]) \(AIOnboardingStore.minuteText(slot.startMinute))")
-                                                .font(.system(size: 10.5, weight: .bold, design: .monospaced))
-                                                .foregroundStyle(UpdoTheme.cyan.opacity(0.9))
-                                        }
-                                    }
-                                }
-                            }
-
-                            Spacer(minLength: 6)
-
-                            Button { store.removeParsedCourse(course.id) } label: {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundStyle(.white.opacity(0.4))
-                                    .frame(width: 26, height: 26)
-                                    .background(Circle().fill(Color.white.opacity(0.06)))
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        .padding(.horizontal, 14).padding(.vertical, 10)
-                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white.opacity(0.045)))
+                Button { store.backToCourseMethod() } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 11, weight: .bold))
+                        Text(tr("aio_back"))
+                            .font(.system(size: 13, weight: .bold))
                     }
-                }
-            }
-            .frame(maxHeight: 210)
-
-            HStack(spacing: 10) {
-                Button { store.editCoursesAgain() } label: {
-                    Text(tr("aio_edit_again"))
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.5))
-                        .frame(height: 48)
-                        .padding(.horizontal, 14)
+                    .foregroundStyle(.white.opacity(0.5))
+                    .frame(height: 36)
                 }
                 .buttonStyle(.plain)
-
-                primaryButton(tr("common_continue"), icon: "arrow.right") { store.confirmParsedCourses() }
             }
         }
     }
 
-    // MARK: - Schedule fill (day + time for courses the parser couldn't place)
+    private func runOnboardingScan(_ items: [PhotosPickerItem]) async {
+        store.isScanningPhotos = true
 
-    private var scheduleFiller: some View {
-        VStack(spacing: 10) {
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 12) {
-                    ForEach(store.unscheduledCourses) { course in
-                        scheduleRow(course)
+        var images: [UIImage] = []
+        for item in items.prefix(4) {
+            if let data = try? await item.loadTransferable(type: Data.self),
+               let image = UIImage(data: data) {
+                images.append(image)
+            }
+        }
+
+        scanItems = []
+
+        guard !images.isEmpty else {
+            store.scanFailed(tr("css_scan_err_generic"))
+            return
+        }
+
+        do {
+            let courses = try await ScheduleScanClient.scan(images)
+            store.applyScanResults(courses)
+        } catch {
+            store.scanFailed(error.localizedDescription)
+        }
+    }
+
+    // MARK: - Week tour (Pzt → Paz, gün gün kontrol + düzenleme)
+
+    private var weekTourInput: some View {
+        let day = store.tourDay
+        let dayEntries = store.entries(on: day)
+
+        return VStack(spacing: 10) {
+            // Gün başlığı + geri
+            HStack(spacing: 10) {
+                Button { store.goBackInTour() } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 13, weight: .black))
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 34)
+                        .background(Circle().fill(Color.white.opacity(0.07)))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(tr("a11y_back"))
+
+                Text(AIOnboardingStore.weekdayFullNames[day])
+                    .font(.system(size: 19, weight: .black))
+                    .foregroundStyle(.white)
+
+                Spacer()
+
+                Text("\(day + 1)/7")
+                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                    .foregroundStyle(UpdoTheme.cyan)
+            }
+
+            // Günün dersleri
+            if dayEntries.isEmpty {
+                Text(tr("aio_tour_empty"))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.4))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white.opacity(0.035)))
+            } else {
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 6) {
+                        ForEach(dayEntries) { entry in
+                            tourEntryRow(entry)
+                        }
                     }
                 }
+                .frame(maxHeight: 168)
             }
-            .frame(maxHeight: 300)
 
-            primaryButton(tr("common_continue"), icon: "arrow.right") { store.confirmSchedule() }
-        }
-    }
+            // Ders ekle formu
+            VStack(spacing: 8) {
+                TextField(tr("aio_tour_add_ph"), text: $tourName)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 13).padding(.vertical, 11)
+                    .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(Color.white.opacity(0.06)))
 
-    private func scheduleRow(_ course: ParsedCourse) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
-            Text(course.name)
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(.white)
+                HStack(spacing: 8) {
+                    tourPicker(
+                        selection: $tourStart,
+                        values: Array(stride(from: 7 * 60, through: 22 * 60, by: 30)),
+                        label: { AIOnboardingStore.minuteText($0) }
+                    )
 
-            // Day chips
-            HStack(spacing: 5) {
-                ForEach(0..<7, id: \.self) { day in
-                    let on = store.scheduleDayByCourse[course.id] == day
-                    Button { store.setScheduleDay(course.id, weekday: day) } label: {
-                        Text(AIOnboardingStore.weekdayShortNames[day])
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(on ? .black : .white.opacity(0.6))
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 30)
+                    tourPicker(
+                        selection: $tourDuration,
+                        values: [30, 45, 60, 90, 120, 150, 180],
+                        label: { tr("aio_min_fmt", $0) }
+                    )
+
+                    Button {
+                        store.addTourEntry(name: tourName, startMinute: tourStart, durationMinute: tourDuration)
+                        tourName = ""
+                    } label: {
+                        Text(tr("aio_tour_add"))
+                            .font(.system(size: 13, weight: .black))
+                            .foregroundStyle(canAddTourEntry ? .black : .white.opacity(0.4))
+                            .padding(.horizontal, 16)
+                            .frame(height: 38)
                             .background(
-                                Capsule().fill(on ? AnyShapeStyle(UpdoTheme.cyan) : AnyShapeStyle(Color.white.opacity(0.06)))
+                                Capsule().fill(canAddTourEntry ? AnyShapeStyle(UpdoTheme.cyan) : AnyShapeStyle(Color.white.opacity(0.07)))
                             )
                     }
                     .buttonStyle(.plain)
+                    .disabled(!canAddTourEntry)
                 }
+            }
+            .padding(10)
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white.opacity(0.035)))
+
+            primaryButton(
+                day < 6 ? tr("common_continue") : tr("aio_tour_finish"),
+                icon: day < 6 ? "arrow.right" : "checkmark"
+            ) { store.nextTourDay() }
+        }
+    }
+
+    private var canAddTourEntry: Bool {
+        !tourName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func tourEntryRow(_ entry: AIOnboardingStore.TourEntry) -> some View {
+        HStack(spacing: 10) {
+            Text("\(AIOnboardingStore.minuteText(entry.startMinute))–\(AIOnboardingStore.minuteText(entry.startMinute + entry.durationMinute))")
+                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                .foregroundStyle(UpdoTheme.cyan)
+
+            Text(entry.name)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+
+            if !entry.room.isEmpty {
+                Text(entry.room)
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.45))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color.white.opacity(0.06)))
+                    .lineLimit(1)
             }
 
-            // Time chips
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 5) {
-                    ForEach(Array(stride(from: 8 * 60, through: 20 * 60, by: 30)), id: \.self) { minute in
-                        let on = store.scheduleMinuteByCourse[course.id] == minute
-                        Button { store.setScheduleMinute(course.id, minute: minute) } label: {
-                            Text(AIOnboardingStore.minuteText(minute))
-                                .font(.system(size: 11.5, weight: .bold, design: .monospaced))
-                                .foregroundStyle(on ? .black : .white.opacity(0.6))
-                                .padding(.horizontal, 11)
-                                .frame(height: 30)
-                                .background(
-                                    Capsule().fill(on ? AnyShapeStyle(UpdoTheme.cyan) : AnyShapeStyle(Color.white.opacity(0.06)))
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    }
+            Spacer(minLength: 6)
+
+            // Düzelt: satırı forma alır, eskisini kaldırır.
+            Button {
+                tourName = entry.name
+                tourStart = entry.startMinute
+                tourDuration = entry.durationMinute
+                store.removeTourEntry(entry.id)
+            } label: {
+                Image(systemName: "pencil")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.5))
+                    .frame(width: 26, height: 26)
+                    .background(Circle().fill(Color.white.opacity(0.06)))
+            }
+            .buttonStyle(.plain)
+
+            Button { store.removeTourEntry(entry.id) } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.4))
+                    .frame(width: 26, height: 26)
+                    .background(Circle().fill(Color.white.opacity(0.06)))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 12).padding(.vertical, 9)
+        .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(Color.white.opacity(0.045)))
+    }
+
+    private func tourPicker<T: Hashable>(
+        selection: Binding<T>,
+        values: [T],
+        label: @escaping (T) -> String
+    ) -> some View {
+        Menu {
+            Picker("", selection: selection) {
+                ForEach(values, id: \.self) { value in
+                    Text(label(value)).tag(value)
                 }
             }
+        } label: {
+            HStack(spacing: 4) {
+                Text(label(selection.wrappedValue))
+                    .font(.system(size: 12.5, weight: .bold, design: .monospaced))
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+            }
+            .foregroundStyle(.white.opacity(0.85))
+            .padding(.horizontal, 11)
+            .frame(height: 38)
+            .background(Capsule().fill(Color.white.opacity(0.07)))
         }
-        .padding(12)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white.opacity(0.045)))
     }
 
     // MARK: - Goal picker

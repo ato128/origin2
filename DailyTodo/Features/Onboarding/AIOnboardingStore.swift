@@ -29,7 +29,22 @@ struct OnboardingCourseDraft: Identifiable, Hashable {
 final class AIOnboardingStore: ObservableObject {
 
     enum Phase: Equatable {
-        case greeting, education, university, grade, track, major, courses, schedule, goal, saving, finished
+        case greeting, education, university, grade, track, major
+        case courseMethod   // "kendim eklerim" vs "fotoğraf atarım"
+        case coursePhotos   // 1-4 fotoğraf + tarama
+        case weekTour       // Pzt→Paz gün gün kontrol/düzenleme
+        case goal, saving, finished
+    }
+
+    /// Hafta turundaki tek satır: bir dersin bir günkü saati.
+    struct TourEntry: Identifiable, Equatable {
+        let id = UUID()
+        var name: String
+        var code: String = ""
+        var weekday: Int
+        var startMinute: Int
+        var durationMinute: Int
+        var room: String = ""
     }
 
     // MARK: - Conversation (user-paced)
@@ -72,16 +87,14 @@ final class AIOnboardingStore: ObservableObject {
 
     private var universitySearchTask: Task<Void, Never>?
 
-    // MARK: - Courses (typed or pasted)
+    // MARK: - Courses (photo scan or manual week tour)
 
-    @Published var courseInputText: String = ""
     @Published private(set) var parsedCourses: [ParsedCourse] = []
-    /// false → the free-text editor is showing; true → the parsed list.
-    @Published private(set) var coursesParsed = false
-
-    /// Day/time picks for courses the parser couldn't schedule.
-    @Published var scheduleDayByCourse: [UUID: Int] = [:]
-    @Published var scheduleMinuteByCourse: [UUID: Int] = [:]
+    @Published private(set) var tourEntries: [TourEntry] = []
+    /// Taramada bulunan ama saati okunamayan dersler — yine course olarak kaydedilir.
+    @Published private(set) var timelessCourseDrafts: [OnboardingCourseDraft] = []
+    @Published private(set) var tourDay: Int = 0
+    @Published var isScanningPhotos = false
 
     private weak var studentStore: StudentStore?
     private var didStart = false
@@ -92,11 +105,6 @@ final class AIOnboardingStore: ObservableObject {
 
     var courseDrafts: [OnboardingCourseDraft] {
         parsedCourses.map { OnboardingCourseDraft(code: $0.code, name: $0.name) }
-    }
-
-    /// Courses that still need a day/time in the schedule phase.
-    var unscheduledCourses: [ParsedCourse] {
-        parsedCourses.filter { !$0.hasSchedule }
     }
 
     var gradeOptions: [String] {
@@ -224,92 +232,170 @@ final class AIOnboardingStore: ObservableObject {
         beginCoursesPhase()
     }
 
-    // MARK: - Courses (type or paste → parser)
+    // MARK: - Course method (fotoğraf mı, elle mi?)
 
     private func beginCoursesPhase() {
-        coursesParsed = false
-        present([tr("aio_q_courses_1"), tr("aio_q_courses_2")], phase: .courses)
+        present([tr("aio_q_course_method")], phase: .courseMethod)
     }
 
-    func parseCourseInput() {
-        let parsed = OnboardingCourseParser.parse(courseInputText)
-
-        guard !parsed.isEmpty else {
-            HapticManager.shared.error()
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
-                currentLine = tr("aio_courses_parse_empty")
-            }
-            speak()
-            return
-        }
-
-        parsedCourses = parsed
-        HapticManager.shared.success()
-
-        let scheduledCount = parsed.filter(\.hasSchedule).count
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
-            coursesParsed = true
-            currentLine = scheduledCount > 0
-                ? trArg2("aio_courses_parsed_with_time", parsed.count, scheduledCount)
-                : trArg("aio_courses_parsed", parsed.count)
-        }
-        speak()
-    }
-
-    func removeParsedCourse(_ id: UUID) {
-        parsedCourses.removeAll { $0.id == id }
+    func chooseCourseMethodPhoto() {
         HapticManager.shared.selection()
-        if parsedCourses.isEmpty { editCoursesAgain() }
+        present([tr("aio_photos_prompt")], phase: .coursePhotos)
     }
 
-    func editCoursesAgain() {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
-            coursesParsed = false
-            currentLine = tr("aio_q_courses_2")
-        }
+    func chooseCourseMethodManual() {
+        HapticManager.shared.selection()
+        tourEntries = []
+        timelessCourseDrafts = []
+        startWeekTour(lines: [tr("aio_tour_intro_manual")])
     }
 
-    func confirmParsedCourses() {
-        if unscheduledCourses.isEmpty {
-            present([tr("aio_q_goal")], phase: .goal)
-        } else {
-            present([tr("aio_q_schedule")], phase: .schedule)
-        }
+    /// Geri tuşu: yanlış seçimden yöntem ekranına dönüş.
+    func backToCourseMethod() {
+        isScanningPhotos = false
+        HapticManager.shared.selection()
+        beginCoursesPhase()
     }
 
     func skipCourses() {
         parsedCourses = []
+        tourEntries = []
+        timelessCourseDrafts = []
         present([tr("aio_q_goal")], phase: .goal)
     }
 
-    // MARK: - Schedule fill (courses without a parsed day/time)
+    // MARK: - Photo scan results
 
-    func setScheduleDay(_ courseID: UUID, weekday: Int) {
-        scheduleDayByCourse[courseID] = weekday
-        HapticManager.shared.selection()
-    }
+    func applyScanResults(_ scanned: [ScannedScheduleCourse]) {
+        isScanningPhotos = false
 
-    func setScheduleMinute(_ courseID: UUID, minute: Int) {
-        scheduleMinuteByCourse[courseID] = minute
-        HapticManager.shared.selection()
-    }
-
-    func confirmSchedule() {
-        // Fold the picks back into the parsed courses; anything still missing
-        // a day or time simply gets no weekly event (addable later in Week).
-        for index in parsedCourses.indices where !parsedCourses[index].hasSchedule {
-            let id = parsedCourses[index].id
-            guard let day = scheduleDayByCourse[id], let minute = scheduleMinuteByCourse[id] else { continue }
-
-            parsedCourses[index].slots = [
-                ParsedCourseSlot(
-                    weekday: day,
-                    startMinute: minute,
-                    durationMinute: OnboardingCourseParser.defaultDurationMinutes
-                )
-            ]
+        guard !scanned.isEmpty else {
+            scanFailed(tr("css_scan_none"))
+            return
         }
 
+        var entries: [TourEntry] = []
+        var timeless: [OnboardingCourseDraft] = []
+
+        for course in scanned {
+            if course.slots.isEmpty {
+                timeless.append(OnboardingCourseDraft(code: course.code, name: course.name))
+            }
+            for slot in course.slots {
+                entries.append(TourEntry(
+                    name: course.name,
+                    code: course.code,
+                    weekday: slot.weekday,
+                    startMinute: slot.startMinute,
+                    durationMinute: slot.durationMinute,
+                    room: slot.room ?? ""
+                ))
+            }
+        }
+
+        tourEntries = entries
+        timelessCourseDrafts = timeless
+        HapticManager.shared.success()
+        startWeekTour(lines: [trArg("aio_scan_done", scanned.count)])
+    }
+
+    func scanFailed(_ message: String) {
+        isScanningPhotos = false
+        HapticManager.shared.error()
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
+            currentLine = message
+        }
+        speak()
+    }
+
+    // MARK: - Week tour (Pzt → Paz, gün gün kontrol)
+
+    private func startWeekTour(lines: [String]) {
+        tourDay = 0
+        present(lines + [tourDayLine(0)], phase: .weekTour)
+    }
+
+    private func tourDayLine(_ day: Int) -> String {
+        trArg("aio_tour_day_q", Self.weekdayFullNames[day])
+    }
+
+    func entries(on day: Int) -> [TourEntry] {
+        tourEntries
+            .filter { $0.weekday == day }
+            .sorted { $0.startMinute < $1.startMinute }
+    }
+
+    func addTourEntry(name: String, startMinute: Int, durationMinute: Int) {
+        let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return }
+
+        tourEntries.append(TourEntry(
+            name: clean,
+            weekday: tourDay,
+            startMinute: startMinute,
+            durationMinute: durationMinute
+        ))
+        HapticManager.shared.success()
+    }
+
+    func removeTourEntry(_ id: UUID) {
+        tourEntries.removeAll { $0.id == id }
+        HapticManager.shared.selection()
+    }
+
+    func nextTourDay() {
+        HapticManager.shared.selection()
+        if tourDay < 6 {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
+                tourDay += 1
+                currentLine = tourDayLine(tourDay)
+            }
+            speak()
+        } else {
+            finishWeekTour()
+        }
+    }
+
+    func goBackInTour() {
+        HapticManager.shared.selection()
+        if tourDay > 0 {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
+                tourDay -= 1
+                currentLine = tourDayLine(tourDay)
+            }
+            speak()
+        } else {
+            backToCourseMethod()
+        }
+    }
+
+    private func finishWeekTour() {
+        // Tur satırları → ders başına slot listesi (isim bazında grupla).
+        var byKey: [String: ParsedCourse] = [:]
+        var order: [String] = []
+
+        for entry in tourEntries {
+            let key = entry.name.lowercased()
+            if byKey[key] == nil {
+                byKey[key] = ParsedCourse(code: entry.code, name: entry.name, slots: [])
+                order.append(key)
+            }
+            byKey[key]?.slots.append(ParsedCourseSlot(
+                weekday: entry.weekday,
+                startMinute: entry.startMinute,
+                durationMinute: entry.durationMinute,
+                room: entry.room.isEmpty ? nil : entry.room
+            ))
+        }
+
+        var result = order.compactMap { byKey[$0] }
+
+        // Saati okunamayan taranmış dersler de course olarak kaydedilir.
+        for draft in timelessCourseDrafts where byKey[draft.name.lowercased()] == nil {
+            result.append(ParsedCourse(code: draft.code, name: draft.name, slots: []))
+        }
+
+        parsedCourses = result
         present([tr("aio_q_goal")], phase: .goal)
     }
 
@@ -390,6 +476,12 @@ final class AIOnboardingStore: ObservableObject {
         appLanguageIsEnglish()
             ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
             : ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
+    }
+
+    static var weekdayFullNames: [String] {
+        appLanguageIsEnglish()
+            ? ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            : ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
     }
 
     static func minuteText(_ minute: Int) -> String {

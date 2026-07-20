@@ -199,6 +199,11 @@ final class FriendStore: ObservableObject {
             .insert(payload)
             .execute()
 
+        // Karşı tarafa anlık bildirim — başarısız olsa da istek akışını bozmaz.
+        Task {
+            await FocusInviteService.shared.sendFriendRequestPush(toUserID: targetUserID)
+        }
+
         await loadAllFriendships(currentUserID: currentUserID)
         markFriendsCacheRefreshed()
     }

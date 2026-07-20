@@ -34,6 +34,7 @@ final class FocusInviteService {
         crewName: String? = nil,
         startedAt: Date? = nil,
         participantNames: [String]? = nil,
+        participantUserIDs: [String]? = nil,
         totalParticipants: Int? = nil
     ) async {
         let currentUserIDString = UserDefaults.standard.string(forKey: "current_user_id")
@@ -71,6 +72,7 @@ final class FocusInviteService {
                     crewName: normalizedCrewName,
                     startedAtString: startedAtString,
                     participantNames: participantNames,
+                    participantUserIDs: participantUserIDs,
                     totalParticipants: totalParticipants
                 )
             } catch {
@@ -89,6 +91,7 @@ final class FocusInviteService {
         crewName: String?,
         startedAtString: String?,
         participantNames: [String]?,
+        participantUserIDs: [String]?,
         totalParticipants: Int?
     ) async throws {
        
@@ -144,6 +147,10 @@ final class FocusInviteService {
             body["participantNames"] = participantNames
         }
 
+        if let participantUserIDs, !participantUserIDs.isEmpty {
+            body["participantUserIDs"] = participantUserIDs
+        }
+
         if let totalParticipants {
             body["totalParticipants"] = totalParticipants
         }
@@ -169,6 +176,35 @@ final class FocusInviteService {
         }
 
         Log.debug("FOCUS INVITE SENT -> \(toUserID.uuidString)")
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // Friend request push — istek Supabase'e yazıldıktan sonra çağrılır;
+    // gönderen adını backend kendisi çözer.
+    // ════════════════════════════════════════════════════════════════
+
+    func sendFriendRequestPush(toUserID: UUID) async {
+        guard let accessToken = SupabaseManager.shared.client.auth.currentSession?.accessToken,
+              !accessToken.isEmpty,
+              let url = URL(string: "\(ChatBackendEnvironment.httpBaseURL)/v1/push/friend-request")
+        else { return }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "toUserID": toUserID.uuidString
+        ])
+
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            Log.debug("FRIEND REQUEST PUSH STATUS:", status)
+        } catch {
+            Log.debug("FRIEND REQUEST PUSH ERROR:", error.localizedDescription)
+        }
     }
 
     // ════════════════════════════════════════════════════════════════

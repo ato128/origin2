@@ -5,6 +5,10 @@
 //  Gerçek kaynak: backend GET /v1/ai/usage. Kredi ve limit muhasebesi tamamen
 //  sunucuda tutulur (402/429 zorlaması orada); bu sınıf yalnızca görüntülenen
 //  durumu çeker ve gönderim sonrası iyimser günceller.
+//
+//  Ücretsiz model: ilk 3 gün içinde kullanılabilen TOPLAM 20 mesajlık havuz.
+//  Havuz ya da süre bitince ücretsiz coach kapanır — Premium AI ya da
+//  kullanıcının kendi OpenAI anahtarı (BYO) devralır.
 
 import Foundation
 import Combine
@@ -19,9 +23,12 @@ final class DailyCreditsManager: ObservableObject {
     @Published var creditsTotal: Int = 0
     /// Premium AI katmanı — backend, RevenueCat'ten sunucu tarafında doğrular.
     @Published var isPro: Bool = false
-    @Published var coachUsedToday: Int = 0
-    /// nil = günlük sınır yok (Premium AI)
-    @Published var coachDailyLimit: Int? = nil
+    /// Ücretsiz havuzdan ömür boyu kullanılan coach mesajı sayısı.
+    @Published var coachUsedTotal: Int = 0
+    /// nil = sınırsız (Premium AI); değilse toplam ücretsiz havuz (20).
+    @Published var coachTotalLimit: Int? = nil
+    /// Ücretsiz pencerenin bittiği an (premium'da nil).
+    @Published var freeTrialEndsAt: Date? = nil
     @Published var isLoaded: Bool = false
 
     private var lastFetch: Date?
@@ -30,41 +37,41 @@ final class DailyCreditsManager: ObservableObject {
     /// Ana sayfa kartı eski adıyla okuyor.
     var tokensRemaining: Int { creditsRemaining }
 
+    /// Kullanıcı kendi OpenAI anahtarını eklediyse limitler bizi bağlamaz.
+    var usesOwnKey: Bool { BYOKeyStore.shared.hasKey }
+
+    /// Ücretsiz havuzdan kalan mesaj (premium'da nil = sınırsız).
     var messagesRemainingToday: Int? {
-        guard let limit = coachDailyLimit else { return nil }
-        return max(0, limit - coachUsedToday)
+        guard let limit = coachTotalLimit else { return nil }
+        return max(0, limit - coachUsedTotal)
+    }
+
+    private var trialWindowExpired: Bool {
+        guard !isPro, let ends = freeTrialEndsAt else { return false }
+        return ends < Date()
     }
 
     /// UX ön kontrolü — asıl zorlama backend'de. İlk yükleme gelmeden engelleme.
     var canSendChatMessage: Bool {
+        if usesOwnKey { return true }
         guard isLoaded else { return true }
-        if creditsRemaining <= 0 { return false }
+        if !isPro && trialWindowExpired { return false }
         if let left = messagesRemainingToday, left <= 0 { return false }
+        if creditsRemaining <= 0 { return false }
         return true
     }
 
     /// Hangi limit dolduysa ona uygun mesaj.
     var limitMessage: String {
-        if let left = messagesRemainingToday, left <= 0 { return tr("ai_daily_limit") }
+        if !isPro {
+            if trialWindowExpired { return tr("ai_free_over") }
+            if let left = messagesRemainingToday, left <= 0 { return tr("ai_free_over") }
+        }
         return tr("ai_monthly_limit")
     }
 
-    /// Günlük hak dolduysa bir sonraki UTC gece yarısına kalan süre
-    /// (backend günü UTC'ye göre sayar). Aylık limitte geri sayım yok.
-    var timeUntilReset: String? {
-        guard let left = messagesRemainingToday, left <= 0 else { return nil }
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = TimeZone(identifier: "UTC") ?? .current
-        guard let midnight = cal.nextDate(
-            after: Date(),
-            matching: DateComponents(hour: 0, minute: 0, second: 0),
-            matchingPolicy: .nextTime
-        ) else { return nil }
-        let secs = Int(midnight.timeIntervalSince(Date()))
-        let h = secs / 3600
-        let m = (secs % 3600) / 60
-        return h > 0 ? "\(h)sa \(m)dk" : "\(m) dk"
-    }
+    /// Günlük sıfırlama kalktı — havuz bitince geri sayım yok.
+    var timeUntilReset: String? { nil }
 
     // MARK: - Fetch
 
@@ -89,8 +96,9 @@ final class DailyCreditsManager: ObservableObject {
             creditsRemaining = summary.creditsRemaining
             creditsTotal = summary.creditsTotal
             isPro = summary.isPremium
-            coachUsedToday = summary.coachUsedToday ?? 0
-            coachDailyLimit = summary.coachDailyLimit
+            coachUsedTotal = summary.coachUsedTotal ?? 0
+            coachTotalLimit = summary.coachTotalLimit
+            freeTrialEndsAt = summary.freeTrialEndsAt.flatMap { Self.parseISO($0) }
             isLoaded = true
             lastFetch = Date()
         } catch {
@@ -99,10 +107,20 @@ final class DailyCreditsManager: ObservableObject {
     }
 
     /// Mesaj başarıyla gönderildiğinde iyimser düşüm + arka planda gerçek değer.
+    /// BYO anahtar kullanılıyorsa hiçbir sayaç düşmez.
     func noteMessageSent() {
-        coachUsedToday += 1
+        guard !usesOwnKey else { return }
+        coachUsedTotal += 1
         if creditsRemaining > 0 { creditsRemaining -= 1 }
         Task { await refresh() }
+    }
+
+    private static func parseISO(_ value: String) -> Date? {
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = iso.date(from: value) { return date }
+        iso.formatOptions = [.withInternetDateTime]
+        return iso.date(from: value)
     }
 
     private struct UsageSummary: Decodable {
@@ -110,7 +128,8 @@ final class DailyCreditsManager: ObservableObject {
         let creditsTotal: Int
         let creditsUsed: Int
         let creditsRemaining: Int
-        let coachUsedToday: Int?
-        let coachDailyLimit: Int?
+        let coachUsedTotal: Int?
+        let coachTotalLimit: Int?
+        let freeTrialEndsAt: String?
     }
 }

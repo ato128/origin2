@@ -100,14 +100,30 @@ actor AIService {
         req.timeoutInterval = 60
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
 
+        // BYO: kullanıcının kendi OpenAI anahtarı varsa coach isteğiyle taşınır;
+        // backend anahtarı saklamaz, sadece o çağrı için OpenAI'a yönlendirir.
+        if feature == "coach", let userKey = await MainActor.run(body: { BYOKeyStore.shared.readKey() }) {
+            req.setValue(userKey, forHTTPHeaderField: "x-user-openai-key")
+        }
+
         let (data, response) = try await URLSession.shared.data(for: req)
 
         guard let http = response as? HTTPURLResponse else {
             throw AIServiceError.invalidResponse
         }
 
+        if http.statusCode == 400 {
+            let code = (try? JSONDecoder().decode(BackendAIError.self, from: data))?.code
+            if code == "byo_key_invalid" {
+                throw AIServiceError.byoKeyInvalid
+            }
+            if code == "byo_no_credits" {
+                throw AIServiceError.byoNoCredits
+            }
+        }
+
         if http.statusCode == 402 {
-            // Backend distinguishes the free daily allowance from the monthly budget
+            // Backend distinguishes the free allowance from the monthly budget
             let code = (try? JSONDecoder().decode(BackendAIError.self, from: data))?.code
             if code == "daily_free_limit" {
                 throw AIServiceError.dailyFreeLimitReached
@@ -147,6 +163,8 @@ private struct BackendAIError: Decodable {
 enum AIServiceError: LocalizedError {
     case insufficientCredits
     case dailyFreeLimitReached
+    case byoKeyInvalid
+    case byoNoCredits
     case invalidResponse
     case rateLimited
     case httpError(Int)
@@ -155,7 +173,9 @@ enum AIServiceError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .insufficientCredits: return tr("ai_monthly_limit")
-        case .dailyFreeLimitReached: return tr("ai_daily_limit")
+        case .dailyFreeLimitReached: return tr("ai_free_over")
+        case .byoKeyInvalid:       return tr("ai_byo_invalid")
+        case .byoNoCredits:        return tr("ai_byo_no_credits")
         case .invalidResponse:     return tr("ai_invalid_response")
         case .rateLimited:         return tr("ai_too_many")
         case .httpError(let c):    return "\(tr("ai_http_error")): \(c)"

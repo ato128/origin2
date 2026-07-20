@@ -104,6 +104,7 @@ struct MessagesView: View {
                 time: lastDate,
                 unreadCount: unread,
                 avatarText: initials(for: title),
+                avatarUserID: friend.backendUserID,
                 tint: hexColor(friend.colorHex),
                 isOnline: isFriendOnline(friend),
                 showsPresence: true,
@@ -127,7 +128,7 @@ struct MessagesView: View {
             if let backendLastText, !backendLastText.isEmpty {
                 preview = cleanedPreview(backendLastText)
             } else {
-                preview = "Crew conversation"
+                preview = tr("mv_crew_convo")
             }
 
             let lastDate = backendDate(backendConversation?.lastMessageAt)
@@ -345,7 +346,7 @@ private extension MessagesView {
                 .font(.system(size: 17, weight: .black))
                 .foregroundStyle(Color(arenaHex: AppArenaPalette.cyan))
 
-            TextField("Sohbet ara...", text: $searchText)
+            TextField(tr("mv_search_ph"), text: $searchText)
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(.white)
                 .tint(Color(arenaHex: AppArenaPalette.cyan))
@@ -443,7 +444,7 @@ private extension MessagesView {
             sectionTitle(
                 eyebrow: tr("mv_all_chats_caps"),
                 title: tr("mv_all"),
-                italic: "sohbetler",
+                italic: tr("mv_all_italic"),
                 tint: Color(arenaHex: AppArenaPalette.cyan)
             )
 
@@ -688,7 +689,7 @@ private extension MessagesView {
                 togglePinFriendChat(friend)
             } label: {
                 Label(
-                    isPinned ? tr("mv_unpin") : "Sohbeti sabitle",
+                    isPinned ? tr("mv_unpin") : tr("mv_pin"),
                     systemImage: isPinned ? "pin.slash" : "pin"
                 )
             }
@@ -713,7 +714,7 @@ private extension MessagesView {
                 togglePinFriendChat(summary)
             } label: {
                 Label(
-                    summary.isPinned ? tr("mv_unpin") : "Sohbeti sabitle",
+                    summary.isPinned ? tr("mv_unpin") : tr("mv_pin"),
                     systemImage: summary.isPinned ? "pin.slash" : "pin"
                 )
             }
@@ -742,7 +743,7 @@ private extension MessagesView {
                 togglePinCrewChat(crew)
             } label: {
                 Label(
-                    pinned ? tr("mv_unpin") : "Sohbeti sabitle",
+                    pinned ? tr("mv_unpin") : tr("mv_pin"),
                     systemImage: pinned ? "pin.slash" : "pin"
                 )
             }
@@ -854,7 +855,7 @@ private extension MessagesView {
     func onlineAvatar(for item: MessagesHubItem, size: CGFloat) -> some View {
         switch item.kind {
         case .friend:
-            return AnyView(friendInitialAvatar(item.avatarText, tint: item.tint, size: size))
+            return AnyView(UserAvatarView(userID: item.avatarUserID, name: item.title, tint: item.tint, size: size))
         case .crew:
             return AnyView(crewIconAvatar(symbol: item.avatarText, tint: item.tint, size: size))
         }
@@ -863,35 +864,9 @@ private extension MessagesView {
     func rowAvatar(for item: MessagesHubItem, size: CGFloat) -> some View {
         switch item.kind {
         case .friend:
-            return AnyView(friendInitialAvatar(item.avatarText, tint: item.tint, size: size))
+            return AnyView(UserAvatarView(userID: item.avatarUserID, name: item.title, tint: item.tint, size: size))
         case .crew:
             return AnyView(crewIconAvatar(symbol: item.avatarText, tint: item.tint, size: size))
-        }
-    }
-
-    func friendInitialAvatar(_ initials: String, tint: Color, size: CGFloat) -> some View {
-        ZStack {
-            Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            tint.opacity(0.24),
-                            Color(arenaHex: AppArenaPalette.purple).opacity(0.15),
-                            Color.white.opacity(0.040)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    Circle()
-                        .stroke(tint.opacity(0.26), lineWidth: 1.1)
-                )
-                .frame(width: size, height: size)
-
-            Text(initials)
-                .font(.system(size: size * 0.30, weight: .black))
-                .foregroundStyle(.white)
         }
     }
 
@@ -1211,6 +1186,10 @@ private extension MessagesView {
     }
 
     private func cleanedPreview(_ text: String) -> String {
+        if text.hasPrefix(CrewInviteMessage.prefix) {
+            return tr("ci_preview")
+        }
+
         guard
             text.hasPrefix(replyMarker),
             let bodyRange = text.range(of: bodyMarker)
@@ -1646,6 +1625,7 @@ struct MessagesHubItem: Identifiable {
     let time: Date?
     let unreadCount: Int
     let avatarText: String
+    var avatarUserID: UUID? = nil
     let tint: Color
     let isOnline: Bool
     let showsPresence: Bool

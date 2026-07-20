@@ -36,6 +36,7 @@ struct UpdoAIView: View {
     @State private var executedActionIDs: Set<UUID> = []
     @State private var dismissedActionIDs: Set<UUID> = []
     @State private var showPaywall = false
+    @State private var showBYOKeySheet = false
 
     private let hapticSend = UIImpactFeedbackGenerator(style: .light)
     private let hapticResponse = UINotificationFeedbackGenerator()
@@ -186,7 +187,28 @@ struct UpdoAIView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { dismissButton }
                 ToolbarItem(placement: .principal) { navTitle }
-                ToolbarItem(placement: .topBarTrailing) { trashButton }
+                ToolbarItem(placement: .topBarTrailing) {
+                    HStack(spacing: 8) {
+                        Button {
+                            showBYOKeySheet = true
+                        } label: {
+                            Image(systemName: "key.fill")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(
+                                    BYOKeyStore.shared.hasKey
+                                    ? Color(arenaHex: "#34D44A")
+                                    : .white.opacity(0.7)
+                                )
+                                .frame(width: 34, height: 34)
+                                .background(.ultraThinMaterial, in: Circle())
+                                .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(tr("byo_title"))
+
+                        trashButton
+                    }
+                }
             }
             // Floating chrome: content flows behind; each element carries its own material
             .toolbarBackground(.hidden, for: .navigationBar)
@@ -201,6 +223,9 @@ struct UpdoAIView: View {
             Button(tr("common_cancel"), role: .cancel) {}
         } message: {
             Text(tr("ai_clear_confirm"))
+        }
+        .sheet(isPresented: $showBYOKeySheet) {
+            BYOKeySheet()
         }
         .sheet(isPresented: $showFocusHistory) {
             FocusHistorySheet(sessions: last7DaysFocus)
@@ -606,8 +631,10 @@ struct UpdoAIView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "bolt.fill")
                                 .font(.caption.bold())
-                            Text(credits.timeUntilReset.map { "\(tr("ai_limit_full")) · \($0) · \(tr("ai_go_pro_lc"))" } ?? "\(tr("ai_limit_full")) · \(tr("ai_go_pro_lc"))")
+                            Text("\(tr("ai_limit_full")) · \(tr("ai_go_pro_lc"))")
                                 .font(.subheadline.weight(.medium))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                         }
                         .foregroundStyle(UpdoTheme.cyan)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -620,6 +647,20 @@ struct UpdoAIView: View {
                         )
                     }
                     .buttonStyle(.plain)
+
+                    // Alternatif yol: kendi OpenAI anahtarını ekle → sınırsız devam.
+                    Button {
+                        showBYOKeySheet = true
+                    } label: {
+                        Image(systemName: "key.fill")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(UpdoTheme.cyan)
+                            .frame(width: 42, height: 42)
+                            .background(.ultraThinMaterial, in: Circle())
+                            .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(tr("byo_title"))
                 } else {
                     // iMessage-style capsule: field with send button inside, trailing
                     HStack(alignment: .bottom, spacing: 4) {
@@ -793,6 +834,25 @@ struct UpdoAIView: View {
         ) {
             result.apply()
             chatStore.appendLocalExchange(userText: text, assistantText: result.reply)
+            hapticResponse.notificationOccurred(.success)
+            return
+        }
+
+        // Token'sız yerel koç: sık sorular kullanıcının gerçek verisiyle
+        // anında cevaplanır — API'ye ve kotaya hiç dokunmaz.
+        let intentContext = UpdoAIIntentResponder.Context(
+            openTasks: recentTasks.prefix(5).map(\.title),
+            todayFocusMinutes: last7DaysFocus
+                .filter { Calendar.current.isDateInToday($0.endedAt) }
+                .map { $0.completedSeconds / 60 }
+                .reduce(0, +),
+            weekFocusMinutes: last7DaysFocus.map { $0.completedSeconds / 60 }.reduce(0, +),
+            weekSessionCount: last7DaysFocus.count,
+            streak: ProgressionManager.shared.currentStreak
+        )
+
+        if let localReply = UpdoAIIntentResponder.answer(text, context: intentContext) {
+            chatStore.appendLocalExchange(userText: text, assistantText: localReply)
             hapticResponse.notificationOccurred(.success)
             return
         }

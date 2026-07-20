@@ -603,14 +603,12 @@ private extension CrewFocusRoomBackendView {
             } else {
                 ForEach(participants, id: \.id) { participant in
                     HStack(spacing: 12) {
-                        Circle()
-                            .fill(Color.accentColor.opacity(0.16))
-                            .frame(width: 36, height: 36)
-                            .overlay(
-                                Text(String(participant.member_name.prefix(1)).uppercased())
-                                    .font(.caption.weight(.bold))
-                                    .foregroundStyle(Color.accentColor)
-                            )
+                        UserAvatarView(
+                            userID: participant.user_id,
+                            name: participant.member_name,
+                            tint: .accentColor,
+                            size: 36
+                        )
 
                         Text(participant.member_name)
                             .font(.subheadline.weight(.semibold))

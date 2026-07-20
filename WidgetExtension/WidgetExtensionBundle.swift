@@ -13,6 +13,9 @@ struct WidgetExtensionBundle: WidgetBundle {
     var body: some Widget {
         ScheduleWidget()
         FocusIdentityWidget()
+        UpdoStyledWidget()
+        UpdoProWeeklyWidget()
+        UpdoProStreakWidget()
         ScheduleLiveActivityWidget()
         FocusLiveActivityWidget()
     }

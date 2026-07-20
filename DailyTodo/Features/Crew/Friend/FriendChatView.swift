@@ -366,23 +366,12 @@ private extension FriendChatView {
                 } label: {
                     HStack(spacing: 10) {
                         ZStack(alignment: .bottomTrailing) {
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            hexColor(friend.colorHex).opacity(0.90),
-                                            FriendChatArenaPalette.purple.opacity(0.75)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .frame(width: 38, height: 38)
-                                .overlay(
-                                    Image(systemName: friend.avatarSymbol)
-                                        .font(.system(size: 16, weight: .black))
-                                        .foregroundStyle(.white)
-                                )
+                            UserAvatarView(
+                                userID: friend.backendUserID,
+                                name: friend.name,
+                                tint: hexColor(friend.colorHex),
+                                size: 38
+                            )
 
                             Circle()
                                 .fill(isFriendOnline ? FriendChatArenaPalette.green : Color.gray.opacity(0.65))
@@ -2132,7 +2121,9 @@ private extension FriendChatView {
             
             @ViewBuilder
             private var messageContent: some View {
-                if isImageMessage {
+                if let invite = CrewInviteMessage.parse(message.text) {
+                    CrewInviteBubble(invite: invite, isFromMe: message.isFromMe)
+                } else if isImageMessage {
                     imageMessageBubble
                 } else if isFileMessage {
                     fileMessageBubble
@@ -2588,6 +2579,152 @@ private extension FriendChatView {
         
         // MARK: - Full Screen Image Viewer
         
+        // Crew daveti kartı: [[crew_invite]] mesajı baloncuk yerine bu kartla
+        // çizilir; alıcı "Katıl"a basınca kod arka planda kabul edilir ve
+        // CrewStore sessizce yenilenir — uygulamayı yeniden açmak gerekmez.
+        private struct CrewInviteBubble: View {
+            let invite: CrewInviteMessage
+            let isFromMe: Bool
+
+            @State private var phase: Phase = .idle
+
+            private enum Phase: Equatable { case idle, joining, joined, failed }
+
+            var body: some View {
+                let shape = UnevenRoundedRectangle(
+                    topLeadingRadius: 18,
+                    bottomLeadingRadius: isFromMe ? 18 : 5,
+                    bottomTrailingRadius: isFromMe ? 5 : 18,
+                    topTrailingRadius: 18,
+                    style: .continuous
+                )
+
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 10) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [UpdoTheme.cyan.opacity(0.30), UpdoTheme.purple.opacity(0.30)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                            Image(systemName: "person.3.fill")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(.white)
+                        }
+                        .frame(width: 40, height: 40)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(tr("ci_eyebrow"))
+                                .font(.system(size: 9, weight: .black, design: .monospaced))
+                                .tracking(1.4)
+                                .foregroundStyle(UpdoTheme.cyan)
+
+                            Text(invite.crewName.isEmpty ? "Crew" : invite.crewName)
+                                .font(.system(size: 16, weight: .black))
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+                        }
+                    }
+
+                    if isFromMe {
+                        Text(tr("ci_sent"))
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.55))
+                    } else {
+                        joinButton
+
+                        if phase == .failed {
+                            Text(tr("ci_error"))
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(Color(arenaHex: "#FF5A44"))
+                        }
+                    }
+                }
+                .padding(14)
+                .frame(width: 230, alignment: .leading)
+                .background {
+                    shape.fill(UpdoTheme.surfaceHigh)
+                        .overlay(
+                            shape.strokeBorder(
+                                LinearGradient(
+                                    colors: [UpdoTheme.cyan.opacity(0.5), UpdoTheme.purple.opacity(0.5)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1
+                            )
+                        )
+                }
+                .clipShape(shape)
+            }
+
+            private var joinButton: some View {
+                Button {
+                    joinCrew()
+                } label: {
+                    HStack(spacing: 6) {
+                        switch phase {
+                        case .joining:
+                            ProgressView()
+                                .scaleEffect(0.7)
+                                .tint(.white)
+                        case .joined:
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 13, weight: .black))
+                            Text(tr("ci_joined"))
+                                .font(.system(size: 14, weight: .black))
+                        default:
+                            Image(systemName: "arrow.right.circle.fill")
+                                .font(.system(size: 13, weight: .black))
+                            Text(tr("ci_join"))
+                                .font(.system(size: 14, weight: .black))
+                        }
+                    }
+                    .foregroundStyle(phase == .joined ? FriendChatArenaPalette.green : .white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 38)
+                    .background(
+                        Capsule().fill(
+                            phase == .joined
+                            ? AnyShapeStyle(FriendChatArenaPalette.green.opacity(0.16))
+                            : AnyShapeStyle(
+                                LinearGradient(
+                                    colors: [UpdoTheme.cyan, UpdoTheme.purple],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                        )
+                    )
+                }
+                .buttonStyle(.plain)
+                .disabled(phase == .joining || phase == .joined)
+            }
+
+            private func joinCrew() {
+                guard phase == .idle || phase == .failed else { return }
+                phase = .joining
+
+                Task {
+                    do {
+                        _ = try await CrewBackendClient.shared.acceptInvite(code: invite.code)
+
+                        await MainActor.run {
+                            phase = .joined
+                            HapticManager.shared.success()
+                            NotificationCenter.default.post(name: .crewJoinedViaInvite, object: nil)
+                        }
+                    } catch {
+                        await MainActor.run { phase = .failed }
+                        Log.debug("CREW INVITE JOIN ERROR:", error.localizedDescription)
+                    }
+                }
+            }
+        }
+
         private struct FullScreenImageViewer: View {
             let imageURLString: String
             let onSave: () -> Void

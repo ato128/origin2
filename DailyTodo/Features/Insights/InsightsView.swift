@@ -27,6 +27,7 @@ struct InsightsView: View {
     // Profile (Instagram-style identity page)
     @State private var showProfileEdit = false
     @State private var showProfileShare = false
+    @State private var showOwnAvatarZoom = false
 
     @AppStorage("smartEngineEnabled") private var smartEngineEnabled: Bool = true
     @AppStorage("appTheme") private var appTheme = AppTheme.gradient.rawValue
@@ -735,13 +736,24 @@ struct InsightsView: View {
             .frame(width: 168, height: 168)
 
             // The person at the heart of the ring — photo, or a serif monogram
-            // tinted by the level until one is set.
+            // tinted by the level until one is set. Tapping a real photo opens
+            // the fullscreen zoom viewer.
             ProfileAvatarCircle(
                 image: avatarStore.image,
                 name: resolvedUserName,
                 accent: accent,
                 size: 142
             )
+            .onTapGesture {
+                if avatarStore.image != nil {
+                    showOwnAvatarZoom = true
+                }
+            }
+            .fullScreenCover(isPresented: $showOwnAvatarZoom) {
+                if let image = avatarStore.image {
+                    AvatarZoomViewer(image: image, name: resolvedUserName)
+                }
+            }
 
             // Level badge straddling the ring's bottom edge — focus-timer
             // serif typography, filled with the level's own gradient.

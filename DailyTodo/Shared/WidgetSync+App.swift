@@ -24,7 +24,12 @@ enum WidgetAppSync {
         longestStreak: Int = 0,
         todayTaskDone: Bool? = nil,
         todayFocusDone: Bool? = nil,
-        levelProgress: Double? = nil
+        levelProgress: Double? = nil,
+        weekFocusMinutes: [Int]? = nil,
+        prevWeekFocusMinutes: Int? = nil,
+        monthFullDays: [Int]? = nil,
+        monthHalfDays: [Int]? = nil,
+        peakHour: Int? = nil
     ) {
         var new = WidgetUserState(
             iconName: iconName,
@@ -39,6 +44,11 @@ enum WidgetAppSync {
         new.todayFocusDone = todayFocusDone
         new.statusDayKey = WidgetUserState.dayKey()
         new.levelProgress = levelProgress
+        new.weekFocusMinutes = weekFocusMinutes
+        new.prevWeekFocusMinutes = prevWeekFocusMinutes
+        new.monthFullDays = monthFullDays
+        new.monthHalfDays = monthHalfDays
+        new.peakHour = peakHour
 
         // Only reload timelines when something actually changed (cheap dedupe).
         let old = WidgetShared.readUserState()
@@ -50,9 +60,21 @@ enum WidgetAppSync {
             old.todayTaskDone != new.todayTaskDone ||
             old.todayFocusDone != new.todayFocusDone ||
             old.statusDayKey != new.statusDayKey ||
-            old.levelProgress != new.levelProgress {
+            old.levelProgress != new.levelProgress ||
+            old.weekFocusMinutes != new.weekFocusMinutes ||
+            old.prevWeekFocusMinutes != new.prevWeekFocusMinutes ||
+            old.monthFullDays != new.monthFullDays ||
+            old.monthHalfDays != new.monthHalfDays ||
+            old.peakHour != new.peakHour {
             WidgetCenter.shared.reloadAllTimelines()
         }
+    }
+
+    /// Persists the picked "Focus Card" widget style and redraws widgets.
+    static func updateWidgetStyle(_ raw: String) {
+        guard WidgetShared.readWidgetStyle() != raw else { return }
+        WidgetShared.writeWidgetStyle(raw)
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     /// Updates just the icon (keeps the rest of the snapshot intact).

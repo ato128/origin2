@@ -275,6 +275,60 @@ private extension MainTabView {
             streakDays: ProgressionManager.shared.currentStreak
         ).progress
 
+        // Pro widget'ların veri seti: haftalık odak dizisi, önceki hafta toplamı,
+        // ay içi seri günleri ve en verimli saat — hepsi gerçek kayıtlardan.
+        let completedFocus = scopedFocus.filter(\.countsTowardStats)
+        let today = cal.startOfDay(for: Date())
+
+        func focusMinutes(on day: Date) -> Int {
+            completedFocus
+                .filter { cal.isDate($0.endedAt, inSameDayAs: day) }
+                .reduce(0) { $0 + $1.completedSeconds } / 60
+        }
+
+        let last7 = (0..<7).reversed().compactMap { cal.date(byAdding: .day, value: -$0, to: today) }
+        let weekFocusMinutes = last7.map(focusMinutes(on:))
+
+        var prevWeekTotal = 0
+        if let windowEnd = cal.date(byAdding: .day, value: -6, to: today),
+           let windowStart = cal.date(byAdding: .day, value: -13, to: today) {
+            prevWeekTotal = completedFocus
+                .filter { $0.endedAt >= windowStart && $0.endedAt < windowEnd }
+                .reduce(0) { $0 + $1.completedSeconds } / 60
+        }
+
+        var taskDays = Set<Date>()
+        for task in scopedTasks where task.isDone {
+            if let done = task.completedAt { taskDays.insert(cal.startOfDay(for: done)) }
+        }
+        var focusDays = Set<Date>()
+        for rec in completedFocus { focusDays.insert(cal.startOfDay(for: rec.endedAt)) }
+
+        var monthFullDays: [Int] = []
+        var monthHalfDays: [Int] = []
+        if let monthStart = cal.date(from: cal.dateComponents([.year, .month], from: today)) {
+            let dayCount = cal.range(of: .day, in: .month, for: monthStart)?.count ?? 30
+            for offset in 0..<dayCount {
+                guard let day = cal.date(byAdding: .day, value: offset, to: monthStart), day <= today else { break }
+                let hasTask = taskDays.contains(day)
+                let hasFocus = focusDays.contains(day)
+                if hasTask && hasFocus { monthFullDays.append(offset + 1) }
+                else if hasTask || hasFocus { monthHalfDays.append(offset + 1) }
+            }
+        }
+
+        var peakHour: Int?
+        if let cutoff = cal.date(byAdding: .day, value: -30, to: Date()) {
+            let recent = completedFocus.filter { $0.startedAt >= cutoff }
+            if recent.count >= 5 {
+                var byHour = Array(repeating: 0, count: 24)
+                for s in recent { byHour[cal.component(.hour, from: s.startedAt)] += s.completedSeconds / 60 }
+                if let peak = byHour.enumerated().max(by: { $0.element < $1.element }), peak.element > 0 {
+                    peakHour = peak.offset
+                }
+            }
+        }
+
         WidgetAppSync.writeUserState(
             iconName: UIApplication.shared.alternateIconName,
             isPro: SubscriptionManager.shared.isPro,
@@ -285,7 +339,12 @@ private extension MainTabView {
             longestStreak: ProgressionManager.shared.longestStreak,
             todayTaskDone: taskDoneToday,
             todayFocusDone: focusDoneToday,
-            levelProgress: levelProgress
+            levelProgress: levelProgress,
+            weekFocusMinutes: weekFocusMinutes,
+            prevWeekFocusMinutes: prevWeekTotal,
+            monthFullDays: monthFullDays,
+            monthHalfDays: monthHalfDays,
+            peakHour: peakHour
         )
     }
 }
