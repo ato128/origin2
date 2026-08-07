@@ -2076,30 +2076,30 @@
 "ob_sc_welcome_sub" = "Tasks, timetable, focus and your friends — in one system.";
 "ob_sc_welcome_cta" = "Let's begin";
 
-"ob_home_eyebrow" = "TODAY";
-"ob_home_title" = "Your day,";
-"ob_home_accent" = "in focus";
-"ob_home_benefit" = "Your next class, tasks and streak — all in a single glance.";
+"ob_home_eyebrow" = "UPDO AI";
+"ob_home_title" = "Shape your";
+"ob_home_accent" = "day";
+"ob_home_benefit" = "Just message Updo AI — it builds your plan, adds tasks and keeps you focused.";
 
 "ob_week_eyebrow" = "WEEK";
-"ob_week_title" = "Whole week,";
-"ob_week_accent" = "planned";
-"ob_week_benefit" = "Your timetable, exams and events gathered into one calendar.";
+"ob_week_title" = "Your week,";
+"ob_week_accent" = "in control";
+"ob_week_benefit" = "Classes, exams and events flow into one live timeline.";
 
 "ob_focus_eyebrow" = "FOCUS";
 "ob_focus_title" = "Deep";
 "ob_focus_accent" = "focus";
-"ob_focus_benefit" = "Lock in completely with a timer, a goal and a Live Activity.";
+"ob_focus_benefit" = "Pick a length, hit start and lock in with a Live Activity.";
 
 "ob_crew_eyebrow" = "CREW";
 "ob_crew_title" = "Study";
 "ob_crew_accent" = "together";
-"ob_crew_benefit" = "Focus rooms, shared tasks and live progress with your friends.";
+"ob_crew_benefit" = "Build focus rooms with friends, share progress and grow the streak together.";
 
 "ob_ins_eyebrow" = "INSIGHTS";
-"ob_ins_title" = "Smart";
-"ob_ins_accent" = "insights";
-"ob_ins_benefit" = "AI finds your peak hours and shows your trajectory in clear numbers.";
+"ob_ins_title" = "Insights that";
+"ob_ins_accent" = "know you";
+"ob_ins_benefit" = "Updo AI finds your peak hours and shows your trajectory in clear numbers.";
 
 /* ── Showcase mocks v2 (faithful) ── */
 "ob_mk_remaining" = "70 min left";

@@ -7,6 +7,7 @@
 import SwiftUI
 import AuthenticationServices
 import CryptoKit
+import PhotosUI
 
 struct AuthView: View {
     @EnvironmentObject var session: SessionStore
@@ -202,23 +203,23 @@ private extension AuthView {
                 handleAppleCompletion(result)
             }
             .signInWithAppleButtonStyle(.white)
-            .frame(height: 52)
+            .frame(height: 54)
             .clipShape(Capsule())
+            .shadow(color: .black.opacity(0.28), radius: 12, y: 5)
 
-            // Google — same weight, white capsule with the brand "G".
+            // Google — same weight, white capsule with the real multi-color mark.
             Button(action: startGoogleSignIn) {
-                HStack(spacing: 8) {
-                    Text("G")
-                        .font(.system(size: 19, weight: .black, design: .rounded))
-                        .foregroundStyle(Color(arenaHex: "#4285F4"))
+                HStack(spacing: 10) {
+                    GoogleGLogo(size: 20)
 
                     Text(tr("av_continue_google"))
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(.black)
                 }
                 .frame(maxWidth: .infinity)
-                .frame(height: 52)
+                .frame(height: 54)
                 .background(Capsule().fill(.white))
+                .shadow(color: .black.opacity(0.28), radius: 12, y: 5)
             }
             .buttonStyle(AuthPressButtonStyle())
 
@@ -244,13 +245,13 @@ private extension AuthView {
                     Text(tr("av_continue_email"))
                         .font(.system(size: 16, weight: .bold))
                 }
-                .foregroundStyle(.white.opacity(0.9))
+                .foregroundStyle(.white.opacity(0.92))
                 .frame(maxWidth: .infinity)
-                .frame(height: 52)
+                .frame(height: 54)
                 .background(
                     Capsule()
-                        .fill(Color.white.opacity(0.055))
-                        .overlay(Capsule().strokeBorder(Color.white.opacity(0.13), lineWidth: 1))
+                        .fill(Color.white.opacity(0.06))
+                        .overlay(Capsule().strokeBorder(Color.white.opacity(0.14), lineWidth: 1))
                 )
             }
             .buttonStyle(AuthPressButtonStyle())
@@ -397,6 +398,143 @@ private struct AuthArenaBackground: View {
     }
 }
 
+// MARK: - Google logo
+
+/// Official multi-color Google "G", rendered from the brand SVG path data
+/// (48×48 viewBox) — exact logo, crisp at any size, no bundled asset needed.
+private struct GoogleGLogo: View {
+    var size: CGFloat = 20
+
+    private static let blue = Color(red: 66/255, green: 133/255, blue: 244/255)
+    private static let green = Color(red: 52/255, green: 168/255, blue: 83/255)
+    private static let yellow = Color(red: 251/255, green: 188/255, blue: 5/255)
+    private static let red = Color(red: 234/255, green: 67/255, blue: 53/255)
+
+    var body: some View {
+        ZStack {
+            SVGPathShape("M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z")
+                .fill(Self.blue)
+            SVGPathShape("M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z")
+                .fill(Self.green)
+            SVGPathShape("M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24s.85 6.91 2.34 9.88l7.35-5.7z")
+                .fill(Self.yellow)
+            SVGPathShape("M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z")
+                .fill(Self.red)
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+/// Minimal SVG path renderer (M m L l H h V v C c S s Z z) for a 48×48
+/// viewBox, scaled to fill the rect. Enough to draw the Google mark exactly.
+private struct SVGPathShape: Shape {
+    let data: String
+    private let viewBox: CGFloat = 48
+
+    init(_ data: String) { self.data = data }
+
+    private enum Token { case command(Character); case number(Double) }
+
+    func path(in rect: CGRect) -> Path {
+        let scale = min(rect.width, rect.height) / viewBox
+        func P(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: x * scale, y: y * scale) }
+
+        let tokens = Self.tokenize(data)
+        var path = Path()
+        var idx = 0
+        var cp = CGPoint.zero        // current point (viewBox coords)
+        var startPt = CGPoint.zero   // subpath start
+        var lastCtrl: CGPoint?       // last cubic control point (viewBox)
+        var cmd: Character = " "
+
+        func num() -> CGFloat {
+            if idx < tokens.count, case let .number(v) = tokens[idx] { idx += 1; return CGFloat(v) }
+            return 0
+        }
+
+        while idx < tokens.count {
+            let idxBefore = idx
+            if case let .command(c) = tokens[idx] { cmd = c; idx += 1 }
+
+            let rel = cmd.isLowercase
+            switch Character(cmd.uppercased()) {
+            case "M":
+                let x = num(); let y = num()
+                cp = rel ? CGPoint(x: cp.x + x, y: cp.y + y) : CGPoint(x: x, y: y)
+                path.move(to: P(cp.x, cp.y)); startPt = cp; lastCtrl = nil
+                cmd = rel ? "l" : "L"
+            case "L":
+                let x = num(); let y = num()
+                cp = rel ? CGPoint(x: cp.x + x, y: cp.y + y) : CGPoint(x: x, y: y)
+                path.addLine(to: P(cp.x, cp.y)); lastCtrl = nil
+            case "H":
+                let x = num()
+                cp = rel ? CGPoint(x: cp.x + x, y: cp.y) : CGPoint(x: x, y: cp.y)
+                path.addLine(to: P(cp.x, cp.y)); lastCtrl = nil
+            case "V":
+                let y = num()
+                cp = rel ? CGPoint(x: cp.x, y: cp.y + y) : CGPoint(x: cp.x, y: y)
+                path.addLine(to: P(cp.x, cp.y)); lastCtrl = nil
+            case "C":
+                let x1 = num(), y1 = num(), x2 = num(), y2 = num(), x = num(), y = num()
+                let c1 = rel ? CGPoint(x: cp.x + x1, y: cp.y + y1) : CGPoint(x: x1, y: y1)
+                let c2 = rel ? CGPoint(x: cp.x + x2, y: cp.y + y2) : CGPoint(x: x2, y: y2)
+                let end = rel ? CGPoint(x: cp.x + x, y: cp.y + y) : CGPoint(x: x, y: y)
+                path.addCurve(to: P(end.x, end.y), control1: P(c1.x, c1.y), control2: P(c2.x, c2.y))
+                lastCtrl = c2; cp = end
+            case "S":
+                let x2 = num(), y2 = num(), x = num(), y = num()
+                let c2 = rel ? CGPoint(x: cp.x + x2, y: cp.y + y2) : CGPoint(x: x2, y: y2)
+                let end = rel ? CGPoint(x: cp.x + x, y: cp.y + y) : CGPoint(x: x, y: y)
+                let c1 = lastCtrl.map { CGPoint(x: 2 * cp.x - $0.x, y: 2 * cp.y - $0.y) } ?? cp
+                path.addCurve(to: P(end.x, end.y), control1: P(c1.x, c1.y), control2: P(c2.x, c2.y))
+                lastCtrl = c2; cp = end
+            case "Z":
+                path.closeSubpath(); cp = startPt; lastCtrl = nil
+            default:
+                break
+            }
+
+            if idx == idxBefore { idx += 1 } // never stall
+        }
+        return path
+    }
+
+    private static func tokenize(_ s: String) -> [Token] {
+        var tokens: [Token] = []
+        let chars = Array(s)
+        var i = 0
+
+        func scanNumber() -> Double? {
+            var str = ""
+            if i < chars.count, chars[i] == "-" || chars[i] == "+" { str.append(chars[i]); i += 1 }
+            var hasDot = false
+            while i < chars.count {
+                let c = chars[i]
+                if c.isNumber { str.append(c); i += 1 }
+                else if c == "." && !hasDot { hasDot = true; str.append(c); i += 1 }
+                else if c == "e" || c == "E" {
+                    str.append(c); i += 1
+                    if i < chars.count, chars[i] == "-" || chars[i] == "+" { str.append(chars[i]); i += 1 }
+                } else { break }
+            }
+            return Double(str)
+        }
+
+        while i < chars.count {
+            let c = chars[i]
+            if c.isLetter { tokens.append(.command(c)); i += 1 }
+            else if c == " " || c == "," || c == "\n" || c == "\t" || c == "\r" { i += 1 }
+            else if c.isNumber || c == "-" || c == "+" || c == "." {
+                let before = i
+                if let n = scanNumber() { tokens.append(.number(n)) }
+                if i == before { i += 1 }
+            } else { i += 1 }
+        }
+        return tokens
+    }
+}
+
 // MARK: - Helpers
 
 private struct AuthPressButtonStyle: ButtonStyle {
@@ -419,5 +557,513 @@ enum AuthSheet: Identifiable {
         case .login: return "login"
         case .signup: return "signup"
         }
+    }
+}
+
+// MARK: - Profile Setup
+
+/// One-time gate shown right after sign-in: pick a unique @username (friends
+/// add you by it), then optionally set a profile photo — so the user never has
+/// to hunt for either of these inside the app later.
+struct ProfileSetupView: View {
+    @EnvironmentObject var session: SessionStore
+    @ObservedObject private var avatarStore = ProfileAvatarStore.shared
+
+    enum Step { case username, photo }
+    @State private var step: Step = .username
+
+    // Username step
+    @State private var username = ""
+    @State private var availability: Availability = .idle
+    @State private var checkTask: Task<Void, Never>?
+    @State private var isSubmitting = false
+    @State private var errorMessage: String?
+    @FocusState private var fieldFocused: Bool
+
+    // Photo step
+    @State private var photoItem: PhotosPickerItem?
+    @State private var isFinishing = false
+
+    private enum Availability {
+        case idle, checking, available, taken, invalid
+    }
+
+    private var isEnglish: Bool { appLanguageIsEnglish() }
+
+    private var canContinue: Bool {
+        availability == .available && !isSubmitting
+    }
+
+    var body: some View {
+        ZStack {
+            AuthArenaBackground()
+
+            Group {
+                switch step {
+                case .username: usernameStep
+                case .photo: photoStep
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 22)
+        }
+        .preferredColorScheme(.dark)
+        .animation(.easeInOut(duration: 0.3), value: step)
+        .onAppear {
+            if username.isEmpty {
+                username = session.suggestedUsername()
+            }
+            // A handle already exists (defensive) → go straight to the photo step.
+            let existing = (session.currentUser?.username ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if !existing.isEmpty { step = .photo }
+
+            scheduleAvailabilityCheck()
+            if step == .username {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    fieldFocused = true
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Profile Setup sections
+
+private extension ProfileSetupView {
+    var usernameStep: some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: 46)
+            heroSection
+            Spacer(minLength: 30)
+            fieldSection
+            Spacer(minLength: 22)
+            continueSection
+            Spacer(minLength: 18)
+        }
+    }
+
+    var heroSection: some View {
+        VStack(spacing: 20) {
+            UpdoAIOrb(mode: .idle, size: 82)
+
+            VStack(spacing: 12) {
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(Color(arenaHex: AuthArenaPalette.appCyan).opacity(0.7))
+                        .frame(width: 18, height: 1)
+
+                    Text(isEnglish ? "COMPLETE YOUR ACCOUNT" : "HESABINI TAMAMLA")
+                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .tracking(2.6)
+                        .foregroundStyle(Color(arenaHex: AuthArenaPalette.appCyan))
+
+                    Rectangle()
+                        .fill(Color(arenaHex: AuthArenaPalette.appCyan).opacity(0.7))
+                        .frame(width: 18, height: 1)
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(isEnglish ? "Pick a" : "Kullanıcı")
+                        .font(.system(size: 34, weight: .black))
+                        .foregroundStyle(.white)
+
+                    Text(isEnglish ? "handle" : "adını")
+                        .font(.system(size: 32, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    Color(arenaHex: AuthArenaPalette.appCyan),
+                                    Color(arenaHex: AuthArenaPalette.appPurple)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+
+                Text(isEnglish
+                     ? "Friends will find and add you by this username. You can change it later in your profile."
+                     : "Arkadaşların seni bu kullanıcı adıyla bulup ekleyecek. İstersen sonra profilinden değiştirebilirsin.")
+                    .font(.system(size: 14.5, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.6))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(2)
+                    .padding(.horizontal, 8)
+            }
+        }
+    }
+
+    var fieldSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Text("@")
+                    .font(.system(size: 20, weight: .black, design: .rounded))
+                    .foregroundStyle(Color(arenaHex: AuthArenaPalette.appCyan))
+
+                TextField("username", text: $username)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.asciiCapable)
+                    .submitLabel(.done)
+                    .focused($fieldFocused)
+                    .font(.system(size: 19, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .tint(Color(arenaHex: AuthArenaPalette.appCyan))
+                    .onChange(of: username) { _, newValue in
+                        let normalized = String(SessionStore.normalizedUsername(newValue).prefix(20))
+                        if normalized != newValue {
+                            username = normalized
+                        }
+                        errorMessage = nil
+                        scheduleAvailabilityCheck()
+                    }
+                    .onSubmit { submit() }
+
+                availabilityBadge
+            }
+            .padding(.horizontal, 18)
+            .frame(height: 60)
+            .background(fieldSurface)
+
+            statusLine
+                .padding(.horizontal, 4)
+        }
+    }
+
+    @ViewBuilder
+    var availabilityBadge: some View {
+        switch availability {
+        case .checking:
+            ProgressView()
+                .controlSize(.small)
+                .tint(Color.white.opacity(0.6))
+        case .available:
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(Color(arenaHex: AuthArenaPalette.appCyan))
+                .transition(.scale.combined(with: .opacity))
+        case .taken:
+            Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(Color(arenaHex: AuthArenaPalette.coral))
+                .transition(.scale.combined(with: .opacity))
+        case .idle, .invalid:
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    var statusLine: some View {
+        if let errorMessage {
+            statusText(errorMessage, tint: AuthArenaPalette.coral, icon: "exclamationmark.triangle.fill")
+        } else {
+            switch availability {
+            case .available:
+                statusText(isEnglish ? "Available" : "Müsait",
+                           tint: AuthArenaPalette.appCyan, icon: "checkmark")
+            case .taken:
+                statusText(isEnglish ? "Already taken" : "Alınmış",
+                           tint: AuthArenaPalette.coral, icon: "xmark")
+            case .invalid:
+                statusText(isEnglish ? "3–20 characters: letters, numbers or _" : "3–20 karakter: harf, rakam ya da _",
+                           tint: "#8A8AA0", icon: "info.circle")
+            case .idle, .checking:
+                statusText(isEnglish ? "Letters, numbers and _ only" : "Sadece harf, rakam ve _",
+                           tint: "#8A8AA0", icon: "at")
+            }
+        }
+    }
+
+    func statusText(_ text: String, tint: String, icon: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .bold))
+            Text(text)
+                .font(.system(size: 12.5, weight: .semibold))
+        }
+        .foregroundStyle(Color(arenaHex: tint).opacity(0.9))
+    }
+
+    var continueSection: some View {
+        VStack(spacing: 16) {
+            Button {
+                submit()
+            } label: {
+                HStack(spacing: 10) {
+                    if isSubmitting {
+                        ProgressView().tint(.white)
+                    } else {
+                        Text(isEnglish ? "Continue" : "Devam et")
+                            .font(.system(size: 18, weight: .black, design: .rounded))
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 15, weight: .black))
+                    }
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 58)
+                .background(
+                    Capsule().fill(
+                        canContinue
+                        ? AnyShapeStyle(AuthArenaPalette.appGradient)
+                        : AnyShapeStyle(Color.white.opacity(0.10))
+                    )
+                )
+                .overlay(
+                    Capsule().stroke(Color.white.opacity(canContinue ? 0.16 : 0.06), lineWidth: 1)
+                )
+                .shadow(
+                    color: canContinue ? Color(arenaHex: AuthArenaPalette.appPurple).opacity(0.26) : .clear,
+                    radius: 16, y: 8
+                )
+                .opacity(canContinue ? 1 : 0.7)
+            }
+            .buttonStyle(AuthPressButtonStyle())
+            .disabled(!canContinue)
+
+            Button {
+                session.signOut()
+            } label: {
+                Text(isEnglish ? "Sign out" : "Oturumu kapat")
+                    .font(.system(size: 13.5, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.42))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    var fieldSurface: some View {
+        RoundedRectangle(cornerRadius: 20, style: .continuous)
+            .fill(Color.white.opacity(0.07))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(
+                        availability == .available
+                        ? Color(arenaHex: AuthArenaPalette.appCyan).opacity(0.5)
+                        : (availability == .taken
+                           ? Color(arenaHex: AuthArenaPalette.coral).opacity(0.5)
+                           : Color.white.opacity(0.09)),
+                        lineWidth: 1
+                    )
+            )
+    }
+
+    func scheduleAvailabilityCheck() {
+        checkTask?.cancel()
+
+        let normalized = SessionStore.normalizedUsername(username)
+
+        guard SessionStore.isValidUsername(normalized) else {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                availability = normalized.isEmpty ? .idle : .invalid
+            }
+            return
+        }
+
+        withAnimation(.easeInOut(duration: 0.15)) { availability = .checking }
+
+        checkTask = Task {
+            try? await Task.sleep(nanoseconds: 420_000_000)
+            if Task.isCancelled { return }
+
+            let ok = await session.isUsernameAvailable(normalized)
+            if Task.isCancelled { return }
+
+            await MainActor.run {
+                // Ignore stale results if the field changed meanwhile.
+                guard SessionStore.normalizedUsername(username) == normalized else { return }
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    availability = ok ? .available : .taken
+                }
+            }
+        }
+    }
+
+    func submit() {
+        guard canContinue else { return }
+
+        fieldFocused = false
+        isSubmitting = true
+        errorMessage = nil
+
+        Task {
+            do {
+                try await session.chooseUsername(username)
+                HapticManager.shared.success()
+                // Handle claimed — move on to the optional photo step. The gate
+                // stays open (it keys off the profile-setup flag, not username).
+                withAnimation(.easeInOut(duration: 0.3)) { step = .photo }
+            } catch {
+                errorMessage = (error as? UsernameSetupError)?.errorDescription
+                    ?? error.localizedDescription
+                availability = .taken
+            }
+            isSubmitting = false
+        }
+    }
+
+    // MARK: Photo step
+
+    var photoStep: some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: 46)
+            photoHeroSection
+            Spacer(minLength: 34)
+            photoPickerSection
+            Spacer(minLength: 26)
+            photoContinueSection
+            Spacer(minLength: 18)
+        }
+    }
+
+    var photoHeroSection: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 8) {
+                Rectangle()
+                    .fill(Color(arenaHex: AuthArenaPalette.appCyan).opacity(0.7))
+                    .frame(width: 18, height: 1)
+
+                Text(isEnglish ? "ONE LAST STEP" : "SON BİR ADIM")
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .tracking(2.6)
+                    .foregroundStyle(Color(arenaHex: AuthArenaPalette.appCyan))
+
+                Rectangle()
+                    .fill(Color(arenaHex: AuthArenaPalette.appCyan).opacity(0.7))
+                    .frame(width: 18, height: 1)
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(isEnglish ? "Add a" : "Profil")
+                    .font(.system(size: 34, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text(isEnglish ? "photo" : "fotoğrafın")
+                    .font(.system(size: 32, weight: .regular, design: .serif))
+                    .italic()
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [
+                                Color(arenaHex: AuthArenaPalette.appCyan),
+                                Color(arenaHex: AuthArenaPalette.appPurple)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+
+            Text(isEnglish
+                 ? "Friends recognize you faster with a photo. It's optional — you can add it now or later."
+                 : "Fotoğrafla arkadaşların seni daha kolay tanır. İsteğe bağlı — şimdi ya da sonra ekleyebilirsin.")
+                .font(.system(size: 14.5, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.6))
+                .multilineTextAlignment(.center)
+                .lineSpacing(2)
+                .padding(.horizontal, 8)
+        }
+    }
+
+    var photoPickerSection: some View {
+        PhotosPicker(selection: $photoItem, matching: .images) {
+            ZStack(alignment: .bottomTrailing) {
+                ProfileAvatarCircle(
+                    image: avatarStore.image,
+                    name: session.currentUser?.fullName ?? "U",
+                    accent: Color(arenaHex: AuthArenaPalette.appCyan),
+                    size: 168
+                )
+                .overlay(
+                    Circle().stroke(Color.white.opacity(0.14), lineWidth: 1)
+                )
+                .shadow(color: Color(arenaHex: AuthArenaPalette.appPurple).opacity(0.28), radius: 22, y: 10)
+
+                Circle()
+                    .fill(AuthArenaPalette.appGradient)
+                    .frame(width: 46, height: 46)
+                    .overlay(
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(.white)
+                    )
+                    .overlay(Circle().stroke(Color.black.opacity(0.35), lineWidth: 3))
+                    .offset(x: 4, y: 4)
+            }
+        }
+        .buttonStyle(AuthPressButtonStyle())
+        .onChange(of: photoItem) { _, newItem in
+            guard let newItem else { return }
+            Task { await applyPhoto(newItem) }
+        }
+    }
+
+    var photoContinueSection: some View {
+        VStack(spacing: 16) {
+            Button {
+                finish()
+            } label: {
+                HStack(spacing: 10) {
+                    if isFinishing {
+                        ProgressView().tint(.white)
+                    } else {
+                        Text(avatarStore.image == nil
+                             ? (isEnglish ? "Skip for now" : "Şimdilik geç")
+                             : (isEnglish ? "Continue" : "Devam et"))
+                            .font(.system(size: 18, weight: .black, design: .rounded))
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 15, weight: .black))
+                    }
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 58)
+                .background(
+                    Capsule().fill(
+                        avatarStore.image == nil
+                        ? AnyShapeStyle(Color.white.opacity(0.10))
+                        : AnyShapeStyle(AuthArenaPalette.appGradient)
+                    )
+                )
+                .overlay(
+                    Capsule().stroke(Color.white.opacity(avatarStore.image == nil ? 0.10 : 0.16), lineWidth: 1)
+                )
+                .shadow(
+                    color: avatarStore.image == nil ? .clear : Color(arenaHex: AuthArenaPalette.appPurple).opacity(0.26),
+                    radius: 16, y: 8
+                )
+            }
+            .buttonStyle(AuthPressButtonStyle())
+            .disabled(isFinishing)
+
+            Text(isEnglish
+                 ? "You can always change it in your profile."
+                 : "İstediğin zaman profilinden değiştirebilirsin.")
+                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.4))
+                .multilineTextAlignment(.center)
+        }
+    }
+
+    func applyPhoto(_ item: PhotosPickerItem) async {
+        guard
+            let data = try? await item.loadTransferable(type: Data.self),
+            let uiImage = UIImage(data: data)
+        else { return }
+
+        avatarStore.save(uiImage, for: session.currentUser?.id.uuidString)
+        HapticManager.shared.success()
+    }
+
+    func finish() {
+        isFinishing = true
+        HapticManager.shared.success()
+        // Flips needsProfileSetup → false, so RootView moves on to onboarding/app.
+        session.markProfileSetupDone()
     }
 }

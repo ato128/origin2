@@ -270,11 +270,12 @@ private extension AuthFormSheetView {
                 try await session.signIn(email: trimmedEmail, password: cleanPassword)
 
             case .signup:
-                let generatedUsername = makeUsername(from: trimmedName, email: trimmedEmail)
+                // Username is chosen in the dedicated setup step after sign-in,
+                // so it stays empty here.
                 try await session.signUp(
                     fullName: trimmedName,
                     email: trimmedEmail,
-                    username: generatedUsername,
+                    username: "",
                     password: cleanPassword
                 )
             }
@@ -283,25 +284,6 @@ private extension AuthFormSheetView {
         } catch {
             errorMessage = readableError(from: error)
         }
-    }
-
-    func makeUsername(from name: String, email: String) -> String {
-        let baseName = name
-            .lowercased()
-            .folding(options: .diacriticInsensitive, locale: .current)
-            .replacingOccurrences(of: " ", with: "")
-            .filter { $0.isLetter || $0.isNumber }
-
-        if !baseName.isEmpty {
-            return baseName
-        }
-
-        let emailPart = email.components(separatedBy: "@").first ?? "user"
-        let cleaned = emailPart
-            .lowercased()
-            .filter { $0.isLetter || $0.isNumber }
-
-        return cleaned.isEmpty ? "user" : cleaned
     }
 
     func readableError(from error: Error) -> String {

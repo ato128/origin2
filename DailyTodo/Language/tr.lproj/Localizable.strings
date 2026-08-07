@@ -2077,30 +2077,30 @@
 "ob_sc_welcome_sub" = "Görevler, ders programı, odak ve arkadaşların — tek sistemde.";
 "ob_sc_welcome_cta" = "Hadi başlayalım";
 
-"ob_home_eyebrow" = "BUGÜN";
-"ob_home_title" = "Bugünün";
-"ob_home_accent" = "akışı";
-"ob_home_benefit" = "Sıradaki dersin, görevlerin ve serin — hepsi tek bir bakışta.";
+"ob_home_eyebrow" = "UPDO AI";
+"ob_home_title" = "Gününü";
+"ob_home_accent" = "şekillendir";
+"ob_home_benefit" = "Updo AI'ya yaz; planını kurar, görev ekler ve seni odakta tutar.";
 
 "ob_week_eyebrow" = "HAFTA";
-"ob_week_title" = "Tüm hafta";
-"ob_week_accent" = "planlı";
-"ob_week_benefit" = "Ders programın, sınavların ve etkinliklerin tek takvimde toplanır.";
+"ob_week_title" = "Haftan";
+"ob_week_accent" = "kontrolde";
+"ob_week_benefit" = "Dersler, sınavlar ve etkinlikler tek canlı zaman çizelgesinde toplanır.";
 
 "ob_focus_eyebrow" = "ODAK";
 "ob_focus_title" = "Derin";
 "ob_focus_accent" = "odak";
-"ob_focus_benefit" = "Zamanlayıcı, hedef ve Live Activity ile dikkatini tamamen topla.";
+"ob_focus_benefit" = "Süre seç, başlat ve Live Activity ile dikkatini tek noktaya kilitle.";
 
 "ob_crew_eyebrow" = "TAKIM";
 "ob_crew_title" = "Birlikte";
 "ob_crew_accent" = "çalış";
-"ob_crew_benefit" = "Arkadaşlarınla odak odaları, ortak görevler ve canlı ilerleme.";
+"ob_crew_benefit" = "Arkadaşlarınla odak odaları kur, ilerlemeni paylaş, seriyi birlikte büyüt.";
 
 "ob_ins_eyebrow" = "ANALİZ";
-"ob_ins_title" = "Akıllı";
+"ob_ins_title" = "Seni tanıyan";
 "ob_ins_accent" = "analiz";
-"ob_ins_benefit" = "AI en verimli saatlerini bulur, gidişatını net rakamlarla gösterir.";
+"ob_ins_benefit" = "Updo AI en verimli saatlerini bulur, gidişatını net rakamlarla gösterir.";
 
 /* ── Showcase mocks v2 (faithful) ── */
 "ob_mk_remaining" = "70 dk kaldı";

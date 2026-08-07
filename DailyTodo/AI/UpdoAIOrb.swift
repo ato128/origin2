@@ -21,6 +21,13 @@ struct UpdoAIOrb: View {
     var mode: Mode = .idle
     var size: CGFloat = 28
 
+    // Idle↔speaking is eased over time instead of snapping, so the orb glides
+    // brighter/dimmer as the voice starts and stops (no amateur flash).
+    @State private var energyFrom: Double = 0
+    @State private var energyTo: Double = 0
+    @State private var transitionStart: TimeInterval = 0
+    private let transitionDuration: TimeInterval = 0.6
+
     private var cyan: Color { Color(arenaHex: "#2DD4FF") }
     private var blue: Color { Color(arenaHex: "#3B82F6") }
     private var purple: Color { Color(arenaHex: "#8B5CF6") }
@@ -32,6 +39,27 @@ struct UpdoAIOrb: View {
             orb(t: t)
         }
         .frame(width: size * 1.3, height: size * 1.3)
+        .onAppear {
+            let target: Double = mode == .speaking ? 1 : 0
+            energyFrom = target
+            energyTo = target
+            transitionStart = 0   // already settled
+        }
+        .onChange(of: mode) { _, newMode in
+            // Start an eased crossfade from wherever we currently are.
+            let now = Date().timeIntervalSinceReferenceDate
+            energyFrom = currentLevel(now: now)
+            energyTo = (newMode == .speaking) ? 1 : 0
+            transitionStart = now
+        }
+    }
+
+    /// Eased 0…1 speaking level at `now` — smoothstep between the last two targets.
+    private func currentLevel(now: TimeInterval) -> Double {
+        guard transitionStart > 0 else { return energyTo }
+        let p = min(1, max(0, (now - transitionStart) / transitionDuration))
+        let eased = p * p * (3 - 2 * p)
+        return energyFrom + (energyTo - energyFrom) * eased
     }
 
     @ViewBuilder
@@ -39,9 +67,10 @@ struct UpdoAIOrb: View {
         // Speaking is a LIGHT change, not a motion change: the clouds keep
         // their calm drift and the orb keeps its slow breath — only the
         // interior brightens, like a voice lighting the glass from within.
-        let speaking = mode == .speaking
-        let speed: Double = speaking ? 0.75 : 0.55
-        let energy: Double = speaking ? 1.0 : 0.55
+        // `level` eases 0→1 as speaking begins/ends, so nothing snaps.
+        let level = currentLevel(now: t)
+        let speed: Double = 0.55 + 0.20 * level
+        let energy: Double = 0.55 + 0.45 * level
         let breathe = 1 + 0.014 * sin(t * 1.3)
 
         ZStack {
@@ -105,7 +134,7 @@ struct UpdoAIOrb: View {
                           diameter: 0.26, blur: 0.10,
                           fx: 2.6, fy: 2.2, px: 2.2, py: 0.3,
                           ax: 0.18, ay: 0.16,
-                          opacity: speaking ? 0.34 : 0.16)
+                          opacity: 0.16 + 0.18 * level)
                 }
                 .blendMode(.plusLighter)
 
@@ -164,7 +193,7 @@ struct UpdoAIOrb: View {
         }
         .scaleEffect(breathe)
         .drawingGroup()
-        .shadow(color: purple.opacity(speaking ? 0.45 : 0.25), radius: size * 0.16, y: size * 0.05)
+        .shadow(color: purple.opacity(0.25 + 0.20 * level), radius: size * 0.16, y: size * 0.05)
     }
 
     /// One blurred colour cloud on a Lissajous orbit inside the sphere.

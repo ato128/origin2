@@ -79,6 +79,11 @@ struct RootView: View {
                 AuthView()
                     .transition(.opacity)
 
+            } else if session.needsProfileSetup {
+                ProfileSetupView()
+                    .environmentObject(session)
+                    .transition(.opacity)
+
             } else if shouldShowOnboarding {
                 AppOnboardingFlowView()
                     .transition(.opacity)
@@ -145,6 +150,7 @@ struct RootView: View {
         .animation(.easeInOut(duration: 0.26), value: shouldShowBlockingLaunch)
         .animation(.easeInOut(duration: 0.24), value: shouldShowOnboarding)
         .animation(.easeInOut(duration: 0.24), value: session.shouldShowEmailVerificationGate)
+        .animation(.easeInOut(duration: 0.24), value: session.needsProfileSetup)
         .task {
             startLaunchSequenceIfNeeded()
             await session.resolveInitialSessionIfNeeded()

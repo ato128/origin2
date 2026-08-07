@@ -15,9 +15,12 @@ func tr(_ key: String) -> String {
     case "turkish": langCode = "tr"
     case "english": langCode = "en"
     default:
-        return NSLocalizedString(key, comment: "")
+        // "system" → follow the device's top preferred language deterministically
+        // (kept in sync with appLanguageIsEnglish()), so the whole UI matches the
+        // native Sign in with Apple button instead of drifting to the base strings.
+        langCode = (Locale.preferredLanguages.first ?? "en").hasPrefix("tr") ? "tr" : "en"
     }
-    
+
     guard let path = Bundle.main.path(forResource: langCode, ofType: "lproj"),
           let bundle = Bundle(path: path) else {
         return NSLocalizedString(key, comment: "")

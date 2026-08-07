@@ -16,6 +16,24 @@ struct AppUser: Codable, Equatable {
     var username: String
 }
 
+enum UsernameSetupError: LocalizedError {
+    case invalid
+    case taken
+
+    var errorDescription: String? {
+        switch self {
+        case .invalid:
+            return appLanguageIsEnglish()
+                ? "Use 3–20 characters: letters, numbers or _."
+                : "3–20 karakter: harf, rakam ya da _ kullan."
+        case .taken:
+            return appLanguageIsEnglish()
+                ? "That username is already taken."
+                : "Bu kullanıcı adı alınmış."
+        }
+    }
+}
+
 struct Profile: Decodable {
     let id: UUID
     let email: String
@@ -75,6 +93,44 @@ final class SessionStore: ObservableObject {
         !isEmailVerified
     }
 
+    /// Signed-in but has no chosen @username yet (social sign-in and email
+    /// sign-up no longer auto-generate one).
+    var needsUsernameSetup: Bool {
+        guard isSignedIn, let currentUser else { return false }
+        return currentUser.username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// Drives the one-time ProfileSetupView gate (pick @username, then optional
+    /// photo). Keyed off a per-user local flag so it survives the username being
+    /// set mid-flow; returning users with a handle are back-filled as done.
+    var needsProfileSetup: Bool {
+        guard isSignedIn, let currentUser else { return false }
+        return !isProfileSetupDone(currentUser.id)
+    }
+
+    private func profileSetupDoneKey(_ id: UUID) -> String {
+        "updo_profile_setup_done_\(id.uuidString)"
+    }
+
+    func isProfileSetupDone(_ id: UUID) -> Bool {
+        UserDefaults.standard.bool(forKey: profileSetupDoneKey(id))
+    }
+
+    /// Marks the flow complete (called after the photo step) and nudges SwiftUI
+    /// to re-evaluate the gate, since the flag lives in UserDefaults.
+    func markProfileSetupDone() {
+        guard let id = currentUser?.id else { return }
+        UserDefaults.standard.set(true, forKey: profileSetupDoneKey(id))
+        objectWillChange.send()
+    }
+
+    /// Existing accounts already have a username — treat them as done so the
+    /// setup gate never appears for them.
+    private func backfillProfileSetupFlag(_ user: AppUser) {
+        guard !user.username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        UserDefaults.standard.set(true, forKey: profileSetupDoneKey(user.id))
+    }
+
     // MARK: - Local Restore
 
     func restoreSession() {
@@ -94,6 +150,7 @@ final class SessionStore: ObservableObject {
 
         currentUser = user
         isEmailVerified = cachedVerified
+        backfillProfileSetupFlag(user)
 
         if cachedVerified {
             pendingVerificationEmail = nil
@@ -185,15 +242,21 @@ final class SessionStore: ObservableObject {
 
         do {
             Log.debug("EMAIL SENT:", cleanEmail)
-            Log.debug("USERNAME SENT:", cleanUsername)
+
+            // Username is chosen later in the dedicated setup step, so only
+            // seed it here if a caller explicitly provided one. Leaving it out
+            // keeps profiles.username NULL until the user picks a handle.
+            var metadata: [String: AnyJSON] = [
+                "full_name": AnyJSON.string(cleanFullName)
+            ]
+            if !cleanUsername.isEmpty {
+                metadata["username"] = AnyJSON.string(cleanUsername)
+            }
 
             _ = try await SupabaseManager.shared.client.auth.signUp(
                 email: cleanEmail,
                 password: cleanPassword,
-                data: [
-                    "full_name": AnyJSON.string(cleanFullName),
-                    "username": AnyJSON.string(cleanUsername)
-                ]
+                data: metadata
             )
 
             currentUser = nil
@@ -295,17 +358,13 @@ final class SessionStore: ObservableObject {
             .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first { !$0.isEmpty } ?? fallbackName
 
-        // Unique-enough handle from the email prefix.
-        let base = fallbackName
-            .lowercased()
-            .replacingOccurrences(of: #"[^a-z0-9]"#, with: "", options: .regularExpression)
-        let username = "\(base.isEmpty ? "student" : base)\(Int.random(in: 100...999))"
-
+        // No username yet — the user picks a real handle in the setup step.
+        // Leaving it NULL is what the UsernameSetupView gate keys off of.
         struct NewProfile: Encodable {
             let id: String
             let email: String
             let full_name: String
-            let username: String
+            let username: String?
         }
 
         try await SupabaseManager.shared.client
@@ -314,7 +373,7 @@ final class SessionStore: ObservableObject {
                 id: user.id.uuidString,
                 email: email,
                 full_name: fullName,
-                username: username
+                username: nil
             ))
             .execute()
     }
@@ -609,6 +668,88 @@ final class SessionStore: ObservableObject {
         saveUser(updatedUser)
     }
 
+    // MARK: - Username setup
+
+    private static let usernameAllowedCharacters = Set("abcdefghijklmnopqrstuvwxyz0123456789_")
+
+    /// Lowercases, strips diacritics and drops any character that isn't a
+    /// letter, number or underscore — mirrors how usernames are stored/searched.
+    static func normalizedUsername(_ raw: String) -> String {
+        let lowered = raw.lowercased().folding(options: .diacriticInsensitive, locale: .current)
+        return String(lowered.filter { usernameAllowedCharacters.contains($0) })
+    }
+
+    static func isValidUsername(_ normalized: String) -> Bool {
+        normalized.count >= 3 && normalized.count <= 20
+    }
+
+    /// A starting suggestion for the setup field, derived from name then email.
+    func suggestedUsername() -> String {
+        guard let currentUser else { return "" }
+
+        let fromName = Self.normalizedUsername(currentUser.fullName)
+        if fromName.count >= 3 { return String(fromName.prefix(20)) }
+
+        let emailPrefix = currentUser.email.components(separatedBy: "@").first ?? ""
+        let fromEmail = Self.normalizedUsername(emailPrefix)
+        if fromEmail.count >= 3 { return String(fromEmail.prefix(20)) }
+
+        return fromName.isEmpty ? fromEmail : fromName
+    }
+
+    /// True when `candidate` is free (or already owned by the current user).
+    func isUsernameAvailable(_ candidate: String) async -> Bool {
+        let clean = Self.normalizedUsername(candidate)
+        guard Self.isValidUsername(clean) else { return false }
+
+        struct Row: Decodable { let id: UUID }
+
+        do {
+            let response = try await SupabaseManager.shared.client
+                .from("profiles")
+                .select("id")
+                .eq("username", value: clean)
+                .limit(1)
+                .execute()
+
+            let rows = (try? JSONDecoder().decode([Row].self, from: response.data)) ?? []
+            if rows.isEmpty { return true }
+            return rows.first?.id == currentUser?.id
+        } catch {
+            return false
+        }
+    }
+
+    /// Validates + claims a username, persisting it to the profile row.
+    func chooseUsername(_ raw: String) async throws {
+        guard let currentUser else { return }
+
+        let clean = Self.normalizedUsername(raw)
+        guard Self.isValidUsername(clean) else { throw UsernameSetupError.invalid }
+
+        guard await isUsernameAvailable(clean) else { throw UsernameSetupError.taken }
+
+        do {
+            try await SupabaseManager.shared.client
+                .from("profiles")
+                .update(["username": clean])
+                .eq("id", value: currentUser.id.uuidString)
+                .execute()
+        } catch {
+            // A unique-constraint race lands here — surface it as "taken".
+            let message = error.localizedDescription.lowercased()
+            if message.contains("duplicate") || message.contains("unique") {
+                throw UsernameSetupError.taken
+            }
+            throw error
+        }
+
+        var updatedUser = currentUser
+        updatedUser.username = clean
+        self.currentUser = updatedUser
+        saveUser(updatedUser)
+    }
+
     private func loadProfileAndSetCurrentUser(userID: UUID) async throws {
         let profileResponse = try await SupabaseManager.shared.client
             .from("profiles")
@@ -628,6 +769,7 @@ final class SessionStore: ObservableObject {
 
         currentUser = appUser
         saveUser(appUser)
+        backfillProfileSetupFlag(appUser)
     }
 
     // MARK: - Helpers

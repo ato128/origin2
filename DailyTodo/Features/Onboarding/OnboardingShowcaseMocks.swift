@@ -91,13 +91,13 @@ private struct MockHeader: View {
                     Rectangle().fill(accentColor).frame(width: 12, height: 1)
                 }
                 Text(eyebrow)
-                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
                     .tracking(1.6).foregroundStyle(accentColor.opacity(0.9))
                     .lineLimit(1).minimumScaleFactor(0.7)
             }
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(title).font(.system(size: 17, weight: .black)).foregroundStyle(.white)
-                Text(accent).font(.system(size: 16, weight: .regular, design: .serif)).italic()
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Text(title).font(.system(size: 22, weight: .black)).foregroundStyle(.white)
+                Text(accent).font(.system(size: 20, weight: .regular, design: .serif)).italic()
                     .foregroundStyle(accentColor)
             }
             .lineLimit(1).minimumScaleFactor(0.7)
@@ -137,7 +137,7 @@ private struct MockIconChip: View {
 private struct MockTabBar: View {
     let active: Int
     let accent: Color
-    private let icons = ["house.fill", "calendar", "person.3.fill", "timer", "chart.bar.fill"]
+    private let icons = ["house.fill", "calendar", "person.3.fill", "timer", "person.fill"]
     private let labelKeys = ["tab_home", "tab_week", "tab_crew", "tab_focus", "tab_insights"]
 
     var body: some View {
@@ -180,56 +180,70 @@ private struct MockTabBar: View {
 private struct HomeMock: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Top bar
+            // Top bar — streak flame + messages
             HStack {
-                Circle().fill(LinearGradient(colors: [cCyan, cBlue], startPoint: .top, endPoint: .bottom))
-                    .frame(width: 26, height: 26)
-                    .overlay(Text("A").font(.system(size: 12, weight: .black)).foregroundStyle(.white))
+                HStack(spacing: 4) {
+                    Image(systemName: "flame.fill").font(.system(size: 10, weight: .black)).foregroundStyle(cGold)
+                    Text("7").font(.system(size: 11, weight: .black, design: .rounded)).foregroundStyle(.white)
+                }
+                .padding(.horizontal, 8).padding(.vertical, 5)
+                .background(Capsule().fill(cGold.opacity(0.13)).overlay(Capsule().stroke(cGold.opacity(0.28), lineWidth: 1)))
                 Spacer()
-                MockIconChip(icon: "checklist")
                 MockIconChip(icon: "bubble.left.and.bubble.right.fill")
             }
 
-            // Hero
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 5) {
-                    Circle().fill(cGreen).frame(width: 5, height: 5)
-                    Text(tr("ob_mk_now_live")).font(.system(size: 8, weight: .bold, design: .monospaced))
-                        .tracking(1.4).foregroundStyle(cGold)
+            // AI-first hero — orb + greeting + command bar + intent chips
+            VStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(RadialGradient(colors: [cCyan.opacity(0.28), cPurple.opacity(0.10), .clear],
+                                             center: .center, startRadius: 4, endRadius: 46))
+                        .frame(width: 92, height: 92)
+                    UpdoAIOrb(size: 54)
                 }
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text("Operating Systems").font(.system(size: 16, weight: .black)).foregroundStyle(.white)
-                    Text("aktif").font(.system(size: 14, weight: .regular, design: .serif)).italic()
-                        .foregroundStyle(cBlue.opacity(0.7))
+                .frame(height: 74)
+
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    Text(appLanguageIsEnglish() ? "What's" : "Bugün ne")
+                        .font(.system(size: 19, weight: .black)).foregroundStyle(.white)
+                    Text(appLanguageIsEnglish() ? "the plan?" : "planlayalım?")
+                        .font(.system(size: 17, weight: .regular, design: .serif)).italic()
+                        .foregroundStyle(LinearGradient(colors: [cCyan, cBlue, cPurple], startPoint: .topLeading, endPoint: .bottomTrailing))
+                }
+                .lineLimit(1).minimumScaleFactor(0.6)
+
+                Text(appLanguageIsEnglish() ? "3 tasks today · 7-day streak" : "Bugün 3 görev · 7 günlük seri")
+                    .font(.system(size: 9.5, weight: .semibold)).foregroundStyle(.white.opacity(0.5))
+
+                // Command bar
+                HStack(spacing: 7) {
+                    Text(appLanguageIsEnglish() ? "Ask Updo AI…" : "Updo AI'ya sor…")
+                        .font(.system(size: 10, weight: .medium)).foregroundStyle(.white.opacity(0.42))
+                    Spacer()
+                    HStack(spacing: 2) {
+                        Image(systemName: "bolt.fill").font(.system(size: 6, weight: .black))
+                        Text("1000").font(.system(size: 7.5, weight: .black, design: .monospaced))
+                    }
+                    .foregroundStyle(cCyan.opacity(0.75))
+                    Image(systemName: "arrow.up").font(.system(size: 9, weight: .bold)).foregroundStyle(.black)
+                        .frame(width: 21, height: 21).background(Circle().fill(cCyan))
+                }
+                .padding(.leading, 12).padding(.trailing, 5).padding(.vertical, 5)
+                .background(
+                    Capsule().fill(Color.white.opacity(0.06))
+                        .overlay(Capsule().stroke(LinearGradient(colors: [cCyan.opacity(0.35), cPurple.opacity(0.30)], startPoint: .leading, endPoint: .trailing), lineWidth: 1))
+                )
+
+                // Intent chips
+                HStack(spacing: 6) {
+                    miniChip("sparkles", tr("hv_chip_plan"))
+                    miniChip("plus", tr("hv_chip_add"))
+                    miniChip("flame", tr("hv_chip_motivation"))
+                    miniChip("book.closed", tr("hv_chip_exam"))
                 }
                 .lineLimit(1).minimumScaleFactor(0.7)
-                HStack(spacing: 5) {
-                    Image(systemName: "clock").font(.system(size: 8, weight: .bold))
-                    Text("01:00 — 03:00 · \(tr("ob_mk_remaining"))")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
-                }
-                .foregroundStyle(.white.opacity(0.5))
             }
-
-            // UPDO AI card
-            HStack(spacing: 9) {
-                Image(systemName: "sparkles").font(.system(size: 14, weight: .black))
-                    .foregroundStyle(.white)
-                    .frame(width: 30, height: 30)
-                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(LinearGradient(colors: [cPurple, cBlue], startPoint: .topLeading, endPoint: .bottomTrailing)))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("UPDO AI").font(.system(size: 9, weight: .black, design: .monospaced)).tracking(1)
-                        .foregroundStyle(.white)
-                    Text(tr("ob_mk_ai_hint")).font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.5)).lineLimit(1).minimumScaleFactor(0.7)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(.system(size: 9, weight: .black)).foregroundStyle(.white.opacity(0.4))
-            }
-            .padding(11)
             .frame(maxWidth: .infinity)
-            .mockCard(cPurple)
 
             // Today's flow + timeline
             HStack(spacing: 6) {
@@ -255,13 +269,6 @@ private struct HomeMock: View {
             .padding(11)
             .frame(maxWidth: .infinity)
             .mockCard(cCyan)
-
-            // Metrics
-            HStack(spacing: 8) {
-                metric(label: "FOCUS", value: "2", sub: "sa", icon: "timer", tint: cCyan)
-                metric(label: tr("ob_mk_tasks_done"), value: "3", sub: tr("ob_mk_task_sub"), icon: "checklist", tint: cPurple)
-                metric(label: "SERİ", value: "7", sub: tr("ob_mk_streak_sub"), icon: "flame.fill", tint: cGold)
-            }
 
             Spacer(minLength: 0)
         }
@@ -297,21 +304,17 @@ private struct HomeMock: View {
         }
     }
 
-    private func metric(label: String, value: String, sub: String, icon: String, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack {
-                Text(label).font(.system(size: 7, weight: .black, design: .monospaced)).tracking(0.6).foregroundStyle(tint)
-                Spacer()
-                Image(systemName: icon).font(.system(size: 9, weight: .black)).foregroundStyle(tint)
-            }
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text(value).font(.system(size: 17, weight: .black)).foregroundStyle(.white)
-                Text(sub).font(.system(size: 7, weight: .bold)).foregroundStyle(.white.opacity(0.45))
-            }
-            .lineLimit(1).minimumScaleFactor(0.6)
+    private func miniChip(_ icon: String, _ title: String) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: icon).font(.system(size: 7, weight: .black))
+            Text(title).font(.system(size: 8, weight: .bold))
         }
-        .padding(9).frame(maxWidth: .infinity, alignment: .leading).frame(height: 52)
-        .mockCard(tint, radius: 13)
+        .foregroundStyle(.white.opacity(0.7))
+        .padding(.horizontal, 7).padding(.vertical, 4)
+        .background(
+            Capsule().fill(Color.white.opacity(0.06))
+                .overlay(Capsule().stroke(Color.white.opacity(0.10), lineWidth: 1))
+        )
     }
 }
 
@@ -351,8 +354,8 @@ private struct WeekMock: View {
                 }
             }
 
-            // Day hero (coral)
-            VStack(alignment: .leading, spacing: 7) {
+            // Day hero (coral) — active class + signature mini timeline
+            VStack(alignment: .leading, spacing: 9) {
                 HStack {
                     HStack(spacing: 4) {
                         Circle().fill(cCoral).frame(width: 5, height: 5)
@@ -362,20 +365,14 @@ private struct WeekMock: View {
                     Text("PER · 18 HAZ").font(.system(size: 7, weight: .bold, design: .monospaced)).foregroundStyle(.white.opacity(0.4))
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    Text(localizedWeekdayFull(3)).font(.system(size: 16, weight: .black)).foregroundStyle(.white)
-                    Text("18 Haziran").font(.system(size: 14, weight: .regular, design: .serif)).italic().foregroundStyle(cCoral)
+                    Text("Operating Systems").font(.system(size: 16, weight: .black)).foregroundStyle(.white)
+                    Text(appLanguageIsEnglish() ? "live" : "aktif")
+                        .font(.system(size: 14, weight: .regular, design: .serif)).italic()
+                        .foregroundStyle(LinearGradient(colors: [cCoral, cBlue], startPoint: .leading, endPoint: .trailing))
                 }
                 .lineLimit(1).minimumScaleFactor(0.7)
-                // progress line
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.08)).frame(height: 4)
-                    Capsule().fill(cBlue).frame(width: 36, height: 4).offset(x: 30)
-                }
-                HStack {
-                    Text(tr("ob_mk_day_summary")).font(.system(size: 8, weight: .bold, design: .monospaced)).foregroundStyle(.white.opacity(0.5))
-                    Spacer()
-                    Text(tr("ob_mk_remaining_caps")).font(.system(size: 8, weight: .black, design: .monospaced)).foregroundStyle(cCoral)
-                }
+
+                miniTimeline
             }
             .padding(12)
             .frame(maxWidth: .infinity)
@@ -390,6 +387,46 @@ private struct WeekMock: View {
                      tint: cBlue, trailing: .repeatT, dashed: false)
 
             Spacer(minLength: 0)
+        }
+    }
+
+    // Signature 06–24 mini timeline: hour labels + capsule bar with coloured
+    // event blocks + a "now" indicator + summary — mirrors the real Week hero.
+    private var miniTimeline: some View {
+        VStack(spacing: 6) {
+            HStack {
+                ForEach([6, 9, 12, 15, 18, 21, 24], id: \.self) { h in
+                    Text(String(format: "%02d", h))
+                        .font(.system(size: 7, weight: .black, design: .monospaced))
+                        .foregroundStyle(h == 3 ? cCoral : .white.opacity(0.32))
+                        .frame(maxWidth: .infinity)
+                }
+            }
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.white.opacity(0.06))
+
+                    Capsule().fill(cCoral).frame(width: geo.size.width * 0.16, height: 7).offset(x: geo.size.width * 0.05)
+                    Capsule().fill(cBlue).frame(width: geo.size.width * 0.11, height: 7).offset(x: geo.size.width * 0.34)
+                    Capsule().fill(cPurple).frame(width: geo.size.width * 0.13, height: 7).offset(x: geo.size.width * 0.60)
+
+                    Capsule().fill(.white)
+                        .frame(width: 2, height: 13)
+                        .shadow(color: .white.opacity(0.6), radius: 3)
+                        .offset(x: geo.size.width * 0.16 - 1)
+                }
+                .frame(height: 7)
+            }
+            .frame(height: 7)
+
+            HStack {
+                Text(tr("ob_mk_day_summary"))
+                    .font(.system(size: 9, weight: .semibold)).foregroundStyle(.white.opacity(0.55))
+                Spacer()
+                Text(appLanguageIsEnglish() ? "70 MIN LEFT" : "70 DK KALDI")
+                    .font(.system(size: 8, weight: .black, design: .monospaced)).foregroundStyle(cCoral)
+            }
         }
     }
 
@@ -446,8 +483,6 @@ private struct WeekMock: View {
 // MARK: - 3 · Focus
 
 private struct FocusMock: View {
-    private let ringGrad = LinearGradient(colors: [cCyan, cPurple], startPoint: .topTrailing, endPoint: .bottomLeading)
-
     var body: some View {
         VStack(spacing: 10) {
             // Header with two trailing icon buttons (real screen)
@@ -457,313 +492,416 @@ private struct FocusMock: View {
                 MockIconChip(icon: "ellipsis")
             }
 
-            // Segmented
-            HStack(spacing: 6) {
-                segment("Personal", icon: "person.fill", active: true)
-                segment("Crew", icon: "person.3.fill", active: false)
-                segment("Friend", icon: "person.2.fill", active: false)
+            // Mode segmented — underline style (Personal / Crew / Friend)
+            HStack(spacing: 0) {
+                fSegment("Personal", icon: "person.fill", active: true)
+                fSegment("Crew", icon: "person.3.fill", active: false)
+                fSegment("Friend", icon: "person.2.fill", active: false)
             }
+            .padding(.top, 2)
 
-            // Focus card
-            VStack(spacing: 11) {
-                HStack {
-                    HStack(spacing: 4) {
-                        Rectangle().fill(cCyan).frame(width: 10, height: 1)
-                        Text("PERSONAL RHYTHM").font(.system(size: 7, weight: .black, design: .monospaced)).tracking(1).foregroundStyle(cCyan)
-                    }
-                    Spacer()
-                    HStack(spacing: 4) {
-                        Circle().fill(cCyan).frame(width: 5, height: 5)
-                        Text(tr("ob_mk_ready").uppercased()).font(.system(size: 7, weight: .black, design: .monospaced)).foregroundStyle(cCyan)
-                    }
-                    .padding(.horizontal, 7).padding(.vertical, 4).background(Capsule().fill(cCyan.opacity(0.12)))
-                }
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(tr("ob_mk_personal")).font(.system(size: 15, weight: .black)).foregroundStyle(.white)
-                    Text("Focus").font(.system(size: 14, weight: .regular, design: .serif)).italic().foregroundStyle(cCyan)
-                    Spacer()
-                }
-
-                ZStack {
-                    Circle().stroke(Color.white.opacity(0.06), lineWidth: 12)
-                    Circle().trim(from: 0, to: 0.7)
-                        .stroke(ringGrad, style: StrokeStyle(lineWidth: 12, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .shadow(color: cPurple.opacity(0.45), radius: 9)
-                    VStack(spacing: 2) {
-                        Text("25 dk").font(.system(size: 32, weight: .black)).foregroundStyle(.white)
-                        Text(tr("ob_mk_ready")).font(.system(size: 11, weight: .bold)).foregroundStyle(.white.opacity(0.75))
-                    }
-                }
-                .frame(width: 124, height: 124)
-
-                // Status pill under the ring
+            // Editorial big-number hero — the duration IS the page (no ring)
+            VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 6) {
-                    Circle().fill(cCyan).frame(width: 5, height: 5)
-                    Text(tr("ob_mk_ready")).font(.system(size: 9, weight: .black)).foregroundStyle(cCyan)
-                    Text("· Study • Silent").font(.system(size: 9, weight: .semibold)).foregroundStyle(.white.opacity(0.5))
+                    Circle().fill(cCyan).frame(width: 5, height: 5).shadow(color: cCyan.opacity(0.6), radius: 4)
+                    Text(tr("ob_mk_ready").uppercased())
+                        .font(.system(size: 8, weight: .black, design: .monospaced)).tracking(1.6)
+                        .foregroundStyle(.white.opacity(0.55))
                 }
-                .padding(.horizontal, 12).padding(.vertical, 6)
-                .background(Capsule().fill(Color.white.opacity(0.05)))
-            }
-            .padding(13)
-            .frame(maxWidth: .infinity)
-            .mockCard(cCyan)
 
-            // Duration pills
-            HStack(spacing: 6) {
+                Text("25")
+                    .font(.system(size: 62, weight: .bold, design: .serif)).italic()
+                    .foregroundStyle(LinearGradient(colors: [.white, Color(arenaHex: "#7C8AA8")], startPoint: .top, endPoint: .bottom))
+                    .kerning(-1.2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(alignment: .leading) {
+                        Ellipse().fill(cCyan.opacity(0.10)).frame(width: 170, height: 110).blur(radius: 55).offset(x: -20, y: 6)
+                    }
+                    .shadow(color: .black.opacity(0.5), radius: 10, y: 6)
+
+                HStack(spacing: 8) {
+                    Rectangle().fill(cCyan).frame(width: 26, height: 2)
+                    Text(appLanguageIsEnglish() ? "MINUTES" : "DAKİKA")
+                        .font(.system(size: 8, weight: .black, design: .monospaced)).tracking(2)
+                        .foregroundStyle(.white.opacity(0.55))
+                    Spacer(minLength: 6)
+                    Text(appLanguageIsEnglish() ? "ends 12:47" : "bitiş 12:47")
+                        .font(.system(size: 8, weight: .heavy, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.4))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 4)
+
+            // Duration pills — outline style
+            HStack(spacing: 7) {
                 durPill("15 dk", active: false)
                 durPill("25 dk", active: true)
                 durPill("45 dk", active: false)
-                durPill(tr("ob_mk_custom"), active: false)
+                durPill(appLanguageIsEnglish() ? "Custom" : "Özel", active: false)
+            }
+            .padding(.top, 2)
+
+            // Goal + Sound — stacked full-width rows
+            VStack(spacing: 0) {
+                settingRow(label: appLanguageIsEnglish() ? "GOAL" : "HEDEF",
+                           value: appLanguageIsEnglish() ? "Study" : "Ders",
+                           sub: appLanguageIsEnglish() ? "Class and review" : "Ders ve tekrar",
+                           icon: "book.fill")
+                Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
+                settingRow(label: appLanguageIsEnglish() ? "SOUND" : "SES",
+                           value: appLanguageIsEnglish() ? "Silent" : "Sessiz",
+                           sub: appLanguageIsEnglish() ? "Silent mode" : "Sessiz mod",
+                           icon: "speaker.slash.fill")
             }
 
-            // Goal + Sound cards
+            Spacer(minLength: 4)
+
+            // Start button
             HStack(spacing: 8) {
-                settingCard(label: tr("ob_mk_goal"), value: "Study", icon: "book.fill")
-                settingCard(label: tr("ob_mk_sound"), value: "Silent", icon: "speaker.slash.fill")
+                Image(systemName: "play.fill").font(.system(size: 11, weight: .black))
+                Text(appLanguageIsEnglish() ? "Start Personal Focus" : "Kişisel Odağı Başlat")
+                    .font(.system(size: 13, weight: .black)).lineLimit(1).minimumScaleFactor(0.7)
+                Spacer()
+                Image(systemName: "arrow.right").font(.system(size: 11, weight: .black))
             }
+            .foregroundStyle(.black)
+            .padding(.horizontal, 16).frame(height: 44)
+            .frame(maxWidth: .infinity)
+            .background(Capsule().fill(LinearGradient(colors: [cCyan, cPurple], startPoint: .leading, endPoint: .trailing)))
+            .shadow(color: cCyan.opacity(0.4), radius: 12, y: 4)
 
             Spacer(minLength: 0)
         }
     }
 
-    private func segment(_ title: String, icon: String, active: Bool) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: icon).font(.system(size: 9, weight: .black))
-            Text(title).font(.system(size: 10, weight: .black)).lineLimit(1).minimumScaleFactor(0.7)
+    private func fSegment(_ title: String, icon: String, active: Bool) -> some View {
+        VStack(spacing: 7) {
+            HStack(spacing: 5) {
+                Image(systemName: icon).font(.system(size: 9, weight: .black))
+                Text(title).font(.system(size: 11, weight: .black)).lineLimit(1).minimumScaleFactor(0.7)
+            }
+            .foregroundStyle(active ? .white : .white.opacity(0.38))
+            ZStack {
+                Capsule().fill(Color.white.opacity(0.05)).frame(height: 2.5)
+                if active {
+                    Capsule().fill(LinearGradient(colors: [cCyan, cPurple], startPoint: .leading, endPoint: .trailing)).frame(height: 2.5)
+                        .shadow(color: cCyan.opacity(0.5), radius: 4, y: 1)
+                }
+            }
+            .frame(maxWidth: .infinity)
         }
-        .foregroundStyle(active ? .white : .white.opacity(0.45))
-        .frame(maxWidth: .infinity).frame(height: 34)
-        .background(
-            Capsule().fill(active
-                ? AnyShapeStyle(LinearGradient(colors: [cCyan, cPurple], startPoint: .leading, endPoint: .trailing))
-                : AnyShapeStyle(Color.white.opacity(0.04)))
-        )
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 4)
     }
 
     private func durPill(_ t: String, active: Bool) -> some View {
         Text(t).font(.system(size: 10, weight: .black))
-            .foregroundStyle(active ? .white : .white.opacity(0.5))
+            .foregroundStyle(active ? cCyan : .white.opacity(0.5))
             .frame(maxWidth: .infinity).frame(height: 32)
-            .background(Capsule().fill(active
-                ? AnyShapeStyle(LinearGradient(colors: [cCyan, cPurple], startPoint: .leading, endPoint: .trailing))
-                : AnyShapeStyle(Color.white.opacity(0.04))))
+            .background(
+                Capsule().fill(active ? cCyan.opacity(0.10) : Color.white.opacity(0.02))
+                    .overlay(Capsule().stroke(active ? cCyan.opacity(0.55) : Color.white.opacity(0.10), lineWidth: 1))
+            )
     }
 
-    private func settingCard(label: String, value: String, icon: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon).font(.system(size: 11, weight: .black)).foregroundStyle(cCyan)
-                .frame(width: 26, height: 26)
-                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(cCyan.opacity(0.13)))
+    private func settingRow(label: String, value: String, sub: String, icon: String) -> some View {
+        HStack(spacing: 11) {
+            Image(systemName: icon).font(.system(size: 13, weight: .black)).foregroundStyle(cCyan)
+                .frame(width: 24)
+            Text(label).font(.system(size: 8, weight: .black, design: .monospaced)).tracking(1)
+                .foregroundStyle(.white.opacity(0.4)).frame(width: 44, alignment: .leading)
             VStack(alignment: .leading, spacing: 1) {
-                Text(label).font(.system(size: 7, weight: .black, design: .monospaced)).tracking(0.6)
-                    .foregroundStyle(.white.opacity(0.4)).lineLimit(1).minimumScaleFactor(0.7)
-                Text(value).font(.system(size: 12, weight: .black))
-                    .foregroundStyle(.white).lineLimit(1).minimumScaleFactor(0.7)
+                Text(value).font(.system(size: 13, weight: .black)).foregroundStyle(.white)
+                Text(sub).font(.system(size: 8, weight: .semibold)).foregroundStyle(.white.opacity(0.42))
             }
-            Spacer(minLength: 0)
+            Spacer()
+            Image(systemName: "chevron.right").font(.system(size: 9, weight: .black)).foregroundStyle(.white.opacity(0.35))
         }
-        .padding(.horizontal, 10).frame(maxWidth: .infinity).frame(height: 48)
-        .mockCard(cCyan, radius: 14)
+        .frame(height: 44)
     }
 }
 
 // MARK: - 4 · Crew
 
 private struct CrewMock: View {
+    private var isEN: Bool { appLanguageIsEnglish() }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 11) {
-            // Header
-            HStack {
-                MockHeader(eyebrow: tr("crew_active_zone_live", 0), title: tr("crew_title_first"), accent: tr("crew_title_accent"), accentColor: cBlue)
+        VStack(alignment: .leading, spacing: 12) {
+            // Masthead — eyebrow + "Sosyal Alan" + actions
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Rectangle().fill(cBlue).frame(width: 14, height: 1)
+                        Text(tr("crew_active_zone_live", 0))
+                            .font(.system(size: 7, weight: .black, design: .monospaced)).tracking(1.5).foregroundStyle(cCyan)
+                    }
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(tr("crew_title_first")).font(.system(size: 21, weight: .black)).foregroundStyle(.white)
+                        Text(tr("crew_title_accent")).font(.system(size: 18, weight: .regular, design: .serif)).italic()
+                            .foregroundStyle(LinearGradient(colors: [cCyan, cBlue], startPoint: .leading, endPoint: .trailing))
+                    }
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                }
+                Spacer()
                 MockIconChip(icon: "person.badge.plus")
+                MockIconChip(icon: "tray")
                 Image(systemName: "plus").accessibilityLabel(tr("common_add")).font(.system(size: 12, weight: .black)).foregroundStyle(.black)
                     .frame(width: 26, height: 26).background(Circle().fill(cBlue))
             }
 
-            // Workspace card
-            HStack(spacing: 10) {
-                Image(systemName: "person.3.fill").font(.system(size: 14, weight: .black)).foregroundStyle(.white)
-                    .frame(width: 34, height: 34)
-                    .background(RoundedRectangle(cornerRadius: 11, style: .continuous)
-                        .fill(LinearGradient(colors: [cBlue, cPurple], startPoint: .topLeading, endPoint: .bottomTrailing)))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(tr("ob_mk_workspace")).font(.system(size: 7, weight: .black, design: .monospaced)).tracking(1).foregroundStyle(cCyan)
-                    HStack(alignment: .firstTextBaseline, spacing: 3) {
-                        Text("2").font(.system(size: 15, weight: .black)).foregroundStyle(cCyan)
-                        Text("crew").font(.system(size: 11, weight: .regular, design: .serif)).italic().foregroundStyle(.white.opacity(0.8))
-                        Text("· 5").font(.system(size: 15, weight: .black)).foregroundStyle(.white)
-                        Text(tr("ob_mk_friend")).font(.system(size: 11, weight: .regular, design: .serif)).italic().foregroundStyle(.white.opacity(0.8))
-                    }
-                    .lineLimit(1).minimumScaleFactor(0.7)
-                    HStack(spacing: 4) {
-                        Circle().fill(cGreen).frame(width: 4, height: 4)
-                        Text(tr("ob_mk_in_focus")).font(.system(size: 8, weight: .bold)).foregroundStyle(cGreen)
-                    }
+            // Pro: "Share my stats" privacy toggle (real Pro state)
+            HStack(spacing: 9) {
+                Image(systemName: "eye.fill").font(.system(size: 11, weight: .black)).foregroundStyle(cGreen)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(isEN ? "Share my stats" : "İstatistiklerimi paylaş")
+                        .font(.system(size: 10, weight: .black)).foregroundStyle(.white).lineLimit(1)
+                    Text(isEN ? "Friends can see your streak, level and focus" : "Arkadaşların serini, seviyeni ve odağını görebilir")
+                        .font(.system(size: 7.5, weight: .semibold)).foregroundStyle(.white.opacity(0.5)).lineLimit(1).minimumScaleFactor(0.75)
                 }
                 Spacer()
-                VStack(spacing: 0) {
-                    Text("3").font(.system(size: 17, weight: .black)).foregroundStyle(.white)
-                    Text("LIVE").font(.system(size: 6.5, weight: .black, design: .monospaced)).foregroundStyle(.white.opacity(0.4))
-                }
+                Capsule().fill(cGreen).frame(width: 32, height: 19)
+                    .overlay(alignment: .trailing) { Circle().fill(.white).frame(width: 15, height: 15).padding(2) }
             }
-            .padding(12)
-            .frame(maxWidth: .infinity)
-            .mockCard(cBlue)
+            .padding(.horizontal, 11).padding(.vertical, 9)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white.opacity(0.035))
+                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.white.opacity(0.07), lineWidth: 1))
+            )
 
-            // Tabs
-            HStack(spacing: 8) {
-                crewTab(tr("ob_mk_crews"), count: "2", active: true)
-                crewTab(tr("ob_mk_friends"), count: "5", active: false)
+            // Underline tab switcher (Crews / Friends) — Focus-style
+            HStack(spacing: 0) {
+                crewTab("Crews", icon: "person.3.fill", active: true)
+                crewTab("Friends", icon: "person.2.fill", active: false)
             }
 
-            // Crew card
-            VStack(alignment: .leading, spacing: 9) {
-                HStack(spacing: 10) {
-                    Text("A").font(.system(size: 17, weight: .black, design: .serif)).foregroundStyle(.white)
-                        .frame(width: 36, height: 36)
-                        .background(RoundedRectangle(cornerRadius: 11, style: .continuous)
-                            .fill(LinearGradient(colors: [cCoral, cPurple], startPoint: .topLeading, endPoint: .bottomTrailing)))
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("App").font(.system(size: 14, weight: .black)).foregroundStyle(.white)
-                        HStack(spacing: 5) {
-                            Text("CMSE #6").font(.system(size: 7, weight: .black, design: .monospaced)).foregroundStyle(cCyan)
-                                .padding(.horizontal, 5).padding(.vertical, 2).background(Capsule().fill(cCyan.opacity(0.14)))
-                            Text("1 \(tr("ob_mk_members"))").font(.system(size: 7, weight: .bold, design: .monospaced)).foregroundStyle(.white.opacity(0.4))
-                        }
-                    }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 3) {
-                        Text("3h").font(.system(size: 15, weight: .black)).foregroundStyle(.white)
-                        HStack(spacing: 3) {
-                            Circle().fill(cGreen).frame(width: 4, height: 4)
-                            Text("ACTIVE").font(.system(size: 6.5, weight: .black, design: .monospaced)).foregroundStyle(cGreen)
-                        }
-                    }
-                }
-                HStack(spacing: 5) {
-                    Image(systemName: "flame.fill").font(.system(size: 8)).foregroundStyle(cGold)
-                    Text("7 \(tr("ob_mk_streak_sub")) · \(tr("ob_mk_task_sub"))").font(.system(size: 8, weight: .bold, design: .monospaced)).foregroundStyle(.white.opacity(0.5))
-                }
-                Capsule().fill(Color.white.opacity(0.08)).frame(height: 5)
-                    .overlay(alignment: .leading) {
-                        Capsule().fill(LinearGradient(colors: [cCyan, cCoral], startPoint: .leading, endPoint: .trailing))
-                            .frame(width: 96, height: 5)
-                    }
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity)
-            .mockCard(cPurple)
+            crewCard
 
             Spacer(minLength: 0)
         }
     }
 
-    private func crewTab(_ title: String, count: String, active: Bool) -> some View {
-        HStack(spacing: 6) {
-            Text(title).font(.system(size: 11, weight: .black)).foregroundStyle(active ? .white : .white.opacity(0.4))
-            Text(count).font(.system(size: 8, weight: .black, design: .monospaced)).foregroundStyle(active ? .black : .white.opacity(0.6))
-                .frame(width: 16, height: 16).background(Circle().fill(active ? cCyan : Color.white.opacity(0.1)))
+    // Faithful mini of CrewSocialCrewCard
+    private var crewCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        .fill(LinearGradient(colors: [cCoral.opacity(0.95), cPurple.opacity(0.82)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .frame(width: 32, height: 32)
+                    Text("A").font(.system(size: 15, weight: .regular, design: .serif)).italic().foregroundStyle(.white)
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("App").font(.system(size: 13, weight: .black)).foregroundStyle(.white).lineLimit(1).minimumScaleFactor(0.7)
+                    Text(isEN ? "4 MEMBERS" : "4 ÜYE").font(.system(size: 7, weight: .bold, design: .monospaced)).tracking(0.5).foregroundStyle(.white.opacity(0.42))
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 3) {
+                    Text("7h 16m").font(.system(size: 14, weight: .black)).foregroundStyle(.white).lineLimit(1).minimumScaleFactor(0.7)
+                    HStack(spacing: 4) {
+                        Circle().fill(cGreen).frame(width: 5, height: 5)
+                        Text(isEN ? "ACTIVE" : "AKTİF").font(.system(size: 6.5, weight: .black, design: .monospaced)).tracking(0.6).foregroundStyle(cGreen)
+                    }
+                }
+            }
+
+            // Today progress (full)
+            HStack(spacing: 6) {
+                Text(tr("wv_today_caps")).font(.system(size: 7.5, weight: .black, design: .monospaced)).tracking(1).foregroundStyle(.white.opacity(0.34))
+                Text("·").foregroundStyle(.white.opacity(0.22))
+                Text(isEN ? "4/4 DONE" : "4/4 TAMAM").font(.system(size: 8, weight: .black, design: .monospaced)).foregroundStyle(cCyan)
+            }
+            Capsule().fill(LinearGradient(colors: [cCyan, cPurple, cCoral], startPoint: .leading, endPoint: .trailing)).frame(height: 5)
+
+            // Weekly goal
+            HStack {
+                Text(isEN ? "WEEKLY GOAL" : "HAFTALIK HEDEF").font(.system(size: 7.5, weight: .black, design: .monospaced)).tracking(0.8).foregroundStyle(.white.opacity(0.34))
+                Spacer()
+                Text("0m / 10h").font(.system(size: 8, weight: .bold, design: .monospaced)).foregroundStyle(.white.opacity(0.42))
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.white.opacity(0.08)).frame(height: 4)
+                    Capsule().fill(cCoral).frame(width: geo.size.width * 0.05, height: 4)
+                }
+            }
+            .frame(height: 4)
+
+            // Member avatars + crew chat
+            HStack(spacing: 8) {
+                HStack(spacing: -6) {
+                    ForEach(Array(["A", "M", "B", "C"].enumerated()), id: \.offset) { _, ltr in
+                        Text(ltr).font(.system(size: 8, weight: .black)).foregroundStyle(.white)
+                            .frame(width: 20, height: 20)
+                            .background(Circle().fill(LinearGradient(colors: [cBlue, cPurple], startPoint: .top, endPoint: .bottom)))
+                            .overlay(Circle().stroke(Color.black.opacity(0.5), lineWidth: 1.5))
+                    }
+                }
+                Text(isEN ? "Crew chat ready" : "Crew sohbeti hazır").font(.system(size: 9, weight: .semibold)).foregroundStyle(.white.opacity(0.6))
+                Spacer()
+                Image(systemName: "chevron.right").font(.system(size: 9, weight: .black)).foregroundStyle(.white.opacity(0.4))
+            }
         }
-        .frame(maxWidth: .infinity).frame(height: 36)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(active ? cBlue.opacity(0.14) : Color.white.opacity(0.03))
-            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(active ? cBlue.opacity(0.3) : .clear, lineWidth: 1)))
+        .padding(12)
+        .frame(maxWidth: .infinity)
+        .mockCard(cPurple)
+    }
+
+    private func crewTab(_ title: String, icon: String, active: Bool) -> some View {
+        VStack(spacing: 7) {
+            HStack(spacing: 5) {
+                Image(systemName: icon).font(.system(size: 10, weight: .black))
+                Text(title).font(.system(size: 11, weight: .black, design: .monospaced)).tracking(0.2)
+            }
+            .foregroundStyle(active ? .white : .white.opacity(0.38))
+            ZStack {
+                Capsule().fill(Color.white.opacity(0.05)).frame(height: 2.5)
+                if active {
+                    Capsule().fill(LinearGradient(colors: [cBlue, cCyan], startPoint: .leading, endPoint: .trailing)).frame(height: 2.5)
+                        .shadow(color: cBlue.opacity(0.5), radius: 4, y: 1)
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 5)
     }
 }
 
 // MARK: - 5 · Insights
 
 private struct InsightsMock: View {
+    private var isEN: Bool { appLanguageIsEnglish() }
+    private let pink = Color(arenaHex: "#F472B6")
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 11) {
-            MockHeader(eyebrow: "PERFORMANCE CENTER", title: "Insights", accent: "arena", accentColor: cCyan)
-
-            // Identity / driver card
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 5) {
-                        HStack(spacing: 4) {
-                            Rectangle().fill(cCoral).frame(width: 10, height: 1)
-                            Text("DRIVER · LV 3").font(.system(size: 7, weight: .black, design: .monospaced)).tracking(0.8).foregroundStyle(cCoral)
-                        }
-                        HStack(alignment: .firstTextBaseline, spacing: 4) {
-                            Text("Ada").font(.system(size: 16, weight: .black)).foregroundStyle(.white)
-                            Text("Yıldız").font(.system(size: 14, weight: .regular, design: .serif)).italic().foregroundStyle(cCoral)
-                        }
-                        Text(tr("ob_mk_progress_active")).font(.system(size: 8, weight: .bold)).foregroundStyle(.white.opacity(0.45))
+        VStack(spacing: 0) {
+            // Header — YOUR PROGRESS / Profile + settings
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 5) {
+                        Rectangle().fill(cCyan).frame(width: 12, height: 1)
+                        Text(isEN ? "YOUR PROGRESS" : "İLERLEMEN").font(.system(size: 8, weight: .black, design: .monospaced)).tracking(1.6).foregroundStyle(cCyan)
                     }
-                    Spacer()
-                    VStack(spacing: 1) {
-                        Text("TIER").font(.system(size: 6, weight: .black, design: .monospaced)).foregroundStyle(.white.opacity(0.7))
-                        Text("M").font(.system(size: 18, weight: .black)).foregroundStyle(.white)
-                    }
-                    .frame(width: 38, height: 38)
-                    .background(RoundedRectangle(cornerRadius: 11, style: .continuous)
-                        .fill(LinearGradient(colors: [cCyan, cPurpleSoft], startPoint: .topLeading, endPoint: .bottomTrailing)))
+                    Text(isEN ? "Profile" : "Profil").font(.system(size: 20, weight: .black)).foregroundStyle(.white)
                 }
-
-                HStack(spacing: 0) {
-                    statCol(value: "24", label: "FOCUS", sub: tr("ob_mk_focus_sessions"), tint: cCyan)
-                    statCol(value: "7", label: "STREAK", sub: tr("ob_mk_days"), tint: cGold)
-                    statCol(value: "18", label: tr("ob_mk_done"), sub: tr("ob_mk_tasks_done"), tint: cGreen)
-                    statCol(value: "3", label: "LEVEL", sub: tr("ob_mk_level_unit"), tint: cPurpleSoft)
-                }
-                .padding(.vertical, 9)
-                .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(Color.white.opacity(0.03)))
-
-                HStack(spacing: 6) {
-                    Text("LV 3").font(.system(size: 8, weight: .black, design: .monospaced)).foregroundStyle(cCoral)
-                    Image(systemName: "arrow.right").font(.system(size: 7, weight: .black)).foregroundStyle(.white.opacity(0.4))
-                    Text("LV 4").font(.system(size: 8, weight: .black, design: .monospaced)).foregroundStyle(.white)
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color.white.opacity(0.08)).frame(height: 4)
-                        Capsule().fill(cCoral).frame(width: 52, height: 4)
-                    }
-                    Text("64%").font(.system(size: 8, weight: .black, design: .monospaced)).foregroundStyle(.white.opacity(0.6))
-                }
+                Spacer()
+                Image(systemName: "gearshape.fill").font(.system(size: 12, weight: .black)).foregroundStyle(.white.opacity(0.7))
+                    .frame(width: 30, height: 30)
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white.opacity(0.07)))
             }
-            .padding(12)
-            .frame(maxWidth: .infinity)
-            .mockCard(cCoral)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Journey card
-            VStack(alignment: .leading, spacing: 9) {
-                HStack(spacing: 4) {
-                    Rectangle().fill(cGreen).frame(width: 10, height: 1)
-                    Text("JOURNEY · SON 4 HAFTA").font(.system(size: 7, weight: .black, design: .monospaced)).tracking(0.8).foregroundStyle(cGreen)
-                    Spacer()
-                    Text("+38%").font(.system(size: 9, weight: .black, design: .monospaced)).foregroundStyle(cGreen)
+            Spacer(minLength: 12)
+
+            // Ring + monogram + LEVEL badge
+            ZStack {
+                Circle().fill(pink.opacity(0.16)).frame(width: 132, height: 132).blur(radius: 32)
+                Circle().stroke(Color.white.opacity(0.07), lineWidth: 5).frame(width: 100, height: 100)
+                ZStack {
+                    Circle().trim(from: 0, to: 0.97)
+                        .stroke(AngularGradient(colors: [pink, cBlue, cPurple, pink], center: .center),
+                                style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .shadow(color: pink.opacity(0.4), radius: 8)
+                    Circle().fill(.white).frame(width: 5, height: 5).shadow(color: pink.opacity(0.9), radius: 4)
+                        .offset(x: 50).rotationEffect(.degrees(0.97 * 360))
                 }
-                HStack(alignment: .bottom, spacing: 8) {
-                    ForEach(Array([0.45, 0.6, 0.5, 1.0].enumerated()), id: \.offset) { i, h in
-                        VStack(spacing: 4) {
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(i == 3
-                                      ? AnyShapeStyle(LinearGradient(colors: [cGreen, cCyan], startPoint: .top, endPoint: .bottom))
-                                      : AnyShapeStyle(Color.white.opacity(0.14)))
-                                .frame(maxWidth: .infinity).frame(height: 40 * h)
-                            Text(["H-3", "H-2", "H-1", "BU"][i]).font(.system(size: 6.5, weight: .bold, design: .monospaced))
-                                .foregroundStyle(i == 3 ? cCyan : .white.opacity(0.3))
-                        }
-                    }
-                }
-                .frame(height: 56, alignment: .bottom)
+                .rotationEffect(.degrees(-90))
+                .frame(width: 100, height: 100)
+
+                ProfileAvatarCircle(image: nil, name: "Ada", accent: pink, size: 84)
+
+                Text(isEN ? "LEVEL  9" : "SEVİYE  9")
+                    .font(.system(size: 8, weight: .black, design: .monospaced))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 9).padding(.vertical, 4)
+                    .background(Capsule().fill(LinearGradient(colors: [pink, cPurple], startPoint: .leading, endPoint: .trailing)))
+                    .overlay(Capsule().stroke(Color.black.opacity(0.45), lineWidth: 2))
+                    .offset(y: 54)
             }
-            .padding(12)
-            .frame(maxWidth: .infinity)
-            .mockCard(cGreen)
+            .frame(height: 118)
+
+            Spacer(minLength: 12)
+
+            VStack(spacing: 2) {
+                Text("Ada Yılmaz").font(.system(size: 16, weight: .black)).foregroundStyle(.white)
+                Text(isEN ? "Habit Driver" : "Alışkanlık Sürücüsü")
+                    .font(.system(size: 15, weight: .regular, design: .serif)).italic()
+                    .foregroundStyle(LinearGradient(colors: [pink, cPurple], startPoint: .leading, endPoint: .trailing))
+                Text(isEN ? "BOĞAZİÇİ UNIVERSITY · CMPE" : "BOĞAZİÇİ ÜNİVERSİTESİ · BİLGİSAYAR MÜH.")
+                    .font(.system(size: 7, weight: .black, design: .monospaced)).tracking(1)
+                    .foregroundStyle(.white.opacity(0.4)).padding(.top, 3).lineLimit(1).minimumScaleFactor(0.65)
+                Text(isEN ? "ROAD TO LEVEL 10 · 97%" : "SEVİYE 10 YOLU · %97")
+                    .font(.system(size: 7.5, weight: .black, design: .monospaced)).tracking(1)
+                    .foregroundStyle(.white.opacity(0.5)).padding(.top, 6)
+            }
+
+            Spacer(minLength: 12)
+
+            // Stats row
+            HStack(spacing: 0) {
+                statCell(isEN ? "FRIENDS" : "ARKADAŞ", "1")
+                statDivider
+                statCell(isEN ? "CREWS" : "CREW", "1")
+                statDivider
+                statCell(isEN ? "DAY STREAK" : "GÜN SERİ", "4", icon: "flame.fill", iconTint: cGold)
+            }
+            .frame(maxWidth: 240)
+
+            Spacer(minLength: 12)
+
+            // For the next level capsule
+            HStack(spacing: 6) {
+                Text(isEN ? "For the next level:" : "Sonraki seviye için:").font(.system(size: 9, weight: .semibold)).foregroundStyle(.white.opacity(0.6))
+                Text(isEN ? "2 tasks" : "2 görev").font(.system(size: 9, weight: .black)).foregroundStyle(pink)
+                Image(systemName: "chevron.right").font(.system(size: 7, weight: .black)).foregroundStyle(pink)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 8)
+            .background(Capsule().fill(pink.opacity(0.08)).overlay(Capsule().stroke(pink.opacity(0.3), lineWidth: 1)))
+
+            Spacer(minLength: 12)
+
+            // Edit / Share
+            HStack(spacing: 10) {
+                actionBtn(isEN ? "Edit" : "Düzenle", icon: "pencil")
+                actionBtn(isEN ? "Share" : "Paylaş", icon: "square.and.arrow.up")
+            }
+
+            Spacer(minLength: 10)
+
+            VStack(spacing: 1) {
+                Text(isEN ? "Your analytics" : "İstatistiklerin").font(.system(size: 8, weight: .bold)).foregroundStyle(.white.opacity(0.4))
+                Image(systemName: "chevron.compact.down").font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.35))
+            }
 
             Spacer(minLength: 0)
         }
     }
 
-    private func statCol(value: String, label: String, sub: String, tint: Color) -> some View {
+    private func actionBtn(_ title: String, icon: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon).font(.system(size: 9, weight: .black))
+            Text(title).font(.system(size: 11, weight: .black))
+        }
+        .foregroundStyle(.white.opacity(0.85))
+        .frame(maxWidth: .infinity).frame(height: 34)
+        .background(Capsule().fill(Color.white.opacity(0.05)).overlay(Capsule().stroke(Color.white.opacity(0.10), lineWidth: 1)))
+    }
+
+    private var statDivider: some View {
+        Rectangle().fill(Color.white.opacity(0.10)).frame(width: 1, height: 22)
+    }
+
+    private func statCell(_ label: String, _ value: String, icon: String? = nil, iconTint: Color = .white) -> some View {
         VStack(spacing: 2) {
-            Text(label).font(.system(size: 6.5, weight: .black, design: .monospaced)).tracking(0.4).foregroundStyle(tint).lineLimit(1).minimumScaleFactor(0.6)
-            Text(value).font(.system(size: 17, weight: .black)).foregroundStyle(.white)
-            Text(sub).font(.system(size: 6, weight: .bold, design: .monospaced)).foregroundStyle(.white.opacity(0.4)).lineLimit(1).minimumScaleFactor(0.6)
+            HStack(spacing: 3) {
+                if let icon {
+                    Image(systemName: icon).font(.system(size: 8, weight: .black)).foregroundStyle(iconTint)
+                }
+                Text(value).font(.system(size: 12, weight: .black)).foregroundStyle(.white)
+            }
+            Text(label).font(.system(size: 6, weight: .black, design: .monospaced)).tracking(0.8).foregroundStyle(.white.opacity(0.4))
         }
         .frame(maxWidth: .infinity)
     }
