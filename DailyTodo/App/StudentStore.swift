@@ -202,6 +202,24 @@ final class StudentStore: ObservableObject {
         saveAndReload()
     }
 
+    /// The `student_profiles.institution_country` CHECK constraint only accepts
+    /// lowercase codes (`tr`, `kktc`) or NULL. Catalog data can arrive uppercased
+    /// or as a full name, so normalize here — unknowns fall back to NULL so the
+    /// upsert never fails on this constraint.
+    static func normalizedCountry(_ raw: String?) -> String? {
+        guard let c = raw?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+              !c.isEmpty else { return nil }
+        switch c {
+        case "tr", "türkiye", "turkiye", "turkey":
+            return "tr"
+        case "kktc", "kuzey kıbrıs", "kuzey kibris", "kıbrıs", "kibris",
+             "north cyprus", "northern cyprus", "trnc":
+            return "kktc"
+        default:
+            return nil
+        }
+    }
+
     func completeOnboardingAndSync(
         educationLevel: String,
         gradeLevel: String,
@@ -256,7 +274,7 @@ final class StudentStore: ObservableObject {
             grade_level: gradeLevel,
             high_school_track: highSchoolTrack,
             institution_name: institutionName,
-            institution_country: institutionCountry,
+            institution_country: Self.normalizedCountry(institutionCountry),
             major_name: majorName,
             daily_study_goal_minutes: dailyStudyGoalMinutes,
             weekly_study_goal_minutes: weeklyStudyGoalMinutes,

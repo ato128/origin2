@@ -200,7 +200,8 @@ final class AIOnboardingStore: ObservableObject {
     func selectUniversity(_ university: CatalogUniversity) {
         selectedUniversityID = university.id
         institutionName = university.name
-        institutionCountry = university.country_code
+        // student_profiles CHECK constraint wants lowercase codes (tr/kktc).
+        institutionCountry = university.country_code.lowercased()
         universityQuery = university.name
         universityMatches = []
         HapticManager.shared.success()

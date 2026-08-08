@@ -64,12 +64,12 @@ struct UpdoAIOrb: View {
 
     @ViewBuilder
     private func orb(t: TimeInterval) -> some View {
-        // Speaking is a LIGHT change, not a motion change: the clouds keep
-        // their calm drift and the orb keeps its slow breath — only the
-        // interior brightens, like a voice lighting the glass from within.
-        // `level` eases 0→1 as speaking begins/ends, so nothing snaps.
+        // Speaking is a LIGHT change ONLY — never a motion change. The clouds
+        // keep their calm idle drift (constant speed) and the orb keeps its
+        // slow breath; only the interior brightens, like a voice lighting the
+        // glass from within. `level` eases 0→1 so the glow fades in/out softly.
         let level = currentLevel(now: t)
-        let speed: Double = 0.55 + 0.20 * level
+        let speed: Double = 0.55            // constant — motion stays calm while speaking
         let energy: Double = 0.55 + 0.45 * level
         let breathe = 1 + 0.014 * sin(t * 1.3)
 
