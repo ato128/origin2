@@ -44,7 +44,8 @@ struct InsightsView: View {
     @State private var showPremium = false
 
     // Sheet'ler
-    @State private var showExamPlannerSheet = false
+    @State private var showUpdoAI = false
+    @State private var aiSeed: String? = nil
     @State private var comingSoonTool: PremiumLabTool?
     @State private var showIdentityLevelSheet = false
 
@@ -194,6 +195,13 @@ struct InsightsView: View {
         return "Driver"
     }
 
+    // Seed that starts an exam-planning conversation in the Updo AI chat.
+    private var examPlannerSeed: String {
+        appLanguageIsEnglish()
+        ? "I have an upcoming exam and want a study plan. Ask me which course, the exam date and the topics — then build a clear day-by-day plan and add the study sessions to my week."
+        : "Yaklaşan bir sınavım var ve çalışma planı istiyorum. Hangi ders, sınav tarihi ve konuları sor; sonra net bir günlük plan çıkar ve çalışma seanslarını haftama ekle."
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -257,11 +265,19 @@ struct InsightsView: View {
                 premiumState = isPro ? .premium : .free
             }
         }
-        .sheet(isPresented: $showExamPlannerSheet) {
-            ExamPlannerSheet(
-                courses: studentStore.courses,
-                ownerUserID: currentUserIDString
+        .fullScreenCover(isPresented: $showUpdoAI, onDismiss: { aiSeed = nil }) {
+            UpdoAIView(
+                seedPrompt: aiSeed,
+                onDismissAndOpenWeek: {
+                    showUpdoAI = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { goWeek = true }
+                },
+                onDismissAndAddTask: {
+                    showUpdoAI = false
+                }
             )
+            .environmentObject(session)
+            .environmentObject(studentStore)
         }
         .sheet(item: $comingSoonTool) { tool in
             InsightsComingSoonSheet(tool: tool)
@@ -882,30 +898,99 @@ struct InsightsView: View {
                     .insightsCardReveal()
             }
 
-            // Clean, data-first focus + tasks (tap focus for full history).
-            InsightsDataDashboard(
-                focusSessions: filteredFocusSessions,
-                tasks: filteredTasks,
-                accent: insightsAccent
-            )
-
-            // Which days actually fed the streak (task AND focus), this month.
-            InsightsStreakCalendarCard(
-                tasks: filteredTasks,
-                focusSessions: filteredFocusSessions,
-                accent: insightsAccent
-            )
-            .insightsCardReveal()
+            // Analytics are a Pro perk — free users see a blurred teaser + unlock.
+            if subscription.isPro {
+                analyticsCards
+            } else {
+                lockedAnalytics
+                    .insightsCardReveal()
+            }
 
             // Exam planner.
             InsightsPremiumLabCard(
                 isPremium: premiumState != .free,
-                onExamPlanner: { showExamPlannerSheet = true },
+                onExamPlanner: {
+                    aiSeed = examPlannerSeed
+                    showUpdoAI = true
+                },
                 onCoach: { },
                 onSmartInsights: { },
                 onUpgrade: { showPremium = true }
             )
             .insightsCardReveal()
+        }
+    }
+
+    @ViewBuilder
+    private var analyticsCards: some View {
+        // Clean, data-first focus + tasks (tap focus for full history).
+        InsightsDataDashboard(
+            focusSessions: filteredFocusSessions,
+            tasks: filteredTasks,
+            accent: insightsAccent,
+            allFocusSessions: focusSessions,
+            friends: localFriends,
+            myName: resolvedUserName,
+            myStreak: progression.currentStreak,
+            myLevel: storedIdentityLevel
+        )
+
+        // Which days actually fed the streak (task AND focus), this month.
+        InsightsStreakCalendarCard(
+            tasks: filteredTasks,
+            focusSessions: filteredFocusSessions,
+            accent: insightsAccent
+        )
+        .insightsCardReveal()
+    }
+
+    // Real analytics, softly frosted behind a light Pro lock — the screen looks
+    // the same (numbers/charts visible), just a gentle "soft premium" blur.
+    private var lockedAnalytics: some View {
+        let gold = Color(arenaHex: AppArenaPalette.gold)
+        let isEN = appLanguageIsEnglish()
+
+        return ZStack {
+            VStack(spacing: 14) {
+                analyticsCards
+            }
+            .blur(radius: 6)
+            .disabled(true)
+            .allowsHitTesting(false)
+
+            // Compact, elegant unlock — no heavy scrim, content stays visible.
+            VStack(spacing: 8) {
+                Text(isEN ? "Analytics · Pro" : "Analizler · Pro")
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(1.6)
+                    .foregroundStyle(.white.opacity(0.7))
+
+                Button {
+                    HapticManager.shared.action()
+                    showPremium = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "lock.fill").font(.system(size: 13, weight: .black))
+                        Text(isEN ? "Unlock with Pro" : "Pro ile aç")
+                            .font(.system(size: 14.5, weight: .black, design: .rounded))
+                    }
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 20).frame(height: 44)
+                    .background(
+                        Capsule().fill(
+                            LinearGradient(colors: [gold, insightsAccent], startPoint: .leading, endPoint: .trailing)
+                        )
+                    )
+                    .shadow(color: .black.opacity(0.28), radius: 12, y: 5)
+                    .shadow(color: gold.opacity(0.35), radius: 18, y: 0)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            HapticManager.shared.action()
+            showPremium = true
         }
     }
 

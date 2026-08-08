@@ -17,6 +17,13 @@ struct InsightsDataDashboard: View {
     let tasks: [DTTaskItem]
     var accent: Color = Color(arenaHex: AppArenaPalette.cyan)
 
+    // Full-history + comparison context for the focus detail sheet.
+    var allFocusSessions: [FocusSessionRecord] = []
+    var friends: [Friend] = []
+    var myName: String = ""
+    var myStreak: Int = 0
+    var myLevel: Int = 1
+
     private let green = Color(arenaHex: AppArenaPalette.green)
 
     @State private var showFocusDetail = false
@@ -35,7 +42,14 @@ struct InsightsDataDashboard: View {
                 .insightsCardReveal()
         }
         .sheet(isPresented: $showFocusDetail) {
-            InsightsFocusHistorySheet(sessions: focusSessions, accent: accent)
+            InsightsFocusHistorySheet(
+                sessions: allFocusSessions.isEmpty ? focusSessions : allFocusSessions,
+                accent: accent,
+                friends: friends,
+                myName: myName,
+                myStreak: myStreak,
+                myLevel: myLevel
+            )
         }
     }
 
@@ -335,8 +349,16 @@ struct InsightsDataDashboard: View {
 struct InsightsFocusHistorySheet: View {
     let sessions: [FocusSessionRecord]
     var accent: Color = Color(arenaHex: AppArenaPalette.cyan)
+    var friends: [Friend] = []
+    var myName: String = ""
+    var myStreak: Int = 0
+    var myLevel: Int = 1
 
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var socialStats = SocialStatsStore.shared
+    @ObservedObject private var subscription = SubscriptionManager.shared
+
+    private var isEN: Bool { appLanguageIsEnglish() }
 
     private var completed: [FocusSessionRecord] {
         sessions
@@ -362,6 +384,9 @@ struct InsightsFocusHistorySheet: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 14) {
                         summaryCard
+                        dailyChartCard
+                        peakHoursCard
+                        friendCompareCard
                         sessionsCard
                         Color.clear.frame(height: 16)
                     }
@@ -381,6 +406,12 @@ struct InsightsFocusHistorySheet: View {
                 }
             }
             .preferredColorScheme(.dark)
+            .onAppear {
+                let ids = friends.compactMap { $0.backendUserID }
+                if !ids.isEmpty {
+                    socialStats.refresh(userIDs: ids, isPro: subscription.isPro)
+                }
+            }
         }
     }
 
@@ -394,6 +425,222 @@ struct InsightsFocusHistorySheet: View {
                 stat(value: durationText(avgMinutes), label: tr("insd_avg"))
             }
         }
+    }
+
+    // MARK: - Daily chart (last 14 days) + trend
+
+    private var dailyBuckets: [(date: Date, minutes: Int)] {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        return (0..<14).reversed().map { offset -> (Date, Int) in
+            let day = cal.date(byAdding: .day, value: -offset, to: today) ?? today
+            let mins = completed
+                .filter { cal.isDate($0.endedAt, inSameDayAs: day) }
+                .reduce(0) { $0 + $1.completedSeconds } / 60
+            return (day, mins)
+        }
+    }
+
+    private var trendText: String? {
+        let b = dailyBuckets.map { $0.minutes }
+        guard b.count == 14 else { return nil }
+        let thisWeek = b.suffix(7).reduce(0, +)
+        let prevWeek = b.prefix(7).reduce(0, +)
+        guard prevWeek > 0 else { return thisWeek > 0 ? "+100%" : nil }
+        let pct = Int((Double(thisWeek - prevWeek) / Double(prevWeek) * 100).rounded())
+        return pct >= 0 ? "+\(pct)%" : "\(pct)%"
+    }
+
+    private var dailyChartCard: some View {
+        let buckets = dailyBuckets
+        let maxV = max(buckets.map { $0.minutes }.max() ?? 0, 1)
+        let cal = Calendar.current
+
+        return InsightsGlassCard(tint: accent) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    cardHeader(isEN ? "LAST 14 DAYS" : "SON 14 GÜN")
+                    Spacer()
+                    if let t = trendText {
+                        Text(t)
+                            .font(.system(size: 12, weight: .black, design: .monospaced))
+                            .foregroundStyle(t.hasPrefix("-") ? Color(arenaHex: AppArenaPalette.coral) : Color(arenaHex: AppArenaPalette.green))
+                    }
+                }
+
+                HStack(alignment: .bottom, spacing: 4) {
+                    ForEach(Array(buckets.enumerated()), id: \.offset) { i, b in
+                        let isToday = cal.isDateInToday(b.date)
+                        VStack(spacing: 4) {
+                            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                                .fill(isToday
+                                      ? AnyShapeStyle(LinearGradient(colors: [accent, Color(arenaHex: AppArenaPalette.purple)], startPoint: .top, endPoint: .bottom))
+                                      : AnyShapeStyle(accent.opacity(b.minutes > 0 ? 0.45 : 0.10)))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 6 + CGFloat(Double(b.minutes) / Double(maxV)) * 78)
+                            if i % 2 == 0 || isToday {
+                                Text("\(cal.component(.day, from: b.date))")
+                                    .font(.system(size: 7.5, weight: .bold, design: .monospaced))
+                                    .foregroundStyle(.white.opacity(isToday ? 0.75 : 0.3))
+                            } else {
+                                Text(" ").font(.system(size: 7.5))
+                            }
+                        }
+                    }
+                }
+                .frame(height: 100, alignment: .bottom)
+            }
+        }
+    }
+
+    // MARK: - Peak hours (hour-of-day distribution)
+
+    private var hourBuckets: [Int] {
+        let cal = Calendar.current
+        var b = Array(repeating: 0, count: 24)
+        for s in completed {
+            let h = cal.component(.hour, from: s.endedAt)
+            b[h] += s.completedSeconds / 60
+        }
+        return b
+    }
+
+    private var peakHour: Int? {
+        let b = hourBuckets
+        guard let maxV = b.max(), maxV > 0 else { return nil }
+        return b.firstIndex(of: maxV)
+    }
+
+    private var peakHoursCard: some View {
+        let b = hourBuckets
+        let maxV = max(b.max() ?? 0, 1)
+
+        return InsightsGlassCard(tint: accent) {
+            VStack(alignment: .leading, spacing: 12) {
+                cardHeader(isEN ? "PEAK HOURS" : "EN VERİMLİ SAATLER")
+
+                if let peak = peakHour {
+                    Text(isEN ? "You focus most around \(String(format: "%02d:00", peak))."
+                              : "En çok \(String(format: "%02d:00", peak)) civarı odaklanıyorsun.")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.72))
+                } else {
+                    Text(isEN ? "No focus data yet." : "Henüz focus verisi yok.")
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundStyle(.white.opacity(0.45))
+                }
+
+                HStack(alignment: .bottom, spacing: 2) {
+                    ForEach(0..<24, id: \.self) { h in
+                        RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                            .fill(h == peakHour
+                                  ? AnyShapeStyle(accent)
+                                  : AnyShapeStyle(accent.opacity(b[h] > 0 ? 0.35 : 0.08)))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 4 + CGFloat(Double(b[h]) / Double(maxV)) * 44)
+                    }
+                }
+                .frame(height: 48, alignment: .bottom)
+
+                HStack {
+                    ForEach([0, 6, 12, 18], id: \.self) { h in
+                        Text(String(format: "%02d", h))
+                            .font(.system(size: 7.5, weight: .bold, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.3))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    Text("24").font(.system(size: 7.5, weight: .bold, design: .monospaced)).foregroundStyle(.white.opacity(0.3))
+                }
+            }
+        }
+    }
+
+    // MARK: - Friend comparison (leaderboard by all-time focus)
+
+    private struct RankEntry: Identifiable {
+        let id = UUID()
+        let name: String
+        let minutes: Int
+        let streak: Int
+        let level: Int
+        let isMe: Bool
+    }
+
+    private var leaderboard: [RankEntry] {
+        var entries: [RankEntry] = [
+            RankEntry(name: myName.isEmpty ? (isEN ? "You" : "Sen") : myName,
+                      minutes: totalMinutes, streak: myStreak, level: myLevel, isMe: true)
+        ]
+        for f in friends {
+            guard let uid = f.backendUserID,
+                  let s = socialStats.stat(for: uid),
+                  s.sharingEnabled else { continue }
+            entries.append(RankEntry(name: f.name, minutes: s.totalFocusMinutes,
+                                     streak: s.currentStreak, level: s.level, isMe: false))
+        }
+        return entries.sorted { $0.minutes > $1.minutes }
+    }
+
+    private var friendCompareCard: some View {
+        let board = leaderboard
+        let maxV = max(board.map { $0.minutes }.max() ?? 0, 1)
+        let gold = Color(arenaHex: AppArenaPalette.gold)
+
+        return InsightsGlassCard(tint: accent) {
+            VStack(alignment: .leading, spacing: 12) {
+                cardHeader(isEN ? "YOU vs FRIENDS" : "SEN vs ARKADAŞLARIN")
+
+                if board.count <= 1 {
+                    Text(isEN
+                         ? "When your friends share their stats, you'll see how you stack up here."
+                         : "Arkadaşların istatistiklerini paylaşınca buradan kıyaslamayı görürsün.")
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundStyle(.white.opacity(0.45))
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    VStack(spacing: 9) {
+                        ForEach(Array(board.prefix(6).enumerated()), id: \.element.id) { rank, e in
+                            HStack(spacing: 10) {
+                                Text("\(rank + 1)")
+                                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                                    .foregroundStyle(rank == 0 ? gold : .white.opacity(0.4))
+                                    .frame(width: 16)
+
+                                Text(e.name)
+                                    .font(.system(size: 13.5, weight: e.isMe ? .black : .semibold))
+                                    .foregroundStyle(e.isMe ? accent : .white.opacity(0.9))
+                                    .lineLimit(1)
+                                    .frame(width: 78, alignment: .leading)
+
+                                GeometryReader { geo in
+                                    ZStack(alignment: .leading) {
+                                        Capsule().fill(Color.white.opacity(0.06)).frame(height: 8)
+                                        Capsule()
+                                            .fill(e.isMe
+                                                  ? AnyShapeStyle(LinearGradient(colors: [accent, Color(arenaHex: AppArenaPalette.purple)], startPoint: .leading, endPoint: .trailing))
+                                                  : AnyShapeStyle(Color.white.opacity(0.22)))
+                                            .frame(width: max(8, geo.size.width * CGFloat(Double(e.minutes) / Double(maxV))), height: 8)
+                                    }
+                                }
+                                .frame(height: 8)
+
+                                Text(durationText(e.minutes))
+                                    .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                                    .foregroundStyle(.white.opacity(0.7))
+                                    .frame(width: 52, alignment: .trailing)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func cardHeader(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+            .tracking(1.6)
+            .foregroundStyle(accent.opacity(0.92))
     }
 
     private var sessionsCard: some View {
