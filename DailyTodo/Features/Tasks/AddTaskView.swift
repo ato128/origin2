@@ -66,42 +66,42 @@ struct AddTaskView: View {
                     .ignoresSafeArea()
 
                 Circle()
-                    .fill(UpdoTheme.cyan.opacity(0.07))
+                    .fill(UpdoTheme.cyan.opacity(0.06))
                     .frame(width: 280, height: 280)
                     .blur(radius: 90)
                     .offset(x: 150, y: -260)
                     .ignoresSafeArea()
 
                 Circle()
-                    .fill(UpdoTheme.purple.opacity(0.09))
+                    .fill(UpdoTheme.purple.opacity(0.08))
                     .frame(width: 320, height: 320)
                     .blur(radius: 100)
                     .offset(x: -170, y: 380)
                     .ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 18) {
-                        headerSection
+                    VStack(spacing: 16) {
                         if !lockedToTask {
                             entryKindSection
                         }
+
                         titleSection
 
                         if entryKind == .task {
                             taskTypeSection
-                            taskDetailsSection
+                            detailsCard
                             taskScheduleSection
-                            taskWeekSection
                         } else {
                             examTypeSection
-                            examDetailsSection
+                            detailsCard
                             examScheduleSection
                         }
                     }
                     .padding(.horizontal, 16)
-                    .padding(.top, 12)
-                    .padding(.bottom, 32)
+                    .padding(.top, 14)
+                    .padding(.bottom, 40)
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
             .navigationTitle(tr("at_nav_title"))
             .navigationBarTitleDisplayMode(.inline)
@@ -125,69 +125,9 @@ struct AddTaskView: View {
         .tint(UpdoTheme.cyan)
     }
 
-    // MARK: - Sections
-
-    private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(entryKind == .task ? tr("at_header_task") : tr("at_header_exam"))
-                .font(.system(size: 30, weight: .bold, design: .rounded))
-                .foregroundStyle(.primary)
-
-            Text(
-                entryKind == .task
-                ? tr("at_sub_task")
-                : tr("at_sub_exam")
-            )
-            .font(.system(size: 15, weight: .medium))
-            .foregroundStyle(.secondary)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    summaryPill(
-                        icon: entryKind == .task ? selectedType.icon : "graduationcap",
-                        text: entryKind == .task ? selectedType.title : selectedExamType.title,
-                        tint: selectedColor.color
-                    )
-
-                    if !trimmedCourseName.isEmpty {
-                        summaryPill(
-                            icon: "book.closed",
-                            text: trimmedCourseName,
-                            tint: .secondary
-                        )
-                    }
-
-                    if entryKind == .task, hasDueDate {
-                        summaryPill(
-                            icon: "calendar",
-                            text: dueDate.formatted(date: .abbreviated, time: .shortened),
-                            tint: .secondary
-                        )
-                    }
-
-                    if entryKind == .exam {
-                        summaryPill(
-                            icon: "calendar",
-                            text: examDate.formatted(date: .abbreviated, time: .shortened),
-                            tint: .secondary
-                        )
-                    }
-
-                    if showsStudyDuration {
-                        summaryPill(
-                            icon: "timer",
-                            text: "\(entryKind == .task ? estimatedStudyMinutes : preferredExamStudyMinutes) \(tr("common_min_short"))",
-                            tint: .orange
-                        )
-                    }
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
+    // MARK: - Entry kind (Görev / Sınav)
 
     /// Top-level record kind: a clean two-way segmented control.
-    /// tr("at_kind_task") vs tr("at_kind_exam") — subtypes appear below only for Görev.
     private var entryKindSection: some View {
         HStack(spacing: 4) {
             entryKindSegment(.task, title: tr("at_kind_task"), icon: "checklist")
@@ -239,8 +179,10 @@ struct AddTaskView: View {
         .buttonStyle(.plain)
     }
 
+    // MARK: - Title
+
     private var titleSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             sectionLabel(entryKind == .task ? tr("at_title") : tr("at_exam_title"))
 
             TextField(titlePlaceholder, text: $title)
@@ -250,210 +192,78 @@ struct AddTaskView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 16)
                 .background(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(Color.white.opacity(0.045))
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.white.opacity(0.05))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(titleFocused ? UpdoTheme.cyan.opacity(0.6) : Color.white.opacity(0.06), lineWidth: 1)
                         )
                 )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    // MARK: - Task Sections
+    // MARK: - Task type (kompakt çip satırı)
 
     private var taskTypeSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             sectionLabel(tr("at_task_type"))
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 2), spacing: 10) {
-                ForEach(StudentTaskType.allCases.filter { $0 != .exam }) { type in
-                    let typeColor = type.suggestedColor.color
-                    let isSelected = selectedType == type
-
-                    Button {
-                        HapticManager.shared.selection()
-                        withAnimation(.spring(response: 0.26, dampingFraction: 0.86)) {
-                            selectedType = type
-                            selectedColor = type.suggestedColor
-                        }
-                    } label: {
-                        HStack(spacing: 10) {
-                            // Monochrome SF Symbol on a subtle tinted circle —
-                            // unified treatment, no filled colored squares.
-                            ZStack {
-                                Circle()
-                                    .fill(typeColor.opacity(0.15))
-                                    .frame(width: 40, height: 40)
-
-                                Image(systemName: type.icon)
-                                    .font(.system(size: 20, weight: .medium))
-                                    .foregroundStyle(typeColor)
-                            }
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(type.title)
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(.primary)
-                                    .lineLimit(1)
-
-                                Text(type.shortSubtitle)
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                            }
-
-                            Spacer(minLength: 0)
-
-                            if isSelected {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 17, weight: .bold))
-                                    .foregroundStyle(UpdoTheme.cyan)
-                            }
-                        }
-                        .padding(12)
-                        .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
-                        .background(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(Color.white.opacity(0.045))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .strokeBorder(
-                                            isSelected ? UpdoTheme.cyan : Color.white.opacity(0.08),
-                                            lineWidth: isSelected ? 1.5 : 1
-                                        )
-                                )
-                        )
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(StudentTaskType.allCases.filter { $0 != .exam }) { type in
+                        taskTypeChip(type)
                     }
-                    .buttonStyle(.plain)
                 }
+                .padding(.horizontal, 2)
             }
         }
     }
 
-    private var taskDetailsSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            sectionLabel(tr("at_details"))
+    private func taskTypeChip(_ type: StudentTaskType) -> some View {
+        let tint = type.suggestedColor.color
+        let isSelected = selectedType == type
 
-            VStack(spacing: 12) {
-                inputBlock(
-                    title: tr("at_course"),
-                    placeholder: tr("at_course_ph"),
-                    text: $courseName,
-                    focused: $courseFocused,
-                    capitalization: .words
-                )
+        return Button {
+            HapticManager.shared.selection()
+            withAnimation(.spring(response: 0.26, dampingFraction: 0.86)) {
+                selectedType = type
+                selectedColor = type.suggestedColor
+            }
+        } label: {
+            HStack(spacing: 7) {
+                Image(systemName: type.icon)
+                    .font(.system(size: 13, weight: .semibold))
 
-                notesBlock
-
-                colorBlock
-
-                if showsStudyDuration {
-                    studyDurationBlock(
-                        minutes: $estimatedStudyMinutes,
-                        tint: selectedColor.color
+                Text(type.title)
+                    .font(.system(size: 14, weight: .bold))
+            }
+            .foregroundStyle(isSelected ? .white : tint)
+            .padding(.horizontal, 14)
+            .frame(height: 42)
+            .background(
+                Capsule()
+                    .fill(isSelected ? tint : tint.opacity(0.12))
+                    .overlay(
+                        Capsule().stroke(tint.opacity(isSelected ? 0 : 0.18), lineWidth: 1)
                     )
-                }
-            }
-            .padding(16)
-            .background(sectionCardBackground)
+            )
         }
+        .buttonStyle(.plain)
     }
 
-    private var taskScheduleSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionLabel(tr("at_planning"))
-
-            VStack(spacing: 14) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(tr("at_datetime"))
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(.primary)
-
-                        Text(tr("at_give_time"))
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Spacer()
-
-                    Toggle("", isOn: $hasDueDate.animation())
-                        .labelsHidden()
-                }
-
-                if hasDueDate {
-                    DatePicker(
-                        tr("at_time"),
-                        selection: $dueDate,
-                        displayedComponents: [.date, .hourAndMinute]
-                    )
-                    .datePickerStyle(.compact)
-
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            quickDateButton(tr("at_quick_tonight")) { setTodayEvening() }
-                            quickDateButton(tr("at_quick_tomorrow")) { setTomorrow() }
-                            quickDateButton(tr("at_quick_nextweek")) { setNextWeek() }
-                            quickDateButton(tr("at_quick_2h")) { setAfterHours(2) }
-                            quickDateButton(tr("at_quick_weekend")) { setThisWeekend() }
-                        }
-                    }
-                }
-            }
-            .padding(16)
-            .background(sectionCardBackground)
-        }
-    }
-
-    private var taskWeekSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionLabel(tr("at_week_section"))
-
-            VStack(spacing: 14) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(tr("at_add_to_week"))
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(.primary)
-
-                        Text(tr("at_week_hint"))
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Spacer()
-
-                    Toggle("", isOn: $addToWeek.animation())
-                        .labelsHidden()
-                }
-
-                if addToWeek {
-                    DatePicker(
-                        tr("at_week_time"),
-                        selection: $scheduledWeekDate,
-                        displayedComponents: [.date, .hourAndMinute]
-                    )
-                    .datePickerStyle(.compact)
-                }
-            }
-            .padding(16)
-            .background(sectionCardBackground)
-        }
-    }
-
-    // MARK: - Exam Sections
+    // MARK: - Exam type
 
     private var examTypeSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             sectionLabel(tr("at_exam_type"))
 
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 ForEach(StudentExamType.allCases) { type in
                     let isSelected = selectedExamType == type
 
                     Button {
+                        HapticManager.shared.selection()
                         withAnimation(.spring(response: 0.26, dampingFraction: 0.86)) {
                             selectedExamType = type
                             selectedColor = type.suggestedColor
@@ -485,11 +295,13 @@ struct AddTaskView: View {
         }
     }
 
-    private var examDetailsSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            sectionLabel(tr("at_exam_details"))
+    // MARK: - Details (ders + not + renk) — tek sade kart
 
-            VStack(spacing: 12) {
+    private var detailsCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionLabel(tr("at_details"))
+
+            VStack(spacing: 14) {
                 inputBlock(
                     title: tr("at_course"),
                     placeholder: tr("at_course_ph"),
@@ -501,11 +313,60 @@ struct AddTaskView: View {
                 notesBlock
 
                 colorBlock
+            }
+            .padding(16)
+            .background(sectionCardBackground)
+        }
+    }
 
-                studyDurationBlock(
-                    minutes: $preferredExamStudyMinutes,
-                    tint: selectedColor.color
+    // MARK: - Planning (tarih + week — birleşik kart)
+
+    private var taskScheduleSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionLabel(tr("at_planning"))
+
+            VStack(spacing: 14) {
+                planningToggleRow(
+                    title: tr("at_datetime"),
+                    subtitle: tr("at_give_time"),
+                    isOn: $hasDueDate.animation()
                 )
+
+                if hasDueDate {
+                    DatePicker(
+                        tr("at_time"),
+                        selection: $dueDate,
+                        displayedComponents: [.date, .hourAndMinute]
+                    )
+                    .datePickerStyle(.compact)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            quickDateButton(tr("at_quick_tonight")) { setTodayEvening() }
+                            quickDateButton(tr("at_quick_tomorrow")) { setTomorrow() }
+                            quickDateButton(tr("at_quick_nextweek")) { setNextWeek() }
+                            quickDateButton(tr("at_quick_weekend")) { setThisWeekend() }
+                        }
+                        .padding(.horizontal, 2)
+                    }
+                }
+
+                cardDivider
+
+                planningToggleRow(
+                    title: tr("at_add_to_week"),
+                    subtitle: tr("at_week_hint"),
+                    isOn: $addToWeek.animation()
+                )
+
+                if addToWeek {
+                    DatePicker(
+                        tr("at_week_time"),
+                        selection: $scheduledWeekDate,
+                        displayedComponents: [.date, .hourAndMinute]
+                    )
+                    .datePickerStyle(.compact)
+                }
             }
             .padding(16)
             .background(sectionCardBackground)
@@ -513,7 +374,7 @@ struct AddTaskView: View {
     }
 
     private var examScheduleSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             sectionLabel(tr("at_exam_date"))
 
             VStack(spacing: 14) {
@@ -531,6 +392,7 @@ struct AddTaskView: View {
                         quickExamDateButton(tr("at_quick_1w"), days: 7)
                         quickExamDateButton(tr("at_quick_2w"), days: 14)
                     }
+                    .padding(.horizontal, 2)
                 }
 
                 HStack(spacing: 8) {
@@ -558,6 +420,35 @@ struct AddTaskView: View {
 
     // MARK: - Shared Blocks
 
+    private func planningToggleRow(
+        title: String,
+        subtitle: String,
+        isOn: Binding<Bool>
+    ) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(.primary)
+
+                Text(subtitle)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Toggle("", isOn: isOn)
+                .labelsHidden()
+        }
+    }
+
+    private var cardDivider: some View {
+        Rectangle()
+            .fill(Color.white.opacity(0.06))
+            .frame(height: 1)
+    }
+
     private var notesBlock: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(tr("at_note"))
@@ -571,10 +462,10 @@ struct AddTaskView: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 14)
                 .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .fill(Color.white.opacity(0.05))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .stroke(Color.white.opacity(0.04), lineWidth: 1)
                         )
                 )
@@ -590,6 +481,7 @@ struct AddTaskView: View {
             HStack(spacing: 12) {
                 ForEach(StudentTaskColor.allCases) { item in
                     Button {
+                        HapticManager.shared.selection()
                         selectedColor = item
                     } label: {
                         ZStack {
@@ -615,47 +507,10 @@ struct AddTaskView: View {
                         y: 2
                     )
                 }
+
+                Spacer(minLength: 0)
             }
             .padding(.top, 2)
-        }
-    }
-
-    private func studyDurationBlock(
-        minutes: Binding<Int>,
-        tint: Color
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(entryKind == .task ? tr("at_est_study") : tr("at_sugg_study"))
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-
-                Text("\(minutes.wrappedValue) \(tr("common_min_short"))")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(.primary)
-            }
-
-            Slider(
-                value: Binding(
-                    get: { Double(minutes.wrappedValue) },
-                    set: { minutes.wrappedValue = Int($0) }
-                ),
-                in: 15...240,
-                step: 15
-            )
-            .tint(tint)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    quickMinuteChip(30, minutes: minutes, tint: tint)
-                    quickMinuteChip(45, minutes: minutes, tint: tint)
-                    quickMinuteChip(60, minutes: minutes, tint: tint)
-                    quickMinuteChip(90, minutes: minutes, tint: tint)
-                    quickMinuteChip(120, minutes: minutes, tint: tint)
-                }
-            }
         }
     }
 
@@ -680,11 +535,6 @@ struct AddTaskView: View {
 
     private var trimmedCourseName: String {
         courseName.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private var showsStudyDuration: Bool {
-        if entryKind == .exam { return true }
-        return selectedType == .study || selectedType == .homework
     }
 
     private var titlePlaceholder: String {
@@ -783,35 +633,21 @@ struct AddTaskView: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 14)
                 .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .fill(Color.white.opacity(0.05))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .stroke(Color.white.opacity(0.04), lineWidth: 1)
                         )
                 )
         }
     }
 
-    private func quickMinuteChip(_ value: Int, minutes: Binding<Int>, tint: Color) -> some View {
-        Button {
-            minutes.wrappedValue = value
-        } label: {
-            Text("\(value) \(tr("common_min_short"))")
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(minutes.wrappedValue == value ? .white : .primary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(
-                    Capsule()
-                        .fill(minutes.wrappedValue == value ? tint : Color.white.opacity(0.05))
-                )
-        }
-        .buttonStyle(.plain)
-    }
-
     private func quickDateButton(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button {
+            HapticManager.shared.selection()
+            action()
+        } label: {
             Text(title)
                 .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(.primary)
@@ -827,6 +663,7 @@ struct AddTaskView: View {
 
     private func quickExamDateButton(_ title: String, days: Int) -> some View {
         Button {
+            HapticManager.shared.selection()
             examDate = Calendar.current.date(byAdding: .day, value: days, to: Date()) ?? examDate
         } label: {
             Text(title)
@@ -840,28 +677,6 @@ struct AddTaskView: View {
                 )
         }
         .buttonStyle(.plain)
-    }
-
-    private func summaryPill(icon: String, text: String, tint: Color) -> some View {
-        HStack(spacing: 7) {
-            Image(systemName: icon)
-                .font(.system(size: 11, weight: .bold))
-
-            Text(text)
-                .lineLimit(1)
-        }
-        .font(.system(size: 12, weight: .semibold))
-        .foregroundStyle(tint)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 9)
-        .background(
-            Capsule()
-                .fill(tint.opacity(0.14))
-                .overlay(
-                    Capsule()
-                        .stroke(tint.opacity(0.16), lineWidth: 1)
-                )
-        )
     }
 
     private func sectionLabel(_ title: String) -> some View {
@@ -888,11 +703,6 @@ struct AddTaskView: View {
     private func setNextWeek() {
         hasDueDate = true
         dueDate = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
-    }
-
-    private func setAfterHours(_ hours: Int) {
-        hasDueDate = true
-        dueDate = Calendar.current.date(byAdding: .hour, value: hours, to: Date()) ?? Date()
     }
 
     private func setThisWeekend() {

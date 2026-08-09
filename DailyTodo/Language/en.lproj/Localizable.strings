@@ -1947,6 +1947,16 @@
 "css_scan_preview_sub" = "%d courses found. Remove any misreads with the ✕, then save.";
 "css_scan_save" = "Save courses";
 "css_scan_slot_none" = "time not readable — won't be added to the calendar";
+
+/* Edit weekly schedule (Week screen) */
+"wk_sched_title" = "Weekly Schedule";
+"wk_sched_add_manual" = "Add event";
+"wk_sched_scan" = "Scan from photo";
+"wk_sched_scan_sub" = "Pick a photo of your schedule (screenshot, portal, paper) — Updo AI reads the courses and times and adds them to your schedule.";
+"wk_sched_pro_badge" = "Pro";
+"wk_sched_empty_title" = "Your weekly schedule is empty";
+"wk_sched_empty_sub" = "Add an event or scan a photo of your class schedule to get started.";
+"common_done" = "Done";
 "ai_byo_no_credits" = "Your OpenAI account has no credits. Add funds at platform.openai.com — the free ChatGPT plan doesn't cover the API.";
 "byo_no_funds" = "Key is valid ✓ but your OpenAI account has no API credits. The free ChatGPT plan doesn't cover the API — a small top-up is needed ($5 is plenty).";
 "byo_billing_cta" = "Add funds on OpenAI";

@@ -35,6 +35,9 @@ struct WeekView: View {
     /// Takvim sheet
     @State private var showCalendarSheet = false
 
+    /// Haftalık programı düzenle (ders/etkinlik ekle-çıkar + fotoğraftan tara)
+    @State private var showScheduleEditor = false
+
     /// Add event sheet
     @State private var showingAdd = false
     @State private var editingEvent: EventItem? = nil
@@ -92,6 +95,12 @@ struct WeekView: View {
             )
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showScheduleEditor) {
+            WeeklyScheduleEditorView()
+                .environmentObject(session)
+                .environmentObject(studentStore)
+                .environmentObject(friendStore)
         }
         .sheet(isPresented: $showingAdd) {
             NavigationStack {
@@ -151,6 +160,15 @@ struct WeekView: View {
                     circularIconButton(systemName: "calendar")
                 }
                 .buttonStyle(.plain)
+
+                Button {
+                    Haptics.impact(.light)
+                    showScheduleEditor = true
+                } label: {
+                    circularIconButton(systemName: "calendar.day.timeline.left")
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(tr("wk_sched_title"))
 
                 Spacer(minLength: 8)
 

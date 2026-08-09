@@ -233,8 +233,8 @@ private extension CourseSetupSheet {
 }
 
 // MARK: - Scan preview sheet
-
-private struct ScheduleScanPreviewSheet: View {
+// Not private — reused by WeeklyScheduleEditorView (Hafta ekranı program düzenleyici).
+struct ScheduleScanPreviewSheet: View {
     let courses: [ScannedScheduleCourse]
     let onSave: ([ScannedScheduleCourse]) -> Void
 

@@ -1949,6 +1949,16 @@
 "css_scan_preview_sub" = "%d ders bulundu. Yanlış okunanları çarpıyla kaldır, sonra kaydet.";
 "css_scan_save" = "Dersleri kaydet";
 "css_scan_slot_none" = "saat bilgisi okunamadı — takvime eklenmeyecek";
+
+/* Haftalık programı düzenle (Hafta ekranı) */
+"wk_sched_title" = "Haftalık Program";
+"wk_sched_add_manual" = "Etkinlik ekle";
+"wk_sched_scan" = "Fotoğraftan tara";
+"wk_sched_scan_sub" = "Ders programının fotoğrafını (ekran görüntüsü, portal, kağıt) seç — Updo AI dersleri ve saatlerini okuyup programına ekler.";
+"wk_sched_pro_badge" = "Pro";
+"wk_sched_empty_title" = "Haftalık programın boş";
+"wk_sched_empty_sub" = "Etkinlik ekle ya da ders programının fotoğrafını taratarak başla.";
+"common_done" = "Bitti";
 "ai_byo_no_credits" = "OpenAI hesabında bakiye yok. platform.openai.com'dan hesabına yükleme yapman gerekiyor — ücretsiz ChatGPT, API'yi kapsamaz.";
 "byo_no_funds" = "Anahtar doğru ✓ ama OpenAI hesabında API bakiyesi yok. Ücretsiz ChatGPT üyeliği API'yi kapsamaz — küçük bir yükleme yapman gerekir (5$ yeter de artar).";
 "byo_billing_cta" = "OpenAI'da bakiye yükle";
