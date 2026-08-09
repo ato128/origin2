@@ -2137,6 +2137,9 @@
 "ob_mk_members" = "MEMBERS";
 "ob_mk_crews" = "Crews";
 "ob_sc_see_pro" = "See Updo Pro";
+"ob_widget_title" = "Track your progress from widgets";
+"ob_widget_sub" = "See your schedule, streak, focus minutes and weekly goal at a glance — right from your home screen.";
+"ob_widget_cta" = "Discover Updo Pro";
 "ob_sc_more_prompt" = "Want access to even more?";
 
 /* Home — Getting Started / activation card */

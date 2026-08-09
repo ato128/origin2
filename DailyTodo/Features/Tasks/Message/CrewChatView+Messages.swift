@@ -245,7 +245,7 @@ extension CrewChatView {
                             crewImageMessageView(message)
                         } else {
                             Text(message.displayText)
-                                .font(.system(size: 16, weight: .medium))
+                                .font(.system(size: 17, weight: .medium))
                                 .foregroundStyle(isFromMe ? .white : .white.opacity(0.96))
                                 .multilineTextAlignment(.leading)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -262,11 +262,13 @@ extension CrewChatView {
                             .padding(.top, 1)
                         }
                     }
-                    .padding(message.messageType == "image" ? 8 : 14)
+                    .padding(.horizontal, message.messageType == "image" ? 8 : 14)
+                    .padding(.vertical, message.messageType == "image" ? 8 : 10)
                     .background(messageBubbleBackground(isFromMe: isFromMe))
                     .clipShape(crewBubbleShape(isFromMe: isFromMe))
                     .contentShape(crewBubbleShape(isFromMe: isFromMe))
                     .padding(.top, topSpacing)
+                    .swipeToReply(isFromMe: isFromMe) { replyingTo = message }
                     .onLongPressGesture(minimumDuration: 0.28) {
                         guard message.serverID != nil else {
                             Haptics.impact(.light)

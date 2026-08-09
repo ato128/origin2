@@ -257,13 +257,8 @@ final class StudentStore: ObservableObject {
             }
             .filter { !$0.name.isEmpty }
 
-        guard !normalizedCourses.isEmpty else {
-            throw NSError(
-                domain: "StudentStore",
-                code: 422,
-                userInfo: [NSLocalizedDescriptionKey: "At least one course is required."]
-            )
-        }
+        // Ders (program) opsiyonel: kullanıcı bölüm/programı atlasa da profil
+        // onboarding_completed=true ile kaydedilir; kurulum başarısız olmaz.
 
         isLoading = true
         defer { isLoading = false }

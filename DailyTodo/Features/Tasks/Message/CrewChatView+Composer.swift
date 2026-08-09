@@ -136,22 +136,16 @@ extension CrewChatView {
         .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(arenaHex: "#1593FF").opacity(0.070),
-                            Color(arenaHex: "#7C3AED").opacity(0.055),
-                            Color.white.opacity(0.045)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+                .fill(Color(arenaHex: "#20222B"))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(Color(arenaHex: "#1593FF").opacity(0.10))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.09), lineWidth: 1)
+                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
                 )
-                .shadow(color: Color.black.opacity(0.18), radius: 12, y: 6)
+                .shadow(color: Color.black.opacity(0.25), radius: 12, y: 6)
         )
         .padding(.horizontal, 16)
     }
@@ -180,17 +174,17 @@ extension CrewChatView {
         .animation(.easeOut(duration: 0.16), value: canSend)
     }
 
-    // Birebir Updo AI composer kapsülü.
+    // Composer kapsülü — CPU dostu opak (blur yok, aynı görünür).
     var composerCapsuleBackground: some View {
         Capsule()
-            .fill(.ultraThinMaterial)
+            .fill(Color(arenaHex: "#22232B"))
             .overlay(Capsule().strokeBorder(UpdoTheme.border, lineWidth: 1))
     }
 
-    // Birebir Updo AI cam-daire aksiyon butonu.
+    // Cam-daire aksiyon butonu — CPU dostu opak.
     var crewChatCircleComposerBackground: some View {
         Circle()
-            .fill(.ultraThinMaterial)
+            .fill(Color(arenaHex: "#22232B"))
             .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
     }
 

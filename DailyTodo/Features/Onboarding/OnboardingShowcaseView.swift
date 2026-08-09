@@ -20,7 +20,7 @@ struct OnboardingShowcaseView: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var index = 0
-    @State private var showPaywall = false
+    @State private var showWidgetPromo = false
     @State private var appeared = false
 
     private let pages = ShowcasePageModel.all
@@ -75,8 +75,10 @@ struct OnboardingShowcaseView: View {
         .onAppear {
             withAnimation(.easeOut(duration: 0.5)) { appeared = true }
         }
-        .fullScreenCover(isPresented: $showPaywall, onDismiss: { onFinish() }) {
-            PaywallView(context: "onboarding")
+        .fullScreenCover(isPresented: $showWidgetPromo) {
+            // onFinish (= enterApp) doğrudan çağrılır: onboarding kökü tek seferde
+            // uygulamaya döner, kademeli olarak showcase'e "düşmez".
+            OnboardingWidgetPromoView(onFinish: onFinish)
         }
     }
 
@@ -95,7 +97,7 @@ struct OnboardingShowcaseView: View {
 
             Button {
                 HapticManager.shared.navigation()
-                showPaywall = true
+                showWidgetPromo = true
             } label: {
                 Text(tr("common_skip"))
                     .font(.system(size: 13, weight: .bold, design: .monospaced))
@@ -127,51 +129,38 @@ struct OnboardingShowcaseView: View {
 
     // MARK: - Primary button
 
-    private var goldPro: Color { Color(arenaHex: AppArenaPalette.gold) }
-    private var coralPro: Color { Color(arenaHex: AppArenaPalette.coral) }
-
     @ViewBuilder
     private var primaryButton: some View {
-        VStack(spacing: 11) {
-            // On the final page, invite the user into Pro rather than just "start".
+        Button {
+            HapticManager.shared.action()
             if isLast {
-                Text(tr("ob_sc_more_prompt"))
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.52))
-                    .multilineTextAlignment(.center)
+                showWidgetPromo = true
+            } else {
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
+                    index += 1
+                }
             }
-
-            Button {
-                HapticManager.shared.action()
-                if isLast {
-                    showPaywall = true
-                } else {
-                    withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
-                        index += 1
-                    }
-                }
-            } label: {
-                HStack(spacing: 8) {
-                    Text(isLast ? tr("ob_sc_see_pro") : tr("common_continue"))
-                        .font(.system(size: 17, weight: .black))
-                    Image(systemName: isLast ? "sparkles" : "arrow.right")
-                        .font(.system(size: 15, weight: .black))
-                }
-                .foregroundStyle(.black)
-                .frame(maxWidth: .infinity)
-                .frame(height: 56)
-                .background(
-                    Capsule().fill(
-                        LinearGradient(
-                            colors: isLast ? [goldPro, coralPro] : [page.accent, page.accentSoft],
-                            startPoint: .leading, endPoint: .trailing
-                        )
+        } label: {
+            HStack(spacing: 8) {
+                Text(tr("common_continue"))
+                    .font(.system(size: 17, weight: .black))
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 15, weight: .black))
+            }
+            .foregroundStyle(.black)
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(
+                Capsule().fill(
+                    LinearGradient(
+                        colors: [page.accent, page.accentSoft],
+                        startPoint: .leading, endPoint: .trailing
                     )
-                    .shadow(color: (isLast ? goldPro : page.accent).opacity(0.38), radius: 16, y: 8)
                 )
-            }
-            .buttonStyle(ShowcaseScaleStyle())
+                .shadow(color: page.accent.opacity(0.38), radius: 16, y: 8)
+            )
         }
+        .buttonStyle(ShowcaseScaleStyle())
     }
 }
 

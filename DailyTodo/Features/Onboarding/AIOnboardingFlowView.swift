@@ -46,6 +46,24 @@ struct AIOnboardingFlowView: View {
 
                 composer
             }
+
+            // Sol-üst geri tuşu: yanlış dokunulursa önceki adıma dönülebilir.
+            if store.canGoBack {
+                Button {
+                    store.goBack()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.92))
+                        .frame(width: 38, height: 38)
+                        .background(Circle().fill(Color.white.opacity(0.12)))
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(.leading, 18)
+                .padding(.top, 6)
+                .transition(.opacity)
+            }
         }
         .preferredColorScheme(.dark)
         .tint(UpdoTheme.cyan)

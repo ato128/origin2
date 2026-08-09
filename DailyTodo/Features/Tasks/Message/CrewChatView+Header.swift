@@ -202,17 +202,17 @@ extension CrewChatView {
         .padding(.top, 80)
     }
 
-    // Birebir Updo AI floating cam-daire.
+    // Floating cam-daire — CPU dostu opak (blur yok, aynı görünür).
     var crewChatCircleBackground: some View {
         Circle()
-            .fill(.ultraThinMaterial)
+            .fill(Color(arenaHex: "#22232B"))
             .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
     }
 
-    // Birebir Updo AI floating cam-pill.
+    // Floating cam-pill — CPU dostu opak.
     var crewChatCapsuleBackground: some View {
         Capsule()
-            .fill(.ultraThinMaterial)
+            .fill(Color(arenaHex: "#22232B"))
             .overlay(Capsule().strokeBorder(UpdoTheme.border, lineWidth: 1))
     }
 }

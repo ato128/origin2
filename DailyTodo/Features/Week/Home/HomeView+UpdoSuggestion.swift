@@ -524,16 +524,120 @@ extension HomeView {
 
     @ViewBuilder
     var updoAICard: some View {
-        // An accepted challenge stays on the card all day (with its progress),
-        // regardless of what the resolver would otherwise surface now.
+        // Kompakt: challenge/öneri hero'nun "yaz" bar'ının hemen altında küçük
+        // bir kart olur (eski büyük genişleyen kart çok yer kaplıyordu). Altında
+        // "Updo AI ile konuş" durur — yaz/konuş erişimi kaybolmaz.
         if challengeAccepted, let challenge = socialChallenge {
-            suggestionCard(challenge)
+            compactSuggestionCard(challenge)
         } else if let suggestion = updoSuggestion {
-            suggestionCard(suggestion)
+            compactSuggestionCard(suggestion)
                 .onAppear { markSuggestionSurfacedIfNeeded() }
         }
-        // Nötr durum artık boş: AI hero (HomeView.heroSection) ana sayfanın
-        // yüzü — ikinci bir giriş kartı gereksiz.
+        // Nötr durum boş: AI hero (HomeView.heroSection) ana sayfanın yüzü.
+    }
+
+    // MARK: - Compact suggestion / challenge
+
+    /// Sade tek-satır kart: küçük ikon + eyebrow + başlık, birincil CTA ve
+    /// "Updo AI ile konuş" butonu. Kabul edilmiş challenge'da ince ilerleme çubuğu.
+    @ViewBuilder
+    private func compactSuggestionCard(_ suggestion: UpdoAISuggestion) -> some View {
+        let onFire = suggestion.isChallenge && challengeAccepted
+        let accent = Color(arenaHex: onFire ? "#F97316" : AppArenaPalette.gold)
+
+        VStack(alignment: .leading, spacing: 11) {
+            HStack(spacing: 11) {
+                ZStack {
+                    Circle().fill(accent.opacity(0.16)).frame(width: 38, height: 38)
+                    Image(systemName: onFire ? "flame.fill" : (suggestion.isChallenge ? "bolt.fill" : "sparkles"))
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(accent)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(
+                        onFire
+                        ? tr("ai_sg_ch_accepted_caps")
+                        : (suggestion.isChallenge ? tr("ai_sg_challenge_chip") : tr("ai_sg_eyebrow"))
+                    )
+                    .font(.system(size: 9, weight: .heavy, design: .monospaced))
+                    .tracking(1.3)
+                    .foregroundStyle(suggestion.isChallenge ? accent : UpdoTheme.cyan.opacity(0.9))
+
+                    Text(suggestion.headline)
+                        .font(.system(size: 14.5, weight: .bold))
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 4)
+            }
+
+            if onFire {
+                compactChallengeProgress(target: suggestion.challengeTarget, kind: suggestion.challengeKind)
+            }
+
+            if !(onFire && challengeIsComplete) {
+                HStack(spacing: 8) {
+                    Button {
+                        if suggestion.isChallenge && !challengeAccepted {
+                            acceptChallenge(suggestion)
+                        } else {
+                            HapticManager.shared.action()
+                            suggestion.action()
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: onFire ? "arrow.right" : suggestion.ctaIcon)
+                                .font(.system(size: 12, weight: .semibold))
+                            Text(onFire ? tr("ai_sg_ch_continue") : suggestion.ctaTitle)
+                                .font(.system(size: 13, weight: .semibold))
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 9)
+                        .background(onFire ? fireGradient : UpdoTheme.gradientAI, in: Capsule())
+                    }
+                    .buttonStyle(UpdoPressButtonStyle())
+
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+        .padding(13)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(suggestionBackground(onFire: onFire))
+        .opacity(pageAppeared ? 1 : 0)
+        .offset(y: pageAppeared ? 0 : 12)
+        .animation(.spring(response: 0.6, dampingFraction: 0.86).delay(0.08), value: pageAppeared)
+        .onChange(of: challengeIsComplete) { _, complete in
+            if complete { creditChallengeCompletionIfNeeded() }
+        }
+    }
+
+    /// İnce ilerleme çubuğu (kabul edilmiş challenge).
+    private func compactChallengeProgress(target: Int, kind: ChallengeKind) -> some View {
+        let complete = challengeIsComplete
+        let tint = Color(arenaHex: complete ? "#A3E635" : "#F97316")
+        let key = kind == .focus ? "ai_sg_ch_progress_focus" : "ai_sg_ch_progress_tasks"
+
+        return VStack(alignment: .leading, spacing: 5) {
+            Text(complete ? tr("ai_sg_ch_done") : tr(key, challengeProgress, target))
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .foregroundStyle(tint)
+
+            GeometryReader { geo in
+                let frac = target > 0 ? CGFloat(challengeProgress) / CGFloat(target) : 0
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.white.opacity(0.08))
+                    Capsule().fill(tint).frame(width: max(4, geo.size.width * min(frac, 1)))
+                }
+            }
+            .frame(height: 4)
+            .animation(.spring(response: 0.5, dampingFraction: 0.82), value: challengeProgress)
+        }
     }
 
     // Suggestion state — expandable, with a concrete next step.

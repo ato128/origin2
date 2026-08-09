@@ -300,6 +300,7 @@
 		EE310002EE310002EE310002 /* EdgeGlowBorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE310001EE310001EE310001 /* EdgeGlowBorder.swift */; };
 		EE320002EE320002EE320002 /* UpdoMascotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE320001EE320001EE320001 /* UpdoMascotView.swift */; };
 		EE330002EE330002EE330002 /* OnboardingShowcaseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE330001EE330001EE330001 /* OnboardingShowcaseView.swift */; };
+		6DC0CAF00000000000AA0006 /* OnboardingWidgetPromoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAF00000000000AA0005 /* OnboardingWidgetPromoView.swift */; };
 		EE340002EE340002EE340002 /* OnboardingShowcaseMocks.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE340001EE340001EE340001 /* OnboardingShowcaseMocks.swift */; };
 		FF400002 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = FF400001 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
@@ -588,6 +589,7 @@
 		EE310001EE310001EE310001 /* EdgeGlowBorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeGlowBorder.swift; sourceTree = "<group>"; };
 		EE320001EE320001EE320001 /* UpdoMascotView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoMascotView.swift; sourceTree = "<group>"; };
 		EE330001EE330001EE330001 /* OnboardingShowcaseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingShowcaseView.swift; sourceTree = "<group>"; };
+		6DC0CAF00000000000AA0005 /* OnboardingWidgetPromoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWidgetPromoView.swift; sourceTree = "<group>"; };
 		EE340001EE340001EE340001 /* OnboardingShowcaseMocks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingShowcaseMocks.swift; sourceTree = "<group>"; };
 		FF400001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -1178,6 +1180,7 @@
 				AC100003 /* AIOnboardingFlowView.swift */,
 				EE340001EE340001EE340001 /* OnboardingShowcaseMocks.swift */,
 				EE330001EE330001EE330001 /* OnboardingShowcaseView.swift */,
+				6DC0CAF00000000000AA0005 /* OnboardingWidgetPromoView.swift */,
 				EE320001EE320001EE320001 /* UpdoMascotView.swift */,
 				6D4F2BDC2FA023EF0056E067 /* AppOnboardingFlowView.swift */,
 			);
@@ -1542,6 +1545,7 @@
 				AC100004 /* AIOnboardingFlowView.swift in Sources */,
 				EE340002EE340002EE340002 /* OnboardingShowcaseMocks.swift in Sources */,
 				EE330002EE330002EE330002 /* OnboardingShowcaseView.swift in Sources */,
+				6DC0CAF00000000000AA0006 /* OnboardingWidgetPromoView.swift in Sources */,
 				EE320002EE320002EE320002 /* UpdoMascotView.swift in Sources */,
 				6D4F2BD52F9EDDCE0056E067 /* IdentityLevelUpState.swift in Sources */,
 				6D4F2BE32FA15FF40056E067 /* FriendPresenceEngine.swift in Sources */,

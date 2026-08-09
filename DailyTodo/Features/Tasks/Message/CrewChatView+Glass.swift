@@ -21,7 +21,7 @@ extension CrewChatView {
                     endPoint: .bottomTrailing
                 )
             )
-            .background(.ultraThinMaterial, in: Circle())
+            .background(Color(arenaHex: "#22232B"), in: Circle())
             .overlay(
                 Circle()
                     .fill(
@@ -69,7 +69,7 @@ extension CrewChatView {
                     endPoint: .bottomTrailing
                 )
             )
-            .background(.ultraThinMaterial, in: Capsule())
+            .background(Color(arenaHex: "#22232B"), in: Capsule())
             .overlay(
                 Capsule()
                     .fill(
@@ -118,7 +118,7 @@ extension CrewChatView {
                 )
             )
             .background(
-                .ultraThinMaterial,
+                Color(arenaHex: "#22232B"),
                 in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             )
             .overlay(

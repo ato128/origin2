@@ -63,6 +63,11 @@ final class AIOnboardingStore: ObservableObject {
     @Published private(set) var phase: Phase = .greeting
     @Published var errorText: String?
 
+    // Geri (back) için ziyaret edilen adımların anlık görüntüleri.
+    struct BackSnapshot { let phase: Phase; let line: String }
+    @Published private(set) var backStack: [BackSnapshot] = []
+    var canGoBack: Bool { !backStack.isEmpty }
+
     var hasMoreLines: Bool { !pendingLines.isEmpty }
 
     // MARK: - Collected answers (canonical values)
@@ -124,6 +129,12 @@ final class AIOnboardingStore: ObservableObject {
 
     /// Show `lines` one at a time; reveal the phase's input once the last line is reached.
     private func present(_ lines: [String], phase newPhase: Phase) {
+        // İleri her geçişte mevcut (cevaplanabilir) adımı geri yığınına kaydet.
+        switch phase {
+        case .greeting, .saving, .finished: break
+        default: backStack.append(BackSnapshot(phase: phase, line: currentLine))
+        }
+
         var l = lines
         let first = l.isEmpty ? "" : l.removeFirst()
         withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
@@ -134,6 +145,22 @@ final class AIOnboardingStore: ObservableObject {
             isWorking = false
         }
         speak()
+    }
+
+    /// Sol-üst geri tuşu: bir önceki adıma dön, o adımın sorusunu yeniden göster.
+    func goBack() {
+        guard let snap = backStack.popLast() else { return }
+        HapticManager.shared.selection()
+        universitySearchTask?.cancel()
+        isScanningPhotos = false
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
+            phase = snap.phase
+            currentLine = snap.line
+            pendingLines = []
+            inputVisible = true
+            isWorking = false
+            isSpeaking = false
+        }
     }
 
     /// Called by the "Devam" button.

@@ -2138,6 +2138,9 @@
 "ob_mk_members" = "ÜYE";
 "ob_mk_crews" = "Crewler";
 "ob_sc_see_pro" = "Updo Pro'yu Gör";
+"ob_widget_title" = "Gelişimini widget'lardan takip et";
+"ob_widget_sub" = "Programını, serini, odak dakikalarını ve haftalık hedefini ana ekranından tek bakışta gör.";
+"ob_widget_cta" = "Updo Pro'yu Keşfet";
 "ob_sc_more_prompt" = "Daha fazlasına erişmek ister misin?";
 
 /* Home — Getting Started / activation card */

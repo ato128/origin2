@@ -858,7 +858,15 @@ private extension FriendChatView {
         .padding(.vertical, 9)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(0.06))
+                .fill(Color(arenaHex: "#20222B"))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(FriendChatArenaPalette.cyan.opacity(0.08))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                )
         )
     }
 
@@ -1065,17 +1073,17 @@ private extension FriendChatView {
 // MARK: - Helpers
 
 private extension FriendChatView {
-    // Birebir Updo AI floating cam-daire.
+    // Floating cam-daire — CPU dostu opak (blur yok, aynı görünür).
     var arenaCircleBackground: some View {
         Circle()
-            .fill(.ultraThinMaterial)
+            .fill(Color(arenaHex: "#22232B"))
             .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
     }
 
-    // Birebir Updo AI floating cam-pill.
+    // Floating cam-pill — CPU dostu opak.
     var arenaCapsuleBackground: some View {
         Capsule()
-            .fill(.ultraThinMaterial)
+            .fill(Color(arenaHex: "#22232B"))
             .overlay(Capsule().strokeBorder(UpdoTheme.border, lineWidth: 1))
     }
     
@@ -2176,6 +2184,7 @@ private extension FriendChatView {
                                         } : nil
                                     )
                                 }
+                                .swipeToReply(isFromMe: message.isFromMe) { onReply() }
 
                             if !message.reactions.isEmpty {
                                 ChatReactionBadges(reactions: message.reactions)
