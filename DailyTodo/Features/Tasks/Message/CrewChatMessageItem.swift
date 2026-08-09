@@ -32,6 +32,9 @@ struct CrewChatMessageItem: Identifiable, Equatable {
     let displayText: String
     let replyPreview: String?
 
+    /// Per-user emoji reaksiyonlar (toplu). Backend'den gelir / realtime güncellenir.
+    var reactions: [ChatReactionSummary]
+
     init(
         id: UUID = UUID(),
         serverID: UUID?,
@@ -52,6 +55,7 @@ struct CrewChatMessageItem: Identifiable, Equatable {
         fileSizeBytes: Int64? = nil,
         mimeType: String? = nil,
         messageStatus: String = "sent",
+        reactions: [ChatReactionSummary] = [],
         replyMarker: String = "[[reply]]",
         bodyMarker: String = "[[body]]"
     ) {
@@ -75,6 +79,7 @@ struct CrewChatMessageItem: Identifiable, Equatable {
         self.fileSizeBytes = fileSizeBytes
         self.mimeType = mimeType
         self.messageStatus = messageStatus
+        self.reactions = reactions
 
         if text.hasPrefix(replyMarker), let bodyRange = text.range(of: bodyMarker) {
             let previewStart = text.index(text.startIndex, offsetBy: replyMarker.count)

@@ -7,6 +7,16 @@
 
 import Foundation
 
+/// Toplu emoji reaksiyon (iMessage tapback): bir emoji, kaç kişi verdi, ben verdim mi.
+/// Backend `chat_message_reactions`'tan toplanır; friend + crew ortak kullanır.
+struct ChatReactionSummary: Codable, Equatable, Hashable, Identifiable {
+    let emoji: String
+    let count: Int
+    let mine: Bool
+
+    var id: String { emoji }
+}
+
 struct FriendChatMessageItem: Identifiable, Equatable {
     let id: UUID
     let serverID: UUID?
@@ -31,6 +41,14 @@ struct FriendChatMessageItem: Identifiable, Equatable {
     let mimeType: String?
     let messageStatus: String
 
+    /// iMessage-style reply: alıntılanan mesajın kısa önizlemesi (varsa).
+    let replyPreview: String?
+    /// Baloncukta gösterilecek gerçek metin (reply marker'ı ayıklanmış).
+    let displayText: String
+
+    /// Per-user emoji reaksiyonlar (toplu). Backend'den gelir / realtime güncellenir.
+    var reactions: [ChatReactionSummary]
+
     init(
         id: UUID,
         serverID: UUID? = nil,
@@ -52,7 +70,10 @@ struct FriendChatMessageItem: Identifiable, Equatable {
         fileName: String? = nil,
         fileSizeBytes: Int64? = nil,
         mimeType: String? = nil,
-        messageStatus: String = "sent_to_server"
+        messageStatus: String = "sent_to_server",
+        reactions: [ChatReactionSummary] = [],
+        replyMarker: String = "[[reply]]",
+        bodyMarker: String = "[[body]]"
     ) {
         self.id = id
         self.serverID = serverID
@@ -75,5 +96,18 @@ struct FriendChatMessageItem: Identifiable, Equatable {
         self.fileSizeBytes = fileSizeBytes
         self.mimeType = mimeType
         self.messageStatus = messageStatus
+        self.reactions = reactions
+
+        if text.hasPrefix(replyMarker), let bodyRange = text.range(of: bodyMarker) {
+            let previewStart = text.index(text.startIndex, offsetBy: replyMarker.count)
+            let preview = String(text[previewStart..<bodyRange.lowerBound])
+            let body = String(text[bodyRange.upperBound...])
+
+            self.replyPreview = preview.isEmpty ? nil : preview
+            self.displayText = body
+        } else {
+            self.replyPreview = nil
+            self.displayText = text
+        }
     }
 }

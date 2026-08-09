@@ -233,7 +233,8 @@ extension CrewChatView {
             fileName: dto.fileName,
             fileSizeBytes: dto.fileSizeBytes.map { Int64($0) },
             mimeType: dto.mimeType,
-            messageStatus: dto.deletedAt == nil ? "sent" : "deleted"
+            messageStatus: dto.deletedAt == nil ? "sent" : "deleted",
+            reactions: dto.reactions
         )
     }
 
@@ -338,6 +339,44 @@ extension CrewChatView {
         }
 
         backendMessages = merged.sorted { $0.createdAt < $1.createdAt }
+    }
+
+    // MARK: - Emoji reaksiyon (tapback)
+
+    /// Bir mesajın toplu reaksiyon listesini (server / realtime kaynaklı) uygular.
+    func applyReactions(messageID: UUID, reactions: [ChatReactionSummary]) {
+        guard let index = backendMessages.firstIndex(where: { $0.serverID == messageID || $0.id == messageID }) else {
+            return
+        }
+        backendMessages[index].reactions = reactions
+    }
+
+    /// Uzun-basma tapback: aynı emoji tekrar → kaldır, farklı → değiştir/ekle.
+    /// Önce iyimser günceller, sonra backend'e yazıp toplu sonucu uygular.
+    func toggleReaction(_ message: CrewChatMessageItem, emoji: String) {
+        guard let conversationID = backendConversationID,
+              let messageID = message.serverID else { return }
+
+        Haptics.impact(.light)
+
+        let mine = message.reactions.first(where: { $0.mine })?.emoji
+        let newEmoji: String? = (mine == emoji) ? nil : emoji
+
+        applyReactions(
+            messageID: messageID,
+            reactions: chatOptimisticReactions(message.reactions, newEmoji: newEmoji)
+        )
+
+        Task {
+            let updated = await ChatBackendClient.shared.setReaction(
+                conversationID: conversationID,
+                messageID: messageID,
+                emoji: newEmoji
+            )
+            if let updated {
+                await MainActor.run { applyReactions(messageID: messageID, reactions: updated) }
+            }
+        }
     }
 
     func markBackendMessageFailed(clientID: String) {

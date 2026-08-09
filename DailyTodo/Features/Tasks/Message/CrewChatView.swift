@@ -22,6 +22,7 @@ struct CrewChatView: View {
     @State var draftMessage: String = ""
     @State var showCrewInfo = false
     @State var replyingTo: CrewChatMessageItem?
+    @State var reactingMessageID: UUID?
 
    
     @State var focusRoomSession: CrewFocusSessionDTO?

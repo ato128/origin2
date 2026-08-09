@@ -183,6 +183,7 @@
 "common_ok" = "Tamam";
 "common_cancel" = "İptal";
 "common_copy" = "Kopyala";
+"chat_action_reply" = "Yanıtla";
 "common_copied" = "Kopyalandı";
 "common_unknown_error" = "Bilinmeyen hata";
 "common_today" = "Bugün";

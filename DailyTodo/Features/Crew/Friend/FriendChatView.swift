@@ -40,13 +40,51 @@ private enum FriendChatArenaPalette {
     }
 
     static var sentBubbleGradient: LinearGradient {
+        // iMessage-style blue
         LinearGradient(
             colors: [
-                Color(arenaHex: "#2DD4FF"),
-                Color(arenaHex: "#7C3AED")
+                Color(arenaHex: "#0A84FF"),
+                Color(arenaHex: "#0A6AF5")
             ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    /// iMessage-style received bubble (dark gray).
+    static let receivedBubbleFill = Color(arenaHex: "#2A2A2D")
+}
+
+/// Baloncuk içinde alıntılanan mesajın kısa önizlemesi (reply).
+private struct FriendReplyPreviewChip: View {
+    let preview: String
+    let isFromMe: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Rectangle()
+                .fill(isFromMe ? Color.white.opacity(0.8) : Color(arenaHex: "#2DD4FF").opacity(0.9))
+                .frame(width: 3, height: 26)
+                .clipShape(Capsule())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(tr("chat_action_reply"))
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .foregroundStyle(isFromMe ? .white.opacity(0.82) : Color(arenaHex: "#2DD4FF"))
+
+                Text(preview)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(isFromMe ? .white.opacity(0.8) : .white.opacity(0.55))
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 7)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(isFromMe ? Color.white.opacity(0.14) : Color.white.opacity(0.06))
         )
     }
 }
@@ -117,6 +155,8 @@ struct FriendChatView: View {
     @State private var lastTypingTextWasEmpty = true
     @State private var backendConversationID: UUID?
     @State private var backendMessages: [FriendChatMessageItem] = []
+    @State private var reactingMessageID: UUID?
+    @State private var replyingTo: FriendChatMessageItem?
     @State private var isSyncingBackendConversation = false
     @State private var hasCompletedBackendInitialSync = false
     @State private var backendSyncError: String?
@@ -245,6 +285,15 @@ struct FriendChatView: View {
             .onChange(of: capturedImage) { _, newImage in
                 guard let newImage else { return }
                 draftAttachment = .photo(newImage)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .chatBackendMessageReaction)) { note in
+                guard let info = note.userInfo,
+                      let convStr = info["conversationID"] as? String,
+                      convStr == backendConversationID?.uuidString,
+                      let msgStr = info["messageID"] as? String,
+                      let messageID = UUID(uuidString: msgStr),
+                      let reactions = info["reactions"] as? [ChatReactionSummary] else { return }
+                applyReactions(messageID: messageID, reactions: reactions)
             }
             .onChange(of: selectedPhotoItem) { _, newItem in
                 guard let newItem else { return }
@@ -624,6 +673,13 @@ private extension FriendChatView {
                             ChatMessageRow(
                                 message: message,
                                 palette: palette,
+                                reactingMessageID: $reactingMessageID,
+                                onReact: { emoji in
+                                    toggleReaction(message, emoji: emoji)
+                                },
+                                onReply: {
+                                    replyingTo = message
+                                },
                                 onDelete: {
                                     guard let friendshipID else { return }
 
@@ -769,8 +825,50 @@ private extension FriendChatView {
 // MARK: - Composer
 
 private extension FriendChatView {
+    private func replyComposerBar(_ target: FriendChatMessageItem) -> some View {
+        HStack(spacing: 10) {
+            Rectangle()
+                .fill(FriendChatArenaPalette.cyan)
+                .frame(width: 3, height: 30)
+                .clipShape(Capsule())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(target.isFromMe ? tr("crew_chat_reply_yourself") : target.senderName)
+                    .font(.system(size: 12, weight: .black))
+                    .foregroundStyle(FriendChatArenaPalette.cyan)
+
+                Text(target.displayText.replacingOccurrences(of: "\n", with: " "))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+
+            Button {
+                replyingTo = nil
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundStyle(.white.opacity(0.4))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.white.opacity(0.06))
+        )
+    }
+
     var composerBar: some View {
         VStack(spacing: 8) {
+            if let replyingTo {
+                replyComposerBar(replyingTo)
+                    .padding(.horizontal, 16)
+            }
+
             if let draftAttachment {
                 attachmentPreviewCard(attachment: draftAttachment)
                     .padding(.horizontal, 16)
@@ -1124,6 +1222,7 @@ private extension FriendChatView {
 
         let clean = draftMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         let attachmentToSend = draftAttachment
+        let replyTarget = replyingTo
 
         guard !clean.isEmpty || attachmentToSend != nil else { return }
 
@@ -1189,6 +1288,7 @@ private extension FriendChatView {
             await MainActor.run {
                 isSendingBackendMessage = true
                 draftMessage = ""
+                replyingTo = nil
                 selectedPhotoItem = nil
                 selectedFileURL = nil
                 capturedImage = nil
@@ -1196,8 +1296,18 @@ private extension FriendChatView {
 
             let clientID = UUID().uuidString
 
+            // Reply: [[reply]]<önizleme>[[body]]<metin> — backend marker'ı önizlemede temizler,
+            // FriendChatMessageItem init'i alıntı önizlemesi + gövde olarak ayrıştırır.
+            let outgoingText: String = {
+                guard let replyTarget else { return clean }
+                let preview = String(
+                    replyTarget.displayText.replacingOccurrences(of: "\n", with: " ").prefix(120)
+                )
+                return "[[reply]]\(preview)[[body]]\(clean)"
+            }()
+
             let pendingMessage = makePendingBackendTextMessage(
-                text: clean,
+                text: outgoingText,
                 clientID: clientID,
                 friendshipID: friendshipID,
                 senderID: senderID
@@ -1213,7 +1323,7 @@ private extension FriendChatView {
 
             let backendMessage = await ChatBackendClient.shared.sendMessage(
                 conversationID: backendConversationID,
-                text: clean,
+                text: outgoingText,
                 clientID: clientID
             )
 
@@ -1993,6 +2103,9 @@ private extension FriendChatView {
         private struct ChatMessageRow: View {
             let message: FriendChatMessageItem
             let palette: ThemePalette
+            @Binding var reactingMessageID: UUID?
+            let onReact: (String) -> Void
+            let onReply: () -> Void
             let onDelete: () -> Void
             let onRetry: () -> Void
             
@@ -2027,24 +2140,48 @@ private extension FriendChatView {
                         
                         VStack(alignment: message.isFromMe ? .trailing : .leading, spacing: 4) {
                             messageContent
-                                .contextMenu {
-                                    if !message.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                        Button {
-                                            UIPasteboard.general.string = message.text
-                                        } label: {
-                                            Label(tr("common_copy"), systemImage: "doc.on.doc")
-                                        }
+                                .onLongPressGesture(minimumDuration: 0.28) {
+                                    guard message.serverID != nil else {
+                                        Haptics.impact(.light)
+                                        onReply()
+                                        return
                                     }
-                                    
-                                    if isImageMessage {
-                                        Button {
+                                    Haptics.impact(.light)
+                                    reactingMessageID = message.id
+                                }
+                                .popover(isPresented: Binding(
+                                    get: { reactingMessageID == message.id },
+                                    set: { if !$0 { reactingMessageID = nil } }
+                                )) {
+                                    ChatMessageActionsPopover(
+                                        myReaction: message.reactions.first(where: { $0.mine })?.emoji,
+                                        canCopy: !message.displayText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                                        onPick: { emoji in
+                                            reactingMessageID = nil
+                                            onReact(emoji)
+                                        },
+                                        onReply: {
+                                            reactingMessageID = nil
+                                            onReply()
+                                        },
+                                        onCopy: {
+                                            reactingMessageID = nil
+                                            UIPasteboard.general.string = message.displayText
+                                        },
+                                        extraActionTitle: isImageMessage ? tr("fc_save_photo") : nil,
+                                        extraActionIcon: isImageMessage ? "square.and.arrow.down" : nil,
+                                        onExtra: isImageMessage ? {
+                                            reactingMessageID = nil
                                             saveImageToPhotos()
-                                        } label: {
-                                            Label(tr("fc_save_photo"), systemImage: "square.and.arrow.down")
-                                        }
-                                    }
+                                        } : nil
+                                    )
+                                }
+
+                            if !message.reactions.isEmpty {
+                                ChatReactionBadges(reactions: message.reactions)
+                                    .padding(.top, -6)
                             }
-                            
+
                             if showTime {
                                 Text(timeText)
                                     .font(.system(size: 11, weight: .medium))
@@ -2188,7 +2325,7 @@ private extension FriendChatView {
                         }
                         .padding(.horizontal, 14)
                         .padding(.vertical, 12)
-                        .background(message.isFromMe ? AnyShapeStyle(FriendChatArenaPalette.sentBubbleGradient) : AnyShapeStyle(Color.white.opacity(0.055)))
+                        .background(message.isFromMe ? AnyShapeStyle(FriendChatArenaPalette.sentBubbleGradient) : AnyShapeStyle(FriendChatArenaPalette.receivedBubbleFill))
                         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 22, style: .continuous)
@@ -2239,7 +2376,7 @@ private extension FriendChatView {
                 }
             }
             
-            // Birebir Updo AI baloncuğu: konuşan tarafta köşeli kuyruk.
+            // iMessage baloncuğu: gönderilen mavi, alınan gri; konuşan tarafta kuyruk.
             private var textMessageBubble: some View {
                 let shape = UnevenRoundedRectangle(
                     topLeadingRadius: 18,
@@ -2249,26 +2386,25 @@ private extension FriendChatView {
                     style: .continuous
                 )
 
-                return Text(message.text)
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(message.isFromMe ? .white : .white.opacity(0.96))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background {
-                        if message.isFromMe {
-                            shape.fill(
-                                LinearGradient(
-                                    colors: [UpdoTheme.cyan, UpdoTheme.purple],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                        } else {
-                            shape.fill(UpdoTheme.surfaceHigh)
-                                .overlay(shape.strokeBorder(UpdoTheme.border, lineWidth: 1))
-                        }
+                return VStack(alignment: .leading, spacing: 6) {
+                    if let replyPreview = message.replyPreview {
+                        FriendReplyPreviewChip(preview: replyPreview, isFromMe: message.isFromMe)
                     }
-                    .clipShape(shape)
+
+                    Text(message.displayText)
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundStyle(message.isFromMe ? .white : .white.opacity(0.96))
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background {
+                    if message.isFromMe {
+                        shape.fill(UpdoTheme.bubbleSentGradient)
+                    } else {
+                        shape.fill(UpdoTheme.bubbleReceived)
+                    }
+                }
+                .clipShape(shape)
             }
             
             private var imageMessageBubble: some View {
@@ -3133,7 +3269,8 @@ private extension FriendChatView {
                                 fileName: dto.fileName,
                                 fileSizeBytes: dto.fileSizeBytes.map { Int64($0) },
                                 mimeType: dto.mimeType,
-                                messageStatus: resolvedStatus
+                                messageStatus: resolvedStatus,
+                                reactions: dto.reactions
                             )
                         }
 
@@ -3300,7 +3437,42 @@ private extension FriendChatView {
 
                 backendMessages = merged.sorted { $0.createdAt < $1.createdAt }
             }
-            
+
+            // MARK: - Emoji reaksiyon (tapback)
+
+            func applyReactions(messageID: UUID, reactions: [ChatReactionSummary]) {
+                guard let index = backendMessages.firstIndex(where: {
+                    $0.serverID == messageID || $0.id == messageID
+                }) else { return }
+                backendMessages[index].reactions = reactions
+            }
+
+            func toggleReaction(_ message: FriendChatMessageItem, emoji: String) {
+                guard let conversationID = backendConversationID,
+                      let messageID = message.serverID else { return }
+
+                Haptics.impact(.light)
+
+                let mine = message.reactions.first(where: { $0.mine })?.emoji
+                let newEmoji: String? = (mine == emoji) ? nil : emoji
+
+                applyReactions(
+                    messageID: messageID,
+                    reactions: chatOptimisticReactions(message.reactions, newEmoji: newEmoji)
+                )
+
+                Task {
+                    let updated = await ChatBackendClient.shared.setReaction(
+                        conversationID: conversationID,
+                        messageID: messageID,
+                        emoji: newEmoji
+                    )
+                    if let updated {
+                        await MainActor.run { applyReactions(messageID: messageID, reactions: updated) }
+                    }
+                }
+            }
+
             func markBackendMessageFailed(clientID: String) {
                 guard let index = backendMessages.firstIndex(where: { $0.clientID == clientID }) else {
                     return

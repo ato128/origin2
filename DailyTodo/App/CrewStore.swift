@@ -261,8 +261,13 @@ final class CrewStore: ObservableObject {
             items[pendingIndex] = item
         } else {
             items.append(item)
+            // iMessage tarzı gelen sesi: yalnız başkasından gelen yeni mesajda
+            // (bulk yükleme setChatMessages yolundan gelir, burası tetiklenmez).
+            if !item.isFromMe && !item.isSystemMessage {
+                ChatFeedbackManager.shared.playIncoming()
+            }
         }
-        
+
         chatMessagesByCrew[crewID] = sortAndTrimChatItems(items)
     }
     

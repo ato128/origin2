@@ -55,6 +55,15 @@ extension CrewChatView {
                     }
                 }
             }
+            .onReceive(NotificationCenter.default.publisher(for: .chatBackendMessageReaction)) { note in
+                guard let info = note.userInfo,
+                      let convStr = info["conversationID"] as? String,
+                      convStr == backendConversationID?.uuidString,
+                      let msgStr = info["messageID"] as? String,
+                      let messageID = UUID(uuidString: msgStr),
+                      let reactions = info["reactions"] as? [ChatReactionSummary] else { return }
+                applyReactions(messageID: messageID, reactions: reactions)
+            }
         }
     }
 
@@ -259,8 +268,40 @@ extension CrewChatView {
                     .contentShape(crewBubbleShape(isFromMe: isFromMe))
                     .padding(.top, topSpacing)
                     .onLongPressGesture(minimumDuration: 0.28) {
+                        guard message.serverID != nil else {
+                            Haptics.impact(.light)
+                            replyingTo = message
+                            return
+                        }
                         Haptics.impact(.light)
-                        replyingTo = message
+                        reactingMessageID = message.id
+                    }
+                    .popover(isPresented: Binding(
+                        get: { reactingMessageID == message.id },
+                        set: { if !$0 { reactingMessageID = nil } }
+                    )) {
+                        ChatMessageActionsPopover(
+                            myReaction: message.reactions.first(where: { $0.mine })?.emoji,
+                            canCopy: !message.displayText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                            onPick: { emoji in
+                                reactingMessageID = nil
+                                toggleReaction(message, emoji: emoji)
+                            },
+                            onReply: {
+                                reactingMessageID = nil
+                                replyingTo = message
+                            },
+                            onCopy: {
+                                reactingMessageID = nil
+                                UIPasteboard.general.string = message.displayText
+                            }
+                        )
+                    }
+
+                    if !message.reactions.isEmpty {
+                        ChatReactionBadges(reactions: message.reactions)
+                            .padding(.top, -8)
+                            .padding(isFromMe ? .trailing : .leading, 8)
                     }
 
                     if !isFromMe {
@@ -423,21 +464,14 @@ extension CrewChatView {
         )
     }
 
-    // Birebir Updo AI baloncuğu: gönderilen cyan→mor gradient, alınan surfaceHigh + border.
+    // iMessage baloncuğu: gönderilen mavi gradient, alınan koyu gri.
     func messageBubbleBackground(isFromMe: Bool) -> some View {
         let shape = crewBubbleShape(isFromMe: isFromMe)
         return Group {
             if isFromMe {
-                shape.fill(
-                    LinearGradient(
-                        colors: [UpdoTheme.cyan, UpdoTheme.purple],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                shape.fill(UpdoTheme.bubbleSentGradient)
             } else {
-                shape.fill(UpdoTheme.surfaceHigh)
-                    .overlay(shape.strokeBorder(UpdoTheme.border, lineWidth: 1))
+                shape.fill(UpdoTheme.bubbleReceived)
             }
         }
     }

@@ -105,6 +105,7 @@ struct ChatBackendMessageDTO: Decodable, Identifiable, Equatable {
     let createdAt: String
     let editedAt: String?
     let deletedAt: String?
+    let reactions: [ChatReactionSummary]
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -122,6 +123,7 @@ struct ChatBackendMessageDTO: Decodable, Identifiable, Equatable {
         case createdAt
         case editedAt
         case deletedAt
+        case reactions
     }
 
     init(from decoder: Decoder) throws {
@@ -144,6 +146,7 @@ struct ChatBackendMessageDTO: Decodable, Identifiable, Equatable {
             createdAt = try container.decode(String.self, forKey: .createdAt)
             editedAt = try container.decodeIfPresent(String.self, forKey: .editedAt)
             deletedAt = try container.decodeIfPresent(String.self, forKey: .deletedAt)
+            reactions = (try? container.decodeIfPresent([ChatReactionSummary].self, forKey: .reactions)) ?? []
 
             if let intValue = try? container.decodeIfPresent(Int.self, forKey: .fileSizeBytes) {
                 fileSizeBytes = intValue
@@ -177,6 +180,17 @@ struct ChatBackendSendMessageResponse: Decodable {
 struct ChatBackendFetchMessagesResponse: Decodable {
     let ok: Bool
     let messages: [ChatBackendMessageDTO]?
+    let error: String?
+}
+
+struct ChatBackendReactionPayload: Encodable {
+    let emoji: String?
+}
+
+struct ChatBackendReactionResponse: Decodable {
+    let ok: Bool
+    let messageID: UUID?
+    let reactions: [ChatReactionSummary]?
     let error: String?
 }
 
@@ -664,6 +678,44 @@ final class ChatBackendClient {
             text: text,
             clientID: UUID().uuidString
         )
+    }
+
+    /// Emoji reaksiyon ver/değiştir (emoji: "❤️") ya da kaldır (emoji: nil).
+    /// Toplu güncel reaksiyon listesini döner.
+    @discardableResult
+    func setReaction(
+        conversationID: UUID,
+        messageID: UUID,
+        emoji: String?
+    ) async -> [ChatReactionSummary]? {
+        do {
+            let payload = ChatBackendReactionPayload(emoji: emoji)
+            let data = try JSONEncoder().encode(payload)
+            let object = try JSONSerialization.jsonObject(with: data)
+
+            let request = try await makeRequest(
+                path: "/v1/conversations/\(conversationID.uuidString)/messages/\(messageID.uuidString)/reaction",
+                method: "POST",
+                body: object,
+                timeout: 20
+            )
+
+            let decoded = try await perform(
+                request,
+                responseType: ChatBackendReactionResponse.self,
+                debugName: "setReaction"
+            )
+
+            guard decoded.ok else {
+                ChatBackendLogger.error("❌ CHAT BACKEND setReaction API ERROR:", decoded.error ?? "unknown")
+                return nil
+            }
+
+            return decoded.reactions ?? []
+        } catch {
+            ChatBackendLogger.error("❌ CHAT BACKEND setReaction ERROR:", error.localizedDescription)
+            return nil
+        }
     }
 
     @discardableResult

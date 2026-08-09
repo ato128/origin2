@@ -34,6 +34,16 @@ enum UpdoTheme {
     // Border
     static let border       = Color.white.opacity(0.08)
 
+    // iMessage-style chat bubbles
+    static let bubbleSentTop     = Color(arenaHex: "#0A84FF")   // sent (top)
+    static let bubbleSentBottom  = Color(arenaHex: "#0A6AF5")   // sent (bottom)
+    static let bubbleReceived    = Color(arenaHex: "#2A2A2D")   // received (dark gray)
+    static let bubbleSentGradient = LinearGradient(
+        colors: [bubbleSentTop, bubbleSentBottom],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
     // Gradients
     static let gradientAI = LinearGradient(
         colors: [cyan, purple],

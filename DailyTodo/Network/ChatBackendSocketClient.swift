@@ -302,6 +302,23 @@ final class ChatBackendSocketClient: NSObject, ObservableObject {
                     ]
                 )
 
+            case "message_reaction":
+                guard let conversationID = event.payload?.conversationID,
+                      let messageID = event.payload?.messageID else {
+                    ChatBackendLogger.error("❌ WS MESSAGE_REACTION PAYLOAD MISSING")
+                    return
+                }
+
+                NotificationCenter.default.post(
+                    name: .chatBackendMessageReaction,
+                    object: conversationID,
+                    userInfo: [
+                        "conversationID": conversationID.uuidString,
+                        "messageID": messageID.uuidString,
+                        "reactions": event.payload?.reactions ?? []
+                    ]
+                )
+
             case "error":
                 ChatBackendLogger.error("❌ WS SERVER ERROR:", event.payload?.message ?? "unknown")
 
@@ -454,6 +471,10 @@ struct ChatBackendSocketPayload: Decodable {
     let messages: [ChatBackendSeenMessageDTO]?
     let code: String?
     let error: String?
+
+    // Emoji reaksiyon eventi (message_reaction)
+    let messageID: UUID?
+    let reactions: [ChatReactionSummary]?
     
     
     let session: CrewFocusSessionDTO?
@@ -524,6 +545,7 @@ extension Notification.Name {
     static let chatBackendMessageCreated = Notification.Name("chatBackendMessageCreated")
     static let chatBackendMessageSeen = Notification.Name("chatBackendMessageSeen")
     static let chatBackendMessageDelivered = Notification.Name("chatBackendMessageDelivered")
+    static let chatBackendMessageReaction = Notification.Name("chatBackendMessageReaction")
 
     // YENİ — Crew focus realtime events:
     static let crewFocusSessionStarted = Notification.Name("crewFocusSessionStarted")

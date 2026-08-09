@@ -183,6 +183,7 @@
 "common_ok" = "OK";
 "common_cancel" = "Cancel";
 "common_copy" = "Copy";
+"chat_action_reply" = "Reply";
 "common_copied" = "Copied";
 "common_unknown_error" = "Unknown error";
 "common_today" = "Today";
