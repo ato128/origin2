@@ -49,8 +49,8 @@ struct PaywallView: View {
         switch (selectedTier, selectedPlan) {
         case (.premium, .annual):    return "com.updo.pro.annual"
         case (.premium, .monthly):   return "com.updo.pro.monthly"
-        case (.premiumAI, .annual):  return "com.updo.pro.ai.annual"
-        case (.premiumAI, .monthly): return "com.updo.pro.ai.monthly"
+        case (.premiumAI, .annual):  return "com.updo.premiumai.annual"
+        case (.premiumAI, .monthly): return "com.updo.premiumai.monthly"
         }
     }
 
@@ -63,13 +63,13 @@ struct PaywallView: View {
     // Store fiyatları yüklenemediğinde gösterilen planlanan fiyatlar —
     // App Store Connect ürünleri bu değerlerle oluşturulmalı.
     private var monthlyPrice: String {
-        let id = selectedTier == .premiumAI ? "com.updo.pro.ai.monthly" : "com.updo.pro.monthly"
-        return storePrice(id) ?? (selectedTier == .premiumAI ? "179,99 ₺" : "129,99 ₺")
+        let id = selectedTier == .premiumAI ? "com.updo.premiumai.monthly" : "com.updo.pro.monthly"
+        return storePrice(id) ?? (selectedTier == .premiumAI ? "149,99 ₺" : "99,99 ₺")
     }
 
     private var annualPrice: String {
-        let id = selectedTier == .premiumAI ? "com.updo.pro.ai.annual" : "com.updo.pro.annual"
-        return storePrice(id) ?? (selectedTier == .premiumAI ? "1.249,99 ₺" : "899,99 ₺")
+        let id = selectedTier == .premiumAI ? "com.updo.premiumai.annual" : "com.updo.pro.annual"
+        return storePrice(id) ?? (selectedTier == .premiumAI ? "1.299,99 ₺" : "999,99 ₺")
     }
 
     private var savingsText: String {
@@ -193,7 +193,7 @@ struct PaywallView: View {
                 .padding(.horizontal, 13).padding(.top, 10)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(storePrice("com.updo.pro.ai.monthly").map { $0 + tr("pw_per_mo") } ?? "179,99 ₺" + tr("pw_per_mo"))
+                    Text(storePrice("com.updo.premiumai.monthly").map { $0 + tr("pw_per_mo") } ?? "149,99 ₺" + tr("pw_per_mo"))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(isSelected ? cyan : cyan.opacity(0.45))
                     Text(tr("pw_tier_ai_sub")).font(.system(size: 11, weight: .medium))
@@ -225,7 +225,7 @@ struct PaywallView: View {
                 .padding(.horizontal, 13).padding(.top, 10)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(storePrice("com.updo.pro.monthly").map { $0 + tr("pw_per_mo") } ?? "129,99 ₺" + tr("pw_per_mo"))
+                    Text(storePrice("com.updo.pro.monthly").map { $0 + tr("pw_per_mo") } ?? "99,99 ₺" + tr("pw_per_mo"))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(isSelected ? gold : gold.opacity(0.45))
                     Text(tr("pw_tier_all_features")).font(.system(size: 11, weight: .medium))
