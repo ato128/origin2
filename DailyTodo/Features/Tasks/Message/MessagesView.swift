@@ -233,9 +233,9 @@ struct MessagesView: View {
                 .onReceive(friendStore.$friendMessagesByFriendship) { _ in
                     scheduleFriendSummaryRebuild()
                 }
-                .onReceive(friendStore.$typingStatusByFriendship) { _ in
-                    scheduleFriendSummaryRebuild()
-                }
+                // NOT: typing değişiminde özet listesini YENİDEN KURMA. "yazıyor…"
+                // zaten allConversationItems içinde published typingStatusByFriendship'ten
+                // yansıyor; her tuş vuruşunda tüm listeyi kurmak gereksiz churn'dü.
                 .onReceive(NotificationCenter.default.publisher(for: .chatBackendConversationUpdated)) { notification in
                     upsertBackendConversationFromNotification(notification)
                 }

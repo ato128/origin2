@@ -33,7 +33,7 @@ struct RootView: View {
     @EnvironmentObject var studentStore: StudentStore
     @Environment(\.scenePhase) private var scenePhase
 
-    private let minimumLaunchDurationNanoseconds: UInt64 = 680_000_000
+    private let minimumLaunchDurationNanoseconds: UInt64 = 450_000_000
 
     private var currentUserID: String? {
         guard let user = session.currentUser else { return nil }
@@ -41,9 +41,14 @@ struct RootView: View {
     }
 
     private var shouldWaitForStudentProfileResolve: Bool {
+        // Dönüş yapan kullanıcıda (cache'te tamamlanmış profil var) uzak profil
+        // çözülmesini BEKLEME — animasyon biter bitmez uygulamaya gir. Profil
+        // arka planda tazelenir. Sadece profili hiç olmayan yeni kullanıcı bekler
+        // (onboarding "flash"ını önlemek için).
         session.isSignedIn &&
         !session.shouldShowEmailVerificationGate &&
-        !studentStore.didResolveRemoteProfile
+        !studentStore.didResolveRemoteProfile &&
+        !studentStore.hasCompletedStudentProfile
     }
 
     private var shouldShowBlockingLaunch: Bool {
