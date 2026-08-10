@@ -562,12 +562,7 @@ private extension AddFriendSheetView {
             return
         }
 
-        let acceptedCount = friendStore.friendships.filter { $0.status == "accepted" }.count
-        if acceptedCount >= 5, !subscriptionManager.isPro {
-            Analytics.shared.track("feature_gate_triggered", properties: ["gate": "friend_limit"])
-            showPaywall = true
-            return
-        }
+        // Arkadaş ekleme sınırsız — Pro limiti kaldırıldı.
 
         errorMessage = nil
         successMessage = nil

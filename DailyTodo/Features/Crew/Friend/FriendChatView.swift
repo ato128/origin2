@@ -397,6 +397,7 @@ private extension FriendChatView {
         ZStack(alignment: .top) {
             chatHeaderScrim
                 .allowsHitTesting(false)
+                .ignoresSafeArea(edges: .top)
 
             HStack(alignment: .center, spacing: 10) {
                 Button {
@@ -479,7 +480,6 @@ private extension FriendChatView {
             .padding(.top, 8)
         }
         .frame(maxWidth: .infinity, alignment: .top)
-        .ignoresSafeArea(edges: .top)
     }
     private var friendPresence: FriendPresenceDTO? {
         guard let userID = friend.backendUserID else { return nil }

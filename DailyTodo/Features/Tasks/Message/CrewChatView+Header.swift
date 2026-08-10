@@ -23,6 +23,7 @@ extension CrewChatView {
         ZStack(alignment: .top) {
             crewChatHeaderScrim
                 .allowsHitTesting(false)
+                .ignoresSafeArea(edges: .top)
 
             HStack(alignment: .center, spacing: 10) {
                 Button {
@@ -101,7 +102,6 @@ extension CrewChatView {
             .padding(.top, 8)
         }
         .frame(maxWidth: .infinity, alignment: .top)
-        .ignoresSafeArea(edges: .top)
     }
     
     var crewChatHeaderScrim: some View {

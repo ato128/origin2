@@ -660,23 +660,19 @@ private struct CrewSocialContent: View {
                 socialProBanner
             }
 
-            // Tappable Crews / Friends switcher (Focus-style).
-            crewTabSwitcher
+            // Crew + arkadaşlar tek sayfada (ayrım/sekme kaldırıldı).
+            CrewSocialCrewSection(
+                crews: crews,
+                onOpenCrew: onOpenCrew,
+                onCreateCrew: onCreateCrew,
+                onJoinCrew: onJoinCrew
+            )
 
-            if selectedTab == .friends {
-                CrewSocialFriendsSection(
-                    friends: friends,
-                    onOpenFriend: onOpenFriend,
-                    onAddFriend: onAddFriend
-                )
-            } else {
-                CrewSocialCrewSection(
-                    crews: crews,
-                    onOpenCrew: onOpenCrew,
-                    onCreateCrew: onCreateCrew,
-                    onJoinCrew: onJoinCrew
-                )
-            }
+            CrewSocialFriendsSection(
+                friends: friends,
+                onOpenFriend: onOpenFriend,
+                onAddFriend: onAddFriend
+            )
         }
         .sheet(isPresented: $showStatsPaywall) {
             PaywallView(context: "social_stats")
@@ -1150,136 +1146,49 @@ private struct CrewSocialCrewCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 13) {
-            HStack(alignment: .top, spacing: 13) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(arenaHex: crew.colorHex).opacity(0.95),
-                                    Color(arenaHex: CrewArenaPalette.appPurple).opacity(0.82)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 54, height: 54)
+        HStack(spacing: 13) {
+            ZStack(alignment: .bottomTrailing) {
+                CrewAvatarView(
+                    crewID: crew.id,
+                    name: crew.name,
+                    colorHex: crew.colorHex,
+                    size: 54
+                )
 
-                    Text(String(crew.name.prefix(1)))
-                        .font(.system(size: 25, weight: .regular, design: .serif))
-                        .italic()
-                        .foregroundStyle(.white)
-                }
-
-                VStack(alignment: .leading, spacing: 7) {
-                    HStack(spacing: 7) {
-                        Text(crew.name)
-                            .font(.system(size: 22, weight: .black))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.68)
-
-                        if crew.isPinned {
-                            Image(systemName: "pin.fill")
-                                .font(.system(size: 10, weight: .black))
-                                .foregroundStyle(Color(arenaHex: CrewArenaPalette.gold))
-                        }
-                    }
-
-                    HStack(spacing: 8) {
-                        if let rank = crew.rankText {
-                            Text(rank)
-                                .font(.system(size: 10, weight: .black, design: .monospaced))
-                                .foregroundStyle(Color(arenaHex: CrewArenaPalette.appCyan))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(
-                                    Capsule()
-                                        .fill(Color(arenaHex: CrewArenaPalette.appCyan).opacity(0.12))
-                                )
-                        }
-
-                        Text(crew.memberText)
-                            .font(.system(size: 11, weight: .bold, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.42))
-                            .lineLimit(1)
-                    }
-                }
-
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 6) {
-                    Text(crew.focusTimeText)
-                        .font(.system(size: 24, weight: .black))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.70)
-
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(
-                                crew.isLive
-                                ? Color(arenaHex: CrewArenaPalette.crewCoral)
-                                : Color(arenaHex: CrewArenaPalette.liveGreen)
-                            )
-                            .frame(width: 7, height: 7)
-
-                        Text(crew.statusText)
-                            .font(.system(size: 10, weight: .black, design: .monospaced))
-                            .tracking(0.8)
-                            .foregroundStyle(
-                                crew.isLive
-                                ? Color(arenaHex: CrewArenaPalette.crewCoral)
-                                : Color(arenaHex: CrewArenaPalette.liveGreen)
-                            )
-                            .lineLimit(1)
-                    }
-                }
+                CrewPresenceDot(isLive: crew.isLive)
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) {
-                    Text(tr("wv_today_caps"))
-                        .font(.system(size: 10, weight: .black, design: .monospaced))
-                        .tracking(1.4)
-                        .foregroundStyle(.white.opacity(0.34))
-
-                    if crew.streakDays > 0 {
-                        Text("·")
-                            .foregroundStyle(.white.opacity(0.22))
-
-                        HStack(spacing: 3) {
-                            Image(systemName: "flame.fill")
-                                .font(.system(size: 9, weight: .bold))
-
-                            Text(tr("ch_streak_days_n", crew.streakDays))
-                                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        }
-                        .foregroundStyle(Color(arenaHex: CrewArenaPalette.gold))
-                    }
-
-                    Text("·")
-                        .foregroundStyle(.white.opacity(0.22))
-
-                    Text(crew.taskCount > 0 ? crew.progressText : "aktif")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundStyle(Color(arenaHex: CrewArenaPalette.appCyan))
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Text(crew.name)
+                        .font(.system(size: 17, weight: .black))
+                        .foregroundStyle(.white)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+
+                    if crew.isPinned {
+                        Image(systemName: "pin.fill")
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundStyle(Color(arenaHex: CrewArenaPalette.gold))
+                    }
                 }
+
+                Text(crewSubtitle)
+                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.4))
+                    .lineLimit(1)
 
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         Capsule()
-                            .fill(.white.opacity(0.075))
-                            .frame(height: 5)
+                            .fill(.white.opacity(0.08))
+                            .frame(height: 4)
 
                         Capsule()
                             .fill(
                                 LinearGradient(
                                     colors: [
                                         Color(arenaHex: CrewArenaPalette.appCyan),
-                                        Color(arenaHex: CrewArenaPalette.appPurple),
                                         Color(arenaHex: crew.colorHex)
                                     ],
                                     startPoint: .leading,
@@ -1287,73 +1196,46 @@ private struct CrewSocialCrewCard: View {
                                 )
                             )
                             .frame(
-                                width: barFilled ? max(28, geo.size.width * progressValue) : 28,
-                                height: 5
+                                width: barFilled ? max(20, geo.size.width * progressValue) : 20,
+                                height: 4
                             )
                     }
                 }
-                .frame(height: 5)
+                .frame(height: 4)
                 .onAppear {
                     guard !barFilled else { return }
-                    withAnimation(.spring(response: 0.7, dampingFraction: 0.74).delay(0.15)) {
+                    withAnimation(.spring(response: 0.7, dampingFraction: 0.74).delay(0.1)) {
                         barFilled = true
                     }
                 }
             }
 
-            if crew.weeklyGoalMinutes > 0 {
-                weeklyGoalRow
-            }
+            Spacer(minLength: 6)
 
-            HStack(spacing: 10) {
-                CrewMiniAvatarStack(count: crew.memberCount, accentHex: crew.colorHex)
-
-                Text(
-                    crew.lastMessageText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
-                    ? (crew.lastMessageText ?? tr("ch_crew_chat_ready"))
-                    : tr("ch_crew_chat_ready")
-                )
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.42))
-                .lineLimit(1)
-
-                Spacer()
-
+            VStack(alignment: .trailing, spacing: 6) {
                 if crew.unreadCount > 0 {
                     Text("\(crew.unreadCount)")
                         .font(.system(size: 10, weight: .black, design: .rounded))
                         .foregroundStyle(.black)
                         .frame(minWidth: 20, minHeight: 20)
-                        .background(
-                            Capsule()
-                                .fill(Color(arenaHex: CrewArenaPalette.gold))
-                        )
+                        .background(Capsule().fill(Color(arenaHex: CrewArenaPalette.gold)))
                 }
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(.white.opacity(0.22))
+                    .foregroundStyle(.white.opacity(0.25))
             }
         }
-        .padding(15)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(arenaHex: crew.colorHex).opacity(0.060),
-                            Color(arenaHex: CrewArenaPalette.appPurple).opacity(0.045),
-                            Color(arenaHex: CrewArenaPalette.surface).opacity(0.96)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(.white.opacity(0.070), lineWidth: 1)
-                )
-        )
+        .padding(14)
+        .background(CrewSurface(cornerRadius: 22))
+    }
+
+    private var crewSubtitle: String {
+        let base = crew.memberText
+        if let msg = crew.lastMessageText?.trimmingCharacters(in: .whitespacesAndNewlines), !msg.isEmpty {
+            return "\(base) \u{00B7} \(msg)"
+        }
+        return "\(base) \u{00B7} \(crew.statusText)"
     }
 
     /// Weekly focus goal: real this-week minutes vs the crew's target.

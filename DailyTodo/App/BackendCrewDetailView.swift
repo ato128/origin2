@@ -8,6 +8,7 @@
 import SwiftUI
 import UIKit
 import SwiftData
+import PhotosUI
 
 private enum BackendCrewArenaPalette {
     static let backgroundTop = Color(arenaHex: "#05060D")
@@ -85,6 +86,7 @@ struct BackendCrewDetailView: View {
     @State private var inviteCopied = false
     @State private var showDeleteCrewConfirm = false
     @State private var isDeletingCrew = false
+    @State private var crewPhotoItem: PhotosPickerItem?
     @State private var taskFilter: CrewTaskFilter = .open
     @State private var weeklyGoalMinutes = 0
     
@@ -114,8 +116,6 @@ struct BackendCrewDetailView: View {
 
                     customHeader
 
-                    crewContextLine
-
                     heroCard(
                         memberCount: crewMembers.count,
                         totalTasks: sortedCrewTasks.count,
@@ -128,17 +128,11 @@ struct BackendCrewDetailView: View {
                         memberCount: crewMembers.count
                     )
 
-                    performanceCard
-
                     weeklyGoalCard
 
                     membersSection(crewMembers)
 
                     tasksSection(filteredCrewTasks)
-
-                    focusComingSoonStrip(memberCount: crewMembers.count)
-
-                    backendActivitySection
 
                     Color.clear.frame(height: 100)
                 }
@@ -169,6 +163,10 @@ struct BackendCrewDetailView: View {
         }
         .onDisappear {
             crewStore.unsubscribe()
+        }
+        .onChange(of: crewPhotoItem) { _, newItem in
+            guard let newItem else { return }
+            Task { await uploadCrewPhoto(newItem) }
         }
         .sheet(isPresented: $showAddMember) {
             AddCrewMemberView(crewID: crew.id)
@@ -275,6 +273,38 @@ struct BackendCrewDetailView: View {
     }
 
     @MainActor
+    private func uploadCrewPhoto(_ item: PhotosPickerItem) async {
+        guard let data = try? await item.loadTransferable(type: Data.self),
+              let image = UIImage(data: data) else { return }
+
+        let resized = crewDownscaledImage(image, maxDimension: 512)
+        guard let jpeg = resized.jpegData(compressionQuality: 0.82) else { return }
+
+        await MainActor.run {
+            // Anında yerel gösterim; backend'e yazımı beklemeden.
+            RemoteAvatarStore.shared.overrideLocal(resized, for: crew.id)
+            crewPhotoItem = nil
+        }
+
+        await AvatarBackendClient.shared.uploadCrewAvatar(
+            crewID: crew.id.uuidString,
+            jpegData: jpeg
+        )
+    }
+
+    private func crewDownscaledImage(_ image: UIImage, maxDimension: CGFloat) -> UIImage {
+        let largest = max(image.size.width, image.size.height)
+        guard largest > maxDimension else { return image }
+
+        let scale = maxDimension / largest
+        let target = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: target, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: target))
+        }
+    }
+
     private func loadCrewDetail() async {
         await crewStore.loadMembers(for: crew.id)
         await crewStore.loadMemberProfiles(for: crewStore.crewMembers)
@@ -1243,18 +1273,11 @@ extension BackendCrewDetailView {
 
             Spacer()
 
-            VStack(spacing: 3) {
-                Text(tr("bcd_crew_space_caps"))
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .tracking(2.2)
-                    .foregroundStyle(BackendCrewArenaPalette.cyan)
-
-                Text(crew.name)
-                    .font(.system(size: 21, weight: .black))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-            }
+            Text(crew.name)
+                .font(.system(size: 20, weight: .black))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
 
             Spacer()
 
@@ -1295,24 +1318,28 @@ extension BackendCrewDetailView {
 
         return VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .top, spacing: 14) {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                accent.opacity(0.90),
-                                BackendCrewArenaPalette.purple.opacity(0.82),
-                                BackendCrewArenaPalette.coral.opacity(0.65)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                PhotosPicker(selection: $crewPhotoItem, matching: .images) {
+                    ZStack(alignment: .bottomTrailing) {
+                        CrewAvatarView(
+                            crewID: crew.id,
+                            name: crew.name,
+                            colorHex: crew.color_hex,
+                            size: 62,
+                            corner: 20
                         )
-                    )
-                    .frame(width: 62, height: 62)
-                    .overlay(
-                        Image(systemName: crew.icon)
-                            .font(.system(size: 26, weight: .black))
+
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 9, weight: .black))
                             .foregroundStyle(.white)
-                    )
+                            .frame(width: 22, height: 22)
+                            .background(
+                                Circle().fill(accent)
+                                    .overlay(Circle().stroke(BackendCrewArenaPalette.surface, lineWidth: 2))
+                            )
+                            .offset(x: 3, y: 3)
+                    }
+                }
+                .buttonStyle(.plain)
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(tr("bcd_active_crew_caps"))

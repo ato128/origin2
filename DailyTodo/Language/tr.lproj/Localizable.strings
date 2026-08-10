@@ -1122,6 +1122,7 @@
 "mv_now" = "Şu an";
 "mv_all" = "Tüm";
 "mv_no_chats" = "Henüz sohbet yok";
+"mv_add_friend" = "Arkadaş Ekle";
 "mv_no_results" = "Sonuç bulunamadı";
 "mv_empty_sub" = "Friend ve crew sohbetlerin burada görünecek.";
 "mv_search_retry" = "Aramayı değiştirip tekrar dene.";
@@ -1814,6 +1815,8 @@
 "cfi_join_start" = "Katıl ve Başla";
 "ccb_subtitle" = "Birlikte görev, focus ve takım akışı için yeni alan.";
 "ccb_crew_name" = "Crew adı";
+"ccb_crew_photo" = "Crew fotoğrafı";
+"ccb_crew_photo_sub" = "İstersen bir fotoğraf ekle";
 "ccb_name_ph" = "Örnek: Focus, Study Sprint, Code Lab";
 "ccb_icon_w" = "İkon";
 "ccb_pick_w" = "seç";

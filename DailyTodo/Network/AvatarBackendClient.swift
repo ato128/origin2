@@ -20,6 +20,9 @@ final class AvatarBackendClient {
 
     private func accessToken() async throws -> String {
         let session = try await SupabaseManager.shared.client.auth.session
+        // NSE (bildirim uzantısı) avatarı çekebilsin diye token'ı App Group'a yaz.
+        UserDefaults(suiteName: "group.com.atakan.updo")?
+            .set(session.accessToken, forKey: "updo_shared_access_token_v1")
         return session.accessToken
     }
 
@@ -61,6 +64,31 @@ final class AvatarBackendClient {
             return (200..<300).contains(status)
         } catch {
             Log.debug("AVATAR UPLOAD ERROR:", error.localizedDescription)
+            return false
+        }
+    }
+
+    /// Uploads a crew photo (member-only, backend checks). Stored keyed by crewID
+    /// in the same avatar table, so GET /v1/avatar/:crewID serves it.
+    @discardableResult
+    func uploadCrewAvatar(crewID: String, jpegData: Data) async -> Bool {
+        do {
+            var request = try await makeRequest(path: "/v1/crews/\(crewID)/avatar", method: "PUT")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+            let body: [String: String] = [
+                "image_base64": jpegData.base64EncodedString(),
+                "content_type": "image/jpeg"
+            ]
+            request.httpBody = try JSONEncoder().encode(body)
+
+            let (_, response) = try await URLSession.shared.data(for: request)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+
+            Log.debug("CREW AVATAR UPLOAD STATUS:", status)
+            return (200..<300).contains(status)
+        } catch {
+            Log.debug("CREW AVATAR UPLOAD ERROR:", error.localizedDescription)
             return false
         }
     }

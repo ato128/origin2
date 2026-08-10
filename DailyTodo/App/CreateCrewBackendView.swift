@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import UIKit
+import PhotosUI
 
 private enum CreateCrewArenaPalette {
     static let backgroundTop = Color(arenaHex: "#05060D")
@@ -41,6 +43,8 @@ struct CreateCrewBackendView: View {
     @State private var name = ""
     @State private var icon = "person.3.fill"
     @State private var colorHex = "#4F8CFF"
+    @State private var photoItem: PhotosPickerItem?
+    @State private var pickedImage: UIImage?
     @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var showPaywall = false
@@ -98,6 +102,8 @@ struct CreateCrewBackendView: View {
                     Color.clear.frame(height: 4)
 
                     header
+
+                    crewPhotoCard
 
                     previewCard
 
@@ -622,6 +628,83 @@ private extension CreateCrewBackendView {
 // MARK: - Logic
 
 private extension CreateCrewBackendView {
+    var crewPhotoCard: some View {
+        HStack(spacing: 14) {
+            PhotosPicker(selection: $photoItem, matching: .images) {
+                ZStack(alignment: .bottomTrailing) {
+                    Group {
+                        if let pickedImage {
+                            Image(uiImage: pickedImage)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 64, height: 64)
+                                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        } else {
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            hexColor(colorHex).opacity(0.95),
+                                            Color(arenaHex: "#7C3AED").opacity(0.82)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 64, height: 64)
+                                .overlay(
+                                    Image(systemName: icon)
+                                        .font(.system(size: 26, weight: .black))
+                                        .foregroundStyle(.white)
+                                )
+                        }
+                    }
+
+                    Image(systemName: "camera.fill")
+                        .font(.system(size: 10, weight: .black))
+                        .foregroundStyle(.white)
+                        .frame(width: 24, height: 24)
+                        .background(
+                            Circle().fill(hexColor(colorHex))
+                                .overlay(Circle().stroke(Color.black.opacity(0.45), lineWidth: 2))
+                        )
+                        .offset(x: 4, y: 4)
+                }
+            }
+            .buttonStyle(.plain)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(tr("ccb_crew_photo"))
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(.white)
+
+                Text(tr("ccb_crew_photo_sub"))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color.white.opacity(0.045))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                )
+        )
+        .onChange(of: photoItem) { _, newItem in
+            guard let newItem else { return }
+            Task {
+                if let data = try? await newItem.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data) {
+                    await MainActor.run { pickedImage = image }
+                }
+            }
+        }
+    }
+
     @MainActor
     func saveCrew() async {
         guard let ownerID = session.currentUserID else { return }
@@ -639,12 +722,25 @@ private extension CreateCrewBackendView {
         errorMessage = nil
 
         do {
-            _ = try await crewStore.createCrew(
+            let created = try await crewStore.createCrew(
                 name: cleanName,
                 icon: icon,
                 colorHex: colorHex,
                 ownerID: ownerID
             )
+
+            // Kurulumda foto seçildiyse yeni crew'a yükle.
+            if let pickedImage {
+                let resized = crewDownscaledImage(pickedImage, maxDimension: 512)
+                RemoteAvatarStore.shared.overrideLocal(resized, for: created.id)
+                if let jpeg = resized.jpegData(compressionQuality: 0.82) {
+                    await AvatarBackendClient.shared.uploadCrewAvatar(
+                        crewID: created.id.uuidString,
+                        jpegData: jpeg
+                    )
+                }
+            }
+
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
@@ -655,6 +751,19 @@ private extension CreateCrewBackendView {
 
     func hexColor(_ hex: String) -> Color {
         Color(arenaHex: hex)
+    }
+
+    private func crewDownscaledImage(_ image: UIImage, maxDimension: CGFloat) -> UIImage {
+        let largest = max(image.size.width, image.size.height)
+        guard largest > maxDimension else { return image }
+
+        let scale = maxDimension / largest
+        let target = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: target, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: target))
+        }
     }
 }
 

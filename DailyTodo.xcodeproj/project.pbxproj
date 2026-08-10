@@ -199,7 +199,6 @@
 		6DBE91E12F6C8295001DF813 /* WeekCrewItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE91E02F6C8295001DF813 /* WeekCrewItem.swift */; };
 		6DBE91E52F6C9612001DF813 /* CrewChatView+Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE91E42F6C9612001DF813 /* CrewChatView+Models.swift */; };
 		6DBE91E72F6D6A27001DF813 /* CrewChatMessageItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE91E62F6D6A27001DF813 /* CrewChatMessageItem.swift */; };
-		6DC0CAF00000000000AA0004 /* ChatMessageActionsPopover.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAF00000000000AA0003 /* ChatMessageActionsPopover.swift */; };
 		6DBE91E92F6D888A001DF813 /* CrewFocusSessionDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE91E82F6D888A001DF813 /* CrewFocusSessionDTO.swift */; };
 		6DBE91EB2F6D88A8001DF813 /* CrewFocusParticipantDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE91EA2F6D88A8001DF813 /* CrewFocusParticipantDTO.swift */; };
 		6DBE91ED2F6D8BD3001DF813 /* CrewFocusRoomBackendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBE91EC2F6D8BD3001DF813 /* CrewFocusRoomBackendView.swift */; };
@@ -223,7 +222,6 @@
 		6DC0CAAE2F5F7D0000A875ED /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6DC0CA8F2F5F7D0000A875ED /* Assets.xcassets */; };
 		6DC0CAAF2F5F7D0000A875ED /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA9B2F5F7D0000A875ED /* Haptics.swift */; };
 		6DC0CAB12F5F7D0000A875ED /* ImportScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA9E2F5F7D0000A875ED /* ImportScheduleView.swift */; };
-		6DC0CAF00000000000AA0002 /* WeeklyScheduleEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAF00000000000AA0001 /* WeeklyScheduleEditorView.swift */; };
 		6DC0CAB32F5F7D0000A875ED /* FocusSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA9A2F5F7D0000A875ED /* FocusSessionView.swift */; };
 		6DC0CAB52F5F7D0000A875ED /* Crew.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA912F5F7D0000A875ED /* Crew.swift */; };
 		6DC0CAB62F5F7D0000A875ED /* ScheduleShare.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAA82F5F7D0000A875ED /* ScheduleShare.swift */; };
@@ -238,6 +236,9 @@
 		6DC0CAC32F5F7D0000A875ED /* CrewMember.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA942F5F7D0000A875ED /* CrewMember.swift */; };
 		6DC0CAC52F5F7D0000A875ED /* CrewActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CA922F5F7D0000A875ED /* CrewActivity.swift */; };
 		6DC0CAC82F5F7D0000A875ED /* LiveActivityScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAA32F5F7D0000A875ED /* LiveActivityScheduler.swift */; };
+		6DC0CAF00000000000AA0002 /* WeeklyScheduleEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAF00000000000AA0001 /* WeeklyScheduleEditorView.swift */; };
+		6DC0CAF00000000000AA0004 /* ChatMessageActionsPopover.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAF00000000000AA0003 /* ChatMessageActionsPopover.swift */; };
+		6DC0CAF00000000000AA0006 /* OnboardingWidgetPromoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAF00000000000AA0005 /* OnboardingWidgetPromoView.swift */; };
 		6DC1C0292FCEF66C00CF8D62 /* FocusCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC1C0282FCEF66B00CF8D62 /* FocusCelebrationView.swift */; };
 		6DC1C02B2FCF671E00CF8D62 /* CrewFocusInviteSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC1C02A2FCF671E00CF8D62 /* CrewFocusInviteSheet.swift */; };
 		6DC1C02D2FD0274200CF8D62 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC1C02C2FD0274200CF8D62 /* HomeView.swift */; };
@@ -260,6 +261,7 @@
 		6DDF5B5D2F5F9E21003057C9 /* CrewTaskPoll.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DDF5B5C2F5F9E21003057C9 /* CrewTaskPoll.swift */; };
 		6DDF5B5F2F5FA38A003057C9 /* CreateCrewTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DDF5B5E2F5FA38A003057C9 /* CreateCrewTaskView.swift */; };
 		6DDF5B632F5FADBB003057C9 /* CrewTaskReaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DDF5B622F5FADBB003057C9 /* CrewTaskReaction.swift */; };
+		6DEE50DB302959D900FCEB48 /* NotificationService.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6DEE50D4302959D900FCEB48 /* NotificationService.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		6DF0C91D2F557AA50043B887 /* DailyTodoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF0C91C2F557AA50043B887 /* DailyTodoApp.swift */; };
 		6DF0C93D2F557DBF0043B887 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF0C93C2F557DBF0043B887 /* RootView.swift */; };
 		6DF0C9412F557F730043B887 /* AddTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF0C9402F557F730043B887 /* AddTaskView.swift */; };
@@ -300,7 +302,6 @@
 		EE310002EE310002EE310002 /* EdgeGlowBorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE310001EE310001EE310001 /* EdgeGlowBorder.swift */; };
 		EE320002EE320002EE320002 /* UpdoMascotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE320001EE320001EE320001 /* UpdoMascotView.swift */; };
 		EE330002EE330002EE330002 /* OnboardingShowcaseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE330001EE330001EE330001 /* OnboardingShowcaseView.swift */; };
-		6DC0CAF00000000000AA0006 /* OnboardingWidgetPromoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0CAF00000000000AA0005 /* OnboardingWidgetPromoView.swift */; };
 		EE340002EE340002EE340002 /* OnboardingShowcaseMocks.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE340001EE340001EE340001 /* OnboardingShowcaseMocks.swift */; };
 		FF400002 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = FF400001 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
@@ -313,6 +314,13 @@
 			remoteGlobalIDString = 6D215DBB2F56458C00F7B9D7;
 			remoteInfo = WidgetExtensionExtension;
 		};
+		6DEE50D9302959D900FCEB48 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6DF0C9112F557AA50043B887 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6DEE50D3302959D900FCEB48;
+			remoteInfo = NotificationService;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -323,6 +331,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				6D215DD02F56458E00F7B9D7 /* WidgetExtensionExtension.appex in Embed Foundation Extensions */,
+				6DEE50DB302959D900FCEB48 /* NotificationService.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -489,7 +498,6 @@
 		6DBE91E02F6C8295001DF813 /* WeekCrewItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekCrewItem.swift; sourceTree = "<group>"; };
 		6DBE91E42F6C9612001DF813 /* CrewChatView+Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CrewChatView+Models.swift"; sourceTree = "<group>"; };
 		6DBE91E62F6D6A27001DF813 /* CrewChatMessageItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewChatMessageItem.swift; sourceTree = "<group>"; };
-		6DC0CAF00000000000AA0003 /* ChatMessageActionsPopover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessageActionsPopover.swift; sourceTree = "<group>"; };
 		6DBE91E82F6D888A001DF813 /* CrewFocusSessionDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewFocusSessionDTO.swift; sourceTree = "<group>"; };
 		6DBE91EA2F6D88A8001DF813 /* CrewFocusParticipantDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewFocusParticipantDTO.swift; sourceTree = "<group>"; };
 		6DBE91EC2F6D8BD3001DF813 /* CrewFocusRoomBackendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewFocusRoomBackendView.swift; sourceTree = "<group>"; };
@@ -522,13 +530,15 @@
 		6DC0CA9A2F5F7D0000A875ED /* FocusSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusSessionView.swift; sourceTree = "<group>"; };
 		6DC0CA9B2F5F7D0000A875ED /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		6DC0CA9E2F5F7D0000A875ED /* ImportScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportScheduleView.swift; sourceTree = "<group>"; };
-		6DC0CAF00000000000AA0001 /* WeeklyScheduleEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyScheduleEditorView.swift; sourceTree = "<group>"; };
 		6DC0CA9F2F5F7D0000A875ED /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		6DC0CAA22F5F7D0000A875ED /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
 		6DC0CAA32F5F7D0000A875ED /* LiveActivityScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityScheduler.swift; sourceTree = "<group>"; };
 		6DC0CAA72F5F7D0000A875ED /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		6DC0CAA82F5F7D0000A875ED /* ScheduleShare.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleShare.swift; sourceTree = "<group>"; };
 		6DC0CAAA2F5F7D0000A875ED /* TaskNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskNotifications.swift; sourceTree = "<group>"; };
+		6DC0CAF00000000000AA0001 /* WeeklyScheduleEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyScheduleEditorView.swift; sourceTree = "<group>"; };
+		6DC0CAF00000000000AA0003 /* ChatMessageActionsPopover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessageActionsPopover.swift; sourceTree = "<group>"; };
+		6DC0CAF00000000000AA0005 /* OnboardingWidgetPromoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWidgetPromoView.swift; sourceTree = "<group>"; };
 		6DC1C0282FCEF66B00CF8D62 /* FocusCelebrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusCelebrationView.swift; sourceTree = "<group>"; };
 		6DC1C02A2FCF671E00CF8D62 /* CrewFocusInviteSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewFocusInviteSheet.swift; sourceTree = "<group>"; };
 		6DC1C02C2FD0274200CF8D62 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
@@ -550,6 +560,8 @@
 		6DDF5B5C2F5F9E21003057C9 /* CrewTaskPoll.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewTaskPoll.swift; sourceTree = "<group>"; };
 		6DDF5B5E2F5FA38A003057C9 /* CreateCrewTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateCrewTaskView.swift; sourceTree = "<group>"; };
 		6DDF5B622F5FADBB003057C9 /* CrewTaskReaction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewTaskReaction.swift; sourceTree = "<group>"; };
+		6DEE50CF3029593100FCEB48 /* DailyTodoRelease.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DailyTodoRelease.entitlements; sourceTree = "<group>"; };
+		6DEE50D4302959D900FCEB48 /* NotificationService.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NotificationService.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		6DF0C9192F557AA50043B887 /* DailyTodo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DailyTodo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6DF0C91C2F557AA50043B887 /* DailyTodoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyTodoApp.swift; sourceTree = "<group>"; };
 		6DF0C93C2F557DBF0043B887 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
@@ -589,7 +601,6 @@
 		EE310001EE310001EE310001 /* EdgeGlowBorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeGlowBorder.swift; sourceTree = "<group>"; };
 		EE320001EE320001EE320001 /* UpdoMascotView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdoMascotView.swift; sourceTree = "<group>"; };
 		EE330001EE330001EE330001 /* OnboardingShowcaseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingShowcaseView.swift; sourceTree = "<group>"; };
-		6DC0CAF00000000000AA0005 /* OnboardingWidgetPromoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWidgetPromoView.swift; sourceTree = "<group>"; };
 		EE340001EE340001EE340001 /* OnboardingShowcaseMocks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingShowcaseMocks.swift; sourceTree = "<group>"; };
 		FF400001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -601,6 +612,13 @@
 				Info.plist,
 			);
 			target = 6D215DBB2F56458C00F7B9D7 /* WidgetExtensionExtension */;
+		};
+		6DEE50DC302959D900FCEB48 /* Exceptions for "NotificationService" folder in "NotificationService" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 6DEE50D3302959D900FCEB48 /* NotificationService */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -623,6 +641,14 @@
 			path = CrewRedesign;
 			sourceTree = "<group>";
 		};
+		6DEE50D5302959D900FCEB48 /* NotificationService */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				6DEE50DC302959D900FCEB48 /* Exceptions for "NotificationService" folder in "NotificationService" target */,
+			);
+			path = NotificationService;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -632,6 +658,13 @@
 			files = (
 				6D215DC12F56458C00F7B9D7 /* SwiftUI.framework in Frameworks */,
 				6D215DBF2F56458C00F7B9D7 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6DEE50D1302959D900FCEB48 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -846,6 +879,7 @@
 		6DC0CAAC2F5F7D0000A875ED /* DailyTodo */ = {
 			isa = PBXGroup;
 			children = (
+				6DEE50CF3029593100FCEB48 /* DailyTodoRelease.entitlements */,
 				6D10286B2FAAA556008D5AA9 /* Network */,
 				6D605CF42F773E060052C76B /* GoogleService-Info.plist */,
 				6DB70E822F73215800F04B43 /* Language */,
@@ -1032,6 +1066,7 @@
 				6D81C1072F59E87500B65AF8 /* DailyTodo.entitlements.plist */,
 				6D215DD72F5645B100F7B9D7 /* WidgetExtensionExtension.entitlements */,
 				6D215DC22F56458C00F7B9D7 /* WidgetExtension */,
+				6DEE50D5302959D900FCEB48 /* NotificationService */,
 				6D215DBD2F56458C00F7B9D7 /* Frameworks */,
 				6DF0C91A2F557AA50043B887 /* Products */,
 				6DF0C92D2F557B0F0043B887 /* Core */,
@@ -1045,6 +1080,7 @@
 			children = (
 				6DF0C9192F557AA50043B887 /* DailyTodo.app */,
 				6D215DBC2F56458C00F7B9D7 /* WidgetExtensionExtension.appex */,
+				6DEE50D4302959D900FCEB48 /* NotificationService.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -1212,6 +1248,28 @@
 			productReference = 6D215DBC2F56458C00F7B9D7 /* WidgetExtensionExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		6DEE50D3302959D900FCEB48 /* NotificationService */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6DEE50DD302959D900FCEB48 /* Build configuration list for PBXNativeTarget "NotificationService" */;
+			buildPhases = (
+				6DEE50D0302959D900FCEB48 /* Sources */,
+				6DEE50D1302959D900FCEB48 /* Frameworks */,
+				6DEE50D2302959D900FCEB48 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				6DEE50D5302959D900FCEB48 /* NotificationService */,
+			);
+			name = NotificationService;
+			packageProductDependencies = (
+			);
+			productName = NotificationService;
+			productReference = 6DEE50D4302959D900FCEB48 /* NotificationService.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		6DF0C9182F557AA50043B887 /* DailyTodo */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 6DF0C9262F557AA60043B887 /* Build configuration list for PBXNativeTarget "DailyTodo" */;
@@ -1225,6 +1283,7 @@
 			);
 			dependencies = (
 				6D215DCF2F56458E00F7B9D7 /* PBXTargetDependency */,
+				6DEE50DA302959D900FCEB48 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				6D10286B2FAAA556008D5AA9 /* Network */,
@@ -1282,6 +1341,9 @@
 					6D215DBB2F56458C00F7B9D7 = {
 						CreatedOnToolsVersion = 26.3;
 					};
+					6DEE50D3302959D900FCEB48 = {
+						CreatedOnToolsVersion = 26.3;
+					};
 					6DF0C9182F557AA50043B887 = {
 						CreatedOnToolsVersion = 26.3;
 					};
@@ -1310,6 +1372,7 @@
 			targets = (
 				6DF0C9182F557AA50043B887 /* DailyTodo */,
 				6D215DBB2F56458C00F7B9D7 /* WidgetExtensionExtension */,
+				6DEE50D3302959D900FCEB48 /* NotificationService */,
 			);
 		};
 /* End PBXProject section */
@@ -1320,6 +1383,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				6D605CF62F773E060052C76B /* GoogleService-Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6DEE50D2302959D900FCEB48 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1355,6 +1425,13 @@
 				6DF8FB932F5B6B3E00D548E4 /* EventItem.swift in Sources */,
 				6D775B862F5F82F60009D660 /* Color+Hex.swift in Sources */,
 				6DB70E812F72F2AD00F04B43 /* FocusAttributes.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6DEE50D0302959D900FCEB48 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1615,6 +1692,11 @@
 			target = 6D215DBB2F56458C00F7B9D7 /* WidgetExtensionExtension */;
 			targetProxy = 6D215DCE2F56458E00F7B9D7 /* PBXContainerItemProxy */;
 		};
+		6DEE50DA302959D900FCEB48 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6DEE50D3302959D900FCEB48 /* NotificationService */;
+			targetProxy = 6DEE50D9302959D900FCEB48 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
@@ -1690,6 +1772,65 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.atakan.updo.WidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		6DEE50DE302959D900FCEB48 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2KC59ZZTWK;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NotificationService/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NotificationService;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.atakan.updo.NotificationService;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		6DEE50DF302959D900FCEB48 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = NotificationService/NotificationServiceRelease.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2KC59ZZTWK;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NotificationService/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NotificationService;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.atakan.updo.NotificationService;
+				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -1878,7 +2019,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_ENTITLEMENTS = DailyTodo/DailyTodo.entitlements;
+				CODE_SIGN_ENTITLEMENTS = DailyTodo/DailyTodoRelease.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 4;
@@ -1925,6 +2066,15 @@
 			buildConfigurations = (
 				6D215DD32F56458E00F7B9D7 /* Debug */,
 				6D215DD42F56458E00F7B9D7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		6DEE50DD302959D900FCEB48 /* Build configuration list for PBXNativeTarget "NotificationService" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6DEE50DE302959D900FCEB48 /* Debug */,
+				6DEE50DF302959D900FCEB48 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

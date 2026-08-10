@@ -62,6 +62,7 @@ struct FriendDetailView: View {
 
     @State private var showRemoveFriendAlert = false
     @State private var isRemovingFriend = false
+    @State private var showChat = false
 
     private var friendshipID: UUID? {
         friend.backendFriendshipID
@@ -187,32 +188,26 @@ struct FriendDetailView: View {
 
                     customHeader
 
-                    heroCard
+                    cleanHero
                         .offset(y: showHero ? 0 : 18)
                         .opacity(showHero ? 1 : 0)
                         .scaleEffect(showHero ? 1 : 0.985)
 
-                    todayScheduleCard
+                    statsRow
                         .offset(y: showSchedule ? 0 : 18)
                         .opacity(showSchedule ? 1 : 0)
-                        .scaleEffect(showSchedule ? 1 : 0.985)
 
-                    friendInsightsCard
+                    todayScheduleCard
                         .offset(y: showInsights ? 0 : 18)
                         .opacity(showInsights ? 1 : 0)
                         .scaleEffect(showInsights ? 1 : 0.985)
 
                     if isBackendFriend {
                         comparisonCard
-                            .offset(y: showInsights ? 0 : 18)
-                            .opacity(showInsights ? 1 : 0)
-                            .scaleEffect(showInsights ? 1 : 0.985)
+                            .offset(y: showActions ? 0 : 18)
+                            .opacity(showActions ? 1 : 0)
+                            .scaleEffect(showActions ? 1 : 0.985)
                     }
-
-                    actionsCard
-                        .offset(y: showActions ? 0 : 18)
-                        .opacity(showActions ? 1 : 0)
-                        .scaleEffect(showActions ? 1 : 0.985)
 
                     Color.clear.frame(height: 96)
                 }
@@ -247,6 +242,15 @@ struct FriendDetailView: View {
                 friendshipID: friendshipID,
                 currentUserID: session.currentUser?.id
             )
+        }
+        .fullScreenCover(isPresented: $showChat) {
+            // FriendChatView bir NavigationStack bağlamı bekliyor (Home→Mesajlar
+            // yolundaki gibi); sarmadan header dinamik adanın altında kalıyor.
+            NavigationStack {
+                FriendChatView(friend: friend)
+                    .environmentObject(friendStore)
+                    .environmentObject(session)
+            }
         }
         .alert("crew_remove_friend_confirm_title", isPresented: $showRemoveFriendAlert) {
             Button(tr("crew_keep_friend"), role: .cancel) { }
@@ -333,26 +337,17 @@ private extension FriendDetailView {
 
             Spacer()
 
-            VStack(spacing: 3) {
-                Text(tr("fd_friend_space_caps"))
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .tracking(2.2)
-                    .foregroundStyle(FriendDetailArenaPalette.cyan)
-
-                Text(friend.name)
-                    .font(.system(size: 21, weight: .black))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-            }
+            Text(friend.name)
+                .font(.system(size: 20, weight: .black))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
 
             Spacer()
 
             Menu {
-                NavigationLink {
-                    FriendChatView(friend: friend)
-                        .environmentObject(friendStore)
-                        .environmentObject(session)
+                Button {
+                    showChat = true
                 } label: {
                     Label(tr("crew_chat"), systemImage: "message.fill")
                 }
@@ -384,6 +379,129 @@ private extension FriendDetailView {
                 )
             }
             .disabled(isRemovingFriend)
+        }
+    }
+
+    // Sade Updo kimlik kartı: avatar + isim + durum + belirgin mesaj butonu.
+    var cleanHero: some View {
+        VStack(spacing: 16) {
+            ZStack(alignment: .bottomTrailing) {
+                Button {
+                    if RemoteAvatarStore.shared.image(for: friend.backendUserID) != nil {
+                        showAvatarZoom = true
+                    }
+                } label: {
+                    UserAvatarView(
+                        userID: friend.backendUserID,
+                        name: friend.name,
+                        tint: friendAccent,
+                        size: 96
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Circle()
+                    .fill(friend.isOnline ? FriendDetailArenaPalette.green : Color.gray.opacity(0.6))
+                    .frame(width: 20, height: 20)
+                    .overlay(Circle().stroke(FriendDetailArenaPalette.surface, lineWidth: 4))
+            }
+            .fullScreenCover(isPresented: $showAvatarZoom) {
+                if let image = RemoteAvatarStore.shared.image(for: friend.backendUserID) {
+                    AvatarZoomViewer(image: image, name: friend.name)
+                }
+            }
+
+            VStack(spacing: 5) {
+                Text(friend.name)
+                    .font(.system(size: 26, weight: .black))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(activeFocusSession != nil || friend.isOnline
+                              ? FriendDetailArenaPalette.green : Color.gray)
+                        .frame(width: 7, height: 7)
+
+                    Text(heroStatusText)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.55))
+                }
+            }
+
+            Button {
+                HapticManager.shared.selection()
+                showChat = true
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "message.fill")
+                        .font(.system(size: 15, weight: .black))
+                    Text(tr("crew_chat"))
+                        .font(.system(size: 17, weight: .black))
+                }
+                .foregroundStyle(.black)
+                .frame(maxWidth: .infinity)
+                .frame(height: 54)
+                .background(
+                    Capsule().fill(
+                        LinearGradient(
+                            colors: [friendAccent, FriendDetailArenaPalette.blue],
+                            startPoint: .leading, endPoint: .trailing
+                        )
+                    )
+                    .shadow(color: friendAccent.opacity(0.32), radius: 14, y: 6)
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            friendAccent.opacity(0.13),
+                            FriendDetailArenaPalette.purple.opacity(0.10),
+                            FriendDetailArenaPalette.surface.opacity(0.98)
+                        ],
+                        startPoint: .topLeading, endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .stroke(friendAccent.opacity(0.18), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.24), radius: 20, y: 12)
+        )
+    }
+
+    private var heroStatusText: String {
+        if let session = activeFocusSession {
+            return localizedInFocusNow(session.durationMinute)
+        }
+        return isOnlineText
+    }
+
+    // Öz istatistikler: seri, haftalık odak, seviye (dürüstçe paylaşılan veriden).
+    var statsRow: some View {
+        HStack(spacing: 10) {
+            insightStatCard(
+                value: friendSharedStat.map { "\($0.currentStreak)" } ?? "—",
+                title: !appLanguageIsEnglish() ? "Seri" : "Streak",
+                tint: FriendDetailArenaPalette.gold
+            )
+            insightStatCard(
+                value: "\(weeklyFocusMinutes)",
+                title: !appLanguageIsEnglish() ? "Odak dk" : "Focus min",
+                tint: friendAccent
+            )
+            insightStatCard(
+                value: friendSharedStat.map { "\($0.level)" } ?? "—",
+                title: !appLanguageIsEnglish() ? "Seviye" : "Level",
+                tint: FriendDetailArenaPalette.purple
+            )
         }
     }
 
@@ -661,29 +779,7 @@ private extension FriendDetailView {
                 italic: friend.name
             )
 
-            if !subscription.isPro {
-                Button {
-                    showComparePaywall = true
-                } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 14, weight: .black))
-                            .foregroundStyle(FriendDetailArenaPalette.gold)
-
-                        Text(tr("fd_compare_locked"))
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.75))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.35))
-                    }
-                    .padding(14)
-                    .background(detailSurface(cornerRadius: 18, tint: FriendDetailArenaPalette.gold))
-                }
-                .buttonStyle(.plain)
-            } else if let stat = friendSharedStat {
+            if let stat = friendSharedStat {
                 VStack(spacing: 10) {
                     comparisonRow(
                         icon: "flame.fill",
@@ -717,9 +813,6 @@ private extension FriendDetailView {
         }
         .padding(18)
         .background(cardBackground)
-        .sheet(isPresented: $showComparePaywall) {
-            PaywallView(context: "friend_compare")
-        }
     }
 
     private func comparisonRow(

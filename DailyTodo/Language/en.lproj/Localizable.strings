@@ -1120,6 +1120,7 @@
 "mv_now" = "Now";
 "mv_all" = "All";
 "mv_no_chats" = "No chats yet";
+"mv_add_friend" = "Add Friend";
 "mv_no_results" = "No results found";
 "mv_empty_sub" = "Your friend and crew chats will appear here.";
 "mv_search_retry" = "Try a different search.";
@@ -1812,6 +1813,8 @@
 "cfi_join_start" = "Join and Start";
 "ccb_subtitle" = "A new space for shared tasks, focus and team flow.";
 "ccb_crew_name" = "Crew name";
+"ccb_crew_photo" = "Crew photo";
+"ccb_crew_photo_sub" = "Add a photo if you like";
 "ccb_name_ph" = "e.g. Focus, Study Sprint, Code Lab";
 "ccb_icon_w" = "Icon";
 "ccb_pick_w" = "pick";

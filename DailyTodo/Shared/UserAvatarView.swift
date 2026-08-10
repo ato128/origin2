@@ -75,6 +75,14 @@ final class RemoteAvatarStore: ObservableObject {
     }
 
     private func directoryURL() -> URL {
+        // App Group container — böylece bildirim uzantısı (NSE) aynı avatar
+        // cache'ini token/ağ olmadan okuyabilir (fotolu bildirim hep gelir).
+        if let container = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: "group.com.atakan.updo"
+        ) {
+            return container.appendingPathComponent("RemoteAvatars", isDirectory: true)
+        }
+
         let base = FileManager.default.urls(
             for: .cachesDirectory,
             in: .userDomainMask
@@ -155,5 +163,49 @@ struct UserAvatarView: View {
         }
         .frame(width: size, height: size)
         .onAppear { store.ensure(userID) }
+    }
+}
+
+/// Crew avatar: real crew photo when set, else gradient + initial (rounded square).
+/// Photos are keyed by crewID in the same avatar store (GET /v1/avatar/:crewID).
+struct CrewAvatarView: View {
+    let crewID: UUID?
+    let name: String
+    var colorHex: String = AppArenaPalette.cyan
+    var size: CGFloat = 54
+    var corner: CGFloat = 16
+
+    @ObservedObject private var store = RemoteAvatarStore.shared
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: corner, style: .continuous)
+        return ZStack {
+            if let image = store.image(for: crewID) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size, height: size)
+                    .clipShape(shape)
+                    .overlay(shape.strokeBorder(Color.white.opacity(0.14), lineWidth: 1))
+            } else {
+                shape.fill(
+                    LinearGradient(
+                        colors: [
+                            Color(arenaHex: colorHex).opacity(0.95),
+                            Color(arenaHex: AppArenaPalette.purple).opacity(0.82)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+                Text(String(name.prefix(1)))
+                    .font(.system(size: size * 0.45, weight: .regular, design: .serif))
+                    .italic()
+                    .foregroundStyle(.white)
+            }
+        }
+        .frame(width: size, height: size)
+        .onAppear { store.ensure(crewID) }
     }
 }

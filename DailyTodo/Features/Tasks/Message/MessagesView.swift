@@ -17,6 +17,7 @@ struct MessagesView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var searchText = ""
+    @State private var showAddFriend = false
     @State private var didLoadMessagesHubData = false
     @State private var rebuildSummariesTask: Task<Void, Never>?
     @State private var backendConversations: [ChatBackendConversationDTO] = []
@@ -254,6 +255,11 @@ struct MessagesView: View {
                     backendLiveRefreshTask?.cancel()
                     backendLiveRefreshTask = nil
                 }
+                .sheet(isPresented: $showAddFriend) {
+                    AddFriendSheetView()
+                        .environmentObject(friendStore)
+                        .environmentObject(session)
+                }
         }
     }
 }
@@ -274,8 +280,6 @@ private extension MessagesView {
             ScrollView(showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 16) {
                     header
-                    searchBar
-                    summaryStrip
 
                     if !onlineItems.isEmpty {
                         onlineSection
@@ -326,6 +330,19 @@ private extension MessagesView {
             }
 
             Spacer(minLength: 8)
+
+            Button {
+                HapticManager.shared.selection()
+                showAddFriend = true
+            } label: {
+                Image(systemName: "person.badge.plus")
+                    .font(.system(size: 17, weight: .black))
+                    .foregroundStyle(.white)
+                    .frame(width: 46, height: 46)
+                    .background(headerCircleBackground)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(tr("mv_add_friend"))
 
             Button {
                 dismiss()
@@ -449,13 +466,19 @@ private extension MessagesView {
             )
 
             if filteredConversationItems.isEmpty {
-                emptyState(
-                    title: searchText.isEmpty ? tr("mv_no_chats") : tr("mv_no_results"),
-                    subtitle: searchText.isEmpty
-                    ? tr("mv_empty_sub")
-                    : tr("mv_search_retry"),
-                    systemImage: "bubble.left.and.bubble.right"
-                )
+                VStack(spacing: 14) {
+                    emptyState(
+                        title: searchText.isEmpty ? tr("mv_no_chats") : tr("mv_no_results"),
+                        subtitle: searchText.isEmpty
+                        ? tr("mv_empty_sub")
+                        : tr("mv_search_retry"),
+                        systemImage: "bubble.left.and.bubble.right"
+                    )
+
+                    if searchText.isEmpty {
+                        addFriendCTA
+                    }
+                }
             } else {
                 LazyVStack(spacing: 10) {
                     ForEach(filteredConversationItems) { item in
@@ -810,6 +833,36 @@ private extension MessagesView {
             .shadow(color: Color.black.opacity(0.28), radius: 14, y: 7)
     }
 
+    var addFriendCTA: some View {
+        Button {
+            HapticManager.shared.selection()
+            showAddFriend = true
+        } label: {
+            HStack(spacing: 9) {
+                Image(systemName: "person.badge.plus")
+                    .font(.system(size: 15, weight: .black))
+                Text(tr("mv_add_friend"))
+                    .font(.system(size: 16, weight: .black))
+            }
+            .foregroundStyle(.black)
+            .frame(maxWidth: .infinity)
+            .frame(height: 54)
+            .background(
+                Capsule().fill(
+                    LinearGradient(
+                        colors: [
+                            Color(arenaHex: AppArenaPalette.cyan),
+                            Color(arenaHex: AppArenaPalette.blue)
+                        ],
+                        startPoint: .leading, endPoint: .trailing
+                    )
+                )
+                .shadow(color: Color(arenaHex: AppArenaPalette.cyan).opacity(0.30), radius: 14, y: 6)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
     func emptyState(title: String, subtitle: String, systemImage: String) -> some View {
         VStack(spacing: 13) {
             Image(systemName: systemImage)
@@ -853,19 +906,29 @@ private extension MessagesView {
 private extension MessagesView {
 
     func onlineAvatar(for item: MessagesHubItem, size: CGFloat) -> some View {
-        switch item.kind {
-        case .friend:
-            return AnyView(UserAvatarView(userID: item.avatarUserID, name: item.title, tint: item.tint, size: size))
-        case .crew:
-            return AnyView(crewIconAvatar(symbol: item.avatarText, tint: item.tint, size: size))
-        }
+        avatar(for: item, size: size)
     }
 
     func rowAvatar(for item: MessagesHubItem, size: CGFloat) -> some View {
+        avatar(for: item, size: size)
+    }
+
+    private func avatar(for item: MessagesHubItem, size: CGFloat) -> some View {
         switch item.kind {
         case .friend:
             return AnyView(UserAvatarView(userID: item.avatarUserID, name: item.title, tint: item.tint, size: size))
         case .crew:
+            if case let .crew(crew) = item.payload {
+                return AnyView(
+                    CrewAvatarView(
+                        crewID: crew.id,
+                        name: crew.name,
+                        colorHex: crew.colorHex,
+                        size: size,
+                        corner: size * 0.26
+                    )
+                )
+            }
             return AnyView(crewIconAvatar(symbol: item.avatarText, tint: item.tint, size: size))
         }
     }
