@@ -41,24 +41,13 @@ extension CrewChatView {
                     showCrewInfo = true
                 } label: {
                     HStack(spacing: 10) {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        hexColor(crew.colorHex).opacity(0.92),
-                                        Color(arenaHex: "#7C3AED").opacity(0.78),
-                                        Color(arenaHex: "#FF5A44").opacity(0.52)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 40, height: 40)
-                            .overlay(
-                                Image(systemName: crew.icon)
-                                    .font(.system(size: 17, weight: .black))
-                                    .foregroundStyle(.white)
-                            )
+                        CrewAvatarView(
+                            crewID: crew.id,
+                            name: crew.name,
+                            colorHex: crew.colorHex,
+                            size: 40,
+                            corner: 14
+                        )
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(crew.name)
