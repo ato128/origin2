@@ -2,16 +2,18 @@
 //  OnboardingSpotlightTour.swift
 //  DailyTodo
 //
-//  Premium guided tour that runs ON TOP OF THE REAL APP. The actual MainTabView
-//  is shown live behind each step (tab forced per step, matching tab highlighted),
-//  lightly dimmed so the real UI reads through. A bottom speech bubble — with a
-//  tail pointing at the current tab — explains each screen and advances step by
-//  step. The whole thing is framed by the animated EdgeGlowBorder.
+//  Rehberli tur GERÇEK MainTabView'in ÜSTÜNDE overlay olarak çalışır (ikinci
+//  MainTabView render edilmez — donma olmaz). Her adımda ilgili tab `forcedTab`
+//  ile zorlanır; o ekranın **öğesi** spotlight'lanır: sadece o öğe açık kalır,
+//  gerisi koyulaşır, kenarları cyan glow ile yanar.
+//
+//  Konuşma baloncuğu asla anlatılan öğenin önünü kapatmaz: baloncuğun gerçek
+//  yüksekliği ölçülür, öğenin boş tarafına (üstüne ya da altına) yerleştirilir.
 //
 
 import SwiftUI
 
-// MARK: - Tab anchor plumbing (read the live tab-bar item frames)
+// MARK: - Anchor plumbing
 
 struct OnboardingTabAnchorKey: PreferenceKey {
     static var defaultValue: [AppTab: Anchor<CGRect>] = [:]
@@ -20,13 +22,41 @@ struct OnboardingTabAnchorKey: PreferenceKey {
     }
 }
 
+struct TourAnchorKey: PreferenceKey {
+    static var defaultValue: [String: Anchor<CGRect>] = [:]
+    static func reduce(value: inout [String: Anchor<CGRect>], nextValue: () -> [String: Anchor<CGRect>]) {
+        value.merge(nextValue()) { _, new in new }
+    }
+}
+
+private struct BubbleSizeKey: PreferenceKey {
+    static var defaultValue: CGSize = .zero
+    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
+        let next = nextValue()
+        if next != .zero { value = next }
+    }
+}
+
 extension View {
     func onboardingTabAnchor(_ tab: AppTab) -> some View {
         anchorPreference(key: OnboardingTabAnchorKey.self, value: .bounds) { [tab: $0] }
     }
-}
 
-// MARK: - Scale button style (premium tactile press)
+    /// Bir öğeyi rehberli tura tanıt (örn. .tourAnchor("home.ai")).
+    func tourAnchor(_ id: String) -> some View {
+        anchorPreference(key: TourAnchorKey.self, value: .bounds) { [id: $0] }
+    }
+
+    fileprivate func reverseMask<Mask: View>(@ViewBuilder _ mask: () -> Mask) -> some View {
+        self.mask(
+            ZStack {
+                Rectangle()
+                mask().blendMode(.destinationOut)
+            }
+            .compositingGroup()
+        )
+    }
+}
 
 struct OnboardingScaleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
@@ -36,160 +66,248 @@ struct OnboardingScaleButtonStyle: ButtonStyle {
     }
 }
 
-// MARK: - Tour
+// MARK: - Tour (overlay)
 
 struct OnboardingSpotlightTour: View {
+    @Binding var forcedTab: AppTab?
+    let size: CGSize
+    /// anchorID → ekran koordinatındaki rect (RootView, canlı MainTabView'den çözer).
+    let rectFor: (String) -> CGRect?
     var onFinish: () -> Void
 
     @State private var step = 0
-    @State private var showPaywall = false
-    @State private var bubbleIn = false
+    @State private var appeared = false
+    @State private var pulse = false
+    @State private var bubbleSize: CGSize = .zero
 
-    private struct TourStep { let tab: AppTab; let descKey: String }
+    private struct TourStep {
+        let tab: AppTab
+        let anchorID: String
+        let titleKey: String
+        let descKey: String
+    }
 
+    // Ekrandaki her önemli öğe, amacıyla — sekme sırasına göre.
     private let steps: [TourStep] = [
-        TourStep(tab: .tasks, descKey: "spot_home_desc"),
-        TourStep(tab: .week, descKey: "spot_week_desc"),
-        TourStep(tab: .focus, descKey: "spot_focus_desc"),
-        TourStep(tab: .crew, descKey: "spot_crew_desc"),
-        TourStep(tab: .insights, descKey: "spot_insights_desc")
+        // HOME
+        .init(tab: .tasks, anchorID: "home.ai", titleKey: "spot_t_home_ai", descKey: "spot_d_home_ai"),
+        .init(tab: .tasks, anchorID: "home.messages", titleKey: "spot_t_home_msg", descKey: "spot_d_home_msg"),
+        .init(tab: .tasks, anchorID: "home.streak", titleKey: "spot_t_home_streak", descKey: "spot_d_home_streak"),
+        .init(tab: .tasks, anchorID: "home.timeline", titleKey: "spot_t_home_timeline", descKey: "spot_d_home_timeline"),
+        // WEEK
+        .init(tab: .week, anchorID: "week.days", titleKey: "spot_t_week_days", descKey: "spot_d_week_days"),
+        .init(tab: .week, anchorID: "week.schedule", titleKey: "spot_t_week_schedule", descKey: "spot_d_week_schedule"),
+        .init(tab: .week, anchorID: "week.add", titleKey: "spot_t_week_add", descKey: "spot_d_week_add"),
+        // FOCUS
+        .init(tab: .focus, anchorID: "focus.duration", titleKey: "spot_t_focus_dur", descKey: "spot_d_focus_dur"),
+        .init(tab: .focus, anchorID: "focus.start", titleKey: "spot_t_focus", descKey: "spot_d_focus"),
+        // SOCIAL
+        .init(tab: .crew, anchorID: "social.add", titleKey: "spot_t_social", descKey: "spot_d_social"),
+        .init(tab: .crew, anchorID: "social.list", titleKey: "spot_t_social_list", descKey: "spot_d_social_list"),
+        // INSIGHTS
+        .init(tab: .insights, anchorID: "insights.main", titleKey: "spot_t_insights", descKey: "spot_d_insights"),
+        .init(tab: .insights, anchorID: "insights.data", titleKey: "spot_t_insights_data", descKey: "spot_d_insights_data")
     ]
 
     private var current: TourStep { steps[step] }
     private var isLast: Bool { step >= steps.count - 1 }
 
-    private let cyan    = UpdoTheme.cyan
+    private let cyan = UpdoTheme.cyan
     private let surface = UpdoTheme.surface
-    private let muted   = UpdoTheme.textMuted
+    private let muted = UpdoTheme.textMuted
+
+    private var bubbleWidth: CGFloat { min(340, size.width - 32) }
 
     var body: some View {
-        ZStack {
-            // The real app, live behind, with the matching tab highlighted.
-            MainTabView(openFocusFromNotification: .constant(false), forcedTab: current.tab)
-                .disabled(true)
-                .overlayPreferenceValue(OnboardingTabAnchorKey.self) { anchors in
-                    GeometryReader { proxy in
-                        let tabRect = anchors[current.tab].map { proxy[$0] }
-                        ZStack {
-                            Color.black.opacity(0.22).ignoresSafeArea()   // gentle dim
-                            VStack {
-                                Spacer()
-                                bubble(tabRect: tabRect, width: proxy.size.width)
-                                    .padding(.horizontal, 16)
-                                    .padding(.bottom, 104)
-                            }
-                        }
-                    }
-                }
+        let hole = rectFor(current.anchorID).map { $0.insetBy(dx: -12, dy: -10) }
+
+        ZStack(alignment: .topLeading) {
+            // Tur sırasında arkadaki gerçek app'e dokunuşu engelle (butonlar üstte aktif).
+            Color.black.opacity(0.001)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+
+            spotlight(hole: hole)
+
+            bubble
+                .position(bubbleCenter(hole: hole))
+                .opacity(appeared ? 1 : 0)
         }
+        .onPreferenceChange(BubbleSizeKey.self) { bubbleSize = $0 }
+        .animation(.spring(response: 0.5, dampingFraction: 0.86), value: step)
+        .animation(.spring(response: 0.5, dampingFraction: 0.86), value: bubbleSize)
         .onAppear {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.7).delay(0.15)) { bubbleIn = true }
-        }
-        .fullScreenCover(isPresented: $showPaywall, onDismiss: { onFinish() }) {
-            PaywallView(context: "onboarding")
+            forcedTab = current.tab
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.85).delay(0.15)) { appeared = true }
+            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) { pulse = true }
         }
     }
 
-    // MARK: - Bottom speech bubble
+    // MARK: - Spotlight
 
-    private func bubble(tabRect: CGRect?, width: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .center) {
+    @ViewBuilder
+    private func spotlight(hole: CGRect?) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+
+        Color.black.opacity(0.66)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .reverseMask {
+                if let r = hole {
+                    shape.frame(width: r.width, height: r.height).position(x: r.midX, y: r.midY)
+                }
+            }
+            .overlay {
+                if let r = hole {
+                    shape
+                        .stroke(cyan, lineWidth: 2)
+                        .frame(width: r.width, height: r.height)
+                        .position(x: r.midX, y: r.midY)
+                        .shadow(color: cyan.opacity(0.75), radius: pulse ? 15 : 8)
+                }
+            }
+            .allowsHitTesting(false)
+    }
+
+    // MARK: - Bubble placement (öğenin önünü kapatmaz)
+
+    private func bubbleCenter(hole: CGRect?) -> CGPoint {
+        let bw = bubbleWidth
+        let bh = max(bubbleSize.height, 150)
+        let cx = size.width - bw / 2 - 16          // sağa dayalı
+        let safeTop: CGFloat = 66                   // dinamik ada altı
+        let safeBottom = size.height - 96           // tab bar / home indicator üstü
+        let gap: CGFloat = 18
+
+        var top: CGFloat
+        if let h = hole {
+            let above = h.minY - gap - bh           // öğenin ÜSTÜNE
+            let below = h.maxY + gap                // öğenin ALTINA
+            let elementLow = h.midY > size.height * 0.5
+            if elementLow {
+                // Öğe alttaysa baloncuk üste; sığmıyorsa alta.
+                top = above >= safeTop ? above : below
+            } else {
+                // Öğe üsttteyse baloncuk alta; sığmıyorsa üste.
+                top = (below + bh) <= safeBottom ? below : above
+            }
+            top = min(max(top, safeTop), max(safeTop, safeBottom - bh))
+        } else {
+            top = safeBottom - bh
+        }
+        return CGPoint(x: cx, y: top + bh / 2)
+    }
+
+    // MARK: - Bubble
+
+    private var bubble: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Başlık: küçük orb + "Updo AI" + adım + kapat
+            HStack(spacing: 9) {
+                UpdoAIOrb(size: 28)
+
+                Text("Updo AI")
+                    .font(.system(size: 14, weight: .heavy))
+                    .foregroundStyle(.white)
+
+                Spacer(minLength: 8)
+
+                Text(tr("spot_step_of", step + 1, steps.count))
+                    .font(.system(size: 9.5, weight: .black, design: .monospaced))
+                    .tracking(0.8)
+                    .foregroundStyle(cyan)
+
+                Button {
+                    HapticManager.shared.subtle()
+                    onFinish()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundStyle(muted)
+                        .frame(width: 26, height: 26)
+                        .background(Circle().fill(Color.white.opacity(0.06)))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(tr("common_skip"))
+            }
+
+            titleView.id("t\(step)")
+
+            Text(tr(current.descKey))
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.white.opacity(0.66))
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
+                .id("d\(step)")
+
+            HStack {
                 progressDots
                 Spacer()
                 Button {
-                    HapticManager.shared.selection()
-                    showPaywall = true
+                    HapticManager.shared.action()
+                    if isLast { onFinish() } else { advance() }
                 } label: {
-                    Text(tr("common_skip"))
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(muted)
-                }
-                .buttonStyle(.plain)
-            }
-
-            // ADIM x / 5 with cyan accent line
-            HStack(spacing: 8) {
-                Rectangle().fill(cyan).frame(width: 2, height: 12)
-                Text(tr("spot_step_of", step + 1, steps.count))
-                    .font(.system(size: 11, weight: .black, design: .monospaced))
-                    .tracking(1.6)
-                    .foregroundStyle(cyan)
-            }
-
-            titleView
-                .id("title-\(step)")
-
-            Text(tr(current.descKey))
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(muted)
-                .fixedSize(horizontal: false, vertical: true)
-                .id("sub-\(step)")
-
-            Button {
-                HapticManager.shared.action()
-                if isLast { showPaywall = true } else { advance() }
-            } label: {
-                Text(isLast ? tr("common_start") : tr("common_continue"))
-                    .font(.system(size: 17, weight: .black))
+                    HStack(spacing: 6) {
+                        Text(isLast ? tr("common_start") : tr("common_continue"))
+                            .font(.system(size: 15, weight: .black))
+                        Image(systemName: isLast ? "checkmark" : "arrow.right")
+                            .font(.system(size: 13, weight: .black))
+                    }
                     .foregroundStyle(.black)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 54)
+                    .padding(.horizontal, 18)
+                    .frame(height: 44)
                     .background(Capsule().fill(cyan))
+                }
+                .buttonStyle(OnboardingScaleButtonStyle())
             }
-            .buttonStyle(OnboardingScaleButtonStyle())
         }
-        .padding(20)
+        .padding(16)
+        .frame(width: bubbleWidth, alignment: .leading)
+        .background(bubbleBackground)
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(surface)
-                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.08), lineWidth: 1))
+            GeometryReader { g in
+                Color.clear.preference(key: BubbleSizeKey.self, value: g.size)
+            }
         )
-        .overlay(alignment: .bottom) { tail(tabRect: tabRect, width: width) }
-        .shadow(color: .black.opacity(0.45), radius: 26, y: 12)
-        .opacity(bubbleIn ? 1 : 0)
-        .offset(y: bubbleIn ? 0 : 30)
-        .animation(.spring(response: 0.4, dampingFraction: 0.78), value: step)
+        .shadow(color: .black.opacity(0.55), radius: 26, y: 12)
     }
 
-    // Downward tail pointing at the highlighted tab.
-    private func tail(tabRect: CGRect?, width: CGFloat) -> some View {
-        let dx: CGFloat = {
-            guard let r = tabRect else { return 0 }
-            let cardMid = width / 2          // bubble is centered (16pt side padding each)
-            return max(-width / 2 + 40, min(width / 2 - 40, r.midX - cardMid))
-        }()
-        return DownTail()
+    private var bubbleBackground: some View {
+        RoundedRectangle(cornerRadius: 22, style: .continuous)
             .fill(surface)
-            .overlay(DownTail().stroke(Color.white.opacity(0.08), lineWidth: 1).mask(DownTail().fill(.black)))
-            .frame(width: 22, height: 11)
-            .offset(x: dx, y: 10)
+            .overlay(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [cyan.opacity(0.32), Color.white.opacity(0.05)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            )
     }
-
-    // MARK: - Title (signature italic-serif accent on the last word)
 
     private var titleView: some View {
-        let words = tr(current.tab.tourTitleKey).split(separator: " ").map(String.init)
+        let words = tr(current.titleKey).split(separator: " ").map(String.init)
         let lead = words.dropLast().joined(separator: " ")
         let accent = words.last ?? ""
         return (
             Text(lead.isEmpty ? "" : lead + " ")
-                .font(.system(size: 27, weight: .bold))
+                .font(.system(size: 23, weight: .bold))
                 .foregroundStyle(.white)
             + Text(accent)
-                .font(.system(size: 27, weight: .bold, design: .serif))
+                .font(.system(size: 23, weight: .bold, design: .serif))
                 .italic()
                 .foregroundStyle(cyan)
         )
     }
 
     private var progressDots: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 5) {
             ForEach(0..<steps.count, id: \.self) { i in
                 Capsule()
                     .fill(i == step ? cyan : Color.white.opacity(0.15))
-                    .frame(width: i == step ? 18 : 6, height: 6)
+                    .frame(width: i == step ? 16 : 5, height: 5)
                     .animation(.spring(response: 0.3, dampingFraction: 0.8), value: step)
             }
         }
@@ -197,29 +315,7 @@ struct OnboardingSpotlightTour: View {
 
     private func advance() {
         guard !isLast else { return }
-        withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) { step += 1 }
-    }
-}
-
-private struct DownTail: Shape {
-    func path(in rect: CGRect) -> Path {
-        var p = Path()
-        p.move(to: CGPoint(x: rect.minX, y: rect.minY))
-        p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
-        p.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
-        p.closeSubpath()
-        return p
-    }
-}
-
-private extension AppTab {
-    var tourTitleKey: String {
-        switch self {
-        case .tasks: return "tab_home"
-        case .week: return "tab_week"
-        case .crew: return "tab_crew"
-        case .focus: return "tab_focus"
-        case .insights: return "tab_insights"
-        }
+        step += 1
+        forcedTab = current.tab
     }
 }

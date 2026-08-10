@@ -12,4 +12,6 @@ extension Notification.Name {
     /// Posted after the user switches the app icon, so scheduled notifications
     /// can re-render their icon attachment with the newly chosen icon.
     static let appIconDidChange = Notification.Name("appIconDidChange")
+    /// Ayarlardan "Uygulama Turu"na basınca rehberli turu yeniden başlatır.
+    static let startAppTour = Notification.Name("startAppTour")
 }

@@ -441,6 +441,8 @@
 "ph_lang_picker" = "Choose the interface language";
 "ph_about_sub" = "Updo's purpose, version info and build notes";
 "ph_about" = "About";
+"ph_app_tour" = "App Tour";
+"ph_app_tour_sub" = "Updo AI gives you a quick guided tour";
 "ph_about_row_sub" = "See what Updo is designed for and its version";
 "ph_made_care" = "Made with care";
 "ph_made_care_sub" = "The idea and design approach behind this experience";
@@ -2047,11 +2049,32 @@
 
 /* Spotlight tour */
 "spot_step_of" = "STEP %1$d / %2$d";
-"spot_home_desc" = "Your whole day at a glance. Add tasks, ask AI for a plan, and see your flow.";
-"spot_week_desc" = "Your class schedule and weekly plan. Drag, complete and plan events.";
-"spot_focus_desc" = "Deep work in one tap. Focus solo or together with friends.";
-"spot_crew_desc" = "Message friends, study together and stay motivated.";
-"spot_insights_desc" = "See your rhythm, find your strong days and track your growth.";
+"spot_t_home_ai" = "Updo AI";
+"spot_d_home_ai" = "Type here: ask for a plan, add or remove tasks, or just chat — all from one bar.";
+"spot_t_home_msg" = "Messages";
+"spot_d_home_msg" = "Jump into your friend and crew chats from here.";
+"spot_t_home_streak" = "Daily streak";
+"spot_d_home_streak" = "Focus at least once a day to grow the flame and keep your streak.";
+"spot_t_home_timeline" = "Today's flow";
+"spot_d_home_timeline" = "Today's tasks and events in order — tap to open and complete.";
+"spot_t_week_days" = "Day strip";
+"spot_d_week_days" = "Swipe through your week day by day to see each day's plan.";
+"spot_t_week_schedule" = "Weekly schedule";
+"spot_d_week_schedule" = "Set your fixed class hours once — they repeat every week automatically.";
+"spot_t_week_add" = "Add event";
+"spot_d_week_add" = "Add an exam, assignment or event — to a day or as a repeat.";
+"spot_t_focus_dur" = "Pick duration";
+"spot_d_focus_dur" = "25/50 min or a custom length — set how long you'll focus.";
+"spot_t_focus" = "Start focus";
+"spot_d_focus" = "Tap to begin — when time's up it counts toward your streak and stats.";
+"spot_t_social" = "Add & create";
+"spot_d_social" = "Add a friend or create a new crew to study together.";
+"spot_t_social_list" = "Your people";
+"spot_d_social_list" = "Your friends and crews live here — tap to open a chat.";
+"spot_t_insights" = "Your summary";
+"spot_d_insights" = "Your level, streak and total focus — your status at a glance.";
+"spot_t_insights_data" = "Deep analytics";
+"spot_d_insights_data" = "Focus breakdowns, charts and comparisons — track your progress in depth.";
 
 /* Paywall redesign */
 "pw_whats_included" = "WHAT'S INCLUDED";

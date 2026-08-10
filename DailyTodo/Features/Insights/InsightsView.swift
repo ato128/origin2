@@ -220,11 +220,13 @@ struct InsightsView: View {
                 LazyVStack(spacing: 14) {
                     headerSection
                     identityHeroSection
+                        .tourAnchor("insights.main")
 
                     // Each analytics card animates itself in as it enters the
                     // viewport (scrollTransition inside) — no offset math, no
                     // fragile preference plumbing.
                     contentSection
+                        .tourAnchor("insights.data")
 
                     Spacer(minLength: 110)
                 }

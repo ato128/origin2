@@ -213,6 +213,7 @@ struct CrewHomeView: View {
                             onJoinCrew: onJoinCrew,
                             onAddFriend: onAddFriend
                         )
+                        .tourAnchor("social.list")
                     } else {
                         CrewCommunityContent(
                             scope: $communityScope,
@@ -458,6 +459,7 @@ private struct CrewArenaHeader: View {
                     action: onCreateCrew
                 )
             }
+            .tourAnchor("social.add")
         } else {
             // ARENA: 🎓 BÖLÜM ▾ dropdown
             CrewArenaScopeDropdown(

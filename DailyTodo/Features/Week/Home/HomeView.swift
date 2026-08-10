@@ -134,6 +134,7 @@ struct HomeView: View {
                     }
 
                     timelineSection
+                        .tourAnchor("home.timeline")
 
                     Color.clear.frame(height: focusSession.isSessionActive ? 168 : 96)
                 }
@@ -281,6 +282,7 @@ private extension HomeView {
             StreakFlameBadge(streak: progression.currentStreak) {
                 toggleStreakInfo()
             }
+            .tourAnchor("home.streak")
 
             Spacer(minLength: 8)
 
@@ -292,6 +294,7 @@ private extension HomeView {
             ) {
                 showMessages = true
             }
+            .tourAnchor("home.messages")
         }
         .padding(.top, 4)
         .opacity(pageAppeared ? 1 : 0)
@@ -492,6 +495,7 @@ private extension HomeView {
                     )
                     .shadow(color: Color.black.opacity(0.25), radius: 14, y: 7)
             )
+            .tourAnchor("home.ai")
             .padding(.top, 2)
 
             // Hızlı niyet çipleri — plan/motivasyon yerel katmana düşer (0 token)

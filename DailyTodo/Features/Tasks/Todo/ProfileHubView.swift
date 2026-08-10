@@ -474,6 +474,26 @@ private extension ProfileHubView {
                     .overlay(Color.white.opacity(0.075))
 
                 Button {
+                    HapticManager.shared.selection()
+                    dismiss()
+                    // Hub kapandıktan sonra rehberli turu başlat (RootView dinliyor).
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        NotificationCenter.default.post(name: .startAppTour, object: nil)
+                    }
+                } label: {
+                    profileRow(
+                        icon: "sparkles.rectangle.stack.fill",
+                        iconColor: Color(arenaHex: AppArenaPalette.cyan),
+                        title: tr("ph_app_tour"),
+                        subtitle: tr("ph_app_tour_sub")
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Divider()
+                    .overlay(Color.white.opacity(0.075))
+
+                Button {
                     showMadeWithCare = true
                 } label: {
                     profileRow(

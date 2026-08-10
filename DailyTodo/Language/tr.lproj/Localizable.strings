@@ -443,6 +443,8 @@
 "ph_lang_picker" = "Arayüz dilini seç";
 "ph_about_sub" = "Updo’nun amacı, sürüm bilgileri ve yapım notları";
 "ph_about" = "Hakkında";
+"ph_app_tour" = "Uygulama Turu";
+"ph_app_tour_sub" = "Updo AI ekranları sana kısaca gezdirir";
 "ph_about_row_sub" = "Updo’nun ne için tasarlandığını ve sürüm bilgisini gör";
 "ph_made_care" = "Özenle yapıldı";
 "ph_made_care_sub" = "Bu deneyimin arkasındaki fikir ve tasarım yaklaşımı";
@@ -2049,11 +2051,32 @@
 
 /* Spotlight tour */
 "spot_step_of" = "ADIM %1$d / %2$d";
-"spot_home_desc" = "Günün tek bakışta. Buradan görev ekler, AI'dan plan ister, akışını görürsün.";
-"spot_week_desc" = "Ders programın ve haftalık planın. Etkinlikleri sürükler, tamamlar, planlarsın.";
-"spot_focus_desc" = "Tek dokunuşla derin çalışma. Tek başına ya da arkadaşlarınla odaklan.";
-"spot_crew_desc" = "Arkadaşlarınla mesajlaş, birlikte çalış ve motive ol.";
-"spot_insights_desc" = "Ritmini gör, güçlü günlerini keşfet ve gelişimini takip et.";
+"spot_t_home_ai" = "Updo AI";
+"spot_d_home_ai" = "Buraya yaz: plan iste, görev ekle/sil, sohbet et — hepsi tek satırdan.";
+"spot_t_home_msg" = "Mesajlar";
+"spot_d_home_msg" = "Arkadaş ve crew sohbetlerine buradan gir.";
+"spot_t_home_streak" = "Günlük seri";
+"spot_d_home_streak" = "Her gün en az bir odak yap; alevi büyüt, seriyi kaçırma.";
+"spot_t_home_timeline" = "Bugünkü akış";
+"spot_d_home_timeline" = "Bugünün görev ve etkinlikleri sırayla burada — dokun, tamamla.";
+"spot_t_week_days" = "Gün şeridi";
+"spot_d_week_days" = "Haftanı gün gün gez; seçtiğin günün programını gör.";
+"spot_t_week_schedule" = "Haftalık program";
+"spot_d_week_schedule" = "Sabit ders saatlerini bir kez kur; her hafta otomatik gelsin.";
+"spot_t_week_add" = "Etkinlik ekle";
+"spot_d_week_add" = "Sınav, ödev veya etkinlik ekle — güne ya da tekrarlı olarak.";
+"spot_t_focus_dur" = "Süre seç";
+"spot_d_focus_dur" = "25/50 dk ya da özel süre — odak seansının uzunluğunu ayarla.";
+"spot_t_focus" = "Odağı başlat";
+"spot_d_focus" = "Bas ve başla; süre dolunca serine ve istatistiğine işler.";
+"spot_t_social" = "Ekle & kur";
+"spot_d_social" = "Arkadaş ekle veya yeni bir crew kur; birlikte çalışın.";
+"spot_t_social_list" = "Kişilerin";
+"spot_d_social_list" = "Arkadaşların ve crew'lerin burada; dokun, sohbete geç.";
+"spot_t_insights" = "Özetin";
+"spot_d_insights" = "Seviyen, serin ve toplam odağın — tek bakışta durumun.";
+"spot_t_insights_data" = "Detaylı analiz";
+"spot_d_insights_data" = "Odak dağılımı, grafikler ve kıyaslar — gelişimini derinlemesine gör.";
 
 /* Paywall redesign */
 "pw_whats_included" = "NELER DAHİL";

@@ -65,6 +65,7 @@ struct FocusView: View {
                         Spacer(minLength: 16)
 
                         compactControlsSection
+                            .tourAnchor("focus.duration")
 
                         if selectedMode == .crew {
                             Spacer(minLength: 14)
@@ -74,6 +75,7 @@ struct FocusView: View {
                         Spacer(minLength: 16)
 
                         bigStartButton
+                            .tourAnchor("focus.start")
 
                         Color.clear.frame(height: 96)
                     }

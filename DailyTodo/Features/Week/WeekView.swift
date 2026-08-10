@@ -169,6 +169,7 @@ struct WeekView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(tr("wk_sched_title"))
+                .tourAnchor("week.schedule")
 
                 Spacer(minLength: 8)
 
@@ -210,10 +211,12 @@ struct WeekView: View {
                     addIconButton
                 }
                 .buttonStyle(.plain)
+                .tourAnchor("week.add")
             }
 
             // ALT SATIR: 7-day strip
             weekDayStrip
+                .tourAnchor("week.days")
         }
     }
 

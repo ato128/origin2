@@ -14,6 +14,9 @@ struct RootView: View {
     @AppStorage("didFinishFullOnboardingV2") private var didFinishFullOnboarding = false
     @AppStorage("appOnboardingStageV2") private var appOnboardingStageRawValue = AppOnboardingStage.welcome.rawValue
     @AppStorage("lastCompletedFullOnboardingUserIDV2") private var lastCompletedFullOnboardingUserID = ""
+    @AppStorage("hasSeenAppTourV1") private var hasSeenAppTour = false
+    @State private var showAppTour = false
+    @State private var tourForcedTab: AppTab? = nil
 
     @State private var importExport: ScheduleExport? = nil
     @State private var showImportSheet: Bool = false
@@ -90,9 +93,42 @@ struct RootView: View {
 
             } else {
                 MainTabView(
-                    openFocusFromNotification: $openFocusFromNotification
+                    openFocusFromNotification: $openFocusFromNotification,
+                    forcedTab: showAppTour ? tourForcedTab : nil
                 )
+                // Rehberli tur: ayrı bir MainTabView RENDER ETME (donma sebebi).
+                // Gerçek MainTabView'in üstünde overlay çalışır, tab'ı forcedTab ile sürer.
+                .overlayPreferenceValue(TourAnchorKey.self) { anchors in
+                    GeometryReader { proxy in
+                        if showAppTour {
+                            OnboardingSpotlightTour(
+                                forcedTab: $tourForcedTab,
+                                size: proxy.size,
+                                rectFor: { id in anchors[id].map { proxy[$0] } },
+                                onFinish: {
+                                    hasSeenAppTour = true
+                                    withAnimation(.easeOut(duration: 0.25)) { showAppTour = false }
+                                    tourForcedTab = nil
+                                }
+                            )
+                            .transition(.opacity)
+                        }
+                    }
+                    // Tur uzayı tüm ekranı kaplasın: karartma safe-area dahil,
+                    // öğe koordinatları ile spotlight aynı uzayda hizalansın.
+                    .ignoresSafeArea()
+                }
                 .transition(.opacity)
+                .onAppear {
+                    // Onboarding'den ilk çıkışta rehberli turu bir kez göster.
+                    guard !hasSeenAppTour, !showAppTour else { return }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                        if !hasSeenAppTour { startAppTour() }
+                    }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .startAppTour)) { _ in
+                    startAppTour()
+                }
                 .onOpenURL { url in
                     handleIncomingFileURL(url)
                 }
@@ -320,6 +356,13 @@ struct RootView: View {
 
     private func resetLocalOnboardingForSignedOutState() {
         appOnboardingStageRawValue = AppOnboardingStage.welcome.rawValue
+    }
+
+    /// Rehberli turu başlat: önce ilk adımın tab'ına (Home) geç, sonra overlay'i göster.
+    private func startAppTour() {
+        guard !showAppTour else { return }
+        tourForcedTab = .tasks
+        withAnimation(.easeInOut(duration: 0.3)) { showAppTour = true }
     }
 
     private func handleIncomingFileURL(_ url: URL) {
