@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import RevenueCat
+import StoreKit
 
 enum SubscriptionError: LocalizedError {
     case notConfigured
@@ -95,6 +96,19 @@ final class SubscriptionManager: ObservableObject {
         Purchases.logLevel = .warn
         Purchases.configure(withAPIKey: key)
         isConfigured = true
+        observeStorefront()
+    }
+
+    /// StoreKit vitrini (storefront) değişince — kullanıcı App Store bölgesini
+    /// değiştirir ya da farklı hesaba geçerse — fiyatları yeniden yükle. Paywall'da
+    /// gösterilen tutar ile tahsil edilen para biriminin AYNI vitrinaden gelmesini
+    /// garanti eder (dolar gösterip TL çekme uyuşmazlığını önler).
+    private func observeStorefront() {
+        Task { [weak self] in
+            for await _ in Storefront.updates {
+                await self?.loadOfferings()
+            }
+        }
     }
 
     func refresh() async {

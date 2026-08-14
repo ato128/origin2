@@ -12,11 +12,60 @@ extension CrewChatView {
     var typingNames: [String] {
         guard let myID = session.currentUser?.id else { return [] }
 
-        return crewStore.crewTypingStatuses
-            .filter { $0.crew_id == crew.id }
-            .filter { $0.user_id != myID }
-            .filter { $0.is_typing }
-            .map(\.name)
+        return socketTypingUserIDs
+            .filter { $0 != myID }
+            .map { crewMemberDisplayName(for: $0) }
+    }
+
+    func crewMemberDisplayName(for userID: UUID) -> String {
+        if let profile = crewStore.memberProfiles.first(where: { $0.id == userID }) {
+            if let fullName = profile.full_name?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !fullName.isEmpty {
+                return fullName
+            }
+            if let username = profile.username?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !username.isEmpty {
+                return username
+            }
+        }
+        return appLanguageIsEnglish() ? "Someone" : "Biri"
+    }
+
+    /// Backend socket'ten gelen "yazıyor" eventini işle (crew konuşması).
+    func handleIncomingCrewTyping(_ note: Notification) {
+        guard let backendConversationID else { return }
+
+        let convMatches: Bool
+        if let objID = note.object as? UUID {
+            convMatches = objID == backendConversationID
+        } else if let convStr = note.userInfo?["conversationID"] as? String {
+            convMatches = convStr == backendConversationID.uuidString
+        } else {
+            convMatches = false
+        }
+        guard convMatches else { return }
+
+        guard let uidStr = note.userInfo?["userID"] as? String,
+              let uid = UUID(uuidString: uidStr),
+              uid != session.currentUser?.id else { return }
+
+        let isTyping = (note.userInfo?["isTyping"] as? Bool) ?? false
+
+        socketTypingClearTasks[uid]?.cancel()
+        socketTypingClearTasks[uid] = nil
+
+        if isTyping {
+            socketTypingUserIDs.insert(uid)
+            // Güvenlik ağı: "durdu" kaçarsa 6sn sonra otomatik düş.
+            socketTypingClearTasks[uid] = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 6_000_000_000)
+                guard !Task.isCancelled else { return }
+                socketTypingUserIDs.remove(uid)
+                socketTypingClearTasks[uid] = nil
+            }
+        } else {
+            socketTypingUserIDs.remove(uid)
+        }
     }
 
     var typingText: String? {

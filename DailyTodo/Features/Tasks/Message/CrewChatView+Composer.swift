@@ -254,52 +254,31 @@ extension CrewChatView {
     }
 
     func handleTypingChange(_ newValue: String) {
-        guard let myID = session.currentUser?.id else { return }
-
         let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
         let shouldBeTyping = !trimmed.isEmpty
 
         typingStopTask?.cancel()
 
+        // Typing artık backend socket üzerinden (Supabase crew_typing_status yerine).
         if shouldBeTyping {
-            if !isCurrentlyTyping {
+            let now = Date()
+            if !isCurrentlyTyping || now.timeIntervalSince(lastTypingSentAt) > 1.5 {
                 isCurrentlyTyping = true
-
-                Task(priority: .utility) {
-                    await crewStore.sendTypingEvent(
-                        crewID: crew.id,
-                        userID: myID,
-                        name: currentDisplayName(),
-                        isTyping: true
-                    )
-                }
+                lastTypingSentAt = now
+                ChatBackendSocketClient.shared.sendTyping(isTyping: true)
             }
 
-            typingStopTask = Task {
-                try? await Task.sleep(nanoseconds: 1_500_000_000)
-
-                if !Task.isCancelled {
-                    isCurrentlyTyping = false
-
-                    await crewStore.sendTypingEvent(
-                        crewID: crew.id,
-                        userID: myID,
-                        name: currentDisplayName(),
-                        isTyping: false
-                    )
-                }
+            typingStopTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                guard !Task.isCancelled else { return }
+                isCurrentlyTyping = false
+                lastTypingSentAt = .distantPast
+                ChatBackendSocketClient.shared.sendTyping(isTyping: false)
             }
         } else {
             isCurrentlyTyping = false
-
-            Task(priority: .utility) {
-                await crewStore.sendTypingEvent(
-                    crewID: crew.id,
-                    userID: myID,
-                    name: currentDisplayName(),
-                    isTyping: false
-                )
-            }
+            lastTypingSentAt = .distantPast
+            ChatBackendSocketClient.shared.sendTyping(isTyping: false)
         }
     }
 

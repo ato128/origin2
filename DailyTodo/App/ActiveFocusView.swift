@@ -332,12 +332,14 @@ private extension ActiveFocusView {
                 )
 
             VStack(spacing: 10) {
-                Text(focusSession.timeString)
-                    .font(.system(size: 48, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-                    .animation(.easeInOut(duration: 0.16), value: focusSession.timeString)
+                // Updo signature editorial hero digits (serif-italic, brushed-silver)
+                FocusHeroDigits(
+                    text: focusSession.timeString,
+                    accent: theme.accent,
+                    size: 56
+                )
+                .frame(maxWidth: ringSize - 44)
+                .opacity(focusSession.isPaused ? 0.55 : 1)
 
                 Text(statusTitle)
                     .font(.system(size: 12, weight: .black, design: .monospaced))

@@ -76,6 +76,12 @@ final class UpdoAIChatStore: ObservableObject {
                 streamingText = full
             }
 
+            // Guard: a blank reply (e.g. provider returned empty content) must not
+            // land as an empty bubble — surface a retry-flavored error instead.
+            guard !full.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw AIServiceError.invalidResponse
+            }
+
             // Only deduct credits on success (optimistic; backend is the source of truth)
             credits.noteMessageSent()
 

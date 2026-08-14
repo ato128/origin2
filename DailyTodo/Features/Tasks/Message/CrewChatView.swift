@@ -29,6 +29,10 @@ struct CrewChatView: View {
 
     @State var typingStopTask: Task<Void, Never>?
     @State var isCurrentlyTyping = false
+    @State var lastTypingSentAt: Date = .distantPast
+    // Yazan üyeler — backend socket'ten (Supabase crew_typing_status yerine).
+    @State var socketTypingUserIDs: Set<UUID> = []
+    @State var socketTypingClearTasks: [UUID: Task<Void, Never>] = [:]
     @State private var didInitialLoad = false
     @State private var localActiveFocusSession: CrewFocusSessionDTO?
     @State var backendConversationID: UUID?
@@ -128,16 +132,12 @@ struct CrewChatView: View {
         .onDisappear {
             typingStopTask?.cancel()
 
-            if let myID = session.currentUser?.id {
-                Task(priority: .utility) {
-                    await crewStore.sendTypingEvent(
-                        crewID: crew.id,
-                        userID: myID,
-                        name: currentDisplayName(),
-                        isTyping: false
-                    )
-                }
-            }
+            // "yazıyor durdu" backend socket üzerinden (Supabase yerine).
+            ChatBackendSocketClient.shared.sendTyping(isTyping: false)
+
+            for (_, task) in socketTypingClearTasks { task.cancel() }
+            socketTypingClearTasks = [:]
+            socketTypingUserIDs = []
 
             Task { @MainActor in
                 ChatBackendSocketClient.shared.disconnect()
@@ -145,6 +145,9 @@ struct CrewChatView: View {
                 crewStore.unsubscribeCrewAuxRealtime()
                 crewStore.unsubscribeCrewFocusRealtime()
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .chatBackendTyping)) { note in
+            handleIncomingCrewTyping(note)
         }
         .onChange(of: selectedPhotoItem) { _, newItem in
             guard let newItem else { return }

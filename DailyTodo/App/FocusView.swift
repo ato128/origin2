@@ -2145,7 +2145,7 @@ private extension FocusView {
 /// Focus hero number rendered in the same serif-italic identity as the home
 /// active-focus card (PremiumCountdownView): bold serif italic digits, a lighter
 /// serif italic colon. Scales as a unit so MM:SS never overflows.
-private struct FocusHeroDigits: View {
+struct FocusHeroDigits: View {
     let text: String
     let accent: Color
     var size: CGFloat = 112

@@ -312,10 +312,18 @@ private extension WeekEventDetailView {
                 Task {
                     let deletedEventID = event.id
 
+                    // Silmeden ÖNCE bu dersin bildirimlerini kaldır — event objesi
+                    // delete'ten sonra geçersizleşir.
+                    NotificationManager.shared.remove(for: event)
+
                     modelContext.delete(event)
 
                     do {
                         try modelContext.save()
+
+                        // Widget/anasayfa "bugünkü program"ı silinen dersi hemen
+                        // düşürsün — yoksa widget eski programı göstermeye devam eder.
+                        WidgetAppSync.refreshFromSwiftData(context: modelContext)
 
                         guard let currentUserID = session.currentUser?.id else {
                             dismiss()

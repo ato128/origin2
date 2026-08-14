@@ -54,6 +54,18 @@ final class FriendStore: ObservableObject {
     private var friendMessagesChannel: RealtimeChannelV2?
     private var subscribedFriendshipID: UUID?
 
+    // MARK: - Presence heartbeat / live re-evaluation
+    // Presence realtime tek başına yetmez: bir arkadaş uygulamayı kapatınca
+    // (arka plana geçmeden) `is_online` DB'de true kalır. TTL doğru cevabı verir
+    // ama periyodik yeniden değerlendirme olmadan UI takılı kalır. Bu timer hem
+    // KENDİ presence'ımı taze tutar (heartbeat) hem arkadaşları poll'ler + TTL ile
+    // türetilmiş online durumunu yeniden hesaplar. Realtime'a bağımlı değildir.
+    private var presenceTickTimer: Timer?
+    private var retainedPresenceUserID: UUID?
+    private var retainedPresenceContext: ModelContext?
+    private var retainedPresenceOtherIDs: [UUID] = []
+    private let presenceTickInterval: TimeInterval = 20
+
     private func friendshipsCacheKey(for userID: UUID) -> String {
         "friendships_cache_\(userID.uuidString)"
     }
@@ -384,6 +396,11 @@ final class FriendStore: ObservableObject {
     // MARK: - Local Sync
 
     func syncAcceptedFriendsToLocal(currentUserID: UUID, modelContext: ModelContext) {
+        // Presence timer'ın periyodik olarak Friend.isOnline'ı tazeleyebilmesi için
+        // bağlamı sakla.
+        retainedPresenceUserID = currentUserID
+        retainedPresenceContext = modelContext
+
         let acceptedFriendships = friendships.filter { $0.status == "accepted" }
         let acceptedFriendshipIDs = Set(acceptedFriendships.map(\.id))
         let existingFriends = (try? modelContext.fetch(FetchDescriptor<Friend>())) ?? []
@@ -414,7 +431,9 @@ final class FriendStore: ObservableObject {
                 existing.backendUserID = otherUserID
                 existing.name = displayName
                 existing.subtitle = "Friend"
-                existing.isOnline = presenceByUserID[otherUserID]?.is_online ?? false
+                // TTL'li canlı değerlendirme — ham is_online flag'i baypas etme,
+                // yoksa son 45sn'de görülmemiş kişi online takılı kalır.
+                existing.isOnline = FriendPresenceEngine.isOnline(presenceByUserID[otherUserID])
                 existing.ownerUserID = currentUserID.uuidString
             } else {
                 let newFriend = Friend(
@@ -425,7 +444,7 @@ final class FriendStore: ObservableObject {
                     subtitle: "Friend",
                     avatarSymbol: "person.fill",
                     colorHex: "#3B82F6",
-                    isOnline: presenceByUserID[otherUserID]?.is_online ?? false
+                    isOnline: FriendPresenceEngine.isOnline(presenceByUserID[otherUserID])
                 )
                 modelContext.insert(newFriend)
             }
@@ -662,6 +681,67 @@ final class FriendStore: ObservableObject {
 
     func setAppActive(_ isActive: Bool) {
         isAppActive = isActive
+        if isActive {
+            startPresenceHeartbeat()
+        } else {
+            stopPresenceHeartbeat()
+        }
+    }
+
+    // MARK: - Presence heartbeat
+
+    func startPresenceHeartbeat() {
+        presenceTickTimer?.invalidate()
+        let timer = Timer.scheduledTimer(withTimeInterval: presenceTickInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.presenceTick() }
+        }
+        presenceTickTimer = timer
+        presenceTick()
+    }
+
+    func stopPresenceHeartbeat() {
+        presenceTickTimer?.invalidate()
+        presenceTickTimer = nil
+    }
+
+    /// Her tick: (1) KENDİ presence'ımı taze tut (heartbeat — TTL 45sn), (2) arkadaş
+    /// presence'ını yeniden çek, (3) TTL ile türetilmiş online durumunu tazele.
+    private func presenceTick() {
+        guard isAppActive else { return }
+
+        // KENDİ online durumumuz backend'de socket bağlantısından türetiliyor —
+        // ayrıca presence yazmaya gerek yok. Sadece arkadaşların durumunu poll'le.
+        guard !retainedPresenceOtherIDs.isEmpty else {
+            refreshDerivedPresence()
+            return
+        }
+
+        Task { await self.loadPresence(for: self.retainedPresenceOtherIDs) }
+    }
+
+    /// Yerel Friend.isOnline değerlerini `presenceByUserID`'den TTL'li olarak yeniden
+    /// hesaplar + sohbet özetlerini tazeler. Realtime ya da poll presence'ı
+    /// güncelledikçe çağrılır; ayrıca timer'dan TTL süresi dolan kişileri offline'a düşürür.
+    func refreshDerivedPresence() {
+        guard let currentUserID = retainedPresenceUserID,
+              let ctx = retainedPresenceContext else { return }
+
+        let owner = currentUserID.uuidString
+        let friends = ((try? ctx.fetch(FetchDescriptor<Friend>())) ?? [])
+            .filter { $0.ownerUserID == owner }
+
+        var changed = false
+        for friend in friends {
+            guard let uid = friend.backendUserID else { continue }
+            let live = FriendPresenceEngine.isOnline(presenceByUserID[uid])
+            if friend.isOnline != live {
+                friend.isOnline = live
+                changed = true
+            }
+        }
+        if changed { try? ctx.save() }
+
+        rebuildFriendChatSummaries(currentUserID: currentUserID, localFriends: friends)
     }
 
    
@@ -2478,95 +2558,80 @@ final class FriendStore: ObservableObject {
     }
 
     func subscribeToPresenceRealtime(for userIDs: [UUID]) {
-        Task {
-            if let oldChannel = friendPresenceChannel { try? await oldChannel.unsubscribe() }
-            await MainActor.run { self.friendPresenceChannel = nil }
+        // Supabase presence realtime kaldırıldı. Online durumu artık backend
+        // socket'inden geliyor: presenceTick her ~20sn'de bir loadPresence ile
+        // /v1/presence'ı poll'ler. Varsa eski Supabase kanalını kapat + anlık
+        // ilk durumu hemen çek.
+        retainedPresenceOtherIDs = Array(Set(userIDs))
 
-            let channel = SupabaseManager.shared.client.realtimeV2.channel("friend-presence")
-
-            _ = channel.onPostgresChange(InsertAction.self, schema: "public", table: "friend_presence") { [weak self] action in
-                guard let self else { return }
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    do {
-                        let jsonData = try JSONSerialization.data(withJSONObject: action.record)
-                        let dto = try JSONDecoder().decode(FriendPresenceDTO.self, from: jsonData)
-                        guard userIDs.contains(dto.user_id) else { return }
-                        self.presenceByUserID[dto.user_id] = dto
-                    } catch { Log.debug("PRESENCE INSERT DECODE ERROR:", error.localizedDescription) }
-                }
-            }
-
-            _ = channel.onPostgresChange(UpdateAction.self, schema: "public", table: "friend_presence") { [weak self] action in
-                guard let self else { return }
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    do {
-                        let jsonData = try JSONSerialization.data(withJSONObject: action.record)
-                        let dto = try JSONDecoder().decode(FriendPresenceDTO.self, from: jsonData)
-                        guard userIDs.contains(dto.user_id) else { return }
-                        self.presenceByUserID[dto.user_id] = dto
-                    } catch { Log.debug("PRESENCE UPDATE DECODE ERROR:", error.localizedDescription) }
-                }
-            }
-
-            _ = channel.onPostgresChange(DeleteAction.self, schema: "public", table: "friend_presence") { [weak self] action in
-                guard let self else { return }
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    if let userIDString = action.oldRecord["user_id"] as? String,
-                       let userID = UUID(uuidString: userIDString),
-                       userIDs.contains(userID) {
-                        self.presenceByUserID.removeValue(forKey: userID)
-                    }
-                }
-            }
-
-            await MainActor.run { self.friendPresenceChannel = channel }
-            try? await channel.subscribeWithError()
+        if let old = friendPresenceChannel {
+            friendPresenceChannel = nil
+            Task { try? await old.unsubscribe() }
         }
+
+        Task { await loadPresence(for: userIDs) }
     }
 
     func loadPresence(for userIDs: [UUID]) async {
         let uniqueIDs = Array(Set(userIDs))
         guard !uniqueIDs.isEmpty else { return }
+        retainedPresenceOtherIDs = uniqueIDs
 
+        // Online durumu KENDİ backend'imizden (Supabase friend_presence yerine).
+        let onlineMap = await fetchOnlinePresenceFromBackend(userIDs: uniqueIDs)
+        let now = ISO8601DateFormatter().string(from: Date())
+
+        for id in uniqueIDs {
+            let online = onlineMap[id] ?? false
+            // FriendPresenceDTO'yu backend bool'undan sentezle; böylece
+            // FriendPresenceEngine + sohbet özetleri değişmeden çalışır.
+            presenceByUserID[id] = FriendPresenceDTO(
+                user_id: id,
+                is_online: online,
+                last_seen_at: now,
+                updated_at: now
+            )
+        }
+        refreshDerivedPresence()
+    }
+
+    /// Online durumu backend socket'inden çeker. "Online" = kullanıcının canlı
+    /// bir socket bağlantısı var (inbox socket önplandayken bağlı kalır).
+    private func fetchOnlinePresenceFromBackend(userIDs: [UUID]) async -> [UUID: Bool] {
+        guard !userIDs.isEmpty else { return [:] }
         do {
-            let response = try await SupabaseManager.shared.client
-                .from("friend_presence")
-                .select()
-                .in("user_id", values: uniqueIDs.map(\.uuidString))
-                .execute()
+            let token = try await SupabaseManager.shared.client.auth.session.accessToken
+            guard let url = URL(string: "\(ChatBackendEnvironment.httpBaseURL)/v1/presence") else { return [:] }
 
-            let decoded = try JSONDecoder().decode([FriendPresenceDTO].self, from: response.data)
-            var dict: [UUID: FriendPresenceDTO] = [:]
-            for item in decoded { dict[item.user_id] = item }
-            for item in decoded {
-                presenceByUserID[item.user_id] = item
+            var req = URLRequest(url: url)
+            req.httpMethod = "POST"
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            req.timeoutInterval = 12
+            req.httpBody = try JSONSerialization.data(withJSONObject: ["userIDs": userIDs.map(\.uuidString)])
+
+            let (data, response) = try await URLSession.shared.data(for: req)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return [:] }
+
+            struct Resp: Decodable { let ok: Bool; let online: [String: Bool] }
+            let decoded = try JSONDecoder().decode(Resp.self, from: data)
+
+            var result: [UUID: Bool] = [:]
+            for (key, value) in decoded.online {
+                if let id = UUID(uuidString: key) { result[id] = value }
             }
+            return result
         } catch {
-            Log.debug("LOAD PRESENCE ERROR:", error.localizedDescription)
+            Log.debug("BACKEND PRESENCE FETCH ERROR:", error.localizedDescription)
+            return [:]
         }
     }
 
     func setPresence(currentUserID: UUID?, isOnline: Bool) async {
         guard let currentUserID else { return }
-
-        struct Payload: Encodable {
-            let user_id: UUID
-            let is_online: Bool
-            let last_seen_at: String
-            let updated_at: String
-        }
-
-        let now = ISO8601DateFormatter().string(from: Date())
-        let payload = Payload(user_id: currentUserID, is_online: isOnline, last_seen_at: now, updated_at: now)
-
-        do {
-            try await SupabaseManager.shared.client.from("friend_presence").upsert(payload).execute()
-        } catch {
-            Log.debug("SET PRESENCE ERROR:", error.localizedDescription)
-        }
+        retainedPresenceUserID = currentUserID
+        // Online durumu artık backend socket bağlantısından türetiliyor
+        // (isUserOnline). Supabase friend_presence'a yazmıyoruz.
     }
 
     // MARK: - Messages Realtime

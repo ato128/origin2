@@ -153,6 +153,10 @@ struct FriendChatView: View {
     @State private var scrollTask: Task<Void, Never>?
     @State private var typingStopTask: Task<Void, Never>?
     @State private var lastTypingTextWasEmpty = true
+    @State private var lastTypingSentAt: Date = .distantPast
+    // Karşı tarafın "yazıyor" durumu — backend socket'ten gelir (Supabase değil).
+    @State private var peerIsTyping = false
+    @State private var peerTypingClearTask: Task<Void, Never>?
     @State private var backendConversationID: UUID?
     @State private var backendMessages: [FriendChatMessageItem] = []
     @State private var reactingMessageID: UUID?
@@ -329,11 +333,9 @@ struct FriendChatView: View {
                 friendStore.setActiveChat(friendshipID)
                 UserDefaults.standard.set(friendshipID.uuidString, forKey: "active_friendship_id")
 
-                friendStore.subscribeToTypingRealtime(
-                    friendshipID: friendshipID,
-                    currentUserID: session.currentUser?.id
-                )
-                
+                // Typing artık backend socket'ten (aşağıdaki .chatBackendTyping
+                // dinleyicisi). Supabase typing aboneliği kaldırıldı.
+
                 loadCachedMessagesIfNeeded()
             }
             .task {
@@ -355,12 +357,18 @@ struct FriendChatView: View {
                             typingStopTask = nil
                             lastTypingTextWasEmpty = true
 
+                            peerTypingClearTask?.cancel()
+                            peerTypingClearTask = nil
+                            peerIsTyping = false
+
                             friendStore.setActiveChat(nil)
                             UserDefaults.standard.removeObject(forKey: "active_friendship_id")
-                            friendStore.unsubscribeTypingRealtime()
                         }
                         .onChange(of: scenePhase) { _, newPhase in
                             handleScenePhaseChange(newPhase)
+                        }
+                        .onReceive(NotificationCenter.default.publisher(for: .chatBackendTyping)) { note in
+                            handleIncomingTyping(note)
                         }
                         .alert("Mikrofon izni gerekli", isPresented: $showMicPermissionAlert) {
                 Button(tr("settings_title")) {
@@ -487,8 +495,7 @@ private extension FriendChatView {
     }
 
     private var isTypingNow: Bool {
-        guard let friendshipID else { return false }
-        return friendStore.typingStatusByFriendship[friendshipID] == true
+        peerIsTyping
     }
 
     private var isFriendOnline: Bool {
@@ -496,8 +503,7 @@ private extension FriendChatView {
     }
 
     private var headerStatusText: String {
-        if let friendshipID,
-           friendStore.typingStatusByFriendship[friendshipID] == true {
+        if peerIsTyping {
             return tr("chat_typing_suffix")
         }
 
@@ -1179,47 +1185,74 @@ private extension FriendChatView {
         }
     
     func handleTypingChange(_ newValue: String) {
-        guard let friendshipID else { return }
-        
         let clean = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        
+
         if clean.isEmpty {
             typingStopTask?.cancel()
-            
-            guard lastTypingTextWasEmpty == false else {
-                return
-            }
-            
+            typingStopTask = nil
+            guard lastTypingTextWasEmpty == false else { return }
             lastTypingTextWasEmpty = true
-            
-            typingStopTask = Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 220_000_000)
-                
-                guard !Task.isCancelled else { return }
-                
-                await friendStore.setTyping(
-                    friendshipID: friendshipID,
-                    currentUserID: session.currentUser?.id,
-                    currentUserName: senderDisplayName(),
-                    isTyping: false
-                )
-            }
-            
+            ChatBackendSocketClient.shared.sendTyping(isTyping: false)
             return
         }
-        
-        typingStopTask?.cancel()
-        typingStopTask = nil
-        
-        if lastTypingTextWasEmpty {
-            lastTypingTextWasEmpty = false
+
+        lastTypingTextWasEmpty = false
+
+        // Sürekli yazarken socket'i boğmamak için "yazıyor"u en fazla ~1.5sn'de
+        // bir yenile (backend socket üzerinden — Supabase değil).
+        let now = Date()
+        if now.timeIntervalSince(lastTypingSentAt) > 1.5 {
+            lastTypingSentAt = now
+            ChatBackendSocketClient.shared.sendTyping(isTyping: true)
         }
-        
-        friendStore.userDidType(
-            friendshipID: friendshipID,
-            currentUserID: session.currentUser?.id,
-            currentUserName: senderDisplayName()
-        )
+
+        // Yazma durunca otomatik "durdu" (idle 3sn).
+        typingStopTask?.cancel()
+        typingStopTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            guard !Task.isCancelled else { return }
+            lastTypingTextWasEmpty = true
+            lastTypingSentAt = .distantPast
+            ChatBackendSocketClient.shared.sendTyping(isTyping: false)
+        }
+    }
+
+    private func handleIncomingTyping(_ note: Notification) {
+        guard let backendConversationID else { return }
+
+        let convMatches: Bool
+        if let objID = note.object as? UUID {
+            convMatches = objID == backendConversationID
+        } else if let convStr = note.userInfo?["conversationID"] as? String {
+            convMatches = convStr == backendConversationID.uuidString
+        } else {
+            convMatches = false
+        }
+        guard convMatches else { return }
+
+        // Backend göndereni zaten hariç tutar; yine de kendi id'mizi ele.
+        if let uidStr = note.userInfo?["userID"] as? String,
+           uidStr == session.currentUser?.id.uuidString {
+            return
+        }
+
+        let isTyping = (note.userInfo?["isTyping"] as? Bool) ?? false
+
+        peerTypingClearTask?.cancel()
+        withAnimation(.easeInOut(duration: 0.2)) {
+            peerIsTyping = isTyping
+        }
+
+        if isTyping {
+            // "durdu" eventi kaçarsa güvenlik ağı: 6sn sonra otomatik temizle.
+            peerTypingClearTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 6_000_000_000)
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    peerIsTyping = false
+                }
+            }
+        }
     }
     
     

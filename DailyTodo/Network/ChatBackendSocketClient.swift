@@ -156,6 +156,26 @@ final class ChatBackendSocketClient: NSObject, ObservableObject {
         ])
     }
 
+    /// "yazıyor" sinyalini backend socket'e gönder (Supabase yerine).
+    func sendTyping(isTyping: Bool) {
+        guard let webSocketTask, let activeConversationID else { return }
+
+        let object: [String: Any] = [
+            "type": "typing",
+            "conversationID": activeConversationID.uuidString,
+            "isTyping": isTyping
+        ]
+
+        guard let data = try? JSONSerialization.data(withJSONObject: object),
+              let text = String(data: data, encoding: .utf8) else { return }
+
+        webSocketTask.send(.string(text)) { error in
+            if let error {
+                ChatBackendLogger.error("❌ WS TYPING SEND ERROR:", error.localizedDescription)
+            }
+        }
+    }
+
     private func sendRaw(_ object: [String: String]) {
         guard let webSocketTask else { return }
 
@@ -319,6 +339,19 @@ final class ChatBackendSocketClient: NSObject, ObservableObject {
                     ]
                 )
 
+            case "typing":
+                if let conversationID = event.payload?.conversationID {
+                    NotificationCenter.default.post(
+                        name: .chatBackendTyping,
+                        object: conversationID,
+                        userInfo: [
+                            "conversationID": conversationID.uuidString,
+                            "userID": event.payload?.userID?.uuidString ?? "",
+                            "isTyping": event.payload?.isTyping ?? false
+                        ]
+                    )
+                }
+
             case "error":
                 ChatBackendLogger.error("❌ WS SERVER ERROR:", event.payload?.message ?? "unknown")
 
@@ -475,6 +508,9 @@ struct ChatBackendSocketPayload: Decodable {
     // Emoji reaksiyon eventi (message_reaction)
     let messageID: UUID?
     let reactions: [ChatReactionSummary]?
+
+    // "yazıyor" eventi (typing)
+    let isTyping: Bool?
     
     
     let session: CrewFocusSessionDTO?
@@ -546,6 +582,7 @@ extension Notification.Name {
     static let chatBackendMessageSeen = Notification.Name("chatBackendMessageSeen")
     static let chatBackendMessageDelivered = Notification.Name("chatBackendMessageDelivered")
     static let chatBackendMessageReaction = Notification.Name("chatBackendMessageReaction")
+    static let chatBackendTyping = Notification.Name("chatBackendTyping")
 
     // YENİ — Crew focus realtime events:
     static let crewFocusSessionStarted = Notification.Name("crewFocusSessionStarted")
