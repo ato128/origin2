@@ -33,12 +33,21 @@ enum FriendPresenceEngine {
             return tr("chat_online")
         }
 
-        let date = CrewDateParser.parse(presence.last_seen_at) ?? Date()
+        // Son görülme bilinmiyorsa yanıltıcı "az önce" ÜRETME — jenerik çevrimdışı.
+        guard let date = CrewDateParser.parse(presence.last_seen_at) else {
+            return offlineFallback(locale: locale)
+        }
+
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .short
         formatter.locale = locale
 
         let relative = formatter.localizedString(for: date, relativeTo: Date())
         return tr("chat_last_seen_format", relative)
+    }
+
+    private static func offlineFallback(locale: Locale) -> String {
+        let code = locale.language.languageCode?.identifier ?? "en"
+        return code == "tr" ? "Çevrimdışı" : "Offline"
     }
 }

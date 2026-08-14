@@ -703,6 +703,16 @@ extension CrewChatView {
                 return
             }
 
+            // Cache'ten conversationID'yi ANINDA geri yükle → syncChatBackendCrewIfNeeded
+            // backendConversationID'yi nil bulup "Hazırlanıyor"a düşürmez; composer
+            // hemen hazır kalır, her açılışta yeniden-yükleme hissi olmaz.
+            if backendConversationID == nil,
+               let restored = cached.first(where: {
+                   $0.ownerUserID == ownerUserID && $0.supabaseCrewID == crew.id
+               })?.conversationID {
+                backendConversationID = restored
+            }
+
             mergeBackendMessages(items)
             didBootstrapBackendMessages = true
 

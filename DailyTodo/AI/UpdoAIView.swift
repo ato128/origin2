@@ -825,9 +825,39 @@ struct UpdoAIView: View {
     }
 
     /// Tries the token-free local command interpreter first (add / remove /
-    /// complete task). Only falls through to the paid LLM for real conversation.
+    /// complete task, start focus, add plan, navigate). Only falls through to the
+    /// paid LLM for real conversation.
     private func routeUserInput(_ text: String) {
         guard let uid = currentUserID else { return }
+
+        // 0a. Bekleyen plan kartını "ekle / evet" yazınca GERÇEKTEN ekle
+        //     (kullanıcı kart butonuna basmak yerine yazabilir).
+        if let pending = pendingPlanCard(), isAddConfirmation(text) {
+            addPlanItems(pending.items)
+            _ = executedActionIDs.insert(pending.msgID)
+            chatStore.appendLocalExchange(userText: text, assistantText: tr("ai_tasks_added"))
+            triggerToast(tr("ai_tasks_added"))
+            hapticResponse.notificationOccurred(.success)
+            return
+        }
+
+        // 0b. Focus başlatma niyeti → GERÇEKTEN odak seansı başlat + ekranı aç.
+        if let mins = focusStartRequest(text) {
+            startFocusFromAI(minutes: mins, userText: text)
+            return
+        }
+
+        // 0b2. Aktif seansta focus kontrolü (durdur / duraklat / devam).
+        if let control = focusControlRequest(text) {
+            handleFocusControl(control, userText: text)
+            return
+        }
+
+        // 0c. Uygulama-içi navigasyon (hafta / analiz / crew).
+        if let nav = detectNavigation(text) {
+            handleNavigation(nav, userText: text)
+            return
+        }
 
         if let result = UpdoAICommandInterpreter.interpret(
             text, store: store, context: modelContext, ownerUserID: uid
@@ -865,6 +895,190 @@ struct UpdoAIView: View {
         Task {
             await chatStore.send(text: text, contextPrompt: contextSystemPrompt, credits: credits, userID: uid)
         }
+    }
+
+    // MARK: - AI in-app actions (token-free)
+
+    private var aiUsesTurkish: Bool {
+        (Locale.current.language.languageCode?.identifier ?? "en") == "tr"
+    }
+
+    private func aiFold(_ s: String) -> String {
+        s.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "tr"))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+    }
+
+    private func aiTokens(_ s: String) -> [String] {
+        aiFold(s).split { !$0.isLetter && !$0.isNumber && $0 != ":" && $0 != "." }.map(String.init)
+    }
+
+    private func addPlanItems(_ items: [UpdoAIPlanItem]) {
+        for item in items {
+            store.add(
+                title: item.title,
+                dueDate: item.dueDate,
+                scheduledWeekDate: item.dueDate,
+                scheduledWeekDurationMinutes: item.durationMinutes
+            )
+        }
+    }
+
+    /// En son, henüz eklenmemiş/kapatılmamış plan kartı olan asistan mesajı.
+    private func pendingPlanCard() -> (msgID: UUID, items: [UpdoAIPlanItem])? {
+        for msg in chatStore.messages.reversed() where msg.role == "assistant" {
+            if executedActionIDs.contains(msg.id) || dismissedActionIDs.contains(msg.id) { continue }
+            let items = UpdoAIPlanParser.parse(msg.text)
+            if !items.isEmpty { return (msg.id, items) }
+        }
+        return nil
+    }
+
+    private func isAddConfirmation(_ text: String) -> Bool {
+        let f = aiFold(text)
+        let exact: Set<String> = [
+            "ekle", "ekle bunlari", "ekle onlari", "bunlari ekle", "onlari ekle",
+            "hepsini ekle", "evet ekle", "tamam ekle", "ekle hepsini",
+            "evet", "tamam", "olur", "add", "add them", "add all", "yes", "ok"
+        ]
+        if exact.contains(f) { return true }
+        return f.hasPrefix("ekle") && f.count <= 18
+    }
+
+    /// Focus başlatma niyeti → başlatılacak süre (dk). nil = focus niyeti yok.
+    private func focusStartRequest(_ text: String) -> Int? {
+        let tokens = aiTokens(text)
+        guard !tokens.isEmpty else { return nil }
+
+        let stop: Set<String> = ["mi", "mu", "nasil", "neden", "niye", "hangi", "kac", "how", "why", "when", "ne"]
+        if tokens.contains(where: { stop.contains($0) }) { return nil }
+
+        let focusWords: Set<String> = ["focus", "odak", "seans", "pomodoro"]
+        let hasFocus = tokens.contains { focusWords.contains($0) || $0.hasPrefix("odaklan") || $0.hasPrefix("calis") }
+        guard hasFocus else { return nil }
+
+        let startWords: Set<String> = ["basla", "baslat", "baslatalim", "baslayalim", "hadi", "start", "begin", "ac", "acalim"]
+        let hasStart = tokens.contains { startWords.contains($0) }
+
+        let minutes = parseFocusMinutes(tokens)
+        guard hasStart || minutes != nil else { return nil }
+
+        return minutes ?? 25
+    }
+
+    private func parseFocusMinutes(_ tokens: [String]) -> Int? {
+        let hourUnits: Set<String> = ["saat", "saatlik", "hour", "hours", "hr"]
+        let minUnits: Set<String> = ["dk", "dakika", "dakikalik", "min", "mins", "minute", "minutes"]
+        for (i, t) in tokens.enumerated() {
+            guard let n = Int(t) else { continue }
+            let next = i + 1 < tokens.count ? tokens[i + 1] : ""
+            if hourUnits.contains(next) { return min(max(n * 60, 5), 240) }
+            if minUnits.contains(next) { return min(max(n, 5), 240) }
+            if n >= 5 && n <= 180 { return n }
+        }
+        if tokens.contains("yarim") && tokens.contains("saat") { return 30 }
+        if tokens.contains("bir") && tokens.contains("saat") { return 60 }
+        return nil
+    }
+
+    private func startFocusFromAI(minutes: Int, userText: String) {
+        let mins = min(max(minutes, 5), 240)
+        let confirm = aiUsesTurkish
+            ? "\(mins) dk'lık odak seansı başlatıyorum — kolay gelsin! 🎯"
+            : "Starting a \(mins)-min focus session — let's go! 🎯"
+        chatStore.appendLocalExchange(userText: userText, assistantText: confirm)
+        hapticResponse.notificationOccurred(.success)
+
+        Task { @MainActor in
+            _ = await FocusSessionManager.shared.startRequestedSession(
+                mode: .personal,
+                durationMinutes: mins,
+                goal: .study,
+                style: .silent
+            )
+            dismiss()
+        }
+    }
+
+    // MARK: - Navigation
+
+    private enum NavTarget { case week, insights, crew }
+
+    private func detectNavigation(_ text: String) -> NavTarget? {
+        let tokens = aiTokens(text)
+        guard tokens.count <= 6 else { return nil }
+
+        let openWords: Set<String> = ["ac", "acalim", "goster", "gostersene", "git", "gidelim", "gecelim", "open", "show"]
+        guard tokens.contains(where: { openWords.contains($0) }) else { return nil }
+
+        if tokens.contains(where: { $0.hasPrefix("analiz") || $0.hasPrefix("istatistik") || $0.hasPrefix("gelisim") || $0 == "insights" }) {
+            return .insights
+        }
+        if tokens.contains(where: { $0.hasPrefix("arkadas") || ["crew", "sosyal", "grup", "gruplar", "friends"].contains($0) }) {
+            return .crew
+        }
+        let weekWords: Set<String> = ["hafta", "haftayi", "haftami", "week", "program", "programi", "programimi", "takvim", "takvimi"]
+        if tokens.contains(where: { weekWords.contains($0) }) { return .week }
+        return nil
+    }
+
+    private func handleNavigation(_ target: NavTarget, userText: String) {
+        let reply: String
+        switch target {
+        case .week:     reply = aiUsesTurkish ? "Haftanı açıyorum." : "Opening your week."
+        case .insights: reply = aiUsesTurkish ? "Analizlerini açıyorum." : "Opening your insights."
+        case .crew:     reply = aiUsesTurkish ? "Çalışma grubunu açıyorum." : "Opening your crew."
+        }
+        chatStore.appendLocalExchange(userText: userText, assistantText: reply)
+        hapticResponse.notificationOccurred(.success)
+
+        switch target {
+        case .week:
+            onDismissAndOpenWeek()
+        case .insights:
+            NotificationCenter.default.post(name: .openInsightsTab, object: nil)
+            dismiss()
+        case .crew:
+            NotificationCenter.default.post(name: .openCrewTab, object: nil)
+            dismiss()
+        }
+    }
+
+    // MARK: - Focus controls (only when a session is active)
+
+    private enum FocusControl { case stop, pause, resume }
+
+    private func focusControlRequest(_ text: String) -> FocusControl? {
+        guard FocusSessionManager.shared.isSessionActive else { return nil }
+        let tokens = aiTokens(text)
+        guard tokens.count <= 5 else { return nil }
+
+        let stopWords: Set<String> = ["durdur", "bitir", "bitirdim", "kapat", "sonlandir", "iptal", "stop", "end", "finish", "cancel"]
+        let pauseWords: Set<String> = ["duraklat", "durakla", "beklet", "pause", "mola"]
+        let resumeWords: Set<String> = ["devam", "surdur", "resume", "continue"]
+
+        if tokens.contains(where: { stopWords.contains($0) }) { return .stop }
+        if tokens.contains(where: { pauseWords.contains($0) }) { return .pause }
+        if tokens.contains(where: { resumeWords.contains($0) }) { return .resume }
+        return nil
+    }
+
+    private func handleFocusControl(_ action: FocusControl, userText: String) {
+        let fs = FocusSessionManager.shared
+        let reply: String
+        switch action {
+        case .stop:
+            fs.closeSession()
+            reply = aiUsesTurkish ? "Odak seansını bitirdim. İyi iş çıkardın! 👏" : "Ended the focus session. Nice work! 👏"
+        case .pause:
+            if !fs.isPaused { fs.togglePause() }
+            reply = aiUsesTurkish ? "Seansı duraklattım. Hazır olunca «devam» de." : "Paused. Say \"resume\" when you're ready."
+        case .resume:
+            if fs.isPaused { fs.togglePause() }
+            reply = aiUsesTurkish ? "Devam ediyoruz — odaklan! 🎯" : "Resuming — focus! 🎯"
+        }
+        chatStore.appendLocalExchange(userText: userText, assistantText: reply)
+        hapticResponse.notificationOccurred(.success)
     }
 }
 

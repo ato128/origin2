@@ -2578,30 +2578,37 @@ final class FriendStore: ObservableObject {
         retainedPresenceOtherIDs = uniqueIDs
 
         // Online durumu KENDİ backend'imizden (Supabase friend_presence yerine).
-        let onlineMap = await fetchOnlinePresenceFromBackend(userIDs: uniqueIDs)
-        let now = ISO8601DateFormatter().string(from: Date())
+        let result = await fetchOnlinePresenceFromBackend(userIDs: uniqueIDs)
+        let nowISO = ISO8601DateFormatter().string(from: Date())
 
         for id in uniqueIDs {
-            let online = onlineMap[id] ?? false
-            // FriendPresenceDTO'yu backend bool'undan sentezle; böylece
-            // FriendPresenceEngine + sohbet özetleri değişmeden çalışır.
-            presenceByUserID[id] = FriendPresenceDTO(
-                user_id: id,
-                is_online: online,
-                last_seen_at: now,
-                updated_at: now
-            )
+            let online = result.online[id] ?? false
+            if online {
+                presenceByUserID[id] = FriendPresenceDTO(
+                    user_id: id, is_online: true, last_seen_at: nowISO, updated_at: nowISO
+                )
+            } else {
+                // Offline: GERÇEK son görülme (backend'in tuttuğu offline anı).
+                // Yoksa boş bırak → statusText jenerik "Çevrimdışı" gösterir,
+                // "az önce / 1-2 sn" gibi yanıltıcı taze zaman ÜRETMEZ.
+                let seen = result.lastSeen[id] ?? ""
+                presenceByUserID[id] = FriendPresenceDTO(
+                    user_id: id, is_online: false, last_seen_at: seen, updated_at: nowISO
+                )
+            }
         }
         refreshDerivedPresence()
     }
 
-    /// Online durumu backend socket'inden çeker. "Online" = kullanıcının canlı
-    /// bir socket bağlantısı var (inbox socket önplandayken bağlı kalır).
-    private func fetchOnlinePresenceFromBackend(userIDs: [UUID]) async -> [UUID: Bool] {
-        guard !userIDs.isEmpty else { return [:] }
+    /// Online durumu + son görülme'yi backend socket'inden çeker. "Online" =
+    /// kullanıcının canlı bir socket bağlantısı var (inbox socket önplandayken bağlı).
+    private func fetchOnlinePresenceFromBackend(
+        userIDs: [UUID]
+    ) async -> (online: [UUID: Bool], lastSeen: [UUID: String]) {
+        guard !userIDs.isEmpty else { return ([:], [:]) }
         do {
             let token = try await SupabaseManager.shared.client.auth.session.accessToken
-            guard let url = URL(string: "\(ChatBackendEnvironment.httpBaseURL)/v1/presence") else { return [:] }
+            guard let url = URL(string: "\(ChatBackendEnvironment.httpBaseURL)/v1/presence") else { return ([:], [:]) }
 
             var req = URLRequest(url: url)
             req.httpMethod = "POST"
@@ -2611,19 +2618,27 @@ final class FriendStore: ObservableObject {
             req.httpBody = try JSONSerialization.data(withJSONObject: ["userIDs": userIDs.map(\.uuidString)])
 
             let (data, response) = try await URLSession.shared.data(for: req)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return [:] }
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return ([:], [:]) }
 
-            struct Resp: Decodable { let ok: Bool; let online: [String: Bool] }
+            struct Resp: Decodable {
+                let ok: Bool
+                let online: [String: Bool]
+                let lastSeen: [String: String]?
+            }
             let decoded = try JSONDecoder().decode(Resp.self, from: data)
 
-            var result: [UUID: Bool] = [:]
+            var onlineResult: [UUID: Bool] = [:]
             for (key, value) in decoded.online {
-                if let id = UUID(uuidString: key) { result[id] = value }
+                if let id = UUID(uuidString: key) { onlineResult[id] = value }
             }
-            return result
+            var seenResult: [UUID: String] = [:]
+            for (key, value) in (decoded.lastSeen ?? [:]) {
+                if let id = UUID(uuidString: key) { seenResult[id] = value }
+            }
+            return (onlineResult, seenResult)
         } catch {
             Log.debug("BACKEND PRESENCE FETCH ERROR:", error.localizedDescription)
-            return [:]
+            return ([:], [:])
         }
     }
 

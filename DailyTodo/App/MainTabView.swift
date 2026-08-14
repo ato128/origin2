@@ -43,6 +43,8 @@ extension Notification.Name {
     static let openFocusTabFromHome = Notification.Name("openFocusTabFromHome")
     static let startFocusFromWidget = Notification.Name("startFocusFromWidget")
     static let openInsightsTab = Notification.Name("openInsightsTab")
+    static let openCrewTab = Notification.Name("openCrewTab")
+    static let openWeekTab = Notification.Name("openWeekTab")
 }
 
 private enum PendingChatRoute: Identifiable, Equatable {
@@ -141,6 +143,12 @@ struct MainTabView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .openInsightsTab)) { _ in
             tab = .insights
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openCrewTab)) { _ in
+            tab = .crew
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openWeekTab)) { _ in
+            tab = .week
         }
         .onReceive(NotificationCenter.default.publisher(for: .openFriendChatFromNotification)) { output in
             guard let rawID = output.object as? String,

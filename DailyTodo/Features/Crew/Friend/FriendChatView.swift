@@ -3601,6 +3601,16 @@ private extension FriendChatView {
                         return
                     }
 
+                    // Cache'ten conversationID + hazır durumu geri yükle → composer
+                    // ANINDA hazır olur; "Hazırlanıyor" flash'ı ve her açılışta
+                    // yeniden-yükleme hissi olmaz. Arka planda sync yine tazeler.
+                    if backendConversationID == nil,
+                       let cachedConversationID = cached.compactMap({ $0.conversationID }).last {
+                        backendConversationID = cachedConversationID
+                        hasCompletedBackendInitialSync = true
+                        didBootstrapBackendMessages = true
+                    }
+
                     mergeBackendMessages(items)
 
                                         Log.debug("🟢 CHAT CACHE LOADED:", items.count)
