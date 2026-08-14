@@ -87,7 +87,42 @@ actor AIService {
         return session.accessToken
     }
 
+    /// Coach sohbeti + fonksiyon çağırma (tool-use). Metin VE opsiyonel bir tool
+    /// döner. Tool gelirse istemci aksiyonu uygular + onayı yerelde üretir (2. LLM
+    /// turu yok). Token'sız yorumlayıcı yakalayamazsa devreye giren "her şeyi anla"
+    /// katmanı.
+    func coachChat(
+        system: String,
+        messages: [[String: String]],
+        maxTokens: Int = 300
+    ) async throws -> (text: String, tool: AIToolCall?) {
+        let body: [String: Any] = [
+            "system": system,
+            "messages": messages,
+            "maxTokens": maxTokens
+        ]
+        let data = try await rawPost(feature: "coach", body: body)
+
+        guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw AIServiceError.invalidResponse
+        }
+        let text = (obj["text"] as? String) ?? ""
+
+        var tool: AIToolCall? = nil
+        if let t = obj["tool"] as? [String: Any],
+           let name = t["name"] as? String, !name.isEmpty {
+            tool = AIToolCall(name: name, args: (t["args"] as? [String: Any]) ?? [:])
+        }
+        return (text, tool)
+    }
+
     private func postToBackend(feature: String, body: [String: Any]) async throws -> BackendAIResponse {
+        let data = try await rawPost(feature: feature, body: body)
+        return try JSONDecoder().decode(BackendAIResponse.self, from: data)
+    }
+
+    /// Ortak istek + hata (402/429/BYO) işleme. Ham `Data` döner; çağıran karar verir.
+    private func rawPost(feature: String, body: [String: Any]) async throws -> Data {
         let token = try await authToken()
         guard let url = URL(string: "\(baseURL)/\(feature)") else {
             throw AIServiceError.invalidResponse
@@ -114,34 +149,32 @@ actor AIService {
 
         if http.statusCode == 400 {
             let code = (try? JSONDecoder().decode(BackendAIError.self, from: data))?.code
-            if code == "byo_key_invalid" {
-                throw AIServiceError.byoKeyInvalid
-            }
-            if code == "byo_no_credits" {
-                throw AIServiceError.byoNoCredits
-            }
+            if code == "byo_key_invalid" { throw AIServiceError.byoKeyInvalid }
+            if code == "byo_no_credits" { throw AIServiceError.byoNoCredits }
         }
 
         if http.statusCode == 402 {
-            // Backend distinguishes the free allowance from the monthly budget
             let code = (try? JSONDecoder().decode(BackendAIError.self, from: data))?.code
-            if code == "daily_free_limit" {
-                throw AIServiceError.dailyFreeLimitReached
-            }
+            if code == "daily_free_limit" { throw AIServiceError.dailyFreeLimitReached }
             throw AIServiceError.insufficientCredits
         }
 
-        if http.statusCode == 429 {
-            throw AIServiceError.rateLimited
-        }
+        if http.statusCode == 429 { throw AIServiceError.rateLimited }
 
         guard http.statusCode == 200 else {
             let msg = String(data: data, encoding: .utf8) ?? "HTTP \(http.statusCode)"
             throw AIServiceError.apiError(msg)
         }
 
-        return try JSONDecoder().decode(BackendAIResponse.self, from: data)
+        return data
     }
+}
+
+// MARK: - Tool call (function calling)
+
+struct AIToolCall {
+    let name: String
+    let args: [String: Any]
 }
 
 // MARK: - Response model

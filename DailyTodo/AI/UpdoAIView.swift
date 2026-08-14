@@ -893,7 +893,120 @@ struct UpdoAIView: View {
         }
 
         Task {
-            await chatStore.send(text: text, contextPrompt: contextSystemPrompt, credits: credits, userID: uid)
+            await chatStore.send(
+                text: text,
+                contextPrompt: contextSystemPrompt,
+                credits: credits,
+                userID: uid,
+                onTool: { tool in executeAITool(tool) }
+            )
+        }
+    }
+
+    // MARK: - LLM tool-use (aksiyon çağrıları)
+
+    /// Backend LLM bir tool çağırdığında aksiyonu uygular ve onay metnini döner.
+    /// Token'sız yorumlayıcı yakalayamadığında devreye giren "her şeyi anla" katmanı.
+    private func executeAITool(_ tool: AIToolCall) -> String {
+        switch tool.name {
+        case "start_focus":
+            let mins = min(max((tool.args["minutes"] as? Int) ?? 25, 5), 240)
+            Task { @MainActor in
+                _ = await FocusSessionManager.shared.startRequestedSession(
+                    mode: .personal, durationMinutes: mins, goal: .study, style: .silent
+                )
+                dismiss()
+            }
+            return aiUsesTurkish
+                ? "\(mins) dk'lık odak seansı başlatıyorum — kolay gelsin! 🎯"
+                : "Starting a \(mins)-min focus session — let's go! 🎯"
+
+        case "stop_focus":
+            FocusSessionManager.shared.closeSession()
+            return aiUsesTurkish ? "Odak seansını bitirdim. İyi iş çıkardın! 👏" : "Ended the focus session. Nice work! 👏"
+
+        case "pause_focus":
+            let fs = FocusSessionManager.shared
+            if !fs.isPaused { fs.togglePause() }
+            return aiUsesTurkish ? "Seansı duraklattım." : "Paused."
+
+        case "resume_focus":
+            let fs = FocusSessionManager.shared
+            if fs.isPaused { fs.togglePause() }
+            return aiUsesTurkish ? "Devam ediyoruz — odaklan! 🎯" : "Resuming — focus! 🎯"
+
+        case "add_tasks":
+            let items = parseToolPlanItems(tool.args)
+            guard !items.isEmpty else {
+                return aiUsesTurkish ? "Eklenecek bir görev bulamadım." : "No tasks to add."
+            }
+            addPlanItems(items)
+            triggerToast(tr("ai_tasks_added"))
+            return tr("ai_tasks_added")
+
+        case "complete_task":
+            return runInterpreterCommand(titleArg: tool.args["title"], verbTR: "tamamla", verbEN: "complete")
+
+        case "delete_task":
+            return runInterpreterCommand(titleArg: tool.args["title"], verbTR: "sil", verbEN: "delete")
+
+        case "open_screen":
+            return openScreenByName((tool.args["screen"] as? String) ?? "week")
+
+        default:
+            return aiUsesTurkish ? "Bunu şu an yapamıyorum." : "I can't do that yet."
+        }
+    }
+
+    private func parseToolPlanItems(_ args: [String: Any]) -> [UpdoAIPlanItem] {
+        guard let raw = args["items"] as? [[String: Any]] else { return [] }
+        let ymd = DateFormatter()
+        ymd.dateFormat = "yyyy-MM-dd"
+        ymd.locale = Locale(identifier: "en_US_POSIX")
+        let iso = ISO8601DateFormatter()
+
+        return raw.compactMap { d -> UpdoAIPlanItem? in
+            guard let title = (d["title"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !title.isEmpty else { return nil }
+            var due: Date? = nil
+            if let ds = d["date"] as? String, !ds.isEmpty {
+                due = ymd.date(from: String(ds.prefix(10))) ?? iso.date(from: ds)
+            }
+            let dur = d["durationMinutes"] as? Int
+            return UpdoAIPlanItem(title: title, dueDate: due, durationMinutes: dur)
+        }
+    }
+
+    private func runInterpreterCommand(titleArg: Any?, verbTR: String, verbEN: String) -> String {
+        guard let title = (titleArg as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !title.isEmpty, let uid = currentUserID else {
+            return aiUsesTurkish ? "O görevi bulamadım." : "Couldn't find that task."
+        }
+        let command = aiUsesTurkish ? "\(title) \(verbTR)" : "\(verbEN) \(title)"
+        if let result = UpdoAICommandInterpreter.interpret(command, store: store, context: modelContext, ownerUserID: uid) {
+            result.apply()
+            return result.reply
+        }
+        return aiUsesTurkish ? "«\(title)» adlı görevi bulamadım." : "Couldn't find a task called \"\(title)\"."
+    }
+
+    private func openScreenByName(_ screen: String) -> String {
+        switch aiFold(screen) {
+        case "insights", "analiz", "istatistik", "gelisim":
+            NotificationCenter.default.post(name: .openInsightsTab, object: nil)
+            dismiss()
+            return aiUsesTurkish ? "Analizlerini açıyorum." : "Opening your insights."
+        case "crew", "sosyal", "arkadas", "arkadaslar":
+            NotificationCenter.default.post(name: .openCrewTab, object: nil)
+            dismiss()
+            return aiUsesTurkish ? "Çalışma grubunu açıyorum." : "Opening your crew."
+        case "focus", "odak":
+            NotificationCenter.default.post(name: .openFocusTabFromHome, object: nil)
+            dismiss()
+            return aiUsesTurkish ? "Focus sekmesini açıyorum." : "Opening focus."
+        default:
+            onDismissAndOpenWeek()
+            return aiUsesTurkish ? "Haftanı açıyorum." : "Opening your week."
         }
     }
 

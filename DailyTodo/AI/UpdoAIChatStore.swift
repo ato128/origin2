@@ -43,7 +43,8 @@ final class UpdoAIChatStore: ObservableObject {
         text: String,
         contextPrompt: String,
         credits: DailyCreditsManager,
-        userID: String
+        userID: String,
+        onTool: @MainActor (AIToolCall) -> String
     ) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isSending else { return }
@@ -66,30 +67,33 @@ final class UpdoAIChatStore: ObservableObject {
         }
 
         do {
-            var full = ""
-            for try await chunk in await AIService.shared.streamMessages(
+            let (fullText, tool) = try await AIService.shared.coachChat(
                 system: contextPrompt,
                 messages: history,
                 maxTokens: 300
-            ) {
-                full += chunk
-                streamingText = full
-            }
-
-            // Guard: a blank reply (e.g. provider returned empty content) must not
-            // land as an empty bubble — surface a retry-flavored error instead.
-            guard !full.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                throw AIServiceError.invalidResponse
-            }
+            )
 
             // Only deduct credits on success (optimistic; backend is the source of truth)
             credits.noteMessageSent()
-
             streamingText = ""
-            let reply = AIMessage(role: "assistant", text: full, timestamp: .now)
+
+            let replyText: String
+            if let tool {
+                // AI bir aksiyon çağırdı → istemci uygular + onay metnini döndürür.
+                replyText = onTool(tool)
+            } else {
+                // Guard: a blank reply (provider returned empty content) must not
+                // land as an empty bubble — surface a retry-flavored error instead.
+                guard !fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    throw AIServiceError.invalidResponse
+                }
+                replyText = fullText
+            }
+
+            let reply = AIMessage(role: "assistant", text: replyText, timestamp: .now)
             messages.append(reply)
-            lastPreviewText = full
-            UserDefaults.standard.set(full, forKey: previewKey)
+            lastPreviewText = replyText
+            UserDefaults.standard.set(replyText, forKey: previewKey)
             persist()
         } catch {
             streamingText = ""
