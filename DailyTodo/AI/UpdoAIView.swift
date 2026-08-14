@@ -400,8 +400,12 @@ struct UpdoAIView: View {
         HStack(alignment: .bottom, spacing: 6) {
             if isUser {
                 Spacer(minLength: 64)
-            } else {
+            } else if isLastAssistantMessage(msg) {
+                // Orb yalnızca SON AI mesajının yanında.
                 aiAvatar
+            } else {
+                // Eski AI mesajlarında orb yok ama baloncuk hizası korunur.
+                Color.clear.frame(width: 24, height: 24)
             }
 
             richText(msg.text)
@@ -449,6 +453,11 @@ struct UpdoAIView: View {
 
     private var aiAvatar: some View {
         UpdoAIOrb(mode: .idle, size: 24)
+    }
+
+    /// Sohbetteki en son asistan (AI) mesajı mı? Orb yalnız onun yanında gösterilir.
+    private func isLastAssistantMessage(_ msg: AIMessage) -> Bool {
+        chatStore.messages.last(where: { $0.role == "assistant" })?.id == msg.id
     }
 
     // MARK: - Typing / Streaming
