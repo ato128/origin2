@@ -48,7 +48,11 @@ func appLanguageIsEnglish() -> Bool {
     switch lang {
     case "english": return true
     case "turkish": return false
-    default: return (Locale.preferredLanguages.first ?? "en").hasPrefix("en")
+    default:
+        // "system": SADECE cihaz Türkçeyse Türkçe; diğer TÜM diller (Almanca,
+        // Fransızca...) İngilizce kalır. tr() ile birebir aynı kural olmalı,
+        // yoksa Türkçe/İngilizce dışı cihazlarda karışık dil çıkıyordu.
+        return !(Locale.preferredLanguages.first ?? "en").hasPrefix("tr")
     }
 }
 

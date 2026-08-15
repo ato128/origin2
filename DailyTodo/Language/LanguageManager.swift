@@ -33,10 +33,11 @@ final class LanguageManager: ObservableObject {
     var activeLocale: Locale {
         switch selectedLanguage {
         case .system:
-            if let preferred = Locale.preferredLanguages.first {
-                return Locale(identifier: preferred)
-            }
-            return .current
+            // TR cihazda Türkçe, diğer TÜM dillerde (Almanca, Fransızca...) İngilizce.
+            // Uygulama metniyle (tr()/appLanguageIsEnglish) tutarlı olsun ki native
+            // bileşenler (tarih seçici vb.) de aynı dile düşsün.
+            let isTurkish = (Locale.preferredLanguages.first ?? "en").hasPrefix("tr")
+            return Locale(identifier: isTurkish ? "tr" : "en")
         case .turkish:
             return Locale(identifier: "tr")
         case .english:
