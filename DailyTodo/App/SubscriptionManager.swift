@@ -8,7 +8,7 @@ enum SubscriptionError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .notConfigured:
-            return "Satın alma şu an kullanılamıyor."
+            return appLanguageIsEnglish() ? "Purchases are unavailable right now." : "Satın alma şu an kullanılamıyor."
         }
     }
 }

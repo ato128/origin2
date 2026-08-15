@@ -136,11 +136,11 @@ enum CrewCommunityScope: String, CaseIterable, Identifiable {
     var headerEyebrow: String {
         switch self {
         case .department:
-            return "CMSE · GÜZ '26 · LIVE"
+            return appLanguageIsEnglish() ? "CMSE · FALL '26 · LIVE" : "CMSE · GÜZ '26 · LIVE"
         case .university:
             return "CAMPUS · LIVE"
         case .country:
-            return "TÜRKİYE · LIVE"
+            return appLanguageIsEnglish() ? "TURKEY · LIVE" : "TÜRKİYE · LIVE"
         case .global:
             return "III. GLOBAL"
         }
