@@ -21,6 +21,7 @@ struct WeeklyScheduleEditorView: View {
     @EnvironmentObject private var session: SessionStore
     @EnvironmentObject private var studentStore: StudentStore
     @EnvironmentObject private var friendStore: FriendStore
+    @EnvironmentObject private var store: TodoStore
     @ObservedObject private var subscription = SubscriptionManager.shared
 
     @Query(sort: \EventItem.startMinute, order: .forward)
@@ -35,6 +36,11 @@ struct WeeklyScheduleEditorView: View {
     @State private var scanError: String?
     @State private var scannedCourses: [ScannedScheduleCourse] = []
     @State private var showScanPreview = false
+
+    // Düzenleme · sınav ekleme · Updo AI plan
+    @State private var editingEvent: EventItem?
+    @State private var examCourse: EventItem?
+    @State private var showUpdoAI = false
 
     private var gold: Color { Color(arenaHex: "#FBBF24") }
     private var coral: Color { Color(arenaHex: "#FF6B57") }
@@ -106,6 +112,74 @@ struct WeeklyScheduleEditorView: View {
             guard !newItems.isEmpty else { return }
             Task { await runScheduleScan(newItems) }
         }
+        .sheet(item: $editingEvent) { event in
+            NavigationStack {
+                EditEventView(event: event)
+                    .environmentObject(session)
+                    .environmentObject(friendStore)
+            }
+        }
+        .sheet(item: $examCourse) { course in
+            ExamDateSheet(
+                courseName: course.title,
+                colorHex: course.colorHex,
+                onSave: { date in addExam(courseName: course.title, colorHex: course.colorHex, date: date) }
+            )
+        }
+        .fullScreenCover(isPresented: $showUpdoAI) {
+            UpdoAIView(
+                seedPrompt: updoAIExamSeed(),
+                onDismissAndOpenWeek: { showUpdoAI = false },
+                onDismissAndAddTask: { showUpdoAI = false }
+            )
+            .environmentObject(session)
+            .environmentObject(store)
+            .environmentObject(studentStore)
+        }
+    }
+
+    // MARK: - Sınav + Updo AI
+
+    private func addExam(courseName: String, colorHex: String, date: Date) {
+        guard let uid = session.currentUser?.id else { return }
+        let exam = ExamItem(
+            title: courseName,
+            courseName: courseName,
+            examDate: date,
+            colorHex: colorHex,
+            ownerUserID: uid.uuidString
+        )
+        context.insert(exam)
+        try? context.save()
+        Haptics.impact(.medium)
+    }
+
+    private func currentUserExams() -> [ExamItem] {
+        guard let uid = session.currentUser?.id else { return [] }
+        let all = (try? context.fetch(FetchDescriptor<ExamItem>())) ?? []
+        let today = Calendar.current.startOfDay(for: Date())
+        return all
+            .filter { $0.ownerUserID == uid.uuidString && $0.examDate >= today }
+            .sorted { $0.examDate < $1.examDate }
+    }
+
+    private func updoAIExamSeed() -> String {
+        let en = appLanguageIsEnglish()
+        let exams = currentUserExams()
+        guard !exams.isEmpty else {
+            return en
+                ? "Help me plan study time for my upcoming exams and add the tasks to my week."
+                : "Yaklaşan sınavlarım için çalışma planı kur ve görevleri haftama ekle."
+        }
+        let df = DateFormatter()
+        df.locale = Locale(identifier: en ? "en_US" : "tr_TR")
+        df.dateFormat = "d MMM"
+        let list = exams.prefix(8)
+            .map { "\($0.courseName) — \(df.string(from: $0.examDate))" }
+            .joined(separator: ", ")
+        return en
+            ? "I have these exams: \(list). Build a study plan and add the tasks to my week."
+            : "Şu sınavlarım var: \(list). Bir çalışma planı kur ve görevleri haftama ekle."
     }
 
     // MARK: - Actions (ekle · fotoğraftan tara)
@@ -139,6 +213,30 @@ struct WeeklyScheduleEditorView: View {
             .buttonStyle(.plain)
 
             scanButton
+
+            // Updo AI ile sınav planı — derslere sınav ekleyince buradan plan kurulur
+            Button {
+                Haptics.impact(.light)
+                showUpdoAI = true
+            } label: {
+                HStack(spacing: 9) {
+                    UpdoAIOrb(size: 20)
+                    Text(appLanguageIsEnglish() ? "Plan exams with Updo AI" : "Updo AI ile sınav planı")
+                        .font(.system(size: 14, weight: .heavy))
+                        .foregroundStyle(.white)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.white.opacity(0.06))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(UpdoTheme.cyan.opacity(0.28), lineWidth: 1)
+                        )
+                )
+            }
+            .buttonStyle(.plain)
 
             Text(tr("wk_sched_scan_sub"))
                 .font(.system(size: 12, weight: .semibold))
@@ -238,25 +336,47 @@ struct WeeklyScheduleEditorView: View {
     }
 
     private func eventRow(_ event: EventItem) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             RoundedRectangle(cornerRadius: 3)
                 .fill(Color(arenaHex: event.colorHex))
                 .frame(width: 3, height: 38)
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(event.title)
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
+            // Dokun → gün/saat/isim düzenle
+            Button {
+                Haptics.impact(.light)
+                editingEvent = event
+            } label: {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(event.title)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
 
-                Text(rowMeta(event))
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    Text(rowMeta(event))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
 
-            Spacer(minLength: 8)
+            // Sınav ekle (bu derse bağlı)
+            Button {
+                Haptics.impact(.light)
+                examCourse = event
+            } label: {
+                Image(systemName: "graduationcap.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(gold.opacity(0.95))
+                    .frame(width: 34, height: 34)
+                    .background(Circle().fill(gold.opacity(0.10)))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(appLanguageIsEnglish() ? "Add exam" : "Sınav ekle")
 
+            // Sil
             Button {
                 delete(event)
             } label: {
@@ -447,5 +567,75 @@ struct WeeklyScheduleEditorView: View {
     private func hm(_ minute: Int) -> String {
         let m = max(0, min(1439, minute))
         return String(format: "%02d:%02d", m / 60, m % 60)
+    }
+}
+
+// MARK: - Sınav tarihi seçme sheet'i
+
+private struct ExamDateSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let courseName: String
+    let colorHex: String
+    let onSave: (Date) -> Void
+
+    @State private var date = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
+
+    private var isEN: Bool { appLanguageIsEnglish() }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                UpdoTheme.background.ignoresSafeArea()
+
+                VStack(spacing: 18) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "graduationcap.fill")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(Color(arenaHex: colorHex))
+                        Text(courseName)
+                            .font(.system(size: 22, weight: .black))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                        Spacer()
+                    }
+
+                    DatePicker(
+                        isEN ? "Exam date" : "Sınav tarihi",
+                        selection: $date,
+                        in: Date()...,
+                        displayedComponents: [.date]
+                    )
+                    .datePickerStyle(.graphical)
+                    .tint(UpdoTheme.cyan)
+                    .padding(.horizontal, 4)
+
+                    Button {
+                        onSave(date)
+                        dismiss()
+                    } label: {
+                        Text(isEN ? "Add exam" : "Sınavı ekle")
+                            .font(.headline.bold())
+                            .foregroundStyle(.black)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 52)
+                            .background(Capsule().fill(UpdoTheme.cyan))
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer(minLength: 0)
+                }
+                .padding(20)
+            }
+            .navigationTitle(isEN ? "New exam" : "Yeni sınav")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(isEN ? "Cancel" : "Vazgeç") { dismiss() }
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+        .presentationDetents([.large])
     }
 }
