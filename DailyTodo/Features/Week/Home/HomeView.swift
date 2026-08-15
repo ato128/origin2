@@ -16,6 +16,10 @@ struct HomeView: View {
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var focusSession: FocusSessionManager
     @EnvironmentObject var studentStore: StudentStore
+    @EnvironmentObject var friendStore: FriendStore
+    // App turu bittikten sonra gösterilen "Başlangıç" adım kartı.
+    @AppStorage("hasSeenAppTourV1") private var hasSeenAppTour = false
+    @AppStorage("gettingStartedDismissedV1") private var gettingStartedDismissed = false
 
     // MARK: - SwiftData Queries
 
@@ -122,6 +126,10 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: focusSession.isSessionActive ? 18 : 22) {
                     topBar
                     heroSection
+
+                    if showGettingStarted {
+                        gettingStartedCard
+                    }
 
                     if progression.pendingStreakBreak {
                         streakRestoreCard
@@ -889,6 +897,136 @@ private extension HomeView {
         if h <= 0 { return tr("hv_weekly_min_fmt", m) }
         if m == 0 { return tr("hv_weekly_hour_fmt", h) }
         return tr("hv_weekly_hour_min_fmt", h, m)
+    }
+}
+
+// MARK: - Getting Started (app turundan sonra sıralı adımlar)
+
+private struct GettingStartedStep {
+    let icon: String
+    let title: String
+    let sub: String
+    let done: Bool
+    let action: () -> Void
+}
+
+private extension HomeView {
+    var gsFriendDone: Bool { friendStore.friendships.contains { $0.status == "accepted" } }
+    var gsCrewDone: Bool { !crewStore.crews.isEmpty }
+    var gsTaskDone: Bool { !store.items.isEmpty }
+    var gsFocusDone: Bool { allFocusRecords.contains { $0.countsTowardStats } }
+    var gsAllDone: Bool { gsFriendDone && gsCrewDone && gsTaskDone && gsFocusDone }
+
+    var showGettingStarted: Bool {
+        hasSeenAppTour && !gsAllDone && !gettingStartedDismissed
+    }
+
+    var gettingStartedSteps: [GettingStartedStep] {
+        let en = appLanguageIsEnglish()
+        return [
+            GettingStartedStep(icon: "person.badge.plus",
+                               title: en ? "Add a friend" : "Arkadaş ekle",
+                               sub: en ? "Study together" : "Birlikte çalışın",
+                               done: gsFriendDone, action: onOpenCrew),
+            GettingStartedStep(icon: "person.3.fill",
+                               title: en ? "Create a crew" : "Crew kur",
+                               sub: en ? "Your study group" : "Çalışma grubun",
+                               done: gsCrewDone, action: onOpenCrew),
+            GettingStartedStep(icon: "checkmark.circle",
+                               title: en ? "Add a task" : "Görev ekle",
+                               sub: en ? "Plan your day" : "Gününü planla",
+                               done: gsTaskDone, action: onAddTask),
+            GettingStartedStep(icon: "timer",
+                               title: en ? "Do a focus" : "Focus yap",
+                               sub: en ? "Start a session" : "Bir seans başlat",
+                               done: gsFocusDone, action: onOpenFocus),
+        ]
+    }
+
+    var gettingStartedCard: some View {
+        let steps = gettingStartedSteps
+        let doneCount = steps.filter(\.done).count
+        let nextIndex = steps.firstIndex { !$0.done }
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 10) {
+                UpdoAIOrb(size: 26)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(appLanguageIsEnglish() ? "Get started" : "Başlangıç")
+                        .font(.system(size: 16, weight: .black))
+                        .foregroundStyle(.white)
+                    Text(appLanguageIsEnglish()
+                         ? "Let's set you up · \(doneCount)/\(steps.count)"
+                         : "Seni hazırlayalım · \(doneCount)/\(steps.count)")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.5))
+                }
+                Spacer()
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { gettingStartedDismissed = true }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .black))
+                        .foregroundStyle(.white.opacity(0.5))
+                        .frame(width: 28, height: 28)
+                        .background(Circle().fill(Color.white.opacity(0.06)))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.bottom, 12)
+
+            VStack(spacing: 8) {
+                ForEach(Array(steps.enumerated()), id: \.offset) { idx, step in
+                    Button { step.action() } label: {
+                        gettingStartedRow(step, isNext: idx == nextIndex)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(step.done)
+                }
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color.white.opacity(0.045))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
+        )
+        .transition(.opacity.combined(with: .move(edge: .top)))
+    }
+
+    func gettingStartedRow(_ step: GettingStartedStep, isNext: Bool) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(step.done ? Color.green.opacity(0.9)
+                          : (isNext ? Color(arenaHex: AppArenaPalette.cyan).opacity(0.18) : Color.white.opacity(0.06)))
+                    .frame(width: 36, height: 36)
+                Image(systemName: step.done ? "checkmark" : step.icon)
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(step.done ? .white
+                                     : (isNext ? Color(arenaHex: AppArenaPalette.cyan) : .white.opacity(0.6)))
+            }
+            VStack(alignment: .leading, spacing: 1) {
+                Text(step.title)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(step.done ? .white.opacity(0.45) : .white)
+                    .strikethrough(step.done, color: .white.opacity(0.4))
+                Text(step.sub)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.4))
+            }
+            Spacer(minLength: 6)
+            if !step.done {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .black))
+                    .foregroundStyle(.white.opacity(isNext ? 0.6 : 0.3))
+            }
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 4)
+        .contentShape(Rectangle())
     }
 }
 
