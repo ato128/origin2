@@ -66,6 +66,9 @@ final class SessionStore: ObservableObject {
     @Published var pendingVerificationEmail: String? = nil
     @Published var isEmailVerified: Bool = false
     @Published var verificationMessage: String? = nil
+    /// Kullanıcı şifre-sıfırlama e-postasındaki bağlantıya tıkladı → yeni-şifre
+    /// ekranını tetikler.
+    @Published var isPasswordRecovery: Bool = false
 
     private let storageKey = "dailytodo_mock_user"
     private let pendingEmailStorageKey = "updo_pending_verification_email"
@@ -468,16 +471,56 @@ final class SessionStore: ObservableObject {
             return
         }
 
+        let isRecovery = url.absoluteString.contains("password-reset")
+            || url.absoluteString.contains("type=recovery")
+
         isLoading = true
         defer { isLoading = false }
 
         do {
             _ = try await SupabaseManager.shared.client.auth.session(from: url)
-            await refreshEmailVerificationStatus()
+            if isRecovery {
+                // Recovery oturumu kuruldu → yeni-şifre ekranını aç.
+                isPasswordRecovery = true
+            } else {
+                await refreshEmailVerificationStatus()
+            }
         } catch {
             Log.debug("AUTH CALLBACK ERROR:", error.localizedDescription)
-            await refreshEmailVerificationStatus()
+            if !isRecovery {
+                await refreshEmailVerificationStatus()
+            }
         }
+    }
+
+    /// Şifre sıfırlama e-postası gönderir. Bağlantı `dailytodo://auth/password-reset`
+    /// ile uygulamaya döner (Supabase panelinde Redirect URL olarak eklenmeli).
+    func sendPasswordReset(email: String) async throws {
+        let clean = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        try await SupabaseManager.shared.client.auth.resetPasswordForEmail(
+            clean,
+            redirectTo: URL(string: "dailytodo://auth/password-reset")
+        )
+    }
+
+    /// E-postaya gelen 6 haneli kodu doğrular → recovery oturumu kurar.
+    /// (Supabase panelinde "Reset Password" e-posta şablonu `{{ .Token }}` içermeli.)
+    func verifyResetCode(email: String, code: String) async throws {
+        let cleanEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanCode = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        _ = try await SupabaseManager.shared.client.auth.verifyOTP(
+            email: cleanEmail,
+            token: cleanCode,
+            type: .recovery
+        )
+    }
+
+    /// Recovery oturumundayken yeni şifreyi kaydeder.
+    func updatePassword(_ newPassword: String) async throws {
+        _ = try await SupabaseManager.shared.client.auth.update(
+            user: UserAttributes(password: newPassword)
+        )
+        isPasswordRecovery = false
     }
     func resolveInitialSessionIfNeeded() async {
         if didResolveInitialSession {

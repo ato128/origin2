@@ -23,6 +23,17 @@ final class SubscriptionManager: ObservableObject {
     @Published private(set) var isProAI: Bool = false
     @Published private(set) var isLoading: Bool = false
     @Published private(set) var availablePackages: [Package] = []
+    /// Fiyatlar DOĞRUDAN StoreKit 2'den (canlı vitrin) — RevenueCat'in önbelleğe
+    /// alınmış storefront'unu baypas eder, böylece paywall'da gösterilen fiyat
+    /// satın alınacak fiyatla (aynı canlı vitrin) BİREBİR aynı olur.
+    @Published private(set) var storeKitDisplayPrices: [String: String] = [:]
+
+    private let allSubscriptionProductIDs = [
+        "com.updo.pro.monthly",
+        "com.updo.pro.annual",
+        "com.updo.premiumai.monthly",
+        "com.updo.premiumai.annual"
+    ]
 
     private let proEntitlement = "pro"
     private let proAIEntitlement = "pro_ai"
@@ -107,7 +118,27 @@ final class SubscriptionManager: ObservableObject {
         Task { [weak self] in
             for await _ in Storefront.updates {
                 await self?.loadOfferings()
+                await self?.refreshStoreKitPrices()
             }
+        }
+    }
+
+    /// Fiyatları DOĞRUDAN StoreKit 2'den (canlı vitrin) çeker. `Product.products`
+    /// her zaman cihazın O ANKİ storefront'unu kullanır — satın alma da aynı
+    /// vitrini kullandığı için gösterilen fiyat = tahsil edilen fiyat (para birimi
+    /// dahil). RevenueCat'in eski/önbellekli fiyatına düşmez.
+    func refreshStoreKitPrices() async {
+        do {
+            let products = try await Product.products(for: allSubscriptionProductIDs)
+            var map: [String: String] = [:]
+            for product in products {
+                map[product.id] = product.displayPrice
+            }
+            if !map.isEmpty {
+                storeKitDisplayPrices = map
+            }
+        } catch {
+            Log.debug("StoreKit price fetch error:", error.localizedDescription)
         }
     }
 

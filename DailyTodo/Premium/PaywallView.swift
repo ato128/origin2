@@ -55,7 +55,10 @@ struct PaywallView: View {
     }
 
     private func storePrice(_ productID: String) -> String? {
-        manager.availablePackages
+        // Canlı StoreKit 2 fiyatı ÖNCELİKLİ — satın almayla birebir aynı vitrin
+        // (para birimi dahil). Yoksa RevenueCat'in fiyatına düş.
+        if let live = manager.storeKitDisplayPrices[productID] { return live }
+        return manager.availablePackages
             .first { $0.storeProduct.productIdentifier == productID }?
             .storeProduct.localizedPriceString
     }
@@ -107,7 +110,10 @@ struct PaywallView: View {
         }
         .onAppear {
             Analytics.shared.track("paywall_viewed", properties: ["context": context])
-            Task { await manager.loadOfferings() }
+            Task {
+                await manager.loadOfferings()
+                await manager.refreshStoreKitPrices()
+            }
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.05)) { appeared = true }
         }
     }
