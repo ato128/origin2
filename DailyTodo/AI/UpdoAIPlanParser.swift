@@ -26,6 +26,9 @@ enum UpdoAIPlanParser {
     private static let monthNames: [String: Int] = [
         "ocak": 1, "subat": 2, "mart": 3, "nisan": 4, "mayis": 5, "haziran": 6,
         "temmuz": 7, "agustos": 8, "eylul": 9, "ekim": 10, "kasim": 11, "aralik": 12,
+        // Türkçe kısaltmalar — AI "18 Ağu", "10 Tem" gibi yazabiliyor.
+        "oca": 1, "sub": 2, "nis": 4, "haz": 6, "tem": 7,
+        "agu": 8, "eyl": 9, "eki": 10, "kas": 11, "ara": 12,
         "january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "june": 6,
         "july": 7, "august": 8, "september": 9, "october": 10, "november": 11, "december": 12,
         "jan": 1, "feb": 2, "mar": 3, "apr": 4, "jun": 6, "jul": 7, "aug": 8,

@@ -748,14 +748,7 @@ struct UpdoAIView: View {
                 .buttonStyle(.plain)
 
                 Button {
-                    for item in items {
-                        store.add(
-                            title: item.title,
-                            dueDate: item.dueDate,
-                            scheduledWeekDate: item.dueDate,
-                            scheduledWeekDurationMinutes: item.durationMinutes
-                        )
-                    }
+                    addPlanItems(items)
                     withAnimation(.easeInOut(duration: 0.18)) { _ = executedActionIDs.insert(msgID) }
                     triggerToast(tr("ai_tasks_added"))
                 } label: {
@@ -1036,11 +1029,16 @@ struct UpdoAIView: View {
     }
 
     private func addPlanItems(_ items: [UpdoAIPlanItem]) {
+        let today = Calendar.current.startOfDay(for: Date())
         for item in items {
+            // "Haftaya ekle": tarih verilmişse onu kullan; verilmemişse bugüne koy —
+            // böylece görev haftada MUTLAKA görünür (WeekView `scheduledWeekDate ??
+            // dueDate` ile yerleştiriyor; ikisi de nil ise görünmüyordu).
+            let weekDate = item.dueDate ?? today
             store.add(
                 title: item.title,
-                dueDate: item.dueDate,
-                scheduledWeekDate: item.dueDate,
+                dueDate: weekDate,
+                scheduledWeekDate: weekDate,
                 scheduledWeekDurationMinutes: item.durationMinutes
             )
         }
