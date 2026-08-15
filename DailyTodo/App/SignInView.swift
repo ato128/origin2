@@ -149,74 +149,124 @@ struct ForgotPasswordSheet: View {
 
     private var isEN: Bool { appLanguageIsEnglish() }
 
+    private var cyan: Color { UpdoTheme.cyan }
+    private var purple: Color { UpdoTheme.purple }
+
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text(isEN ? "Reset password" : "Şifreyi sıfırla")
-                        .font(.system(size: 28, weight: .black, design: .rounded))
+            ZStack {
+                UpdoTheme.background.ignoresSafeArea()
 
-                    if step == .email {
-                        Text(isEN ? "Enter your email — we'll send a 6-digit code."
-                                  : "E-postanı gir — 6 haneli bir kod göndereceğiz.")
-                            .foregroundStyle(.secondary)
+                Circle().fill(cyan.opacity(0.10)).frame(width: 300, height: 300)
+                    .blur(radius: 100).offset(x: 150, y: -240).ignoresSafeArea()
+                Circle().fill(purple.opacity(0.12)).frame(width: 320, height: 320)
+                    .blur(radius: 110).offset(x: -160, y: 360).ignoresSafeArea()
 
-                        boxedField(placeholder: "Email", text: $email, secure: false)
-                            .textInputAutocapitalization(.never)
-                            .keyboardType(.emailAddress)
-
-                        primaryButton(isEN ? "Send code" : "Kod gönder") { await sendCode() }
-                    } else {
-                        Text(isEN ? "Enter the code from your email and a new password."
-                                  : "E-postana gelen kodu ve yeni şifreni gir.")
-                            .foregroundStyle(.secondary)
-
-                        boxedField(placeholder: isEN ? "6-digit code" : "6 haneli kod", text: $code, secure: false)
-                            .keyboardType(.numberPad)
-
-                        boxedField(placeholder: isEN ? "New password" : "Yeni şifre", text: $newPassword, secure: true)
-
-                        primaryButton(isEN ? "Update password" : "Şifreyi güncelle") { await verifyAndUpdate() }
-
-                        Button {
-                            Task { await sendCode() }
-                        } label: {
-                            Text(isEN ? "Resend code" : "Kodu tekrar gönder")
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(Color.accentColor)
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 18) {
+                        HStack(spacing: 8) {
+                            Rectangle().fill(cyan).frame(width: 20, height: 1)
+                            Text(isEN ? "PASSWORD RESET" : "ŞİFRE SIFIRLAMA")
+                                .font(.system(size: 11, weight: .black, design: .monospaced))
+                                .tracking(2.3)
+                                .foregroundStyle(cyan)
                         }
-                        .buttonStyle(.plain)
-                        .disabled(isBusy)
-                    }
+                        .padding(.top, 8)
 
-                    if !errorText.isEmpty {
-                        Text(errorText).font(.subheadline.weight(.semibold)).foregroundStyle(.red)
-                    }
-                    if !infoText.isEmpty {
-                        Text(infoText).font(.subheadline.weight(.semibold)).foregroundStyle(.green)
-                    }
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(isEN ? "Reset" : "Şifreni")
+                                .font(.system(size: 38, weight: .black))
+                                .foregroundStyle(.white)
+                            Text(isEN ? "password" : "sıfırla")
+                                .font(.system(size: 35, weight: .regular, design: .serif))
+                                .italic()
+                                .foregroundStyle(
+                                    LinearGradient(colors: [cyan, purple], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                )
+                        }
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
 
-                    Spacer(minLength: 8)
+                        Text(step == .email
+                             ? (isEN ? "Enter your email — we'll send a 6-digit code." : "E-postanı gir — 6 haneli bir kod göndereceğiz.")
+                             : (isEN ? "Enter the code from your email and a new password." : "E-postana gelen kodu ve yeni şifreni gir."))
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.55))
+
+                        VStack(spacing: 12) {
+                            if step == .email {
+                                boxedField(placeholder: "Email", text: $email, secure: false, icon: "envelope.fill")
+                                    .textInputAutocapitalization(.never)
+                                    .keyboardType(.emailAddress)
+                                primaryButton(isEN ? "Send code" : "Kod gönder") { await sendCode() }
+                            } else {
+                                boxedField(placeholder: isEN ? "6-digit code" : "6 haneli kod", text: $code, secure: false, icon: "number")
+                                    .keyboardType(.numberPad)
+                                boxedField(placeholder: isEN ? "New password" : "Yeni şifre", text: $newPassword, secure: true, icon: "lock.fill")
+                                primaryButton(isEN ? "Update password" : "Şifreyi güncelle") { await verifyAndUpdate() }
+                                Button { Task { await sendCode() } } label: {
+                                    Text(isEN ? "Resend code" : "Kodu tekrar gönder")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundStyle(cyan)
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(isBusy)
+                            }
+                        }
+                        .padding(.top, 4)
+
+                        if !errorText.isEmpty {
+                            statusBanner(errorText, color: Color(arenaHex: "#FF6B57"), icon: "exclamationmark.triangle.fill")
+                        }
+                        if !infoText.isEmpty {
+                            statusBanner(infoText, color: Color(arenaHex: "#22C55E"), icon: "checkmark.circle.fill")
+                        }
+
+                        Spacer(minLength: 8)
+                    }
+                    .padding(.horizontal, 22)
+                    .padding(.top, 18)
+                    .padding(.bottom, 30)
                 }
-                .padding(24)
             }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(isEN ? "Cancel" : "Vazgeç") { dismiss() }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(isEN ? "Close" : "Kapat") { dismiss() }
+                        .foregroundStyle(.white.opacity(0.7))
                 }
             }
         }
         .onAppear { if email.isEmpty { email = prefillEmail } }
-        .presentationDetents([.medium, .large])
+        .preferredColorScheme(.dark)
+        .presentationDetents([.large])
     }
 
     @ViewBuilder
-    private func boxedField(placeholder: String, text: Binding<String>, secure: Bool) -> some View {
-        Group {
-            if secure { SecureField(placeholder, text: text) } else { TextField(placeholder, text: text) }
+    private func boxedField(placeholder: String, text: Binding<String>, secure: Bool, icon: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(cyan)
+                .frame(width: 20)
+            Group {
+                if secure { SecureField(placeholder, text: text) } else { TextField(placeholder, text: text) }
+            }
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(.white)
         }
-        .padding()
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white.opacity(0.06)))
+        .padding(.horizontal, 16)
+        .padding(.vertical, 15)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white.opacity(0.05))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
+        )
     }
 
     private func primaryButton(_ title: String, _ action: @escaping () async -> Void) -> some View {
@@ -225,15 +275,45 @@ struct ForgotPasswordSheet: View {
         } label: {
             HStack {
                 Spacer()
-                if isBusy { ProgressView().tint(.white) } else { Text(title).font(.headline.bold()) }
+                if isBusy {
+                    ProgressView().tint(.white)
+                } else {
+                    Text(title).font(.system(size: 17, weight: .black)).foregroundStyle(.white)
+                }
                 Spacer()
             }
-            .padding(.vertical, 15)
-            .background(Capsule().fill(Color.accentColor))
-            .foregroundStyle(.white)
+            .padding(.vertical, 17)
+            .background(
+                Capsule().fill(
+                    LinearGradient(colors: [cyan, purple], startPoint: .leading, endPoint: .trailing)
+                )
+            )
+            .shadow(color: purple.opacity(0.30), radius: 16, y: 8)
         }
         .buttonStyle(.plain)
         .disabled(isBusy)
+    }
+
+    private func statusBanner(_ text: String, color: Color, icon: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(color)
+            Text(text)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(color.opacity(0.12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(color.opacity(0.22), lineWidth: 1)
+                )
+        )
     }
 
     private func sendCode() async {
