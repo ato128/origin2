@@ -51,10 +51,11 @@ final class CreditManager: ObservableObject {
 
     var blockMessage: String? {
         switch sendBlockReason {
-        case "credits_empty":   return "Krediniz bitti."
+        case "credits_empty":
+            return appLanguageIsEnglish() ? "You're out of credits." : "Krediniz bitti."
         case "cooldown":
             let secs = Int(cooldownRemaining)
-            return "\(secs) saniye bekleyin."
+            return appLanguageIsEnglish() ? "Wait \(secs) seconds." : "\(secs) saniye bekleyin."
         case "daily_limit":     return tr("cm_daily_limit")
         case "weekly_limit":    return tr("cm_weekly_limit")
         default:                return nil

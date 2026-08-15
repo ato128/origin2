@@ -1015,7 +1015,9 @@ struct UpdoAIView: View {
     // MARK: - AI in-app actions (token-free)
 
     private var aiUsesTurkish: Bool {
-        (Locale.current.language.languageCode?.identifier ?? "en") == "tr"
+        // Cihaz locale'i DEĞİL, uygulama dil ayarı (tr()/UpdoAIIntentResponder ile
+        // aynı kaynak) — böylece tüm hazır cevaplar tutarlı dilde çıkar.
+        !appLanguageIsEnglish()
     }
 
     private func aiFold(_ s: String) -> String {
