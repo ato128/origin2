@@ -21,6 +21,7 @@ struct AuthFormSheetView: View {
     @State private var showConfirmPassword = false
     @State private var errorMessage: String?
     @State private var isLoading = false
+    @State private var showForgotSheet = false
 
     var body: some View {
         ZStack {
@@ -67,6 +68,10 @@ struct AuthFormSheetView: View {
                 }
                 .buttonStyle(.plain)
             }
+        }
+        .sheet(isPresented: $showForgotSheet) {
+            ForgotPasswordSheet(prefillEmail: email)
+                .environmentObject(session)
         }
     }
 }
@@ -197,10 +202,16 @@ private extension AuthFormSheetView {
             .disabled(!canSubmit || isLoading || session.isLoading)
 
             if mode == .login {
-                Text("Forgot password?")
-                    .font(.system(size: 14, weight: .black, design: .rounded))
-                    .foregroundStyle(Color.white.opacity(0.48))
-                    .frame(maxWidth: .infinity)
+                Button {
+                    showForgotSheet = true
+                } label: {
+                    Text(appLanguageIsEnglish() ? "Forgot password?" : "Şifreni mi unuttun?")
+                        .font(.system(size: 14, weight: .black, design: .rounded))
+                        .foregroundStyle(Color.white.opacity(0.48))
+                        .frame(maxWidth: .infinity)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(.top, 4)

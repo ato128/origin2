@@ -132,7 +132,7 @@ struct SignInView: View {
 
 // MARK: - Şifre sıfırlama (e-postaya kod)
 
-private struct ForgotPasswordSheet: View {
+struct ForgotPasswordSheet: View {
     @EnvironmentObject var session: SessionStore
     @Environment(\.dismiss) private var dismiss
 
