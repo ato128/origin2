@@ -133,7 +133,13 @@ actor AIService {
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         req.timeoutInterval = 60
-        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        // Uygulama dilini her AI isteğine ekle — backend LLM'i bu dile zorlar
+        // (kullanıcı ne yazarsa yazsın). İngilizce app'te Türkçe cevap dönmesini önler.
+        var finalBody = body
+        let isEN = await MainActor.run { appLanguageIsEnglish() }
+        finalBody["language"] = isEN ? "en" : "tr"
+        req.httpBody = try JSONSerialization.data(withJSONObject: finalBody)
 
         // BYO: kullanıcının kendi OpenAI anahtarı varsa coach isteğiyle taşınır;
         // backend anahtarı saklamaz, sadece o çağrı için OpenAI'a yönlendirir.

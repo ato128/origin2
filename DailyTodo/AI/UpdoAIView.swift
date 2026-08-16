@@ -143,10 +143,12 @@ struct UpdoAIView: View {
         let title: String
         let subtitle: String
         let prompt: String
+        /// true ise sohbete metin göndermez; sınav planlayıcı ekranını açar.
+        var opensExamPlanner: Bool = false
     }
 
     private let suggestions = [
-        Suggestion(icon: "calendar.badge.clock", title: tr("ai_exam_plan"), subtitle: tr("ai_exam_plan_sub"), prompt: tr("ai_create_exam_plan")),
+        Suggestion(icon: "calendar.badge.clock", title: tr("ai_exam_plan"), subtitle: tr("ai_exam_plan_sub"), prompt: "", opensExamPlanner: true),
         Suggestion(icon: "checklist", title: tr("ai_plan_week"), subtitle: tr("ai_task_focus_sug"), prompt: tr("ai_plan_week")),
         Suggestion(icon: "chart.bar.fill", title: tr("ai_focus_analysis"), subtitle: tr("ai_review_7days"), prompt: tr("ai_show_analysis"))
     ]
@@ -528,7 +530,10 @@ struct UpdoAIView: View {
 
             VStack(spacing: 10) {
                 ForEach(suggestions) { s in
-                    Button { sendQuickMessage(s.prompt) } label: {
+                    Button {
+                        if s.opensExamPlanner { showExamPlanner = true }
+                        else { sendQuickMessage(s.prompt) }
+                    } label: {
                         HStack(spacing: 13) {
                             Image(systemName: s.icon)
                                 .font(.system(size: 14, weight: .semibold))

@@ -1695,7 +1695,7 @@ struct AppIconPickerView: View {
                     Text(opt.name)
                         .font(.system(size: 16, weight: .black))
                         .foregroundStyle(.white)
-                    Text(opt.pro ? "Updo Pro" : "Varsayılan")
+                    Text(opt.pro ? "Updo Pro" : (appLanguageIsEnglish() ? "Default" : "Varsayılan"))
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
                         .foregroundStyle(opt.pro ? Color(arenaHex: AppArenaPalette.gold) : .white.opacity(0.45))
                 }

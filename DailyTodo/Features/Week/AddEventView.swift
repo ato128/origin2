@@ -29,6 +29,7 @@ struct AddEventView: View {
     @State private var selectedCourseID: UUID?
     @State private var expandedCourseID: UUID?
     @State private var addedCourseIDs: Set<UUID> = []
+    @State private var courseToDelete: Course?
 
     @State private var showManualCourse = false
     @State private var manualCourseCode = ""
@@ -93,6 +94,27 @@ struct AddEventView: View {
             }
         } message: {
             Text(conflictSummary)
+        }
+        .confirmationDialog(
+            courseToDelete.map { appLanguageIsEnglish() ? "Delete \($0.name)?" : "\($0.name) silinsin mi?" } ?? "",
+            isPresented: Binding(
+                get: { courseToDelete != nil },
+                set: { if !$0 { courseToDelete = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button(appLanguageIsEnglish() ? "Delete lesson" : "Dersi sil", role: .destructive) {
+                if let course = courseToDelete {
+                    courseToDelete = nil
+                    if expandedCourseID == course.id { expandedCourseID = nil }
+                    Task { await studentStore.deleteCourseAndSync(course) }
+                }
+            }
+            Button(appLanguageIsEnglish() ? "Cancel" : "Vazgeç", role: .cancel) { courseToDelete = nil }
+        } message: {
+            Text(appLanguageIsEnglish()
+                 ? "This removes the lesson from your list."
+                 : "Bu dersi listenden kaldırır.")
         }
     }
 
@@ -522,6 +544,29 @@ struct AddEventView: View {
                     .buttonStyle(.plain)
                     .disabled(isAdded || durationMinute < 15)
                     .opacity(isAdded || durationMinute < 15 ? 0.55 : 1)
+
+                    Button(role: .destructive) {
+                        courseToDelete = course
+                    } label: {
+                        HStack(spacing: 7) {
+                            Image(systemName: "trash.fill")
+                            Text(appLanguageIsEnglish() ? "Delete lesson" : "Dersi sil")
+                        }
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .tracking(0.8)
+                        .foregroundStyle(Color(arenaHex: "#FF6B57"))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color(arenaHex: "#FF6B57").opacity(0.10))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(Color(arenaHex: "#FF6B57").opacity(0.22), lineWidth: 1)
+                                )
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
                 .padding(.top, 2)
                 .transition(.opacity.combined(with: .move(edge: .top)))
@@ -764,9 +809,11 @@ struct AddEventView: View {
         let h = d / 60
         let m = d % 60
 
-        if h == 0 { return "\(m) dk" }
-        if m == 0 { return "\(h) sa" }
-        return "\(h) sa \(m) dk"
+        let hr = appLanguageIsEnglish() ? "hr" : "sa"
+        let min = appLanguageIsEnglish() ? "min" : "dk"
+        if h == 0 { return "\(m) \(min)" }
+        if m == 0 { return "\(h) \(hr)" }
+        return "\(h) \(hr) \(m) \(min)"
     }
 
     private func applyCourse(_ course: Course) {
@@ -923,14 +970,15 @@ struct AddEventView: View {
     }
 
     private func localizedDayTitle(_ day: Int) -> String {
+        let en = appLanguageIsEnglish()
         switch max(0, min(6, day)) {
-        case 0: return "Pzt"
-        case 1: return "Sal"
-        case 2: return "Çar"
-        case 3: return "Per"
-        case 4: return "Cum"
-        case 5: return "Cmt"
-        default: return "Paz"
+        case 0: return en ? "Mon" : "Pzt"
+        case 1: return en ? "Tue" : "Sal"
+        case 2: return en ? "Wed" : "Çar"
+        case 3: return en ? "Thu" : "Per"
+        case 4: return en ? "Fri" : "Cum"
+        case 5: return en ? "Sat" : "Cmt"
+        default: return en ? "Sun" : "Paz"
         }
     }
 

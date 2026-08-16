@@ -1369,7 +1369,7 @@ private extension HomeView {
                         Image(systemName: "calendar.badge.plus")
                             .font(.system(size: 11, weight: .black))
 
-                        Text("Ders ekle")
+                        Text(appLanguageIsEnglish() ? "Add lesson" : "Ders ekle")
                             .font(.system(size: 12, weight: .black))
                     }
                     .foregroundStyle(.black)
@@ -1525,7 +1525,7 @@ private extension HomeView {
             return HeroState(
                 eyebrow: tr("hv_streak_keep"),
                 title: tr("rel_streak_days", streakDays),
-                italicLine: "serini koru",
+                italicLine: appLanguageIsEnglish() ? "streak alive" : "serini koru",
                 metaItems: [
                     MetaItem(icon: "flame.fill", text: tr("hv_focus_today"))
                 ],
