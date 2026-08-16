@@ -314,6 +314,12 @@ struct InsightsView: View {
         .onAppear {
             syncIdentityProgressState()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .openSettingsHub)) { _ in
+            // App tour son adımı: gerçek app-icon/Live Activity/widget ekranını aç.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                showSettingsHub = true
+            }
+        }
         .onChange(of: focusSessions.count) { _, _ in
             syncIdentityProgressState()
         }

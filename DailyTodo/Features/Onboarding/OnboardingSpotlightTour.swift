@@ -246,7 +246,15 @@ struct OnboardingSpotlightTour: View {
                 Spacer()
                 Button {
                     HapticManager.shared.action()
-                    if isLast { onFinish() } else { advance() }
+                    if isLast {
+                        // Son adım (Ayarlar): turu bitir + insights tab'ında kal +
+                        // gerçek Ayarlar sheet'ini aç (app-icon/Live Activity/widget).
+                        if current.anchorID == "insights.settings" {
+                            NotificationCenter.default.post(name: .openInsightsTab, object: nil)
+                            NotificationCenter.default.post(name: .openSettingsHub, object: nil)
+                        }
+                        onFinish()
+                    } else { advance() }
                 } label: {
                     HStack(spacing: 6) {
                         Text(isLast ? tr("common_start") : tr("common_continue"))

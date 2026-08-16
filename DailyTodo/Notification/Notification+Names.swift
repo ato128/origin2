@@ -14,4 +14,7 @@ extension Notification.Name {
     static let appIconDidChange = Notification.Name("appIconDidChange")
     /// Ayarlardan "Uygulama Turu"na basınca rehberli turu yeniden başlatır.
     static let startAppTour = Notification.Name("startAppTour")
+    /// App tour son adımından sonra: gerçek app-icon/Live Activity/widget ekranını
+    /// göstermek için Ayarlar sheet'ini aç (insights tab'ında).
+    static let openSettingsHub = Notification.Name("openSettingsHub")
 }
