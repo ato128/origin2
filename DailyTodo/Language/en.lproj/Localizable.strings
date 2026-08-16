@@ -2075,6 +2075,8 @@
 "spot_d_insights" = "Your level, streak and total focus — your status at a glance.";
 "spot_t_insights_data" = "Deep analytics";
 "spot_d_insights_data" = "Focus breakdowns, charts and comparisons — track your progress in depth.";
+"spot_t_settings" = "Make it yours";
+"spot_d_settings" = "Tap Settings to change your app icon, Live Activity style and home-screen widgets.";
 
 /* Paywall redesign */
 "pw_whats_included" = "WHAT'S INCLUDED";

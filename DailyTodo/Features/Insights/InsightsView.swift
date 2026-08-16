@@ -411,6 +411,7 @@ struct InsightsView: View {
                     )
             }
             .buttonStyle(.plain)
+            .tourAnchor("insights.settings")
         }
         .padding(.top, 10)
         .padding(.bottom, 6)

@@ -2077,6 +2077,8 @@
 "spot_d_insights" = "Seviyen, serin ve toplam odağın — tek bakışta durumun.";
 "spot_t_insights_data" = "Detaylı analiz";
 "spot_d_insights_data" = "Odak dağılımı, grafikler ve kıyaslar — gelişimini derinlemesine gör.";
+"spot_t_settings" = "Kişiselleştir";
+"spot_d_settings" = "Ayarlar'a dokun; uygulama simgeni, Live Activity stilini ve widget'larını değiştir.";
 
 /* Paywall redesign */
 "pw_whats_included" = "NELER DAHİL";

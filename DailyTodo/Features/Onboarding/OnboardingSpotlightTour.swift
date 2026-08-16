@@ -106,7 +106,9 @@ struct OnboardingSpotlightTour: View {
         .init(tab: .crew, anchorID: "social.list", titleKey: "spot_t_social_list", descKey: "spot_d_social_list"),
         // INSIGHTS
         .init(tab: .insights, anchorID: "insights.main", titleKey: "spot_t_insights", descKey: "spot_d_insights"),
-        .init(tab: .insights, anchorID: "insights.data", titleKey: "spot_t_insights_data", descKey: "spot_d_insights_data")
+        .init(tab: .insights, anchorID: "insights.data", titleKey: "spot_t_insights_data", descKey: "spot_d_insights_data"),
+        // SETTINGS (app icon · Live Activity · widgets) — son adım
+        .init(tab: .insights, anchorID: "insights.settings", titleKey: "spot_t_settings", descKey: "spot_d_settings")
     ]
 
     private var current: TourStep { steps[step] }
