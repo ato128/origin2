@@ -80,7 +80,7 @@ struct AddTaskView: View {
                     .ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 16) {
+                    VStack(spacing: 20) {
                         if !lockedToTask {
                             entryKindSection
                         }
@@ -209,13 +209,13 @@ struct AddTaskView: View {
         VStack(alignment: .leading, spacing: 10) {
             sectionLabel(tr("at_task_type"))
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(StudentTaskType.allCases.filter { $0 != .exam }) { type in
-                        taskTypeChip(type)
-                    }
+            LazyVGrid(
+                columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
+                spacing: 10
+            ) {
+                ForEach(StudentTaskType.allCases.filter { $0 != .exam }) { type in
+                    taskTypeChip(type)
                 }
-                .padding(.horizontal, 2)
             }
         }
     }
@@ -240,7 +240,8 @@ struct AddTaskView: View {
             }
             .foregroundStyle(isSelected ? .white : tint)
             .padding(.horizontal, 14)
-            .frame(height: 42)
+            .frame(maxWidth: .infinity)
+            .frame(height: 46)
             .background(
                 Capsule()
                     .fill(isSelected ? tint : tint.opacity(0.12))
@@ -680,11 +681,17 @@ struct AddTaskView: View {
     }
 
     private func sectionLabel(_ title: String) -> some View {
-        Text(title)
-            .font(.system(size: 12, weight: .bold))
-            .tracking(1.2)
-            .foregroundStyle(.secondary.opacity(0.82))
-            .padding(.leading, 2)
+        HStack(spacing: 7) {
+            RoundedRectangle(cornerRadius: 1, style: .continuous)
+                .fill(UpdoTheme.cyan.opacity(0.9))
+                .frame(width: 14, height: 2)
+
+            Text(title.uppercased())
+                .font(.system(size: 11, weight: .black, design: .monospaced))
+                .tracking(1.8)
+                .foregroundStyle(.white.opacity(0.5))
+        }
+        .padding(.leading, 2)
     }
 
     private func setTodayEvening() {
