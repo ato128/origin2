@@ -230,6 +230,109 @@ final class FriendStore: ObservableObject {
             .execute()
     }
 
+    // MARK: - Block & Report (App Store Guideline 1.2 — UGC güvenliği)
+
+    /// Bu kullanıcının engellediği kişilerin ID'leri. Sohbet/crew görünümlerinde
+    /// engellenen kişilerin mesajlarını gizlemek ve yeniden ilişki kurmalarını
+    /// önlemek için kullanılır.
+    @Published var blockedUserIDs: Set<UUID> = []
+
+    private func blockedCacheKey(for userID: UUID) -> String { "blocked_users_\(userID.uuidString)" }
+
+    func isBlocked(_ userID: UUID) -> Bool { blockedUserIDs.contains(userID) }
+
+    /// Engellenen kullanıcıları Supabase'den yükler (offline için cache'e de yazar).
+    func loadBlockedUsers(currentUserID: UUID) async {
+        struct Row: Decodable { let blocked_id: UUID }
+        do {
+            let response = try await SupabaseManager.shared.client
+                .from("blocked_users")
+                .select("blocked_id")
+                .eq("blocker_id", value: currentUserID.uuidString)
+                .execute()
+            let rows = try JSONDecoder().decode([Row].self, from: response.data)
+            blockedUserIDs = Set(rows.map { $0.blocked_id })
+            UserDefaults.standard.set(blockedUserIDs.map { $0.uuidString }, forKey: blockedCacheKey(for: currentUserID))
+        } catch {
+            Log.debug("LOAD BLOCKED ERROR:", error.localizedDescription)
+            if let arr = UserDefaults.standard.array(forKey: blockedCacheKey(for: currentUserID)) as? [String] {
+                blockedUserIDs = Set(arr.compactMap { UUID(uuidString: $0) })
+            }
+        }
+    }
+
+    /// Bir kullanıcıyı engeller: block kaydı ekler + varsa arkadaşlığı kaldırır
+    /// (sohbet biter, artık birbirlerine mesaj atamaz / yeniden ekleyemez).
+    func blockUser(_ targetUserID: UUID, currentUserID: UUID, modelContext: ModelContext) async throws {
+        struct Payload: Encodable { let blocker_id: UUID; let blocked_id: UUID }
+
+        try await SupabaseManager.shared.client
+            .from("blocked_users")
+            .insert(Payload(blocker_id: currentUserID, blocked_id: targetUserID))
+            .execute()
+
+        blockedUserIDs.insert(targetUserID)
+        UserDefaults.standard.set(blockedUserIDs.map { $0.uuidString }, forKey: blockedCacheKey(for: currentUserID))
+
+        // Arkadaşlık varsa kaldır — sohbet ilişkisini sonlandırır.
+        if let friendship = friendships.first(where: {
+            ($0.requester_id == currentUserID && $0.addressee_id == targetUserID) ||
+            ($0.addressee_id == currentUserID && $0.requester_id == targetUserID)
+        }) {
+            try? await removeFriendship(friendshipID: friendship.id, currentUserID: currentUserID, modelContext: modelContext)
+        }
+    }
+
+    func unblockUser(_ targetUserID: UUID, currentUserID: UUID) async throws {
+        try await SupabaseManager.shared.client
+            .from("blocked_users")
+            .delete()
+            .eq("blocker_id", value: currentUserID.uuidString)
+            .eq("blocked_id", value: targetUserID.uuidString)
+            .execute()
+
+        blockedUserIDs.remove(targetUserID)
+        UserDefaults.standard.set(blockedUserIDs.map { $0.uuidString }, forKey: blockedCacheKey(for: currentUserID))
+    }
+
+    /// Rahatsız edici bir mesajı/kullanıcıyı bildirir. Kayıt Supabase
+    /// `content_reports` tablosuna düşer; geliştirici 24 saat içinde inceler.
+    /// context: "friend_chat" | "crew_chat".
+    func reportContent(
+        reportedUserID: UUID,
+        context: String,
+        conversationID: String?,
+        messageID: String?,
+        snapshot: String,
+        reason: String?,
+        currentUserID: UUID
+    ) async throws {
+        struct Payload: Encodable {
+            let reporter_id: UUID
+            let reported_user_id: UUID
+            let context: String
+            let conversation_id: String?
+            let message_id: String?
+            let content_snapshot: String
+            let reason: String?
+        }
+
+        let payload = Payload(
+            reporter_id: currentUserID,
+            reported_user_id: reportedUserID,
+            context: context,
+            conversation_id: conversationID,
+            message_id: messageID,
+            content_snapshot: String(snapshot.prefix(2000)),
+            reason: reason
+        )
+
+        try await SupabaseManager.shared.client
+            .from("content_reports")
+            .insert(payload)
+            .execute()
+    }
+
     func saveProfilesToCache(currentUserID: UUID) {
         do {
             let data = try JSONEncoder().encode(profiles)

@@ -111,6 +111,9 @@ struct ChatMessageActionsPopover: View {
     var extraActionTitle: String? = nil
     var extraActionIcon: String? = nil
     var onExtra: (() -> Void)? = nil
+    /// Güvenlik aksiyonları (App Store Guideline 1.2) — yalnızca başkasının mesajında verilir.
+    var onReport: (() -> Void)? = nil
+    var onBlock: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -150,22 +153,42 @@ struct ChatMessageActionsPopover: View {
                 Divider().overlay(Color.white.opacity(0.08))
                 actionRow(extraActionTitle, icon: extraActionIcon, action: onExtra)
             }
+
+            if let onReport {
+                Divider().overlay(Color.white.opacity(0.08))
+                actionRow(
+                    appLanguageIsEnglish() ? "Report" : "Bildir",
+                    icon: "flag",
+                    tint: Color(arenaHex: "#FF6B57"),
+                    action: onReport
+                )
+            }
+
+            if let onBlock {
+                Divider().overlay(Color.white.opacity(0.08))
+                actionRow(
+                    appLanguageIsEnglish() ? "Block user" : "Kullanıcıyı engelle",
+                    icon: "hand.raised",
+                    tint: Color(arenaHex: "#FF6B57"),
+                    action: onBlock
+                )
+            }
         }
         .frame(width: 288)
         .background(Color(arenaHex: "#1C1C1E"))
         .presentationCompactAdaptation(.popover)
     }
 
-    private func actionRow(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
+    private func actionRow(_ title: String, icon: String, tint: Color = .white, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack {
                 Text(title)
                     .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(tint)
                 Spacer()
                 Image(systemName: icon)
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(tint)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)

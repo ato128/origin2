@@ -16,6 +16,7 @@ struct CrewChatView: View {
     @Environment(\.locale) private var locale
     @EnvironmentObject var crewStore: CrewStore
     @EnvironmentObject var session: SessionStore
+    @EnvironmentObject var friendStore: FriendStore
     @Environment(\.modelContext) var modelContext
     @AppStorage("appTheme") var appTheme = AppTheme.gradient.rawValue
 
@@ -23,6 +24,11 @@ struct CrewChatView: View {
     @State var showCrewInfo = false
     @State var replyingTo: CrewChatMessageItem?
     @State var reactingMessageID: UUID?
+    // Güvenlik (App Store Guideline 1.2)
+    @State var reportTargetMessage: CrewChatMessageItem?
+    @State var blockTargetMessage: CrewChatMessageItem?
+    @State var safetyInfoText: String?
+    @State var isProcessingSafety = false
 
    
     @State var focusRoomSession: CrewFocusSessionDTO?
@@ -178,6 +184,47 @@ struct CrewChatView: View {
             Button("Tamam", role: .cancel) { }
         } message: {
             Text(attachmentAlertText)
+        }
+        .confirmationDialog(
+            reportTargetMessage.map { appLanguageIsEnglish() ? "Report \($0.senderName)?" : "\($0.senderName) bildirilsin mi?" } ?? "",
+            isPresented: Binding(
+                get: { reportTargetMessage != nil },
+                set: { if !$0 { reportTargetMessage = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button(appLanguageIsEnglish() ? "Spam or scam" : "Spam veya dolandırıcılık") { submitCrewReport(reason: "spam") }
+            Button(appLanguageIsEnglish() ? "Harassment or bullying" : "Taciz veya zorbalık") { submitCrewReport(reason: "harassment") }
+            Button(appLanguageIsEnglish() ? "Inappropriate content" : "Uygunsuz içerik") { submitCrewReport(reason: "inappropriate") }
+            Button(appLanguageIsEnglish() ? "Other" : "Diğer") { submitCrewReport(reason: "other") }
+            Button(appLanguageIsEnglish() ? "Cancel" : "Vazgeç", role: .cancel) { reportTargetMessage = nil }
+        } message: {
+            Text(appLanguageIsEnglish()
+                 ? "We review reports within 24 hours and take action on violations."
+                 : "Şikayetleri 24 saat içinde inceler, ihlallere yaptırım uygularız.")
+        }
+        .confirmationDialog(
+            blockTargetMessage.map { appLanguageIsEnglish() ? "Block \($0.senderName)?" : "\($0.senderName) engellensin mi?" } ?? "",
+            isPresented: Binding(
+                get: { blockTargetMessage != nil },
+                set: { if !$0 { blockTargetMessage = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button(appLanguageIsEnglish() ? "Block" : "Engelle", role: .destructive) { submitCrewBlock() }
+            Button(appLanguageIsEnglish() ? "Cancel" : "Vazgeç", role: .cancel) { blockTargetMessage = nil }
+        } message: {
+            Text(appLanguageIsEnglish()
+                 ? "You won't see their messages anymore."
+                 : "Artık bu kişinin mesajlarını görmezsin.")
+        }
+        .alert(
+            appLanguageIsEnglish() ? "Thanks" : "Teşekkürler",
+            isPresented: Binding(get: { safetyInfoText != nil }, set: { if !$0 { safetyInfoText = nil } })
+        ) {
+            Button(appLanguageIsEnglish() ? "OK" : "Tamam", role: .cancel) { }
+        } message: {
+            Text(safetyInfoText ?? "")
         }
         .sheet(isPresented: $showCrewInfo) {
             NavigationStack {

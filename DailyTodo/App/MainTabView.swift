@@ -381,6 +381,7 @@ private extension MainTabView {
                 CrewChatView(crew: crew)
                     .environmentObject(crewStore)
                     .environmentObject(session)
+                    .environmentObject(friendStore)
             } else {
                 loadingChatView(tr("mt_crew_chat_preparing"))
                     .task {

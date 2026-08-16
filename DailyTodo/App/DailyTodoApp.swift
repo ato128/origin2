@@ -898,6 +898,7 @@ struct DailyTodoApp: App {
 
     private func bootstrapFriendRealtime(for userID: UUID) {
         Task {
+            await friendStore.loadBlockedUsers(currentUserID: userID)
             await friendStore.loadAllFriendships(currentUserID: userID)
 
             let otherUserIDs = friendStore.friendships.compactMap { friendship -> UUID? in

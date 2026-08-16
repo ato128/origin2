@@ -10,7 +10,13 @@ import SwiftUI
 extension CrewChatView {
 
     var messages: [CrewChatMessageItem] {
-        backendMessages.sorted { $0.createdAt < $1.createdAt }
+        backendMessages
+            // Engellenen kullanıcıların mesajlarını gizle (App Store Guideline 1.2).
+            .filter { msg in
+                guard let sid = msg.senderID else { return true }
+                return !friendStore.isBlocked(sid)
+            }
+            .sorted { $0.createdAt < $1.createdAt }
     }
 
     var messagesList: some View {
@@ -296,6 +302,14 @@ extension CrewChatView {
                             onCopy: {
                                 reactingMessageID = nil
                                 UIPasteboard.general.string = message.displayText
+                            },
+                            onReport: isFromMe ? nil : {
+                                reactingMessageID = nil
+                                reportTargetMessage = message
+                            },
+                            onBlock: isFromMe ? nil : {
+                                reactingMessageID = nil
+                                blockTargetMessage = message
                             }
                         )
                     }
@@ -624,6 +638,67 @@ extension CrewChatView {
 
         let value = abs(name.unicodeScalars.map { Int($0.value) }.reduce(0, +))
         return palette[value % palette.count]
+    }
+
+    // MARK: - Safety (App Store Guideline 1.2)
+
+    func submitCrewReport(reason: String) {
+        guard
+            let message = reportTargetMessage,
+            let reportedUserID = message.senderID,
+            let currentUserID = session.currentUser?.id,
+            !isProcessingSafety
+        else { reportTargetMessage = nil; return }
+
+        isProcessingSafety = true
+        let snapshot = message.displayText
+        let msgID = (message.serverID ?? message.id).uuidString
+        let convID = backendConversationID?.uuidString ?? message.crewID.uuidString
+        reportTargetMessage = nil
+
+        Task {
+            try? await friendStore.reportContent(
+                reportedUserID: reportedUserID,
+                context: "crew_chat",
+                conversationID: convID,
+                messageID: msgID,
+                snapshot: snapshot,
+                reason: reason,
+                currentUserID: currentUserID
+            )
+            await MainActor.run {
+                isProcessingSafety = false
+                safetyInfoText = appLanguageIsEnglish()
+                    ? "We've received your report and will review it within 24 hours."
+                    : "Şikayetin bize ulaştı, 24 saat içinde inceleyeceğiz."
+            }
+        }
+    }
+
+    func submitCrewBlock() {
+        guard
+            let message = blockTargetMessage,
+            let blockedUserID = message.senderID,
+            let currentUserID = session.currentUser?.id,
+            !isProcessingSafety
+        else { blockTargetMessage = nil; return }
+
+        isProcessingSafety = true
+        blockTargetMessage = nil
+
+        Task {
+            try? await friendStore.blockUser(
+                blockedUserID,
+                currentUserID: currentUserID,
+                modelContext: modelContext
+            )
+            await MainActor.run {
+                isProcessingSafety = false
+                safetyInfoText = appLanguageIsEnglish()
+                    ? "Blocked. You won't see their messages anymore."
+                    : "Engellendi. Artık bu kişinin mesajlarını görmezsin."
+            }
+        }
     }
 }
 

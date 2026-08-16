@@ -51,6 +51,9 @@ struct FriendChatInfoView: View {
     @State private var shareMyWeek = false
     @State private var infoMessage: String?
     @State private var isLoadingShareState = true
+    @State private var showBlockConfirm = false
+    @State private var showReportDialog = false
+    @State private var isProcessingSafety = false
 
     private var friendshipID: UUID? {
         friend.backendFriendshipID
@@ -121,6 +124,8 @@ struct FriendChatInfoView: View {
 
                     settingsCard
 
+                    safetyCard
+
                     Color.clear.frame(height: 30)
                 }
                 .padding(.horizontal, 16)
@@ -173,6 +178,33 @@ struct FriendChatInfoView: View {
             Button("focus_ok", role: .cancel) { }
         } message: {
             Text(infoMessage ?? "")
+        }
+        .confirmationDialog(
+            appLanguageIsEnglish() ? "Report \(friend.name)?" : "\(friend.name) bildirilsin mi?",
+            isPresented: $showReportDialog,
+            titleVisibility: .visible
+        ) {
+            Button(appLanguageIsEnglish() ? "Spam or scam" : "Spam veya dolandırıcılık") { submitReport(reason: "spam") }
+            Button(appLanguageIsEnglish() ? "Harassment or bullying" : "Taciz veya zorbalık") { submitReport(reason: "harassment") }
+            Button(appLanguageIsEnglish() ? "Inappropriate content" : "Uygunsuz içerik") { submitReport(reason: "inappropriate") }
+            Button(appLanguageIsEnglish() ? "Other" : "Diğer") { submitReport(reason: "other") }
+            Button(appLanguageIsEnglish() ? "Cancel" : "Vazgeç", role: .cancel) { }
+        } message: {
+            Text(appLanguageIsEnglish()
+                 ? "We review reports within 24 hours and take action on violations."
+                 : "Şikayetleri 24 saat içinde inceler, ihlallere yaptırım uygularız.")
+        }
+        .confirmationDialog(
+            appLanguageIsEnglish() ? "Block \(friend.name)?" : "\(friend.name) engellensin mi?",
+            isPresented: $showBlockConfirm,
+            titleVisibility: .visible
+        ) {
+            Button(appLanguageIsEnglish() ? "Block" : "Engelle", role: .destructive) { submitBlock() }
+            Button(appLanguageIsEnglish() ? "Cancel" : "Vazgeç", role: .cancel) { }
+        } message: {
+            Text(appLanguageIsEnglish()
+                 ? "They won't be able to message you, and this will remove them from your friends."
+                 : "Artık sana mesaj atamaz ve arkadaşlarından çıkarılır.")
         }
     }
 }
@@ -545,6 +577,79 @@ private extension FriendChatInfoView {
         }
         .buttonStyle(.plain)
     }
+
+    // MARK: - Safety (App Store Guideline 1.2)
+
+    var safetyCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionTitle(
+                eyebrow: "SAFETY",
+                title: appLanguageIsEnglish() ? "Stay" : "Güvende",
+                italic: appLanguageIsEnglish() ? "safe" : "kal"
+            )
+
+            VStack(spacing: 10) {
+                Button {
+                    showReportDialog = true
+                } label: {
+                    safetyRow(
+                        title: appLanguageIsEnglish() ? "Report \(friend.name)" : "\(friend.name) kişisini bildir",
+                        subtitle: appLanguageIsEnglish() ? "Flag abusive or inappropriate behavior" : "Rahatsız edici/uygunsuz davranışı bildir",
+                        icon: "flag.fill",
+                        tint: FriendChatInfoArenaPalette.gold
+                    )
+                }
+                .buttonStyle(.plain)
+                .disabled(isProcessingSafety)
+
+                Button {
+                    showBlockConfirm = true
+                } label: {
+                    safetyRow(
+                        title: appLanguageIsEnglish() ? "Block \(friend.name)" : "\(friend.name) kişisini engelle",
+                        subtitle: appLanguageIsEnglish() ? "Stop them from contacting you" : "Sana ulaşmasını engelle",
+                        icon: "hand.raised.fill",
+                        tint: FriendChatInfoArenaPalette.coral
+                    )
+                }
+                .buttonStyle(.plain)
+                .disabled(isProcessingSafety)
+            }
+        }
+        .padding(18)
+        .background(cardBackground)
+    }
+
+    func safetyRow(title: String, subtitle: String, icon: String, tint: Color) -> some View {
+        HStack(spacing: 13) {
+            iconBox(icon: icon, tint: tint)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(tint)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+
+                Text(subtitle)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.44))
+                    .lineLimit(2)
+            }
+
+            Spacer()
+
+            if isProcessingSafety {
+                ProgressView().tint(tint)
+            } else {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .black))
+                    .foregroundStyle(.white.opacity(0.30))
+            }
+        }
+        .padding(14)
+        .background(detailSurface(cornerRadius: 22, tint: tint))
+    }
 }
 
 // MARK: - Components
@@ -759,6 +864,56 @@ private extension FriendChatInfoView {
             return "\(name) henüz haftasını seninle paylaşmadı."
         } else {
             return "\(name) has not shared their week with you yet."
+        }
+    }
+
+    // MARK: - Safety actions
+
+    func submitReport(reason: String) {
+        guard
+            let friendUserID,
+            let currentUserID = session.currentUser?.id,
+            !isProcessingSafety
+        else { return }
+
+        isProcessingSafety = true
+        Task {
+            try? await friendStore.reportContent(
+                reportedUserID: friendUserID,
+                context: "friend_chat",
+                conversationID: friendshipID?.uuidString,
+                messageID: nil,
+                snapshot: friend.name,
+                reason: reason,
+                currentUserID: currentUserID
+            )
+            await MainActor.run {
+                isProcessingSafety = false
+                infoMessage = appLanguageIsEnglish()
+                    ? "Thanks — we've received your report and will review it within 24 hours."
+                    : "Teşekkürler — şikayetin bize ulaştı, 24 saat içinde inceleyeceğiz."
+            }
+        }
+    }
+
+    func submitBlock() {
+        guard
+            let friendUserID,
+            let currentUserID = session.currentUser?.id,
+            !isProcessingSafety
+        else { return }
+
+        isProcessingSafety = true
+        Task {
+            try? await friendStore.blockUser(
+                friendUserID,
+                currentUserID: currentUserID,
+                modelContext: modelContext
+            )
+            await MainActor.run {
+                isProcessingSafety = false
+                dismiss()
+            }
         }
     }
 }

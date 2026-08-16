@@ -1221,9 +1221,10 @@ private extension MessagesView {
             CrewChatView(crew: crew)
                 .environmentObject(crewStore)
                 .environmentObject(session)
+                .environmentObject(friendStore)
         }
     }
-    
+
     func upsertBackendConversationFromNotification(_ notification: Notification) {
         guard let conversation = notification.userInfo?["conversation"] as? ChatBackendConversationDTO else {
             scheduleBackendConversationRefresh(
