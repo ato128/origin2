@@ -387,6 +387,8 @@ final class SessionStore: ObservableObject {
         Task {
             try? await SupabaseManager.shared.client.auth.signOut()
         }
+        // RevenueCat kimliğini de sıfırla → sonraki hesap aboneliği devralmasın.
+        Task { await SubscriptionManager.shared.logOutIdentity() }
 
         currentUser = nil
         isEmailVerified = false

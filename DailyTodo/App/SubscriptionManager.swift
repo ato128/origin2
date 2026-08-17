@@ -167,6 +167,34 @@ final class SubscriptionManager: ObservableObject {
         }
     }
 
+    /// Oturum kapanınca RevenueCat kimliğini anonim ID'ye sıfırlar + yerel cache'i
+    /// temizler — böylece bir sonraki (FARKLI) hesap eski kullanıcının aboneliğini
+    /// DEVRALMAZ. Abonelik, cihaz Apple ID'sine değil satın alan Supabase hesabına
+    /// bağlı kalır. (RevenueCat panelinde transfer davranışı "keep with original
+    /// App User ID" seçilmeli — yoksa aynı Apple ID yeni hesaba devreder.)
+    func logOutIdentity() async {
+        resetLocalEntitlement()
+        guard isConfigured, !Purchases.shared.isAnonymous else { return }
+        do {
+            let info = try await Purchases.shared.logOut()
+            updateStatus(from: info)
+        } catch {
+            // Zaten anonim ya da geçici hata — yerel durum zaten sıfırlandı.
+        }
+    }
+
+    private func resetLocalEntitlement() {
+        UserDefaults.standard.set(false, forKey: cacheKey)
+        UserDefaults.standard.set(false, forKey: cacheKeyAI)
+        #if DEBUG
+        isPro = debugProEnabled
+        isProAI = debugProEnabled
+        #else
+        isPro = false
+        isProAI = false
+        #endif
+    }
+
     func loadOfferings() async {
         guard isConfigured else { return }
         do {

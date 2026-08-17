@@ -112,16 +112,33 @@ struct PaywallView: View {
         }
     }
 
+    private var topTint: Color {
+        selectedTier == .premiumAI ? Color(arenaHex: "#0D1A2E") : Color(arenaHex: "#1A130A")
+    }
+
     private var backgroundLayer: some View {
         ZStack {
-            bg.ignoresSafeArea()
-            RadialGradient(colors: [accent.opacity(0.22), Color.clear], center: .top, startRadius: 0, endRadius: 380)
-                .frame(height: 400).ignoresSafeArea()
-                .animation(.easeInOut(duration: 0.35), value: selectedTier)
-            Circle().fill(accent.opacity(selectedTier == .premiumAI ? 0.10 : 0.06))
-                .frame(width: 340, height: 340)
-                .blur(radius: 120).offset(x: 150, y: 520).ignoresSafeArea()
-                .animation(.easeInOut(duration: 0.35), value: selectedTier)
+            // Kesintisiz tek parça dikey geçiş — üstte accent-tonlu koyu, altta
+            // derin taban. Sabit yükseklikli katman/sert kenar yok → "bölünme" gitti.
+            LinearGradient(
+                colors: [topTint, bg],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            .animation(.easeInOut(duration: 0.4), value: selectedTier)
+
+            // Üstte yumuşak aura — çerçevesiz, geniş yarıçap, tabana yumuşak karışır.
+            RadialGradient(
+                colors: [accent.opacity(selectedTier == .premiumAI ? 0.20 : 0.14), Color.clear],
+                center: UnitPoint(x: 0.5, y: 0.0),
+                startRadius: 0,
+                endRadius: 560
+            )
+            .ignoresSafeArea()
+            .blendMode(.screen)
+            .allowsHitTesting(false)
+            .animation(.easeInOut(duration: 0.4), value: selectedTier)
         }
     }
 

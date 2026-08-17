@@ -53,6 +53,11 @@ final class DailyCreditsManager: ObservableObject {
 
     /// UX ön kontrolü — asıl zorlama backend'de. İlk yükleme gelmeden engelleme.
     var canSendChatMessage: Bool {
+        // Premium AI = Updo AI AÇIK. Kaynak: client-side RevenueCat entitlement'i
+        // (anlık; backend kredi senkronunu beklemez, sandbox'ta da doğru). Abonelik
+        // biterse isProAI otomatik false olur → normal ücretsiz kurallara döner.
+        // (Aylık kota aşılırsa backend 402 döner; o an mesaj-limiti bildirimi çıkar.)
+        if SubscriptionManager.shared.isProAI { return true }
         if usesOwnKey { return true }
         guard isLoaded else { return true }
         if !isPro && trialWindowExpired { return false }

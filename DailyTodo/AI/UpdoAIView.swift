@@ -300,7 +300,12 @@ struct UpdoAIView: View {
                 .italic()
                 .foregroundStyle(UpdoTheme.cyan)
 
-            if credits.isLoaded {
+            if subscriptionManager.isProAI {
+                // Premium AI = açık. Azalan sayaç yerine sınırsız göster.
+                (Text("· ") + Text(Image(systemName: "infinity")))
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.secondary)
+            } else if credits.isLoaded {
                 Text("· \(tr("hv_ai_credit_n", credits.tokensRemaining))")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
