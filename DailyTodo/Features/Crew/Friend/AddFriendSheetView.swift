@@ -293,7 +293,7 @@ private extension AddFriendSheetView {
                 icon: "at",
                 tint: AddFriendArenaPalette.cyan
             ) {
-                TextField(String(localized: "add_friend_username_placeholder"), text: $username)
+                TextField(tr("add_friend_username_placeholder"), text: $username)
                     .font(.system(size: 18, weight: .black))
                     .foregroundStyle(.white)
                     .textInputAutocapitalization(.never)
@@ -384,7 +384,7 @@ private extension AddFriendSheetView {
                         .font(.system(size: 18, weight: .black))
                 }
 
-                Text(isLoading ? String(localized: "add_friend_sending") : String(localized: "add_friend_send_request"))
+                Text(isLoading ? tr("add_friend_sending") : tr("add_friend_send_request"))
                     .font(.system(size: 16, weight: .black))
             }
             .foregroundStyle(.black)
@@ -553,12 +553,12 @@ private extension AddFriendSheetView {
     @MainActor
     func sendRequest() async {
         guard let currentUserID = session.currentUser?.id else {
-            errorMessage = String(localized: "add_friend_login_required")
+            errorMessage = tr("add_friend_login_required")
             return
         }
 
         guard !cleanUsername.isEmpty else {
-            errorMessage = String(localized: "add_friend_enter_username")
+            errorMessage = tr("add_friend_enter_username")
             return
         }
 
@@ -574,7 +574,7 @@ private extension AddFriendSheetView {
             let targetProfile = try await friendStore.findUserByUsername(cleanUsername)
 
             if targetProfile.id == currentUserID {
-                errorMessage = String(localized: "add_friend_cannot_add_self")
+                errorMessage = tr("add_friend_cannot_add_self")
                 isLoading = false
                 return
             }
@@ -585,7 +585,7 @@ private extension AddFriendSheetView {
             }
 
             if alreadyExists {
-                errorMessage = String(localized: "add_friend_already_exists")
+                errorMessage = tr("add_friend_already_exists")
                 isLoading = false
                 return
             }
@@ -622,7 +622,7 @@ private extension AddFriendSheetView {
             try? await Task.sleep(nanoseconds: 900_000_000)
             dismiss()
         } catch {
-            errorMessage = String(localized: "add_friend_user_not_found")
+            errorMessage = tr("add_friend_user_not_found")
         }
 
         isLoading = false

@@ -330,8 +330,34 @@ struct ForgotPasswordSheet: View {
             infoText = isEN ? "Code sent — check your email." : "Kod gönderildi — e-postanı kontrol et."
             step = .code
         } catch {
-            errorText = isEN ? "Couldn't send the code." : "Kod gönderilemedi."
+            #if DEBUG
+            print("sendPasswordReset error:", error)
+            #endif
+            errorText = friendlyResetError(error)
         }
+    }
+
+    /// Supabase e-posta hatalarını kullanıcı-dostu mesaja çevirir; bilinmeyen
+    /// durumda gerçek nedeni gösterir ki teşhis edebilelim (yayın öncesi).
+    private func friendlyResetError(_ error: Error) -> String {
+        let raw = "\(error)".lowercased()
+        let ns = error as NSError
+
+        // Supabase varsayılan SMTP saatlik çok düşük limitlidir → en sık sebep.
+        if raw.contains("rate limit") || raw.contains("too many") || ns.code == 429 || raw.contains("429") {
+            return isEN
+                ? "Too many requests. Supabase email is rate-limited — wait a few minutes and try again."
+                : "Çok fazla istek. Supabase e-posta limiti doldu — birkaç dakika bekleyip tekrar dene."
+        }
+        if raw.contains("smtp") || raw.contains("send") && raw.contains("mail") {
+            return isEN
+                ? "Email service isn't sending. Set up custom SMTP in Supabase (Auth → SMTP)."
+                : "E-posta servisi göndermiyor. Supabase'de özel SMTP ayarla (Auth → SMTP)."
+        }
+        // Bilinmeyen: gerçek nedeni göster (yayın öncesi teşhis için).
+        let detail = ns.localizedDescription
+        let base = isEN ? "Couldn't send the code. " : "Kod gönderilemedi. "
+        return detail.isEmpty ? base : base + "(\(detail))"
     }
 
     private func verifyAndUpdate() async {

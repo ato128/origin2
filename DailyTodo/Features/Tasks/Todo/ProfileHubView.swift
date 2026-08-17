@@ -7,9 +7,14 @@
 
 import SwiftUI
 import SwiftData
+import StoreKit
 
 struct ProfileHubView: View {
+    static let termsURL = "https://ato128.github.io/updo-support/terms.html"
+    static let privacyURL = "https://ato128.github.io/updo-support/privacy.html"
+
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @EnvironmentObject var store: TodoStore
     @EnvironmentObject var session: SessionStore
     @EnvironmentObject var languageManager: LanguageManager
@@ -30,6 +35,10 @@ struct ProfileHubView: View {
     @State private var showAppIconPicker = false
     @State private var showLiveStylePicker = false
     @State private var showWidgetStylePicker = false
+    @State private var showManageSubscriptions = false
+    @State private var showRestoreResult = false
+    @State private var restoreResultMessage = ""
+    @State private var isRestoring = false
 
     private var pageAccent: Color {
         Color(arenaHex: AppArenaPalette.cyan)
@@ -70,6 +79,7 @@ struct ProfileHubView: View {
                     appearanceSection
                     languageSection
                     supportSection
+                    subscriptionLegalSection
                     logoutSection
 
                     Color.clear.frame(height: 44)
@@ -103,6 +113,12 @@ struct ProfileHubView: View {
         }
         .sheet(isPresented: $showWidgetStylePicker) {
             WidgetStylePickerView()
+        }
+        .manageSubscriptionsSheet(isPresented: $showManageSubscriptions)
+        .alert(tr("ph_restore_title"), isPresented: $showRestoreResult) {
+            Button(tr("ph_ok"), role: .cancel) {}
+        } message: {
+            Text(restoreResultMessage)
         }
     }
 
@@ -515,7 +531,110 @@ private extension ProfileHubView {
             )
         }
     }
-    
+
+    var subscriptionLegalSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader(
+                eyebrow: tr("ph_sub_legal_caps"),
+                title: tr("ph_w_sub_plan"),
+                italic: tr("ph_w_sub_legal"),
+                subtitle: "",
+                icon: "creditcard.fill",
+                tint: Color(arenaHex: AppArenaPalette.blue)
+            )
+
+            VStack(spacing: 16) {
+                Button {
+                    performRestore()
+                } label: {
+                    profileRow(
+                        icon: "arrow.clockwise",
+                        iconColor: Color(arenaHex: AppArenaPalette.green),
+                        title: tr("ph_restore_title"),
+                        subtitle: ""
+                    )
+                }
+                .buttonStyle(.plain)
+                .disabled(isRestoring)
+
+                Divider().overlay(Color.white.opacity(0.075))
+
+                Button {
+                    HapticManager.shared.selection()
+                    showManageSubscriptions = true
+                } label: {
+                    profileRow(
+                        icon: "creditcard.fill",
+                        iconColor: Color(arenaHex: AppArenaPalette.blue),
+                        title: tr("ph_manage_sub_title"),
+                        subtitle: ""
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Divider().overlay(Color.white.opacity(0.075))
+
+                Button {
+                    if let url = URL(string: Self.termsURL) { openURL(url) }
+                } label: {
+                    profileRow(
+                        icon: "doc.text.fill",
+                        iconColor: Color(arenaHex: AppArenaPalette.purple),
+                        title: tr("ph_terms_title"),
+                        subtitle: ""
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Divider().overlay(Color.white.opacity(0.075))
+
+                Button {
+                    if let url = URL(string: Self.privacyURL) { openURL(url) }
+                } label: {
+                    profileRow(
+                        icon: "hand.raised.fill",
+                        iconColor: Color(arenaHex: AppArenaPalette.coral),
+                        title: tr("ph_privacy_title"),
+                        subtitle: ""
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(18)
+            .background(
+                arenaCardBackground(
+                    tint: Color(arenaHex: AppArenaPalette.blue),
+                    radius: 30,
+                    strength: 0.50
+                )
+            )
+        }
+    }
+
+    func performRestore() {
+        guard !isRestoring else { return }
+        isRestoring = true
+        HapticManager.shared.selection()
+        Task {
+            do {
+                try await subscription.restorePurchases()
+                await MainActor.run {
+                    restoreResultMessage = subscription.isPro
+                        ? tr("ph_restore_success")
+                        : tr("ph_restore_none")
+                    showRestoreResult = true
+                    isRestoring = false
+                }
+            } catch {
+                await MainActor.run {
+                    restoreResultMessage = tr("ph_restore_failed")
+                    showRestoreResult = true
+                    isRestoring = false
+                }
+            }
+        }
+    }
+
     var logoutSection: some View {
         Group {
             if session.currentUser != nil {

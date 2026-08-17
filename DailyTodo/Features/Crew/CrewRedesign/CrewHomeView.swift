@@ -1348,8 +1348,8 @@ private struct CrewSocialFriendsSection: View {
         VStack(alignment: .leading, spacing: 12) {
             CrewSectionTitle(
                 eyebrow: tr("ch_suggested_friends_caps"),
-                titleFirst: "Senin",
-                titleItalic: tr("ch_for_word"),
+                titleFirst: tr("ch_for_you_first"),
+                titleItalic: tr("ch_for_you_italic"),
                 trailing: friends.isEmpty ? nil : tr("ch_all_caps")
             )
 
@@ -1486,7 +1486,7 @@ private struct CrewFriendRow: View {
 
             Spacer()
 
-            Text(showStats && friend.isFocusing ? "JOIN" : "MESAJ")
+            Text(showStats && friend.isFocusing ? tr("ch_join_caps") : tr("ch_message_caps"))
                 .font(.system(size: 11, weight: .black, design: .monospaced))
                 .foregroundStyle(.black)
                 .padding(.horizontal, 13)

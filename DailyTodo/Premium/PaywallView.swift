@@ -21,7 +21,8 @@ struct PaywallView: View {
     // MARK: – Palette (gold = premium, gold+cyan = premium AI)
 
     private let bg       = Color(arenaHex: "#080A12")
-    private let card     = Color(arenaHex: "#141826")
+    private let card     = Color(arenaHex: "#121624")
+    private let cardHi   = Color(arenaHex: "#171C2E")
     private let gold     = Color(arenaHex: "#FBBF24")
     private let goldSoft = Color(arenaHex: "#FFD166")
     private let cyan     = Color(arenaHex: "#2DD4FF")
@@ -83,25 +84,18 @@ struct PaywallView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            bg.ignoresSafeArea()
-
-            // Warm aura at the top — gold for premium, gold+cyan for AI
-            RadialGradient(colors: [gold.opacity(0.20), Color.clear], center: .top, startRadius: 0, endRadius: 360)
-                .frame(height: 380).ignoresSafeArea()
-            Circle().fill(accent.opacity(selectedTier == .premiumAI ? 0.08 : 0.05))
-                .frame(width: 320, height: 320)
-                .blur(radius: 110).offset(x: 150, y: 500).ignoresSafeArea()
-                .animation(.easeInOut(duration: 0.35), value: selectedTier)
+            backgroundLayer
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
-                    header.padding(.top, 40)
+                    header.padding(.top, 44)
                     tierSelector.padding(.top, 24)
-                    benefitsCard.padding(.top, 18)
-                    planSelector.padding(.top, 18)
-                    trustLine.padding(.top, 14)
+                    benefitsCard.padding(.top, 16)
+                    planSelector.padding(.top, 16)
+                    renewalLine.padding(.top, 12)
                     ctaSection.padding(.top, 16)
-                    legal.padding(.top, 18).padding(.bottom, 44)
+                    trustRow.padding(.top, 14)
+                    legal.padding(.top, 16).padding(.bottom, 40)
                 }
                 .padding(.horizontal, 20)
             }
@@ -118,34 +112,27 @@ struct PaywallView: View {
         }
     }
 
+    private var backgroundLayer: some View {
+        ZStack {
+            bg.ignoresSafeArea()
+            RadialGradient(colors: [accent.opacity(0.22), Color.clear], center: .top, startRadius: 0, endRadius: 380)
+                .frame(height: 400).ignoresSafeArea()
+                .animation(.easeInOut(duration: 0.35), value: selectedTier)
+            Circle().fill(accent.opacity(selectedTier == .premiumAI ? 0.10 : 0.06))
+                .frame(width: 340, height: 340)
+                .blur(radius: 120).offset(x: 150, y: 520).ignoresSafeArea()
+                .animation(.easeInOut(duration: 0.35), value: selectedTier)
+        }
+    }
+
     // MARK: – Header
 
     private var header: some View {
         VStack(spacing: 14) {
-            ZStack {
-                Circle().fill(accent.opacity(0.18)).frame(width: 128, height: 128).blur(radius: 22)
-
-                if selectedTier == .premiumAI {
-                    UpdoAIOrb(size: 66)
-                        .overlay(
-                            Circle()
-                                .strokeBorder(goldGradient, lineWidth: 1.5)
-                                .frame(width: 88, height: 88)
-                                .opacity(0.8)
-                        )
-                        .shadow(color: cyan.opacity(0.4), radius: 22, y: 8)
-                } else {
-                    Circle().fill(goldGradient).frame(width: 78, height: 78)
-                        .overlay(Circle().strokeBorder(Color.white.opacity(0.3), lineWidth: 1))
-                        .shadow(color: gold.opacity(0.55), radius: 22, y: 8)
-                    Image(systemName: "crown.fill")
-                        .font(.system(size: 33, weight: .semibold))
-                        .foregroundStyle(ink)
-                }
-            }
-            .frame(height: 92)
-            .scaleEffect(appeared ? 1 : 0.8)
-            .animation(.easeInOut(duration: 0.25), value: selectedTier)
+            emblem
+                .frame(height: 96)
+                .scaleEffect(appeared ? 1 : 0.82)
+                .animation(.easeInOut(duration: 0.25), value: selectedTier)
 
             Text(selectedTier == .premiumAI ? "UPDO PREMIUM AI" : "UPDO PREMIUM")
                 .font(.system(size: 13, weight: .black)).tracking(5)
@@ -157,7 +144,7 @@ struct PaywallView: View {
                 + Text(tr("pw_unlimited_w"))
                     .font(.system(size: 30, weight: .bold)).foregroundStyle(.white)
                 + Text(tr("pw_grow_w"))
-                    .font(.system(size: 30, weight: .bold, design: .serif)).italic().foregroundStyle(gold)
+                    .font(.system(size: 30, weight: .bold, design: .serif)).italic().foregroundStyle(accent)
             )
             .multilineTextAlignment(.center)
 
@@ -169,7 +156,29 @@ struct PaywallView: View {
         }
     }
 
-    // MARK: – Tier selector (Premium / Premium AI)
+    private var emblem: some View {
+        ZStack {
+            Circle().fill(accent.opacity(0.18)).frame(width: 128, height: 128).blur(radius: 24)
+
+            if selectedTier == .premiumAI {
+                UpdoAIOrb(size: 68)
+                    .overlay(
+                        Circle().strokeBorder(goldGradient, lineWidth: 1.5)
+                            .frame(width: 90, height: 90).opacity(0.85)
+                    )
+                    .shadow(color: cyan.opacity(0.45), radius: 24, y: 9)
+            } else {
+                Circle().fill(goldGradient).frame(width: 80, height: 80)
+                    .overlay(Circle().strokeBorder(Color.white.opacity(0.3), lineWidth: 1))
+                    .shadow(color: gold.opacity(0.55), radius: 24, y: 9)
+                Image(systemName: "crown.fill")
+                    .font(.system(size: 34, weight: .semibold))
+                    .foregroundStyle(ink)
+            }
+        }
+    }
+
+    // MARK: – Tier selector (Premium AI / Premium)
 
     private var tierSelector: some View {
         HStack(spacing: 12) {
@@ -180,7 +189,10 @@ struct PaywallView: View {
 
     private var premiumAITierCard: some View {
         let isSelected = selectedTier == .premiumAI
-        return Button { withAnimation(.easeInOut(duration: 0.2)) { selectedTier = .premiumAI } } label: {
+        return Button {
+            HapticManager.shared.selection()
+            withAnimation(.easeInOut(duration: 0.2)) { selectedTier = .premiumAI }
+        } label: {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
                     Text(tr("pw_ai_included_caps"))
@@ -199,7 +211,7 @@ struct PaywallView: View {
                 .padding(.horizontal, 13).padding(.top, 10)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(storePrice("com.updo.premiumai.monthly").map { $0 + tr("pw_per_mo") } ?? "149,99 ₺" + tr("pw_per_mo"))
+                    Text((storePrice("com.updo.premiumai.monthly") ?? "149,99 ₺") + tr("pw_per_mo"))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(isSelected ? cyan : cyan.opacity(0.45))
                     Text(tr("pw_tier_ai_sub")).font(.system(size: 11, weight: .medium))
@@ -208,18 +220,29 @@ struct PaywallView: View {
                 .padding(.horizontal, 13).padding(.top, 4).padding(.bottom, 14)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(card)
+            .background(isSelected ? cardHi : card)
             .overlay(tierBorder(isSelected, gradient: aiGradient))
-            .clipShape(RoundedRectangle(cornerRadius: 18))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .shadow(color: cyan.opacity(isSelected ? 0.22 : 0), radius: 16, y: 8)
         }
         .buttonStyle(.plain)
     }
 
     private var premiumTierCard: some View {
         let isSelected = selectedTier == .premium
-        return Button { withAnimation(.easeInOut(duration: 0.2)) { selectedTier = .premium } } label: {
+        return Button {
+            HapticManager.shared.selection()
+            withAnimation(.easeInOut(duration: 0.2)) { selectedTier = .premium }
+        } label: {
             VStack(alignment: .leading, spacing: 0) {
-                Color.clear.frame(height: 33)
+                HStack {
+                    Text(tr("pw_byo_tag"))
+                        .font(.system(size: 8.5, weight: .black)).tracking(0.5).foregroundStyle(ink)
+                        .padding(.horizontal, 7).padding(.vertical, 4)
+                        .background(goldGradient, in: Capsule())
+                    Spacer()
+                }
+                .padding(.horizontal, 13).padding(.top, 12)
 
                 HStack(spacing: 8) {
                     Image(systemName: "crown.fill")
@@ -231,43 +254,48 @@ struct PaywallView: View {
                 .padding(.horizontal, 13).padding(.top, 10)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(storePrice("com.updo.pro.monthly").map { $0 + tr("pw_per_mo") } ?? "99,99 ₺" + tr("pw_per_mo"))
+                    Text((storePrice("com.updo.pro.monthly") ?? "99,99 ₺") + tr("pw_per_mo"))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(isSelected ? gold : gold.opacity(0.45))
-                    Text(tr("pw_tier_all_features")).font(.system(size: 11, weight: .medium))
+                    Text(tr("pw_tier_byo_sub")).font(.system(size: 11, weight: .medium))
                         .foregroundStyle(isSelected ? .white.opacity(0.6) : .white.opacity(0.3))
                 }
                 .padding(.horizontal, 13).padding(.top, 4).padding(.bottom, 14)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(card)
+            .background(isSelected ? cardHi : card)
             .overlay(tierBorder(isSelected, gradient: goldGradient))
-            .clipShape(RoundedRectangle(cornerRadius: 18))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .shadow(color: gold.opacity(isSelected ? 0.20 : 0), radius: 16, y: 8)
         }
         .buttonStyle(.plain)
     }
 
     private func tierBorder(_ isSelected: Bool, gradient: LinearGradient) -> some View {
-        RoundedRectangle(cornerRadius: 18)
+        RoundedRectangle(cornerRadius: 20)
             .strokeBorder(
                 isSelected ? AnyShapeStyle(gradient) : AnyShapeStyle(Color.white.opacity(0.08)),
                 lineWidth: isSelected ? 2 : 1
             )
     }
 
-    // MARK: – Benefits checklist (abundance → desire)
+    // MARK: – Benefits checklist (tier-aware)
 
     private var benefits: [String] {
         var list: [String] = []
+        // Headline AI feature differs by tier.
         if selectedTier == .premiumAI {
-            list.append(tr("pw_feat_ai_expanded"))
+            list.append(tr("pw_feat_ai_expanded"))     // Updo AI included
+        } else {
+            list.append(tr("pw_feat_byo_chatgpt"))     // Connect your own ChatGPT
         }
         list.append(contentsOf: [
-            tr("pw_feat_friends"),
             tr("pw_feat_crew"),
             tr("pw_feat_analytics"),
             tr("pw_b_future_weeks"),
             tr("pw_b_best_hours"),
+            tr("pw_feat_app_icon"),
+            tr("pw_feat_widget_style"),
             tr("pw_feat_support"),
             tr("pw_b_all_future")
         ])
@@ -285,24 +313,7 @@ struct PaywallView: View {
             .padding(.bottom, 14)
 
             ForEach(Array(benefits.enumerated()), id: \.element) { idx, b in
-                HStack(spacing: 12) {
-                    if selectedTier == .premiumAI && idx == 0 {
-                        UpdoAIOrb(size: 17)
-                    } else {
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(goldGradient)
-                    }
-                    Text(b)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.white)
-                    Spacer(minLength: 0)
-                }
-                .padding(.vertical, 8)
-                .opacity(appeared ? 1 : 0)
-                .offset(x: appeared ? 0 : -10)
-                .animation(.spring(response: 0.5, dampingFraction: 0.85).delay(0.06 * Double(idx)), value: appeared)
-
+                benefitRow(index: idx, text: b)
                 if idx < benefits.count - 1 {
                     Rectangle().fill(Color.white.opacity(0.05)).frame(height: 1)
                 }
@@ -310,9 +321,40 @@ struct PaywallView: View {
         }
         .padding(18)
         .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous).fill(card)
-                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(accent.opacity(0.14), lineWidth: 1))
+            RoundedRectangle(cornerRadius: 24, style: .continuous).fill(card)
+                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(accent.opacity(0.15), lineWidth: 1))
         )
+    }
+
+    @ViewBuilder
+    private func benefitRow(index idx: Int, text b: String) -> some View {
+        HStack(spacing: 12) {
+            benefitIcon(index: idx)
+            Text(b)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white)
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 9)
+        .opacity(appeared ? 1 : 0)
+        .offset(x: appeared ? 0 : -10)
+        .animation(.spring(response: 0.5, dampingFraction: 0.85).delay(0.05 * Double(idx)), value: appeared)
+    }
+
+    @ViewBuilder
+    private func benefitIcon(index idx: Int) -> some View {
+        if idx == 0 && selectedTier == .premiumAI {
+            UpdoAIOrb(size: 18)
+        } else if idx == 0 {
+            Image(systemName: "key.fill")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(goldGradient)
+                .frame(width: 18)
+        } else {
+            Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(goldGradient)
+        }
     }
 
     // MARK: – Plan selector (annual / monthly)
@@ -326,7 +368,10 @@ struct PaywallView: View {
 
     private var annualCard: some View {
         let isSelected = selectedPlan == .annual
-        return Button { withAnimation(.easeInOut(duration: 0.15)) { selectedPlan = .annual } } label: {
+        return Button {
+            HapticManager.shared.selection()
+            withAnimation(.easeInOut(duration: 0.15)) { selectedPlan = .annual }
+        } label: {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
                     Text(tr("pw_best_value"))
@@ -348,7 +393,7 @@ struct PaywallView: View {
                 .padding(.horizontal, 14).padding(.top, 10).padding(.bottom, 16)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(card)
+            .background(isSelected ? cardHi : card)
             .overlay(planBorder(isSelected))
             .clipShape(RoundedRectangle(cornerRadius: 18))
         }
@@ -357,7 +402,10 @@ struct PaywallView: View {
 
     private var monthlyCard: some View {
         let isSelected = selectedPlan == .monthly
-        return Button { withAnimation(.easeInOut(duration: 0.15)) { selectedPlan = .monthly } } label: {
+        return Button {
+            HapticManager.shared.selection()
+            withAnimation(.easeInOut(duration: 0.15)) { selectedPlan = .monthly }
+        } label: {
             VStack(alignment: .leading, spacing: 0) {
                 Color.clear.frame(height: 29)
                 VStack(alignment: .leading, spacing: 3) {
@@ -371,7 +419,7 @@ struct PaywallView: View {
                 .padding(.horizontal, 14).padding(.top, 10).padding(.bottom, 16)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(card)
+            .background(isSelected ? cardHi : card)
             .overlay(planBorder(isSelected))
             .clipShape(RoundedRectangle(cornerRadius: 18))
         }
@@ -381,20 +429,20 @@ struct PaywallView: View {
     private func planBorder(_ isSelected: Bool) -> some View {
         RoundedRectangle(cornerRadius: 18)
             .strokeBorder(
-                isSelected
-                    ? AnyShapeStyle(tierGradient)
-                    : AnyShapeStyle(Color.white.opacity(0.08)),
+                isSelected ? AnyShapeStyle(tierGradient) : AnyShapeStyle(Color.white.opacity(0.08)),
                 lineWidth: isSelected ? 2 : 1
             )
     }
 
-    // MARK: – Trust
+    // MARK: – Renewal clarity line
 
-    private var trustLine: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "checkmark.shield.fill").font(.system(size: 12)).foregroundStyle(accent)
-            Text(tr("pw_trust")).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.55))
-        }
+    private var renewalLine: some View {
+        let priceText = selectedPlan == .annual ? annualPrice + tr("pw_per_yr") : monthlyPrice + tr("pw_per_mo")
+        return Text("\(priceText) · \(tr("pw_cancel_anytime"))")
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(.white.opacity(0.42))
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
     }
 
     // MARK: – CTA
@@ -421,15 +469,30 @@ struct PaywallView: View {
 
             Button { Task { await restore() } } label: {
                 Text(tr("pw_restore")).font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(.white.opacity(0.35)).underline(color: .white.opacity(0.2))
+                    .foregroundStyle(.white.opacity(0.4)).underline(color: .white.opacity(0.22))
             }
             .buttonStyle(.plain)
         }
     }
 
     private var ctaLabel: String {
-        if selectedPlan == .annual { return tr("pw_start_trial") }
-        return selectedTier == .premiumAI ? tr("pw_go_pro_ai") : tr("pw_go_pro")
+        selectedTier == .premiumAI ? tr("pw_go_pro_ai") : tr("pw_go_pro")
+    }
+
+    // MARK: – Trust
+
+    private var trustRow: some View {
+        HStack(spacing: 16) {
+            trustItem(icon: "xmark.circle.fill", text: tr("pw_cancel_anytime"))
+            trustItem(icon: "checkmark.shield.fill", text: tr("pw_secured"))
+        }
+    }
+
+    private func trustItem(icon: String, text: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon).font(.system(size: 12)).foregroundStyle(accent.opacity(0.8))
+            Text(text).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.5))
+        }
     }
 
     // MARK: – Purchase logic
@@ -471,9 +534,9 @@ struct PaywallView: View {
             Text(tr("pw_legal")).font(.system(size: 10))
                 .foregroundStyle(.white.opacity(0.25)).multilineTextAlignment(.center)
             HStack(spacing: 4) {
-                Link(tr("pw_privacy"), destination: URL(string: "https://updo.app/privacy")!)
+                Link(tr("pw_privacy"), destination: URL(string: "https://ato128.github.io/updo-support/privacy.html")!)
                 Text("·")
-                Link(tr("pw_terms"), destination: URL(string: "https://updo.app/terms")!)
+                Link(tr("pw_terms"), destination: URL(string: "https://ato128.github.io/updo-support/terms.html")!)
             }
             .font(.system(size: 11, weight: .medium)).foregroundStyle(.white.opacity(0.30))
         }
