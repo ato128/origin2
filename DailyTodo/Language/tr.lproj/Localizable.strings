@@ -767,6 +767,11 @@
 /* MessagesView — hub header & section eyebrows */
 "mv_social_hub_caps" = "SOSYAL MERKEZ";
 "mv_title" = "Mesajlar";
+"mv_filter" = "Filtre";
+"mv_filter_all" = "Tümü";
+"mv_filter_unread" = "Okunmamış";
+"mv_filter_friends" = "Arkadaşlar";
+"mv_filter_crews" = "Crew'ler";
 "mv_title_italic" = "merkezi";
 "mv_sub" = "Arkadaş & Crew sohbetleri tek yerde.";
 "mv_chats_caps" = "SOHBET";
@@ -1335,6 +1340,7 @@
 "fc_conn_failed" = "Sohbet bağlantısı hazırlanamadı. Sayfayı kapatıp tekrar aç.";
 "fc_not_ready" = "Sohbet henüz hazır değil.";
 "fc_mic_permission" = "Ses mesajı göndermek için mikrofon izni vermen gerekiyor.";
+"fc_mic_permission_title" = "Mikrofon izni gerekli";
 "fc_loading_messages" = "Mesajlar yükleniyor";
 "fc_conn_problem" = "Bağlantı sorunu";
 "fc_load_failed" = "Sohbet yüklenemedi. Sayfayı kapatıp tekrar aç.";

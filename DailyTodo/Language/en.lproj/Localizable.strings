@@ -765,6 +765,11 @@
 /* MessagesView — hub header & section eyebrows */
 "mv_social_hub_caps" = "SOCIAL HUB";
 "mv_title" = "Messages";
+"mv_filter" = "Filter";
+"mv_filter_all" = "All";
+"mv_filter_unread" = "Unread";
+"mv_filter_friends" = "Friends";
+"mv_filter_crews" = "Crews";
 "mv_title_italic" = "hub";
 "mv_sub" = "Friend & Crew chats in one place.";
 "mv_chats_caps" = "CHATS";
@@ -1333,6 +1338,7 @@
 "fc_conn_failed" = "Couldn't establish the chat connection. Close and reopen the page.";
 "fc_not_ready" = "Chat isn't ready yet.";
 "fc_mic_permission" = "You need to allow microphone access to send a voice message.";
+"fc_mic_permission_title" = "Microphone access";
 "fc_loading_messages" = "Loading messages";
 "fc_conn_problem" = "Connection problem";
 "fc_load_failed" = "Couldn't load the chat. Close and reopen the page.";

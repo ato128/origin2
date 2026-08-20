@@ -8,6 +8,28 @@
 import SwiftUI
 import SwiftData
 
+enum MessagesFilter: CaseIterable {
+    case all, unread, friends, crews
+
+    var title: String {
+        switch self {
+        case .all:     return tr("mv_filter_all")
+        case .unread:  return tr("mv_filter_unread")
+        case .friends: return tr("mv_filter_friends")
+        case .crews:   return tr("mv_filter_crews")
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .all:     return "tray.full"
+        case .unread:  return "circle.fill"
+        case .friends: return "person"
+        case .crews:   return "person.3"
+        }
+    }
+}
+
 struct MessagesView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -17,6 +39,7 @@ struct MessagesView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var searchText = ""
+    @State private var filterMode: MessagesFilter = .all
     @State private var showAddFriend = false
     @State private var didLoadMessagesHubData = false
     @State private var rebuildSummariesTask: Task<Void, Never>?
@@ -184,10 +207,19 @@ struct MessagesView: View {
     }
 
     private var filteredConversationItems: [MessagesHubItem] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return allConversationItems }
+        var items = allConversationItems
 
-        return allConversationItems.filter {
+        switch filterMode {
+        case .all:     break
+        case .unread:  items = items.filter { $0.unreadCount > 0 }
+        case .friends: items = items.filter { $0.kind == .friend }
+        case .crews:   items = items.filter { $0.kind == .crew }
+        }
+
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return items }
+
+        return items.filter {
             $0.title.localizedCaseInsensitiveContains(query)
             || $0.preview.localizedCaseInsensitiveContains(query)
         }
@@ -293,68 +325,102 @@ private extension MessagesView {
                 .padding(.top, 10)
                 .padding(.bottom, 24)
             }
+            .scrollDismissesKeyboard(.interactively)
+            .safeAreaInset(edge: .bottom) {
+                searchBar
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 6)
+            }
         }
     }
 
     var header: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 7) {
-                HStack(spacing: 8) {
-                    Rectangle()
-                        .fill(Color(arenaHex: AppArenaPalette.cyan))
-                        .frame(width: 20, height: 1)
+        VStack(alignment: .leading, spacing: 12) {
+            // Üst bar — cam butonlar (sağ): arkadaş ekle · filtre menüsü · kapat
+            HStack(spacing: 10) {
+                Spacer(minLength: 0)
 
-                    Text(tr("mv_social_hub_caps"))
-                        .font(.system(size: 11, weight: .black, design: .monospaced))
-                        .tracking(2.4)
-                        .foregroundStyle(Color(arenaHex: AppArenaPalette.cyan))
+                headerIconButton(system: "person.badge.plus", label: tr("mv_add_friend")) {
+                    HapticManager.shared.selection()
+                    showAddFriend = true
                 }
 
-                HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    Text(tr("mv_title"))
-                        .font(.system(size: 39, weight: .black))
-                        .foregroundStyle(.white)
+                filterMenuButton
 
-                    Text(tr("mv_title_italic"))
-                        .font(.system(size: 36, weight: .regular, design: .serif))
-                        .italic()
-                        .foregroundStyle(Color(arenaHex: AppArenaPalette.cyan))
+                headerIconButton(system: "xmark", label: tr("event_close")) {
+                    dismiss()
                 }
+            }
+
+            // Tek, temiz büyük başlık (Apple Messages gibi) — eyebrow/"merkezi" kaldırıldı
+            Text(tr("mv_title"))
+                .font(.system(size: 44, weight: .black))
+                .foregroundStyle(.white)
                 .lineLimit(1)
-                .minimumScaleFactor(0.72)
+                .minimumScaleFactor(0.7)
 
-                Text(tr("mv_sub"))
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.48))
-                    .lineLimit(1)
+            // Aktif filtre rozeti (yalnızca "Tümü" değilse)
+            if filterMode != .all {
+                HStack(spacing: 7) {
+                    Image(systemName: filterMode.icon)
+                        .font(.system(size: 11, weight: .black))
+                    Text(filterMode.title)
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .black))
+                        .opacity(0.7)
+                }
+                .foregroundStyle(Color(arenaHex: AppArenaPalette.cyan))
+                .padding(.horizontal, 12)
+                .frame(height: 30)
+                .liquidGlass(in: Capsule())
+                .onTapGesture {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { filterMode = .all }
+                }
+                .transition(.scale.combined(with: .opacity))
             }
-
-            Spacer(minLength: 8)
-
-            Button {
-                HapticManager.shared.selection()
-                showAddFriend = true
-            } label: {
-                Image(systemName: "person.badge.plus")
-                    .font(.system(size: 17, weight: .black))
-                    .foregroundStyle(.white)
-                    .frame(width: 46, height: 46)
-                    .background(headerCircleBackground)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(tr("mv_add_friend"))
-
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark").accessibilityLabel(tr("event_close"))
-                    .font(.system(size: 17, weight: .black))
-                    .foregroundStyle(.white)
-                    .frame(width: 46, height: 46)
-                    .background(headerCircleBackground)
-            }
-            .buttonStyle(.plain)
         }
+    }
+
+    private func headerIconButton(
+        system: String,
+        label: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: system)
+                .font(.system(size: 17, weight: .black))
+                .foregroundStyle(.white)
+                .frame(width: 46, height: 46)
+                .liquidGlass(in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+    }
+
+    // Native Menu → açılır liste iOS 26'da Apple'ın cam menüsü (görsel 3 gibi).
+    private var filterMenuButton: some View {
+        Menu {
+            ForEach(MessagesFilter.allCases, id: \.self) { filter in
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                        filterMode = filter
+                    }
+                } label: {
+                    Label(
+                        filter.title,
+                        systemImage: filterMode == filter ? "checkmark" : filter.icon
+                    )
+                }
+            }
+        } label: {
+            Image(systemName: "line.3.horizontal.decrease")
+                .font(.system(size: 16, weight: .black))
+                .foregroundStyle(filterMode == .all ? .white : Color(arenaHex: AppArenaPalette.cyan))
+                .frame(width: 46, height: 46)
+                .liquidGlass(in: Circle())
+        }
+        .accessibilityLabel(tr("mv_filter"))
     }
 
     var searchBar: some View {
@@ -383,27 +449,10 @@ private extension MessagesView {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 15)
-        .frame(height: 54)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(arenaHex: AppArenaPalette.blue).opacity(0.060),
-                            Color(arenaHex: AppArenaPalette.purple).opacity(0.046),
-                            Color.white.opacity(0.038)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color.white.opacity(0.085), lineWidth: 1)
-                )
-                .shadow(color: Color.black.opacity(0.18), radius: 12, y: 6)
-        )
+        .padding(.horizontal, 18)
+        .frame(height: 52)
+        .liquidGlass(in: Capsule())
+        .shadow(color: Color.black.opacity(0.30), radius: 18, y: 10)
     }
 
     var summaryStrip: some View {
@@ -458,13 +507,6 @@ private extension MessagesView {
 
     var conversationsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionTitle(
-                eyebrow: tr("mv_all_chats_caps"),
-                title: tr("mv_all"),
-                italic: tr("mv_all_italic"),
-                tint: Color(arenaHex: AppArenaPalette.cyan)
-            )
-
             if filteredConversationItems.isEmpty {
                 VStack(spacing: 14) {
                     emptyState(
@@ -480,14 +522,22 @@ private extension MessagesView {
                     }
                 }
             } else {
-                LazyVStack(spacing: 10) {
-                    ForEach(filteredConversationItems) { item in
+                LazyVStack(spacing: 0) {
+                    ForEach(Array(filteredConversationItems.enumerated()), id: \.element.id) { index, item in
                         NavigationLink {
                             destinationView(for: item)
                         } label: {
                             conversationRow(item)
                         }
                         .buttonStyle(.plain)
+
+                        if index < filteredConversationItems.count - 1 {
+                            // iMessage tarzı hairline ayraç — avatardan sonra başlar
+                            Rectangle()
+                                .fill(Color.white.opacity(0.06))
+                                .frame(height: 0.5)
+                                .padding(.leading, 64)
+                        }
                     }
                 }
             }
@@ -614,7 +664,7 @@ private extension MessagesView {
     func conversationRow(_ item: MessagesHubItem) -> some View {
         HStack(spacing: 12) {
             ZStack(alignment: .bottomTrailing) {
-                rowAvatar(for: item, size: 56)
+                rowAvatar(for: item, size: 52)
 
                 if item.showsPresence {
                     Circle()
@@ -627,76 +677,100 @@ private extension MessagesView {
                 }
             }
 
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 5) {
                     Text(item.title)
-                        .font(.system(size: 17, weight: .black))
+                        .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(.white)
                         .lineLimit(1)
 
                     if item.isPinned {
                         Image(systemName: "pin.fill")
-                            .font(.system(size: 10, weight: .black))
-                            .foregroundStyle(Color(arenaHex: AppArenaPalette.gold).opacity(0.86))
+                            .font(.system(size: 9, weight: .black))
+                            .foregroundStyle(Color(arenaHex: AppArenaPalette.gold).opacity(0.82))
                     }
 
                     if item.isMuted {
                         Image(systemName: "bell.slash.fill")
-                            .font(.system(size: 10, weight: .black))
-                            .foregroundStyle(.white.opacity(0.34))
+                            .font(.system(size: 9, weight: .black))
+                            .foregroundStyle(.white.opacity(0.3))
                     }
 
-                    Spacer(minLength: 4)
-
-                    if let time = item.time {
-                        Text(time, style: .time)
-                            .font(.system(size: 11, weight: .black, design: .monospaced))
-                            .foregroundStyle(
-                                item.unreadCount > 0
-                                ? Color(arenaHex: AppArenaPalette.gold)
-                                : .white.opacity(0.38)
-                            )
-                    }
-                }
-
-                HStack(spacing: 6) {
                     if item.kind == .crew {
                         Text("CREW")
-                            .font(.system(size: 9, weight: .black, design: .monospaced))
-                            .tracking(0.8)
+                            .font(.system(size: 8.5, weight: .black, design: .monospaced))
+                            .tracking(0.6)
                             .foregroundStyle(item.tint)
-                            .padding(.horizontal, 7)
-                            .frame(height: 20)
-                            .background(
-                                Capsule()
-                                    .fill(item.tint.opacity(0.12))
-                            )
+                            .padding(.horizontal, 5)
+                            .frame(height: 15)
+                            .background(Capsule().fill(item.tint.opacity(0.14)))
                     }
-
-                    Text(item.preview)
-                        .font(.system(size: 13, weight: item.unreadCount > 0 ? .bold : .semibold))
-                        .foregroundStyle(item.unreadCount > 0 ? .white.opacity(0.82) : .white.opacity(0.48))
-                        .lineLimit(1)
                 }
+
+                Text(item.preview)
+                    .font(.system(size: 15))
+                    .foregroundStyle(item.unreadCount > 0 ? .white.opacity(0.72) : .white.opacity(0.46))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
-            VStack(alignment: .trailing, spacing: 8) {
-                if item.unreadCount > 0 {
-                    unreadBadge(item.unreadCount)
-                } else {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .black))
-                        .foregroundStyle(.white.opacity(0.24))
+            Spacer(minLength: 6)
+
+            VStack(alignment: .trailing, spacing: 7) {
+                if let time = item.time {
+                    Text(conversationTimeText(time))
+                        .font(.system(size: 14))
+                        .foregroundStyle(
+                            item.unreadCount > 0
+                            ? Color(arenaHex: AppArenaPalette.cyan)
+                            : .white.opacity(0.40)
+                        )
                 }
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.25))
             }
-            .frame(width: 30)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 13)
-        .background(rowBackground(item: item))
+        .padding(.trailing, 4)
+        .padding(.vertical, 11)
+        // Okunmamış noktası sol marja taşındı (layout'u itmez) — avatar sola yaslı
+        .overlay(alignment: .leading) {
+            if item.unreadCount > 0 {
+                Circle()
+                    .fill(Color(arenaHex: AppArenaPalette.cyan))
+                    .frame(width: 8, height: 8)
+                    .offset(x: -13)
+            }
+        }
+        .contentShape(Rectangle())
         .contextMenu {
             contextMenuContent(for: item)
         }
+    }
+
+    /// iMessage tarzı relative zaman: bugün → saat, dün → "Dün/Yesterday",
+    /// bu hafta → gün adı, daha eski → tarih. App diline göre.
+    func conversationTimeText(_ date: Date) -> String {
+        let cal = Calendar.current
+        let loc = Locale(identifier: appLanguageIsEnglish() ? "en_US" : "tr_TR")
+
+        if cal.isDateInToday(date) {
+            let f = DateFormatter(); f.locale = loc; f.dateFormat = "HH:mm"
+            return f.string(from: date)
+        }
+        if cal.isDateInYesterday(date) {
+            let f = DateFormatter(); f.locale = loc
+            f.doesRelativeDateFormatting = true; f.dateStyle = .medium; f.timeStyle = .none
+            return f.string(from: date)
+        }
+        let days = cal.dateComponents([.day], from: cal.startOfDay(for: date), to: cal.startOfDay(for: Date())).day ?? 0
+        if days < 7 {
+            let f = DateFormatter(); f.locale = loc; f.dateFormat = "EEEE"
+            return f.string(from: date)
+        }
+        let f = DateFormatter(); f.locale = loc; f.dateStyle = .short; f.timeStyle = .none
+        return f.string(from: date)
     }
 
     @ViewBuilder
@@ -786,51 +860,6 @@ private extension MessagesView {
                 Label(tr("mv_archive"), systemImage: "archivebox")
             }
         }
-    }
-
-    func rowBackground(item: MessagesHubItem) -> some View {
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(
-                LinearGradient(
-                    colors: [
-                        item.tint.opacity(item.unreadCount > 0 ? 0.090 : 0.060),
-                        Color(arenaHex: AppArenaPalette.purple).opacity(0.035),
-                        Color.white.opacity(0.035)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(
-                        item.unreadCount > 0
-                        ? item.tint.opacity(0.18)
-                        : Color.white.opacity(0.075),
-                        lineWidth: 1
-                    )
-            )
-            .shadow(color: Color.black.opacity(0.18), radius: 10, y: 5)
-    }
-
-    var headerCircleBackground: some View {
-        Circle()
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color.white.opacity(0.100),
-                        Color.black.opacity(0.26),
-                        Color.white.opacity(0.050)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay(
-                Circle()
-                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
-            )
-            .shadow(color: Color.black.opacity(0.28), radius: 14, y: 7)
     }
 
     var addFriendCTA: some View {
@@ -959,17 +988,6 @@ private extension MessagesView {
         }
     }
 
-    private func unreadBadge(_ count: Int) -> some View {
-        Text(count > 99 ? "99+" : "\(count)")
-            .font(.system(size: 10, weight: .black, design: .monospaced))
-            .foregroundStyle(.black)
-            .padding(.horizontal, count > 9 ? 7 : 6)
-            .frame(height: 24)
-            .background(
-                Capsule()
-                    .fill(Color(arenaHex: AppArenaPalette.gold))
-            )
-    }
 }
 
 // MARK: - Data Loading
@@ -1084,6 +1102,11 @@ private extension MessagesView {
     }
 
     func loadMessagesHubData() async {
+        // Önce yerel cache'ten anında doldur — ağ await'lerini beklerken liste boş
+        // kalmasın. "Her açtığımda tekrar yükleniyor" hissinin kök nedeni buydu:
+        // cache yüklemesi tüm network çağrılarının SONRASINA denk geliyordu.
+        loadCachedBackendConversations()
+
         await crewStore.loadCrews()
 
         for crew in crewStore.crews {
@@ -1114,8 +1137,6 @@ private extension MessagesView {
             currentUserID: currentUserID,
             modelContext: modelContext
         )
-
-        loadCachedBackendConversations()
 
         await refreshBackendConversations(reason: "initial_load")
         

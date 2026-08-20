@@ -170,10 +170,8 @@ struct HomeView: View {
         .sheet(isPresented: $showStreakRestorePaywall) {
             PaywallView(context: "streak_restore")
         }
-        .sheet(isPresented: $showMessages) {
-            NavigationStack {
-                MessagesView()
-            }
+        .fullScreenCover(isPresented: $showMessages) {
+            MessagesView()
         }
         .fullScreenCover(isPresented: $showUpdoAI, onDismiss: { aiSeedPrompt = nil }) {
             UpdoAIView(
@@ -324,21 +322,8 @@ private extension HomeView {
                     .foregroundStyle(tint)
                     .frame(width: 48, height: 48)
                     .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.105),
-                                        Color.white.opacity(0.050)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .stroke(Color.white.opacity(0.11), lineWidth: 1)
-                            )
+                        Color.clear
+                            .liquidGlass(in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                             .shadow(color: Color.black.opacity(0.24), radius: 14, y: 7)
                     )
 
@@ -2926,15 +2911,13 @@ struct StreakFlameBadge: View {
     }
 
     private func badgeBackground(glowOpacity: Double) -> some View {
+        // Liquid Glass (iOS 26+ .glassEffect / altında .ultraThinMaterial), üzerine
+        // seriye göre ısınan sıcak mercan tint + kehribar halka: cam ama "alev" kimliği korunur.
         RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(
-                LinearGradient(
-                    colors: [
-                        fCoral.opacity(isLit ? 0.16 : 0.05),
-                        Color.white.opacity(0.045)
-                    ],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                )
+            .fill(.clear)
+            .liquidGlass(
+                in: RoundedRectangle(cornerRadius: 18, style: .continuous),
+                tint: fCoral.opacity(isLit ? 0.20 : 0.06)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)

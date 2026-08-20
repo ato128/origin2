@@ -202,7 +202,7 @@ struct UpdoAIView: View {
                                     : .white.opacity(0.7)
                                 )
                                 .frame(width: 34, height: 34)
-                                .background(.ultraThinMaterial, in: Circle())
+                                .liquidGlass(in: Circle())
                                 .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
                         }
                         .buttonStyle(.plain)
@@ -269,7 +269,7 @@ struct UpdoAIView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.75))
                 .frame(width: 32, height: 32)
-                .background(.ultraThinMaterial, in: Circle())
+                .liquidGlass(in: Circle())
                 .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
         }
     }
@@ -280,7 +280,7 @@ struct UpdoAIView: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.white.opacity(0.55))
                 .frame(width: 32, height: 32)
-                .background(.ultraThinMaterial, in: Circle())
+                .liquidGlass(in: Circle())
                 .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
         }
     }
@@ -315,7 +315,7 @@ struct UpdoAIView: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 32)
-        .background(.ultraThinMaterial, in: Capsule())
+        .liquidGlass(in: Capsule())
         .overlay(Capsule().strokeBorder(UpdoTheme.border, lineWidth: 1))
     }
 
@@ -567,7 +567,7 @@ struct UpdoAIView: View {
                         }
                         .padding(.horizontal, 14)
                         .padding(.vertical, 12)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .liquidGlass(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .strokeBorder(UpdoTheme.border, lineWidth: 1)
@@ -659,7 +659,7 @@ struct UpdoAIView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 14)
                         .frame(height: 42)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 21, style: .continuous))
+                        .liquidGlass(in: RoundedRectangle(cornerRadius: 21, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 21, style: .continuous)
                                 .strokeBorder(UpdoTheme.border, lineWidth: 1)
@@ -675,7 +675,7 @@ struct UpdoAIView: View {
                             .font(.system(size: 15, weight: .bold))
                             .foregroundStyle(UpdoTheme.cyan)
                             .frame(width: 42, height: 42)
-                            .background(.ultraThinMaterial, in: Circle())
+                            .liquidGlass(in: Circle())
                             .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
                     }
                     .buttonStyle(.plain)
@@ -715,7 +715,7 @@ struct UpdoAIView: View {
                         .padding(.trailing, 4)
                         .padding(.bottom, 4)
                     }
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 21, style: .continuous))
+                    .liquidGlass(in: RoundedRectangle(cornerRadius: 21, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 21, style: .continuous)
                             .strokeBorder(UpdoTheme.border, lineWidth: 1)

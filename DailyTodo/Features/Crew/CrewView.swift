@@ -146,6 +146,16 @@ struct CrewView: View {
 
                 didLoad = true
 
+                // Cache-first: son bilinen crew listesini + arkadaşlıkları diskten
+                // ANINDA göster; ağ tazelemesi (aşağıda) SWR olarak sessizce üzerine
+                // yazar. Böylece Sosyal sekmesine her girişte liste boşalıp geri
+                // gelmez (kendi kendine yüklenip gitme / flicker fix). Her ikisi de
+                // yalnız boşken hidrate eder → taze veriyi eski cache ile ezmez.
+                crewStore.hydrateCrewListCacheIfNeeded()
+                if friendStore.friendships.isEmpty {
+                    friendStore.loadFriendshipsFromCache(currentUserID: userID)
+                }
+
                 // Heavy hydrate at most once per TTL window — realtime covers
                 // the gaps, so tab-hopping doesn't spam the backend.
                 if crewStore.shouldRunCrewTabHydrate() {

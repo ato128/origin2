@@ -51,7 +51,7 @@ extension CrewChatView {
                         .font(.system(size: 20, weight: .black))
                         .foregroundStyle(.white.opacity(0.95))
                         .frame(width: 42, height: 42)
-                        .background(crewChatCircleComposerBackground)
+                        .liquidGlass(in: Circle())
                 }
 
                 HStack(spacing: 10) {
@@ -79,7 +79,7 @@ extension CrewChatView {
                 }
                 .padding(.horizontal, 16)
                 .frame(height: 46)
-                .background(composerCapsuleBackground)
+                .liquidGlass(in: Capsule())
             }
             .padding(.horizontal, 16)
         }
@@ -172,20 +172,6 @@ extension CrewChatView {
         .buttonStyle(.plain)
         .disabled(!canSend)
         .animation(.easeOut(duration: 0.16), value: canSend)
-    }
-
-    // Composer kapsülü — CPU dostu opak (blur yok, aynı görünür).
-    var composerCapsuleBackground: some View {
-        Capsule()
-            .fill(Color(arenaHex: "#22232B"))
-            .overlay(Capsule().strokeBorder(UpdoTheme.border, lineWidth: 1))
-    }
-
-    // Cam-daire aksiyon butonu — CPU dostu opak.
-    var crewChatCircleComposerBackground: some View {
-        Circle()
-            .fill(Color(arenaHex: "#22232B"))
-            .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
     }
 
     func photoAttachmentPreview(image: UIImage) -> some View {

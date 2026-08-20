@@ -398,21 +398,8 @@ struct InsightsView: View {
                     .foregroundStyle(.white.opacity(0.85))
                     .frame(width: 46, height: 46)
                     .background(
-                        RoundedRectangle(cornerRadius: 17, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.090),
-                                        Color.white.opacity(0.050)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 17, style: .continuous)
-                                    .stroke(Color.white.opacity(0.11), lineWidth: 1)
-                            )
+                        Color.clear
+                            .liquidGlass(in: RoundedRectangle(cornerRadius: 17, style: .continuous))
                             .shadow(color: Color.black.opacity(0.22), radius: 12, y: 6)
                     )
             }

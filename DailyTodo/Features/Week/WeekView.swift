@@ -248,8 +248,8 @@ struct WeekView: View {
             .foregroundStyle(.white.opacity(0.9))
             .frame(width: 40, height: 40)
             .background(
-                Circle()
-                    .fill(Color.white.opacity(0.07))
+                Color.clear
+                    .liquidGlass(in: Circle())
                     .overlay(
                         Circle().stroke(
                             Color(arenaHex: AppArenaPalette.purple).opacity(0.45),
@@ -349,21 +349,8 @@ struct WeekView: View {
             .foregroundStyle(Color(arenaHex: AppArenaPalette.cyan))
             .frame(width: 40, height: 40)
             .background(
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.095),
-                                Color.white.opacity(0.045)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(
-                        Circle()
-                            .stroke(Color.white.opacity(0.11), lineWidth: 1)
-                    )
+                Color.clear
+                    .liquidGlass(in: Circle())
                     .shadow(color: Color.black.opacity(0.24), radius: 10, y: 6)
             )
     }

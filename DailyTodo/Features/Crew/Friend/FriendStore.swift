@@ -507,9 +507,20 @@ final class FriendStore: ObservableObject {
         let acceptedFriendships = friendships.filter { $0.status == "accepted" }
         let acceptedFriendshipIDs = Set(acceptedFriendships.map(\.id))
         let existingFriends = (try? modelContext.fetch(FetchDescriptor<Friend>())) ?? []
+        let existingOwned = existingFriends.filter {
+            $0.ownerUserID == currentUserID.uuidString && $0.backendFriendshipID != nil
+        }
+
+        // Flicker guard: `friendships` geçici olarak boşken (ağ hatası / boş cevap /
+        // henüz yüklenmedi) yereldeki arkadaşları TOPLU silme — liste boşalıp geri
+        // gelir (kendi kendine yüklenip gitme). Tekil unfriend'de accepted listesi
+        // dolu kalır, o durum aşağıdaki döngüde normal işlenir. Yalnız "hiç accepted
+        // yok ama yerelde arkadaş var" şüpheli durumunda bu turda silme atlanır.
+        let skipDeletions = acceptedFriendshipIDs.isEmpty && !existingOwned.isEmpty
 
         for localFriend in existingFriends {
-            if localFriend.ownerUserID == currentUserID.uuidString,
+            if !skipDeletions,
+               localFriend.ownerUserID == currentUserID.uuidString,
                let backendFriendshipID = localFriend.backendFriendshipID,
                !acceptedFriendshipIDs.contains(backendFriendshipID) {
                 modelContext.delete(localFriend)

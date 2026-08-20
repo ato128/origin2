@@ -483,14 +483,21 @@ private struct CrewHeaderIconButton: View {
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(emphasized ? .black : .white.opacity(0.82))
                     .frame(width: 44, height: 44)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(emphasized ? Color(arenaHex: CrewArenaPalette.appBlue) : Color.white.opacity(0.075))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .stroke(.white.opacity(0.10), lineWidth: 1)
-                            )
-                    )
+                    .background {
+                        if emphasized {
+                            // Birincil aksiyon ("+") — vurgulu mavi kalır (cam değil).
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color(arenaHex: CrewArenaPalette.appBlue))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(.white.opacity(0.10), lineWidth: 1)
+                                )
+                        } else {
+                            // İkincil chrome → Liquid Glass.
+                            Color.clear
+                                .liquidGlass(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                    }
 
                 if let badge {
                     Text(badge)

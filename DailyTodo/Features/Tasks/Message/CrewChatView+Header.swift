@@ -33,7 +33,8 @@ extension CrewChatView {
                         .font(.system(size: 19, weight: .black))
                         .foregroundStyle(.white)
                         .frame(width: 46, height: 46)
-                        .background(crewChatCircleBackground)
+                        .liquidGlass(in: Circle())
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
 
@@ -72,20 +73,26 @@ extension CrewChatView {
                     .padding(.leading, 8)
                     .padding(.trailing, 12)
                     .frame(height: 46)
-                    .background(crewChatCapsuleBackground)
+                    .liquidGlass(in: Capsule())
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
 
-                Button {
-                    showCrewInfo = true
-                } label: {
-                    Image(systemName: "ellipsis").accessibilityLabel(tr("a11y_more"))
-                        .font(.system(size: 19, weight: .black))
-                        .foregroundStyle(.white)
-                        .frame(width: 46, height: 46)
-                        .background(crewChatCircleBackground)
+                // Üç nokta kaldırıldı: crew'da canlı odak varsa focus pill görünür
+                // (dokununca yeni focus sistemine — FocusSessionManager join sheet'i —
+                // bağlanır), yoksa burası boş durur (crew bilgisine ortadaki isim
+                // pill'iyle ulaşılır).
+                if let session = activeFocusSession, session.is_active {
+                    Button {
+                        presentCrewFocusJoin(session: session)
+                    } label: {
+                        crewFocusHeaderPill(session: session)
+                    }
+                    .buttonStyle(.plain)
+                    .transition(.scale.combined(with: .opacity))
+                } else {
+                    Color.clear.frame(width: 46, height: 46)
                 }
-                .buttonStyle(.plain)
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)
@@ -191,18 +198,22 @@ extension CrewChatView {
         .padding(.top, 80)
     }
 
-    // Floating cam-daire — CPU dostu opak (blur yok, aynı görünür).
-    var crewChatCircleBackground: some View {
-        Circle()
-            .fill(Color(arenaHex: "#22232B"))
-            .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
-    }
-
-    // Floating cam-pill — CPU dostu opak.
-    var crewChatCapsuleBackground: some View {
-        Capsule()
-            .fill(Color(arenaHex: "#22232B"))
-            .overlay(Capsule().strokeBorder(UpdoTheme.border, lineWidth: 1))
+    // Sağ üstte üç noktanın yerine: canlı odak varken focus pill. Dokununca
+    // yeni focus sisteminin katılma sayfasını (CrewFocusInviteSheet) açar —
+    // kaç kişi odakta + Katıl orada; join → FocusSessionManager devralır.
+    func crewFocusHeaderPill(session: CrewFocusSessionDTO) -> some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(focusBannerAccent(session))
+                .frame(width: 7, height: 7)
+            Image(systemName: session.is_paused ? "pause.fill" : "timer")
+                .font(.system(size: 15, weight: .black))
+                .foregroundStyle(focusBannerAccent(session))
+        }
+        .padding(.horizontal, 13)
+        .frame(height: 46)
+        .liquidGlass(in: Capsule())
+        .accessibilityLabel(tr("a11y_more"))
     }
 }
 

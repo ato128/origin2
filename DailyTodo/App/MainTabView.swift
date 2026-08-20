@@ -513,7 +513,6 @@ struct HomeTabBar: View {
     @Binding var selectedTab: AppTab
 
     @Namespace private var namespace
-    @State private var pressedTab: AppTab?
 
     private let barHeight: CGFloat = 66
 
@@ -594,7 +593,6 @@ struct HomeTabBar: View {
     @ViewBuilder
     private func tabButton(_ tab: AppTab) -> some View {
         let isSelected = selectedTab == tab
-        let isPressed = pressedTab == tab
 
         Button {
             select(tab)
@@ -627,8 +625,8 @@ struct HomeTabBar: View {
                             ? AnyShapeStyle(activeIconGradient)
                             : AnyShapeStyle(Color.white.opacity(0.40))
                         )
-                        .scaleEffect(isPressed ? 0.84 : (isSelected ? 1.04 : 1.0))
-                        .animation(.spring(response: 0.25, dampingFraction: 0.72), value: isPressed)
+                        .scaleEffect(isSelected ? 1.04 : 1.0)
+                        .animation(.spring(response: 0.34, dampingFraction: 0.78), value: isSelected)
                 }
                 .frame(width: 34, height: 34)
 
@@ -649,40 +647,23 @@ struct HomeTabBar: View {
             .frame(height: 49)
             .background {
                 if isSelected {
+                    // Seçili sekme göstergesi artık gerçek Liquid Glass (iOS 26+
+                    // .glassEffect / altında .ultraThinMaterial). matchedGeometryEffect
+                    // ile sekmeler arasında kayar — "geçiş" bu cam pill.
                     RoundedRectangle(cornerRadius: 24.5, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(arenaHex: "#0A1220").opacity(0.98),
-                                    Color(arenaHex: "#0A1020").opacity(0.96),
-                                    Color(arenaHex: "#0B0716").opacity(0.98)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 24.5, style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            cyan.opacity(0.135),
-                                            blue.opacity(0.080),
-                                            violet.opacity(0.060)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
+                        .fill(.clear)
+                        .liquidGlass(
+                            in: RoundedRectangle(cornerRadius: 24.5, style: .continuous),
+                            tint: cyan.opacity(0.07)
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 24.5, style: .continuous)
                                 .stroke(
                                     LinearGradient(
                                         colors: [
-                                            Color.white.opacity(0.14),
-                                            cyan.opacity(0.14),
-                                            violet.opacity(0.09)
+                                            Color.white.opacity(0.16),
+                                            cyan.opacity(0.08),
+                                            Color.white.opacity(0.05)
                                         ],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
@@ -690,27 +671,13 @@ struct HomeTabBar: View {
                                     lineWidth: 1
                                 )
                         )
-                        .shadow(color: cyan.opacity(0.10), radius: 12, y: 5)
+                        .shadow(color: Color.black.opacity(0.28), radius: 12, y: 5)
                         .matchedGeometryEffect(id: "selected-tab-bg", in: namespace)
                 }
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    guard pressedTab != tab else { return }
-                    withAnimation(.spring(response: 0.22, dampingFraction: 0.70)) {
-                        pressedTab = tab
-                    }
-                }
-                .onEnded { _ in
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.76)) {
-                        pressedTab = nil
-                    }
-                }
-        )
         .animation(.spring(response: 0.42, dampingFraction: 0.82), value: selectedTab)
         .onboardingTabAnchor(tab)
     }

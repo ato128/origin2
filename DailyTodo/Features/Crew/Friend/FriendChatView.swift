@@ -135,6 +135,8 @@ struct FriendChatView: View {
 
     @State private var draftMessage: String = ""
     @State private var showFriendInfo = false
+    @ObservedObject private var socialStats = SocialStatsStore.shared
+    @State private var showFriendFocusSheet = false
     @State private var composerBarHeight: CGFloat = 90
     @State private var showCamera = false
     @State private var showFileImporter = false
@@ -244,7 +246,9 @@ struct FriendChatView: View {
             }
 
             floatingTopControls
+                .zIndex(1)
         }
+        .enableInteractivePopGesture()
     }
 
     private var chatMainView: some View {
@@ -252,10 +256,10 @@ struct FriendChatView: View {
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 composerBar
             }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                isComposerFocused = false
-            }
+            // NOT: eskiden burada tüm ekranı kaplayan .onTapGesture (klavye kapatma)
+            // vardı; geri butonu + kişi pill'inin tap'lerini ve scroll'u çalıyordu.
+            // Klavye zaten messagesList'te .scrollDismissesKeyboard(.interactively)
+            // ile kapanıyor.
             .navigationBarBackButtonHidden(true)
             .toolbar(.hidden, for: .navigationBar)
     }
@@ -266,6 +270,15 @@ struct FriendChatView: View {
                 NavigationStack {
                     FriendChatInfoView(friend: friend)
                 }
+            }
+            .sheet(isPresented: $showFriendFocusSheet) {
+                FriendFocusJoinSheet(
+                    friendName: friend.name,
+                    friendColor: hexColor(friend.colorHex),
+                    onJoin: joinFriendFocus
+                )
+                .presentationDetents([.height(320)])
+                .presentationDragIndicator(.visible)
             }
             .fileImporter(
                 isPresented: $showFileImporter,
@@ -318,7 +331,7 @@ struct FriendChatView: View {
                     }
                 }
             }
-            .alert("Bilgi", isPresented: $showAttachmentAlert) {
+            .alert(tr("friend_info_alert_title"), isPresented: $showAttachmentAlert) {
                 Button(tr("common_ok"), role: .cancel) { }
             } message: {
                 Text(attachmentAlertText)
@@ -340,6 +353,15 @@ struct FriendChatView: View {
             }
             .task {
                 await syncChatBackendFriendshipIfNeeded()
+            }
+            .task(id: friend.backendUserID) {
+                // Karşı tarafın "odakta" durumunu paylaşılan istatistikten canlı
+                // tut (store 30 sn kendi içinde throttle'lar; Pro değilse no-op).
+                guard let uid = friend.backendUserID else { return }
+                while !Task.isCancelled {
+                    socialStats.refresh(userIDs: [uid], isPro: SubscriptionManager.shared.isPro)
+                    try? await Task.sleep(nanoseconds: 20_000_000_000)
+                }
             }
             .onDisappear {
                             Log.debug("🔴 CHAT DISAPPEAR")
@@ -370,7 +392,7 @@ struct FriendChatView: View {
                         .onReceive(NotificationCenter.default.publisher(for: .chatBackendTyping)) { note in
                             handleIncomingTyping(note)
                         }
-                        .alert("Mikrofon izni gerekli", isPresented: $showMicPermissionAlert) {
+                        .alert(tr("fc_mic_permission_title"), isPresented: $showMicPermissionAlert) {
                 Button(tr("settings_title")) {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
                         UIApplication.shared.open(url)
@@ -415,7 +437,8 @@ private extension FriendChatView {
                         .font(.system(size: 19, weight: .black))
                         .foregroundStyle(.white)
                         .frame(width: 46, height: 46)
-                        .background(arenaCircleBackground)
+                        .liquidGlass(in: Circle())
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
 
@@ -469,20 +492,25 @@ private extension FriendChatView {
                     .padding(.leading, 8)
                     .padding(.trailing, 12)
                     .frame(height: 46)
-                    .background(arenaCapsuleBackground)
+                    .liquidGlass(in: Capsule())
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
 
-                Button {
-                    showFriendInfo = true
-                } label: {
-                    Image(systemName: "ellipsis").accessibilityLabel(tr("a11y_more"))
-                        .font(.system(size: 19, weight: .black))
-                        .foregroundStyle(.white)
-                        .frame(width: 46, height: 46)
-                        .background(arenaCircleBackground)
+                // Üç nokta kaldırıldı: karşı taraf odaktaysa focus pill görünür,
+                // değilse burası boş durur (arkadaş bilgisine ortadaki isim
+                // pill'ine dokunarak ulaşılır).
+                if friendIsFocusing {
+                    Button {
+                        showFriendFocusSheet = true
+                    } label: {
+                        focusHeaderPill
+                    }
+                    .buttonStyle(.plain)
+                    .transition(.scale.combined(with: .opacity))
+                } else {
+                    Color.clear.frame(width: 46, height: 46)
                 }
-                .buttonStyle(.plain)
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)
@@ -511,6 +539,27 @@ private extension FriendChatView {
             presence: friendPresence,
             locale: locale
         )
+    }
+
+    // Arkadaş şu an bir odak seansındaysa (paylaşılan sosyal istatistikten).
+    private var friendIsFocusing: Bool {
+        socialStats.stat(for: friend.backendUserID)?.isFocusing == true
+    }
+
+    // Sağ üstte üç noktanın yerine: karşı taraf odaktayken canlı focus pill.
+    private var focusHeaderPill: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(FriendChatArenaPalette.green)
+                .frame(width: 7, height: 7)
+            Image(systemName: "timer")
+                .font(.system(size: 15, weight: .black))
+                .foregroundStyle(FriendChatArenaPalette.green)
+        }
+        .padding(.horizontal, 13)
+        .frame(height: 46)
+        .liquidGlass(in: Capsule())
+        .accessibilityLabel(tr("a11y_more"))
     }
 }
 
@@ -959,7 +1008,7 @@ private extension FriendChatView {
                         .font(.system(size: 20, weight: .black))
                         .foregroundStyle(.white.opacity(0.95))
                         .frame(width: 42, height: 42)
-                        .background(arenaCircleBackground)
+                        .liquidGlass(in: Circle())
                 }
 
                 HStack(spacing: 10) {
@@ -1047,7 +1096,7 @@ private extension FriendChatView {
                 }
                 .padding(.horizontal, 16)
                 .frame(height: 46)
-                .background(arenaCapsuleBackground)
+                .liquidGlass(in: Capsule())
             }
             .padding(.horizontal, 16)
         }
@@ -1079,20 +1128,6 @@ private extension FriendChatView {
 // MARK: - Helpers
 
 private extension FriendChatView {
-    // Floating cam-daire — CPU dostu opak (blur yok, aynı görünür).
-    var arenaCircleBackground: some View {
-        Circle()
-            .fill(Color(arenaHex: "#22232B"))
-            .overlay(Circle().strokeBorder(UpdoTheme.border, lineWidth: 1))
-    }
-
-    // Floating cam-pill — CPU dostu opak.
-    var arenaCapsuleBackground: some View {
-        Capsule()
-            .fill(Color(arenaHex: "#22232B"))
-            .overlay(Capsule().strokeBorder(UpdoTheme.border, lineWidth: 1))
-    }
-    
     var chatHeaderScrim: some View {
         // Hafif fade: yüzen header elemanları kendi material'ini taşıyor,
         // mesajlar arkalarından akıyor — ağır siyah blok yok (iMessage hissi).
@@ -1110,14 +1145,6 @@ private extension FriendChatView {
 
             Spacer(minLength: 0)
         }
-    }
-    
-    var glassCircleBackground: some View {
-        arenaCircleBackground
-    }
-    
-    var glassCapsuleBackground: some View {
-        arenaCapsuleBackground
     }
     
     func senderDisplayName() -> String {
@@ -2284,7 +2311,7 @@ private extension FriendChatView {
                         )
                     }
                 }
-                .alert("Bilgi", isPresented: $showImageSaveAlert) {
+                .alert(tr("friend_info_alert_title"), isPresented: $showImageSaveAlert) {
                     Button(tr("common_ok"), role: .cancel) { }
                 } message: {
                     Text(imageSaveAlertText)
@@ -3752,6 +3779,111 @@ private extension FriendChatView {
                     Log.debug("❌ CHAT CACHE SEEN UPDATE ERROR:", error.localizedDescription)
                 }
             }
+}
+
+// MARK: - Friend Focus Join
+
+private extension FriendChatView {
+    /// "Katıl" → arkadaşa bağlı 25 dk'lık kişisel odak seansı başlatır, chat'i kapatır.
+    func joinFriendFocus() {
+        showFriendFocusSheet = false
+        Task { @MainActor in
+            _ = await FocusSessionManager.shared.startRequestedSession(
+                mode: .personal,
+                durationMinutes: 25,
+                goal: .study,
+                style: .silent,
+                friendUserID: friend.backendUserID,
+                friendName: friend.name
+            )
+            dismiss()
+        }
+    }
+}
+
+/// Arkadaş odaktayken sağ üstteki pill'e dokununca açılan küçük sayfa:
+/// kaç kişi odakta + "Katıl".
+private struct FriendFocusJoinSheet: View {
+    let friendName: String
+    let friendColor: Color
+    let onJoin: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var pulse = false
+
+    private var isEnglish: Bool { appLanguageIsEnglish() }
+    private let live = Color(arenaHex: "#A3E635")
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                Circle()
+                    .fill(live.opacity(0.16))
+                    .frame(width: 76, height: 76)
+                    .scaleEffect(pulse ? 1.08 : 0.94)
+
+                Circle()
+                    .stroke(friendColor.opacity(0.5), lineWidth: 2)
+                    .frame(width: 76, height: 76)
+
+                Image(systemName: "timer")
+                    .font(.system(size: 30, weight: .black))
+                    .foregroundStyle(live)
+            }
+            .padding(.top, 26)
+
+            Text(isEnglish ? "\(friendName) is focusing" : "\(friendName) odakta")
+                .font(.system(size: 20, weight: .black))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+                .padding(.top, 16)
+                .padding(.horizontal, 20)
+
+            HStack(spacing: 6) {
+                Circle().fill(live).frame(width: 6, height: 6)
+                Text(isEnglish ? "1 person focusing right now" : "Şu an 1 kişi odakta")
+                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+            .padding(.top, 6)
+
+            Spacer(minLength: 18)
+
+            Button(action: onJoin) {
+                HStack(spacing: 8) {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 15, weight: .black))
+                    Text(isEnglish ? "Join" : "Katıl")
+                        .font(.system(size: 16, weight: .black))
+                }
+                .foregroundStyle(.black)
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(Capsule().fill(live))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 20)
+
+            Button {
+                dismiss()
+            } label: {
+                Text(isEnglish ? "Not now" : "Şimdi değil")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 12)
+            .padding(.bottom, 22)
+        }
+        .frame(maxWidth: .infinity)
+        .background(Color(arenaHex: "#0E1420").ignoresSafeArea())
+        .preferredColorScheme(.dark)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
+                pulse = true
+            }
+        }
+    }
 }
 
     

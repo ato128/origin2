@@ -30,9 +30,6 @@ struct CrewChatView: View {
     @State var safetyInfoText: String?
     @State var isProcessingSafety = false
 
-   
-    @State var focusRoomSession: CrewFocusSessionDTO?
-
     @State var typingStopTask: Task<Void, Never>?
     @State var isCurrentlyTyping = false
     @State var lastTypingSentAt: Date = .distantPast
@@ -93,9 +90,9 @@ struct CrewChatView: View {
             VStack(spacing: 8) {
                 floatingTopControls
 
-                if let activeFocusSession {
-                    focusLiveBanner(session: activeFocusSession)
-                } else if let typingText {
+                // Odak kartı kaldırıldı: canlı odak artık sağ üstteki focus pill'de
+                // (dokununca odak odasını açar). Burada yalnız "yazıyor…" göster.
+                if let typingText {
                     typingBanner(text: typingText)
                 }
             }
@@ -108,10 +105,12 @@ struct CrewChatView: View {
                 .padding(.top, 6)
                 .background(Color.clear)
         }
-        .contentShape(Rectangle())
-        .hideKeyboardOnTap()
+        // NOT: tüm body'de .hideKeyboardOnTap() vardı; geri/crew pill/focus pill
+        // tap'lerini ve scroll'u çalıyordu. Klavye artık messagesList'te
+        // .scrollDismissesKeyboard(.interactively) ile kapanıyor.
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
+        .enableInteractivePopGesture()
         .onAppear {
             guard !didInitialLoad else { return }
             didInitialLoad = true
@@ -250,16 +249,8 @@ struct CrewChatView: View {
             }
         }
        
-        .sheet(item: $focusRoomSession) { openedSession in
-            NavigationStack {
-                CrewFocusRoomBackendView(
-                    crew: crew,
-                    sessionDTO: openedSession
-                )
-                .environmentObject(crewStore)
-                .environmentObject(session)
-            }
-        }
+        // Eski CrewFocusRoomBackendView odası emekliye ayrıldı: focus pill artık
+        // yeni focus sistemine (CrewFocusInviteSheet → FocusSessionManager) bağlanıyor.
         .onChange(of: crewStore.activeFocusSessionByCrew[crew.id]) { _, newValue in
             localActiveFocusSession = newValue
         }

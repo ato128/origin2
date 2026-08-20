@@ -190,3 +190,73 @@ final class HapticManager {
     }
 }
 
+// MARK: - Liquid Glass
+
+extension View {
+    /// Apple **Liquid Glass** (`.glassEffect`) on iOS 26+, system `.ultraThinMaterial`
+    /// fallback below. Uses ONLY system-rendered materials (GPU/Metal) — the same
+    /// optimized path Apple's own UI rides, so there is no CPU cost from hand-drawn
+    /// blur. Prefer this over custom LinearGradient "faux glass".
+    @ViewBuilder
+    func liquidGlass<S: InsettableShape>(in shape: S, tint: Color? = nil) -> some View {
+        if #available(iOS 26.0, *) {
+            if let tint {
+                glassEffect(.regular.tint(tint), in: shape)
+            } else {
+                glassEffect(.regular, in: shape)
+            }
+        } else {
+            background(.ultraThinMaterial, in: shape)
+                .overlay(shape.strokeBorder(UpdoTheme.border, lineWidth: 1))
+        }
+    }
+}
+
+// MARK: - Interactive Pop (swipe-to-go-back on nav-bar-hidden screens)
+
+/// When a screen hides the navigation bar / back button, SwiftUI (UIKit under the
+/// hood) also disables the system left-edge "swipe back" gesture. Our chat screens
+/// hide the bar for the floating glass header, which left users with only the small
+/// custom back button. This re-enables the native edge swipe so a swipe from the
+/// left always goes back — independent of where the finger lands on the header.
+private struct InteractivePopGestureEnabler: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> Controller { Controller() }
+    func updateUIViewController(_ uiViewController: Controller, context: Context) {}
+
+    final class Controller: UIViewController, UIGestureRecognizerDelegate {
+        override func didMove(toParent parent: UIViewController?) {
+            super.didMove(toParent: parent)
+            enable()
+        }
+
+        override func viewWillAppear(_ animated: Bool) {
+            super.viewWillAppear(animated)
+            enable()
+        }
+
+        private func enable() {
+            guard let nav = navigationController else { return }
+            nav.interactivePopGestureRecognizer?.isEnabled = true
+            nav.interactivePopGestureRecognizer?.delegate = self
+        }
+
+        // Only allow the swipe when there is actually something to pop (so it is a
+        // no-op when the chat is the root of a modally-presented NavigationStack).
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            (navigationController?.viewControllers.count ?? 0) > 1
+        }
+    }
+}
+
+extension View {
+    /// Re-enables the native left-edge swipe-to-go-back gesture on screens that hide
+    /// the navigation bar. Safe no-op when there is nothing to pop.
+    func enableInteractivePopGesture() -> some View {
+        background(
+            InteractivePopGestureEnabler()
+                .frame(width: 0, height: 0)
+                .allowsHitTesting(false)
+        )
+    }
+}
+
