@@ -429,7 +429,7 @@ private extension ActiveFocusView {
                     }
                 } label: {
                     HStack(spacing: 6) {
-                        Text(showParticipantsExpanded ? "DARALT" : "DETAY")
+                        Text(appLanguageIsEnglish() ? (showParticipantsExpanded ? "COLLAPSE" : "DETAIL") : (showParticipantsExpanded ? "DARALT" : "DETAY"))
                             .font(.system(size: 9, weight: .black, design: .monospaced))
 
                         Image(systemName: showParticipantsExpanded ? "chevron.up" : "chevron.down")

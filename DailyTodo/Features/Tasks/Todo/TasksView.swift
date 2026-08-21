@@ -610,7 +610,7 @@ private extension TasksView {
             Button(role: .destructive) {
                 deleteTask(task)
             } label: {
-                Label("Sil", systemImage: "trash")
+                Label(appLanguageIsEnglish() ? "Delete" : "Sil", systemImage: "trash")
             }
         }
     }

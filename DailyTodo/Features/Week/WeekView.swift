@@ -1071,7 +1071,7 @@ struct WeekView: View {
             Button(role: .destructive) {
                 delete(event)
             } label: {
-                Label("Sil", systemImage: "trash")
+                Label(appLanguageIsEnglish() ? "Delete" : "Sil", systemImage: "trash")
             }
         }
         .opacity(entranceShown ? 1 : 0)

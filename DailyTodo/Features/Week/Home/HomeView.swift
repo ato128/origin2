@@ -1231,7 +1231,7 @@ private extension HomeView {
                         showTimelineDetail = true
                     } label: {
                         HStack(spacing: 5) {
-                            Text("DETAY")
+                            Text(appLanguageIsEnglish() ? "DETAIL" : "DETAY")
                                 .font(.system(size: 9, weight: .black, design: .monospaced))
                                 .tracking(1.4)
 
