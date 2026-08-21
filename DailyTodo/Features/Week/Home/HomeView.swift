@@ -1279,7 +1279,7 @@ private extension HomeView {
                         .font(.system(size: focusSession.isSessionActive ? 19 : 21, weight: .black, design: .rounded))
                         .foregroundStyle(.white)
 
-                    Text("etkinlik")
+                    Text(appLanguageIsEnglish() ? "events" : "etkinlik")
                         .font(.system(size: 12, weight: .black))
                         .foregroundStyle(.white.opacity(0.62))
 
@@ -1467,7 +1467,7 @@ private extension HomeView {
             return HeroState(
                 eyebrow: tr("hv_now_live"),
                 title: active.title,
-                italicLine: "aktif ders",
+                italicLine: appLanguageIsEnglish() ? "active course" : "aktif ders",
                 metaItems: locationAndTimeMeta(
                     event: active,
                     extra: tr("rel_min_left", remaining)

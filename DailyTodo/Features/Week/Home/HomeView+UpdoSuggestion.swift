@@ -545,12 +545,12 @@ extension HomeView {
         let onFire = suggestion.isChallenge && challengeAccepted
         let accent = Color(arenaHex: onFire ? "#F97316" : AppArenaPalette.gold)
 
-        VStack(alignment: .leading, spacing: 11) {
-            HStack(spacing: 11) {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
                 ZStack {
-                    Circle().fill(accent.opacity(0.16)).frame(width: 38, height: 38)
+                    Circle().fill(accent.opacity(0.16)).frame(width: 32, height: 32)
                     Image(systemName: onFire ? "flame.fill" : (suggestion.isChallenge ? "bolt.fill" : "sparkles"))
-                        .font(.system(size: 16, weight: .bold))
+                        .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(accent)
                 }
 
@@ -606,7 +606,7 @@ extension HomeView {
                 }
             }
         }
-        .padding(13)
+        .padding(11)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(suggestionBackground(onFire: onFire))
         .opacity(pageAppeared ? 1 : 0)
@@ -623,20 +623,31 @@ extension HomeView {
         let tint = Color(arenaHex: complete ? "#A3E635" : "#F97316")
         let key = kind == .focus ? "ai_sg_ch_progress_focus" : "ai_sg_ch_progress_tasks"
 
+        // Complete → a compact one-line badge (no full-width bar, saves height).
+        // In progress → the label + a thin progress bar.
         return VStack(alignment: .leading, spacing: 5) {
-            Text(complete ? tr("ai_sg_ch_done") : tr(key, challengeProgress, target))
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                .foregroundStyle(tint)
-
-            GeometryReader { geo in
-                let frac = target > 0 ? CGFloat(challengeProgress) / CGFloat(target) : 0
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.08))
-                    Capsule().fill(tint).frame(width: max(4, geo.size.width * min(frac, 1)))
+            HStack(spacing: 5) {
+                if complete {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(tint)
                 }
+                Text(complete ? tr("ai_sg_ch_done") : tr(key, challengeProgress, target))
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundStyle(tint)
             }
-            .frame(height: 4)
-            .animation(.spring(response: 0.5, dampingFraction: 0.82), value: challengeProgress)
+
+            if !complete {
+                GeometryReader { geo in
+                    let frac = target > 0 ? CGFloat(challengeProgress) / CGFloat(target) : 0
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.white.opacity(0.08))
+                        Capsule().fill(tint).frame(width: max(4, geo.size.width * min(frac, 1)))
+                    }
+                }
+                .frame(height: 4)
+                .animation(.spring(response: 0.5, dampingFraction: 0.82), value: challengeProgress)
+            }
         }
     }
 

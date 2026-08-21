@@ -601,7 +601,7 @@ struct WeekView: View {
 
                 if let active = active {
                     let left = max(0, (active.startMinute + active.durationMinute) - now)
-                    Text("\(left) DK KALDI")
+                    Text(appLanguageIsEnglish() ? "\(left) MIN LEFT" : "\(left) DK KALDI")
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .tracking(0.6)
                         .foregroundStyle(Color(arenaHex: AppArenaPalette.coral))
@@ -659,7 +659,9 @@ struct WeekView: View {
         let completed = completedCount
         let total = eventsForCurrentDate.count
         let dur = durationText(totalMinutes)
-        return "\(completed)/\(total) ders · \(dur) toplam"
+        return appLanguageIsEnglish()
+            ? "\(completed)/\(total) class · \(dur) total"
+            : "\(completed)/\(total) ders · \(dur) toplam"
     }
 
     private func isCurrentHourMarker(_ hour: Int) -> Bool {
@@ -830,7 +832,7 @@ struct WeekView: View {
                         .font(.system(size: 13, weight: .black, design: .monospaced))
                         .foregroundStyle(.white.opacity(0.42))
 
-                    Text("\(durationMin)dk")
+                    Text("\(durationMin)\(appLanguageIsEnglish() ? "min" : "dk")")
                         .font(.system(size: 9, weight: .black, design: .monospaced))
                         .foregroundStyle(.white.opacity(0.28))
                 }
@@ -851,7 +853,7 @@ struct WeekView: View {
                     Image(systemName: "plus").accessibilityLabel(tr("common_add"))
                         .font(.system(size: 9, weight: .black))
 
-                    Text("EKLE")
+                    Text(appLanguageIsEnglish() ? "ADD" : "EKLE")
                         .font(.system(size: 9, weight: .black, design: .monospaced))
                         .tracking(0.6)
                 }
@@ -898,7 +900,7 @@ struct WeekView: View {
                         .font(.system(size: 16, weight: .black))
                         .foregroundStyle(.white)
 
-                    Text("Yeni ders veya etkinlik ekle")
+                    Text(appLanguageIsEnglish() ? "Add a class or event" : "Yeni ders veya etkinlik ekle")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.45))
                 }
@@ -907,7 +909,7 @@ struct WeekView: View {
                     Image(systemName: "plus").accessibilityLabel(tr("common_add"))
                         .font(.system(size: 11, weight: .black))
 
-                    Text("EKLE")
+                    Text(appLanguageIsEnglish() ? "ADD" : "EKLE")
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .tracking(0.8)
                 }
@@ -965,7 +967,7 @@ struct WeekView: View {
                         .font(.system(size: 13, weight: .black, design: .monospaced))
                         .foregroundStyle(isActive ? Color(arenaHex: AppArenaPalette.coral) : .white.opacity(isPast ? 0.55 : 0.92))
 
-                    Text("\(event.durationMinute)dk")
+                    Text("\(event.durationMinute)\(appLanguageIsEnglish() ? "min" : "dk")")
                         .font(.system(size: 9, weight: .black, design: .monospaced))
                         .foregroundStyle(.white.opacity(isPast ? 0.32 : 0.45))
                 }
@@ -1028,7 +1030,7 @@ struct WeekView: View {
                         Image(systemName: "arrow.triangle.2.circlepath")
                             .font(.system(size: 8, weight: .black))
 
-                        Text("TEKRAR")
+                        Text(appLanguageIsEnglish() ? "REPEAT" : "TEKRAR")
                             .font(.system(size: 8, weight: .black, design: .monospaced))
                             .tracking(0.4)
                     }
@@ -1247,8 +1249,9 @@ private extension WeekView {
     var hourSuffix: String {
         let m = totalMinutes % 60
         if totalMinutes == 0 { return "—" }
-        if m == 0 { return "sa" }
-        return "sa \(m)"
+        let hUnit = appLanguageIsEnglish() ? "h" : "sa"
+        if m == 0 { return hUnit }
+        return "\(hUnit) \(m)"
     }
 
     /// "1h30" gibi compact "1sa30dk" yerine
@@ -1256,9 +1259,10 @@ private extension WeekView {
         let h = totalMinutes / 60
         let m = totalMinutes % 60
         if totalMinutes == 0 { return "0" }
-        if h == 0 { return "\(m)dk" }
-        if m == 0 { return "\(h)sa" }
-        return "\(h)s\(m)"
+        let en = appLanguageIsEnglish()
+        if h == 0 { return "\(m)\(en ? "min" : "dk")" }
+        if m == 0 { return "\(h)\(en ? "h" : "sa")" }
+        return "\(h)\(en ? "h" : "s")\(m)"
     }
 
     var durationCompactLabel: String {
@@ -1453,9 +1457,10 @@ private extension WeekView {
     func durationText(_ minutes: Int) -> String {
         let h = minutes / 60
         let m = minutes % 60
-        if h == 0 { return "\(m) dk" }
-        if m == 0 { return "\(h) sa" }
-        return "\(h)sa \(m)dk"
+        let en = appLanguageIsEnglish()
+        if h == 0 { return "\(m) \(en ? "min" : "dk")" }
+        if m == 0 { return "\(h) \(en ? "h" : "sa")" }
+        return en ? "\(h)h \(m)m" : "\(h)sa \(m)dk"
     }
 
     func dateKey(_ date: Date) -> String {

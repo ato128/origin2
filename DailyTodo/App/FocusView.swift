@@ -562,9 +562,9 @@ private extension FocusView {
 
     var durationRow: some View {
         HStack(spacing: 10) {
-            durationChip(.short, text: "15 dk")
-            durationChip(.medium, text: "25 dk")
-            durationChip(.long, text: "45 dk")
+            durationChip(.short, text: appLanguageIsEnglish() ? "15 min" : "15 dk")
+            durationChip(.medium, text: appLanguageIsEnglish() ? "25 min" : "25 dk")
+            durationChip(.long, text: appLanguageIsEnglish() ? "45 min" : "45 dk")
             customDurationChip
         }
     }
@@ -585,7 +585,7 @@ private extension FocusView {
         Button {
             showCustomDurationSheet = true
         } label: {
-            Text(selectedPreset == .custom ? "\(customMinutes) dk" : tr("wv_custom"))
+            Text(selectedPreset == .custom ? "\(customMinutes) \(appLanguageIsEnglish() ? "min" : "dk")" : tr("wv_custom"))
                 .editorialDurationChip(selected: selectedPreset == .custom, accent: selectedModeAccent)
         }
         .buttonStyle(.plain)
@@ -1724,11 +1724,12 @@ private extension FocusView {
     }
 
     var durationText: String {
+        let u = appLanguageIsEnglish() ? "min" : "dk"
         switch selectedPreset {
-        case .short: return "15 dk"
-        case .medium: return "25 dk"
-        case .long: return "45 dk"
-        case .custom: return "\(customMinutes) dk"
+        case .short: return "15 \(u)"
+        case .medium: return "25 \(u)"
+        case .long: return "45 \(u)"
+        case .custom: return "\(customMinutes) \(u)"
         }
     }
 
