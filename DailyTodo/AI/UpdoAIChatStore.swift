@@ -68,41 +68,54 @@ final class UpdoAIChatStore: ObservableObject {
 
         do {
             let usesBYO = BYOKeyStore.shared.readKey() != nil
-            let replyText: String
+            var replyText = ""
 
             if usesBYO {
                 // BYO key path stays on the non-streaming endpoint (the stream
                 // endpoint uses our own OpenAI key). Typewriter-reveal the result.
-                let (fullText, tool) = try await AIService.shared.coachChat(
-                    system: contextPrompt, messages: history, maxTokens: 300
+                replyText = try await sendNonStreaming(
+                    contextPrompt: contextPrompt, history: history, credits: credits, onTool: onTool
                 )
-                credits.noteMessageSent()
-                if let tool {
-                    replyText = onTool(tool)
-                } else {
-                    guard !fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                        throw AIServiceError.invalidResponse
-                    }
-                    replyText = fullText
-                }
-                await revealReply(replyText)
-                streamingText = ""
             } else {
                 // Real token-by-token streaming (OpenAI-first via our key). The
                 // chat renders `streamingText` live as deltas arrive.
                 streamingText = ""
                 var toolToApply: AIToolCall? = nil
-                for try await event in AIService.shared.coachChatStream(
-                    system: contextPrompt, messages: history, maxTokens: 300
-                ) {
-                    switch event {
-                    case .delta(let chunk):
-                        streamingText += chunk
-                    case .tool(let tool):
-                        toolToApply = tool
-                    case .done:
-                        break
+                var receivedAny = false
+                do {
+                    for try await event in AIService.shared.coachChatStream(
+                        system: contextPrompt, messages: history, maxTokens: 300
+                    ) {
+                        switch event {
+                        case .delta(let chunk):
+                            receivedAny = true
+                            streamingText += chunk
+                        case .tool(let tool):
+                            receivedAny = true
+                            toolToApply = tool
+                        case .done:
+                            break
+                        }
                     }
+                } catch let streamError {
+                    // If the stream endpoint is unavailable (e.g. backend not yet
+                    // deployed → 404/5xx, or a transport error) and nothing was
+                    // produced, fall back to the non-streaming coach so chat keeps
+                    // working. Real quota/rate limits must surface, not retry.
+                    guard !receivedAny, Self.isStreamFallbackEligible(streamError) else {
+                        throw streamError
+                    }
+                    streamingText = ""
+                    replyText = try await sendNonStreaming(
+                        contextPrompt: contextPrompt, history: history, credits: credits, onTool: onTool
+                    )
+                    let reply = AIMessage(role: "assistant", text: replyText, timestamp: .now)
+                    messages.append(reply)
+                    lastPreviewText = replyText
+                    UserDefaults.standard.set(replyText, forKey: previewKey)
+                    persist()
+                    isSending = false
+                    return
                 }
 
                 // Only deduct credits on success (optimistic; backend is truth).
@@ -153,6 +166,47 @@ final class UpdoAIChatStore: ObservableObject {
         }
 
         isSending = false
+    }
+
+    /// Non-streaming coach call: used for BYO keys and as the fallback when the
+    /// streaming endpoint is unavailable. Applies credits + typewriter-reveals;
+    /// the caller commits the returned reply. Throws on quota/rate/blank.
+    private func sendNonStreaming(
+        contextPrompt: String,
+        history: [[String: String]],
+        credits: DailyCreditsManager,
+        onTool: @MainActor (AIToolCall) -> String
+    ) async throws -> String {
+        let (fullText, tool) = try await AIService.shared.coachChat(
+            system: contextPrompt, messages: history, maxTokens: 300
+        )
+        credits.noteMessageSent()
+        let replyText: String
+        if let tool {
+            replyText = onTool(tool)
+        } else {
+            guard !fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw AIServiceError.invalidResponse
+            }
+            replyText = fullText
+        }
+        await revealReply(replyText)
+        streamingText = ""
+        return replyText
+    }
+
+    /// A streaming failure is "endpoint unavailable" (backend not deployed yet,
+    /// 404/5xx, transport) → fall back to non-streaming. A real quota/rate limit
+    /// must surface to the user instead of silently retrying.
+    private static func isStreamFallbackEligible(_ error: Error) -> Bool {
+        switch error {
+        case AIServiceError.insufficientCredits,
+             AIServiceError.dailyFreeLimitReached,
+             AIServiceError.rateLimited:
+            return false
+        default:
+            return true
+        }
     }
 
     /// Reveals `full` word-by-word into `streamingText` for a live typing feel.
