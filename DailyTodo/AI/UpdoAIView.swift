@@ -465,7 +465,9 @@ struct UpdoAIView: View {
                 if sending { withAnimation(.easeOut(duration: 0.22)) { proxy.scrollTo("bottom", anchor: .bottom) } }
             }
             .onChange(of: chatStore.streamingText) { _, text in
-                if !text.isEmpty { withAnimation(.easeOut(duration: 0.12)) { proxy.scrollTo("typing", anchor: .bottom) } }
+                // Instant (non-animated) follow while streaming — animating the
+                // scroll on every token was the main source of the in-chat stutter.
+                if !text.isEmpty { proxy.scrollTo("typing", anchor: .bottom) }
             }
         }
     }
@@ -577,7 +579,11 @@ struct UpdoAIView: View {
             if chatStore.streamingText.isEmpty {
                 TypingIndicatorBubble()
             } else {
-                richText(chatStore.streamingText)
+                // Plain Text while streaming — the reply arrives token-by-token, so
+                // re-parsing Markdown on every update froze the chat. The coach is
+                // instructed to emit plain text anyway; the committed messageRow
+                // still uses richText (parsed once, cached).
+                Text(chatStore.streamingText)
                     .font(.body)
                     .lineSpacing(2)
                     .foregroundStyle(.primary)
@@ -911,14 +917,24 @@ struct UpdoAIView: View {
 
     /// Renders `**bold**` / `*italic*` inline markdown instead of showing the raw
     /// asterisks; falls back to plain text when parsing fails. Newlines preserved.
+    /// Markdown-rendered text, memoized. Any change to `streamingText` re-evaluates
+    /// this view's body, which re-runs `richText` for every visible message — so
+    /// parsing Markdown live (during streaming) turned the message list into an
+    /// O(messages × tokens) cost and froze the chat. Committed message text is
+    /// immutable, so caching by string makes those re-evals cache hits.
+    private static var richTextCache: [String: AttributedString] = [:]
+
     private func richText(_ s: String) -> Text {
-        if let attr = try? AttributedString(
+        if let cached = Self.richTextCache[s] { return Text(cached) }
+        guard let attr = try? AttributedString(
             markdown: s,
             options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-        ) {
-            return Text(attr)
+        ) else {
+            return Text(s)
         }
-        return Text(s)
+        if Self.richTextCache.count > 300 { Self.richTextCache.removeAll(keepingCapacity: true) }
+        Self.richTextCache[s] = attr
+        return Text(attr)
     }
 
     private func sendMessage() {
