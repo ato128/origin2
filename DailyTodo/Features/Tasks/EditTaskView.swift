@@ -315,7 +315,7 @@ struct EditTaskView: View {
 
                             Spacer()
 
-                            Text("\(estimatedStudyMinutes) dk")
+                            Text("\(estimatedStudyMinutes) \(appLanguageIsEnglish() ? "min" : "dk")")
                                 .font(.system(size: 13, weight: .bold))
                                 .foregroundStyle(.primary)
                         }
@@ -602,7 +602,7 @@ struct EditTaskView: View {
         Button {
             estimatedStudyMinutes = minutes
         } label: {
-            Text("\(minutes) dk")
+            Text("\(minutes) \(appLanguageIsEnglish() ? "min" : "dk")")
                 .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(estimatedStudyMinutes == minutes ? .white : .primary)
                 .padding(.horizontal, 12)

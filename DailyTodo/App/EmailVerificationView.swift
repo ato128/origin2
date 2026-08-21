@@ -157,7 +157,7 @@ struct EmailVerificationView: View {
                 )
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("ONAY BEKLEYEN EMAIL")
+                Text(appLanguageIsEnglish() ? "EMAIL PENDING CONFIRMATION" : "ONAY BEKLEYEN EMAIL")
                     .font(.system(size: 9, weight: .black, design: .monospaced))
                     .tracking(1.4)
                     .foregroundStyle(.white.opacity(0.42))

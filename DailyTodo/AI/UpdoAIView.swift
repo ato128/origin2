@@ -1455,7 +1455,7 @@ private struct FocusHistorySheet: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Text("\(mins) dk")
+            Text("\(mins) \(appLanguageIsEnglish() ? "min" : "dk")")
                 .font(.subheadline.weight(.semibold))
                 .monospacedDigit()
                 .foregroundStyle(.secondary)

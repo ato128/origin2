@@ -1914,9 +1914,9 @@ private extension FocusView {
                     RoundedRectangle(cornerRadius: 26, style: .continuous)
                         .fill(Color.white.opacity(0.05))
 
-                    Picker("Dakika", selection: $customMinutes) {
+                    Picker(appLanguageIsEnglish() ? "Minutes" : "Dakika", selection: $customMinutes) {
                         ForEach(5...180, id: \.self) { minute in
-                            Text("\(minute) dk").tag(minute)
+                            Text("\(minute) \(appLanguageIsEnglish() ? "min" : "dk")").tag(minute)
                         }
                     }
                     .pickerStyle(.wheel)
@@ -1941,7 +1941,7 @@ private extension FocusView {
                         Image(systemName: "timer")
                             .font(.system(size: 15, weight: .bold))
 
-                        Text("\(customMinutes) dk Kullan")
+                        Text(appLanguageIsEnglish() ? "Use \(customMinutes) min" : "\(customMinutes) dk Kullan")
                             .font(.system(size: 16, weight: .heavy, design: .rounded))
                     }
                     .foregroundStyle(.white)
@@ -1974,7 +1974,7 @@ private extension FocusView {
         Button {
             customMinutes = minute
         } label: {
-            Text("\(minute) dk")
+            Text("\(minute) \(appLanguageIsEnglish() ? "min" : "dk")")
                 .font(.system(size: 13, weight: .bold, design: .rounded))
                 .foregroundStyle(customMinutes == minute ? .white : .primary.opacity(0.8))
                 .padding(.horizontal, 12)

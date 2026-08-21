@@ -2615,7 +2615,7 @@ private struct TimelineDetailSheet: View {
 
                 Spacer()
 
-                Text("\(events.count) toplam")
+                Text(appLanguageIsEnglish() ? "\(events.count) total" : "\(events.count) toplam")
                     .font(.system(size: 10, weight: .black, design: .monospaced))
                     .foregroundStyle(.white.opacity(0.50))
             }

@@ -111,7 +111,7 @@ private extension FocusDetailSectionV3 {
                         .foregroundStyle(accent)
                 }
 
-                Text("Detaylar")
+                Text(appLanguageIsEnglish() ? "Details" : "Detaylar")
                     .font(.system(size: 25, weight: .black))
                     .foregroundStyle(.white)
             }

@@ -217,7 +217,7 @@ struct InsightsAchievementsView: View {
                     .font(.system(size: 27, weight: .black))
                     .foregroundStyle(.white)
 
-                Text("\(activePaths.count) aktif yol • \(badges.count) toplam rozet")
+                Text(appLanguageIsEnglish() ? "\(activePaths.count) active paths • \(badges.count) total badges" : "\(activePaths.count) aktif yol • \(badges.count) toplam rozet")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.50))
                     .lineLimit(2)

@@ -330,7 +330,7 @@ struct CrewFocusInviteSheet: View {
             }
             .foregroundStyle(accent)
 
-            Text("\(payload.hostName) seni focusa\ndavet ediyor")
+            Text(appLanguageIsEnglish() ? "\(payload.hostName) is inviting\nyou to focus" : "\(payload.hostName) seni focusa\ndavet ediyor")
                 .font(.system(size: 22, weight: .black, design: .rounded))
                 .foregroundStyle(.white.opacity(0.96))
                 .multilineTextAlignment(.center)
@@ -482,7 +482,7 @@ struct CrewFocusInviteSheet: View {
             .frame(height: 6)
 
             HStack {
-                Text("0 dk")
+                Text(appLanguageIsEnglish() ? "0 min" : "0 dk")
                     .font(.system(size: 10, weight: .heavy, design: .monospaced))
                     .foregroundStyle(.white.opacity(0.40))
 
@@ -494,7 +494,7 @@ struct CrewFocusInviteSheet: View {
 
                 Spacer()
 
-                Text("\(payload.durationMinutes) dk")
+                Text("\(payload.durationMinutes) \(appLanguageIsEnglish() ? "min" : "dk")")
                     .font(.system(size: 10, weight: .heavy, design: .monospaced))
                     .foregroundStyle(.white.opacity(0.40))
             }

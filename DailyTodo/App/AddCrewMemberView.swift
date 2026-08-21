@@ -211,7 +211,7 @@ private extension AddCrewMemberView {
                         .foregroundStyle(AddCrewMemberArenaPalette.cyan)
 
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text("Yeni")
+                        Text(appLanguageIsEnglish() ? "New" : "Yeni")
                             .font(.system(size: 30, weight: .black))
                             .foregroundStyle(.white)
 

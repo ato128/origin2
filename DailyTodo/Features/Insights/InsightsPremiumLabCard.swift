@@ -238,7 +238,7 @@ struct InsightsComingSoonSheet: View {
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.6))
                 Spacer()
-                Button("Kapat") { dismiss() }
+                Button(appLanguageIsEnglish() ? "Close" : "Kapat") { dismiss() }
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)

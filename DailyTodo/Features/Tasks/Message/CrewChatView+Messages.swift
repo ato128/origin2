@@ -129,7 +129,7 @@ extension CrewChatView {
                     Image(systemName: "arrow.clockwise")
                         .font(.system(size: 9, weight: .bold))
 
-                    Text("Tekrar dene")
+                    Text(appLanguageIsEnglish() ? "Try again" : "Tekrar dene")
                         .font(.system(size: 10, weight: .semibold))
                 }
                 .foregroundStyle(.red.opacity(0.9))
