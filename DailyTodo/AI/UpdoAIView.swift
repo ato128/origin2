@@ -21,6 +21,7 @@ struct UpdoAIView: View {
 
     @Query(sort: \DTTaskItem.createdAt, order: .reverse) private var allTasks: [DTTaskItem]
     @Query(sort: \FocusSessionRecord.startedAt, order: .reverse) private var allFocus: [FocusSessionRecord]
+    @Query(sort: \Course.updatedAt, order: .reverse) private var allCourses: [Course]
 
     @StateObject private var chatStore = UpdoAIChatStore()
     @ObservedObject private var credits = DailyCreditsManager.shared
@@ -57,19 +58,118 @@ struct UpdoAIView: View {
     }
 
     private var contextSystemPrompt: String {
+        let en = appLanguageIsEnglish()
         var parts = [
             tr("ai_system_prompt"),
             personalContextBlock
         ]
+
+        // Long-term memory: durable facts the coach has learned about the student.
+        if let memory = AIStudyMemory.shared.contextBlock(en: en) {
+            parts.append(memory)
+        }
+
         if !recentTasks.isEmpty {
             let taskList = recentTasks.prefix(5).map { taskContextLine($0) }.joined(separator: "\n")
             parts.append("\(tr("ai_active_tasks")):\n\(taskList)")
         }
+
+        // Courses the student is actually taking — lets the coach name real
+        // subjects instead of generic "your courses".
+        if !activeCourseNames.isEmpty {
+            let list = activeCourseNames.prefix(8).joined(separator: ", ")
+            parts.append((en ? "Courses: " : "Dersler: ") + list)
+        }
+
         let totalFocusMins = last7DaysFocus.map { $0.completedSeconds / 60 }.reduce(0, +)
         if totalFocusMins > 0 {
             parts.append(tr("ai_focus_summary", totalFocusMins, last7DaysFocus.count))
+
+            // Where the time actually went + when the student works best +
+            // whether they finish what they start — the raw material for real,
+            // data-grounded coaching instead of platitudes.
+            if let breakdown = courseFocusBreakdown(en: en) {
+                parts.append(breakdown)
+            }
+            if let peak = peakStudyHours(en: en) {
+                parts.append(peak)
+            }
+            if let rate = weekCompletionRate {
+                parts.append(en
+                    ? "This week \(rate)% of started focus sessions were completed."
+                    : "Bu hafta başlanan odak seanslarının %\(rate)'i tamamlandı.")
+            }
         }
+
+        // All upcoming exams (not just the nearest) so the coach can prioritize.
+        if let exams = upcomingExamsLine(en: en) {
+            parts.append(exams)
+        }
+
         return parts.joined(separator: "\n\n")
+    }
+
+    // MARK: - Rich context signals (model-facing, real data)
+
+    /// Non-archived courses owned by the signed-in user, newest first.
+    private var activeCourseNames: [String] {
+        allCourses
+            .filter { !$0.isArchived && ($0.ownerUserID == currentUserID || $0.ownerUserID == nil) }
+            .map { $0.name.isEmpty ? $0.code : $0.name }
+            .filter { !$0.isEmpty }
+    }
+
+    /// "This week's focus by subject: Math 120m, Physics 45m" — top 4.
+    private func courseFocusBreakdown(en: Bool) -> String? {
+        var buckets: [String: Int] = [:]
+        for s in last7DaysFocus {
+            let name = s.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty else { continue }
+            buckets[name, default: 0] += s.completedSeconds / 60
+        }
+        let top = buckets.sorted { $0.value > $1.value }.prefix(4)
+        guard !top.isEmpty else { return nil }
+        let list = top.map { "\($0.key) \($0.value)\(en ? "m" : " dk")" }.joined(separator: ", ")
+        return (en ? "This week's focus by subject: " : "Bu hafta ders bazında odak: ") + list
+    }
+
+    /// The 2 hours of day the student focuses most — anchors "study at your best
+    /// time" advice to reality.
+    private func peakStudyHours(en: Bool) -> String? {
+        var hours: [Int: Int] = [:]
+        for s in last7DaysFocus {
+            let h = Calendar.current.component(.hour, from: s.startedAt)
+            hours[h, default: 0] += s.completedSeconds / 60
+        }
+        let top = hours.sorted { $0.value > $1.value }.prefix(2).map { "\($0.key):00" }
+        guard !top.isEmpty else { return nil }
+        return (en ? "Most productive hours: " : "En verimli saatler: ") + top.joined(separator: ", ")
+    }
+
+    /// Completed vs total sessions over the last 7 days, as a percentage.
+    private var weekCompletionRate: Int? {
+        let sessions = last7DaysFocus
+        guard !sessions.isEmpty else { return nil }
+        let done = sessions.filter { $0.isCompleted }.count
+        return Int(Double(done) * 100.0 / Double(sessions.count))
+    }
+
+    /// Up to 3 nearest upcoming exams with day countdowns.
+    private func upcomingExamsLine(en: Bool) -> String? {
+        let exams = (try? modelContext.fetch(FetchDescriptor<ExamItem>())) ?? []
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let upcoming = exams
+            .filter { ($0.ownerUserID == currentUserID || $0.ownerUserID == nil) && $0.examDate >= today }
+            .sorted { $0.examDate < $1.examDate }
+            .prefix(3)
+        guard !upcoming.isEmpty else { return nil }
+        let items = upcoming.map { exam -> String in
+            let days = cal.dateComponents([.day], from: today, to: cal.startOfDay(for: exam.examDate)).day ?? 0
+            let name = exam.title.isEmpty ? exam.courseName : exam.title
+            return en ? "\(name) (\(days)d)" : "\(name) (\(days)g)"
+        }
+        return (en ? "Upcoming exams: " : "Yaklaşan sınavlar: ") + items.joined(separator: ", ")
     }
 
     /// A compact, real snapshot of the user's day so the coach answers
@@ -964,6 +1064,18 @@ struct UpdoAIView: View {
 
         case "open_screen":
             return openScreenByName((tool.args["screen"] as? String) ?? "week")
+
+        case "remember":
+            let note = (tool.args["note"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !note.isEmpty else {
+                return aiUsesTurkish ? "Peki, aklımda tutuyorum." : "Okay, noted."
+            }
+            AIStudyMemory.shared.remember(note)
+            // Single-tool architecture (no 2nd LLM turn): pair the silent store
+            // with a warm ack that also nudges forward.
+            return aiUsesTurkish
+                ? "Not aldım, bunu aklımda tutacağım. 👍 İstersen buna göre bir plan çıkaralım."
+                : "Noted — I'll keep that in mind. 👍 Want a plan around it?"
 
         default:
             return aiUsesTurkish ? "Bunu şu an yapamıyorum." : "I can't do that yet."

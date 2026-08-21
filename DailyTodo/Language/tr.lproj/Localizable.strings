@@ -1792,6 +1792,8 @@
 "snb_35min" = "Bugün 35 dakikalık net bir tekrar iyi gider.";
 "snb_last_review" = "Son tekrar için kısa bir focus oturumu başlatabilirsin.";
 "snb_stay_calm" = "Sakin kal. Kısa bir tekrar ve düzenli tempo yeterli.";
+"snb_neglect_title" = "%1$@ sınavına %2$d gün kaldı";
+"snb_neglect_body" = "Bu derse son günlerde hiç odaklanmadın. Küçük bir 25 dakikalık seansla başla.";
 "snb_streak_end" = "Serin bugün bitebilir";
 "snb_streak_risk_focus" = "Görev tamam ✓ — %d günlük seri için bir focus kaldı. Kısa bir seans yeter.";
 "snb_streak_risk_task" = "Focus tamam ✓ — %d günlük seri için bir görev bitirmen kaldı.";

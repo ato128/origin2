@@ -1790,6 +1790,8 @@
 "snb_35min" = "A clear 35-minute review would go well today.";
 "snb_last_review" = "You can start a short focus session for your final review.";
 "snb_stay_calm" = "Stay calm. A short review and steady pace are enough.";
+"snb_neglect_title" = "%1$@ exam in %2$d days";
+"snb_neglect_body" = "You haven't focused on this subject lately. Start with a small 25-minute session.";
 "snb_streak_end" = "Your streak could end today";
 "snb_streak_risk_focus" = "Task done ✓ — one focus left to keep your %d-day streak. A short session is enough.";
 "snb_streak_risk_task" = "Focus done ✓ — finish one task to keep your %d-day streak.";

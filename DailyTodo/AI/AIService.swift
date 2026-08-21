@@ -116,6 +116,100 @@ actor AIService {
         return (text, tool)
     }
 
+    // MARK: - Streaming coach (real token-by-token SSE)
+
+    /// Streams the coach reply from `/ai/coach/stream`. Yields text deltas as they
+    /// arrive, a single `.tool` if the model calls an action, and `.done` at the
+    /// end. Non-200 responses (auth / quota / rate) are mapped to `AIServiceError`
+    /// exactly like the non-streaming path, so callers can fall back.
+    nonisolated func coachChatStream(
+        system: String,
+        messages: [[String: String]],
+        maxTokens: Int = 300
+    ) -> AsyncThrowingStream<CoachStreamEvent, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    let token = try await self.authToken()
+                    guard let url = URL(string: "\(self.baseURL)/coach/stream") else {
+                        throw AIServiceError.invalidResponse
+                    }
+
+                    var req = URLRequest(url: url)
+                    req.httpMethod = "POST"
+                    req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    req.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+                    req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                    req.timeoutInterval = 60
+
+                    var finalBody: [String: Any] = [
+                        "system": system,
+                        "messages": messages,
+                        "maxTokens": maxTokens
+                    ]
+                    let isEN = await MainActor.run { appLanguageIsEnglish() }
+                    finalBody["language"] = isEN ? "en" : "tr"
+                    req.httpBody = try JSONSerialization.data(withJSONObject: finalBody)
+
+                    let (bytes, response) = try await URLSession.shared.bytes(for: req)
+                    guard let http = response as? HTTPURLResponse else {
+                        throw AIServiceError.invalidResponse
+                    }
+
+                    if http.statusCode != 200 {
+                        // Drain the small JSON error body and map it.
+                        var data = Data()
+                        for try await b in bytes { data.append(b) }
+                        let code = (try? JSONDecoder().decode(BackendAIError.self, from: data))?.code
+                        switch http.statusCode {
+                        case 402:
+                            if code == "daily_free_limit" { throw AIServiceError.dailyFreeLimitReached }
+                            throw AIServiceError.insufficientCredits
+                        case 429:
+                            throw AIServiceError.rateLimited
+                        default:
+                            throw AIServiceError.httpError(http.statusCode)
+                        }
+                    }
+
+                    for try await line in bytes.lines {
+                        let trimmed = line.trimmingCharacters(in: .whitespaces)
+                        guard trimmed.hasPrefix("data:") else { continue }
+                        let payload = String(trimmed.dropFirst(5)).trimmingCharacters(in: .whitespaces)
+                        if payload.isEmpty || payload == "[DONE]" { continue }
+                        guard let d = payload.data(using: .utf8),
+                              let obj = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
+                              let type = obj["type"] as? String else { continue }
+
+                        switch type {
+                        case "delta":
+                            if let t = obj["text"] as? String, !t.isEmpty {
+                                continuation.yield(.delta(t))
+                            }
+                        case "tool":
+                            if let name = obj["name"] as? String, !name.isEmpty {
+                                continuation.yield(.tool(AIToolCall(
+                                    name: name,
+                                    args: (obj["args"] as? [String: Any]) ?? [:]
+                                )))
+                            }
+                        case "done":
+                            continuation.yield(.done(creditsRemaining: obj["creditsRemaining"] as? Int))
+                        case "error":
+                            throw AIServiceError.apiError((obj["message"] as? String) ?? "AI error")
+                        default:
+                            break
+                        }
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
     private func postToBackend(feature: String, body: [String: Any]) async throws -> BackendAIResponse {
         let data = try await rawPost(feature: feature, body: body)
         return try JSONDecoder().decode(BackendAIResponse.self, from: data)
@@ -181,6 +275,13 @@ actor AIService {
 struct AIToolCall {
     let name: String
     let args: [String: Any]
+}
+
+/// One event from the streaming coach endpoint.
+enum CoachStreamEvent {
+    case delta(String)                     // incremental text
+    case tool(AIToolCall)                  // model called an action (no text stream)
+    case done(creditsRemaining: Int?)      // stream finished
 }
 
 // MARK: - Response model

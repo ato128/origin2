@@ -85,6 +85,13 @@ struct SmartNotificationBrain {
                     now: now
                 )
             )
+            candidates.append(
+                contentsOf: neglectedExamPrepCandidates(
+                    exams: exams,
+                    focusRecords: focusRecords,
+                    now: now
+                )
+            )
         }
 
         if preferences.streakEnabled {
@@ -299,6 +306,76 @@ struct SmartNotificationBrain {
         default:
             return 18
         }
+    }
+
+    // MARK: - Neglected exam prep (proactive coach)
+
+    /// Fires when an exam is approaching but the student hasn't put any focus
+    /// time into that subject recently — the "you haven't studied X in days"
+    /// nudge. Uses only days NOT covered by the standard exam reminders
+    /// (14/7/3/1/0) so it never double-fires the same day, and only when the
+    /// subject is genuinely neglected.
+    private static func neglectedExamPrepCandidates(
+        exams: [ExamItem],
+        focusRecords: [FocusSessionRecord],
+        now: Date
+    ) -> [SmartNotificationCandidate] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: now)
+        let standardDays: Set<Int> = [14, 7, 3, 1, 0]
+        let neglectWindow = 3   // no focus on the subject in this many days = neglected
+
+        let activeExams = exams
+            .filter { !$0.isCompleted && $0.examDate >= today }
+            .sorted { $0.examDate < $1.examDate }
+
+        var result: [SmartNotificationCandidate] = []
+
+        for exam in activeExams.prefix(4) {
+            guard let days = calendar.dateComponents(
+                [.day], from: today, to: calendar.startOfDay(for: exam.examDate)
+            ).day else { continue }
+
+            // Only in the useful pre-exam window, and never on a day the standard
+            // exam reminder already covers.
+            guard days >= 2, days <= 10, !standardDays.contains(days) else { continue }
+
+            let course = exam.courseName.trimmingCharacters(in: .whitespacesAndNewlines)
+            let subject = course.isEmpty
+                ? exam.title.trimmingCharacters(in: .whitespacesAndNewlines)
+                : course
+            guard !subject.isEmpty else { continue }
+
+            // Any qualifying focus on this subject in the last `neglectWindow` days?
+            let cutoff = calendar.date(byAdding: .day, value: -neglectWindow, to: now) ?? now
+            let folded = fold(subject)
+            let focusedRecently = focusRecords.contains { rec in
+                guard rec.countsTowardStats, rec.startedAt >= cutoff else { return false }
+                return fold(rec.title) == folded
+            }
+            guard !focusedRecently else { continue }
+
+            guard let trigger = triggerDateToday(hour: 16, minute: 30, now: now) else { continue }
+
+            result.append(
+                SmartNotificationCandidate(
+                    id: "smart.exam.neglect.\(exam.id.uuidString).\(dayKey(now))",
+                    category: .exam,
+                    title: tr("snb_neglect_title", subject, days),
+                    body: tr("snb_neglect_body"),
+                    triggerDate: trigger,
+                    deepLink: "dailytodo://focus",
+                    priority: 70
+                )
+            )
+        }
+
+        return result
+    }
+
+    private static func fold(_ s: String) -> String {
+        s.folding(options: [.diacriticInsensitive, .caseInsensitive],
+                  locale: Locale(identifier: "tr"))
     }
 
     // MARK: - Streak
