@@ -1420,7 +1420,7 @@ private extension HomeView {
             return HeroState(
                 eyebrow: tr("hv_now_focusing"),
                 title: "Focus",
-                italicLine: "devam et",
+                italicLine: appLanguageIsEnglish() ? "keep going" : "devam et",
                 metaItems: [
                     MetaItem(icon: "timer", text: focusSession.timeString),
                     MetaItem(icon: "scope", text: focusSession.selectedGoal.title)
@@ -1496,7 +1496,7 @@ private extension HomeView {
             return HeroState(
                 eyebrow: tr("hv_today_priority"),
                 title: tr("rel_task_count", overdueTaskCount),
-                italicLine: "seni bekliyor",
+                italicLine: appLanguageIsEnglish() ? "is waiting for you" : "seni bekliyor",
                 metaItems: [
                     MetaItem(icon: "checklist", text: tr("rel_active_task_count", activeTaskCount))
                 ],
@@ -1565,13 +1565,14 @@ private extension HomeView {
 
     func timingPhrase(minutesUntil: Int) -> String {
         if minutesUntil <= 0 { return tr("hv_starting") }
-        if minutesUntil < 60 { return "\(minutesUntil) dakikada" }
+        let en = appLanguageIsEnglish()
+        if minutesUntil < 60 { return en ? "in \(minutesUntil) min" : "\(minutesUntil) dakikada" }
 
         let h = minutesUntil / 60
         let m = minutesUntil % 60
 
-        if m == 0 { return "\(h) saat sonra" }
-        return "\(h)s \(m)dk sonra"
+        if m == 0 { return en ? "in \(h)h" : "\(h) saat sonra" }
+        return en ? "in \(h)h \(m)m" : "\(h)s \(m)dk sonra"
     }
 }
 
